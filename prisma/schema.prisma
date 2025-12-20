@@ -1,0 +1,402 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  RESPONDER
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum AuditEntityType {
+  USER
+  TEAM
+  TEAM_MEMBER
+  SERVICE
+}
+
+enum ServiceStatus {
+  OPERATIONAL
+  DEGRADED
+  PARTIAL_OUTAGE
+  MAJOR_OUTAGE
+  MAINTENANCE
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  SNOOZED
+  SUPPRESSED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  SLACK
+  WEBHOOK
+}
+
+enum DigestLevel {
+  HIGH
+  ALL
+  NONE
+}
+
+enum IncidentUrgency {
+  LOW
+  HIGH
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(USER)
+  status    UserStatus @default(INVITED)
+  passwordHash String?
+  timeZone  String   @default("UTC")
+  dailySummary Boolean @default(true)
+  incidentDigest DigestLevel @default(HIGH)
+  invitedAt DateTime?
+  deactivatedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedIncidents Incident[]
+  teamMemberships   TeamMember[]
+  onCallShifts      OnCallShift[]
+  escalationRules   EscalationRule[]
+  incidentNotes     IncidentNote[]
+  notifications     Notification[]
+  incidentWatchers  IncidentWatcher[]
+  auditLogs         AuditLog[]
+  overrides         OnCallOverride[] @relation("OverrideUser")
+  overrideReplacements OnCallOverride[] @relation("OverrideReplacesUser")
+  layerAssignments  OnCallLayerUser[]
+  accounts          Account[]
+  sessions          Session[]
+  apiKeys           ApiKey[]
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members  TeamMember[]
+  services Service[]
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  userId String
+  teamId String
+  role   TeamRole @default(MEMBER)
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId])
+}
+
+model Service {
+  id                 String        @id @default(cuid())
+  name               String
+  description        String?
+  status             ServiceStatus @default(OPERATIONAL)
+  teamId             String?
+  escalationPolicyId String?
+  slackWebhookUrl    String?       // Per-service Slack Webhook URL
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  team      Team?             @relation(fields: [teamId], references: [id])
+  incidents Incident[]
+  policy    EscalationPolicy? @relation(fields: [escalationPolicyId], references: [id])
+  
+  integrations Integration[]
+  alerts       Alert[]
+}
+
+// Enhanced Escalation Policy
+model EscalationPolicy {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // Replaced simple JSON with relational steps
+  steps       EscalationRule[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  services Service[]
+}
+
+model EscalationRule {
+  id        String   @id @default(cuid())
+  policyId  String
+  policy    EscalationPolicy @relation(fields: [policyId], references: [id])
+  
+  delayMinutes Int    @default(0) // Time to wait before escalating to next step
+  stepOrder    Int    // 0, 1, 2...
+  
+  // Target: currently only a User, could be a Team or Schedule later
+  targetUserId String
+  targetUser   User   @relation(fields: [targetUserId], references: [id])
+}
+
+model Integration {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("EVENTS_API_V2") // EVENTS_API_V2, EMAIL, etc.
+  key       String   @unique // The routing key used in API calls
+  serviceId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id])
+}
+
+model Alert {
+  id         String   @id @default(cuid())
+  dedupKey   String?  // The deduplication key from the event source
+  status     String   @default("TRIGGERED") // TRIGGERED, RESOLVED
+  payload    Json     // The full event payload
+  serviceId  String
+  incidentId String?
+  createdAt  DateTime @default(now())
+
+  service  Service   @relation(fields: [serviceId], references: [id])
+  incident Incident? @relation(fields: [incidentId], references: [id])
+}
+
+model Incident {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  status      IncidentStatus  @default(OPEN)
+  urgency     IncidentUrgency @default(HIGH)
+  priority    String?         // P1, P2.. P5
+  dedupKey    String?         // Key for deduplication
+  serviceId   String
+  assigneeId  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  service  Service         @relation(fields: [serviceId], references: [id])
+  assignee User?           @relation(fields: [assigneeId], references: [id])
+  events   IncidentEvent[]
+  notes    IncidentNote[]
+  alerts   Alert[]         // Relation to raw alerts
+  notifications Notification[]
+  watchers IncidentWatcher[]
+  
+  @@index([dedupKey]) // Index for fast deduplication lookups
+}
+
+model IncidentWatcher {
+  id         String   @id @default(cuid())
+  incidentId String
+  userId     String
+  role       String   @default("FOLLOWER") // FOLLOWER, STAKEHOLDER, EXEC
+  createdAt  DateTime @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([incidentId, userId])
+}
+
+model IncidentEvent {
+  id         String   @id @default(cuid())
+  incidentId String
+  message    String
+  createdAt  DateTime @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id])
+}
+
+model IncidentNote {
+  id         String   @id @default(cuid())
+  incidentId String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+model OnCallSchedule {
+  id        String        @id @default(cuid())
+  name      String
+  timeZone  String        @default("UTC")
+  layers    OnCallLayer[]
+  overrides OnCallOverride[]
+  shifts    OnCallShift[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model OnCallLayer {
+  id        String   @id @default(cuid())
+  scheduleId String
+  name      String
+  start     DateTime
+  end       DateTime?
+  rotationLengthHours Int @default(24)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schedule OnCallSchedule @relation(fields: [scheduleId], references: [id])
+  users    OnCallLayerUser[]
+}
+
+model OnCallLayerUser {
+  id      String @id @default(cuid())
+  layerId String
+  userId  String
+  position Int @default(0)
+
+  layer OnCallLayer @relation(fields: [layerId], references: [id])
+  user  User        @relation(fields: [userId], references: [id])
+
+  @@unique([layerId, userId])
+}
+
+model OnCallOverride {
+  id        String   @id @default(cuid())
+  scheduleId String
+  userId    String
+  replacesUserId String?
+  start     DateTime
+  end       DateTime
+  createdAt DateTime @default(now())
+
+  schedule     OnCallSchedule @relation(fields: [scheduleId], references: [id])
+  user         User           @relation("OverrideUser", fields: [userId], references: [id])
+  replacesUser User?          @relation("OverrideReplacesUser", fields: [replacesUserId], references: [id])
+}
+
+model OnCallShift {
+  id         String   @id @default(cuid())
+  scheduleId String
+  userId     String
+  start      DateTime
+  end        DateTime
+
+  schedule OnCallSchedule @relation(fields: [scheduleId], references: [id])
+  user     User           @relation(fields: [userId], references: [id])
+}
+
+// Notification model for contact attempts
+model Notification {
+  id          String              @id @default(cuid())
+  incidentId  String
+  userId      String
+  channel     NotificationChannel
+  status      NotificationStatus  @default(PENDING)
+  message     String?
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  failedAt    DateTime?
+  errorMsg    String?
+  createdAt   DateTime            @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id         String          @id @default(cuid())
+  action     String
+  entityType AuditEntityType
+  entityId   String?
+  actorId    String?
+  details    Json?
+  createdAt  DateTime        @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model ApiKey {
+  id         String   @id @default(cuid())
+  name       String
+  prefix     String
+  tokenHash  String
+  scopes     String[]
+  userId     String
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
