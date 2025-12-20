@@ -171,7 +171,7 @@ export async function addTeamMember(teamId: string, formData: FormData) {
     revalidatePath('/audit');
 }
 
-export async function updateTeamMemberRole(memberId: string, formData: FormData) {
+export async function updateTeamMemberRole(memberId: string, formData: FormData): Promise<{ error?: string } | undefined> {
     let currentUser;
     try {
         currentUser = await assertAdminOrResponder();
@@ -184,7 +184,9 @@ export async function updateTeamMemberRole(memberId: string, formData: FormData)
         where: { id: memberId }
     });
 
-    if (!member) return;
+    if (!member) {
+        return { error: 'Member not found.' };
+    }
     
     // Only admins can assign OWNER/ADMIN roles
     if ((role === 'OWNER' || role === 'ADMIN') && currentUser.role !== 'ADMIN') {
@@ -192,7 +194,11 @@ export async function updateTeamMemberRole(memberId: string, formData: FormData)
     }
 
     if (member.role === 'OWNER' && role !== 'OWNER') {
-        await ensureTeamHasOwner(member.teamId, member.id);
+        try {
+            await ensureTeamHasOwner(member.teamId, member.id);
+        } catch (error) {
+            return { error: error instanceof Error ? error.message : 'Cannot change role of last owner.' };
+        }
     }
 
     await prisma.teamMember.update({
@@ -213,7 +219,7 @@ export async function updateTeamMemberRole(memberId: string, formData: FormData)
     revalidatePath('/audit');
 }
 
-export async function removeTeamMember(memberId: string) {
+export async function removeTeamMember(memberId: string): Promise<{ error?: string } | undefined> {
     try {
         await assertAdminOrResponder();
     } catch (error) {
@@ -223,10 +229,16 @@ export async function removeTeamMember(memberId: string) {
         where: { id: memberId }
     });
 
-    if (!member) return;
+    if (!member) {
+        return { error: 'Member not found.' };
+    }
 
     if (member.role === 'OWNER') {
-        await ensureTeamHasOwner(member.teamId, member.id);
+        try {
+            await ensureTeamHasOwner(member.teamId, member.id);
+        } catch (error) {
+            return { error: error instanceof Error ? error.message : 'Cannot remove last owner.' };
+        }
     }
 
     await prisma.teamMember.delete({

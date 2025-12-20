@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect, useActionState, type CSSProperties } from 'react';
 import type { FormEvent } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 
 type FormState = {
@@ -27,7 +27,7 @@ function SubmitButton() {
 }
 
 export default function BulkUserActionsForm({ action, formId, className = '', style }: Props) {
-    const [state, formAction] = useFormState(action, { error: null, success: false });
+    const [state, formAction] = useActionState(action, { error: null, success: false });
     const [localError, setLocalError] = useState<string | null>(null);
     const [showRoleSelect, setShowRoleSelect] = useState(false);
     const router = useRouter();

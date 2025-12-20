@@ -3457,6 +3457,39 @@ span:hover > .info-tooltip {
   border-color: rgba(211, 47, 47, 0.2);
 }
 
+/* Team member card hover */
+.team-member-card {
+  transition: all 0.2s ease;
+}
+
+.team-member-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #cbd5e1;
+}
+
+/* Delete team button hover */
+.delete-team-button {
+  transition: all 0.2s ease;
+}
+
+.delete-team-button:hover {
+  background: linear-gradient(180deg, #fecaca 0%, #fca5a5 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+/* Service link hover */
+.service-link {
+  transition: all 0.2s ease;
+}
+
+.service-link:hover {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+}
+
 /* Toast animation */
 @keyframes slideIn {
   from {

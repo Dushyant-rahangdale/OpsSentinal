@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 
 import Sidebar from '@/components/Sidebar';
 import TopbarUserMenu from '@/components/TopbarUserMenu';
+import { ToastProvider } from '@/components/ToastProvider';
 
 export const revalidate = 30;
 
@@ -36,21 +37,23 @@ export default async function AppLayout({
     : 'No critical incidents';
 
   return (
-    <div className="app-shell">
-      <Sidebar />
-      <div className="content-shell">
-        <header className="topbar">
-          <div className="topbar-left">
-            <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
+    <ToastProvider>
+      <div className="app-shell">
+        <Sidebar />
+        <div className="content-shell">
+          <header className="topbar">
+            <div className="topbar-left">
+              <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
+            </div>
+            <div className="topbar-right">
+              <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
+            </div>
+          </header>
+          <div className="page-shell">
+            {children}
           </div>
-          <div className="topbar-right">
-            <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
-          </div>
-        </header>
-        <div className="page-shell">
-          {children}
         </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

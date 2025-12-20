@@ -1,42 +1,156 @@
 import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { getUserPermissions } from '@/lib/rbac';
 import { addTeamMember, createTeam, deleteTeam, removeTeamMember, updateTeam, updateTeamMemberRole } from './actions';
 import TeamCreateForm from '@/components/TeamCreateForm';
+import TeamCard from '@/components/TeamCard';
+import Link from 'next/link';
 
 type TeamsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
+const TEAMS_PER_PAGE = 10;
+const ACTIVITY_PER_PAGE = 5;
+
+function buildPaginationUrl(baseParams: URLSearchParams, page: number): string {
+    const params = new URLSearchParams(baseParams);
+    params.set('page', page.toString());
+    return `/teams?${params.toString()}`;
+}
+
+function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
+    const pages: (number | string)[] = [];
+    const maxVisible = 7; // Maximum number of page buttons to show
+    
+    if (totalPages <= maxVisible) {
+        // Show all pages if total is less than max
+        for (let i = 1; i <= totalPages; i++) {
+            pages.push(i);
+        }
+    } else {
+        // Always show first page
+        pages.push(1);
+        
+        if (currentPage <= 4) {
+            // Near the beginning: 1 2 3 4 5 ... last
+            for (let i = 2; i <= 5; i++) {
+                pages.push(i);
+            }
+            pages.push('...');
+            pages.push(totalPages);
+        } else if (currentPage >= totalPages - 3) {
+            // Near the end: 1 ... (last-4) (last-3) (last-2) (last-1) last
+            pages.push('...');
+            for (let i = totalPages - 4; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            // In the middle: 1 ... (current-1) current (current+1) ... last
+            pages.push('...');
+            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                pages.push(i);
+            }
+            pages.push('...');
+            pages.push(totalPages);
+        }
+    }
+    
+    return pages;
+}
+
 export default async function TeamsPage({ searchParams }: TeamsPageProps) {
     const awaitedSearchParams = await searchParams;
     const query = typeof awaitedSearchParams?.q === 'string' ? awaitedSearchParams.q.trim() : '';
+    const sortBy = typeof awaitedSearchParams?.sortBy === 'string' ? awaitedSearchParams.sortBy : 'createdAt';
+    const sortOrder = typeof awaitedSearchParams?.sortOrder === 'string' ? awaitedSearchParams.sortOrder : 'desc';
+    const minMembers = typeof awaitedSearchParams?.minMembers === 'string' ? Number(awaitedSearchParams.minMembers) : undefined;
+    const minServices = typeof awaitedSearchParams?.minServices === 'string' ? Number(awaitedSearchParams.minServices) : undefined;
+    const page = Math.max(1, Number(awaitedSearchParams?.page) || 1);
+    const skip = (page - 1) * TEAMS_PER_PAGE;
 
-    const [teams, users, ownerCounts] = await Promise.all([
+    // Build where clause with filters
+    const where: any = query
+        ? {
+            OR: [
+                { name: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } }
+            ]
+        }
+        : {};
+
+    // Build orderBy
+    let orderBy: any = { createdAt: 'desc' }; // Default: newest first
+    if (sortBy === 'createdAt') {
+        orderBy = { createdAt: sortOrder };
+    } else if (sortBy === 'name') {
+        orderBy = { name: sortOrder };
+    } else {
+        // For memberCount/serviceCount, we'll sort in memory after fetching
+        orderBy = { createdAt: 'desc' };
+    }
+
+    const [allTeams, totalCount, users, ownerCounts] = await Promise.all([
         prisma.team.findMany({
             include: {
-                members: { include: { user: true } },
+                members: { 
+                    include: { 
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                status: true
+                            }
+                        }
+                    },
+                    orderBy: { role: 'asc' }
+                },
                 services: { select: { id: true, name: true } },
                 _count: { select: { members: true, services: true } }
             },
-            where: query
-                ? {
-                    OR: [
-                        { name: { contains: query, mode: 'insensitive' } },
-                        { description: { contains: query, mode: 'insensitive' } }
-                    ]
-                }
-                : undefined,
-            orderBy: { name: 'asc' }
+            where,
+            orderBy,
         }),
-        prisma.user.findMany({ orderBy: { name: 'asc' } }),
+        prisma.team.count({ where }),
+        prisma.user.findMany({ 
+            orderBy: { name: 'asc' },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                status: true
+            }
+        }),
         prisma.teamMember.groupBy({
             by: ['teamId'],
             where: { role: 'OWNER' },
             _count: { _all: true }
         })
     ]);
+
+    // Apply member/service count filters and sorting
+    let filteredTeams = allTeams;
+    
+    if (minMembers !== undefined) {
+        filteredTeams = filteredTeams.filter(team => team._count.members >= minMembers);
+    }
+    
+    if (minServices !== undefined) {
+        filteredTeams = filteredTeams.filter(team => team._count.services >= minServices);
+    }
+
+    // Sort by member/service count if needed
+    if (sortBy === 'memberCount' || sortBy === 'serviceCount') {
+        filteredTeams = [...filteredTeams].sort((a, b) => {
+            const aCount = sortBy === 'memberCount' ? a._count.members : a._count.services;
+            const bCount = sortBy === 'memberCount' ? b._count.members : b._count.services;
+            return sortOrder === 'asc' ? aCount - bCount : bCount - aCount;
+        });
+    }
+
+    // Apply pagination
+    const teams = filteredTeams.slice(skip, skip + TEAMS_PER_PAGE);
+    const adjustedTotalCount = filteredTeams.length;
 
     const ownerCountByTeam = new Map<string, number>();
     for (const entry of ownerCounts) {
@@ -51,23 +165,100 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
     const canManageMembers = permissions.isAdminOrResponder;
     const canAssignOwnerAdmin = permissions.isAdmin;
 
+    const totalPages = Math.ceil(adjustedTotalCount / TEAMS_PER_PAGE);
+    const pageNumbers = totalPages > 1 ? getPageNumbers(page, totalPages) : [];
+    const baseParams = new URLSearchParams();
+    if (query) baseParams.set('q', query);
+    if (sortBy !== 'createdAt') baseParams.set('sortBy', sortBy);
+    if (sortOrder !== 'desc') baseParams.set('sortOrder', sortOrder);
+    if (minMembers !== undefined) baseParams.set('minMembers', minMembers.toString());
+    if (minServices !== undefined) baseParams.set('minServices', minServices.toString());
+
+    // Fetch activity logs for each team
+    const teamsWithActivity = await Promise.all(
+        teams.map(async (team) => {
+            const [activityLogs, activityTotal] = await Promise.all([
+                prisma.auditLog.findMany({
+                    where: {
+                        OR: [
+                            { entityType: 'TEAM', entityId: team.id },
+                            { entityType: 'TEAM_MEMBER', entityId: { contains: team.id } }
+                        ]
+                    },
+                    include: {
+                        actor: {
+                            select: {
+                                name: true,
+                                email: true
+                            }
+                        }
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: ACTIVITY_PER_PAGE
+                }),
+                prisma.auditLog.count({
+                    where: {
+                        OR: [
+                            { entityType: 'TEAM', entityId: team.id },
+                            { entityType: 'TEAM_MEMBER', entityId: { contains: team.id } }
+                        ]
+                    }
+                })
+            ]);
+
+            return { team, activityLogs, activityTotal };
+        })
+    );
+
     return (
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
+            {/* Header */}
+            <header style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '2rem',
+                paddingBottom: '1.5rem',
+                borderBottom: '2px solid var(--border)'
+            }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Teams</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Manage ownership, roles, and service coverage.</p>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Teams</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                        Manage ownership, roles, and service coverage. {adjustedTotalCount} {adjustedTotalCount === 1 ? 'team' : 'teams'} total.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <Link 
+                        href="/users" 
+                        className="glass-button" 
+                        style={{ textDecoration: 'none' }}
+                    >
+                        View Users
+                    </Link>
                 </div>
             </header>
 
+            {/* Create Team Section */}
             {canCreateTeam ? (
-                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'white' }}>
-                    <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>Create Team</h2>
+                <div id="create-team" className="glass-panel" style={{ 
+                    padding: '1.5rem', 
+                    marginBottom: '2rem', 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                }}>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--accent)' }}>Create Team</h2>
                     <TeamCreateForm action={createTeam} />
                 </div>
             ) : (
-                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', background: '#f9fafb', border: '1px solid #e5e7eb', opacity: 0.7 }}>
-                    <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Create Team</h2>
+                <div className="glass-panel" style={{ 
+                    padding: '1.5rem', 
+                    marginBottom: '2rem', 
+                    background: '#f9fafb', 
+                    border: '1px solid #e5e7eb', 
+                    opacity: 0.7 
+                }}>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Create Team</h2>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                         ⚠️ You don't have access to create teams. Admin or Responder role required.
                     </p>
@@ -77,278 +268,285 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                 </div>
             )}
 
-            <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.5rem', background: 'white' }}>
-                <form method="get" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'end' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Search Teams</label>
-                        <input name="q" defaultValue={query} placeholder="Team name or description" style={{ width: '100%', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: '6px' }} />
+            {/* Advanced Search and Filters */}
+            <div className="glass-panel" style={{ 
+                padding: '1.5rem', 
+                marginBottom: '1.5rem', 
+                background: 'white',
+                border: '1px solid #e2e8f0'
+            }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-primary)' }}>Search & Filters</h3>
+                <form method="get" style={{ display: 'grid', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '0.75rem', alignItems: 'end' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Search Teams</label>
+                            <input 
+                                name="q" 
+                                defaultValue={query} 
+                                placeholder="Team name or description" 
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '0.6rem 0.75rem', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem'
+                                }} 
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Sort By</label>
+                            <select 
+                                name="sortBy" 
+                                defaultValue={sortBy}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '0.6rem 0.75rem', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                <option value="createdAt">Created Date</option>
+                                <option value="name">Name</option>
+                                <option value="memberCount">Member Count</option>
+                                <option value="serviceCount">Service Count</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Order</label>
+                            <select 
+                                name="sortOrder" 
+                                defaultValue={sortOrder}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '0.6rem 0.75rem', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                <option value="desc">Newest First</option>
+                                <option value="asc">Oldest First</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Min Members</label>
+                            <input 
+                                type="number"
+                                name="minMembers" 
+                                defaultValue={minMembers} 
+                                placeholder="Any"
+                                min="0"
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '0.6rem 0.75rem', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem'
+                                }} 
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Min Services</label>
+                            <input 
+                                type="number"
+                                name="minServices" 
+                                defaultValue={minServices} 
+                                placeholder="Any"
+                                min="0"
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '0.6rem 0.75rem', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '8px',
+                                    fontSize: '0.9rem'
+                                }} 
+                            />
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button type="submit" className="glass-button">Filter</button>
-                        <a href="/teams" className="glass-button" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Reset</a>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button type="submit" className="glass-button">Apply Filters</button>
+                        <a href="/teams" className="glass-button" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                            Reset
+                        </a>
                     </div>
                 </form>
             </div>
 
+            {/* Teams List */}
             <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {teams.length === 0 ? (
-                    <div className="glass-panel empty-state" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', background: 'white' }}>
-                        No teams yet. Create one above to start organizing responders and services.
+                    <div className="glass-panel empty-state" style={{ 
+                        padding: '3rem', 
+                        textAlign: 'center', 
+                        color: 'var(--text-muted)', 
+                        background: 'white',
+                        borderRadius: '12px'
+                    }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
+                        <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: '600' }}>No teams found</p>
+                        <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                            {query || minMembers !== undefined || minServices !== undefined 
+                                ? 'Try adjusting your search criteria.' 
+                                : 'Create one above to start organizing responders and services.'}
+                        </p>
+                        {canCreateTeam && (
+                            <a href="#create-team" className="glass-button primary" style={{ textDecoration: 'none' }}>
+                                Create Your First Team
+                            </a>
+                        )}
                     </div>
-                ) : teams.map((team) => {
-                    const updateTeamWithId = updateTeam.bind(null, team.id);
-                    const deleteTeamWithId = deleteTeam.bind(null, team.id);
-                    const addMemberWithId = addTeamMember.bind(null, team.id);
+                ) : teamsWithActivity.map(({ team, activityLogs, activityTotal }) => {
+                    const availableUsers = users.filter((user) => 
+                        !team.members.some((member) => member.userId === user.id) && user.status !== 'DISABLED'
+                    );
 
-                    const availableUsers = users.filter((user) => !team.members.some((member) => member.userId === user.id));
+                    const ownerCount = ownerCountByTeam.get(team.id) || 0;
+                    const adminCount = team.members.filter(m => m.role === 'ADMIN').length;
+                    const memberCount = team.members.length;
 
                     return (
-                        <div key={team.id} className="glass-panel" style={{ padding: '1.5rem', background: 'white' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div>
-                                    <h3 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '0.25rem' }}>{team.name}</h3>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{team.description || 'No description provided.'}</p>
-                                    <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                        <span>{team._count.members} members</span>
-                                        <span>{team._count.services} services</span>
-                                    </div>
-                                </div>
-                                {canDeleteTeam ? (
-                                    <form action={deleteTeamWithId}>
-                                        <button type="submit" style={{ background: 'var(--danger)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '999px', cursor: 'pointer', fontWeight: '600', fontSize: '0.8rem' }}>
-                                            Delete Team
-                                        </button>
-                                    </form>
-                                ) : (
-                                    <button type="button" disabled style={{ background: '#d1d5db', color: '#6b7280', border: 'none', padding: '0.5rem 1rem', borderRadius: '999px', cursor: 'not-allowed', fontWeight: '600', fontSize: '0.8rem', opacity: 0.6 }} title="Admin access required to delete teams">
-                                        Delete Team
-                                    </button>
-                                )}
-                            </div>
-
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                {canUpdateTeam ? (
-                                    <form action={updateTeamWithId} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>Team Name</label>
-                                            <input name="name" defaultValue={team.name} required style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>Description</label>
-                                            <input name="description" defaultValue={team.description || ''} placeholder="Team mission" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
-                                        </div>
-                                        <button type="submit" className="glass-button">Update</button>
-                                    </form>
-                                ) : (
-                                    <div style={{ padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', opacity: 0.7 }}>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                                            ⚠️ You don't have access to edit this team. Admin or Responder role required.
-                                        </p>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '1rem', alignItems: 'end', opacity: 0.5, pointerEvents: 'none' }}>
-                                            <div>
-                                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Team Name</label>
-                                                <input name="name" defaultValue={team.name} disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px', background: '#f3f4f6' }} />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Description</label>
-                                                <input name="description" defaultValue={team.description || ''} disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px', background: '#f3f4f6' }} />
-                                            </div>
-                                            <button type="button" disabled className="glass-button" style={{ opacity: 0.5 }}>Update</button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-                                <div>
-                                    <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>Members</h4>
-                                    {team.members.length === 0 ? (
-                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No members assigned.</p>
-                                    ) : (
-                                        <div style={{ display: 'grid', gap: '0.75rem' }}>
-                                            {team.members.map((member) => {
-                                                const updateMemberRole = updateTeamMemberRole.bind(null, member.id);
-                                                const removeMember = removeTeamMember.bind(null, member.id);
-                                                const isSoleOwner = member.role === 'OWNER' && (ownerCountByTeam.get(team.id) || 0) === 1;
-
-                                                return (
-                                                    <div key={member.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '10px' }}>
-                                                        <div>
-                                                            <div style={{ fontWeight: '600' }}>{member.user.name}</div>
-                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{member.user.email}</div>
-                                                        </div>
-                                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                                            {canManageMembers ? (
-                                                                <>
-                                                                    <form action={updateMemberRole} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                                        <select 
-                                                                            name="role" 
-                                                                            defaultValue={member.role} 
-                                                                            disabled={isSoleOwner || (!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN'))}
-                                                                            style={{ 
-                                                                                padding: '0.4rem 0.6rem', 
-                                                                                border: '1px solid var(--border)', 
-                                                                                borderRadius: '6px',
-                                                                                opacity: (isSoleOwner || (!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN'))) ? 0.5 : 1,
-                                                                                background: (isSoleOwner || (!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN'))) ? '#f3f4f6' : 'white'
-                                                                            }}
-                                                                            title={
-                                                                                isSoleOwner 
-                                                                                    ? 'Cannot change role of last owner' 
-                                                                                    : !canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN')
-                                                                                    ? 'Only admins can change OWNER/ADMIN roles'
-                                                                                    : undefined
-                                                                            }
-                                                                        >
-                                                                            <option value="OWNER">Owner</option>
-                                                                            <option value="ADMIN">Admin</option>
-                                                                            <option value="MEMBER">Member</option>
-                                                                        </select>
-                                                                        <button 
-                                                                            type="submit" 
-                                                                            className="glass-button" 
-                                                                            disabled={isSoleOwner || (!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN'))}
-                                                                            style={{ opacity: (isSoleOwner || (!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN'))) ? 0.5 : 1 }}
-                                                                        >
-                                                                            Save
-                                                                        </button>
-                                                                    </form>
-                                                                    <form action={removeMember}>
-                                                                        <button 
-                                                                            type="submit" 
-                                                                            disabled={isSoleOwner} 
-                                                                            title={isSoleOwner ? 'Reassign owner before removing.' : 'Remove member'} 
-                                                                            style={{ 
-                                                                                background: isSoleOwner ? '#fca5a5' : '#fee2e2', 
-                                                                                color: 'var(--danger)', 
-                                                                                border: 'none', 
-                                                                                padding: '0.4rem 0.75rem', 
-                                                                                borderRadius: '999px', 
-                                                                                cursor: isSoleOwner ? 'not-allowed' : 'pointer', 
-                                                                                fontWeight: '600', 
-                                                                                fontSize: '0.75rem',
-                                                                                opacity: isSoleOwner ? 0.6 : 1
-                                                                            }}
-                                                                        >
-                                                                            Remove
-                                                                        </button>
-                                                                    </form>
-                                                                </>
-                                                            ) : (
-                                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', opacity: 0.6 }}>
-                                                                    <select 
-                                                                        disabled 
-                                                                        defaultValue={member.role}
-                                                                        style={{ 
-                                                                            padding: '0.4rem 0.6rem', 
-                                                                            border: '1px solid var(--border)', 
-                                                                            borderRadius: '6px',
-                                                                            background: '#f3f4f6',
-                                                                            color: 'var(--text-secondary)'
-                                                                        }}
-                                                                    >
-                                                                        <option value="OWNER">Owner</option>
-                                                                        <option value="ADMIN">Admin</option>
-                                                                        <option value="MEMBER">Member</option>
-                                                                    </select>
-                                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                                                        ⚠️ No edit access
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {isSoleOwner && (
-                                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Last owner</span>
-                                                            )}
-                                                            {!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN') && (
-                                                                <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: '500' }}>
-                                                                    ⚠️ Admin required
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>Add Member</h4>
-                                    {canManageMembers ? (
-                                        <form action={addMemberWithId} style={{ display: 'grid', gap: '0.75rem' }}>
-                                            <select name="userId" style={{ padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '6px' }}>
-                                                <option value="">Select user</option>
-                                                {availableUsers.map((user) => (
-                                                    <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
-                                                ))}
-                                            </select>
-                                            <select 
-                                                name="role" 
-                                                defaultValue="MEMBER" 
-                                                style={{ 
-                                                    padding: '0.6rem', 
-                                                    border: '1px solid var(--border)', 
-                                                    borderRadius: '6px',
-                                                    opacity: !canAssignOwnerAdmin ? 0.7 : 1
-                                                }}
-                                                disabled={!canAssignOwnerAdmin}
-                                                title={!canAssignOwnerAdmin ? 'Only admins can assign OWNER or ADMIN roles' : undefined}
-                                            >
-                                                <option value="OWNER" disabled={!canAssignOwnerAdmin}>Owner{!canAssignOwnerAdmin ? ' (Admin only)' : ''}</option>
-                                                <option value="ADMIN" disabled={!canAssignOwnerAdmin}>Admin{!canAssignOwnerAdmin ? ' (Admin only)' : ''}</option>
-                                                <option value="MEMBER">Member</option>
-                                            </select>
-                                            <button type="submit" className="glass-button primary" disabled={availableUsers.length === 0}>
-                                                Add to Team
-                                            </button>
-                                            {availableUsers.length === 0 && (
-                                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>All users are already members.</p>
-                                            )}
-                                            {!canAssignOwnerAdmin && (
-                                                <p style={{ fontSize: '0.75rem', color: '#dc2626', fontStyle: 'italic', marginTop: '-0.5rem' }}>
-                                                    ⚠️ Only admins can assign OWNER or ADMIN roles
-                                                </p>
-                                            )}
-                                        </form>
-                                    ) : (
-                                        <div style={{ padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', opacity: 0.7 }}>
-                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                                                ⚠️ You don't have access to add team members. Admin or Responder role required.
-                                            </p>
-                                            <div style={{ display: 'grid', gap: '0.75rem', opacity: 0.5, pointerEvents: 'none' }}>
-                                                <select disabled style={{ padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: '#f3f4f6' }}>
-                                                    <option value="">Select user</option>
-                                                </select>
-                                                <select disabled defaultValue="MEMBER" style={{ padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: '#f3f4f6' }}>
-                                                    <option value="MEMBER">Member</option>
-                                                </select>
-                                                <button type="button" disabled className="glass-button primary" style={{ opacity: 0.5 }}>
-                                                    Add to Team
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div style={{ marginTop: '1.5rem' }}>
-                                        <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>Owned Services</h4>
-                                        {team.services.length === 0 ? (
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No services assigned.</p>
-                                        ) : (
-                                            <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
-                                                {team.services.map((service) => (
-                                                    <span key={service.id} style={{ padding: '0.35rem 0.6rem', borderRadius: '999px', background: '#fef2f2', color: 'var(--primary)' }}>
-                                                        {service.name}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <TeamCard
+                            key={team.id}
+                            team={team}
+                            teamId={team.id}
+                            ownerCount={ownerCount}
+                            adminCount={adminCount}
+                            memberCount={memberCount}
+                            availableUsers={availableUsers}
+                            activityLogs={activityLogs}
+                            activityTotal={activityTotal}
+                            canUpdateTeam={canUpdateTeam}
+                            canDeleteTeam={canDeleteTeam}
+                            canManageMembers={canManageMembers}
+                            canAssignOwnerAdmin={canAssignOwnerAdmin}
+                            updateTeam={updateTeam}
+                            deleteTeam={deleteTeam}
+                            addTeamMember={addTeamMember}
+                            updateTeamMemberRole={updateTeamMemberRole}
+                            removeTeamMember={removeTeamMember}
+                        />
                     );
                 })}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    gap: '1rem', 
+                    marginTop: '2rem',
+                    padding: '1.25rem 1.5rem',
+                    background: 'white',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    flexWrap: 'wrap'
+                }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                        Showing {skip + 1}-{Math.min(skip + TEAMS_PER_PAGE, adjustedTotalCount)} of {adjustedTotalCount} teams
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Link
+                            href={buildPaginationUrl(baseParams, 1)}
+                            className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                            style={{ 
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                textDecoration: 'none',
+                                opacity: page === 1 ? 0.5 : 1,
+                                pointerEvents: page === 1 ? 'none' : 'auto'
+                            }}
+                        >
+                            First
+                        </Link>
+                        <Link
+                            href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
+                            className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                            style={{ 
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                textDecoration: 'none',
+                                opacity: page === 1 ? 0.5 : 1,
+                                pointerEvents: page === 1 ? 'none' : 'auto'
+                            }}
+                        >
+                            Previous
+                        </Link>
+                        
+                        {/* Page Number Buttons */}
+                        {pageNumbers.map((pageNum, index) => {
+                            if (pageNum === '...') {
+                                return (
+                                    <span 
+                                        key={`ellipsis-${index}`}
+                                        style={{ 
+                                            padding: '0 0.25rem',
+                                            color: 'var(--text-muted)',
+                                            fontSize: '0.85rem'
+                                        }}
+                                    >
+                                        ...
+                                    </span>
+                                );
+                            }
+                            
+                            const isActive = pageNum === page;
+                            return (
+                                <Link
+                                    key={pageNum}
+                                    href={buildPaginationUrl(baseParams, pageNum as number)}
+                                    className={`glass-button ${isActive ? 'primary' : ''}`}
+                                    style={{ 
+                                        padding: '0.4rem 0.75rem',
+                                        fontSize: '0.8rem',
+                                        textDecoration: 'none',
+                                        minWidth: '2.5rem',
+                                        textAlign: 'center',
+                                        background: isActive 
+                                            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                                            : undefined,
+                                        color: isActive ? 'white' : undefined,
+                                        border: isActive ? 'none' : undefined,
+                                        fontWeight: isActive ? '600' : '500',
+                                        boxShadow: isActive ? '0 2px 8px rgba(102, 126, 234, 0.3)' : undefined
+                                    }}
+                                >
+                                    {String(pageNum)}
+                                </Link>
+                            );
+                        })}
+                        
+                        <Link
+                            href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
+                            className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                            style={{ 
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                textDecoration: 'none',
+                                opacity: page === totalPages ? 0.5 : 1,
+                                pointerEvents: page === totalPages ? 'none' : 'auto'
+                            }}
+                        >
+                            Next
+                        </Link>
+                        <Link
+                            href={buildPaginationUrl(baseParams, totalPages)}
+                            className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                            style={{ 
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                textDecoration: 'none',
+                                opacity: page === totalPages ? 0.5 : 1,
+                                pointerEvents: page === totalPages ? 'none' : 'auto'
+                            }}
+                        >
+                            Last
+                        </Link>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useRef, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 
 type FormState = {
     error?: string | null;
@@ -22,7 +22,7 @@ function SubmitButton() {
 }
 
 export default function TeamCreateForm({ action }: Props) {
-    const [state, formAction] = useFormState(action, { error: null, success: false });
+    const [state, formAction] = useActionState(action, { error: null, success: false });
     const formRef = useRef<HTMLFormElement | null>(null);
 
     useEffect(() => {
