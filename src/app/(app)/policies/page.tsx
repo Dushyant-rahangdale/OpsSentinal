@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getUserPermissions } from '@/lib/rbac';
 import { createPolicy } from './actions';
 import Link from 'next/link';
 
@@ -11,6 +12,8 @@ export default async function PoliciesPage() {
     });
 
     const users = await prisma.user.findMany();
+    const permissions = await getUserPermissions();
+    const canCreatePolicy = permissions.isAdmin;
 
     return (
         <main>
@@ -54,9 +57,10 @@ export default async function PoliciesPage() {
                 </div>
 
                 {/* Create Form */}
-                <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                    <h3 style={{ fontWeight: '600', marginBottom: '1rem', color: 'var(--accent)' }}>New Policy</h3>
-                    <form action={createPolicy} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {canCreatePolicy ? (
+                    <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
+                        <h3 style={{ fontWeight: '600', marginBottom: '1rem', color: 'var(--accent)' }}>New Policy</h3>
+                        <form action={createPolicy} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <input name="name" placeholder="Policy Name" required style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
 
                         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
@@ -76,9 +80,27 @@ export default async function PoliciesPage() {
                             <input name="rule-1-delay" type="number" placeholder="Delay (min)" defaultValue="15" style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', background: '#222', color: 'white', border: '1px solid var(--border)' }} />
                         </div>
 
-                        <button className="glass-button" style={{ marginTop: '1rem', background: 'var(--primary)' }}>Create Policy</button>
-                    </form>
-                </div>
+                            <button className="glass-button" style={{ marginTop: '1rem', background: 'var(--primary)' }}>Create Policy</button>
+                        </form>
+                    </div>
+                ) : (
+                    <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content', background: '#f9fafb', border: '1px solid #e5e7eb', opacity: 0.7 }}>
+                        <h3 style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>New Policy</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                            ⚠️ You don't have access to create policies. Admin role required.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', opacity: 0.5, pointerEvents: 'none' }}>
+                            <input name="name" placeholder="Policy Name" disabled style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: '#f3f4f6', color: 'var(--text-secondary)' }} />
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step 1: Immediately notify</label>
+                                <select name="rule-0-user" disabled style={{ width: '100%', padding: '0.5rem', marginTop: '0.2rem', background: '#f3f4f6', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                                    <option value="">Select user</option>
+                                </select>
+                            </div>
+                            <button className="glass-button" disabled style={{ marginTop: '1rem', opacity: 0.5 }}>Create Policy</button>
+                        </div>
+                    </div>
+                )}
             </div>
         </main>
     );

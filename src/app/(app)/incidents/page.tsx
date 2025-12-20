@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { getUserPermissions } from '@/lib/rbac';
 
 export const revalidate = 30;
 
@@ -7,8 +8,13 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
     const { filter } = await searchParams;
     const currentFilter = filter || 'all_open';
 
-    // Mock: Fetch Alice as current user
-    const currentUser = await prisma.user.findUnique({ where: { email: 'alice@example.com' } });
+    const permissions = await getUserPermissions();
+    const canCreateIncident = permissions.isResponderOrAbove;
+    
+    // Get current user for filtering
+    const currentUser = await prisma.user.findUnique({ 
+        where: { id: permissions.id } 
+    });
 
     let where: any = {};
     if (currentFilter === 'mine') {
@@ -41,6 +47,26 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                     <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Incidents</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Central command for all operative issues.</p>
                 </div>
+                {canCreateIncident ? (
+                    <Link href="/incidents/create" className="glass-button primary" style={{ textDecoration: 'none' }}>
+                        Create Incident
+                    </Link>
+                ) : (
+                    <button 
+                        type="button" 
+                        disabled 
+                        className="glass-button primary" 
+                        style={{ 
+                            textDecoration: 'none', 
+                            opacity: 0.6, 
+                            cursor: 'not-allowed',
+                            position: 'relative'
+                        }}
+                        title="Responder role or above required to create incidents"
+                    >
+                        Create Incident
+                    </button>
+                )}
             </header>
 
             {/* Tabs */}

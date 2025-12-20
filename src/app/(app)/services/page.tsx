@@ -3,11 +3,17 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
+import { getUserPermissions, assertAdminOrResponder } from '@/lib/rbac';
 
 export const revalidate = 30;
 
 async function createService(formData: FormData) {
     'use server';
+    try {
+        await assertAdminOrResponder();
+    } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'Unauthorized');
+    }
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
     const slackWebhookUrl = formData.get('slackWebhookUrl') as string;
@@ -63,6 +69,9 @@ export default async function ServicesPage() {
         return { ...service, dynamicStatus };
     });
 
+    const permissions = await getUserPermissions();
+    const canCreateService = permissions.isAdminOrResponder;
+
     return (
         <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -73,9 +82,10 @@ export default async function ServicesPage() {
             </header>
 
             {/* Create Service Form */}
-            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'white' }}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>Create New Service</h2>
-                <form action={createService} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'flex-end' }}>
+            {canCreateService ? (
+                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'white' }}>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem' }}>Create New Service</h2>
+                    <form action={createService} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'flex-end' }}>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500' }}>Service Name *</label>
                         <input name="name" required placeholder="e.g. API Gateway" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
@@ -98,11 +108,32 @@ export default async function ServicesPage() {
                         <input name="slackWebhookUrl" placeholder="https://hooks.slack.com/services/..." style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px', fontFamily: 'monospace' }} />
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>If provided, incidents for this service will post notifications to this channel.</p>
                     </div>
-                    <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                        <button type="submit" className="glass-button primary">Create Service</button>
+                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                            <button type="submit" className="glass-button primary">Create Service</button>
+                        </div>
+                    </form>
+                </div>
+            ) : (
+                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', background: '#f9fafb', border: '1px solid #e5e7eb', opacity: 0.7 }}>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Create New Service</h2>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                        ⚠️ You don't have access to create services. Admin or Responder role required.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'flex-end', opacity: 0.5, pointerEvents: 'none' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Service Name *</label>
+                            <input name="name" disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px', background: '#f3f4f6' }} />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Description</label>
+                            <input name="description" disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px', background: '#f3f4f6' }} />
+                        </div>
+                        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
+                            <button type="button" disabled className="glass-button primary" style={{ opacity: 0.5 }}>Create Service</button>
+                        </div>
                     </div>
-                </form>
-            </div>
+                </div>
+            )}
 
             {/* Services Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>

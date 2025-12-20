@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { notFound } from 'next/navigation';
+import { getUserPermissions } from '@/lib/rbac';
 import { addNote, addWatcher, reassignIncident, removeWatcher, resolveIncidentWithNote, updateIncidentStatus, updateIncidentUrgency } from '../actions';
 import Link from 'next/link';
 import AssigneePicker from '@/components/AssigneePicker';
@@ -44,6 +45,8 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
     if (!incident) notFound();
 
     const users = await prisma.user.findMany();
+    const permissions = await getUserPermissions();
+    const canManageIncident = permissions.isResponderOrAbove;
 
     // Server actions
     async function handleReassign(formData: FormData) {
@@ -166,45 +169,83 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                     }}>
                         <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Urgency</div>
-                        <form action={handleUrgencyChange} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.45rem' }}>
-                            <select
-                                name="urgency"
-                                defaultValue={incident.urgency}
-                                style={{ padding: '0.25rem 0.55rem', borderColor: 'rgba(211,47,47,0.25)', borderRadius: '8px', background: '#fff', fontSize: '0.8rem' }}
-                            >
-                                <option value="HIGH">High</option>
-                                <option value="LOW">Low</option>
-                            </select>
-                            <button
-                                className="glass-button"
-                                style={{
-                                    height: '28px',
-                                    padding: '0 0.55rem',
-                                    fontSize: '0.75rem',
-                                    background: 'linear-gradient(180deg, #feecec 0%, #fbdcdc 100%)',
-                                    border: '1px solid rgba(211,47,47,0.25)',
-                                    color: '#b71c1c'
-                                }}
-                            >
-                                Update
-                            </button>
-                        </form>
+                        {canManageIncident ? (
+                            <form action={handleUrgencyChange} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.45rem' }}>
+                                <select
+                                    name="urgency"
+                                    defaultValue={incident.urgency}
+                                    style={{ padding: '0.25rem 0.55rem', borderColor: 'rgba(211,47,47,0.25)', borderRadius: '8px', background: '#fff', fontSize: '0.8rem' }}
+                                >
+                                    <option value="HIGH">High</option>
+                                    <option value="LOW">Low</option>
+                                </select>
+                                <button
+                                    className="glass-button"
+                                    style={{
+                                        height: '28px',
+                                        padding: '0 0.55rem',
+                                        fontSize: '0.75rem',
+                                        background: 'linear-gradient(180deg, #feecec 0%, #fbdcdc 100%)',
+                                        border: '1px solid rgba(211,47,47,0.25)',
+                                        color: '#b71c1c'
+                                    }}
+                                >
+                                    Update
+                                </button>
+                            </form>
+                        ) : (
+                            <div style={{ marginTop: '0.45rem', opacity: 0.6 }}>
+                                <div style={{ 
+                                    padding: '0.25rem 0.55rem', 
+                                    borderColor: 'rgba(211,47,47,0.25)', 
+                                    borderRadius: '8px', 
+                                    background: '#f3f4f6', 
+                                    fontSize: '0.8rem',
+                                    color: 'var(--text-secondary)',
+                                    display: 'inline-block'
+                                }}>
+                                    {incident.urgency}
+                                </div>
+                                <div style={{ fontSize: '0.65rem', color: '#dc2626', marginTop: '0.25rem', fontStyle: 'italic' }}>
+                                    ⚠️ Responder role required to change
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div style={{ background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)', border: '1px solid rgba(211,47,47,0.18)', borderRadius: '12px', padding: '0.85rem', boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)' }}>
                         <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Assignee</div>
                         <div style={{ marginTop: '0.45rem' }}>
-                            <AssigneePicker
-                                users={users}
-                                currentAssigneeId={incident.assigneeId}
-                                action={handleReassign}
-                                accentColor="#d32f2f"
-                                inputBackground="#ffffff"
-                                buttonBackground="linear-gradient(180deg, #feecec 0%, #fbdcdc 100%)"
-                                buttonBorder="1px solid rgba(211,47,47,0.25)"
-                                buttonTextColor="#b71c1c"
-                                searchPlaceholder="Search assignee..."
-                            />
+                            {canManageIncident ? (
+                                <AssigneePicker
+                                    users={users}
+                                    currentAssigneeId={incident.assigneeId}
+                                    action={handleReassign}
+                                    accentColor="#d32f2f"
+                                    inputBackground="#ffffff"
+                                    buttonBackground="linear-gradient(180deg, #feecec 0%, #fbdcdc 100%)"
+                                    buttonBorder="1px solid rgba(211,47,47,0.25)"
+                                    buttonTextColor="#b71c1c"
+                                    searchPlaceholder="Search assignee..."
+                                />
+                            ) : (
+                                <div style={{ opacity: 0.6 }}>
+                                    <div style={{ 
+                                        padding: '0.4rem 0.6rem', 
+                                        border: '1px solid rgba(211,47,47,0.25)', 
+                                        borderRadius: '8px', 
+                                        background: '#f3f4f6', 
+                                        fontSize: '0.85rem',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '0.25rem'
+                                    }}>
+                                        {incident.assignee?.name || 'Unassigned'}
+                                    </div>
+                                    <div style={{ fontSize: '0.65rem', color: '#dc2626', fontStyle: 'italic' }}>
+                                        ⚠️ Responder role required to reassign
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div style={{ background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)', border: '1px solid rgba(211,47,47,0.18)', borderRadius: '12px', padding: '0.85rem', boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)' }}>
@@ -268,15 +309,32 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                             {incident.notes.length === 0 && <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes added yet.</p>}
                         </div>
 
-                        <form action={handleAddNote} style={{ display: 'flex', gap: '1rem' }}>
-                            <input
-                                name="content"
-                                placeholder="Add a note... (supports **bold**, *italic*, `code`, links)"
-                                required
-                                style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff' }}
-                            />
-                            <button className="glass-button primary">Post Note</button>
-                        </form>
+                        {canManageIncident ? (
+                            <form action={handleAddNote} style={{ display: 'flex', gap: '1rem' }}>
+                                <input
+                                    name="content"
+                                    placeholder="Add a note... (supports **bold**, *italic*, `code`, links)"
+                                    required
+                                    style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff' }}
+                                />
+                                <button className="glass-button primary">Post Note</button>
+                            </form>
+                        ) : (
+                            <div style={{ padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', opacity: 0.7 }}>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                    ⚠️ You don't have access to add notes. Responder role or above required.
+                                </p>
+                                <div style={{ display: 'flex', gap: '1rem', opacity: 0.5, pointerEvents: 'none' }}>
+                                    <input
+                                        name="content"
+                                        placeholder="Add a note..."
+                                        disabled
+                                        style={{ flex: 1, padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f3f4f6' }}
+                                    />
+                                    <button className="glass-button primary" disabled style={{ opacity: 0.5 }}>Post Note</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Timeline */}
@@ -336,21 +394,45 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                         </div>
                         <div style={{ display: 'grid', gap: '0.6rem' }}>
                             {incident.status !== 'ACKNOWLEDGED' && incident.status !== 'RESOLVED' && (
-                                <form action={handleAcknowledge}>
-                                    <button
-                                        type="submit"
-                                        className="glass-button"
-                                        style={{
-                                            width: '100%',
-                                            background: 'linear-gradient(180deg, #fff4cc 0%, #ffe9a8 100%)',
-                                            color: '#b45309',
-                                            border: '1px solid #f6c453',
-                                            boxShadow: '0 10px 20px rgba(245, 158, 11, 0.15)'
-                                        }}
-                                    >
-                                        Acknowledge Incident
-                                    </button>
-                                </form>
+                                canManageIncident ? (
+                                    <form action={handleAcknowledge}>
+                                        <button
+                                            type="submit"
+                                            className="glass-button"
+                                            style={{
+                                                width: '100%',
+                                                background: 'linear-gradient(180deg, #fff4cc 0%, #ffe9a8 100%)',
+                                                color: '#b45309',
+                                                border: '1px solid #f6c453',
+                                                boxShadow: '0 10px 20px rgba(245, 158, 11, 0.15)'
+                                            }}
+                                        >
+                                            Acknowledge Incident
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <div style={{ padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', opacity: 0.7 }}>
+                                        <button
+                                            type="button"
+                                            disabled
+                                            className="glass-button"
+                                            style={{
+                                                width: '100%',
+                                                background: '#f3f4f6',
+                                                color: '#9ca3af',
+                                                border: '1px solid #e5e7eb',
+                                                opacity: 0.6,
+                                                cursor: 'not-allowed'
+                                            }}
+                                            title="Responder role or above required to acknowledge incidents"
+                                        >
+                                            Acknowledge Incident
+                                        </button>
+                                        <p style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                                            ⚠️ Responder role required
+                                        </p>
+                                    </div>
+                                )
                             )}
                             {incident.status === 'RESOLVED' && (
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: '#f8fafc', padding: '0.65rem', borderRadius: '10px', border: '1px dashed #e2e8f0' }}>
@@ -361,62 +443,108 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                     </div>
 
                     {incident.status !== 'RESOLVED' && (
-                        <div className="glass-panel" style={{ padding: '1.5rem', background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e6e8ef', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                <h4 style={{ fontWeight: '700' }}>Resolution</h4>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Required</span>
-                            </div>
-                            <form action={handleResolve} style={{ display: 'grid', gap: '0.75rem' }}>
-                                <textarea
-                                    name="resolution"
-                                    required
-                                    minLength={10}
-                                    maxLength={1000}
-                                    rows={4}
-                                    placeholder="Root cause, fix applied, or summary..."
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', resize: 'vertical', background: '#fff' }}
-                                />
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                    10-1000 chars. Supports **bold**, *italic*, `code`, links.
+                        canManageIncident ? (
+                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e6e8ef', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <h4 style={{ fontWeight: '700' }}>Resolution</h4>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Required</span>
                                 </div>
-                                <button type="submit" className="glass-button primary" style={{ width: '100%' }}>
-                                    Resolve with Note
-                                </button>
-                            </form>
-                        </div>
+                                <form action={handleResolve} style={{ display: 'grid', gap: '0.75rem' }}>
+                                    <textarea
+                                        name="resolution"
+                                        required
+                                        minLength={10}
+                                        maxLength={1000}
+                                        rows={4}
+                                        placeholder="Root cause, fix applied, or summary..."
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', resize: 'vertical', background: '#fff' }}
+                                    />
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        10-1000 chars. Supports **bold**, *italic*, `code`, links.
+                                    </div>
+                                    <button type="submit" className="glass-button primary" style={{ width: '100%' }}>
+                                        Resolve with Note
+                                    </button>
+                                </form>
+                            </div>
+                        ) : (
+                            <div className="glass-panel" style={{ padding: '1.5rem', background: '#f9fafb', border: '1px solid #e5e7eb', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)', opacity: 0.7 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <h4 style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>Resolution</h4>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Required</span>
+                                </div>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                    ⚠️ You don't have access to resolve incidents. Responder role or above required.
+                                </p>
+                                <div style={{ display: 'grid', gap: '0.75rem', opacity: 0.5, pointerEvents: 'none' }}>
+                                    <textarea
+                                        name="resolution"
+                                        disabled
+                                        rows={4}
+                                        placeholder="Root cause, fix applied, or summary..."
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', resize: 'vertical', background: '#f3f4f6' }}
+                                    />
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        10-1000 chars. Supports **bold**, *italic*, `code`, links.
+                                    </div>
+                                    <button type="button" disabled className="glass-button primary" style={{ width: '100%', opacity: 0.5 }}>
+                                        Resolve with Note
+                                    </button>
+                                </div>
+                            </div>
+                        )
                     )}
 
-                    <div className="glass-panel" style={{ padding: '1.5rem', background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e6e8ef', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)' }}>
+                    <div className="glass-panel" style={{ padding: '1.5rem', background: canManageIncident ? 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)' : '#f9fafb', border: '1px solid #e6e8ef', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)', opacity: canManageIncident ? 1 : 0.7 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h4 style={{ fontWeight: '700' }}>Stakeholders / Watchers</h4>
+                            <h4 style={{ fontWeight: '700', color: canManageIncident ? 'var(--text-primary)' : 'var(--text-secondary)' }}>Stakeholders / Watchers</h4>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>Visibility</span>
                         </div>
-                        <form action={handleAddWatcher} style={{ display: 'grid', gap: '0.6rem', marginBottom: '1rem' }}>
-                            <select
-                                name="watcherId"
-                                defaultValue=""
-                                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff' }}
-                            >
-                                <option value="">Select a user...</option>
-                                {users.map((user) => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                name="watcherRole"
-                                defaultValue="FOLLOWER"
-                                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff' }}
-                            >
-                                <option value="FOLLOWER">Follower</option>
-                                <option value="STAKEHOLDER">Stakeholder</option>
-                                <option value="EXEC">Exec</option>
-                            </select>
-                            <button className="glass-button" style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.8rem' }}>
-                                Add Watcher
-                            </button>
-                        </form>
+                        {canManageIncident ? (
+                            <form action={handleAddWatcher} style={{ display: 'grid', gap: '0.6rem', marginBottom: '1rem' }}>
+                                <select
+                                    name="watcherId"
+                                    defaultValue=""
+                                    style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff' }}
+                                >
+                                    <option value="">Select a user...</option>
+                                    {users.map((user) => (
+                                        <option key={user.id} value={user.id}>
+                                            {user.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <select
+                                    name="watcherRole"
+                                    defaultValue="FOLLOWER"
+                                    style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff' }}
+                                >
+                                    <option value="FOLLOWER">Follower</option>
+                                    <option value="STAKEHOLDER">Stakeholder</option>
+                                    <option value="EXEC">Exec</option>
+                                </select>
+                                <button className="glass-button" style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.8rem' }}>
+                                    Add Watcher
+                                </button>
+                            </form>
+                        ) : (
+                            <div style={{ marginBottom: '1rem' }}>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                                    ⚠️ You don't have access to manage watchers. Responder role or above required.
+                                </p>
+                                <div style={{ display: 'grid', gap: '0.6rem', opacity: 0.5, pointerEvents: 'none' }}>
+                                    <select disabled style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f3f4f6' }}>
+                                        <option value="">Select a user...</option>
+                                    </select>
+                                    <select disabled defaultValue="FOLLOWER" style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f3f4f6' }}>
+                                        <option value="FOLLOWER">Follower</option>
+                                    </select>
+                                    <button className="glass-button" disabled style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.8rem', opacity: 0.5 }}>
+                                        Add Watcher
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {incident.watchers.length === 0 ? (
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No watchers yet.</p>
@@ -428,12 +556,30 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                                             <div style={{ fontWeight: 600 }}>{watcher.user.name}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{watcher.role}</div>
                                         </div>
-                                        <form action={handleRemoveWatcher}>
-                                            <input type="hidden" name="watcherMemberId" value={watcher.id} />
-                                            <button className="glass-button" style={{ height: '28px', padding: '0 0.6rem', fontSize: '0.75rem' }}>
+                                        {canManageIncident ? (
+                                            <form action={handleRemoveWatcher}>
+                                                <input type="hidden" name="watcherMemberId" value={watcher.id} />
+                                                <button className="glass-button" style={{ height: '28px', padding: '0 0.6rem', fontSize: '0.75rem' }}>
+                                                    Remove
+                                                </button>
+                                            </form>
+                                        ) : (
+                                            <button 
+                                                type="button" 
+                                                disabled 
+                                                className="glass-button" 
+                                                style={{ 
+                                                    height: '28px', 
+                                                    padding: '0 0.6rem', 
+                                                    fontSize: '0.75rem',
+                                                    opacity: 0.5,
+                                                    cursor: 'not-allowed'
+                                                }}
+                                                title="Responder role or above required to remove watchers"
+                                            >
                                                 Remove
                                             </button>
-                                        </form>
+                                        )}
                                     </div>
                                 ))}
                             </div>

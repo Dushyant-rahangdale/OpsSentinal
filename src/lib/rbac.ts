@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
@@ -44,7 +44,7 @@ export async function assertResponderOrAbove() {
     return user;
 }
 
-export function assertNotSelf(currentUserId: string, targetUserId: string, action: string) {
+export async function assertNotSelf(currentUserId: string, targetUserId: string, action: string) {
     if (currentUserId === targetUserId) {
         throw new Error(`You cannot ${action} your own account.`);
     }

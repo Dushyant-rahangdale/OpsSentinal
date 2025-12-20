@@ -312,21 +312,31 @@ export async function generateInvite(userId: string, _prevState: UserFormState, 
     return { success: true, inviteUrl };
 }
 
-export async function deleteUser(userId: string, _formData?: FormData) {
-    await assertAdmin();
-    await deleteUserInternal(userId);
+export async function deleteUser(userId: string, _formData?: FormData): Promise<{ error?: string } | undefined> {
+    try {
+        const currentUser = await assertAdmin();
+        assertNotSelf(currentUser.id, userId, 'delete');
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' };
+    }
+    
+    try {
+        await deleteUserInternal(userId);
 
-    await logAudit({
-        action: 'user.deleted',
-        entityType: 'USER',
-        entityId: userId,
-        actorId: await getDefaultActorId()
-    });
+        await logAudit({
+            action: 'user.deleted',
+            entityType: 'USER',
+            entityId: userId,
+            actorId: await getDefaultActorId()
+        });
 
-    revalidatePath('/users');
-    revalidatePath('/audit');
-    revalidatePath('/incidents');
-    revalidatePath('/schedules');
+        revalidatePath('/users');
+        revalidatePath('/audit');
+        revalidatePath('/incidents');
+        revalidatePath('/schedules');
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to delete user.' };
+    }
 }
 
 type BulkUserActionState = {

@@ -21,9 +21,10 @@ type TimeZoneSelectProps = {
     name: string;
     defaultValue?: string;
     id?: string;
+    disabled?: boolean;
 };
 
-export default function TimeZoneSelect({ name, defaultValue = 'UTC', id }: TimeZoneSelectProps) {
+export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disabled }: TimeZoneSelectProps) {
     const [zones, setZones] = useState<string[]>(fallbackZones);
 
     useEffect(() => {
@@ -36,7 +37,7 @@ export default function TimeZoneSelect({ name, defaultValue = 'UTC', id }: TimeZ
     }, []);
 
     return (
-        <select name={name} defaultValue={defaultValue} id={id}>
+        <select name={name} defaultValue={defaultValue} id={id} disabled={disabled}>
             {zones.map((zone) => (
                 <option key={zone} value={zone}>
                     {zone}

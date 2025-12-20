@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getUserPermissions } from '@/lib/rbac';
 import { createSchedule } from './actions';
 import Link from 'next/link';
 import TimeZoneSelect from '@/components/TimeZoneSelect';
@@ -11,6 +12,8 @@ export default async function SchedulesPage() {
     const hasActiveCoverage = schedules.some((schedule) =>
         schedule.layers.some((layer) => layer.users.length > 0)
     );
+    const permissions = await getUserPermissions();
+    const canManageSchedules = permissions.isAdminOrResponder;
 
     return (
         <main className="schedule-page">
@@ -25,7 +28,19 @@ export default async function SchedulesPage() {
                         <span className="coverage-dot" />
                         {hasActiveCoverage ? 'Rotations active' : 'No active rotations'}
                     </div>
-                    <a href="#new-schedule" className="glass-button primary">New schedule</a>
+                    {canManageSchedules ? (
+                        <a href="#new-schedule" className="glass-button primary">New schedule</a>
+                    ) : (
+                        <button 
+                            type="button" 
+                            disabled 
+                            className="glass-button primary" 
+                            style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                            title="Admin or Responder role required to create schedules"
+                        >
+                            New schedule
+                        </button>
+                    )}
                 </div>
             </section>
 
@@ -79,20 +94,40 @@ export default async function SchedulesPage() {
                 </div>
 
                 <aside className="schedule-side">
-                    <div id="new-schedule" className="schedule-panel">
-                        <h3>New schedule</h3>
-                        <form action={createSchedule} className="schedule-form">
-                            <label className="schedule-field">
-                                Name
-                                <input name="name" placeholder="Primary on-call" required />
-                            </label>
-                            <label className="schedule-field">
-                                Time zone
-                                <TimeZoneSelect name="timeZone" defaultValue="UTC" />
-                            </label>
-                            <button className="glass-button primary schedule-submit">Create schedule</button>
-                        </form>
-                    </div>
+                    {canManageSchedules ? (
+                        <div id="new-schedule" className="schedule-panel">
+                            <h3>New schedule</h3>
+                            <form action={createSchedule} className="schedule-form">
+                                <label className="schedule-field">
+                                    Name
+                                    <input name="name" placeholder="Primary on-call" required />
+                                </label>
+                                <label className="schedule-field">
+                                    Time zone
+                                    <TimeZoneSelect name="timeZone" defaultValue="UTC" />
+                                </label>
+                                <button className="glass-button primary schedule-submit">Create schedule</button>
+                            </form>
+                        </div>
+                    ) : (
+                        <div id="new-schedule" className="schedule-panel" style={{ background: '#f9fafb', opacity: 0.7, pointerEvents: 'none' }}>
+                            <h3 style={{ color: 'var(--text-secondary)' }}>New schedule</h3>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--danger)', marginBottom: '1rem', fontStyle: 'italic' }}>
+                                ⚠️ You don't have access to create schedules. Admin or Responder role required.
+                            </p>
+                            <div className="schedule-form" style={{ opacity: 0.5 }}>
+                                <label className="schedule-field">
+                                    Name
+                                    <input name="name" placeholder="Primary on-call" disabled />
+                                </label>
+                                <label className="schedule-field">
+                                    Time zone
+                                    <TimeZoneSelect name="timeZone" defaultValue="UTC" disabled />
+                                </label>
+                                <button className="glass-button primary schedule-submit" disabled>Create schedule</button>
+                            </div>
+                        </div>
+                    )}
                     <div className="schedule-panel schedule-hint">
                         <h4>Next up</h4>
                         <p>Set a rotation and assign your responders to start tracking coverage.</p>

@@ -1,9 +1,39 @@
 import prisma from '@/lib/prisma';
+import { getUserPermissions } from '@/lib/rbac';
 import { createIncident } from '../actions';
 import Link from 'next/link';
 
 export default async function CreateIncidentPage() {
     const services = await prisma.service.findMany({ orderBy: { name: 'asc' } });
+    const permissions = await getUserPermissions();
+    const canCreateIncident = permissions.isResponderOrAbove;
+
+    if (!canCreateIncident) {
+        return (
+            <main>
+                <Link href="/incidents" style={{ color: 'var(--text-muted)', marginBottom: '2rem', display: 'inline-block' }}>
+                    &larr; Back to Incidents
+                </Link>
+
+                <div className="glass-panel" style={{ padding: '2.5rem', maxWidth: '980px', margin: '0 auto', background: '#f9fafb', border: '1px solid #e5e7eb', opacity: 0.7 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div>
+                            <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>Trigger Incident</h1>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                ⚠️ You don't have access to create incidents. Responder role or above required.
+                            </p>
+                        </div>
+                        <Link href="/incidents" className="glass-button" style={{ textDecoration: 'none' }}>Back to Incidents</Link>
+                    </div>
+                    <div style={{ padding: '2rem', background: 'white', borderRadius: '10px', opacity: 0.5, pointerEvents: 'none' }}>
+                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            Incident creation form is disabled. Please contact an administrator to upgrade your role.
+                        </p>
+                    </div>
+                </div>
+            </main>
+        );
+    }
 
     return (
         <main>

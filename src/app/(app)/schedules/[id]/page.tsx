@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getUserPermissions } from '@/lib/rbac';
 import { buildScheduleBlocks } from '@/lib/oncall';
 import {
     addLayerUser,
@@ -123,6 +124,9 @@ export default async function ScheduleDetailPage({
 
     if (!schedule) notFound();
 
+    const permissions = await getUserPermissions();
+    const canManageSchedules = permissions.isAdminOrResponder;
+
     const scheduleBlocks = buildScheduleBlocks(schedule.layers, overridesInRange, calendarRangeStart, calendarRangeEnd);
     const calendarShifts = scheduleBlocks.map((block) => ({
         id: block.id,
@@ -213,44 +217,99 @@ export default async function ScheduleDetailPage({
                             {layer.end ? ` · ends ${formatShortTime(new Date(layer.end))}` : ''}
                         </div>
                                             </div>
-                                            <form action={deleteLayer.bind(null, schedule.id, layer.id)}>
-                                                <button type="submit" className="layer-delete">Remove</button>
-                                            </form>
+                                            {canManageSchedules ? (
+                                                <form action={deleteLayer.bind(null, schedule.id, layer.id)}>
+                                                    <button type="submit" className="layer-delete">Remove</button>
+                                                </form>
+                                            ) : (
+                                                <button 
+                                                    type="button" 
+                                                    disabled 
+                                                    className="layer-delete" 
+                                                    style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                                    title="Admin or Responder role required to delete layers"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
                                         </div>
-                                        <form action={updateLayer.bind(null, layer.id)} className="layer-settings">
-                                            <label className="schedule-field">
-                                                Name
-                                                <input name="name" defaultValue={layer.name} required />
-                                            </label>
-                                            <label className="schedule-field">
-                                                Rotation (hours)
-                                                <input
-                                                    name="rotationLengthHours"
-                                                    type="number"
-                                                    min="1"
-                                                    defaultValue={layer.rotationLengthHours}
-                                                    required
-                                                />
-                                            </label>
-                                            <label className="schedule-field">
-                                                Start
-                                                <input
-                                                    type="datetime-local"
-                                                    name="start"
-                                                    defaultValue={formatDateInput(new Date(layer.start))}
-                                                    required
-                                                />
-                                            </label>
-                                            <label className="schedule-field">
-                                                End
-                                                <input
-                                                    type="datetime-local"
-                                                    name="end"
-                                                    defaultValue={layer.end ? formatDateInput(new Date(layer.end)) : ''}
-                                                />
-                                            </label>
-                                            <button type="submit" className="glass-button primary">Save</button>
-                                        </form>
+                                        {canManageSchedules ? (
+                                            <form action={updateLayer.bind(null, layer.id)} className="layer-settings">
+                                                <label className="schedule-field">
+                                                    Name
+                                                    <input name="name" defaultValue={layer.name} required />
+                                                </label>
+                                                <label className="schedule-field">
+                                                    Rotation (hours)
+                                                    <input
+                                                        name="rotationLengthHours"
+                                                        type="number"
+                                                        min="1"
+                                                        defaultValue={layer.rotationLengthHours}
+                                                        required
+                                                    />
+                                                </label>
+                                                <label className="schedule-field">
+                                                    Start
+                                                    <input
+                                                        type="datetime-local"
+                                                        name="start"
+                                                        defaultValue={formatDateInput(new Date(layer.start))}
+                                                        required
+                                                    />
+                                                </label>
+                                                <label className="schedule-field">
+                                                    End
+                                                    <input
+                                                        type="datetime-local"
+                                                        name="end"
+                                                        defaultValue={layer.end ? formatDateInput(new Date(layer.end)) : ''}
+                                                    />
+                                                </label>
+                                                <button type="submit" className="glass-button primary">Save</button>
+                                            </form>
+                                        ) : (
+                                            <div className="layer-settings" style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', opacity: 0.7 }}>
+                                                <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginBottom: '0.75rem', fontStyle: 'italic' }}>
+                                                    ⚠️ You don't have access to edit layers. Admin or Responder role required.
+                                                </p>
+                                                <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                                                    <label className="schedule-field">
+                                                        Name
+                                                        <input name="name" defaultValue={layer.name} disabled />
+                                                    </label>
+                                                    <label className="schedule-field">
+                                                        Rotation (hours)
+                                                        <input
+                                                            name="rotationLengthHours"
+                                                            type="number"
+                                                            min="1"
+                                                            defaultValue={layer.rotationLengthHours}
+                                                            disabled
+                                                        />
+                                                    </label>
+                                                    <label className="schedule-field">
+                                                        Start
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="start"
+                                                            defaultValue={formatDateInput(new Date(layer.start))}
+                                                            disabled
+                                                        />
+                                                    </label>
+                                                    <label className="schedule-field">
+                                                        End
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="end"
+                                                            defaultValue={layer.end ? formatDateInput(new Date(layer.end)) : ''}
+                                                            disabled
+                                                        />
+                                                    </label>
+                                                    <button type="button" disabled className="glass-button primary" style={{ opacity: 0.5 }}>Save</button>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="layer-users">
                                             {layer.users.length === 0 ? (
                                                 <p className="schedule-empty">No responders in this layer.</p>
@@ -259,63 +318,139 @@ export default async function ScheduleDetailPage({
                                                     <div key={layerUser.userId} className="layer-user">
                                                         <span className="layer-user-name">{layerUser.user.name}</span>
                                                         <div className="layer-user-actions">
-                                                            <form action={moveLayerUser.bind(null, layer.id, layerUser.userId, 'up')}>
-                                                                <button type="submit" className="layer-action" disabled={index === 0}>
-                                                                    Up
-                                                                </button>
-                                                            </form>
-                                                            <form action={moveLayerUser.bind(null, layer.id, layerUser.userId, 'down')}>
-                                                                <button
-                                                                    type="submit"
-                                                                    className="layer-action"
-                                                                    disabled={index === layer.users.length - 1}
-                                                                >
-                                                                    Down
-                                                                </button>
-                                                            </form>
-                                                            <form action={removeLayerUser.bind(null, layer.id, layerUser.userId)}>
-                                                                <button type="submit" className="layer-remove">Remove</button>
-                                                            </form>
+                                                            {canManageSchedules ? (
+                                                                <>
+                                                                    <form action={moveLayerUser.bind(null, layer.id, layerUser.userId, 'up')}>
+                                                                        <button type="submit" className="layer-action" disabled={index === 0}>
+                                                                            Up
+                                                                        </button>
+                                                                    </form>
+                                                                    <form action={moveLayerUser.bind(null, layer.id, layerUser.userId, 'down')}>
+                                                                        <button
+                                                                            type="submit"
+                                                                            className="layer-action"
+                                                                            disabled={index === layer.users.length - 1}
+                                                                        >
+                                                                            Down
+                                                                        </button>
+                                                                    </form>
+                                                                    <form action={removeLayerUser.bind(null, layer.id, layerUser.userId)}>
+                                                                        <button type="submit" className="layer-remove">Remove</button>
+                                                                    </form>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        disabled 
+                                                                        className="layer-action" 
+                                                                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                                                        title="Admin or Responder role required"
+                                                                    >
+                                                                        Up
+                                                                    </button>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        disabled 
+                                                                        className="layer-action" 
+                                                                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                                                        title="Admin or Responder role required"
+                                                                    >
+                                                                        Down
+                                                                    </button>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        disabled 
+                                                                        className="layer-remove" 
+                                                                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                                                        title="Admin or Responder role required"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))
                                             )}
                                         </div>
-                                        <form action={addLayerUser.bind(null, layer.id)} className="layer-add-form">
-                                            <select name="userId" required>
-                                                <option value="">Add responder</option>
-                                                {users.map((user) => (
-                                                    <option key={user.id} value={user.id}>
-                                                        {user.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <button type="submit" className="glass-button primary">Add</button>
-                                        </form>
+                                        {canManageSchedules ? (
+                                            <form action={addLayerUser.bind(null, layer.id)} className="layer-add-form">
+                                                <select name="userId" required>
+                                                    <option value="">Add responder</option>
+                                                    {users.map((user) => (
+                                                        <option key={user.id} value={user.id}>
+                                                            {user.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button type="submit" className="glass-button primary">Add</button>
+                                            </form>
+                                        ) : (
+                                            <div className="layer-add-form" style={{ opacity: 0.7 }}>
+                                                <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginBottom: '0.5rem', fontStyle: 'italic' }}>
+                                                    ⚠️ Admin or Responder role required to add responders
+                                                </p>
+                                                <div style={{ display: 'flex', gap: '0.5rem', opacity: 0.5, pointerEvents: 'none' }}>
+                                                    <select name="userId" disabled style={{ flex: 1 }}>
+                                                        <option value="">Add responder</option>
+                                                    </select>
+                                                    <button type="button" disabled className="glass-button primary" style={{ opacity: 0.5 }}>Add</button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         )}
-                        <form action={createLayer.bind(null, schedule.id)} className="schedule-form layer-create-form">
-                            <h4 className="panel-subtitle">Add layer</h4>
-                            <label className="schedule-field">
-                                Layer name
-                                <input name="name" placeholder="Primary rotation" required />
-                            </label>
-                            <label className="schedule-field">
-                                Rotation length (hours)
-                                <input name="rotationLengthHours" type="number" min="1" defaultValue="24" required />
-                            </label>
-                            <label className="schedule-field">
-                                Start
-                                <input type="datetime-local" name="start" defaultValue={formatDateInput(now)} required />
-                            </label>
-                            <label className="schedule-field">
-                                End (optional)
-                                <input type="datetime-local" name="end" />
-                            </label>
-                            <button className="glass-button primary schedule-submit">Create layer</button>
-                        </form>
+                        {canManageSchedules ? (
+                            <form action={createLayer.bind(null, schedule.id)} className="schedule-form layer-create-form">
+                                <h4 className="panel-subtitle">Add layer</h4>
+                                <label className="schedule-field">
+                                    Layer name
+                                    <input name="name" placeholder="Primary rotation" required />
+                                </label>
+                                <label className="schedule-field">
+                                    Rotation length (hours)
+                                    <input name="rotationLengthHours" type="number" min="1" defaultValue="24" required />
+                                </label>
+                                <label className="schedule-field">
+                                    Start
+                                    <input type="datetime-local" name="start" defaultValue={formatDateInput(now)} required />
+                                </label>
+                                <label className="schedule-field">
+                                    End (optional)
+                                    <input type="datetime-local" name="end" />
+                                </label>
+                                <button className="glass-button primary schedule-submit">Create layer</button>
+                            </form>
+                        ) : (
+                            <div className="schedule-form layer-create-form" style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', opacity: 0.7 }}>
+                                <h4 className="panel-subtitle" style={{ color: 'var(--text-secondary)' }}>Add layer</h4>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginBottom: '0.75rem', fontStyle: 'italic' }}>
+                                    ⚠️ You don't have access to create layers. Admin or Responder role required.
+                                </p>
+                                <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                                    <label className="schedule-field">
+                                        Layer name
+                                        <input name="name" placeholder="Primary rotation" disabled />
+                                    </label>
+                                    <label className="schedule-field">
+                                        Rotation length (hours)
+                                        <input name="rotationLengthHours" type="number" min="1" defaultValue="24" disabled />
+                                    </label>
+                                    <label className="schedule-field">
+                                        Start
+                                        <input type="datetime-local" name="start" defaultValue={formatDateInput(now)} disabled />
+                                    </label>
+                                    <label className="schedule-field">
+                                        End (optional)
+                                        <input type="datetime-local" name="end" disabled />
+                                    </label>
+                                    <button type="button" disabled className="glass-button primary schedule-submit" style={{ opacity: 0.5 }}>Create layer</button>
+                                </div>
+                            </div>
+                        )}
                     </section>
 
                     <ScheduleCalendar shifts={calendarShifts} timeZone={schedule.timeZone} />
@@ -355,39 +490,70 @@ export default async function ScheduleDetailPage({
                         <p className="schedule-panel-note">
                             Temporarily replace on-call coverage. Times use your browser local time.
                         </p>
-                        <form action={createOverride.bind(null, schedule.id)} className="schedule-form roster-form">
-                            <label className="schedule-field">
-                                On-call user
-                                <select name="userId" required>
-                                    <option value="">Select a responder</option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="schedule-field">
-                                Replace (optional)
-                                <select name="replacesUserId">
-                                    <option value="">Any user</option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="schedule-field">
-                                Start
-                                <input type="datetime-local" name="start" required />
-                            </label>
-                            <label className="schedule-field">
-                                End
-                                <input type="datetime-local" name="end" required />
-                            </label>
-                            <button className="glass-button primary schedule-submit">Create override</button>
-                        </form>
+                        {canManageSchedules ? (
+                            <form action={createOverride.bind(null, schedule.id)} className="schedule-form roster-form">
+                                <label className="schedule-field">
+                                    On-call user
+                                    <select name="userId" required>
+                                        <option value="">Select a responder</option>
+                                        {users.map((user) => (
+                                            <option key={user.id} value={user.id}>
+                                                {user.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="schedule-field">
+                                    Replace (optional)
+                                    <select name="replacesUserId">
+                                        <option value="">Any user</option>
+                                        {users.map((user) => (
+                                            <option key={user.id} value={user.id}>
+                                                {user.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="schedule-field">
+                                    Start
+                                    <input type="datetime-local" name="start" required />
+                                </label>
+                                <label className="schedule-field">
+                                    End
+                                    <input type="datetime-local" name="end" required />
+                                </label>
+                                <button className="glass-button primary schedule-submit">Create override</button>
+                            </form>
+                        ) : (
+                            <div className="schedule-form roster-form" style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px', opacity: 0.7 }}>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginBottom: '0.75rem', fontStyle: 'italic' }}>
+                                    ⚠️ You don't have access to create overrides. Admin or Responder role required.
+                                </p>
+                                <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                                    <label className="schedule-field">
+                                        On-call user
+                                        <select name="userId" disabled>
+                                            <option value="">Select a responder</option>
+                                        </select>
+                                    </label>
+                                    <label className="schedule-field">
+                                        Replace (optional)
+                                        <select name="replacesUserId" disabled>
+                                            <option value="">Any user</option>
+                                        </select>
+                                    </label>
+                                    <label className="schedule-field">
+                                        Start
+                                        <input type="datetime-local" name="start" disabled />
+                                    </label>
+                                    <label className="schedule-field">
+                                        End
+                                        <input type="datetime-local" name="end" disabled />
+                                    </label>
+                                    <button type="button" disabled className="glass-button primary schedule-submit" style={{ opacity: 0.5 }}>Create override</button>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="panel-divider" />
 
@@ -409,9 +575,21 @@ export default async function ScheduleDetailPage({
                                                 </div>
                                             )}
                                         </div>
-                                        <form action={deleteOverride.bind(null, schedule.id, override.id)}>
-                                            <button className="roster-remove" type="submit">Remove</button>
-                                        </form>
+                                        {canManageSchedules ? (
+                                            <form action={deleteOverride.bind(null, schedule.id, override.id)}>
+                                                <button className="roster-remove" type="submit">Remove</button>
+                                            </form>
+                                        ) : (
+                                            <button 
+                                                type="button" 
+                                                disabled 
+                                                className="roster-remove" 
+                                                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                                title="Admin or Responder role required to remove overrides"
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
