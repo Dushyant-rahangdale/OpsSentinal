@@ -3441,3 +3441,18 @@ span:hover > .info-tooltip {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-hover);
 }
+
+/* User table row hover */
+.user-table-row {
+  transition: background 0.15s ease;
+}
+
+.user-table-row:hover {
+  background: rgba(211, 47, 47, 0.03);
+}
+
+/* Audit log entry hover */
+.audit-log-entry:hover {
+  background: rgba(211, 47, 47, 0.04);
+  border-color: rgba(211, 47, 47, 0.2);
+}

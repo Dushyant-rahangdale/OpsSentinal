@@ -39,7 +39,32 @@ const userSeeds: UserSeed[] = [
     { email: 'carol@example.com', name: 'Carol Ops', role: 'RESPONDER' },
     { email: 'dave@example.com', name: 'Dave Analyst', role: 'USER' },
     { email: 'erin@example.com', name: 'Erin Oncall', role: 'RESPONDER' },
-    { email: 'frank@example.com', name: 'Frank Support', role: 'RESPONDER' }
+    { email: 'frank@example.com', name: 'Frank Support', role: 'RESPONDER' },
+    { email: 'gina@example.com', name: 'Gina Reliability', role: 'RESPONDER' },
+    { email: 'hank@example.com', name: 'Hank Systems', role: 'RESPONDER' },
+    { email: 'ivy@example.com', name: 'Ivy Platform', role: 'RESPONDER' },
+    { email: 'jake@example.com', name: 'Jake Engineer', role: 'RESPONDER' },
+    { email: 'kira@example.com', name: 'Kira Infra', role: 'RESPONDER' },
+    { email: 'liam@example.com', name: 'Liam Ops', role: 'RESPONDER' },
+    { email: 'mona@example.com', name: 'Mona Support', role: 'RESPONDER' },
+    { email: 'nate@example.com', name: 'Nate Backend', role: 'RESPONDER' },
+    { email: 'olga@example.com', name: 'Olga SRE', role: 'RESPONDER' },
+    { email: 'pete@example.com', name: 'Pete Platform', role: 'RESPONDER' },
+    { email: 'quinn@example.com', name: 'Quinn Ops', role: 'RESPONDER' },
+    { email: 'ruth@example.com', name: 'Ruth Infra', role: 'RESPONDER' },
+    { email: 'sam@example.com', name: 'Sam Reliability', role: 'RESPONDER' },
+    { email: 'tina@example.com', name: 'Tina Ops', role: 'RESPONDER' },
+    { email: 'uma@example.com', name: 'Uma Support', role: 'RESPONDER' },
+    { email: 'vic@example.com', name: 'Vic Systems', role: 'RESPONDER' },
+    { email: 'walt@example.com', name: 'Walt Oncall', role: 'RESPONDER' },
+    { email: 'xena@example.com', name: 'Xena Ops', role: 'RESPONDER' },
+    { email: 'yuri@example.com', name: 'Yuri Platform', role: 'RESPONDER' },
+    { email: 'zoe@example.com', name: 'Zoe Support', role: 'RESPONDER' },
+    { email: 'aaron@example.com', name: 'Aaron Dev', role: 'USER' },
+    { email: 'bianca@example.com', name: 'Bianca Analyst', role: 'USER' },
+    { email: 'cody@example.com', name: 'Cody Reporter', role: 'USER' },
+    { email: 'dina@example.com', name: 'Dina Insights', role: 'USER' },
+    { email: 'elliot@example.com', name: 'Elliot QA', role: 'USER' }
 ]
 
 function daysAgo(days: number) {
@@ -56,6 +81,10 @@ function hoursFrom(date: Date, hours: number) {
 
 function randomPick<T>(items: T[]) {
     return items[Math.floor(Math.random() * items.length)]
+}
+
+function randomInt(max: number) {
+    return Math.floor(Math.random() * max)
 }
 
 function makeIntegrationKey() {
@@ -123,16 +152,29 @@ async function main() {
         )
     )
     const userByEmail = new Map(users.map((user) => [user.email, user]))
+    const userNameById = new Map(users.map((user) => [user.id, user.name || user.email]))
+    const roleByEmail = new Map(userSeeds.map((user) => [user.email, user.role]))
+
+    const responderIds = users
+        .filter((user) => roleByEmail.get(user.email) !== 'USER')
+        .map((user) => user.id)
 
     await prisma.teamMember.createMany({
         data: [
             { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('alice@example.com')!.id, role: 'OWNER' },
             { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('bob@example.com')!.id, role: 'ADMIN' },
             { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('carol@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('gina@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('hank@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('ivy@example.com')!.id, role: 'MEMBER' },
             { teamId: teamByName.get('Payments Operations')!.id, userId: userByEmail.get('erin@example.com')!.id, role: 'OWNER' },
             { teamId: teamByName.get('Payments Operations')!.id, userId: userByEmail.get('bob@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Payments Operations')!.id, userId: userByEmail.get('jake@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Payments Operations')!.id, userId: userByEmail.get('kira@example.com')!.id, role: 'MEMBER' },
             { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('frank@example.com')!.id, role: 'OWNER' },
-            { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('dave@example.com')!.id, role: 'MEMBER' }
+            { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('dave@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('mona@example.com')!.id, role: 'MEMBER' },
+            { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('uma@example.com')!.id, role: 'MEMBER' }
         ],
         skipDuplicates: true
     })
@@ -341,10 +383,16 @@ async function main() {
         }
     }
 
+    const forceDemo = process.env.DEMO_FORCE === '1'
+    const existingDemoIncidents = await prisma.incident.count({
+        where: { dedupKey: { startsWith: 'demo-' } }
+    })
     const incidentCount = await prisma.incident.count()
-    if (incidentCount === 0) {
+    const shouldSeedIncidents = forceDemo || existingDemoIncidents === 0 || incidentCount < 20
+
+    if (shouldSeedIncidents) {
         const incidentServices = services
-        const assignees = [
+        const assignees = responderIds.length ? responderIds : [
             userByEmail.get('alice@example.com')!.id,
             userByEmail.get('bob@example.com')!.id,
             userByEmail.get('carol@example.com')!.id,
@@ -354,8 +402,8 @@ async function main() {
         const statuses = ['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED'] as const
         const urgencies = ['HIGH', 'LOW'] as const
 
-        for (let index = 0; index < 45; index += 1) {
-            const createdAt = hoursFrom(daysAgo(30 - (index % 28)), Math.floor(Math.random() * 12))
+        for (let index = 0; index < 50; index += 1) {
+            const createdAt = hoursFrom(daysAgo(randomInt(90)), randomInt(20))
             const status = randomPick(Array.from(statuses))
             const urgency = randomPick(Array.from(urgencies))
             const service = randomPick(incidentServices)
@@ -364,6 +412,12 @@ async function main() {
             const updatedAt = resolved ? hoursFrom(createdAt, 1 + Math.floor(Math.random() * 24)) : hoursFrom(createdAt, Math.floor(Math.random() * 12))
             const title = `${service.name} ${urgency === 'HIGH' ? 'Critical' : 'Degraded'} alert #${index + 1}`
             const dedupKey = `demo-${service.id}-${index + 1}`
+            const alreadyExists = await prisma.incident.findFirst({
+                where: { dedupKey }
+            })
+            if (alreadyExists) {
+                continue
+            }
 
             const incident = await prisma.incident.create({
                 data: {
@@ -414,10 +468,11 @@ async function main() {
 
             if (Math.random() > 0.6) {
                 const escalatedTo = randomPick(assignees)
+                const escalatedName = userNameById.get(escalatedTo) || 'Responder'
                 await prisma.incidentEvent.create({
                     data: {
                         incidentId: incident.id,
-                        message: `Escalated to ${userByEmail.get('bob@example.com')!.name} (Level 1)`,
+                        message: `Escalated to ${escalatedName} (Level 1)`,
                         createdAt: hoursFrom(createdAt, 1.5)
                     }
                 })
