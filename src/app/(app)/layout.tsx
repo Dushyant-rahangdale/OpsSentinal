@@ -6,8 +6,10 @@ import { redirect } from 'next/navigation';
 
 import Sidebar from '@/components/Sidebar';
 import TopbarUserMenu from '@/components/TopbarUserMenu';
+import SidebarSearch from '@/components/SidebarSearch';
+import QuickActions from '@/components/QuickActions';
+import GlobalKeyboardHandlerWrapper from '@/components/GlobalKeyboardHandlerWrapper';
 import { ToastProvider } from '@/components/ToastProvider';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export const revalidate = 30;
 
@@ -39,6 +41,7 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
+      <GlobalKeyboardHandlerWrapper />
       <div className="app-shell">
         <Sidebar />
         <div className="content-shell">
@@ -46,8 +49,15 @@ export default async function AppLayout({
             <div className="topbar-left">
               <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
             </div>
+            <div className="topbar-center" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, maxWidth: '600px', margin: '0 auto', justifyContent: 'center' }}>
+              <div style={{ flex: 1, maxWidth: '400px' }}>
+                <SidebarSearch />
+              </div>
+              <div style={{ flexShrink: 0 }}>
+                <QuickActions />
+              </div>
+            </div>
             <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-              <ThemeToggle />
               <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
             </div>
           </header>

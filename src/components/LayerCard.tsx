@@ -4,6 +4,7 @@ import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import ConfirmDialog from './ConfirmDialog';
+import { DateTimeInput } from '@/components/ui';
 
 type LayerCardProps = {
     layer: {
@@ -277,39 +278,23 @@ export default function LayerCard({
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                                     Start
                                 </label>
-                                <input
-                                    type="datetime-local"
+                                <DateTimeInput
                                     name="start"
-                                    defaultValue={formatDateInput(new Date(layer.start))}
+                                    value={formatDateInput(new Date(layer.start))}
                                     required
+                                    fullWidth
                                     disabled={isUpdating}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.6rem',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '8px',
-                                        fontSize: '0.9rem',
-                                        background: 'white'
-                                    }}
                                 />
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                                     End (optional)
                                 </label>
-                                <input
-                                    type="datetime-local"
+                                <DateTimeInput
                                     name="end"
-                                    defaultValue={layer.end ? formatDateInput(new Date(layer.end)) : ''}
+                                    value={layer.end ? formatDateInput(new Date(layer.end)) : ''}
+                                    fullWidth
                                     disabled={isUpdating}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.6rem',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '8px',
-                                        fontSize: '0.9rem',
-                                        background: 'white'
-                                    }}
                                 />
                             </div>
                         </div>

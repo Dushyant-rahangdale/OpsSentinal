@@ -3,11 +3,20 @@ import { updateService } from '../../actions';
 
 export default async function ServiceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const [service, teams] = await Promise.all([
+    const [service, teams, policies] = await Promise.all([
         prisma.service.findUnique({
-            where: { id: id }
+            where: { id: id },
+            include: {
+                policy: {
+                    select: { id: true, name: true }
+                }
+            }
         }),
-        prisma.team.findMany({ orderBy: { name: 'asc' } })
+        prisma.team.findMany({ orderBy: { name: 'asc' } }),
+        prisma.escalationPolicy.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        })
     ]);
 
     if (!service) {
@@ -55,6 +64,49 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                             <option key={team.id} value={team.id}>{team.name}</option>
                         ))}
                     </select>
+                </div>
+
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                        Escalation Policy
+                        <span 
+                            title="Defines who gets notified when incidents occur and in what order."
+                            style={{
+                                marginLeft: '0.25rem',
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                background: '#e0f2fe',
+                                color: '#0c4a6e',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.7rem',
+                                fontWeight: '600',
+                                cursor: 'help',
+                                border: '1px solid #bae6fd'
+                            }}
+                        >
+                            ?
+                        </span>
+                    </label>
+                    <select
+                        name="escalationPolicyId"
+                        defaultValue={service.escalationPolicyId || ''}
+                        style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                    >
+                        <option value="">No escalation policy</option>
+                        {policies.map((policy) => (
+                            <option key={policy.id} value={policy.id}>{policy.name}</option>
+                        ))}
+                    </select>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                        {service.policy ? (
+                            <>Current: <strong>{service.policy.name}</strong>. <Link href="/policies" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Manage policies →</Link></>
+                        ) : (
+                            <>No escalation policy assigned. <Link href="/policies" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Create one →</Link></>
+                        )}
+                    </p>
                 </div>
 
                 <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '4px', border: '1px solid var(--border)' }}>

@@ -242,6 +242,7 @@ export default function LayerCreateForm({
                             value={defaultStartDate}
                             required
                             fullWidth
+                            disabled={isPending}
                         />
                     </div>
                     <div>
@@ -251,6 +252,7 @@ export default function LayerCreateForm({
                         <DateTimeInput
                             name="end"
                             fullWidth
+                            disabled={isPending}
                         />
                     </div>
                 </div>

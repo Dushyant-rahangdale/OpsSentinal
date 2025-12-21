@@ -2,9 +2,132 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import KeyboardShortcuts from './KeyboardShortcuts';
+
+type NavItem = {
+    href: string;
+    label: string;
+    icon: React.ReactNode;
+    section?: string; // For grouping items
+    requiresRole?: string[]; // Optional role requirements
+};
+
+const navigationItems: NavItem[] = [
+    // Main Navigation
+    {
+        href: '/',
+        label: 'Dashboard',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 11.5L12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.5Z" />
+            </svg>
+        )
+    },
+    {
+        href: '/incidents',
+        label: 'Incidents',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Zm0 3v4" strokeLinecap="round" />
+            </svg>
+        )
+    },
+    {
+        href: '/services',
+        label: 'Services',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Z" />
+            </svg>
+        )
+    },
+    // Operations Section
+    {
+        href: '/teams',
+        label: 'Teams',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M7 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19a4 4 0 0 1 8 0v1H3v-1Zm10 1v-1a4 4 0 0 1 8 0v1h-8Z" />
+            </svg>
+        ),
+        section: 'OPERATIONS'
+    },
+    {
+        href: '/users',
+        label: 'Users',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 20a6 6 0 0 1 16 0v1H4v-1Z" />
+            </svg>
+        ),
+        section: 'OPERATIONS'
+    },
+    {
+        href: '/schedules',
+        label: 'Schedules',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M7 3v3m10-3v3M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9Z" strokeLinecap="round" />
+            </svg>
+        ),
+        section: 'OPERATIONS'
+    },
+    {
+        href: '/policies',
+        label: 'Escalation Policies',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z" />
+            </svg>
+        ),
+        section: 'OPERATIONS'
+    },
+    // Insights Section
+    {
+        href: '/analytics',
+        label: 'Analytics',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 20V10m7 10V4m7 16v-7" strokeLinecap="round" />
+            </svg>
+        ),
+        section: 'INSIGHTS'
+    },
+    {
+        href: '/events',
+        label: 'Event Logs',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M5 4h14v4H5V4Zm0 6h14v4H5v-4Zm0 6h14v4H5v-4Z" />
+            </svg>
+        ),
+        section: 'INSIGHTS'
+    },
+    {
+        href: '/audit',
+        label: 'Audit Log',
+        icon: (
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+                <path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm8 1.5V8h2.5L14 5.5ZM8 11h8v2H8v-2Zm0 4h8v2H8v-2Z" />
+            </svg>
+        ),
+        section: 'INSIGHTS'
+    }
+];
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const [activeIncidentsCount, setActiveIncidentsCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Fetch active incidents count
+        fetch('/api/sidebar-stats')
+            .then(res => res.json())
+            .then(data => setActiveIncidentsCount(data.activeIncidentsCount || 0))
+            .catch(() => setActiveIncidentsCount(0));
+    }, []);
+
 
     const isActive = (path: string) => {
         if (path === '/' && pathname === '/') return true;
@@ -12,267 +135,291 @@ export default function Sidebar() {
         return false;
     };
 
+    // Group items by section
+    const groupedItems = navigationItems.reduce((acc, item) => {
+        const section = item.section || 'MAIN';
+        if (!acc[section]) {
+            acc[section] = [];
+        }
+        acc[section].push(item);
+        return acc;
+    }, {} as Record<string, NavItem[]>);
+
+    const renderNavItem = (item: NavItem) => {
+        const active = isActive(item.href);
+        const showBadge = item.href === '/incidents' && activeIncidentsCount !== null && activeIncidentsCount > 0;
+        
+        return (
+            <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-item ${active ? 'active' : ''}`}
+                style={{
+                    padding: '0.875rem 1rem',
+                    textDecoration: 'none',
+                    fontWeight: active ? '600' : '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.875rem',
+                    borderRadius: '0px',
+                    color: active ? 'var(--primary)' : 'rgba(255,255,255,0.85)',
+                    background: active ? 'rgba(255,255,255,0.95)' : 'transparent',
+                    boxShadow: active ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    borderLeft: active ? '4px solid var(--accent)' : '4px solid transparent',
+                    borderRight: 'none',
+                    borderTop: 'none',
+                    borderBottom: 'none'
+                }}
+                onMouseEnter={(e) => {
+                    if (!active) {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.color = 'rgba(255,255,255,0.95)';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!active) {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
+                    }
+                }}
+            >
+                <span 
+                    className="nav-icon" 
+                    style={{ 
+                        width: '22px', 
+                        height: '22px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        opacity: active ? 1 : 0.9,
+                        position: 'relative'
+                    }}
+                >
+                    {item.icon}
+                </span>
+                <span style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', flex: 1 }}>{item.label}</span>
+                {showBadge && (
+                    <span style={{
+                        minWidth: '20px',
+                        height: '20px',
+                        padding: '0 6px',
+                        background: '#ef4444',
+                        color: 'white',
+                        fontSize: '0.7rem',
+                        fontWeight: '700',
+                        borderRadius: '0px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}>
+                        {activeIncidentsCount > 99 ? '99+' : activeIncidentsCount}
+                    </span>
+                )}
+            </Link>
+        );
+    };
+
+    const renderSection = (sectionName: string, items: NavItem[]) => {
+        return (
+            <div key={sectionName} style={{ marginBottom: sectionName !== 'MAIN' ? '1.5rem' : '0' }}>
+                {sectionName !== 'MAIN' && (
+                    <div style={{
+                        marginTop: '1.75rem',
+                        marginBottom: '0.75rem',
+                        paddingLeft: '1rem',
+                        fontSize: '0.7rem',
+                        fontWeight: '700',
+                        color: 'rgba(255,255,255,0.4)',
+                        letterSpacing: '1.2px',
+                        textTransform: 'uppercase'
+                    }}>
+                        {sectionName}
+                    </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    {items.map(renderNavItem)}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <aside className="sidebar" style={{
             width: 'var(--sidebar-width)',
             background: 'var(--gradient-primary)',
             borderRight: 'none',
-            padding: '1.5rem',
             display: 'flex',
             flexDirection: 'column',
             height: '100vh',
             position: 'sticky',
             top: 0,
             color: 'white',
-            boxShadow: '4px 0 24px rgba(211, 47, 47, 0.15)'
+            boxShadow: '4px 0 24px rgba(211, 47, 47, 0.15)',
+            overflow: 'hidden'
         }}>
-            {/* Branding Header - Improved Structure */}
-            <Link href="/" style={{ textDecoration: 'none', marginBottom: '3rem', display: 'block' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {/* Logo - OpsGuard Shield */}
-                    <div style={{
-                        width: '48px',
-                        height: '48px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))',
-                        animation: 'pulse-red 4s infinite ease-in-out'
-                    }}>
-                        <img
-                            src="/logo.svg"
-                            alt="OpsGuard Shield"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain'
-                            }}
-                        />
+            {/* Branding Header - Fixed */}
+            <div style={{ 
+                padding: '1.5rem',
+                paddingBottom: '1rem',
+                flexShrink: 0,
+                borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }}>
+                <Link href="/" style={{ textDecoration: 'none', display: 'block' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                        {/* Logo */}
+                        <div style={{
+                            width: '44px',
+                            height: '44px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(255,255,255,0.15)',
+                            borderRadius: '0px',
+                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                            flexShrink: 0
+                        }}>
+                            <img
+                                src="/logo.svg"
+                                alt="OpsGuard Shield"
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    objectFit: 'contain'
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <h1 style={{
+                                fontSize: '1.35rem',
+                                fontWeight: '800',
+                                color: 'white',
+                                letterSpacing: '-0.5px',
+                                margin: 0,
+                                lineHeight: '1.2',
+                                textShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                            }}>OpsGuard</h1>
+                            <span style={{
+                                fontSize: '0.65rem',
+                                opacity: 0.9,
+                                fontWeight: '600',
+                                letterSpacing: '1.2px',
+                                background: 'rgba(255,255,255,0.2)',
+                                padding: '2px 6px',
+                                borderRadius: '0px',
+                                width: 'fit-content',
+                                marginTop: '3px'
+                            }}>ENTERPRISE</span>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <h1 style={{
-                            fontSize: '1.5rem',
-                            fontWeight: '800',
-                            color: 'white',
-                            letterSpacing: '-0.5px',
-                            margin: 0,
-                            lineHeight: '1',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                        }}>OpsGuard</h1>
-                        <span style={{
-                            fontSize: '0.7rem',
-                            opacity: 0.9,
-                            fontWeight: '600',
-                            letterSpacing: '1.5px',
-                            background: 'rgba(255,255,255,0.2)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            width: 'fit-content',
-                            marginTop: '4px'
-                        }}>ENTERPRISE</span>
-                    </div>
-                </div>
-            </Link>
+                </Link>
+            </div>
 
-            {/* Navigation Links */}
-            <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/') ? 'white' : 'transparent',
-                    boxShadow: isActive('/') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M3 11.5L12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-8.5Z" fill="currentColor" />
-                        </svg>
-                    </span>
-                    Dashboard
-                </Link>
-                <Link href="/incidents" className={`nav-item ${isActive('/incidents') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/incidents') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/incidents') ? 'white' : 'transparent',
-                    boxShadow: isActive('/incidents') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Zm0 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                    </span>
-                    Incidents
-                </Link>
-                <Link href="/services" className={`nav-item ${isActive('/services') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/services') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/services') ? 'white' : 'transparent',
-                    boxShadow: isActive('/services') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Z" fill="currentColor" />
-                        </svg>
-                    </span>
-                    Services
-                </Link>
-
-                <div style={{ marginTop: '1.5rem', marginBottom: '0.5rem', paddingLeft: '1rem', fontSize: '0.75rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>
-                    OPERATIONS
-                </div>
-
-                <Link href="/teams" className={`nav-item ${isActive('/teams') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/teams') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/teams') ? 'white' : 'transparent',
-                    boxShadow: isActive('/teams') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M7 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19a4 4 0 0 1 8 0v1H3v-1Zm10 1v-1a4 4 0 0 1 8 0v1h-8Z" fill="currentColor" />
-                        </svg>
-                    </span>
-                    Teams
-                </Link>
-                <Link href="/users" className={`nav-item ${isActive('/users') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/users') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/users') ? 'white' : 'transparent',
-                    boxShadow: isActive('/users') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 20a6 6 0 0 1 16 0v1H4v-1Z" fill="currentColor" />
-                        </svg>
-                    </span>
-                    Users
-                </Link>
-                <Link href="/schedules" className={`nav-item ${isActive('/schedules') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/schedules') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/schedules') ? 'white' : 'transparent',
-                    boxShadow: isActive('/schedules') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M7 3v3m10-3v3M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                    </span>
-                    Schedules
-                </Link>
-
-                <div style={{ marginTop: '1.5rem', marginBottom: '0.5rem', paddingLeft: '1rem', fontSize: '0.75rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>
-                    INSIGHTS
-                </div>
-
-                <Link href="/analytics" className={`nav-item ${isActive('/analytics') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/analytics') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/analytics') ? 'white' : 'transparent',
-                    boxShadow: isActive('/analytics') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 20V10m7 10V4m7 16v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                    </span>
-                    Analytics
-                </Link>
-                <Link href="/events" className={`nav-item ${isActive('/events') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/events') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/events') ? 'white' : 'transparent',
-                    boxShadow: isActive('/events') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 4h14v4H5V4Zm0 6h14v4H5v-4Zm0 6h14v4H5v-4Z" fill="currentColor" />
-                        </svg>
-                    </span>
-                    Event Logs
-                </Link>
-                <Link href="/audit" className={`nav-item ${isActive('/audit') ? 'active' : ''}`} style={{
-                    padding: '0.85rem 1rem',
-                    textDecoration: 'none',
-                    fontWeight: '500',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    color: isActive('/audit') ? 'var(--primary)' : 'rgba(255,255,255,0.9)',
-                    background: isActive('/audit') ? 'white' : 'transparent',
-                    boxShadow: isActive('/audit') ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s ease'
-                }}>
-                    <span className="nav-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm8 1.5V8h2.5L14 5.5ZM8 11h8v2H8v-2Zm0 4h8v2H8v-2Z" fill="currentColor" />
-                        </svg>
-                    </span>
-                    Audit Log
-                </Link>
+            {/* Scrollable Navigation Area */}
+            <nav 
+                className="sidebar-nav" 
+                style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    flex: 1,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    padding: '1rem 0 1.5rem 0',
+                    gap: '0.5rem'
+                }}
+            >
+                {Object.entries(groupedItems).map(([section, items]) => renderSection(section, items))}
             </nav>
 
-            {/* User Footer */}
-            <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.8rem', color: 'white' }}>
-                <strong style={{ display: 'block', marginBottom: '0.2rem' }}>Alice DevOps</strong>
-                <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>alice@opsguard.com</span>
+            {/* Useful Footer - Quick Links & Help */}
+            <div style={{
+                padding: '1rem 1.5rem',
+                background: 'rgba(0,0,0,0.2)',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                fontSize: '0.75rem',
+                color: 'rgba(255,255,255,0.9)',
+                flexShrink: 0
+            }}>
+                <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                }}>
+                    <Link 
+                        href="/help" 
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: 'rgba(255,255,255,0.85)',
+                            textDecoration: 'none',
+                            fontWeight: '500',
+                            transition: 'color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+                    >
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" />
+                        </svg>
+                        <span>Help & Documentation</span>
+                    </Link>
+                    <Link 
+                        href="/settings" 
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: 'rgba(255,255,255,0.85)',
+                            textDecoration: 'none',
+                            fontWeight: '500',
+                            transition: 'color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+                    >
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
+                        </svg>
+                        <span>Settings</span>
+                    </Link>
+                    <button
+                        onClick={() => {
+                            // Trigger keyboard shortcut modal via custom event
+                            window.dispatchEvent(new CustomEvent('toggleKeyboardShortcuts'));
+                        }}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: 'rgba(255,255,255,0.85)',
+                            textDecoration: 'none',
+                            fontWeight: '500',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.5rem 0',
+                            transition: 'color 0.2s',
+                            fontSize: '0.75rem'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,1)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+                    >
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="4" y="2" width="16" height="20" rx="2" />
+                            <path d="M9 6h6m-6 4h6m-2 4h2" />
+                        </svg>
+                        <span>Keyboard Shortcuts</span>
+                    </button>
+                </div>
             </div>
+
         </aside>
     );
 }

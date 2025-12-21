@@ -42,10 +42,20 @@ async function createService(formData: FormData) {
 }
 
 export default async function ServicesPage() {
-    const teams = await prisma.team.findMany({ orderBy: { name: 'asc' } });
+    const [teams, policies] = await Promise.all([
+        prisma.team.findMany({ orderBy: { name: 'asc' } }),
+        prisma.escalationPolicy.findMany({
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        })
+    ]);
+    
     const services = await prisma.service.findMany({
         include: {
             team: true,
+            policy: {
+                select: { id: true, name: true }
+            },
             incidents: {
                 where: { status: { not: 'RESOLVED' } },
                 select: { id: true, urgency: true }
@@ -104,6 +114,40 @@ export default async function ServicesPage() {
                         </select>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500' }}>
+                            Escalation Policy
+                            <span 
+                                title="Defines who gets notified when incidents occur and in what order. You can create policies in the Policies section."
+                                style={{
+                                    marginLeft: '0.25rem',
+                                    width: '16px',
+                                    height: '16px',
+                                    borderRadius: '50%',
+                                    background: '#e0f2fe',
+                                    color: '#0c4a6e',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '600',
+                                    cursor: 'help',
+                                    border: '1px solid #bae6fd'
+                                }}
+                            >
+                                ?
+                            </span>
+                        </label>
+                        <select name="escalationPolicyId" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }}>
+                            <option value="">No escalation policy</option>
+                            {policies.map((policy) => (
+                                <option key={policy.id} value={policy.id}>{policy.name}</option>
+                            ))}
+                        </select>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                            Select an escalation policy to define incident notification workflow. <Link href="/policies" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Manage policies →</Link>
+                        </p>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500' }}>Slack Webhook URL (Optional)</label>
                         <input name="slackWebhookUrl" placeholder="https://hooks.slack.com/services/..." style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px', fontFamily: 'monospace' }} />
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>If provided, incidents for this service will post notifications to this channel.</p>
@@ -159,9 +203,22 @@ export default async function ServicesPage() {
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
                             {service.description || 'No description provided.'}
                         </p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            <span>Owned by <strong style={{ color: 'var(--text-primary)' }}>{service.team?.name || 'Unassigned'}</strong></span>
-                            <span>{service.incidents.length > 0 && `${service.incidents.length} open / `}{service._count.incidents} total incidents</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Owned by <strong style={{ color: 'var(--text-primary)' }}>{service.team?.name || 'Unassigned'}</strong></span>
+                                <span>{service.incidents.length > 0 && `${service.incidents.length} open / `}{service._count.incidents} total incidents</span>
+                            </div>
+                            {service.policy && (
+                                <div style={{ 
+                                    padding: '0.25rem 0.5rem',
+                                    background: '#f0f9ff',
+                                    borderRadius: '4px',
+                                    fontSize: '0.8rem',
+                                    color: '#0369a1'
+                                }}>
+                                    📋 Escalation: {service.policy.name}
+                                </div>
+                            )}
                         </div>
                     </Link>
                 ))}

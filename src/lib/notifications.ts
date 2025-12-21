@@ -68,55 +68,6 @@ export async function sendNotification(
 
 /**
  * Execute escalation policy for an incident.
- * Notifies the first level target.
+ * Re-exported from escalation.ts for backward compatibility
  */
-export async function executeEscalation(incidentId: string) {
-    const incident = await prisma.incident.findUnique({
-        where: { id: incidentId },
-        include: {
-            service: {
-                include: {
-                    policy: {
-                        include: {
-                            steps: {
-                                include: { targetUser: true },
-                                orderBy: { stepOrder: 'asc' }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    if (!incident?.service?.policy?.steps?.length) {
-        return { escalated: false, reason: 'No escalation policy configured' };
-    }
-
-    // Get first escalation step
-    const firstStep = incident.service.policy.steps[0];
-    const targetUser = firstStep.targetUser;
-
-    // Send notification (defaulting to EMAIL for now)
-    const result = await sendNotification(
-        incidentId,
-        targetUser.id,
-        'EMAIL',
-        `[OpsGuard] Incident: ${incident.title}`
-    );
-
-    // Assign incident to target user
-    await prisma.incident.update({
-        where: { id: incidentId },
-        data: { assigneeId: targetUser.id }
-    });
-
-    await prisma.incidentEvent.create({
-        data: {
-            incidentId,
-            message: `Escalated to ${targetUser.name} (Level 1)`
-        }
-    });
-
-    return { escalated: true, targetUser: targetUser.name, notification: result };
-}
+export { executeEscalation } from './escalation';

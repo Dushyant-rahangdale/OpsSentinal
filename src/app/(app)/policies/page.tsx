@@ -3,102 +3,366 @@ import { getUserPermissions } from '@/lib/rbac';
 import { createPolicy } from './actions';
 import Link from 'next/link';
 
-export default async function PoliciesPage() {
-    const policies = await prisma.escalationPolicy.findMany({
-        include: {
-            steps: { include: { targetUser: true }, orderBy: { stepOrder: 'asc' } },
-            services: true
-        }
-    });
+export const revalidate = 30;
 
-    const users = await prisma.user.findMany();
+export default async function PoliciesPage() {
+    const [policies, users] = await Promise.all([
+        prisma.escalationPolicy.findMany({
+            include: {
+                steps: {
+                    include: { targetUser: true },
+                    orderBy: { stepOrder: 'asc' }
+                },
+                services: {
+                    select: { id: true, name: true }
+                }
+            },
+            orderBy: { name: 'asc' }
+        }),
+        prisma.user.findMany({
+            where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
+            select: { id: true, name: true, email: true },
+            orderBy: { name: 'asc' }
+        })
+    ]);
+
     const permissions = await getUserPermissions();
     const canCreatePolicy = permissions.isAdmin;
 
     return (
-        <main>
-            <header style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }} className="text-gradient">Escalation Policies</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>Define who gets paged when incident strikes.</p>
+        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
+            <header style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'flex-start', 
+                marginBottom: '2rem',
+                paddingBottom: '1.5rem',
+                borderBottom: '2px solid var(--border)'
+            }}>
+                <div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                        Escalation Policies
+                    </h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                        Define who gets notified when incidents occur and in what order.
+                    </p>
+                </div>
             </header>
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-
-                {/* List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {policies.map((policy: any) => (
-                        <div key={policy.id} className="glass-panel" style={{ padding: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                                <h3 style={{ fontWeight: '600', fontSize: '1.2rem' }}>{policy.name}</h3>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{policy.services.length} Services</span>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {policy.steps.map((step: any, idx: number) => (
-                                    <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.9rem' }}>
-                                        <div style={{
-                                            width: '24px', height: '24px',
-                                            borderRadius: '50%', background: 'var(--primary)', color: '#fff',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
-                                        }}>
-                                            {idx + 1}
+                {/* Policies List */}
+                <div>
+                    {policies.length === 0 ? (
+                        <div className="glass-panel" style={{
+                            padding: '3rem',
+                            textAlign: 'center',
+                            background: 'white'
+                        }}>
+                            <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                No escalation policies yet
+                            </p>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                Create your first escalation policy to define incident notification workflows.
+                            </p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gap: '1.5rem' }}>
+                            {policies.map((policy) => (
+                                <Link
+                                    key={policy.id}
+                                    href={`/policies/${policy.id}`}
+                                    style={{ textDecoration: 'none' }}
+                                >
+                                    <div className="glass-panel policy-card" style={{
+                                        padding: '1.5rem',
+                                        background: 'white',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '12px',
+                                        transition: 'all 0.2s',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <h3 style={{ 
+                                                    fontWeight: '600', 
+                                                    fontSize: '1.2rem', 
+                                                    marginBottom: '0.5rem',
+                                                    color: 'var(--text-primary)'
+                                                }}>
+                                                    {policy.name}
+                                                </h3>
+                                                {policy.description && (
+                                                    <p style={{ 
+                                                        color: 'var(--text-secondary)', 
+                                                        fontSize: '0.9rem',
+                                                        marginBottom: '0.5rem'
+                                                    }}>
+                                                        {policy.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                                                <span style={{
+                                                    padding: '0.25rem 0.6rem',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+                                                    color: '#0c4a6e',
+                                                    border: '1px solid #bae6fd'
+                                                }}>
+                                                    {policy.steps.length} {policy.steps.length === 1 ? 'step' : 'steps'}
+                                                </span>
+                                                <span style={{
+                                                    padding: '0.25rem 0.6rem',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+                                                    color: '#0c4a6e',
+                                                    border: '1px solid #bae6fd'
+                                                }}>
+                                                    {policy.services.length} {policy.services.length === 1 ? 'service' : 'services'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            Notify <strong>{step.targetUser.name}</strong>
-                                        </div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                                            After {step.delayMinutes}m
+
+                                        {/* Preview of steps */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {policy.steps.slice(0, 3).map((step, idx) => (
+                                                <div key={step.id} style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '0.75rem',
+                                                    fontSize: '0.85rem',
+                                                    padding: '0.5rem',
+                                                    background: '#f8fafc',
+                                                    borderRadius: '6px'
+                                                }}>
+                                                    <div style={{
+                                                        width: '24px',
+                                                        height: '24px',
+                                                        borderRadius: '50%',
+                                                        background: 'var(--primary)',
+                                                        color: 'white',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.75rem',
+                                                        flexShrink: 0
+                                                    }}>
+                                                        {step.stepOrder + 1}
+                                                    </div>
+                                                    <div style={{ flex: 1, color: 'var(--text-primary)' }}>
+                                                        <strong>{step.targetUser.name}</strong>
+                                                    </div>
+                                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                                        {step.delayMinutes === 0 ? 'Immediate' : `+${step.delayMinutes}m`}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {policy.steps.length > 3 && (
+                                                <div style={{ 
+                                                    fontSize: '0.8rem', 
+                                                    color: 'var(--text-muted)', 
+                                                    fontStyle: 'italic',
+                                                    paddingLeft: '2rem'
+                                                }}>
+                                                    +{policy.steps.length - 3} more step{policy.steps.length - 3 !== 1 ? 's' : ''}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </Link>
+                            ))}
                         </div>
-                    ))}
+                    )}
                 </div>
 
-                {/* Create Form */}
+                {/* Create Policy Form */}
                 {canCreatePolicy ? (
-                    <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                        <h3 style={{ fontWeight: '600', marginBottom: '1rem', color: 'var(--accent)' }}>New Policy</h3>
+                    <div className="glass-panel" style={{
+                        padding: '1.5rem',
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        height: 'fit-content',
+                        position: 'sticky',
+                        top: '1rem'
+                    }}>
+                        <h3 style={{ fontWeight: '600', marginBottom: '1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                            Create New Policy
+                        </h3>
                         <form action={createPolicy} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <input name="name" placeholder="Policy Name" required style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
+                                    Policy Name *
+                                </label>
+                                <input
+                                    name="name"
+                                    placeholder="e.g. Critical Escalation"
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
+                                    Description
+                                </label>
+                                <textarea
+                                    name="description"
+                                    placeholder="Brief description of when to use this policy"
+                                    rows={3}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white',
+                                        resize: 'vertical'
+                                    }}
+                                />
+                            </div>
 
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step 1: Immediately notify</label>
-                            <select name="rule-0-user" required style={{ width: '100%', padding: '0.5rem', marginTop: '0.2rem', background: '#222', color: 'white', border: '1px solid var(--border)' }}>
-                                {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </select>
-                            <input type="hidden" name="rule-0-delay" value="0" />
-                        </div>
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <label style={{ fontSize: '0.85rem', fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>
+                                    Step 1: Immediately notify *
+                                </label>
+                                <select
+                                    name="step-0-userId"
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white'
+                                    }}
+                                >
+                                    <option value="">Select a user</option>
+                                    {users.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name} ({u.email})
+                                        </option>
+                                    ))}
+                                </select>
+                                <input type="hidden" name="step-0-delayMinutes" value="0" />
+                            </div>
 
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step 2: If no ack, notify</label>
-                            <select name="rule-1-user" style={{ width: '100%', padding: '0.5rem', marginTop: '0.2rem', background: '#222', color: 'white', border: '1px solid var(--border)' }}>
-                                <option value="">(None)</option>
-                                {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </select>
-                            <input name="rule-1-delay" type="number" placeholder="Delay (min)" defaultValue="15" style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', background: '#222', color: 'white', border: '1px solid var(--border)' }} />
-                        </div>
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <label style={{ fontSize: '0.85rem', fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>
+                                    Step 2: If no response, notify after (optional)
+                                </label>
+                                <select
+                                    name="step-1-userId"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white',
+                                        marginBottom: '0.5rem'
+                                    }}
+                                >
+                                    <option value="">(None)</option>
+                                    {users.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name} ({u.email})
+                                        </option>
+                                    ))}
+                                </select>
+                                <input
+                                    name="step-1-delayMinutes"
+                                    type="number"
+                                    min="0"
+                                    placeholder="Delay (minutes)"
+                                    defaultValue="15"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white'
+                                    }}
+                                />
+                            </div>
 
-                            <button className="glass-button" style={{ marginTop: '1rem', background: 'var(--primary)' }}>Create Policy</button>
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <label style={{ fontSize: '0.85rem', fontWeight: '500', display: 'block', marginBottom: '0.5rem' }}>
+                                    Step 3: Final escalation (optional)
+                                </label>
+                                <select
+                                    name="step-2-userId"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white',
+                                        marginBottom: '0.5rem'
+                                    }}
+                                >
+                                    <option value="">(None)</option>
+                                    {users.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name} ({u.email})
+                                        </option>
+                                    ))}
+                                </select>
+                                <input
+                                    name="step-2-delayMinutes"
+                                    type="number"
+                                    min="0"
+                                    placeholder="Delay (minutes)"
+                                    defaultValue="30"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        background: 'white'
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="glass-button primary"
+                                style={{ width: '100%', marginTop: '0.5rem' }}
+                            >
+                                Create Policy
+                            </button>
                         </form>
                     </div>
                 ) : (
-                    <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content', background: '#f9fafb', border: '1px solid #e5e7eb', opacity: 0.7 }}>
-                        <h3 style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>New Policy</h3>
+                    <div className="glass-panel" style={{
+                        padding: '1.5rem',
+                        background: '#f9fafb',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        height: 'fit-content',
+                        opacity: 0.7
+                    }}>
+                        <h3 style={{ fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                            Create New Policy
+                        </h3>
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                             ⚠️ You don't have access to create policies. Admin role required.
                         </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', opacity: 0.5, pointerEvents: 'none' }}>
-                            <input name="name" placeholder="Policy Name" disabled style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: '#f3f4f6', color: 'var(--text-secondary)' }} />
-                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Step 1: Immediately notify</label>
-                                <select name="rule-0-user" disabled style={{ width: '100%', padding: '0.5rem', marginTop: '0.2rem', background: '#f3f4f6', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                    <option value="">Select user</option>
-                                </select>
-                            </div>
-                            <button className="glass-button" disabled style={{ marginTop: '1rem', opacity: 0.5 }}>Create Policy</button>
-                        </div>
                     </div>
                 )}
             </div>

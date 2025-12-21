@@ -13,6 +13,14 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         where: { id },
         include: {
             team: true,
+            policy: {
+                include: {
+                    steps: {
+                        include: { targetUser: true },
+                        orderBy: { stepOrder: 'asc' }
+                    }
+                }
+            },
             incidents: {
                 orderBy: { createdAt: 'desc' },
                 take: 5
@@ -57,9 +65,34 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                         }}>
                             {service.status.replace('_', ' ')}
                         </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
                             Owned by <span style={{ color: 'var(--text-primary)' }}>{service.team?.name || 'Unassigned'}</span>
                         </div>
+                        {service.policy ? (
+                            <div style={{ 
+                                padding: '0.4rem 0.6rem',
+                                background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                color: '#0c4a6e',
+                                border: '1px solid #bae6fd'
+                            }}>
+                                <Link href={`/policies/${service.policy.id}`} style={{ color: 'inherit', textDecoration: 'none', fontWeight: '500' }}>
+                                    📋 Escalation: {service.policy.name} ({service.policy.steps.length} {service.policy.steps.length === 1 ? 'step' : 'steps'})
+                                </Link>
+                            </div>
+                        ) : (
+                            <div style={{ 
+                                padding: '0.4rem 0.6rem',
+                                background: '#fef3c7',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                color: '#92400e',
+                                border: '1px solid #fde68a'
+                            }}>
+                                ⚠️ No escalation policy assigned
+                            </div>
+                        )}
                     </div>
                 </div>
 

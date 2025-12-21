@@ -44,6 +44,7 @@ export async function updateService(serviceId: string, formData: FormData) {
     const description = formData.get('description') as string;
     const slackWebhookUrl = formData.get('slackWebhookUrl') as string;
     const teamId = formData.get('teamId') as string;
+    const escalationPolicyId = formData.get('escalationPolicyId') as string;
 
     await prisma.service.update({
         where: { id: serviceId },
@@ -51,7 +52,8 @@ export async function updateService(serviceId: string, formData: FormData) {
             name,
             description,
             slackWebhookUrl: slackWebhookUrl || null, // Set to null if empty to clear it
-            teamId: teamId || null
+            teamId: teamId || null,
+            escalationPolicyId: escalationPolicyId || null
         }
     });
 
@@ -60,7 +62,7 @@ export async function updateService(serviceId: string, formData: FormData) {
         entityType: 'SERVICE',
         entityId: serviceId,
         actorId: await getDefaultActorId(),
-        details: { name, teamId: teamId || null }
+        details: { name, teamId: teamId || null, escalationPolicyId: escalationPolicyId || null }
     });
 
     revalidatePath(`/services/${serviceId}`);

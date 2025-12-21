@@ -181,6 +181,7 @@ export default function OverrideForm({ scheduleId, users, canManageSchedules, cr
                             name="start"
                             required
                             fullWidth
+                            disabled={isPending}
                         />
                     </div>
                     <div>
@@ -191,6 +192,7 @@ export default function OverrideForm({ scheduleId, users, canManageSchedules, cr
                             name="end"
                             required
                             fullWidth
+                            disabled={isPending}
                         />
                     </div>
                 </div>

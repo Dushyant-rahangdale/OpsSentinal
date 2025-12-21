@@ -159,63 +159,36 @@
   --sidebar-width: 260px;
 }
 
-/* Dark Mode Variables */
-[data-theme='dark'],
-.dark {
-  --primary: #ef5350;
-  --primary-hover: #f87171;
-  --primary-light: #fca5a5;
-  --primary-dark: #dc2626;
-  
-  --color-success: #4ade80;
-  --color-success-light: #86efac;
-  --color-success-dark: #22c55e;
-  --color-warning: #fbbf24;
-  --color-warning-light: #fcd34d;
-  --color-warning-dark: #f59e0b;
-  --color-error: #f87171;
-  --color-error-light: #fca5a5;
-  --color-error-dark: #ef4444;
-  --color-info: #60a5fa;
-  --color-info-light: #93c5fd;
-  --color-info-dark: #3b82f6;
+/* Dark mode font rendering improvements */
+[data-theme='dark'] *,
+.dark * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
 
-  --color-neutral-50: #1f2937;
-  --color-neutral-100: #374151;
-  --color-neutral-200: #4b5563;
-  --color-neutral-300: #6b7280;
-  --color-neutral-400: #9ca3af;
-  --color-neutral-500: #d1d5db;
-  --color-neutral-600: #e5e7eb;
-  --color-neutral-700: #f3f4f6;
-  --color-neutral-800: #f9fafb;
-  --color-neutral-900: #ffffff;
+[data-theme='dark'] body,
+.dark body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color: var(--text-primary);
+}
 
-  --bg-primary: #111827;
-  --bg-secondary: #1f2937;
-  --bg-surface: #1f2937;
-  --bg-overlay: rgba(0, 0, 0, 0.7);
+[data-theme='dark'] body,
+[data-theme='dark'] .page-shell::before,
+.dark body,
+.dark .page-shell::before {
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(239, 68, 68, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(248, 113, 113, 0.05) 0%, transparent 35%);
+}
 
-  --glass-bg: rgba(31, 41, 55, 0.92);
-  --glass-border: rgba(255, 255, 255, 0.1);
-
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --text-muted: #9ca3af;
-  --text-inverse: #111827;
-  --text-disabled: #6b7280;
-
-  --border: #374151;
-  --border-hover: #4b5563;
-  --border-focus: var(--primary);
-  --border-error: var(--color-error);
-
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
-  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.6);
+[data-theme='dark'] .page-shell::before,
+.dark .page-shell::before {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(239, 68, 68, 0.06), transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(248, 113, 113, 0.04), transparent 40%);
 }
 
 * {
@@ -229,6 +202,8 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-image:
     radial-gradient(circle at 10% 10%, rgba(211, 47, 47, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 80% 0%, rgba(255, 82, 82, 0.08) 0%, transparent 35%);
@@ -5349,15 +5324,6 @@ textarea:focus-visible {
   }
 }
 
-  .layer-add-form {
-    grid-template-columns: 1fr;
-  }
-
-  .layer-settings {
-    grid-template-columns: 1fr;
-  }
-}
-
 .info-tooltip {
   pointer-events: none;
 }
@@ -5707,4 +5673,52 @@ span:hover > .info-tooltip {
 .ui-multiselect > div:last-child,
 .ui-search-input > div:last-child {
   animation: fadeIn var(--transition-base) var(--ease-out);
+}
+
+/* Policy Card Hover Effect */
+.policy-card:hover {
+  border-color: var(--primary) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+/* Service Link Card Hover Effect */
+.service-link-card:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Sidebar Scrollbar Styling */
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Firefox scrollbar */
+.sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Keyboard Shortcuts Modal - Ensure it's above everything */
+[role="dialog"][aria-modal="true"] {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+[role="dialog"][aria-modal="true"] > div {
+  position: relative !important;
+  z-index: 999999 !important;
 }
