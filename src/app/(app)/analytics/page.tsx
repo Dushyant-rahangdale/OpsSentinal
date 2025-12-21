@@ -3,6 +3,11 @@ import MetricCard from '@/components/analytics/MetricCard';
 import ChartCard from '@/components/analytics/ChartCard';
 import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
 import BarChart from '@/components/analytics/BarChart';
+import MetricIcon from '@/components/analytics/MetricIcon';
+import ProgressBar from '@/components/analytics/ProgressBar';
+import PieChart from '@/components/analytics/PieChart';
+import GaugeChart from '@/components/analytics/GaugeChart';
+import FilterChips from '@/components/analytics/FilterChips';
 
 const formatMinutes = (ms: number | null) => (ms === null ? '--' : `${(ms / 1000 / 60).toFixed(1)}m`);
 const formatPercent = (value: number) => `${value.toFixed(0)}%`;
@@ -11,6 +16,45 @@ const formatRatio = (value: number) => `${value.toFixed(1)}x`;
 const formatHoursCompact = (ms: number) => `${(ms / 1000 / 60 / 60).toFixed(2)}h`;
 const defaultAckTargetMinutes = 15;
 const defaultResolveTargetMinutes = 120;
+
+function getStatusColor(status: string): string {
+    const colors: Record<string, string> = {
+        'OPEN': '#dc2626',
+        'ACKNOWLEDGED': '#2563eb',
+        'SNOOZED': '#ca8a04',
+        'SUPPRESSED': '#7c3aed',
+        'RESOLVED': '#16a34a'
+    };
+    return colors[status] || '#6b7280';
+}
+
+function getMetricTooltip(label: string): string {
+    const tooltips: Record<string, string> = {
+        'Incidents in view': 'Total number of incidents matching your current filters',
+        'Incidents': 'Number of new incidents created in the selected time window',
+        'MTTA': 'Mean Time to Acknowledge - Average time from incident creation to acknowledgment',
+        'MTTR': 'Mean Time to Resolve - Average time from incident creation to resolution',
+        'Ack rate': 'Percentage of incidents that were acknowledged',
+        'Resolve rate': 'Percentage of incidents that were resolved',
+        'Ack SLA met': 'Percentage of acknowledged incidents that met the SLA target time',
+        'Resolve SLA met': 'Percentage of resolved incidents that met the SLA target time',
+        'High urgency': 'Percentage of incidents marked as HIGH urgency',
+        'Alerts': 'Total number of alerts received in the time window',
+        'Alerts per incident': 'Average number of alerts per incident (noise indicator)',
+        'Unassigned active': 'Number of active incidents without an assignee',
+        'MTBF': 'Mean Time Between Failures - Average time between incident occurrences',
+        'After-hours': 'Percentage of incidents created outside business hours (8 AM - 6 PM)',
+        'Coverage': 'Percentage of days in the next 14 days with on-call coverage scheduled',
+        'On-call hours': 'Total scheduled on-call hours in the next 14 days'
+    };
+    
+    for (const [key, value] of Object.entries(tooltips)) {
+        if (label.includes(key)) {
+            return value;
+        }
+    }
+    return 'Analytics metric';
+}
 
 function startOfDay(date: Date) {
     const next = new Date(date);
@@ -566,7 +610,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                 <div className="analytics-hero-inner">
                     <div className="analytics-hero-left">
                         <p className="schedule-eyebrow">Analytics</p>
-                        <h1>Operational readiness</h1>
+                        <h1>Operational Readiness</h1>
                     </div>
                     <div className="analytics-hero-right">
                         <a 
@@ -593,20 +637,74 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                     window: `${windowDays}`
                 }}
             />
+            
+            <FilterChips
+                filters={{
+                    team: teamId ?? 'ALL',
+                    service: serviceId ?? 'ALL',
+                    assignee: assigneeId ?? 'ALL',
+                    status: statusFilter,
+                    urgency: urgencyFilter,
+                    window: `${windowDays}`
+                }}
+                teams={teams}
+                services={servicesForFilter}
+                users={users}
+            />
 
             <section className="glass-panel analytics-grid">
                 {metricCards.map((metric, index) => {
-                    // Determine variant based on metric type
+                    // Determine variant based on metric type with better logic
                     let variant: 'default' | 'primary' | 'success' | 'warning' | 'danger' = 'default';
-                    if (metric.label.includes('SLA') || metric.label.includes('rate')) {
+                    let showProgress = false;
+                    let progressValue = 0;
+                    const tooltipText = getMetricTooltip(metric.label);
+                    
+                    // SLA metrics - color by performance
+                    if (metric.label.includes('SLA met')) {
                         const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
                         if (!isNaN(value)) {
-                            variant = value >= 90 ? 'success' : value >= 70 ? 'warning' : 'danger';
+                            variant = value >= 95 ? 'success' : value >= 80 ? 'warning' : 'danger';
+                            showProgress = true;
+                            progressValue = value;
                         }
-                    } else if (metric.label.includes('MTTA') || metric.label.includes('MTTR')) {
+                    }
+                    // Rate metrics - color by performance
+                    else if (metric.label.includes('rate') && !metric.label.includes('SLA')) {
+                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
+                        if (!isNaN(value)) {
+                            if (metric.label.includes('Ack rate') || metric.label.includes('Resolve rate')) {
+                                variant = value >= 80 ? 'success' : value >= 60 ? 'warning' : 'danger';
+                            } else if (metric.label.includes('High urgency')) {
+                                variant = value >= 50 ? 'warning' : 'default';
+                            } else if (metric.label.includes('After-hours')) {
+                                variant = value >= 50 ? 'warning' : 'default';
+                            }
+                        }
+                    }
+                    // Time metrics - primary color
+                    else if (metric.label.includes('MTTA') || metric.label.includes('MTTR') || metric.label.includes('MTBF')) {
                         variant = 'primary';
-                    } else if (index === 0 || index === 1) {
+                    }
+                    // Key metrics - primary color
+                    else if (index === 0 || index === 1) {
                         variant = 'primary';
+                    }
+                    // Coverage - success if 100%
+                    else if (metric.label.includes('Coverage')) {
+                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
+                        if (!isNaN(value)) {
+                            variant = value >= 100 ? 'success' : value >= 80 ? 'warning' : 'danger';
+                            showProgress = true;
+                            progressValue = value;
+                        }
+                    }
+                    // Unassigned - danger if high
+                    else if (metric.label.includes('Unassigned')) {
+                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
+                        if (!isNaN(value)) {
+                            variant = value > 0 ? 'warning' : 'success';
+                        }
                     }
 
                     return (
@@ -616,7 +714,19 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                             value={metric.value}
                             detail={metric.detail}
                             variant={variant}
-                        />
+                            icon={<MetricIcon type={metric.label} />}
+                            tooltip={tooltipText}
+                        >
+                            {showProgress && (
+                                <div style={{ marginTop: '0.75rem' }}>
+                                    <ProgressBar 
+                                        value={progressValue} 
+                                        variant={variant === 'success' ? 'success' : variant === 'warning' ? 'warning' : variant === 'danger' ? 'danger' : 'primary'}
+                                        size="sm"
+                                    />
+                                </div>
+                            )}
+                        </MetricCard>
                     );
                 })}
             </section>
@@ -630,36 +740,87 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                     />
                 </ChartCard>
                 <ChartCard title={`Incident status mix (${recentWindowDays}d)`}>
-                    <div className="analytics-list">
-                        {statusMix.map((entry) => (
-                            <div key={entry.status} className="analytics-list-item-enhanced">
-                                <span>{entry.status}</span>
-                                <strong>{entry.count}</strong>
-                            </div>
-                        ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'center' }}>
+                        <PieChart 
+                            data={statusMix.map(entry => ({
+                                label: entry.status,
+                                value: entry.count,
+                                color: getStatusColor(entry.status)
+                            }))}
+                            size={140}
+                            showLegend={false}
+                        />
+                        <div className="analytics-list">
+                            {statusMix.map((entry) => (
+                                <div key={entry.status} className={`analytics-list-item-enhanced analytics-status-${entry.status.toLowerCase()}`}>
+                                    <span className="analytics-status-badge">{entry.status}</span>
+                                    <strong>{entry.count}</strong>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </ChartCard>
                 <ChartCard title={`Top noisy services (${serviceWindowDays}d)`}>
                     <div className="analytics-list">
                         {topServices.length === 0 ? (
-                            <div className="analytics-muted">No incidents in the last {serviceWindowDays} days.</div>
-                        ) : topServices.map((service) => (
-                            <div key={service.id} className="analytics-list-item-enhanced">
-                                <span>{service.name}</span>
-                                <strong>{service.count}</strong>
+                            <div className="analytics-empty-state">
+                                <div className="analytics-empty-icon">📊</div>
+                                <div className="analytics-empty-title">No incidents found</div>
+                                <div className="analytics-empty-description">No incidents in the last {serviceWindowDays} days for the selected filters.</div>
                             </div>
-                        ))}
+                        ) : topServices.map((service, index) => {
+                            const percentage = totalRecent > 0 ? (service.count / totalRecent) * 100 : 0;
+                            return (
+                                <div key={service.id} className="analytics-list-item-enhanced">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ 
+                                            fontSize: '0.7rem', 
+                                            fontWeight: '700', 
+                                            color: 'var(--text-muted)',
+                                            minWidth: '20px'
+                                        }}>#{index + 1}</span>
+                                        <span>{service.name}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                            {percentage.toFixed(1)}%
+                                        </span>
+                                        <strong>{service.count}</strong>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </ChartCard>
                 <ChartCard title={`Urgency mix (${recentWindowDays}d)`}>
-                    <div className="analytics-list">
-                        <div className="analytics-list-item-enhanced">
-                            <span>HIGH</span>
-                            <strong>{highUrgencyCount}</strong>
-                        </div>
-                        <div className="analytics-list-item-enhanced">
-                            <span>LOW</span>
-                            <strong>{lowUrgencyCount}</strong>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'center' }}>
+                        <PieChart 
+                            data={[
+                                { label: 'HIGH', value: highUrgencyCount, color: '#dc2626' },
+                                { label: 'LOW', value: lowUrgencyCount, color: '#6b7280' }
+                            ]}
+                            size={140}
+                            showLegend={false}
+                        />
+                        <div className="analytics-list">
+                            <div className="analytics-list-item-enhanced analytics-urgency-high">
+                                <span className="analytics-urgency-badge">HIGH</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {totalRecent > 0 ? ((highUrgencyCount / totalRecent) * 100).toFixed(1) : 0}%
+                                    </span>
+                                    <strong>{highUrgencyCount}</strong>
+                                </div>
+                            </div>
+                            <div className="analytics-list-item-enhanced analytics-urgency-low">
+                                <span className="analytics-urgency-badge">LOW</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {totalRecent > 0 ? ((lowUrgencyCount / totalRecent) * 100).toFixed(1) : 0}%
+                                    </span>
+                                    <strong>{lowUrgencyCount}</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </ChartCard>
@@ -668,6 +829,22 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
             <section className="analytics-split">
                 <div className="glass-panel analytics-section-enhanced">
                     <h2>Response health</h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                            <GaugeChart 
+                                value={ackSlaRate} 
+                                label="Ack SLA"
+                                thresholds={{ good: 95, warning: 80 }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                            <GaugeChart 
+                                value={resolveSlaRate} 
+                                label="Resolve SLA"
+                                thresholds={{ good: 95, warning: 80 }}
+                            />
+                        </div>
+                    </div>
                     <div className="analytics-kpi-row">
                         <div className="analytics-kpi">
                             <span>Avg ack time</span>
@@ -759,7 +936,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                 <h2>SLA compliance by service</h2>
                 <div className="analytics-table">
                     {serviceSlaTable.length === 0 ? (
-                        <div className="analytics-muted">No SLA data in this window.</div>
+                        <div className="analytics-empty-state">
+                            <div className="analytics-empty-icon">🎯</div>
+                            <div className="analytics-empty-title">No SLA data</div>
+                            <div className="analytics-empty-description">No SLA compliance data available in this time window.</div>
+                        </div>
                     ) : serviceSlaTable.map((entry) => (
                         <div key={entry.id} className="analytics-table-row">
                             <span>{entry.name}</span>
@@ -812,8 +993,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                     <h2>State age breakdown</h2>
                     <div className="analytics-list">
                         {statusAges.map((entry) => (
-                            <div key={entry.status} className="analytics-list-item">
-                                <span>{entry.status}</span>
+                            <div key={entry.status} className={`analytics-list-item-enhanced analytics-status-${entry.status.toLowerCase()}`}>
+                                <span className="analytics-status-badge">{entry.status}</span>
                                 <strong>{entry.avgMs === null ? '--' : formatHoursCompact(entry.avgMs)}</strong>
                             </div>
                         ))}
@@ -828,7 +1009,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                         <p className="analytics-subtitle">Assignee load</p>
                         <div className="analytics-list">
                             {assigneeLoad.length === 0 ? (
-                                <div className="analytics-muted">No assignee data in this window.</div>
+                                <div className="analytics-empty-state">
+                                    <div className="analytics-empty-icon">👤</div>
+                                    <div className="analytics-empty-title">No assignee data</div>
+                                    <div className="analytics-empty-description">No assignee data available in this time window.</div>
+                                </div>
                             ) : assigneeLoad.map((entry) => (
                                 <div key={entry.id} className="analytics-list-item">
                                     <span>{entry.name}</span>
@@ -841,7 +1026,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                         <p className="analytics-subtitle">On-call load</p>
                         <div className="analytics-list">
                             {onCallLoad.length === 0 ? (
-                                <div className="analytics-muted">No on-call shifts in this window.</div>
+                                <div className="analytics-empty-state">
+                                    <div className="analytics-empty-icon">👥</div>
+                                    <div className="analytics-empty-title">No on-call shifts</div>
+                                    <div className="analytics-empty-description">No on-call shifts scheduled in this time window.</div>
+                                </div>
                             ) : onCallLoad.map((entry) => (
                                 <div key={entry.id} className="analytics-list-item">
                                     <span>{entry.name}</span>
@@ -857,7 +1046,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
                 <h2>Top recurring incident titles</h2>
                 <div className="analytics-list">
                     {recurringTitles.length === 0 ? (
-                        <div className="analytics-muted">No recurring incidents in this window.</div>
+                        <div className="analytics-empty-state">
+                            <div className="analytics-empty-icon">🔄</div>
+                            <div className="analytics-empty-title">No recurring incidents</div>
+                            <div className="analytics-empty-description">No recurring incident patterns found in this time window.</div>
+                        </div>
                     ) : recurringTitles.map((entry) => (
                         <div key={entry.title} className="analytics-list-item">
                             <span>{entry.title}</span>

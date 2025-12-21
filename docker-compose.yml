@@ -1,17 +1,57 @@
 version: '3.8'
+
 services:
-  postgres:
+  opsguard-db:
     image: postgres:15-alpine
-    container_name: incident_postgres
+    container_name: opsguard_postgres
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: incident_db
+      POSTGRES_USER: opsguard
+      POSTGRES_PASSWORD: opsguard_secure_password_change_me
+      POSTGRES_DB: opsguard_db
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - opsguard_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opsguard -d opsguard_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - opsguard-network
+
+  opsguard-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opsguard_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://opsguard:opsguard_secure_password_change_me@opsguard-db:5432/opsguard_db
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=change_this_to_a_random_secret_in_production
+    depends_on:
+      opsguard-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - opsguard-network
+    command: >
+      sh -c "npx prisma migrate deploy && node server.js"
 
 volumes:
-  postgres_data:
+  opsguard_postgres_data:
+    driver: local
+
+networks:
+  opsguard-network:
+    driver: bridge

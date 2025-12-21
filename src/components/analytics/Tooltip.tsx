@@ -12,20 +12,17 @@ export default function Tooltip({ content, children, position = 'top' }: Tooltip
     const [isVisible, setIsVisible] = useState(false);
 
     return (
-        <div
+        <div 
             className="analytics-tooltip-wrapper"
             onMouseEnter={() => setIsVisible(true)}
             onMouseLeave={() => setIsVisible(false)}
-            onFocus={() => setIsVisible(true)}
-            onBlur={() => setIsVisible(false)}
         >
             {children}
             {isVisible && (
-                <div className={`analytics-tooltip analytics-tooltip-${position}`} role="tooltip">
+                <div className={`analytics-tooltip analytics-tooltip-${position}`}>
                     {content}
                 </div>
             )}
         </div>
     );
 }
-

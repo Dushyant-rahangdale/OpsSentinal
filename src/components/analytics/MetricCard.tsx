@@ -7,6 +7,8 @@ interface MetricCardProps {
     trendValue?: string;
     icon?: React.ReactNode;
     variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
+    children?: React.ReactNode;
+    tooltip?: string;
 }
 
 export default function MetricCard({
@@ -16,27 +18,34 @@ export default function MetricCard({
     trend,
     trendValue,
     icon,
-    variant = 'default'
+    variant = 'default',
+    children,
+    tooltip
 }: MetricCardProps) {
-    const variantStyles = {
-        default: 'border-gray-200 bg-white',
-        primary: 'border-red-200 bg-gradient-to-br from-red-50 to-white',
-        success: 'border-green-200 bg-gradient-to-br from-green-50 to-white',
-        warning: 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-white',
-        danger: 'border-red-300 bg-gradient-to-br from-red-100 to-white'
+    const variantClasses = {
+        default: 'analytics-card-default',
+        primary: 'analytics-card-primary',
+        success: 'analytics-card-success',
+        warning: 'analytics-card-warning',
+        danger: 'analytics-card-danger'
     };
 
     const trendColors = {
-        up: 'text-green-600',
-        down: 'text-red-600',
-        neutral: 'text-gray-500'
+        up: 'analytics-trend-up',
+        down: 'analytics-trend-down',
+        neutral: 'analytics-trend-neutral'
     };
 
     return (
-        <article className={`analytics-card-enhanced ${variantStyles[variant]}`}>
+        <article className={`analytics-card-enhanced ${variantClasses[variant]}`}>
             <div className="analytics-card-header">
                 {icon && <div className="analytics-card-icon">{icon}</div>}
                 <span className="analytics-label">{label}</span>
+                {tooltip && (
+                    <div className="analytics-info-icon-wrapper">
+                        <span className="analytics-info-icon" title={tooltip}>i</span>
+                    </div>
+                )}
             </div>
             <div className="analytics-card-body">
                 <span className="analytics-value">{value}</span>
@@ -50,6 +59,7 @@ export default function MetricCard({
                 )}
             </div>
             <span className="analytics-detail">{detail}</span>
+            {children}
         </article>
     );
 }

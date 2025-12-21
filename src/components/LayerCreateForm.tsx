@@ -4,6 +4,7 @@ import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import SchedulePreview from './SchedulePreview';
+import { DateTimeInput } from '@/components/ui';
 
 type LayerCreateFormProps = {
     scheduleId: string;
@@ -236,38 +237,20 @@ export default function LayerCreateForm({
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                             Start
                         </label>
-                        <input
-                            type="datetime-local"
+                        <DateTimeInput
                             name="start"
-                            defaultValue={defaultStartDate}
+                            value={defaultStartDate}
                             required
-                            disabled={isPending}
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem',
-                                border: '1px solid var(--border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                background: 'white'
-                            }}
+                            fullWidth
                         />
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                             End (optional)
                         </label>
-                        <input
-                            type="datetime-local"
+                        <DateTimeInput
                             name="end"
-                            disabled={isPending}
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem',
-                                border: '1px solid var(--border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                background: 'white'
-                            }}
+                            fullWidth
                         />
                     </div>
                 </div>
