@@ -3,7 +3,7 @@ interface ProgressBarProps {
     max?: number;
     label?: string;
     showValue?: boolean;
-    variant?: 'default' | 'success' | 'warning' | 'danger';
+    variant?: 'default' | 'success' | 'warning' | 'danger' | 'primary';
     size?: 'sm' | 'md' | 'lg';
 }
 
@@ -17,17 +17,18 @@ export default function ProgressBar({
 }: ProgressBarProps) {
     const percentage = Math.min(100, Math.max(0, (value / max) * 100));
     
-    const variantStyles = {
-        default: 'bg-blue-500',
-        success: 'bg-green-500',
-        warning: 'bg-yellow-500',
-        danger: 'bg-red-500'
+    const sizeStyles = {
+        sm: { height: '6px' },
+        md: { height: '8px' },
+        lg: { height: '12px' }
     };
 
-    const sizeStyles = {
-        sm: 'h-2',
-        md: 'h-3',
-        lg: 'h-4'
+    const variantClasses = {
+        default: 'analytics-progress-fill-default',
+        success: 'analytics-progress-fill-success',
+        warning: 'analytics-progress-fill-warning',
+        danger: 'analytics-progress-fill-danger',
+        primary: 'analytics-progress-fill-primary'
     };
 
     return (
@@ -35,20 +36,15 @@ export default function ProgressBar({
             {label && (
                 <div className="analytics-progress-label">
                     <span>{label}</span>
-                    {showValue && <span className="analytics-progress-value">{value.toFixed(1)}%</span>}
+                    {showValue && <span className="analytics-progress-value">{percentage.toFixed(0)}%</span>}
                 </div>
             )}
-            <div className={`analytics-progress-bar ${sizeStyles[size]}`}>
-                <div
-                    className={`analytics-progress-fill ${variantStyles[variant]}`}
+            <div className="analytics-progress-bar" style={sizeStyles[size]}>
+                <div 
+                    className={`analytics-progress-fill ${variantClasses[variant]}`}
                     style={{ width: `${percentage}%` }}
-                    role="progressbar"
-                    aria-valuenow={value}
-                    aria-valuemin={0}
-                    aria-valuemax={max}
                 />
             </div>
         </div>
     );
 }
-

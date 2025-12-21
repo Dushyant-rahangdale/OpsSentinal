@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import TopbarUserMenu from '@/components/TopbarUserMenu';
 import { ToastProvider } from '@/components/ToastProvider';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export const revalidate = 30;
 
@@ -45,7 +46,8 @@ export default async function AppLayout({
             <div className="topbar-left">
               <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
             </div>
-            <div className="topbar-right">
+            <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+              <ThemeToggle />
               <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
             </div>
           </header>

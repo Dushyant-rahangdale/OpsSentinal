@@ -18,6 +18,27 @@ function generateCSV(data: any[][]): string {
     return data.map(row => row.map(escapeCSV).join(',')).join('\n');
 }
 
+function createProgressBar(value: number, max: number, length: number = 20): string {
+    const percentage = max > 0 ? value / max : 0;
+    const filled = Math.round(percentage * length);
+    const empty = length - filled;
+    // Use ASCII characters for better compatibility
+    return '='.repeat(filled) + '-'.repeat(empty) + ` ${(percentage * 100).toFixed(1)}%`;
+}
+
+function formatDate(date: Date): string {
+    // Format as: Dec 21, 2025 09:31 PM
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${month} ${day}, ${year} ${displayHours}:${minutes} ${ampm}`;
+}
+
 export async function GET(req: NextRequest) {
     try {
         const searchParams = req.nextUrl.searchParams;
@@ -131,24 +152,21 @@ export async function GET(req: NextRequest) {
         // Build CSV content with well-designed structure
         const csvRows: string[][] = [];
 
-        // Header section with branding
-        csvRows.push(['═══════════════════════════════════════════════════════════════']);
+        // Header section with branding (using ASCII characters)
+        csvRows.push(['===============================================================']);
         csvRows.push(['                    ANALYTICS REPORT']);
         csvRows.push(['              Operational Readiness Dashboard']);
-        csvRows.push(['═══════════════════════════════════════════════════════════════']);
+        csvRows.push(['===============================================================']);
         csvRows.push(['']);
-        csvRows.push(['Report Generated:', new Date().toLocaleString('en-US', { 
-            dateStyle: 'full', 
-            timeStyle: 'long' 
-        })]);
+        csvRows.push(['Report Generated:', formatDate(now)]);
         csvRows.push(['Time Window:', `Last ${windowDays} day${windowDays !== 1 ? 's' : ''}`]);
-        csvRows.push(['Report Period:', `${recentStart.toLocaleDateString()} to ${now.toLocaleDateString()}`]);
+        csvRows.push(['Report Period:', `${formatDate(recentStart)} to ${formatDate(now)}`]);
         csvRows.push(['']);
         
         // Filter information
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['FILTERS APPLIED']);
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
+        csvRows.push(['---------------------------------------------------------------']);
         const hasFilters = teamId || serviceId || assigneeId || statusFilter !== 'ALL' || urgencyFilter !== 'ALL';
         if (hasFilters) {
             if (teamId) {
@@ -177,64 +195,76 @@ export async function GET(req: NextRequest) {
         csvRows.push(['']);
 
         // Summary metrics with visual separators
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['KEY PERFORMANCE INDICATORS (KPIs)']);
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['Metric', 'Value', 'Status']);
         
-        // Add status indicators
+        // Add status indicators with ASCII-compatible characters
         const getStatusIndicator = (value: number, thresholds: { good: number; warning: number }) => {
-            if (value >= thresholds.good) return '✓ Good';
-            if (value >= thresholds.warning) return '⚠ Warning';
-            return '✗ Needs Attention';
+            if (value >= thresholds.good) return '[OK] Good';
+            if (value >= thresholds.warning) return '[!] Warning';
+            return '[X] Needs Attention';
         };
         
         csvRows.push(['Total Incidents', totalIncidents.toString(), '']);
-        csvRows.push(['Open Incidents', openIncidents.length.toString(), openIncidents.length > 10 ? '⚠ High' : '✓ Normal']);
+        csvRows.push(['Open Incidents', openIncidents.length.toString(), openIncidents.length > 10 ? '[!] High' : '[OK] Normal']);
         csvRows.push(['Resolved Incidents', resolvedIncidents.length.toString(), '']);
-        csvRows.push(['High Urgency Incidents', highUrgencyCount.toString(), highUrgencyCount > 5 ? '⚠ High' : '✓ Normal']);
-        csvRows.push(['MTTA (Mean Time to Acknowledge)', formatMinutes(mttaMs), mttaMs && mttaMs < 15 * 60 * 1000 ? '✓ Good' : '⚠ Review']);
-        csvRows.push(['MTTR (Mean Time to Resolve)', formatMinutes(mttrMs), mttrMs && mttrMs < 120 * 60 * 1000 ? '✓ Good' : '⚠ Review']);
+        csvRows.push(['High Urgency Incidents', highUrgencyCount.toString(), highUrgencyCount > 5 ? '[!] High' : '[OK] Normal']);
+        
+        // MTTA with visual indicator
+        const mttaStatus = mttaMs && mttaMs < 15 * 60 * 1000 ? '[OK] Good' : mttaMs && mttaMs < 30 * 60 * 1000 ? '[!] Review' : '[X] Needs Attention';
+        csvRows.push(['MTTA (Mean Time to Acknowledge)', formatMinutes(mttaMs), mttaStatus]);
+        
+        // MTTR with visual indicator
+        const mttrStatus = mttrMs && mttrMs < 120 * 60 * 1000 ? '[OK] Good' : mttrMs && mttrMs < 240 * 60 * 1000 ? '[!] Review' : '[X] Needs Attention';
+        csvRows.push(['MTTR (Mean Time to Resolve)', formatMinutes(mttrMs), mttrStatus]);
+        
         csvRows.push(['Acknowledgment Rate', formatPercent(ackRate), getStatusIndicator(ackRate, { good: 90, warning: 70 })]);
         csvRows.push(['Resolution Rate', formatPercent(resolutionRate), getStatusIndicator(resolutionRate, { good: 80, warning: 60 })]);
         csvRows.push(['']);
 
         // Status breakdown with visual bars
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['INCIDENT STATUS BREAKDOWN']);
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
-        csvRows.push(['Status', 'Count', 'Percentage', 'Visual']);
+        csvRows.push(['---------------------------------------------------------------']);
+        csvRows.push(['Status', 'Count', 'Percentage', 'Visual Bar']);
         const statusMap = new Map(statusTrends.map(s => [s.status, s._count._all]));
         const statusOrder = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
+        const maxStatusCount = Math.max(...Array.from(statusMap.values()), 1);
         statusOrder.forEach(status => {
             const count = statusMap.get(status) || 0;
             const percentage = totalIncidents ? parseFloat(((count / totalIncidents) * 100).toFixed(1)) : 0;
-            const barLength = Math.round(percentage / 2); // Scale bar to 50 chars max
-            const bar = '█'.repeat(barLength);
-            csvRows.push([status, count.toString(), `${percentage.toFixed(1)}%`, bar]);
+            const progressBar = createProgressBar(count, maxStatusCount, 30);
+            csvRows.push([status, count.toString(), `${percentage.toFixed(1)}%`, progressBar]);
         });
         csvRows.push(['']);
 
-        // Top services with ranking
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
+        // Top services with ranking and visualization
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['TOP SERVICES BY INCIDENT COUNT']);
-        csvRows.push(['───────────────────────────────────────────────────────────────']);
-        csvRows.push(['Rank', 'Service', 'Incident Count', 'Percentage']);
+        csvRows.push(['---------------------------------------------------------------']);
+        csvRows.push(['Rank', 'Service', 'Incident Count', 'Percentage', 'Visual Bar']);
         const serviceNameMap = new Map(services.map(s => [s.id, s.name]));
+        const maxServiceCount = topServices.length > 0 ? Math.max(...topServices.map(s => s._count._all)) : 1;
         topServices.forEach((entry, index) => {
             const serviceName = serviceNameMap.get(entry.serviceId) || 'Unknown Service';
             const percentage = totalIncidents ? ((entry._count._all / totalIncidents) * 100).toFixed(1) : '0.0';
+            const progressBar = createProgressBar(entry._count._all, maxServiceCount, 25);
             csvRows.push([
                 `#${index + 1}`,
                 serviceName,
                 entry._count._all.toString(),
-                `${percentage}%`
+                `${percentage}%`,
+                progressBar
             ]);
         });
         csvRows.push(['']);
 
-        // Detailed incident list
+        // Detailed incident list with better formatting
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['DETAILED INCIDENT LIST']);
+        csvRows.push(['---------------------------------------------------------------']);
         csvRows.push([
             'ID',
             'Title',
@@ -259,20 +289,23 @@ export async function GET(req: NextRequest) {
                 incident.status,
                 incident.urgency,
                 incident.assignee?.name || incident.assignee?.email || 'Unassigned',
-                incident.createdAt.toISOString(),
-                incident.updatedAt.toISOString(),
+                formatDate(incident.createdAt),
+                formatDate(incident.updatedAt),
                 duration
             ]);
         });
 
-        // Generate CSV
+        // Generate CSV with UTF-8 BOM for Excel compatibility
         const csvContent = generateCSV(csvRows);
+        // Add UTF-8 BOM for proper Excel encoding
+        const csvWithBOM = '\uFEFF' + csvContent;
 
-        // Return response
-        return new NextResponse(csvContent, {
+        // Return response with proper encoding
+        return new NextResponse(csvWithBOM, {
             headers: {
                 'Content-Type': 'text/csv; charset=utf-8',
                 'Content-Disposition': `attachment; filename="analytics-report-${new Date().toISOString().split('T')[0]}.csv"`,
+                'Cache-Control': 'no-cache',
             },
         });
     } catch (error) {

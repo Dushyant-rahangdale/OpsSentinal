@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opsguard
+  labels:
+    name: opsguard
+    app: opsguard

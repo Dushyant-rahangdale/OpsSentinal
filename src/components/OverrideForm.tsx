@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
+import { DateTimeInput } from '@/components/ui';
 
 type OverrideFormProps = {
     scheduleId: string;
@@ -176,38 +177,20 @@ export default function OverrideForm({ scheduleId, users, canManageSchedules, cr
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                             Start
                         </label>
-                        <input
-                            type="datetime-local"
+                        <DateTimeInput
                             name="start"
                             required
-                            disabled={isPending}
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem',
-                                border: '1px solid var(--border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                background: 'white'
-                            }}
+                            fullWidth
                         />
                     </div>
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                             End
                         </label>
-                        <input
-                            type="datetime-local"
+                        <DateTimeInput
                             name="end"
                             required
-                            disabled={isPending}
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem',
-                                border: '1px solid var(--border)',
-                                borderRadius: '8px',
-                                fontSize: '0.9rem',
-                                background: 'white'
-                            }}
+                            fullWidth
                         />
                     </div>
                 </div>
