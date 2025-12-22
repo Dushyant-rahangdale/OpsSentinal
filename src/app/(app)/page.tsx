@@ -4,7 +4,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import DashboardFilters from '@/components/DashboardFilters';
 import IncidentTable from '@/components/IncidentTable';
-import IncidentTableMobile from '@/components/IncidentTableMobile';
 import DashboardPerformanceMetrics from '@/components/DashboardPerformanceMetrics';
 import DashboardQuickFilters from '@/components/DashboardQuickFilters';
 import DashboardTimeRange from '@/components/DashboardTimeRange';
@@ -266,7 +265,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <main className="dashboard-container">
+    <main style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '2rem' }}>
       {/* Command Center Hero Section */}
       <div className="command-center-hero">
         <div className="command-center-header">
@@ -280,6 +279,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   ({allOpenIncidentsCount} active incident{allOpenIncidentsCount !== 1 ? 's' : ''})
                 </span>
               )}
+            </div>
+            <div className="command-center-time-range">
+              <Suspense fallback={<div style={{ height: '40px' }} />}>
+                <DashboardTimeRange />
+              </Suspense>
             </div>
           </div>
           <div className="command-center-actions">
@@ -306,152 +310,192 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
         </div>
         
-        <div className="command-center-content">
-          <div className="command-center-main">
-            <div className="command-center-time-range">
+        {/* Metrics in one line */}
+        <div className="command-center-metrics">
+          <div className="command-metric-card">
+            <div className="command-metric-value">{totalInRange}</div>
+            <div className="command-metric-label">TOTAL {getRangeLabel()}</div>
+          </div>
+          <div className="command-metric-card">
+            <div className="command-metric-value">{allOpenIncidentsCount}</div>
+            <div className="command-metric-label">OPEN (All Time)</div>
+          </div>
+          <div className="command-metric-card">
+            <div className="command-metric-value">{allResolvedCount}</div>
+            <div className="command-metric-label">RESOLVED (All Time)</div>
+          </div>
+          <div className="command-metric-card">
+            <div className="command-metric-value">{unassignedCount}</div>
+            <div className="command-metric-label">UNASSIGNED</div>
+          </div>
+        </div>
+      </div>
+
+
+      {/* Main Content Grid - Two Column Layout (matching users page) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) 320px', gap: '1.5rem' }}>
+        {/* Left Column - Filters and Table */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Filters Panel - White glass panel */}
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>Filter Incidents</h2>
+            
+            {/* Quick Filters */}
+            <div style={{ marginBottom: '1rem' }}>
               <Suspense fallback={<div style={{ height: '40px' }} />}>
-                <DashboardTimeRange />
+                <DashboardQuickFilters />
               </Suspense>
             </div>
-          </div>
-          
-          <div className="command-center-metrics">
-            <div className="command-metric-card">
-              <div className="command-metric-value">{totalInRange}</div>
-              <div className="command-metric-label">TOTAL {getRangeLabel()}</div>
-            </div>
-            <div className="command-metric-card">
-              <div className="command-metric-value">{allOpenIncidentsCount}</div>
-              <div className="command-metric-label">OPEN (All Time)</div>
-            </div>
-            <div className="command-metric-card">
-              <div className="command-metric-value">{allResolvedCount}</div>
-              <div className="command-metric-label">RESOLVED (All Time)</div>
-            </div>
-            <div className="command-metric-card">
-              <div className="command-metric-value">{unassignedCount}</div>
-              <div className="command-metric-label">UNASSIGNED</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-
-      {/* Filters Panel - White panel below command center */}
-      <div className="dashboard-filters-panel">
-        <div className="dashboard-filters-content">
-          {/* Quick Filters */}
-          <div style={{ marginBottom: '1rem' }}>
-            <Suspense fallback={<div style={{ height: '40px' }} />}>
-              <DashboardQuickFilters />
+            {/* Filter Chips */}
+            <Suspense fallback={null}>
+              <DashboardFilterChips services={services} users={users} />
             </Suspense>
-          </div>
 
-          {/* Filter Chips */}
-          <Suspense fallback={null}>
-            <DashboardFilterChips services={services} users={users} />
-          </Suspense>
-
-          {/* Dashboard Filters */}
-          <div style={{ marginTop: '1rem' }}>
-            <DashboardFilters
-              initialStatus={status}
-              initialService={service}
-              initialAssignee={assignee}
-              services={services}
-              users={users}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Grid - Two Column Layout */}
-      <div className="dashboard-main-grid">
-        {/* Main Content Area */}
-        <div className="dashboard-main-content">
-          {/* Incidents Section */}
-          <div className="dashboard-incidents-section">
-            <div className="dashboard-section-header">
-              <h2 className="dashboard-section-title">Recent Incidents</h2>
-              <Link href="/incidents" className="dashboard-section-link">View All Incidents</Link>
-            </div>
-
-            {/* Desktop Table */}
-            <div className="incident-table-desktop">
-              <IncidentTable 
-                incidents={incidents} 
-                sortBy={sortBy}
-                sortOrder={sortOrder}
+            {/* Dashboard Filters */}
+            <div style={{ marginTop: '1rem' }}>
+              <DashboardFilters
+                initialStatus={status}
+                initialService={service}
+                initialAssignee={assignee}
+                services={services}
+                users={users}
               />
             </div>
+          </div>
 
-            {/* Mobile Table */}
-            <div className="incident-table-mobile">
-              <IncidentTableMobile 
-                incidents={incidents}
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-              />
+          {/* Incidents Table Panel - White glass panel */}
+          <div className="glass-panel" style={{ background: 'white', padding: '0', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.15rem' }}>Incident Directory</h2>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Showing {skip + 1}-{Math.min(skip + INCIDENTS_PER_PAGE, totalCount)} of {totalCount} incidents
+                </p>
+              </div>
+              <Link href="/incidents" style={{ fontSize: '0.85rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: '600' }}>
+                View All Incidents →
+              </Link>
             </div>
 
-            {/* Pagination */}
+            <div style={{ overflowX: 'auto' }}>
+              {incidents.length === 0 ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: '0.9rem' }}>No incidents found matching your filters.</p>
+                </div>
+              ) : (
+                <IncidentTable 
+                  incidents={incidents} 
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                />
+              )}
+            </div>
+
+            {/* Pagination - Matching users page style */}
             {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '2rem' }}>
-                <Link
-                  href={buildPaginationUrl(baseParams, page - 1)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border)',
-                    background: page === 1 ? '#f3f4f6' : 'white',
-                    color: page === 1 ? '#9ca3af' : 'var(--text-primary)',
-                    textDecoration: 'none',
-                    cursor: page === 1 ? 'not-allowed' : 'pointer',
-                    pointerEvents: page === 1 ? 'none' : 'auto'
-                  }}
-                >
-                  Previous
-                </Link>
-                <span style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   Page {page} of {totalPages}
-                </span>
-                <Link
-                  href={buildPaginationUrl(baseParams, page + 1)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border)',
-                    background: page === totalPages ? '#f3f4f6' : 'white',
-                    color: page === totalPages ? '#9ca3af' : 'var(--text-primary)',
-                    textDecoration: 'none',
-                    cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                    pointerEvents: page === totalPages ? 'none' : 'auto'
-                  }}
-                >
-                  Next
-                </Link>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <Link
+                    href={buildPaginationUrl(baseParams, 1)}
+                    className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.8rem',
+                      textDecoration: 'none',
+                      opacity: page === 1 ? 0.5 : 1,
+                      pointerEvents: page === 1 ? 'none' : 'auto'
+                    }}
+                  >
+                    First
+                  </Link>
+                  <Link
+                    href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
+                    className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.8rem',
+                      textDecoration: 'none',
+                      opacity: page === 1 ? 0.5 : 1,
+                      pointerEvents: page === 1 ? 'none' : 'auto'
+                    }}
+                  >
+                    Previous
+                  </Link>
+                  <Link
+                    href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
+                    className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.8rem',
+                      textDecoration: 'none',
+                      opacity: page === totalPages ? 0.5 : 1,
+                      pointerEvents: page === totalPages ? 'none' : 'auto'
+                    }}
+                  >
+                    Next
+                  </Link>
+                  <Link
+                    href={buildPaginationUrl(baseParams, totalPages)}
+                    className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.8rem',
+                      textDecoration: 'none',
+                      opacity: page === totalPages ? 0.5 : 1,
+                      pointerEvents: page === totalPages ? 'none' : 'auto'
+                    }}
+                  >
+                    Last
+                  </Link>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Sidebar - All Widgets */}
-        <div className="dashboard-sidebar">
-          {/* Welcome Section */}
-          <div className="dashboard-welcome-main">
-            <h2 className="dashboard-welcome-title">{greeting}, {userName}</h2>
-            <p className="dashboard-welcome-text">
-              You have <strong style={{ color: 'var(--danger)', fontWeight: '700' }}>{allOpenIncidentsCount} open incidents</strong> across your services.
+        {/* Right Sidebar - All Widgets (matching users page style) */}
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Quick Actions Panel */}
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem' }}>Quick Actions</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              {greeting}, {userName}
             </p>
-            <div className="dashboard-welcome-actions">
-              <Link href="/incidents/create" className="dashboard-action-button dashboard-action-primary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <Link 
+                href="/incidents/create" 
+                className="glass-button primary" 
+                style={{ 
+                  textDecoration: 'none', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  padding: '0.6rem 1rem'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Zm0 3v4" strokeLinecap="round" />
                 </svg>
                 Trigger Incident
               </Link>
-              <Link href="/analytics" className="dashboard-action-button">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <Link 
+                href="/analytics" 
+                className="glass-button" 
+                style={{ 
+                  textDecoration: 'none', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  padding: '0.6rem 1rem'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 View Analytics
@@ -460,33 +504,37 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
 
           {/* On-Call Widget */}
-          <div className="dashboard-widget">
-            <div className="dashboard-widget-header">
-              <h3 className="dashboard-widget-title">Who is On-Call</h3>
-              <Link href="/schedules" className="dashboard-widget-link">View All</Link>
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Who is On-Call</h3>
+              <Link href="/schedules" style={{ fontSize: '0.85rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: '600' }}>
+                View All →
+              </Link>
             </div>
-            <div className="dashboard-widget-content">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {activeShifts.length === 0 ? (
-                <div className="dashboard-empty-state">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
+                <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3, margin: '0 auto 0.5rem' }}>
                     <path d="M7 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19a4 4 0 0 1 8 0v1H3v-1Zm10 1v-1a4 4 0 0 1 8 0v1h-8Z" />
                   </svg>
-                  <p>No active on-call shifts</p>
+                  <p style={{ fontSize: '0.85rem', margin: 0 }}>No active on-call shifts</p>
                 </div>
               ) : (
-                <div className="dashboard-oncall-list">
-                  {activeShifts.slice(0, 3).map(shift => (
-                    <div key={shift.id} className="dashboard-oncall-item">
-                      <div className="dashboard-oncall-avatar">
-                        {shift.user.name.charAt(0).toUpperCase()}
+                activeShifts.slice(0, 3).map(shift => (
+                  <div key={shift.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(211, 47, 47, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.875rem' }}>
+                      {shift.user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.15rem' }}>
+                        {shift.user.name}
                       </div>
-                      <div className="dashboard-oncall-info">
-                        <div className="dashboard-oncall-name">{shift.user.name}</div>
-                        <div className="dashboard-oncall-schedule">{shift.schedule.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {shift.schedule.name}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -506,7 +554,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               <DashboardStatusChart data={statusDistribution} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                 {statusDistribution.map((item) => (
-                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.color }} />
                       <span>{item.label}</span>
@@ -528,7 +576,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             unassignedIncidents={unassignedCount}
             servicesCount={services.length}
           />
-        </div>
+        </aside>
       </div>
     </main>
   );
