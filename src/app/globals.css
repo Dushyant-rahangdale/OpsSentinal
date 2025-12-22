@@ -2447,13 +2447,18 @@ select option {
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #3f0f0f, #1b0707);
-  padding: 1rem 1.25rem;
-  color: #fff;
-  border-radius: 0;
+  width: var(--sidebar-width);
+  background: var(--gradient-primary);
+  border-right: none;
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  color: white;
+  box-shadow: 4px 0 24px rgba(211, 47, 47, 0.15);
+  overflow: hidden;
+  z-index: 1000;
 }
 
 .sidebar ul {
@@ -4233,32 +4238,50 @@ a:hover {
 
 /* Sidebar Nav Item */
 .nav-item {
-  color: rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-  transition: all 0.15s ease;
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  position: relative;
+  border-left: 4px solid transparent;
 }
 
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  transform: translateX(2px);
+.nav-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .nav-item.active {
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--secondary);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-left: 4px solid var(--accent);
 }
 
 .nav-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  opacity: 0.9;
+  position: relative;
 }
 
 .nav-icon svg {
   width: 100%;
   height: 100%;
+}
+
+.nav-item.active .nav-icon {
+  opacity: 1;
 }
 
 .empty-state {
@@ -7590,6 +7613,18 @@ span:hover > .info-tooltip {
 }
 
 /* Sidebar Scrollbar Styling */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem 0 1.5rem 0;
+  gap: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
 .sidebar-nav::-webkit-scrollbar {
   width: 6px;
 }
@@ -7605,12 +7640,6 @@ span:hover > .info-tooltip {
 
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
-}
-
-/* Firefox scrollbar */
-.sidebar-nav {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
 /* Keyboard Shortcuts Modal - Ensure it's above everything */
@@ -9225,155 +9254,95 @@ span:hover > .info-tooltip {
 }
 
 /* Operational Status Component */
-.ops-status-new {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 0.625rem 1rem;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
-}
-
-.ops-status-new:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-  border-color: rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
-}
-
-.ops-status-indicator {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ops-status-pulse {
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  animation: ops-pulse 2s ease-in-out infinite;
-}
-
-.ops-status-pulse.ok {
-  background: #16a34a;
-  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
-}
-
-.ops-status-pulse.danger {
-  background: #dc2626;
-  box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
-}
-
-@keyframes ops-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.ops-status-dot {
-  position: relative;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.ops-status-indicator.ok .ops-status-dot {
-  background: #16a34a;
-  color: #ffffff;
-}
-
-.ops-status-indicator.danger .ops-status-dot {
-  background: #dc2626;
-  color: #ffffff;
-}
-
-.ops-status-dot svg {
-  width: 10px;
-  height: 10px;
-}
-
-.ops-status-content {
+/* Clean System Status Design - Matching Image Style */
+.ops-status-clean {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
-  min-width: 0;
-  flex: 1;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  min-width: 280px;
 }
 
-.ops-status-header {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-
-.ops-status-label {
-  font-size: 0.6875rem;
-  font-weight: 700;
+.ops-status-label-clean {
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #6b7280;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
 }
 
-.ops-status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border-radius: 4px;
-  font-size: 0;
-  flex-shrink: 0;
-}
-
-.ops-status-badge.ok {
-  background: rgba(22, 163, 74, 0.12);
-  color: #16a34a;
-}
-
-.ops-status-badge.danger {
-  background: rgba(220, 38, 38, 0.12);
-  color: #dc2626;
-}
-
-.ops-status-badge svg {
-  width: 10px;
-  height: 10px;
-}
-
-.ops-status-main {
+.ops-status-body-clean {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
 }
 
-.ops-status-value {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.2;
-  padding: 0.125rem 0.5rem;
-  border-radius: 6px;
+.ops-status-left-clean {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1;
 }
+
+.ops-status-icon-clean {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ops-status-icon-clean.ok {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.ops-status-icon-clean.danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.ops-status-icon-clean svg {
+  width: 8px;
+  height: 8px;
+}
+
+.ops-status-text-clean {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.ops-status-text-clean.ok {
+  color: #16a34a;
+}
+
+.ops-status-text-clean.danger {
+  color: #111827;
+}
+
+.ops-status-divider-clean {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+.ops-status-detail-clean {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 
 .ops-status-value.ok {
   color: #16a34a;

@@ -204,23 +204,15 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`nav-item ${active ? 'active' : ''}`}
+                className={`nav-item ${active ? 'active' : ''}`}
                 style={{
-                    padding: '0.875rem 1rem',
+                    padding: '0.75rem 1rem',
                     textDecoration: 'none',
-                    fontWeight: active ? '600' : '500',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.875rem',
-                    borderRadius: 'var(--radius-sm)',
-                    color: active ? 'var(--primary)' : 'rgba(255,255,255,0.85)',
-                    background: active ? 'rgba(255,255,255,0.95)' : 'transparent',
-                    boxShadow: active ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    borderLeft: active ? '4px solid var(--accent)' : '4px solid transparent',
-                    borderRight: 'none',
-                    borderTop: 'none',
-                    borderBottom: 'none'
+                    marginLeft: '0.5rem',
+                    marginRight: '0.5rem'
                 }}
                 onMouseEnter={(e) => {
                     if (!active) {

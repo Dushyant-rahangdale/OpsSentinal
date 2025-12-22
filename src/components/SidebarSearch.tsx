@@ -31,30 +31,30 @@ const MAX_RECENT_SEARCHES = 8;
 
 // Enhanced quick action suggestions with better categorization
 const QUICK_ACTIONS = [
-    { 
-        label: 'View all incidents', 
-        query: 'incident', 
+    {
+        label: 'View all incidents',
+        query: 'incident',
         icon: '⚡',
         category: 'Navigation',
         description: 'Browse all incidents'
     },
-    { 
-        label: 'View all services', 
-        query: 'service', 
+    {
+        label: 'View all services',
+        query: 'service',
         icon: '🔧',
         category: 'Navigation',
         description: 'Manage services'
     },
-    { 
-        label: 'View all teams', 
-        query: 'team', 
+    {
+        label: 'View all teams',
+        query: 'team',
         icon: '👥',
         category: 'Navigation',
         description: 'Team management'
     },
-    { 
-        label: 'Create new incident', 
-        query: 'create incident', 
+    {
+        label: 'Create new incident',
+        query: 'create incident',
         icon: '➕',
         category: 'Quick Create',
         description: 'Start new incident',
@@ -71,7 +71,7 @@ export default function SidebarSearch() {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
     const [searchFilters, setSearchFilters] = useState<Set<string>>(new Set());
-    
+
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -108,7 +108,7 @@ export default function SidebarSearch() {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 const target = e.target as HTMLElement;
-                if (target instanceof HTMLInputElement || 
+                if (target instanceof HTMLInputElement ||
                     target instanceof HTMLTextAreaElement ||
                     target.isContentEditable) {
                     return;
@@ -132,7 +132,7 @@ export default function SidebarSearch() {
     // Group results by type with better organization
     const groupedResults = useMemo(() => {
         const groups: SearchSection[] = [];
-        
+
         if (query.length === 0) {
             // Show suggestions when empty
             if (recentSearches.length > 0) {
@@ -153,7 +153,7 @@ export default function SidebarSearch() {
         // Apply filters if any
         let filteredResults = results;
         if (searchFilters.size > 0) {
-            filteredResults = results.filter(result => 
+            filteredResults = results.filter(result =>
                 searchFilters.has(result.type)
             );
         }
@@ -169,14 +169,14 @@ export default function SidebarSearch() {
 
         // Order: incidents first (most important), then services, teams, etc.
         const typeOrder: SearchResult['type'][] = [
-            'incident', 
-            'service', 
-            'team', 
-            'user', 
-            'policy', 
+            'incident',
+            'service',
+            'team',
+            'user',
+            'policy',
             'postmortem'
         ];
-        
+
         typeOrder.forEach(type => {
             const typeResults = typeMap.get(type);
             if (typeResults && typeResults.length > 0) {
@@ -202,27 +202,29 @@ export default function SidebarSearch() {
     // Save recent search with metadata
     const saveRecentSearch = useCallback((searchQuery: string, resultCount?: number) => {
         if (searchQuery.length < 2) return;
-        
+
         try {
             const newSearch: RecentSearch = {
                 query: searchQuery,
                 timestamp: Date.now(),
                 resultCount
             };
-            
-            const updated = [
-                newSearch,
-                ...recentSearches.filter(s => 
-                    s.query.toLowerCase() !== searchQuery.toLowerCase()
-                )
-            ].slice(0, MAX_RECENT_SEARCHES);
-            
-            setRecentSearches(updated);
-            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+
+            setRecentSearches(prev => {
+                const updated = [
+                    newSearch,
+                    ...prev.filter(s =>
+                        s.query.toLowerCase() !== searchQuery.toLowerCase()
+                    )
+                ].slice(0, MAX_RECENT_SEARCHES);
+
+                localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+                return updated;
+            });
         } catch (e) {
             // Ignore localStorage errors
         }
-    }, [recentSearches]);
+    }, []);
 
     // Handle result navigation
     const navigateResult = useCallback((href: string, title?: string) => {
@@ -308,10 +310,10 @@ export default function SidebarSearch() {
         } else {
             // Navigate to selected result
             if (results.length === 0) return;
-            
+
             let currentIndex = 0;
             for (const group of groupedResults) {
-                if (selectedIndex >= currentIndex && 
+                if (selectedIndex >= currentIndex &&
                     selectedIndex < currentIndex + group.results.length) {
                     const resultIndex = selectedIndex - currentIndex;
                     const result = group.results[resultIndex];
@@ -414,7 +416,8 @@ export default function SidebarSearch() {
         return () => {
             clearTimeout(timeoutId);
         };
-    }, [query, saveRecentSearch]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [query]);
 
     const handleClearRecent = () => {
         setRecentSearches([]);
@@ -442,7 +445,7 @@ export default function SidebarSearch() {
     };
 
     // Determine if dropdown should be visible
-    const hasDropdownContent = query.length >= 2 
+    const hasDropdownContent = query.length >= 2
         ? (results.length > 0 || isLoading || error)
         : query.length === 0
             ? (recentSearches.length > 0 || QUICK_ACTIONS.length > 0)
@@ -475,13 +478,13 @@ export default function SidebarSearch() {
                 aria-label="Search"
             >
                 <div className="search-trigger-content">
-                    <svg 
-                        className="search-trigger-icon" 
-                        viewBox="0 0 24 24" 
-                        width="18" 
-                        height="18" 
-                        fill="none" 
-                        stroke="currentColor" 
+                    <svg
+                        className="search-trigger-icon"
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        fill="none"
+                        stroke="currentColor"
                         strokeWidth="2"
                     >
                         <circle cx="11" cy="11" r="8" />
@@ -516,19 +519,19 @@ export default function SidebarSearch() {
                     }}
                 />
             )}
-            
+
             {/* Main Search Container */}
             <div ref={containerRef} className="search-container">
                 {/* Search Input Bar */}
                 <div className="search-input-bar">
                     <div className="search-input-wrapper">
-                        <svg 
-                            className="search-input-icon" 
-                            viewBox="0 0 24 24" 
-                            width="20" 
-                            height="20" 
-                            fill="none" 
-                            stroke="currentColor" 
+                        <svg
+                            className="search-input-icon"
+                            viewBox="0 0 24 24"
+                            width="20"
+                            height="20"
+                            fill="none"
+                            stroke="currentColor"
                             strokeWidth="2"
                         >
                             <circle cx="11" cy="11" r="8" />
@@ -564,12 +567,12 @@ export default function SidebarSearch() {
                                 className="search-clear-btn"
                                 aria-label="Clear search"
                             >
-                                <svg 
-                                    viewBox="0 0 24 24" 
-                                    width="16" 
-                                    height="16" 
-                                    fill="none" 
-                                    stroke="currentColor" 
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    width="16"
+                                    height="16"
+                                    fill="none"
+                                    stroke="currentColor"
                                     strokeWidth="2"
                                 >
                                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -587,21 +590,20 @@ export default function SidebarSearch() {
                                     key={type}
                                     type="button"
                                     onClick={() => toggleFilter(type)}
-                                    className={`search-filter-chip ${
-                                        searchFilters.has(type) ? 'active' : ''
-                                    }`}
+                                    className={`search-filter-chip ${searchFilters.has(type) ? 'active' : ''
+                                        }`}
                                 >
                                     <span className="search-filter-icon">
                                         {getTypeIconSmall(type)}
                                     </span>
                                     <span>{getTypeLabel(type)}</span>
                                     {searchFilters.has(type) && (
-                                        <svg 
-                                            width="12" 
-                                            height="12" 
-                                            viewBox="0 0 24 24" 
-                                            fill="none" 
-                                            stroke="currentColor" 
+                                        <svg
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
                                             strokeWidth="3"
                                         >
                                             <polyline points="20 6 9 17 4 12" />
@@ -618,17 +620,17 @@ export default function SidebarSearch() {
                     <div className="search-results-panel">
                         {error && (
                             <div className="search-error-state">
-                                <svg 
-                                    width="20" 
-                                    height="20" 
-                                    viewBox="0 0 24 24" 
-                                    fill="none" 
-                                    stroke="currentColor" 
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
                                     strokeWidth="2"
                                 >
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <line x1="12" y1="8" x2="12" y2="12"/>
-                                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
                                 </svg>
                                 <div>
                                     <div className="search-error-title">{error}</div>
@@ -661,22 +663,21 @@ export default function SidebarSearch() {
                                                         setQuery(recent.query);
                                                         inputRef.current?.focus();
                                                     }}
-                                                    className={`search-result-item ${
-                                                        selectedIndex === index ? 'selected' : ''
-                                                    }`}
+                                                    className={`search-result-item ${selectedIndex === index ? 'selected' : ''
+                                                        }`}
                                                     data-search-result-index={selectedIndex === index}
                                                     onMouseEnter={() => setSelectedIndex(index)}
                                                 >
                                                     <div className="search-result-icon recent">
-                                                        <svg 
-                                                            width="16" 
-                                                            height="16" 
-                                                            viewBox="0 0 24 24" 
-                                                            fill="none" 
-                                                            stroke="currentColor" 
+                                                        <svg
+                                                            width="16"
+                                                            height="16"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
                                                             strokeWidth="2"
                                                         >
-                                                            <path d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586"/>
+                                                            <path d="M12 19l7-7 3 3-7 7-3-3zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5zM2 2l7.586 7.586" />
                                                         </svg>
                                                     </div>
                                                     <div className="search-result-content">
@@ -722,9 +723,8 @@ export default function SidebarSearch() {
                                                             inputRef.current?.focus();
                                                         }
                                                     }}
-                                                    className={`search-result-item ${
-                                                        selectedIndex === itemIndex ? 'selected' : ''
-                                                    }`}
+                                                    className={`search-result-item ${selectedIndex === itemIndex ? 'selected' : ''
+                                                        }`}
                                                     data-search-result-index={selectedIndex === itemIndex}
                                                     onMouseEnter={() => setSelectedIndex(itemIndex)}
                                                 >
@@ -753,12 +753,12 @@ export default function SidebarSearch() {
                                 {results.length === 0 ? (
                                     <div className="search-empty-state">
                                         <div className="search-empty-icon">
-                                            <svg 
-                                                viewBox="0 0 24 24" 
-                                                width="48" 
-                                                height="48" 
-                                                fill="none" 
-                                                stroke="currentColor" 
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                width="48"
+                                                height="48"
+                                                fill="none"
+                                                stroke="currentColor"
                                                 strokeWidth="1.5"
                                             >
                                                 <circle cx="11" cy="11" r="8" />
@@ -822,9 +822,8 @@ export default function SidebarSearch() {
                                                                 key={`${result.type}-${result.id}`}
                                                                 type="button"
                                                                 onClick={() => navigateResult(result.href, result.title)}
-                                                                className={`search-result-item ${
-                                                                    selectedIndex === absoluteIndex ? 'selected' : ''
-                                                                }`}
+                                                                className={`search-result-item ${selectedIndex === absoluteIndex ? 'selected' : ''
+                                                                    }`}
                                                                 data-search-result-index={selectedIndex === absoluteIndex}
                                                                 onMouseEnter={() => setSelectedIndex(absoluteIndex)}
                                                             >
@@ -927,7 +926,7 @@ function getTypeIconSmall(type: SearchResult['type']): React.ReactNode {
         policy: "M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z",
         postmortem: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
     };
-    
+
     return (
         <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
             <path d={iconPaths[type] || iconPaths.incident} />

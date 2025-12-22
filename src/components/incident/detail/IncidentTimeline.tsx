@@ -1,6 +1,7 @@
 'use client';
 
 import TimelineEvent from '../TimelineEvent';
+import { formatTime, formatDateShort, formatDateGroup } from '@/lib/date-format';
 
 type Event = {
     id: string;
@@ -88,7 +89,7 @@ export default function IncidentTimeline({
         } else if (date >= yesterday) {
             groupKey = 'Yesterday';
         } else {
-            groupKey = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            groupKey = formatDateGroup(date);
         }
 
         if (!acc[groupKey]) {
@@ -251,10 +252,10 @@ export default function IncidentTimeline({
                                                         {event.type === 'CREATED' ? 'Created' : event.type === 'ACKNOWLEDGED' ? 'Acknowledged' : event.type === 'RESOLVED' ? 'Resolved' : 'Event'}
                                                     </span>
                                                     <span>
-                                                        {new Date(event.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {formatTime(event.createdAt)}
                                                     </span>
                                                     <span style={{ opacity: 0.6 }}>
-                                                        {new Date(event.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                        {formatDateShort(event.createdAt)}
                                                     </span>
                                                 </div>
                                                 <div style={{
