@@ -46,6 +46,8 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
     const roleColor = getRoleColor(role);
 
     useEffect(() => {
+        if (!open) return;
+
         const handleClick = (event: MouseEvent) => {
             if (!rootRef.current) return;
             if (rootRef.current.contains(event.target as Node)) return;
@@ -64,7 +66,7 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
             document.removeEventListener('mousedown', handleClick);
             document.removeEventListener('keydown', handleEscape);
         };
-    }, []);
+    }, [open, setOpen]);
 
     return (
         <div className="user-menu-container" ref={rootRef}>
@@ -73,7 +75,10 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
                 type="button"
                 aria-label="User menu"
                 aria-expanded={open}
-                onClick={() => setOpen((prev) => !prev)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(!open);
+                }}
             >
                 <div className="user-avatar-new">
                     {initials}
@@ -105,7 +110,12 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
                 </svg>
             </button>
             {open && (
-                <div className="user-menu-dropdown" role="menu" aria-label="User menu">
+                <div 
+                    className="user-menu-dropdown" 
+                    role="menu" 
+                    aria-label="User menu"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     {/* User Info Header */}
                     <div className="user-menu-header">
                         <div className="user-menu-avatar-large">

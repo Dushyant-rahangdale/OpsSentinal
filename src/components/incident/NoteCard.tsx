@@ -1,5 +1,7 @@
 'use client';
 
+import { formatDateFriendly } from '@/lib/date-format';
+
 type NoteCardProps = {
     content: string;
     userName: string;
@@ -71,7 +73,7 @@ export default function NoteCard({ content, userName, createdAt, isResolution = 
                         )}
                     </div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {new Date(createdAt).toLocaleString()}
+                        {formatDateFriendly(createdAt)}
                     </span>
                 </div>
                 <div

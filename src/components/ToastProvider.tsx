@@ -32,19 +32,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <div style={{ 
-                position: 'fixed', 
-                top: '1rem', 
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 10000, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.5rem',
-                maxWidth: '90%',
-                width: 'auto',
-                pointerEvents: 'none'
-            }}>
+            <div 
+                className="toast-container"
+                style={{ 
+                    position: 'fixed', 
+                    top: '1rem', 
+                    right: '1rem',
+                    zIndex: 10000, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '0.5rem',
+                    maxWidth: '90%',
+                    width: 'auto',
+                    pointerEvents: 'none',
+                    maxHeight: 'calc(100vh - 2rem)',
+                    overflowY: 'auto',
+                    overflowX: 'hidden'
+                }}
+                aria-live="polite"
+                aria-atomic="false"
+            >
                 {toasts.map((toast) => (
                     <Toast
                         key={toast.id}

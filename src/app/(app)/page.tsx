@@ -519,7 +519,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
 
       {/* Main Content Grid - Two Column Layout (matching users page) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) 320px', gap: '1.5rem' }}>
+      <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) 320px', gap: '1.5rem' }}>
         {/* Left Column - Filters and Table */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Filters Panel - White glass panel */}
@@ -674,7 +674,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               </Link>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div 
+              className="incident-table-scroll"
+              style={{ 
+                overflowX: 'auto',
+                overflowY: 'auto',
+                maxHeight: '70vh',
+                minHeight: '400px'
+              }}>
               {incidents.length === 0 ? (
                 <div style={{ 
                   padding: '4rem 2rem', 

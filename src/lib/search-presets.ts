@@ -216,7 +216,8 @@ export async function getAccessiblePresets(userId: string, userTeamIds: string[]
         return [];
     }
 
-    const presets = await prisma.searchPreset.findMany({
+    try {
+        const presets = await prisma.searchPreset.findMany({
         where: {
             OR: [
                 { createdById: userId }, // User's own presets
@@ -242,7 +243,16 @@ export async function getAccessiblePresets(userId: string, userTeamIds: string[]
         ],
     });
 
-    return presets as SearchPresetWithCreator[];
+        return presets as SearchPresetWithCreator[];
+    } catch (error: any) {
+        // Handle case where table doesn't exist yet (migration not applied)
+        if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+            console.warn('SearchPreset table does not exist. Please run "npx prisma db push" or apply migrations.');
+            return [];
+        }
+        // Re-throw other errors
+        throw error;
+    }
 }
 
 /**

@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo, useState, useEffect } from 'react';
+
 interface Incident {
     id: string;
     serviceId: string;
@@ -21,49 +23,123 @@ interface StatusPageMetricsProps {
     ninetyDaysAgo: Date;
 }
 
+// Helper function to format percentage consistently (SSR-safe)
+function formatUptimePercent(value: number): string {
+    // Clamp value between 0 and 100, then round to 3 decimal places
+    const clamped = Math.max(0, Math.min(100, value));
+    // Round to avoid floating point precision issues
+    const rounded = Math.round(clamped * 1000) / 1000;
+    return rounded.toFixed(3);
+}
+
 export default function StatusPageMetrics({ 
     services, 
     incidents, 
     thirtyDaysAgo, 
     ninetyDaysAgo 
 }: StatusPageMetricsProps) {
-    if (services.length === 0) return null;
-    // Calculate uptime for a service
-    const calculateUptime = (serviceId: string, periodStart: Date) => {
-        const periodEnd = new Date();
-        const totalMinutes = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60);
+    const [metrics, setMetrics] = useState<Array<{
+        service: string;
+        thirtyDays: { uptime: number; downtime: number; incidents: number };
+        ninetyDays: { uptime: number; downtime: number; incidents: number };
+    }>>([]);
+    const [isClient, setIsClient] = useState(false);
+
+    // Calculate metrics only on client to avoid hydration mismatches
+    useEffect(() => {
+        setIsClient(true);
         
-        // Get incidents for this service in the period
-        const serviceIncidents = incidents.filter(
-            inc => inc.serviceId === serviceId && 
-                   inc.createdAt >= periodStart &&
-                   (inc.resolvedAt || inc.createdAt) <= periodEnd
-        );
+        if (services.length === 0) {
+            setMetrics([]);
+            return;
+        }
+        
+        // Use current date for calculation
+        const periodEnd = new Date();
+        
+        // Calculate uptime for a service
+        const calculateUptime = (serviceId: string, periodStart: Date) => {
+            const totalMinutes = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60);
+            
+            // Get incidents for this service in the period
+            const serviceIncidents = incidents.filter(
+                inc => inc.serviceId === serviceId && 
+                       inc.createdAt >= periodStart &&
+                       (inc.resolvedAt || inc.createdAt) <= periodEnd
+            );
 
-        // Calculate downtime minutes
-        let downtimeMinutes = 0;
-        serviceIncidents.forEach(incident => {
-            const start = incident.createdAt;
-            const end = incident.resolvedAt || periodEnd;
-            const incidentMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-            downtimeMinutes += incidentMinutes;
-        });
+            // Calculate downtime minutes
+            let downtimeMinutes = 0;
+            serviceIncidents.forEach(incident => {
+                const start = incident.createdAt;
+                const end = incident.resolvedAt || periodEnd;
+                const incidentMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+                downtimeMinutes += incidentMinutes;
+            });
 
-        const uptimeMinutes = totalMinutes - downtimeMinutes;
-        const uptimePercent = totalMinutes > 0 ? (uptimeMinutes / totalMinutes) * 100 : 100;
+            const uptimeMinutes = totalMinutes - downtimeMinutes;
+            // Round to avoid floating point precision issues - round to 3 decimal places
+            const uptimePercent = totalMinutes > 0 
+                ? Math.round((uptimeMinutes / totalMinutes) * 100000) / 1000 
+                : 100;
 
-        return {
-            uptime: uptimePercent,
-            downtime: downtimeMinutes,
-            incidents: serviceIncidents.length,
+            return {
+                uptime: uptimePercent,
+                downtime: downtimeMinutes,
+                incidents: serviceIncidents.length,
+            };
         };
-    };
 
-    const metrics = services.map(service => ({
-        service: service.name,
-        thirtyDays: calculateUptime(service.id, thirtyDaysAgo),
-        ninetyDays: calculateUptime(service.id, ninetyDaysAgo),
-    }));
+        const calculatedMetrics = services.map(service => ({
+            service: service.name,
+            thirtyDays: calculateUptime(service.id, thirtyDaysAgo),
+            ninetyDays: calculateUptime(service.id, ninetyDaysAgo),
+        }));
+        
+        setMetrics(calculatedMetrics);
+    }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo]);
+
+    if (services.length === 0) return null;
+    
+    // Show loading state during initial render to avoid hydration mismatch
+    if (!isClient || metrics.length === 0) {
+        return (
+            <section style={{ marginBottom: '3rem' }}>
+                <h2 style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: '700', 
+                    marginBottom: '1.5rem',
+                    color: '#111827',
+                }}>
+                    Uptime Metrics
+                </h2>
+                <div style={{ 
+                    display: 'grid', 
+                    gap: '1rem',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                }}>
+                    {services.map((service) => (
+                        <div
+                            key={service.id}
+                            style={{
+                                padding: '2rem',
+                                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '1rem',
+                            }}
+                        >
+                            <div style={{ 
+                                height: '100px', 
+                                background: '#f3f4f6', 
+                                borderRadius: '0.5rem',
+                                animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+                            }} />
+                        </div>
+                    ))}
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section style={{ marginBottom: '3rem' }}>
@@ -118,7 +194,7 @@ export default function StatusPageMetrics({
                                         30 Days
                                     </span>
                                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                                        {metric.thirtyDays.uptime.toFixed(3)}%
+                                        {formatUptimePercent(metric.thirtyDays.uptime)}%
                                     </span>
                                 </div>
                                 <div style={{
@@ -148,7 +224,7 @@ export default function StatusPageMetrics({
                                         90 Days
                                     </span>
                                     <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                                        {metric.ninetyDays.uptime.toFixed(3)}%
+                                        {formatUptimePercent(metric.ninetyDays.uptime)}%
                                     </span>
                                 </div>
                                 <div style={{

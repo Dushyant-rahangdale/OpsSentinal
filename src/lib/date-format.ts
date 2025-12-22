@@ -27,7 +27,8 @@ export function formatDate(date: Date | string, format: 'date' | 'datetime' | 't
 }
 
 /**
- * Format date in a user-friendly way (for display only, not for SSR)
+ * Format date in a user-friendly way (SSR-safe, consistent between server and client)
+ * Format: DD/MM/YYYY, HH:MM:SS
  */
 export function formatDateFriendly(date: Date | string): string {
     const d = typeof date === 'string' ? new Date(date) : date;
@@ -36,13 +37,15 @@ export function formatDateFriendly(date: Date | string): string {
         return 'Invalid Date';
     }
 
-    // Use UTC to ensure consistency
-    const year = d.getUTCFullYear();
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const hours = String(d.getUTCHours()).padStart(2, '0');
-    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    // Use local time but format consistently to avoid hydration mismatches
+    // This ensures the same format on both server and client
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
 
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+    return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
 }
 

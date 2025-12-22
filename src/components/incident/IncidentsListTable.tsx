@@ -126,7 +126,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
     };
 
     return (
-        <div className="glass-panel" style={{ background: 'white', borderRadius: '0px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div className="glass-panel" style={{ background: 'white', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
             {/* Bulk Actions Bar */}
             {(selectedIds.size > 0 || bulkAction) && (
                 <div style={{
@@ -151,10 +151,11 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                             handleBulkAction('reassign', e.target.value);
                                         }
                                     }}
+                                    aria-label="Select assignee for bulk reassignment"
                                     style={{
                                         padding: '0.5rem',
                                         border: 'none',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         background: 'white',
                                         fontSize: '0.85rem',
                                         cursor: 'pointer'
@@ -185,10 +186,11 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     onChange={(e) => {
                                         handleBulkAction('priority', e.target.value);
                                     }}
+                                    aria-label="Select priority for bulk update"
                                     style={{
                                         padding: '0.5rem',
                                         border: 'none',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         background: 'white',
                                         fontSize: '0.85rem',
                                         cursor: 'pointer'
@@ -204,11 +206,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 </select>
                                 <button
                                     onClick={() => setBulkAction(null)}
+                                    aria-label="Cancel bulk priority update"
                                     style={{
                                         padding: '0.5rem 0.75rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         cursor: 'pointer'
                                     }}
@@ -225,10 +228,11 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                             handleBulkAction('snooze', duration);
                                         }
                                     }}
+                                    aria-label="Select snooze duration for bulk action"
                                     style={{
                                         padding: '0.5rem',
                                         border: 'none',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         background: 'white',
                                         fontSize: '0.85rem',
                                         cursor: 'pointer'
@@ -244,11 +248,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 </select>
                                 <button
                                     onClick={() => setBulkAction(null)}
+                                    aria-label="Cancel bulk snooze action"
                                     style={{
                                         padding: '0.5rem 0.75rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         cursor: 'pointer'
                                     }}
@@ -261,11 +266,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 <button
                                     onClick={() => handleBulkAction('acknowledge')}
                                     disabled={isPending}
+                                    aria-label={`Acknowledge ${selectedIds.size} selected incident${selectedIds.size !== 1 ? 's' : ''}`}
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         fontWeight: '500',
                                         cursor: isPending ? 'not-allowed' : 'pointer',
@@ -277,11 +283,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 <button
                                     onClick={() => handleBulkAction('resolve')}
                                     disabled={isPending}
+                                    aria-label={`Resolve ${selectedIds.size} selected incident${selectedIds.size !== 1 ? 's' : ''}`}
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: 'rgba(255,255,255,0.9)',
                                         border: 'none',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'var(--primary)',
                                         fontWeight: '600',
                                         cursor: isPending ? 'not-allowed' : 'pointer',
@@ -292,11 +299,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 </button>
                                 <button
                                     onClick={() => setBulkAction('reassign')}
+                                    aria-label="Reassign selected incidents"
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         fontWeight: '500',
                                         cursor: 'pointer'
@@ -306,11 +314,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 </button>
                                 <button
                                     onClick={() => setBulkAction('priority')}
+                                    aria-label="Update priority for selected incidents"
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         fontWeight: '500',
                                         cursor: 'pointer'
@@ -320,11 +329,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 </button>
                                 <button
                                     onClick={() => setBulkAction('snooze')}
+                                    aria-label="Snooze selected incidents"
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         fontWeight: '500',
                                         cursor: 'pointer'
@@ -340,11 +350,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                         });
                                         handleBulkAction(hasSnoozed ? 'unsnooze' : 'suppress');
                                     }}
+                                    aria-label="Suppress or unsnooze selected incidents"
                                     style={{
                                         padding: '0.5rem 1rem',
                                         background: 'rgba(255,255,255,0.2)',
                                         border: '1px solid rgba(255,255,255,0.3)',
-                                        borderRadius: '0px',
+                                        borderRadius: 'var(--radius-sm)',
                                         color: 'white',
                                         fontWeight: '500',
                                         cursor: 'pointer'
@@ -362,11 +373,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
             <div style={{ padding: '0.75rem 1.5rem', background: '#f9fafb', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                     onClick={handleExport}
+                    aria-label="Export incidents to CSV"
                     style={{
                         padding: '0.5rem 1rem',
                         background: 'white',
                         border: '1px solid var(--border)',
-                        borderRadius: '0px',
+                        borderRadius: 'var(--radius-sm)',
                         color: 'var(--text-primary)',
                         fontSize: '0.85rem',
                         fontWeight: '500',
@@ -554,11 +566,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                     <button
                                                         onClick={() => handleStatusChange(incident.id, 'ACKNOWLEDGED')}
                                                         disabled={isPending}
+                                                        aria-label={`Acknowledge incident ${incident.title}`}
                                                         style={{
                                                             padding: '0.4rem 0.75rem',
                                                             background: 'linear-gradient(180deg, #fff4cc 0%, #ffe9a8 100%)',
                                                             border: '1px solid #f6c453',
-                                                            borderRadius: '0px',
+                                                            borderRadius: 'var(--radius-sm)',
                                                             fontSize: '0.75rem',
                                                             fontWeight: 600,
                                                             color: '#b45309',
@@ -574,11 +587,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                     <button
                                                         onClick={() => handleStatusChange(incident.id, 'SNOOZED')}
                                                         disabled={isPending}
+                                                        aria-label={`Snooze incident ${incident.title}`}
                                                         style={{
                                                             padding: '0.4rem 0.75rem',
                                                             background: '#f3f4f6',
                                                             border: '1px solid var(--border)',
-                                                            borderRadius: '0px',
+                                                            borderRadius: 'var(--radius-sm)',
                                                             fontSize: '0.75rem',
                                                             fontWeight: 600,
                                                             color: 'var(--text-secondary)',
@@ -594,11 +608,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                     <button
                                                         onClick={() => handleStatusChange(incident.id, 'OPEN')}
                                                         disabled={isPending}
+                                                        aria-label={`Unsnooze incident ${incident.title}`}
                                                         style={{
                                                             padding: '0.4rem 0.75rem',
                                                             background: '#feecec',
                                                             border: '1px solid rgba(211,47,47,0.25)',
-                                                            borderRadius: '0px',
+                                                            borderRadius: 'var(--radius-sm)',
                                                             fontSize: '0.75rem',
                                                             fontWeight: 600,
                                                             color: 'var(--danger)',
@@ -614,11 +629,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                     <button
                                                         onClick={() => handleStatusChange(incident.id, 'SUPPRESSED')}
                                                         disabled={isPending}
+                                                        aria-label={`Suppress incident ${incident.title}`}
                                                         style={{
                                                             padding: '0.4rem 0.75rem',
                                                             background: '#f3f4f6',
                                                             border: '1px solid var(--border)',
-                                                            borderRadius: '0px',
+                                                            borderRadius: 'var(--radius-sm)',
                                                             fontSize: '0.75rem',
                                                             fontWeight: 600,
                                                             color: 'var(--text-secondary)',
@@ -634,11 +650,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                     <button
                                                         onClick={() => handleStatusChange(incident.id, 'OPEN')}
                                                         disabled={isPending}
+                                                        aria-label={`Unsuppress incident ${incident.title}`}
                                                         style={{
                                                             padding: '0.4rem 0.75rem',
                                                             background: '#feecec',
                                                             border: '1px solid rgba(211,47,47,0.25)',
-                                                            borderRadius: '0px',
+                                                            borderRadius: 'var(--radius-sm)',
                                                             fontSize: '0.75rem',
                                                             fontWeight: 600,
                                                             color: 'var(--danger)',
@@ -654,11 +671,12 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                     <Link
                                                         href={`/incidents/${incident.id}`}
                                                         onClick={(e) => e.stopPropagation()}
+                                                        aria-label={`Resolve incident ${incident.title}`}
                                                         style={{
                                                             padding: '0.4rem 0.75rem',
                                                             background: 'var(--primary)',
                                                             border: 'none',
-                                                            borderRadius: '0px',
+                                                            borderRadius: 'var(--radius-sm)',
                                                             fontSize: '0.75rem',
                                                             fontWeight: 600,
                                                             color: 'white',
@@ -676,8 +694,33 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                         ))}
                         {incidents.length === 0 && (
                             <tr>
-                                <td colSpan={canManageIncidents ? 7 : 6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                    No incidents found matching this filter.
+                                <td colSpan={canManageIncidents ? 8 : 7} style={{ padding: 0 }}>
+                                    <div style={{ 
+                                        padding: '4rem 2rem', 
+                                        textAlign: 'center', 
+                                        color: 'var(--text-muted)',
+                                        background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
+                                    }}>
+                                        <div style={{ 
+                                            fontSize: '3rem', 
+                                            marginBottom: '1rem',
+                                            opacity: 0.3
+                                        }}>📋</div>
+                                        <p style={{ 
+                                            fontSize: '1.1rem', 
+                                            marginBottom: '0.5rem', 
+                                            fontWeight: '600',
+                                            color: 'var(--text-secondary)'
+                                        }}>
+                                            No incidents found
+                                        </p>
+                                        <p style={{ 
+                                            fontSize: '0.9rem', 
+                                            color: 'var(--text-muted)'
+                                        }}>
+                                            Try adjusting your filters to see more results.
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         )}

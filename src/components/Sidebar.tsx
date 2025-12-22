@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import KeyboardShortcuts from './KeyboardShortcuts';
+import { useModalState } from '@/hooks/useModalState';
 
 type NavItem = {
     href: string;
@@ -149,6 +150,8 @@ const navigationItems: NavItem[] = [
 export default function Sidebar() {
     const pathname = usePathname();
     const [activeIncidentsCount, setActiveIncidentsCount] = useState<number | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useModalState('sidebarMobileMenu');
 
     useEffect(() => {
         // Fetch active incidents count
@@ -157,6 +160,23 @@ export default function Sidebar() {
             .then(data => setActiveIncidentsCount(data.activeIncidentsCount || 0))
             .catch(() => setActiveIncidentsCount(0));
     }, []);
+
+    useEffect(() => {
+        // Check if mobile
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    useEffect(() => {
+        // Close mobile menu on route change
+        if (isMobileMenuOpen) {
+            setIsMobileMenuOpen(false);
+        }
+    }, [pathname]);
 
 
     const isActive = (path: string) => {
@@ -191,7 +211,7 @@ export default function Sidebar() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.875rem',
-                    borderRadius: '0px',
+                    borderRadius: 'var(--radius-sm)',
                     color: active ? 'var(--primary)' : 'rgba(255,255,255,0.85)',
                     background: active ? 'rgba(255,255,255,0.95)' : 'transparent',
                     boxShadow: active ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
@@ -232,7 +252,9 @@ export default function Sidebar() {
                 </span>
                 <span style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', flex: 1 }}>{item.label}</span>
                 {showBadge && (
-                    <span style={{
+                    <span 
+                        aria-label={`${activeIncidentsCount} active incidents`}
+                        style={{
                         minWidth: '20px',
                         height: '20px',
                         padding: '0 6px',
@@ -240,7 +262,7 @@ export default function Sidebar() {
                         color: 'white',
                         fontSize: '0.7rem',
                         fontWeight: '700',
-                        borderRadius: '0px',
+                        borderRadius: 'var(--radius-full)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -277,20 +299,91 @@ export default function Sidebar() {
         );
     };
 
+    // Mobile menu button
+    const MobileMenuButton = () => (
+        <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="mobile-menu-button"
+            aria-label="Toggle navigation menu"
+            aria-expanded={isMobileMenuOpen}
+            style={{
+                display: isMobile ? 'flex' : 'none',
+                position: 'fixed',
+                top: '1rem',
+                left: '1rem',
+                zIndex: 1001,
+                width: '44px',
+                height: '44px',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--primary)',
+                border: 'none',
+                color: 'white',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-lg)',
+                transition: 'all var(--transition-base)'
+            }}
+        >
+            {isMobileMenuOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+            )}
+        </button>
+    );
+
+    // Mobile backdrop
+    const MobileBackdrop = () => (
+        isMobile && isMobileMenuOpen ? (
+            <div
+                className="mobile-sidebar-backdrop"
+                onClick={() => setIsMobileMenuOpen(false)}
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(4px)',
+                    zIndex: 999,
+                    animation: 'fadeIn var(--transition-base)'
+                }}
+                aria-hidden="true"
+            />
+        ) : null
+    );
+
     return (
-        <aside className="sidebar" style={{
-            width: 'var(--sidebar-width)',
-            background: 'var(--gradient-primary)',
-            borderRight: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100vh',
-            position: 'sticky',
-            top: 0,
-            color: 'white',
-            boxShadow: '4px 0 24px rgba(211, 47, 47, 0.15)',
-            overflow: 'hidden'
-        }}>
+        <>
+            <MobileMenuButton />
+            <MobileBackdrop />
+            <aside 
+                className={`sidebar ${isMobile ? 'sidebar-mobile' : ''} ${isMobileMenuOpen ? 'sidebar-mobile-open' : ''}`}
+                style={{
+                    width: isMobile ? '280px' : 'var(--sidebar-width)',
+                    background: 'var(--gradient-primary)',
+                    borderRight: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100vh',
+                    position: isMobile ? 'fixed' : 'sticky',
+                    top: 0,
+                    left: isMobile ? (isMobileMenuOpen ? 0 : '-280px') : 0,
+                    color: 'white',
+                    boxShadow: '4px 0 24px rgba(211, 47, 47, 0.15)',
+                    overflow: 'hidden',
+                    zIndex: 1000,
+                    transition: isMobile ? 'left var(--transition-slow) var(--ease-out)' : 'none',
+                    transform: isMobile && !isMobileMenuOpen ? 'translateX(-100%)' : 'translateX(0)'
+                }}
+                aria-label="Main navigation"
+            >
             {/* Branding Header - Fixed */}
             <div style={{ 
                 padding: '1.5rem',
@@ -308,7 +401,7 @@ export default function Sidebar() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             background: 'rgba(255,255,255,0.15)',
-                            borderRadius: '0px',
+                            borderRadius: 'var(--radius-md)',
                             filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
                             flexShrink: 0
                         }}>
@@ -339,7 +432,7 @@ export default function Sidebar() {
                                 letterSpacing: '1.2px',
                                 background: 'rgba(255,255,255,0.2)',
                                 padding: '2px 6px',
-                                borderRadius: '0px',
+                                borderRadius: 'var(--radius-sm)',
                                 width: 'fit-content',
                                 marginTop: '3px'
                             }}>ENTERPRISE</span>
@@ -363,6 +456,35 @@ export default function Sidebar() {
             >
                 {Object.entries(groupedItems).map(([section, items]) => renderSection(section, items))}
             </nav>
+            
+            {/* Close button for mobile */}
+            {isMobile && isMobileMenuOpen && (
+                <button
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    aria-label="Close navigation menu"
+                    style={{
+                        position: 'absolute',
+                        top: '1rem',
+                        right: '1rem',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: 'var(--radius-md)',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-base)'
+                    }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            )}
 
             {/* Useful Footer - Quick Links & Help */}
             <div style={{
@@ -379,7 +501,9 @@ export default function Sidebar() {
                     gap: '0.75rem'
                 }}>
                     <Link 
-                        href="/help" 
+                        href="/help"
+                        onClick={() => isMobile && setIsMobileMenuOpen(false)}
+                        aria-label="Help and documentation"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -399,7 +523,9 @@ export default function Sidebar() {
                         <span>Help & Documentation</span>
                     </Link>
                     <Link 
-                        href="/settings" 
+                        href="/settings"
+                        onClick={() => isMobile && setIsMobileMenuOpen(false)}
+                        aria-label="Settings"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -422,7 +548,9 @@ export default function Sidebar() {
                         onClick={() => {
                             // Trigger keyboard shortcut modal via custom event
                             window.dispatchEvent(new CustomEvent('toggleKeyboardShortcuts'));
+                            if (isMobile) setIsMobileMenuOpen(false);
                         }}
+                        aria-label="Show keyboard shortcuts"
                         style={{
                             width: '100%',
                             display: 'flex',
@@ -451,5 +579,6 @@ export default function Sidebar() {
             </div>
 
         </aside>
+        </>
     );
 }

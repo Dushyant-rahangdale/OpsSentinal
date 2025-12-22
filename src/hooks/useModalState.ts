@@ -47,8 +47,10 @@ export function useModalState(modalName: ModalName) {
         };
     }, [modalName]);
 
-    const setIsOpen = useCallback((open: boolean) => {
-        if (open) {
+    const setIsOpen = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+        const newValue = typeof open === 'function' ? open(globalModalState[modalName]) : open;
+        
+        if (newValue) {
             // Close other modals
             Object.keys(globalModalState).forEach(key => {
                 if (key !== modalName) {
@@ -57,7 +59,7 @@ export function useModalState(modalName: ModalName) {
                 }
             });
         }
-        globalModalState[modalName] = open;
+        globalModalState[modalName] = newValue;
         notifyListeners(modalName);
     }, [modalName]);
 
