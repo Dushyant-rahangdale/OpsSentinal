@@ -527,9 +527,9 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                        <div>{new Date(incident.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                                        <div>{formatDateFriendly(incident.createdAt).split(',')[0]}</div>
                                         <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                                            {new Date(incident.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {formatDateFriendly(incident.createdAt).split(',')[1]?.trim() || ''}
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
