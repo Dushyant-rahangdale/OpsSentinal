@@ -1,6 +1,7 @@
 'use client';
 
-import { TimelineEvent } from './PostmortemTimelineBuilder';
+import type { TimelineEvent } from './PostmortemTimelineBuilder';
+export type { TimelineEvent };
 
 interface PostmortemTimelineProps {
     events: TimelineEvent[];

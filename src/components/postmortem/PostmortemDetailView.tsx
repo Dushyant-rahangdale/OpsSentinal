@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import PostmortemTimeline, { TimelineEvent } from './PostmortemTimeline';
-import PostmortemImpactMetrics, { ImpactMetrics } from './PostmortemImpactMetrics';
-import { ActionItem } from './PostmortemActionItems';
+import PostmortemTimeline, { type TimelineEvent } from './PostmortemTimeline';
+import PostmortemImpactMetrics from './PostmortemImpactMetrics';
+import type { ImpactMetrics } from './PostmortemImpactInput';
+import type { ActionItem } from './PostmortemActionItems';
 import { Badge } from '@/components/ui';
 
 interface PostmortemDetailViewProps {
