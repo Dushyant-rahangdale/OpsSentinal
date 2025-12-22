@@ -225,6 +225,11 @@ model Alert {
 
   service  Service   @relation(fields: [serviceId], references: [id])
   incident Incident? @relation(fields: [incidentId], references: [id])
+
+  @@index([serviceId, status]) // For querying alerts by service and status
+  @@index([incidentId]) // For querying alerts by incident
+  @@index([dedupKey, status]) // For deduplication queries
+  @@index([createdAt]) // For time-based queries
 }
 
 model Incident {
@@ -259,6 +264,11 @@ model Incident {
   @@index([dedupKey]) // Index for fast deduplication lookups
   @@index([nextEscalationAt, escalationStatus]) // Index for escalation processing queries
   @@index([snoozedUntil]) // Index for auto-unsnooze processing
+  @@index([status, createdAt]) // For filtering incidents by status and date
+  @@index([serviceId, status]) // For querying incidents by service and status
+  @@index([assigneeId, status]) // For querying incidents by assignee and status
+  @@index([createdAt]) // For time-based queries and sorting
+  @@index([urgency, status]) // For filtering by urgency and status
 }
 
 model Tag {
@@ -326,6 +336,8 @@ model IncidentEvent {
   createdAt  DateTime @default(now())
 
   incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt]) // For querying events by incident chronologically
 }
 
 model IncidentNote {
@@ -337,6 +349,8 @@ model IncidentNote {
 
   incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id])
+
+  @@index([incidentId, createdAt]) // For querying notes by incident chronologically
 }
 
 model OnCallSchedule {
@@ -418,6 +432,11 @@ model Notification {
 
   incident Incident @relation(fields: [incidentId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
+
+  @@index([incidentId]) // For querying notifications by incident
+  @@index([userId]) // For querying notifications by user
+  @@index([status, createdAt]) // For querying pending/failed notifications
+  @@index([channel, status]) // For querying by channel and status
 }
 
 model AuditLog {
@@ -430,6 +449,10 @@ model AuditLog {
   createdAt  DateTime        @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId]) // For querying audit logs by entity
+  @@index([actorId, createdAt]) // For querying audit logs by actor
+  @@index([createdAt]) // For time-based queries
 }
 
 model Account {
