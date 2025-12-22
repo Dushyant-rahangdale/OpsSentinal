@@ -19,6 +19,7 @@ import DashboardPeriodComparison from '@/components/DashboardPeriodComparison';
 import DashboardServiceHealth from '@/components/DashboardServiceHealth';
 import DashboardUrgencyDistribution from '@/components/DashboardUrgencyDistribution';
 import DashboardTemplateWrapper from '@/components/DashboardTemplateWrapper';
+import DashboardSLAMetrics from '@/components/DashboardSLAMetrics';
 import { calculateSLAMetrics } from '@/lib/sla';
 import { Suspense } from 'react';
 
@@ -971,6 +972,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               ackSlaRate={slaMetrics.ackCompliance}
               resolveSlaRate={slaMetrics.resolveCompliance}
             />
+          </div>
+          </DashboardTemplateWrapper>
+
+          {/* SLA Metrics Widget - Enhanced SLA Tracking */}
+          <DashboardTemplateWrapper widgetType="showMetrics">
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading SLA metrics...</div>}>
+              <DashboardSLAMetrics 
+                metrics={slaMetrics}
+                period={range === 'all' ? 'All time' : range === 'custom' ? 'Custom period' : `Last ${range} days`}
+              />
+            </Suspense>
           </div>
           </DashboardTemplateWrapper>
 

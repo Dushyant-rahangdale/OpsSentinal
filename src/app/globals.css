@@ -251,6 +251,25 @@ body {
     radial-gradient(circle at 80% 0%, rgba(255, 82, 82, 0.08) 0%, transparent 35%);
 }
 
+/* Fix dropdown text cutoff issue - ensure text is fully visible */
+select,
+.ui-select,
+select.ui-select {
+  line-height: 1.5 !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+  min-height: calc(1.5em + 1rem) !important;
+}
+
+/* Ensure dropdown options have proper spacing */
+select option {
+  padding: 0.5rem 0.75rem !important;
+  line-height: 1.5 !important;
+  min-height: calc(1.5em + 1rem) !important;
+}
+
 .app-shell {
   display: flex;
   min-height: 100vh;

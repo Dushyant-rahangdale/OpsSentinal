@@ -23,6 +23,12 @@ type PostmortemFormProps = {
         status?: string;
     };
     users?: Array<{ id: string; name: string; email: string }>;
+    resolvedIncidents?: Array<{
+        id: string;
+        title: string;
+        resolvedAt: Date | null;
+        service: { name: string };
+    }>;
 };
 
 export default function PostmortemForm({ incidentId, initialData, users = [] }: PostmortemFormProps) {

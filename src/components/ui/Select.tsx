@@ -63,6 +63,7 @@ export default function Select({
       paddingRight: rightIcon ? '2.5rem' : undefined,
       fontSize: 'var(--font-size-sm)',
       height: '32px',
+      lineHeight: '1.5',
     },
     md: {
       padding: '0.75rem 1rem',
@@ -70,6 +71,7 @@ export default function Select({
       paddingRight: rightIcon ? '3rem' : undefined,
       fontSize: 'var(--font-size-base)',
       height: '40px',
+      lineHeight: '1.5',
     },
     lg: {
       padding: '1rem 1.25rem',
@@ -77,6 +79,7 @@ export default function Select({
       paddingRight: rightIcon ? '3.5rem' : undefined,
       fontSize: 'var(--font-size-lg)',
       height: '48px',
+      lineHeight: '1.5',
     },
   };
 
@@ -152,6 +155,9 @@ export default function Select({
             backgroundPosition: 'right 0.75rem center',
             paddingRight: rightIcon ? undefined : '2.5rem',
             cursor: 'pointer',
+            lineHeight: sizeStyles[size].lineHeight,
+            boxSizing: 'border-box',
+            verticalAlign: 'middle',
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = hasError ? 'var(--color-error)' : hasSuccess ? 'var(--color-success)' : 'var(--border-focus)';
