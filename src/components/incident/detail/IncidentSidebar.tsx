@@ -1,6 +1,7 @@
 'use client';
 
 import { IncidentStatus } from '@prisma/client';
+import Link from 'next/link';
 import StatusBadge from '../StatusBadge';
 import SLAIndicator from '../SLAIndicator';
 import IncidentQuickActions from '../IncidentQuickActions';

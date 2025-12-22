@@ -23,6 +23,8 @@ export default async function PostmortemPage({
     const postmortem = await getPostmortem(incidentId);
     const permissions = await getUserPermissions();
     const canEdit = permissions.isResponderOrAbove;
+    // All users can view published postmortems, but only responders+ can edit
+    const canView = postmortem ? (postmortem.status === 'PUBLISHED' || canEdit) : canEdit;
     
     // Get users for action items assignment
     const users = await prisma.user.findMany({
@@ -136,10 +138,16 @@ export default async function PostmortemPage({
                 </p>
             </div>
 
-            {canEdit ? (
-                <PostmortemForm incidentId={incidentId} initialData={postmortem} users={users} />
+            {canView ? (
+                canEdit ? (
+                    <PostmortemForm incidentId={incidentId} initialData={postmortem} users={users} />
+                ) : (
+                    <PostmortemDetailView postmortem={postmortem} users={users} />
+                )
             ) : (
-                <PostmortemDetailView postmortem={postmortem} users={users} />
+                <div style={{ padding: 'var(--spacing-4)', background: 'var(--color-warning-light)', borderRadius: 'var(--radius-md)' }}>
+                    <p>You don't have permission to view this postmortem. Only published postmortems are publicly viewable.</p>
+                </div>
             )}
         </div>
     );
