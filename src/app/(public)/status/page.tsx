@@ -29,8 +29,57 @@ export default async function PublicStatusPage() {
         },
     });
 
+    // If no status page exists, create a default one
     if (!statusPage) {
-        notFound();
+        // Try to create a default status page
+        try {
+            statusPage = await prisma.statusPage.create({
+                data: {
+                    name: 'Status Page',
+                    enabled: true,
+                    showServices: true,
+                    showIncidents: true,
+                    showMetrics: true,
+                },
+                include: {
+                    services: {
+                        include: {
+                            service: true,
+                        },
+                        orderBy: { order: 'asc' },
+                    },
+                    announcements: {
+                        where: {
+                            isActive: true,
+                            OR: [
+                                { endDate: null },
+                                { endDate: { gte: new Date() } },
+                            ],
+                        },
+                        orderBy: { startDate: 'desc' },
+                        take: 10,
+                    },
+                },
+            });
+        } catch (error) {
+            // If creation fails (e.g., table doesn't exist), show a helpful message
+            console.error('Status page creation error:', error);
+            return (
+                <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+                    <div style={{ textAlign: 'center', maxWidth: '600px' }}>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+                            Status Page Not Configured
+                        </h1>
+                        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
+                            The status page has not been set up yet. Please run database migrations and configure the status page in the admin settings.
+                        </p>
+                        <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                            Run: <code style={{ background: '#f3f4f6', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>npx prisma migrate deploy</code>
+                        </p>
+                    </div>
+                </div>
+            );
+        }
     }
 
     // Get current service statuses

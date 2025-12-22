@@ -27,7 +27,9 @@ type PostmortemFormProps = {
         id: string;
         title: string;
         resolvedAt: Date | null;
-        service: { name: string };
+        service: {
+            name: string;
+        };
     }>;
 };
 
@@ -194,6 +196,7 @@ export default function PostmortemForm({ incidentId, initialData, users = [], re
                     </h2>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
                         <FormField
+                            type="input"
                             label="Title"
                             required
                             value={formData.title}
