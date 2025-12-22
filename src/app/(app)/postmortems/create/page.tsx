@@ -31,10 +31,7 @@ export default async function CreatePostmortemPage() {
             status: 'RESOLVED',
             postmortem: null,
         },
-        select: {
-            id: true,
-            title: true,
-            resolvedAt: true,
+        include: {
             service: {
                 select: {
                     name: true,
@@ -75,11 +72,42 @@ export default async function CreatePostmortemPage() {
                 </p>
             </div>
 
-            <PostmortemForm 
-                incidentId="" 
-                users={users} 
-                resolvedIncidents={resolvedIncidents}
-            />
+            {resolvedIncidents.length === 0 ? (
+                <div className="glass-panel" style={{ 
+                    padding: 'var(--spacing-8)', 
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                    textAlign: 'center',
+                }}>
+                    <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '600', marginBottom: 'var(--spacing-2)' }}>
+                        No Resolved Incidents Available
+                    </h3>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--spacing-4)' }}>
+                        There are no resolved incidents without postmortems. Resolve an incident first to create a postmortem.
+                    </p>
+                    <Link
+                        href="/incidents"
+                        style={{
+                            display: 'inline-block',
+                            padding: 'var(--spacing-2) var(--spacing-4)',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            borderRadius: 'var(--radius-md)',
+                            textDecoration: 'none',
+                        }}
+                    >
+                        View Incidents
+                    </Link>
+                </div>
+            ) : (
+                <PostmortemForm 
+                    incidentId="" 
+                    users={users} 
+                    resolvedIncidents={resolvedIncidents}
+                />
+            )}
         </div>
     );
 }

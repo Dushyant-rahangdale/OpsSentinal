@@ -55,16 +55,14 @@ export default async function PostmortemsPage({
                 </div>
                 {resolvedIncidentsWithoutPostmortems.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)', minWidth: '200px' }}>
-                        <Link href={`/postmortems/${resolvedIncidentsWithoutPostmortems[0].id}`}>
+                        <Link href="/postmortems/create">
                             <Button variant="primary">
                                 Create Postmortem
                             </Button>
                         </Link>
-                        {resolvedIncidentsWithoutPostmortems.length > 1 && (
-                            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
-                                {resolvedIncidentsWithoutPostmortems.length} resolved incidents without postmortems
-                            </p>
-                        )}
+                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
+                            {resolvedIncidentsWithoutPostmortems.length} resolved incident{resolvedIncidentsWithoutPostmortems.length !== 1 ? 's' : ''} available
+                        </p>
                     </div>
                 )}
             </div>

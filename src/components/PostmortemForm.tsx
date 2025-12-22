@@ -31,10 +31,11 @@ type PostmortemFormProps = {
     }>;
 };
 
-export default function PostmortemForm({ incidentId, initialData, users = [] }: PostmortemFormProps) {
+export default function PostmortemForm({ incidentId, initialData, users = [], resolvedIncidents = [] }: PostmortemFormProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
+    const [selectedIncidentId, setSelectedIncidentId] = useState<string>(incidentId || '');
 
     // Parse initial data with proper types
     const parseTimeline = (timeline: any): TimelineEvent[] => {
@@ -96,6 +97,13 @@ export default function PostmortemForm({ incidentId, initialData, users = [] }: 
         e.preventDefault();
         setError(null);
 
+        const targetIncidentId = selectedIncidentId || incidentId;
+
+        if (!targetIncidentId) {
+            setError('Please select an incident');
+            return;
+        }
+
         if (!formData.title.trim()) {
             setError('Title is required');
             return;
@@ -111,8 +119,9 @@ export default function PostmortemForm({ incidentId, initialData, users = [] }: 
 
         startTransition(async () => {
             try {
-                const result = await upsertPostmortem(incidentId, submitData);
+                const result = await upsertPostmortem(targetIncidentId, submitData);
                 if (result.success) {
+                    router.push(`/postmortems/${targetIncidentId}`);
                     router.refresh();
                 } else {
                     setError('Failed to save postmortem');
@@ -123,9 +132,55 @@ export default function PostmortemForm({ incidentId, initialData, users = [] }: 
         });
     };
 
+    const selectedIncident = resolvedIncidents.find(inc => inc.id === selectedIncidentId);
+
     return (
         <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+                {/* Incident Selection - Only show if no incidentId provided and we have resolved incidents */}
+                {!incidentId && resolvedIncidents.length > 0 && (
+                    <div className="glass-panel" style={{ 
+                        padding: 'var(--spacing-6)', 
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 'var(--radius-lg)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                    }}>
+                        <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
+                            Select Incident
+                        </h2>
+                        <FormField
+                            label="Resolved Incident"
+                            type="select"
+                            required
+                            value={selectedIncidentId}
+                            onChange={(e) => setSelectedIncidentId(e.target.value)}
+                            options={resolvedIncidents.map(incident => ({
+                                value: incident.id,
+                                label: `${incident.title} (${incident.service.name}) - Resolved ${incident.resolvedAt ? new Date(incident.resolvedAt).toLocaleDateString() : 'N/A'}`,
+                            }))}
+                            placeholder="Select a resolved incident..."
+                            helperText="Choose the incident for which you want to create a postmortem"
+                        />
+                        {selectedIncident && (
+                            <div style={{ 
+                                marginTop: 'var(--spacing-3)',
+                                padding: 'var(--spacing-3)',
+                                background: 'var(--color-info-light)20',
+                                border: '1px solid var(--color-info-light)40',
+                                borderRadius: 'var(--radius-md)',
+                            }}>
+                                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                                    <strong>Selected:</strong> {selectedIncident.title}
+                                </div>
+                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 'var(--spacing-1)' }}>
+                                    Service: {selectedIncident.service.name} • Resolved: {selectedIncident.resolvedAt ? new Date(selectedIncident.resolvedAt).toLocaleDateString() : 'N/A'}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Basic Information */}
                 <div className="glass-panel" style={{ 
                     padding: 'var(--spacing-6)', 

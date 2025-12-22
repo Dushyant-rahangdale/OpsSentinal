@@ -24,7 +24,7 @@ const quickActions: QuickAction[] = [
     },
     {
         label: 'New Postmortem',
-        href: '/postmortems',
+        href: '/postmortems/create',
         description: 'Create postmortem for resolved incident',
         icon: (
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
