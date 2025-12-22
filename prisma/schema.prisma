@@ -164,6 +164,7 @@ model Service {
   integrations      Integration[]
   alerts            Alert[]
   incidentTemplates IncidentTemplate[]
+  statusPageServices StatusPageService[]
 }
 
 // Enhanced Escalation Policy
@@ -258,6 +259,7 @@ model Incident {
   events        IncidentEvent[]
   notes         IncidentNote[]
   postmortem    Postmortem?
+  statusPageAnnouncements StatusPageAnnouncement[]
   alerts        Alert[] // Relation to raw alerts
   notifications Notification[]
   watchers      IncidentWatcher[]
@@ -584,4 +586,65 @@ model BackgroundJob {
   @@index([type, status, scheduledAt]) // For efficient job polling
   @@index([status, scheduledAt]) // For finding pending jobs
   @@index([scheduledAt]) // For time-based queries
+}
+
+// Status Page Configuration
+model StatusPage {
+  id              String   @id @default(cuid())
+  name            String   @default("Status Page")
+  subdomain       String?  @unique // Custom subdomain (e.g., status.yourcompany.com)
+  customDomain    String?  @unique // Custom domain (e.g., status.yourcompany.com)
+  enabled         Boolean  @default(true)
+  showServices    Boolean  @default(true)
+  showIncidents   Boolean  @default(true)
+  showMetrics     Boolean  @default(true)
+  branding        Json?    // Logo, colors, favicon
+  footerText      String?
+  contactEmail    String?
+  contactUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  services        StatusPageService[]
+  announcements   StatusPageAnnouncement[]
+
+  @@index([enabled])
+}
+
+// Services shown on status page
+model StatusPageService {
+  id          String   @id @default(cuid())
+  statusPageId String
+  serviceId  String
+  displayName String? // Override service name for status page
+  showOnPage Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([statusPageId, serviceId])
+  @@index([statusPageId, order])
+}
+
+// Announcements/Communications on status page
+model StatusPageAnnouncement {
+  id          String   @id @default(cuid())
+  statusPageId String
+  title       String
+  message     String
+  type        String   @default("INFO") // INFO, WARNING, MAINTENANCE, INCIDENT
+  incidentId  String?  // Link to incident if applicable
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  incident   Incident?  @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([statusPageId, isActive, startDate])
+  @@index([incidentId])
 }
