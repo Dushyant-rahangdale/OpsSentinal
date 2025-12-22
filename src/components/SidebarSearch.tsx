@@ -585,3 +585,38 @@ function getTypeIcon(type: SearchResult['type']): React.ReactNode {
     };
     return icons[type] || icons.incident;
 }
+
+// Highlight search matches in text
+function highlightMatch(text: string, query: string): React.ReactNode {
+    if (!query || query.length < 2) {
+        return text;
+    }
+
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+
+    if (index === -1) {
+        return text;
+    }
+
+    const before = text.substring(0, index);
+    const match = text.substring(index, index + query.length);
+    const after = text.substring(index + query.length);
+
+    return (
+        <>
+            {before}
+            <mark style={{ 
+                background: 'var(--primary-light)', 
+                color: 'var(--primary-dark)', 
+                padding: '0 2px',
+                borderRadius: '2px',
+                fontWeight: '600'
+            }}>
+                {match}
+            </mark>
+            {after}
+        </>
+    );
+}
