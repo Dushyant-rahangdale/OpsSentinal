@@ -35,7 +35,7 @@ export async function POST(
         const userTeams = await prisma.user.findUnique({
             where: { id: session.user.id },
             select: {
-                teams: {
+                teamMemberships: {
                     select: {
                         teamId: true,
                     },
@@ -43,7 +43,7 @@ export async function POST(
             },
         });
 
-        const userTeamIds = userTeams?.teams.map(t => t.teamId) || [];
+        const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
 
         const hasAccess =
             original.createdById === session.user.id ||

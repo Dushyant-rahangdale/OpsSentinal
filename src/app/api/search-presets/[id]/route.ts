@@ -42,7 +42,7 @@ export async function GET(
         const userTeams = await prisma.user.findUnique({
             where: { id: session.user.id },
             select: {
-                teams: {
+                teamMemberships: {
                     select: {
                         teamId: true,
                     },
@@ -50,7 +50,7 @@ export async function GET(
             },
         });
 
-        const userTeamIds = userTeams?.teams.map(t => t.teamId) || [];
+        const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
 
         const hasAccess =
             preset.createdById === session.user.id ||

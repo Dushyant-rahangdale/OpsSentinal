@@ -287,26 +287,104 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                         <Card>
                             <div style={{ padding: 'var(--spacing-6)' }}>
                                 <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
-                                    Branding
+                                    Branding & Logo
                                 </h2>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-                                    <FormField
-                                        type="url"
-                                        label="Logo URL"
-                                        value={formData.logoUrl}
-                                        onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                                        placeholder="https://yourcompany.com/logo.png"
-                                        helperText="URL to your logo image (recommended: 200x50px, PNG or SVG)"
-                                    />
-
-                                    <FormField
-                                        type="url"
-                                        label="Favicon URL"
-                                        value={formData.faviconUrl}
-                                        onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
-                                        placeholder="https://yourcompany.com/favicon.ico"
-                                        helperText="URL to your favicon (16x16 or 32x32px, ICO or PNG)"
-                                    />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+                                    <div>
+                                        <FormField
+                                            type="url"
+                                            label="Logo URL"
+                                            value={formData.logoUrl}
+                                            onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                                            placeholder="https://yourcompany.com/logo.png"
+                                            helperText="Full URL to your logo image. Recommended: 200x50px, PNG or SVG format. The logo will appear in the status page header."
+                                            required={false}
+                                        />
+                                        {formData.logoUrl && (
+                                            <div style={{
+                                                marginTop: 'var(--spacing-3)',
+                                                padding: 'var(--spacing-4)',
+                                                background: '#f9fafb',
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: 'var(--radius-md)',
+                                            }}>
+                                                <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: '600', marginBottom: 'var(--spacing-2)', color: '#374151' }}>
+                                                    Logo Preview:
+                                                </div>
+                                                <div style={{
+                                                    padding: 'var(--spacing-3)',
+                                                    background: 'white',
+                                                    border: '1px solid #e5e7eb',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    display: 'inline-block',
+                                                }}>
+                                                    <img 
+                                                        src={formData.logoUrl} 
+                                                        alt="Logo preview"
+                                                        style={{
+                                                            height: '50px',
+                                                            maxWidth: '200px',
+                                                            objectFit: 'contain',
+                                                        }}
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                            const parent = (e.target as HTMLImageElement).parentElement;
+                                                            if (parent) {
+                                                                parent.innerHTML = '<div style="padding: 1rem; color: #ef4444; font-size: 0.875rem;">Failed to load image. Please check the URL.</div>';
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <FormField
+                                            type="url"
+                                            label="Favicon URL"
+                                            value={formData.faviconUrl}
+                                            onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
+                                            placeholder="https://yourcompany.com/favicon.ico"
+                                            helperText="Full URL to your favicon. Recommended: 16x16 or 32x32px, ICO or PNG format. This appears in browser tabs."
+                                        />
+                                        {formData.faviconUrl && (
+                                            <div style={{
+                                                marginTop: 'var(--spacing-3)',
+                                                padding: 'var(--spacing-4)',
+                                                background: '#f9fafb',
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: 'var(--radius-md)',
+                                            }}>
+                                                <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: '600', marginBottom: 'var(--spacing-2)', color: '#374151' }}>
+                                                    Favicon Preview:
+                                                </div>
+                                                <div style={{
+                                                    padding: 'var(--spacing-3)',
+                                                    background: 'white',
+                                                    border: '1px solid #e5e7eb',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    display: 'inline-block',
+                                                }}>
+                                                    <img 
+                                                        src={formData.faviconUrl} 
+                                                        alt="Favicon preview"
+                                                        style={{
+                                                            width: '32px',
+                                                            height: '32px',
+                                                            objectFit: 'contain',
+                                                        }}
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                            const parent = (e.target as HTMLImageElement).parentElement;
+                                                            if (parent) {
+                                                                parent.innerHTML = '<div style="padding: 0.5rem; color: #ef4444; font-size: 0.875rem;">Failed to load favicon. Please check the URL.</div>';
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </Card>
