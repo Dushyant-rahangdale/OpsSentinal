@@ -9,6 +9,7 @@ import IncidentSidebar from '@/components/incident/detail/IncidentSidebar';
 import IncidentNotes from '@/components/incident/detail/IncidentNotes';
 import IncidentTimeline from '@/components/incident/detail/IncidentTimeline';
 import IncidentResolution from '@/components/incident/detail/IncidentResolution';
+import IncidentCustomFields from '@/components/IncidentCustomFields';
 import { Button } from '@/components/ui';
 
 
@@ -204,6 +205,22 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                         incidentAcknowledgedAt={incident.acknowledgedAt}
                         incidentResolvedAt={incident.resolvedAt}
                     />
+
+                    {/* Custom Fields */}
+                    {customFields.length > 0 && (
+                        <div style={{ marginTop: '1.5rem' }}>
+                            <IncidentCustomFields
+                                incidentId={id}
+                                customFieldValues={incident.customFieldValues.map(v => ({
+                                    id: v.id,
+                                    value: v.value,
+                                    customField: v.customField,
+                                }))}
+                                allCustomFields={customFields}
+                                canManage={canManageIncident}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar */}
