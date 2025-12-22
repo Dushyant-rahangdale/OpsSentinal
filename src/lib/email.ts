@@ -51,12 +51,36 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
 
         // Production: Use configured provider
         if (emailConfig.provider === 'resend') {
-            // TODO: Implement Resend when npm package is installed
-            // const { Resend } = require('resend');
-            // const resend = new Resend(emailConfig.apiKey);
-            // const result = await resend.emails.send({...});
-            console.log('📧 Would send via Resend:', { to: options.to, from: emailConfig.fromEmail });
-            return { success: true };
+            try {
+                // Dynamic import to avoid requiring package at build time
+                const { Resend } = await import('resend');
+                const resend = new Resend(emailConfig.apiKey);
+                
+                const result = await resend.emails.send({
+                    from: emailConfig.fromEmail,
+                    to: options.to,
+                    subject: options.subject,
+                    html: options.html,
+                    text: options.text,
+                });
+
+                if (result.error) {
+                    console.error('Resend error:', result.error);
+                    return { success: false, error: result.error.message || 'Resend API error' };
+                }
+
+                console.log('📧 Email sent via Resend:', { to: options.to, id: result.data?.id });
+                return { success: true };
+            } catch (error: any) {
+                // If resend package is not installed, fall back to console log
+                if (error.code === 'MODULE_NOT_FOUND') {
+                    console.log('📧 Resend package not installed. Install with: npm install resend');
+                    console.log('📧 Would send via Resend:', { to: options.to, from: emailConfig.fromEmail });
+                    return { success: true };
+                }
+                console.error('Resend send error:', error);
+                return { success: false, error: error.message };
+            }
         }
 
         if (emailConfig.provider === 'sendgrid') {

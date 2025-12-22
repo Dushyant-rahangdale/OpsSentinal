@@ -37,13 +37,19 @@ export async function sendNotification(
                 break;
             
             case 'SMS':
-                // TODO: Implement SMS notifications (Twilio, AWS SNS, etc.)
-                result = { success: false, error: 'SMS notifications not yet implemented' };
+                const { sendIncidentSMS } = await import('./sms');
+                const incidentForSMS = await prisma.incident.findUnique({ where: { id: incidentId } });
+                const eventTypeSMS = incidentForSMS?.status === 'RESOLVED' ? 'resolved' :
+                                    incidentForSMS?.status === 'ACKNOWLEDGED' ? 'acknowledged' : 'triggered';
+                result = await sendIncidentSMS(userId, incidentId, eventTypeSMS);
                 break;
             
             case 'PUSH':
-                // TODO: Implement push notifications (Firebase, OneSignal, etc.)
-                result = { success: false, error: 'Push notifications not yet implemented' };
+                const { sendIncidentPush } = await import('./push');
+                const incidentForPush = await prisma.incident.findUnique({ where: { id: incidentId } });
+                const eventTypePush = incidentForPush?.status === 'RESOLVED' ? 'resolved' :
+                                     incidentForPush?.status === 'ACKNOWLEDGED' ? 'acknowledged' : 'triggered';
+                result = await sendIncidentPush(userId, incidentId, eventTypePush);
                 break;
             
             case 'SLACK':

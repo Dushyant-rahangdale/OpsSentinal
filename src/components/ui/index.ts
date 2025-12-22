@@ -8,6 +8,8 @@ export { default as Modal } from './Modal';
 export { default as Select } from './Select';
 export { default as FormField } from './FormField';
 export { default as Checkbox } from './Checkbox';
+export { default as Radio, RadioGroup } from './Radio';
+export { default as Switch } from './Switch';
 export { default as LoadingWrapper } from './LoadingWrapper';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as ErrorState } from './ErrorState';
