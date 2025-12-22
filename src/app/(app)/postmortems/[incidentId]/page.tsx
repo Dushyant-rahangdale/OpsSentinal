@@ -11,8 +11,10 @@ import Link from 'next/link';
 
 export default async function PostmortemPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ incidentId: string }>;
+    searchParams?: Promise<{ edit?: string }>;
 }) {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -20,6 +22,9 @@ export default async function PostmortemPage({
     }
 
     const { incidentId } = await params;
+    const searchParamsData = await searchParams;
+    const editMode = searchParamsData?.edit === 'true';
+    
     const postmortem = await getPostmortem(incidentId);
     const permissions = await getUserPermissions();
     const canEdit = permissions.isResponderOrAbove;
@@ -139,10 +144,10 @@ export default async function PostmortemPage({
             </div>
 
             {canView ? (
-                canEdit ? (
+                editMode && canEdit ? (
                     <PostmortemForm incidentId={incidentId} initialData={postmortem} users={users} />
                 ) : (
-                    <PostmortemDetailView postmortem={postmortem} users={users} />
+                    <PostmortemDetailView postmortem={postmortem} users={users} canEdit={canEdit} incidentId={incidentId} />
                 )
             ) : (
                 <div style={{ padding: 'var(--spacing-4)', background: 'var(--color-warning-light)', borderRadius: 'var(--radius-md)' }}>

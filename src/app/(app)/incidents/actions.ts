@@ -196,6 +196,18 @@ export async function createIncident(formData: FormData) {
     const notifyOnCall = formData.get('notifyOnCall') === 'on';
     const notifySlack = formData.get('notifySlack') === 'on';
 
+    // Extract custom field values
+    const customFieldEntries: Array<{ fieldId: string; value: string }> = [];
+    for (const [key, value] of formData.entries()) {
+        if (key.startsWith('customField_')) {
+            const fieldId = key.replace('customField_', '');
+            const fieldValue = value as string;
+            if (fieldValue && fieldValue.trim()) {
+                customFieldEntries.push({ fieldId, value: fieldValue.trim() });
+            }
+        }
+    }
+
     const incident = await prisma.incident.create({
         data: {
             title,
@@ -211,7 +223,14 @@ export async function createIncident(formData: FormData) {
                         ? `Incident created with ${urgency} urgency and assigned to ${(await prisma.user.findUnique({ where: { id: assigneeId }, select: { name: true } }))?.name || 'user'}`
                         : `Incident created with ${urgency} urgency`
                 }
-            }
+            },
+            // Create custom field values
+            customFieldValues: {
+                create: customFieldEntries.map(({ fieldId, value }) => ({
+                    customFieldId: fieldId,
+                    value,
+                })),
+            },
         }
     });
 

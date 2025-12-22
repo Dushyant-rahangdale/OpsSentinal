@@ -260,6 +260,7 @@ model Incident {
   notes         IncidentNote[]
   postmortem    Postmortem?
   statusPageAnnouncements StatusPageAnnouncement[]
+  customFieldValues CustomFieldValue[]
   alerts        Alert[] // Relation to raw alerts
   notifications Notification[]
   watchers      IncidentWatcher[]
@@ -647,4 +648,51 @@ model StatusPageAnnouncement {
 
   @@index([statusPageId, isActive, startDate])
   @@index([incidentId])
+}
+
+// Custom Fields System
+model CustomField {
+  id          String   @id @default(cuid())
+  name        String
+  key         String   @unique // Unique identifier (e.g., "customer_id")
+  type        CustomFieldType
+  required    Boolean  @default(false)
+  defaultValue String?
+  options     Json?    // For SELECT type: array of options
+  order       Int      @default(0)
+  showInList  Boolean  @default(false) // Show in incident table
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  values      CustomFieldValue[]
+
+  @@index([key])
+  @@index([order])
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  BOOLEAN
+  URL
+  EMAIL
+}
+
+model CustomFieldValue {
+  id            String   @id @default(cuid())
+  incidentId    String
+  customFieldId String
+  value         String?  // Store as string, parse based on field type
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  incident    Incident    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  customField CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([incidentId, customFieldId])
+  @@index([incidentId])
+  @@index([customFieldId])
+  @@index([value]) // For filtering
 }

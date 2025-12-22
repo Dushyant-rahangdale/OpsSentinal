@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import PostmortemTimeline, { type TimelineEvent } from './PostmortemTimeline';
 import PostmortemImpactMetrics from './PostmortemImpactMetrics';
 import type { ImpactMetrics } from './PostmortemImpactInput';
@@ -34,6 +33,8 @@ interface PostmortemDetailViewProps {
         };
     };
     users?: Array<{ id: string; name: string; email: string }>;
+    canEdit?: boolean;
+    incidentId: string;
 }
 
 const STATUS_COLORS = {
@@ -48,7 +49,7 @@ const STATUS_LABELS = {
     ARCHIVED: 'Archived',
 };
 
-export default function PostmortemDetailView({ postmortem, users = [] }: PostmortemDetailViewProps) {
+export default function PostmortemDetailView({ postmortem, users = [], canEdit = false, incidentId }: PostmortemDetailViewProps) {
     // Parse data
     const parseTimeline = (timeline: any): TimelineEvent[] => {
         if (!timeline || !Array.isArray(timeline)) return [];
@@ -127,11 +128,20 @@ export default function PostmortemDetailView({ postmortem, users = [] }: Postmor
                             </Link>
                         </p>
                     </div>
-                    <Badge
-                        variant={postmortem.status === 'PUBLISHED' ? 'success' : postmortem.status === 'ARCHIVED' ? 'default' : 'warning'}
-                    >
-                        {STATUS_LABELS[postmortem.status as keyof typeof STATUS_LABELS] || postmortem.status}
-                    </Badge>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+                        <Badge
+                            variant={postmortem.status === 'PUBLISHED' ? 'success' : postmortem.status === 'ARCHIVED' ? 'default' : 'warning'}
+                        >
+                            {STATUS_LABELS[postmortem.status as keyof typeof STATUS_LABELS] || postmortem.status}
+                        </Badge>
+                        {canEdit && (
+                            <Link href={`/postmortems/${incidentId}?edit=true`}>
+                                <Button variant="primary">
+                                    Edit Postmortem
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
                 <div style={{ 
                     display: 'flex', 

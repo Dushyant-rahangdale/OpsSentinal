@@ -3,6 +3,7 @@
 import { useState, useEffect, useActionState } from 'react';
 import Link from 'next/link';
 import { createIncident } from '@/app/(app)/incidents/actions';
+import CustomFieldInput from '@/components/CustomFieldInput';
 
 type Service = {
     id: string;
@@ -25,12 +26,23 @@ type Template = {
     defaultService?: { id: string; name: string } | null;
 };
 
+type CustomField = {
+    id: string;
+    name: string;
+    key: string;
+    type: 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'BOOLEAN' | 'URL' | 'EMAIL';
+    required: boolean;
+    defaultValue?: string | null;
+    options?: any;
+};
+
 type CreateIncidentFormProps = {
     services: Service[];
     users: User[];
     templates: Template[];
     selectedTemplateId: string | null;
     selectedTemplate?: Template | null;
+    customFields?: CustomField[];
 };
 
 export default function CreateIncidentForm({
@@ -38,7 +50,8 @@ export default function CreateIncidentForm({
     users,
     templates,
     selectedTemplateId,
-    selectedTemplate: propSelectedTemplate
+    selectedTemplate: propSelectedTemplate,
+    customFields = []
 }: CreateIncidentFormProps) {
     const selectedTemplate = propSelectedTemplate || (selectedTemplateId ? templates.find(t => t.id === selectedTemplateId) : null);
 
@@ -47,6 +60,7 @@ export default function CreateIncidentForm({
     const [serviceId, setServiceId] = useState(selectedTemplate?.defaultService?.id || '');
     const [urgency, setUrgency] = useState<'HIGH' | 'LOW'>(selectedTemplate?.defaultUrgency || 'HIGH');
     const [priority, setPriority] = useState(selectedTemplate?.defaultPriority || '');
+    const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
     
     // Wrap server action with useActionState to avoid serialization issues
     // Since createIncident redirects, we don't need to handle state
@@ -252,6 +266,27 @@ export default function CreateIncidentForm({
                     </div>
                 </div>
             </section>
+
+            {/* Custom Fields */}
+            {customFields.length > 0 && (
+                <section>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+                        Custom Fields
+                    </h2>
+                    <div style={{ display: 'grid', gap: '1.5rem' }}>
+                        {customFields.map((field) => (
+                            <div key={field.id}>
+                                <input type="hidden" name={`customField_${field.id}`} value={customFieldValues[field.id] || field.defaultValue || ''} />
+                                <CustomFieldInput
+                                    field={field}
+                                    value={customFieldValues[field.id] || ''}
+                                    onChange={(value) => setCustomFieldValues({ ...customFieldValues, [field.id]: value })}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Advanced Options */}
             <section>

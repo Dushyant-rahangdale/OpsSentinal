@@ -1,306 +1,208 @@
-# Role-Based Access Control (RBAC) Implementation
+# RBAC Implementation Summary
 
 ## Overview
 
-This document describes the Role-Based Access Control (RBAC) system implemented across the OpsGuard incident management application. The system ensures that users can only perform actions appropriate to their role, with proper server-side validation and UI-level restrictions.
+The application implements Role-Based Access Control (RBAC) where:
+- **Responders and Admins**: Full access (can create, edit, delete)
+- **Regular Users (USER role)**: Read-only access (can view but cannot modify)
 
-## Architecture
+## Permission Structure
 
-### Shared RBAC Utilities (`src/lib/rbac.ts`)
+### Roles
+1. **ADMIN**: Full administrative access
+2. **RESPONDER**: Full operational access (can do anything except admin-only actions)
+3. **USER**: Read-only access
 
-A centralized RBAC utility module provides reusable functions for permission checks:
+### Permission Helpers
 
-#### Core Functions
+Located in `src/lib/rbac.ts`:
+- `getUserPermissions()`: Returns user permissions object
+- `assertAdmin()`: Throws if user is not admin
+- `assertAdminOrResponder()`: Throws if user is not admin or responder
+- `assertResponderOrAbove()`: Throws if user is not responder or admin
 
-- **`getCurrentUser()`**: Retrieves the current logged-in user from the session
-- **`assertAdmin()`**: Ensures the user has ADMIN role, throws error if not
-- **`assertAdminOrResponder()`**: Ensures the user has ADMIN or RESPONDER role
-- **`assertResponderOrAbove()`**: Ensures the user has RESPONDER role or higher
-- **`assertNotSelf(currentUserId, targetUserId, action)`**: Prevents users from modifying their own account
-- **`getUserPermissions()`**: Returns a permissions object for the current user
+### Permission Properties
+- `isAdmin`: User is admin
+- `isAdminOrResponder`: User is admin or responder
+- `isResponderOrAbove`: User is responder or admin (same as above)
 
-## Role Hierarchy
+## Implementation by Feature
 
-The application uses three role levels:
+### 1. Quick Actions (Top Bar)
+- **Location**: `src/components/QuickActions.tsx`
+- **Behavior**: Only visible to responders and admins
+- **Implementation**: Component accepts `canCreate` prop, returns `null` if false
+- **Layout**: `src/app/(app)/layout.tsx` passes permissions
 
-1. **USER** - Basic read-only access
-2. **RESPONDER** - Can manage incidents, schedules, and teams (with restrictions)
-3. **ADMIN** - Full system access
+### 2. Incidents
+- **Create**: `/incidents/create` - Only responders+
+- **Edit/Manage**: Incident detail page - Only responders+
+- **View**: All users can view incidents
+- **Actions**: Status updates, notes, watchers - Only responders+
+- **Files**:
+  - `src/app/(app)/incidents/create/page.tsx`
+  - `src/app/(app)/incidents/[id]/page.tsx`
+  - `src/app/(app)/incidents/page.tsx`
 
-## Permission Matrix
+### 3. Services
+- **Create**: Only responders+
+- **Delete**: Only admins
+- **Edit**: Service detail page - Only responders+
+- **View**: All users can view services
+- **Files**:
+  - `src/app/(app)/services/page.tsx`
+  - `src/app/(app)/services/[id]/page.tsx`
 
-| Action | USER | RESPONDER | ADMIN |
-|--------|------|-----------|-------|
-| **Incidents** |
-| View incidents | ✅ | ✅ | ✅ |
-| Create incidents | ❌ | ✅ | ✅ |
-| Update incident status | ❌ | ✅ | ✅ |
-| Resolve incidents | ❌ | ✅ | ✅ |
-| Add notes | ❌ | ✅ | ✅ |
-| Reassign incidents | ❌ | ✅ | ✅ |
-| Manage watchers | ❌ | ✅ | ✅ |
-| **Teams** |
-| View teams | ✅ | ✅ | ✅ |
-| Create teams | ❌ | ✅ | ✅ |
-| Update teams | ❌ | ✅ | ✅ |
-| Delete teams | ❌ | ❌ | ✅ |
-| Add team members | ❌ | ✅* | ✅ |
-| Update member roles | ❌ | ✅* | ✅ |
-| Remove team members | ❌ | ✅ | ✅ |
-| **Schedules** |
-| View schedules | ✅ | ✅ | ✅ |
-| Create schedules | ❌ | ✅ | ✅ |
-| Manage layers | ❌ | ✅ | ✅ |
-| Manage overrides | ❌ | ✅ | ✅ |
-| **Services** |
-| View services | ✅ | ✅ | ✅ |
-| Create integrations | ❌ | ✅ | ✅ |
-| Update services | ❌ | ✅ | ✅ |
-| Delete services | ❌ | ❌ | ✅ |
-| **Policies** |
-| View policies | ✅ | ✅ | ✅ |
-| Create policies | ❌ | ❌ | ✅ |
-| **Users** |
-| View users | ✅ | ✅ | ✅ |
-| Create users | ❌ | ❌ | ✅ |
-| Update user roles | ❌ | ❌ | ✅ |
-| Deactivate users | ❌ | ❌ | ✅ |
-| Delete users | ❌ | ❌ | ✅ |
-| Bulk user actions | ❌ | ❌ | ✅ |
+### 4. Teams
+- **Create**: Only responders+
+- **Update**: Only responders+
+- **Delete**: Only admins
+- **Manage Members**: Only responders+
+- **Assign Owner/Admin**: Only admins
+- **View**: All users can view teams
+- **Files**:
+  - `src/app/(app)/teams/page.tsx`
+  - Components: `TeamCard.tsx`, `TeamMemberForm.tsx`, `TeamMemberCard.tsx`
 
-\* Responders can add members and update roles, but **only admins can assign OWNER or ADMIN team roles**.
+### 5. Schedules
+- **Create**: Only responders+
+- **Manage**: Only responders+ (layers, users, overrides)
+- **View**: All users can view schedules
+- **Files**:
+  - `src/app/(app)/schedules/page.tsx`
+  - `src/app/(app)/schedules/[id]/page.tsx`
+  - Components: `LayerCard.tsx`, `OverrideForm.tsx`, `LayerCreateForm.tsx`
 
-## Implementation Details
+### 6. Policies
+- **Create**: Only admins
+- **View**: All users can view policies
+- **Files**:
+  - `src/app/(app)/policies/page.tsx`
 
-### Users Page (`src/app/(app)/users/`)
+### 7. Postmortems
+- **Create**: Only responders+
+- **Edit**: Only responders+
+- **View Published**: All users can view published postmortems
+- **View Drafts**: Only responders+
+- **Files**:
+  - `src/app/(app)/postmortems/page.tsx`
+  - `src/app/(app)/postmortems/create/page.tsx`
+  - `src/app/(app)/postmortems/[incidentId]/page.tsx`
+  - `src/app/(app)/postmortems/actions.ts`
 
-**Actions Protected:**
-- `addUser` - Admin only
-- `updateUserRole` - Admin only, prevents self-modification
-- `deactivateUser` - Admin only, prevents self-deactivation
-- `reactivateUser` - Admin only
-- `deleteUser` - Admin only, prevents self-deletion
-- `addUserToTeam` - Admin or Responder (only admins can assign OWNER/ADMIN roles)
-- `generateInvite` - Admin only
-- `bulkUpdateUsers` - Admin only, prevents self-modification in bulk actions
+### 8. Action Items
+- **Manage**: Only responders+ (can update status, assign, etc.)
+- **View**: All users can view action items
+- **Files**:
+  - `src/app/(app)/action-items/page.tsx`
+  - Components: `ActionItemsBoard.tsx`, `ActionItemsStats.tsx`
 
-**UI Restrictions:**
-- Role selector only visible to admins
-- Deactivate/Delete buttons hidden for current user's own account
-- Bulk actions panel only visible to admins
-- Invite user panel only visible to admins
-- Team assignment form shows role options based on user permissions
+### 9. Users
+- **Manage Roles**: Only admins
+- **Deactivate/Reactivate**: Only admins
+- **Delete**: Only admins
+- **View**: All users can view user list
+- **Files**:
+  - `src/app/(app)/users/page.tsx` (if exists)
+  - Components: `UserTable.tsx`
 
-### Teams Page (`src/app/(app)/teams/`)
+## UI Patterns
 
-**Actions Protected:**
-- `createTeam` - Admin or Responder
-- `updateTeam` - Admin or Responder
-- `deleteTeam` - Admin only
-- `addTeamMember` - Admin or Responder (only admins can assign OWNER/ADMIN roles)
-- `updateTeamMemberRole` - Admin or Responder (only admins can assign OWNER/ADMIN roles)
-- `removeTeamMember` - Admin or Responder
+### 1. Conditional Rendering
+```tsx
+const permissions = await getUserPermissions();
+const canCreate = permissions.isResponderOrAbove;
 
-**Special Rules:**
-- Each team must have at least one OWNER
-- Cannot remove the last OWNER from a team
-- Only admins can assign OWNER or ADMIN team roles
+{canCreate ? (
+    <CreateForm />
+) : (
+    <div>Read-only message</div>
+)}
+```
 
-### Incidents Page (`src/app/(app)/incidents/`)
+### 2. Disabled Forms
+```tsx
+{canManage ? (
+    <form>...</form>
+) : (
+    <div style={{ opacity: 0.7 }}>
+        <p>⚠️ You don't have access...</p>
+        <form disabled>...</form>
+    </div>
+)}
+```
 
-**Actions Protected:**
-- `createIncident` - Responder or above
-- `updateIncidentStatus` - Responder or above
-- `resolveIncidentWithNote` - Responder or above
-- `updateIncidentUrgency` - Responder or above
-- `addNote` - Responder or above
-- `reassignIncident` - Responder or above
-- `addWatcher` - Responder or above
-- `removeWatcher` - Responder or above
+### 3. Hidden Buttons
+```tsx
+{canDelete && (
+    <DeleteButton />
+)}
+```
 
-**Note:** All incident management actions require Responder role or higher. Regular users can only view incidents.
+### 4. Server Actions
+```tsx
+async function createSomething() {
+    'use server';
+    await assertResponderOrAbove();
+    // ... create logic
+}
+```
 
-### Schedules Page (`src/app/(app)/schedules/`)
+## Server Actions Protection
 
-**Actions Protected:**
-- `createSchedule` - Admin or Responder
-- `createLayer` - Admin or Responder
-- `updateLayer` - Admin or Responder
-- `deleteLayer` - Admin or Responder
-- `addLayerUser` - Admin or Responder
-- `removeLayerUser` - Admin or Responder
-- `moveLayerUser` - Admin or Responder
-- `createOverride` - Admin or Responder
-- `deleteOverride` - Admin or Responder
-
-### Services Page (`src/app/(app)/services/`)
-
-**Actions Protected:**
-- `createIntegration` - Admin or Responder
-- `updateService` - Admin or Responder
-- `deleteService` - Admin only
-
-### Policies Page (`src/app/(app)/policies/`)
-
-**Actions Protected:**
-- `createPolicy` - Admin only
-
-## Self-Protection Rules
-
-The system includes several self-protection mechanisms to prevent users from accidentally or maliciously modifying their own accounts:
-
-1. **Users cannot change their own role** - Prevents privilege escalation
-2. **Users cannot deactivate their own account** - Prevents accidental lockout
-3. **Users cannot delete their own account** - Prevents accidental deletion
-4. **Users cannot modify themselves in bulk actions** - Prevents self-modification through bulk operations
-
-## Error Handling
-
-All RBAC-protected actions return appropriate error messages:
-
-- **Unauthorized access**: "Unauthorized. [Role] access required."
-- **Self-modification attempts**: "You cannot [action] your own account."
-- **Role assignment restrictions**: "Only admins can assign OWNER or ADMIN roles."
-
-## Usage Examples
-
-### In Server Actions
+All server actions that modify data should check permissions:
 
 ```typescript
-import { assertAdmin, assertAdminOrResponder, getCurrentUser } from '@/lib/rbac';
-
-export async function deleteUser(userId: string) {
+// Example from services/actions.ts
+export async function createService(formData: FormData) {
+    'use server';
     try {
-        const currentUser = await assertAdmin();
-        assertNotSelf(currentUser.id, userId, 'delete');
+        await assertAdminOrResponder();
     } catch (error) {
-        return { error: error instanceof Error ? error.message : 'Unauthorized' };
+        throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
-    // ... perform action
+    // ... create logic
 }
 ```
 
-### In Server Components
+## Components with RBAC
 
-```typescript
-import { getUserPermissions } from '@/lib/rbac';
+1. **QuickActions**: Hidden for regular users
+2. **CreateServiceForm**: Disabled for regular users
+3. **TeamCreateForm**: Disabled for regular users
+4. **TeamCard**: Edit/delete buttons hidden for regular users
+5. **TeamMemberForm**: Disabled for regular users
+6. **ScheduleCreateForm**: Disabled for regular users
+7. **LayerCard**: Edit buttons hidden for regular users
+8. **OverrideForm**: Disabled for regular users
+9. **PostmortemForm**: Only visible to responders+
+10. **ActionItemsBoard**: Edit actions disabled for regular users
 
-export default async function MyPage() {
-    const permissions = await getUserPermissions();
-    
-    return (
-        <div>
-            {permissions.isAdmin && (
-                <AdminPanel />
-            )}
-            {permissions.isAdminOrResponder && (
-                <ResponderPanel />
-            )}
-        </div>
-    );
-}
-```
+## Testing Checklist
 
-## Security Considerations
+- [ ] Regular user cannot see Quick Actions button
+- [ ] Regular user cannot create incidents
+- [ ] Regular user cannot edit incidents
+- [ ] Regular user cannot create services
+- [ ] Regular user cannot delete services
+- [ ] Regular user cannot create teams
+- [ ] Regular user cannot edit teams
+- [ ] Regular user cannot create schedules
+- [ ] Regular user cannot edit schedules
+- [ ] Regular user cannot create policies
+- [ ] Regular user cannot create postmortems
+- [ ] Regular user can view published postmortems
+- [ ] Regular user cannot edit postmortems
+- [ ] Regular user can view action items
+- [ ] Regular user cannot edit action items
+- [ ] Responder can do everything except admin-only actions
+- [ ] Admin can do everything
 
-1. **Server-Side Validation**: All permission checks are performed server-side. Client-side UI restrictions are for UX only and do not provide security.
+## Notes
 
-2. **Defense in Depth**: Both UI-level and server-level checks are implemented to provide multiple layers of protection.
-
-3. **Audit Logging**: All actions are logged with the actor's information for audit purposes.
-
-4. **Session Management**: User roles are stored in the JWT session token and validated on each request.
-
-5. **Type Safety**: TypeScript types ensure role values are correctly typed throughout the application.
-
-## Testing Recommendations
-
-When testing RBAC:
-
-1. **Test each role** - Verify USER, RESPONDER, and ADMIN can only access appropriate actions
-2. **Test self-protection** - Verify users cannot modify their own accounts
-3. **Test role boundaries** - Verify role assignment restrictions (e.g., responders cannot assign OWNER)
-4. **Test error messages** - Verify appropriate error messages are shown for unauthorized actions
-5. **Test UI visibility** - Verify UI elements are hidden/shown based on permissions
-
-## Future Enhancements
-
-Potential improvements to the RBAC system:
-
-1. **Team-based permissions** - Allow team owners to manage their team members
-2. **Resource-level permissions** - Fine-grained control over specific resources
-3. **Permission inheritance** - Allow permissions to be inherited from team memberships
-4. **Custom roles** - Support for custom role definitions
-5. **Permission caching** - Cache user permissions for better performance
-
-## Visual Feedback Implementation
-
-All pages now include visual feedback for restricted actions:
-
-### Teams Page
-- **Create Team**: Greyed out with warning for non-responders
-- **Delete Team**: Disabled button for non-admins
-- **Update Team**: Greyed out form with warning for non-responders
-- **Member Management**: 
-  - Role selector disabled with warnings for OWNER/ADMIN roles (non-admins)
-  - "⚠️ Admin required" indicator shown
-  - "⚠️ No edit access" for users without permissions
-- **Add Member**: Greyed out form with role restrictions clearly marked
-
-### Policies Page
-- **Create Policy**: Greyed out form with warning for non-admins
-
-### Services Page
-- **Create Service**: Greyed out form with warning for non-responders
-
-### Incidents Page
-- **Create Incident Button**: Disabled with tooltip for non-responders
-- **Incident Detail Page**:
-  - **Urgency Change**: Disabled with warning for non-responders
-  - **Assignee Reassignment**: Disabled with warning for non-responders
-  - **Add Note**: Greyed out form with warning for non-responders
-  - **Acknowledge**: Disabled button with warning for non-responders
-  - **Resolve**: Greyed out form with warning for non-responders
-  - **Watcher Management**: Greyed out forms with warnings for non-responders
-
-### Create Incident Page
-- **Full Page Restriction**: Shows access denied message and disabled form for non-responders
-
-### Schedules Page
-- **New Schedule Button**: Disabled with tooltip for non-responders/non-admins
-- **Create Schedule Form**: Greyed out with warning for non-responders/non-admins
-- **Schedule Detail Page**:
-  - **Create Layer Form**: Greyed out with warning for non-responders/non-admins
-  - **Delete Layer Button**: Disabled with tooltip for non-responders/non-admins
-  - **Update Layer Form**: Greyed out with warning for non-responders/non-admins
-  - **Add Layer User Form**: Greyed out with warning for non-responders/non-admins
-  - **Remove Layer User Button**: Disabled with tooltip for non-responders/non-admins
-  - **Move Layer User Buttons**: Disabled with tooltip for non-responders/non-admins
-  - **Create Override Form**: Greyed out with warning for non-responders/non-admins
-  - **Delete Override Button**: Disabled with tooltip for non-responders/non-admins
-
-## Files Modified
-
-- `src/lib/rbac.ts` - Shared RBAC utilities (NEW)
-- `src/app/(app)/users/actions.ts` - User management RBAC
-- `src/app/(app)/users/page.tsx` - User page UI restrictions
-- `src/components/UserTable.tsx` - User table permission-based UI
-- `src/app/(app)/teams/actions.ts` - Team management RBAC
-- `src/app/(app)/teams/page.tsx` - Team page UI restrictions with visual feedback
-- `src/app/(app)/incidents/actions.ts` - Incident management RBAC
-- `src/app/(app)/incidents/page.tsx` - Incident list page with permission checks
-- `src/app/(app)/incidents/[id]/page.tsx` - Incident detail page with visual feedback
-- `src/app/(app)/incidents/create/page.tsx` - Create incident page with access control
-- `src/app/(app)/schedules/actions.ts` - Schedule management RBAC
-- `src/app/(app)/schedules/page.tsx` - Schedule list page with permission checks
-- `src/app/(app)/schedules/[id]/page.tsx` - Schedule detail page with visual feedback
-- `src/components/TimeZoneSelect.tsx` - Added disabled prop support
-- `src/app/(app)/services/actions.ts` - Service management RBAC
-- `src/app/(app)/services/page.tsx` - Service page UI restrictions
-- `src/app/(app)/policies/actions.ts` - Policy management RBAC
-- `src/app/(app)/policies/page.tsx` - Policy page UI restrictions
-
-## Conclusion
-
-The RBAC system provides comprehensive access control across the application, ensuring users can only perform actions appropriate to their role. The centralized utility functions make it easy to maintain and extend the permission system as the application grows.
+- All pages should check permissions at the page level
+- All server actions should assert permissions
+- UI should gracefully handle readonly state
+- Error messages should be clear about permission requirements
+- Regular users should still be able to view all data (read-only)
 

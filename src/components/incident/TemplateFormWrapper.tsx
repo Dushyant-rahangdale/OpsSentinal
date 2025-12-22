@@ -25,18 +25,30 @@ type Template = {
     defaultService?: { id: string; name: string } | null;
 };
 
+type CustomField = {
+    id: string;
+    name: string;
+    key: string;
+    type: 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'BOOLEAN' | 'URL' | 'EMAIL';
+    required: boolean;
+    defaultValue?: string | null;
+    options?: any;
+};
+
 type TemplateFormWrapperProps = {
     templates: Template[];
     services: Service[];
     users: User[];
     selectedTemplateId: string | null;
+    customFields?: CustomField[];
 };
 
 export default function TemplateFormWrapper({
     templates,
     services,
     users,
-    selectedTemplateId
+    selectedTemplateId,
+    customFields = []
 }: TemplateFormWrapperProps) {
     const searchParams = useSearchParams();
     const paramTemplateId = searchParams.get('template');
@@ -56,6 +68,7 @@ export default function TemplateFormWrapper({
                 templates={templates}
                 selectedTemplateId={activeTemplateId}
                 selectedTemplate={currentTemplate}
+                customFields={customFields}
             />
         </>
     );

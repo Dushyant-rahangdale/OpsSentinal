@@ -11,6 +11,10 @@ type QuickAction = {
     description?: string;
 };
 
+type QuickActionsProps = {
+    canCreate?: boolean;
+};
+
 const quickActions: QuickAction[] = [
     {
         label: 'New Incident',
@@ -78,10 +82,15 @@ const quickActions: QuickAction[] = [
     }
 ];
 
-export default function QuickActions() {
+export default function QuickActions({ canCreate = true }: QuickActionsProps) {
     const [isOpen, setIsOpen] = useModalState('quickActions');
     const router = useRouter();
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Don't render if user doesn't have create permissions
+    if (!canCreate) {
+        return null;
+    }
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {

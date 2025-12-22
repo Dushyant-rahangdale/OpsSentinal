@@ -26,13 +26,21 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
             events: { orderBy: { createdAt: 'desc' } },
             notes: { include: { user: true }, orderBy: { createdAt: 'desc' } },
             watchers: { include: { user: true }, orderBy: { createdAt: 'asc' } },
-            tags: { include: { tag: true }, orderBy: { createdAt: 'asc' } }
+            tags: { include: { tag: true }, orderBy: { createdAt: 'asc' } },
+            customFieldValues: {
+                include: {
+                    customField: true,
+                },
+            }
         }
     });
 
     if (!incident) notFound();
 
-    const users = await prisma.user.findMany();
+    const [users, customFields] = await Promise.all([
+        prisma.user.findMany(),
+        prisma.customField.findMany({ orderBy: { order: 'asc' } }),
+    ]);
     const permissions = await getUserPermissions();
     const canManageIncident = permissions.isResponderOrAbove;
     
@@ -186,11 +194,16 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                         onAddNote={handleAddNote}
                     />
 
-                    <IncidentTimeline events={incident.events.map(e => ({
-                        id: e.id,
-                        message: e.message,
-                        createdAt: e.createdAt
-                    }))} />
+                    <IncidentTimeline 
+                        events={incident.events.map(e => ({
+                            id: e.id,
+                            message: e.message,
+                            createdAt: e.createdAt
+                        }))}
+                        incidentCreatedAt={incident.createdAt}
+                        incidentAcknowledgedAt={incident.acknowledgedAt}
+                        incidentResolvedAt={incident.resolvedAt}
+                    />
                 </div>
 
                 {/* Sidebar */}

@@ -8,14 +8,15 @@ export default async function CreateIncidentPage({ searchParams }: { searchParam
     const params = await searchParams;
     const templateId = params.template || null;
 
-    const [services, users, permissions] = await Promise.all([
+    const [services, users, permissions, customFields] = await Promise.all([
         prisma.service.findMany({ orderBy: { name: 'asc' } }),
         prisma.user.findMany({ 
             where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
             select: { id: true, name: true, email: true },
             orderBy: { name: 'asc' }
         }),
-        getUserPermissions()
+        getUserPermissions(),
+        prisma.customField.findMany({ orderBy: { order: 'asc' } })
     ]);
 
     const templates = await getAllTemplates(permissions.id);
@@ -84,6 +85,7 @@ export default async function CreateIncidentPage({ searchParams }: { searchParam
                     services={services}
                     users={users}
                     selectedTemplateId={templateId}
+                    customFields={customFields}
                 />
             </div>
         </main>

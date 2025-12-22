@@ -11,6 +11,7 @@ import QuickActions from '@/components/QuickActions';
 import GlobalKeyboardHandlerWrapper from '@/components/GlobalKeyboardHandlerWrapper';
 import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
+import { getUserPermissions } from '@/lib/rbac';
 
 export const revalidate = 30;
 
@@ -35,6 +36,9 @@ export default async function AppLayout({
   const userName = dbUser?.name || session?.user?.name || null;
   const userEmail = session?.user?.email ?? null;
   const userRole = dbUser?.role || (session?.user as any)?.role || null;
+
+  const permissions = await getUserPermissions();
+  const canCreate = permissions.isResponderOrAbove;
 
   const criticalOpenCount = await prisma.incident.count({
     where: {
@@ -65,7 +69,7 @@ export default async function AppLayout({
                   <SidebarSearch />
                 </div>
                 <div className="topbar-actions-wrapper">
-                  <QuickActions />
+                  <QuickActions canCreate={canCreate} />
                 </div>
               </div>
               <div className="topbar-section topbar-section-right">
