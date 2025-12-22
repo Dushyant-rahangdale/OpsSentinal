@@ -111,6 +111,8 @@ model User {
   auditLogs            AuditLog[]
   overrides            OnCallOverride[]       @relation("OverrideUser")
   overrideReplacements OnCallOverride[]       @relation("OverrideReplacesUser")
+  searchPresets        SearchPreset[]
+  searchPresetUsage    SearchPresetUsage[]
   layerAssignments     OnCallLayerUser[]
   accounts             Account[]
   sessions             Session[]
@@ -695,4 +697,58 @@ model CustomFieldValue {
   @@index([incidentId])
   @@index([customFieldId])
   @@index([value]) // For filtering
+}
+
+// Search Presets / Saved Searches
+model SearchPreset {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  createdById     String
+  isShared        Boolean  @default(false) // Shared with team/organization
+  isDefault       Boolean  @default(false) // Default preset for new users
+  isPublic        Boolean  @default(false) // Public preset visible to all users
+  
+  // Filter criteria (stored as JSON for flexibility)
+  filterCriteria  Json     // { filter, search, priority, urgency, sort, serviceIds?, assigneeIds?, dateRange?, etc. }
+  
+  // Metadata
+  icon            String?  // Optional icon identifier
+  color           String?  // Optional color for visual distinction
+  order           Int      @default(0) // Display order
+  
+  // Analytics
+  usageCount      Int      @default(0) // How many times this preset has been used
+  lastUsedAt      DateTime? // Last time this preset was used
+  
+  // Sharing
+  sharedWithTeams String[] // Array of team IDs that can access this preset
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  createdBy       User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  // Usage tracking
+  usageHistory    SearchPresetUsage[]
+  
+  @@index([createdById])
+  @@index([isShared, isPublic])
+  @@index([order])
+  @@index([lastUsedAt])
+}
+
+// Track preset usage for analytics
+model SearchPresetUsage {
+  id            String   @id @default(cuid())
+  presetId      String
+  userId        String
+  usedAt        DateTime @default(now())
+  
+  preset        SearchPreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([presetId])
+  @@index([userId])
+  @@index([usedAt])
 }

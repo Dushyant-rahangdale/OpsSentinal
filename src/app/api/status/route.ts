@@ -52,6 +52,19 @@ export async function GET() {
         const hasDegraded = services.some(s => s.status === 'DEGRADED');
         const overallStatus = hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
 
+        // Get recent incidents
+        const recentIncidents = await prisma.incident.findMany({
+            where: {
+                serviceId: { in: serviceIds },
+                createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+            },
+            include: {
+                service: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+        });
+
         const servicesData = services.map(service => ({
             id: service.id,
             name: service.name,
@@ -59,9 +72,55 @@ export async function GET() {
             activeIncidents: service._count.incidents,
         }));
 
+        // Calculate uptime metrics (30 days)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const allIncidents = await prisma.incident.findMany({
+            where: {
+                serviceId: { in: serviceIds },
+                createdAt: { gte: thirtyDaysAgo },
+            },
+            select: {
+                id: true,
+                serviceId: true,
+                createdAt: true,
+                resolvedAt: true,
+            },
+        });
+
+        const uptimeMetrics = services.map(service => {
+            const serviceIncidents = allIncidents.filter(inc => inc.serviceId === service.id);
+            const totalMinutes = 30 * 24 * 60;
+            let downtimeMinutes = 0;
+            
+            serviceIncidents.forEach(incident => {
+                const start = incident.createdAt;
+                const end = incident.resolvedAt || new Date();
+                const incidentMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+                downtimeMinutes += Math.min(incidentMinutes, totalMinutes);
+            });
+
+            const uptimePercent = totalMinutes > 0 ? ((totalMinutes - downtimeMinutes) / totalMinutes) * 100 : 100;
+
+            return {
+                serviceId: service.id,
+                uptime: parseFloat(uptimePercent.toFixed(3)),
+            };
+        });
+
         return NextResponse.json({
             status: overallStatus,
             services: servicesData,
+            incidents: recentIncidents.map(inc => ({
+                id: inc.id,
+                title: inc.title,
+                status: inc.status,
+                service: inc.service.name,
+                createdAt: inc.createdAt.toISOString(),
+                resolvedAt: inc.resolvedAt?.toISOString() || null,
+            })),
+            metrics: {
+                uptime: uptimeMetrics,
+            },
             updatedAt: new Date().toISOString(),
         });
     } catch (error: any) {

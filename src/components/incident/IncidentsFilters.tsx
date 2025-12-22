@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import CreatePresetFromCurrent from '@/components/CreatePresetFromCurrent';
 
 type IncidentsFiltersProps = {
     currentFilter: string;
@@ -9,6 +10,7 @@ type IncidentsFiltersProps = {
     currentPriority?: string;
     currentUrgency?: string;
     currentSearch?: string;
+    currentCriteria?: FilterCriteria;
 };
 
 export default function IncidentsFilters({ 
@@ -16,7 +18,8 @@ export default function IncidentsFilters({
     currentSort = 'newest', 
     currentPriority = 'all',
     currentUrgency = 'all',
-    currentSearch = ''
+    currentSearch = '',
+    currentCriteria
 }: IncidentsFiltersProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -42,6 +45,14 @@ export default function IncidentsFilters({
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         updateParams({ search: searchQuery.trim() });
+    };
+
+    const criteria: FilterCriteria = currentCriteria || {
+        filter: currentFilter,
+        search: currentSearch,
+        priority: currentPriority,
+        urgency: currentUrgency,
+        sort: currentSort,
     };
 
     return (
@@ -162,6 +173,9 @@ export default function IncidentsFilters({
             {isPending && (
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading...</span>
             )}
+
+            {/* Save as Preset Button */}
+            <CreatePresetFromCurrent currentCriteria={criteria} />
         </div>
     );
 }

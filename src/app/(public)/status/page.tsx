@@ -1,11 +1,17 @@
 import prisma from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import StatusPageHeader from '@/components/status-page/StatusPageHeader';
+import StatusPageServices from '@/components/status-page/StatusPageServices';
+import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
+import StatusPageMetrics from '@/components/status-page/StatusPageMetrics';
+import StatusPageSubscribe from '@/components/status-page/StatusPageSubscribe';
+import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 
 export const revalidate = 60; // Revalidate every minute for status page
 
 export default async function PublicStatusPage() {
-    // Get the status page configuration (assuming single status page for now)
+    // Get the status page configuration
     const statusPage = await prisma.statusPage.findFirst({
         where: { enabled: true },
         include: {
@@ -31,9 +37,8 @@ export default async function PublicStatusPage() {
 
     // If no status page exists, create a default one
     if (!statusPage) {
-        // Try to create a default status page
         try {
-            statusPage = await prisma.statusPage.create({
+            const newStatusPage = await prisma.statusPage.create({
                 data: {
                     name: 'Status Page',
                     enabled: true,
@@ -61,8 +66,8 @@ export default async function PublicStatusPage() {
                     },
                 },
             });
+            return renderStatusPage(newStatusPage);
         } catch (error: any) {
-            // If creation fails (e.g., table doesn't exist), show a helpful message
             console.error('Status page creation error:', error);
             const isTableMissing = error.message?.includes('does not exist') || 
                                   error.code === '42P01' ||
@@ -109,274 +114,318 @@ export default async function PublicStatusPage() {
         }
     }
 
+    return renderStatusPage(statusPage);
+}
+
+async function renderStatusPage(statusPage: any) {
+    // Parse branding
+    const branding = statusPage.branding && typeof statusPage.branding === 'object' 
+        ? statusPage.branding 
+        : {};
+    
+    const primaryColor = branding.primaryColor || '#667eea';
+    const backgroundColor = branding.backgroundColor || '#ffffff';
+    const textColor = branding.textColor || '#111827';
+    const customCss = branding.customCss || '';
+    const layout = branding.layout || 'default';
+    const showHeader = branding.showHeader !== false;
+    const showFooter = branding.showFooter !== false;
+    const enableSubscriptions = branding.enableSubscriptions !== false;
+    const showRssLink = branding.showRssLink !== false;
+    const showApiLink = branding.showApiLink !== false;
+    const autoRefresh = branding.autoRefresh !== false;
+    const refreshInterval = branding.refreshInterval || 60;
+
     // Get current service statuses
     const serviceIds = statusPage.services
-        .filter(sp => sp.showOnPage)
-        .map(sp => sp.serviceId);
+        .filter((sp: any) => sp.showOnPage)
+        .map((sp: any) => sp.serviceId);
 
-    const services = await prisma.service.findMany({
-        where: { id: { in: serviceIds } },
-        include: {
-            _count: {
-                select: {
-                    incidents: {
-                        where: {
-                            status: { not: 'RESOLVED' },
+    // If no services are configured, get all services (or show empty state)
+    let services: any[] = [];
+    if (serviceIds.length > 0) {
+        services = await prisma.service.findMany({
+            where: { id: { in: serviceIds } },
+            include: {
+                _count: {
+                    select: {
+                        incidents: {
+                            where: {
+                                status: { not: 'RESOLVED' },
+                            },
                         },
                     },
                 },
+                incidents: {
+                    where: {
+                        status: { not: 'RESOLVED' },
+                    },
+                    select: {
+                        urgency: true,
+                        status: true,
+                    },
+                },
             },
-        },
+        });
+    } else {
+        // If no services configured, get all services as fallback
+        services = await prisma.service.findMany({
+            include: {
+                _count: {
+                    select: {
+                        incidents: {
+                            where: {
+                                status: { not: 'RESOLVED' },
+                            },
+                        },
+                    },
+                },
+                incidents: {
+                    where: {
+                        status: { not: 'RESOLVED' },
+                    },
+                    select: {
+                        urgency: true,
+                        status: true,
+                    },
+                },
+            },
+            take: 20, // Limit to prevent too many
+        });
+    }
+
+    // Calculate actual status based on active incidents
+    services = services.map(service => {
+        const activeIncidents = service.incidents || [];
+        const highUrgencyIncidents = activeIncidents.filter((inc: any) => inc.urgency === 'HIGH');
+        const lowUrgencyIncidents = activeIncidents.filter((inc: any) => inc.urgency === 'LOW');
+
+        // Determine status based on incidents
+        let calculatedStatus = 'OPERATIONAL';
+        if (highUrgencyIncidents.length > 0) {
+            calculatedStatus = 'MAJOR_OUTAGE';
+        } else if (lowUrgencyIncidents.length > 0) {
+            calculatedStatus = 'PARTIAL_OUTAGE';
+        }
+
+        return {
+            ...service,
+            status: calculatedStatus, // Override with calculated status
+        };
     });
 
-    // Get recent incidents (last 30 days)
+    // Get recent incidents (last 90 days) with events
+    // Use all services if none configured, or specific service IDs
+    const incidentServiceIds = serviceIds.length > 0 ? serviceIds : services.map(s => s.id);
     const recentIncidents = statusPage.showIncidents
         ? await prisma.incident.findMany({
               where: {
-                  serviceId: { in: serviceIds },
-                  createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+                  serviceId: { in: incidentServiceIds },
+                  createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
               },
               include: {
                   service: true,
+                  events: {
+                      orderBy: { createdAt: 'asc' },
+                      take: 50, // Get recent events for timeline
+                  },
               },
               orderBy: { createdAt: 'desc' },
-              take: 20,
+              take: 50,
           })
         : [];
 
-    // Calculate overall status
-    const hasOutage = services.some(s => s.status === 'MAJOR_OUTAGE' || s.status === 'PARTIAL_OUTAGE');
-    const hasDegraded = services.some(s => s.status === 'DEGRADED');
+    // Calculate uptime metrics for last 30 and 90 days
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    // Get all incidents in the period for uptime calculation
+    const allIncidents = await prisma.incident.findMany({
+        where: {
+            serviceId: { in: incidentServiceIds },
+            createdAt: { gte: ninetyDaysAgo },
+        },
+        select: {
+            id: true,
+            serviceId: true,
+            createdAt: true,
+            resolvedAt: true,
+            status: true,
+            urgency: true,
+        },
+    });
+
+    // Calculate overall status (default to operational if no services)
+    const hasOutage = services.length > 0 && services.some((s: any) => s.status === 'MAJOR_OUTAGE' || s.status === 'PARTIAL_OUTAGE');
+    const hasDegraded = services.length > 0 && services.some((s: any) => s.status === 'DEGRADED');
     const overallStatus = hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
 
-    const statusColors = {
-        operational: { bg: '#10b981', text: 'All systems operational' },
-        degraded: { bg: '#f59e0b', text: 'Some systems experiencing issues' },
-        outage: { bg: '#ef4444', text: 'Some systems are down' },
-    };
-
-    const status = statusColors[overallStatus];
+    // Determine max width based on layout
+    const maxWidth = layout === 'wide' ? '1600px' : layout === 'compact' ? '900px' : '1200px';
 
     return (
-        <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f9fafb 0%, #ffffff 100%)' }}>
-            {/* Header */}
-            <header style={{
-                background: 'white',
-                borderBottom: '1px solid #e5e7eb',
-                padding: '2rem 0',
-            }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h1 style={{
-                                fontSize: '2rem',
-                                fontWeight: '800',
-                                marginBottom: '0.5rem',
-                                color: '#111827',
-                            }}>
-                                {statusPage.name}
-                            </h1>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
-                                    background: status.bg,
-                                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                }}></div>
-                                <span style={{ color: '#6b7280', fontSize: '1rem' }}>
-                                    {status.text}
-                                </span>
-                            </div>
-                        </div>
-                        {statusPage.contactEmail && (
-                            <a
-                                href={`mailto:${statusPage.contactEmail}`}
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    background: '#f3f4f6',
-                                    borderRadius: '0.5rem',
-                                    textDecoration: 'none',
-                                    color: '#374151',
-                                    fontSize: '0.875rem',
-                                }}
-                            >
-                                Contact Us
-                            </a>
-                        )}
-                    </div>
-                </div>
-            </header>
+        <>
+            {/* Custom CSS */}
+            {customCss && (
+                <style dangerouslySetInnerHTML={{ __html: customCss }} />
+            )}
+            
+            {/* Auto-refresh script */}
+            {autoRefresh && refreshInterval >= 30 && (
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, ${refreshInterval * 1000});
+                        `,
+                    }}
+                />
+            )}
 
-            {/* Main Content */}
-            <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-                {/* Announcements */}
-                {statusPage.announcements.length > 0 && (
-                    <section style={{ marginBottom: '3rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
-                            Announcements
-                        </h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {statusPage.announcements.map((announcement) => (
-                                <div
-                                    key={announcement.id}
-                                    style={{
-                                        padding: '1.5rem',
-                                        background: 'white',
+            <div 
+                className="status-page-container"
+                style={{ 
+                    minHeight: '100vh', 
+                    background: `linear-gradient(180deg, ${backgroundColor}15 0%, ${backgroundColor} 100%)`,
+                }}
+            >
+                {/* Header */}
+                {showHeader && (
+                    <StatusPageHeader 
+                        statusPage={statusPage} 
+                        overallStatus={overallStatus}
+                        branding={branding}
+                    />
+                )}
+
+                {/* Main Content */}
+                <main style={{ maxWidth, margin: '0 auto', padding: layout === 'compact' ? '1.5rem' : '2rem' }}>
+                    {/* Subscribe Section */}
+                    {enableSubscriptions && (
+                        <StatusPageSubscribe 
+                            statusPage={statusPage} 
+                            branding={branding}
+                        />
+                    )}
+
+                    {/* Announcements */}
+                    {statusPage.announcements.length > 0 && (
+                        <StatusPageAnnouncements announcements={statusPage.announcements} />
+                    )}
+
+                    {/* Services */}
+                    {statusPage.showServices && (
+                        <>
+                            {services.length > 0 ? (
+                                <StatusPageServices 
+                                    services={services}
+                                    statusPageServices={statusPage.services}
+                                />
+                            ) : (
+                                <section style={{ marginBottom: '3rem' }}>
+                                    <h2 style={{ 
+                                        fontSize: '1.5rem', 
+                                        fontWeight: '700', 
+                                        marginBottom: '1.5rem',
+                                        color: textColor,
+                                    }}>
+                                        Services
+                                    </h2>
+                                    <div style={{
+                                        padding: '3rem',
+                                        background: backgroundColor,
                                         border: '1px solid #e5e7eb',
-                                        borderRadius: '0.5rem',
-                                        borderLeft: `4px solid ${
-                                            announcement.type === 'INCIDENT' ? '#ef4444' :
-                                            announcement.type === 'WARNING' ? '#f59e0b' :
-                                            announcement.type === 'MAINTENANCE' ? '#3b82f6' :
-                                            '#6b7280'
-                                        }`,
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                                        <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>
-                                            {announcement.title}
-                                        </h3>
-                                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                            {new Date(announcement.startDate).toLocaleDateString()}
-                                        </span>
+                                        borderRadius: '0.75rem',
+                                        textAlign: 'center',
+                                        color: '#6b7280',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    }}>
+                                        <p>No services configured for this status page.</p>
+                                        <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                                            Configure services in the status page settings.
+                                        </p>
                                     </div>
-                                    <p style={{ color: '#374151', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                                        {announcement.message}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+                                </section>
+                            )}
+                        </>
+                    )}
 
-                {/* Services */}
-                {statusPage.showServices && (
-                    <section style={{ marginBottom: '3rem' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
-                            Services
-                        </h2>
-                        <div style={{ display: 'grid', gap: '1rem' }}>
-                            {statusPage.services
-                                .filter(sp => sp.showOnPage)
-                                .map((statusPageService) => {
-                                    const service = services.find(s => s.id === statusPageService.serviceId);
-                                    if (!service) return null;
+                    {/* Metrics */}
+                    {statusPage.showMetrics && services.length > 0 && (
+                        <StatusPageMetrics 
+                            services={services}
+                            incidents={allIncidents}
+                            thirtyDaysAgo={thirtyDaysAgo}
+                            ninetyDaysAgo={ninetyDaysAgo}
+                        />
+                    )}
 
-                                    const serviceStatus = service.status;
-                                    const activeIncidents = service._count.incidents;
-
-                                    const statusConfig = {
-                                        OPERATIONAL: { color: '#10b981', label: 'Operational' },
-                                        DEGRADED: { color: '#f59e0b', label: 'Degraded' },
-                                        PARTIAL_OUTAGE: { color: '#f59e0b', label: 'Partial Outage' },
-                                        MAJOR_OUTAGE: { color: '#ef4444', label: 'Major Outage' },
-                                        MAINTENANCE: { color: '#3b82f6', label: 'Maintenance' },
-                                    }[serviceStatus] || { color: '#6b7280', label: 'Unknown' };
-
-                                    return (
-                                        <div
-                                            key={statusPageService.id}
-                                            style={{
-                                                padding: '1.5rem',
-                                                background: 'white',
-                                                border: '1px solid #e5e7eb',
-                                                borderRadius: '0.5rem',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                            }}
-                                        >
-                                            <div style={{ flex: 1 }}>
-                                                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' }}>
-                                                    {statusPageService.displayName || service.name}
-                                                </h3>
-                                                {activeIncidents > 0 && (
-                                                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
-                                                        {activeIncidents} active incident{activeIncidents !== 1 ? 's' : ''}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div style={{
-                                                    width: '12px',
-                                                    height: '12px',
-                                                    borderRadius: '50%',
-                                                    background: statusConfig.color,
-                                                }}></div>
-                                                <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
-                                                    {statusConfig.label}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                        </div>
-                    </section>
-                )}
-
-                {/* Recent Incidents */}
-                {statusPage.showIncidents && recentIncidents.length > 0 && (
-                    <section>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>
-                            Recent Incidents
-                        </h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {recentIncidents.map((incident) => (
-                                <div
-                                    key={incident.id}
-                                    style={{
-                                        padding: '1.5rem',
-                                        background: 'white',
+                    {/* Recent Incidents */}
+                    {statusPage.showIncidents && (
+                        <>
+                            {recentIncidents.length > 0 ? (
+                                <StatusPageIncidents incidents={recentIncidents} />
+                            ) : (
+                                <section style={{ marginBottom: '3rem' }}>
+                                    <h2 style={{ 
+                                        fontSize: '1.5rem', 
+                                        fontWeight: '700', 
+                                        marginBottom: '1.5rem',
+                                        color: textColor,
+                                    }}>
+                                        Recent Incidents
+                                    </h2>
+                                    <div style={{
+                                        padding: '3rem',
+                                        background: backgroundColor,
                                         border: '1px solid #e5e7eb',
-                                        borderRadius: '0.5rem',
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                                        <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>
-                                            {incident.title}
-                                        </h3>
-                                        <span style={{
-                                            padding: '0.25rem 0.75rem',
-                                            borderRadius: '0.25rem',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '600',
-                                            background: incident.status === 'RESOLVED' ? '#d1fae5' :
-                                                       incident.status === 'ACKNOWLEDGED' ? '#fef3c7' :
-                                                       '#fee2e2',
-                                            color: incident.status === 'RESOLVED' ? '#065f46' :
-                                                   incident.status === 'ACKNOWLEDGED' ? '#92400e' :
-                                                   '#991b1b',
-                                        }}>
-                                            {incident.status}
-                                        </span>
+                                        borderRadius: '0.75rem',
+                                        textAlign: 'center',
+                                        color: '#6b7280',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                    }}>
+                                        <p>No incidents in the last 90 days.</p>
+                                        <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: '#10b981' }}>
+                                            All systems operational ✓
+                                        </p>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                                        <span>{incident.service.name}</span>
-                                        <span>•</span>
-                                        <span>{new Date(incident.createdAt).toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+                                </section>
+                            )}
+                        </>
+                    )}
 
-                {/* Footer */}
-                {statusPage.footerText && (
-                    <footer style={{
-                        marginTop: '4rem',
-                        paddingTop: '2rem',
-                        borderTop: '1px solid #e5e7eb',
-                        textAlign: 'center',
-                        color: '#6b7280',
-                        fontSize: '0.875rem',
-                    }}>
-                        <p>{statusPage.footerText}</p>
-                    </footer>
-                )}
-            </main>
-        </div>
+                    {/* Footer */}
+                    {showFooter && (statusPage.footerText || showRssLink || showApiLink) && (
+                        <footer style={{
+                            marginTop: '4rem',
+                            paddingTop: '2rem',
+                            borderTop: '1px solid #e5e7eb',
+                            textAlign: 'center',
+                            color: '#6b7280',
+                            fontSize: '0.875rem',
+                        }}>
+                            {statusPage.footerText && <p style={{ marginBottom: '1rem' }}>{statusPage.footerText}</p>}
+                            {(showRssLink || showApiLink) && (
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                    {showRssLink && (
+                                        <a href="/api/status/rss" style={{ color: '#6b7280', textDecoration: 'none' }}>
+                                            RSS Feed
+                                        </a>
+                                    )}
+                                    {showRssLink && showApiLink && <span>•</span>}
+                                    {showApiLink && (
+                                        <a href="/api/status" style={{ color: '#6b7280', textDecoration: 'none' }}>
+                                            JSON API
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+                        </footer>
+                    )}
+                </main>
+            </div>
+        </>
     );
 }
-

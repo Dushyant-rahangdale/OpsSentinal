@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
+import { assertAdmin } from '@/lib/rbac';
 
 /**
  * Update Status Page Settings
@@ -10,13 +8,15 @@ import prisma from '@/lib/prisma';
  */
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
         await assertAdmin();
+    } catch (error) {
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Unauthorized' },
+            { status: 403 }
+        );
+    }
 
+    try {
         const body = await req.json();
         const {
             name,
@@ -29,22 +29,22 @@ export async function POST(req: NextRequest) {
             footerText,
             contactEmail,
             contactUrl,
-            serviceIds,
+            branding,
+            serviceIds = [],
+            serviceConfigs = {},
         } = body;
 
         // Get or create status page
-        let statusPage = await prisma.statusPage.findFirst({
-            where: { enabled: true },
-        });
+        let statusPage = await prisma.statusPage.findFirst({});
 
         if (!statusPage) {
             statusPage = await prisma.statusPage.create({
                 data: {
                     name: name || 'Status Page',
-                    enabled: enabled ?? true,
-                    showServices: showServices ?? true,
-                    showIncidents: showIncidents ?? true,
-                    showMetrics: showMetrics ?? true,
+                    enabled: enabled !== false,
+                    showServices: showServices !== false,
+                    showIncidents: showIncidents !== false,
+                    showMetrics: showMetrics !== false,
                 },
             });
         }
@@ -56,32 +56,37 @@ export async function POST(req: NextRequest) {
                 name,
                 subdomain: subdomain || null,
                 customDomain: customDomain || null,
-                enabled,
-                showServices,
-                showIncidents,
-                showMetrics,
+                enabled: enabled !== false,
+                showServices: showServices !== false,
+                showIncidents: showIncidents !== false,
+                showMetrics: showMetrics !== false,
                 footerText: footerText || null,
                 contactEmail: contactEmail || null,
                 contactUrl: contactUrl || null,
+                branding: branding || null,
             },
         });
 
         // Update services
         if (Array.isArray(serviceIds)) {
-            // Remove all existing service associations
+            // Delete existing services
             await prisma.statusPageService.deleteMany({
                 where: { statusPageId: statusPage.id },
             });
 
-            // Add new service associations
+            // Create new services with configurations
             if (serviceIds.length > 0) {
                 await prisma.statusPageService.createMany({
-                    data: serviceIds.map((serviceId: string, index: number) => ({
-                        statusPageId: statusPage.id,
-                        serviceId,
-                        showOnPage: true,
-                        order: index,
-                    })),
+                    data: serviceIds.map((serviceId: string) => {
+                        const config = serviceConfigs[serviceId] || {};
+                        return {
+                            statusPageId: statusPage.id,
+                            serviceId,
+                            displayName: config.displayName || null,
+                            order: config.order || 0,
+                            showOnPage: config.showOnPage !== false,
+                        };
+                    }),
                 });
             }
         }
@@ -95,4 +100,3 @@ export async function POST(req: NextRequest) {
         );
     }
 }
-

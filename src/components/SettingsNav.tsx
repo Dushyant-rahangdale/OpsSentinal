@@ -16,6 +16,11 @@ export default function SettingsNav({ isAdmin = false }: Props) {
         { href: '/settings/security', label: 'Security', description: 'Password and sessions' },
         { href: '/settings/api-keys', label: 'API keys', description: 'Integration credentials' },
         { 
+            href: '/settings/search-presets', 
+            label: 'Search Presets', 
+            description: 'Manage saved search filters',
+        },
+        { 
             href: '/settings/custom-fields', 
             label: 'Custom Fields', 
             description: 'Define custom fields for incidents (Admin only)',

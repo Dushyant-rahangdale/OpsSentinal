@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { getUserPermissions } from '@/lib/rbac';
 import IncidentsListTable from '@/components/incident/IncidentsListTable';
 import IncidentsFilters from '@/components/incident/IncidentsFilters';
+import PresetSelector from '@/components/PresetSelector';
+import { getAccessiblePresets, searchParamsToCriteria } from '@/lib/search-presets';
 
 export const revalidate = 30;
 
@@ -24,6 +26,37 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
     // Get current user for filtering
     const currentUser = await prisma.user.findUnique({ 
         where: { id: permissions.id } 
+    });
+
+    // Get user's teams for preset access
+    const userTeams = await prisma.user.findUnique({
+        where: { id: permissions.id },
+        select: {
+            teams: {
+                select: {
+                    teamId: true,
+                },
+            },
+        },
+    });
+    const userTeamIds = userTeams?.teams.map(t => t.teamId) || [];
+
+    // Get accessible presets (and create defaults if needed)
+    let presets = await getAccessiblePresets(permissions.id, userTeamIds);
+    
+    // Create default presets if user has none
+    if (presets.length === 0 && permissions.isResponderOrAbove) {
+        await createDefaultPresetsForUser(permissions.id);
+        presets = await getAccessiblePresets(permissions.id, userTeamIds);
+    }
+
+    // Get current filter criteria
+    const currentCriteria = searchParamsToCriteria({
+        filter: currentFilter,
+        search: currentSearch,
+        priority: currentPriority,
+        urgency: currentUrgency,
+        sort: currentSort,
     });
 
     let where: any = {};
@@ -169,14 +202,23 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                 ))}
             </div>
 
-            {/* Filters */}
-            <IncidentsFilters 
-                currentFilter={currentFilter}
-                currentSort={currentSort}
-                currentPriority={currentPriority}
-                currentUrgency={currentUrgency}
-                currentSearch={currentSearch}
-            />
+            {/* Preset Selector & Filters */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-4)', flexWrap: 'wrap' }}>
+                <PresetSelector
+                    presets={presets}
+                    currentCriteria={currentCriteria}
+                />
+                <div style={{ flex: 1 }}>
+                    <IncidentsFilters 
+                        currentFilter={currentFilter}
+                        currentSort={currentSort}
+                        currentPriority={currentPriority}
+                        currentUrgency={currentUrgency}
+                        currentSearch={currentSearch}
+                        currentCriteria={currentCriteria}
+                    />
+                </div>
+            </div>
 
             <IncidentsListTable 
                 incidents={incidents as any}
