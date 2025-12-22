@@ -175,7 +175,7 @@ export async function GET(req: NextRequest) {
                 type: 'incident' as const,
                 id: i.id,
                 title: i.title,
-                subtitle: `${i.service.name} • ${i.status}${i.urgency === 'HIGH' ? ' • High' : ''}`,
+                subtitle: `${i.service?.name || 'No service'} • ${i.status}${i.urgency === 'HIGH' ? ' • High' : ''}`,
                 href: `/incidents/${i.id}`,
                 priority: i.urgency === 'HIGH' ? 1 : 2
             })),
