@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 
-type TemplateLayout = {
+type DashboardTemplateWrapperProps = {
+  widgetType: keyof WidgetVisibility;
+  children: ReactNode;
+};
+
+type WidgetVisibility = {
   showMetrics: boolean;
   showCharts: boolean;
   showTimeline: boolean;
@@ -12,60 +17,64 @@ type TemplateLayout = {
   showComparison: boolean;
 };
 
-type DashboardTemplateWrapperProps = {
-  widgetType: keyof TemplateLayout;
-  children: ReactNode;
+// Default visibility - show all widgets
+const defaultVisibility: WidgetVisibility = {
+  showMetrics: true,
+  showCharts: true,
+  showTimeline: true,
+  showActivity: true,
+  showServiceHealth: true,
+  showPerformance: true,
+  showComparison: true,
 };
 
 export default function DashboardTemplateWrapper({ widgetType, children }: DashboardTemplateWrapperProps) {
   const [isVisible, setIsVisible] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const visibility = localStorage.getItem('dashboard-widget-visibility');
-    if (visibility) {
+    setIsMounted(true);
+    
+    // Read visibility from localStorage
+    const savedVisibility = localStorage.getItem('dashboard-widget-visibility');
+    if (savedVisibility) {
       try {
-        const layout: TemplateLayout = JSON.parse(visibility);
-        setIsVisible(layout[widgetType] ?? true);
+        const visibility: WidgetVisibility = JSON.parse(savedVisibility);
+        setIsVisible(visibility[widgetType] ?? true);
       } catch (e) {
-        console.error('Failed to parse widget visibility', e);
+        // If parsing fails, use default
+        setIsVisible(defaultVisibility[widgetType] ?? true);
       }
+    } else {
+      // No saved visibility, show widget by default
+      setIsVisible(defaultVisibility[widgetType] ?? true);
     }
+
+    // Listen for template changes
+    const handleTemplateChange = () => {
+      const savedVisibility = localStorage.getItem('dashboard-widget-visibility');
+      if (savedVisibility) {
+        try {
+          const visibility: WidgetVisibility = JSON.parse(savedVisibility);
+          setIsVisible(visibility[widgetType] ?? true);
+        } catch (e) {
+          setIsVisible(defaultVisibility[widgetType] ?? true);
+        }
+      } else {
+        setIsVisible(defaultVisibility[widgetType] ?? true);
+      }
+    };
+
+    window.addEventListener('dashboard-template-changed', handleTemplateChange);
+    return () => window.removeEventListener('dashboard-template-changed', handleTemplateChange);
   }, [widgetType]);
 
-  // On client-side, listen for storage changes to update visibility
-  useEffect(() => {
-    if (!mounted) return;
-
-    const handleStorageChange = () => {
-      const visibility = localStorage.getItem('dashboard-widget-visibility');
-      if (visibility) {
-        try {
-          const layout: TemplateLayout = JSON.parse(visibility);
-          setIsVisible(layout[widgetType] ?? true);
-        } catch (e) {
-          console.error('Failed to parse widget visibility', e);
-        }
-      }
-    };
-
-    // Listen for custom storage events (template changes)
-    window.addEventListener('storage', handleStorageChange);
-    // Also listen for custom events in same tab
-    window.addEventListener('dashboard-template-changed', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('dashboard-template-changed', handleStorageChange);
-    };
-  }, [widgetType, mounted]);
-
-  if (!mounted) {
-    // Server-side render: show by default to avoid hydration issues
+  // During SSR, show widget to prevent layout shift
+  if (!isMounted) {
     return <>{children}</>;
   }
 
+  // Only hide widget if explicitly set to false
   if (!isVisible) {
     return null;
   }

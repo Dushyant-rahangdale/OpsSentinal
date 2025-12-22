@@ -24,9 +24,7 @@ export default function DashboardAdvancedMetrics({
   const criticalRate = openIncidents > 0 ? ((criticalIncidents / openIncidents) * 100).toFixed(1) : '0';
 
   return (
-    <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem' }}>Advanced Metrics</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
         <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem', fontWeight: '600' }}>
             Resolution Rate
@@ -75,7 +73,6 @@ export default function DashboardAdvancedMetrics({
           </div>
         </div>
       </div>
-    </div>
   );
 }
 

@@ -29,6 +29,24 @@ export default function DashboardPerformanceMetrics({
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
+  const formatTimeForDisplay = (minutes: number | null, color?: string) => {
+    if (minutes === null || minutes === 0) return <span style={{ color }}>--</span>;
+    if (minutes < 60) {
+      return <span style={{ color }}>{Math.round(minutes)}m</span>;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    if (mins > 0) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+          <span style={{ color }}>{hours}h</span>
+          <span style={{ color }}>{mins}m</span>
+        </div>
+      );
+    }
+    return <span style={{ color }}>{hours}h</span>;
+  };
+
   const getTrendIndicator = (current: number | null, previous: number | null, trend?: 'up' | 'down' | 'neutral') => {
     if (!current || !previous) return null;
     const change = current - previous;
@@ -46,9 +64,7 @@ export default function DashboardPerformanceMetrics({
   const mttrTrendData = getTrendIndicator(mttr, previousMttr, mttrTrend);
 
   return (
-    <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-      <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem' }}>Performance Metrics</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
         {/* MTTA */}
         <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -57,7 +73,7 @@ export default function DashboardPerformanceMetrics({
             </div>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Mean Time to Acknowledge</span>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '0.25rem' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#dc2626', marginBottom: '0.25rem' }}>
             {formatTime(mtta)}
           </div>
           {mttaTrendData && (
@@ -76,8 +92,8 @@ export default function DashboardPerformanceMetrics({
             </div>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Mean Time to Resolve</span>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.25rem' }}>
-            {formatTime(mttr)}
+          <div style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.25rem' }}>
+            {formatTimeForDisplay(mttr, '#16a34a')}
           </div>
           {mttrTrendData && (
             <div style={{ fontSize: '0.7rem', color: mttrTrendData.color, fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -113,7 +129,6 @@ export default function DashboardPerformanceMetrics({
           </div>
         </div>
       </div>
-    </div>
   );
 }
 

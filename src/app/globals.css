@@ -7537,27 +7537,7 @@ span:hover > .info-tooltip {
 
 /* Sidebar scrolling improvements */
 .dashboard-sidebar {
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 0.5rem;
-}
-
-.dashboard-sidebar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.dashboard-sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dashboard-sidebar::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.dashboard-sidebar::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  /* Sidebar scrolls with the page, not independently */
 }
 
 /* Responsive: Make two-column layout single column on smaller screens */

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useEffect } from 'react';
 
 type DashboardCollapsibleWidgetProps = {
   title: string;
@@ -15,12 +15,28 @@ export default function DashboardCollapsibleWidget({
   defaultExpanded = true,
   children
 }: DashboardCollapsibleWidgetProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  // Always start as expanded - ensure this happens after hydration
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Ensure expanded state matches defaultExpanded after mount
+    setIsExpanded(defaultExpanded !== false);
+  }, [defaultExpanded]);
+
+  const toggleExpanded = () => {
+    setIsExpanded(prev => !prev);
+  };
+
+  // Show content during SSR to prevent layout shift
+  const shouldShowContent = isMounted ? isExpanded : (defaultExpanded !== false);
 
   return (
     <div className="glass-panel" style={{ background: 'white', padding: '0', overflow: 'hidden' }}>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={toggleExpanded}
+        type="button"
         style={{
           width: '100%',
           padding: '1rem 1.5rem',
@@ -48,7 +64,7 @@ export default function DashboardCollapsibleWidget({
           stroke="currentColor"
           strokeWidth="2"
           style={{
-            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transform: shouldShowContent ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.3s ease',
             color: 'var(--text-muted)'
           }}
@@ -56,7 +72,7 @@ export default function DashboardCollapsibleWidget({
           <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
-      {isExpanded && (
+      {shouldShowContent && (
         <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
           {children}
         </div>

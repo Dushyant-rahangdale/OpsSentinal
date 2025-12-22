@@ -15,17 +15,16 @@ import DashboardStatusChart from '@/components/DashboardStatusChart';
 import DashboardSavedFilters from '@/components/DashboardSavedFilters';
 import DashboardNotifications from '@/components/DashboardNotifications';
 import DashboardTemplates from '@/components/DashboardTemplates';
-import DashboardTemplateWrapper from '@/components/DashboardTemplateWrapper';
 import DashboardPeriodComparison from '@/components/DashboardPeriodComparison';
 import DashboardServiceHealth from '@/components/DashboardServiceHealth';
 import DashboardUrgencyDistribution from '@/components/DashboardUrgencyDistribution';
-import DashboardCollapsibleWidget from '@/components/DashboardCollapsibleWidget';
+import DashboardTemplateWrapper from '@/components/DashboardTemplateWrapper';
 import { calculateSLAMetrics } from '@/lib/sla';
 import { Suspense } from 'react';
 
 export const revalidate = 30;
 
-const INCIDENTS_PER_PAGE = 20;
+const INCIDENTS_PER_PAGE = 30;
 
 function buildPaginationUrl(baseParams: URLSearchParams, page: number): string {
   const params = new URLSearchParams(baseParams.toString());
@@ -772,24 +771,26 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
           {/* On-Call Widget - Activity */}
           <DashboardTemplateWrapper widgetType="showActivity">
-            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0 }}>Who is On-Call</h3>
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Who is On-Call
+              </h3>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
               <Link href="/schedules" className="dashboard-link-hover" style={{ 
                 fontSize: '0.85rem', 
                 color: 'var(--primary)', 
@@ -797,8 +798,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.25rem',
-                transition: 'all 0.2s ease'
+                gap: '0.25rem'
               }}>
                 View All <span>→</span>
               </Link>
@@ -864,204 +864,201 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
           {/* Performance Metrics Widget */}
           <DashboardTemplateWrapper widgetType="showPerformance">
-            <DashboardCollapsibleWidget
-              title="Performance Metrics"
-              defaultExpanded={true}
-              icon={
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              }
-            >
-              <DashboardPerformanceMetrics
-                mtta={mttaMinutes}
-                mttr={slaMetrics.mttr}
-                ackSlaRate={slaMetrics.ackCompliance}
-                resolveSlaRate={slaMetrics.resolveCompliance}
-              />
-            </DashboardCollapsibleWidget>
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Performance Metrics
+              </h3>
+            </div>
+            <DashboardPerformanceMetrics
+              mtta={mttaMinutes}
+              mttr={slaMetrics.mttr}
+              ackSlaRate={slaMetrics.ackCompliance}
+              resolveSlaRate={slaMetrics.resolveCompliance}
+            />
+          </div>
           </DashboardTemplateWrapper>
 
           {/* Status Distribution - Charts */}
           <DashboardTemplateWrapper widgetType="showCharts">
-            <DashboardCollapsibleWidget
-              title="Status Distribution"
-              defaultExpanded={false}
-              icon={
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2">
-                    <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              }
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <DashboardStatusChart data={statusDistribution} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  {statusDistribution.map((item) => (
-                    <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.color }} />
-                        <span>{item.label}</span>
-                      </div>
-                      <span style={{ fontWeight: '600' }}>{item.value}</span>
-                    </div>
-                  ))}
-                </div>
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2">
+                  <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
-            </DashboardCollapsibleWidget>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Status Distribution
+              </h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <DashboardStatusChart data={statusDistribution} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {statusDistribution.map((item) => (
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '0.4rem 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.color }} />
+                      <span>{item.label}</span>
+                    </div>
+                    <span style={{ fontWeight: '600' }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           </DashboardTemplateWrapper>
 
           {/* Advanced Metrics - Metrics */}
           <DashboardTemplateWrapper widgetType="showMetrics">
-            <DashboardCollapsibleWidget
-              title="Advanced Metrics"
-              defaultExpanded={false}
-              icon={
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              }
-            >
-              <DashboardAdvancedMetrics
-                totalIncidents={allIncidents.length}
-                openIncidents={allOpenIncidentsCount}
-                resolvedIncidents={allResolvedCount}
-                acknowledgedIncidents={allAcknowledgedCount}
-                criticalIncidents={allCriticalIncidentsCount}
-                unassignedIncidents={unassignedCount}
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Advanced Metrics
+              </h3>
+            </div>
+            <DashboardAdvancedMetrics
+              totalIncidents={allIncidents.length}
+              openIncidents={allOpenIncidentsCount}
+              resolvedIncidents={allResolvedCount}
+              acknowledgedIncidents={allAcknowledgedCount}
+              criticalIncidents={allCriticalIncidentsCount}
+              unassignedIncidents={unassignedCount}
                 servicesCount={services.length}
               />
-            </DashboardCollapsibleWidget>
+          </div>
           </DashboardTemplateWrapper>
 
           {/* Period Comparison Widget - Comparison */}
           <DashboardTemplateWrapper widgetType="showComparison">
-            <DashboardCollapsibleWidget
-              title="Period Comparison"
-              defaultExpanded={false}
-              icon={
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
-                    <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              }
-            >
-              <DashboardPeriodComparison
-                current={{
-                  total: totalInRange,
-                  open: currentPeriodOpen,
-                  resolved: allResolvedCount, // Already filtered by dateFilter
-                  acknowledged: currentPeriodAcknowledged,
-                  critical: currentPeriodCritical
-                }}
-                previous={{
-                  total: prevTotal,
-                  open: prevOpen,
-                  resolved: prevResolved,
-                  acknowledged: prevAcknowledged,
-                  critical: prevCritical
-                }}
-                periodLabel={periodLabels.current}
-                previousPeriodLabel={periodLabels.previous}
-              />
-            </DashboardCollapsibleWidget>
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
+                  <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Period Comparison
+              </h3>
+            </div>
+            <DashboardPeriodComparison
+              current={{
+                total: totalInRange,
+                open: currentPeriodOpen,
+                resolved: allResolvedCount, // Already filtered by dateFilter
+                acknowledged: currentPeriodAcknowledged,
+                critical: currentPeriodCritical
+              }}
+              previous={{
+                total: prevTotal,
+                open: prevOpen,
+                resolved: prevResolved,
+                acknowledged: prevAcknowledged,
+                critical: prevCritical
+              }}
+              periodLabel={periodLabels.current}
+              previousPeriodLabel={periodLabels.previous}
+            />
+          </div>
           </DashboardTemplateWrapper>
 
           {/* Service Health Widget - Service Health */}
           <DashboardTemplateWrapper widgetType="showServiceHealth">
-            <DashboardCollapsibleWidget
-              title="Service Health"
-              defaultExpanded={true}
-              icon={
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              }
-            >
-              <DashboardServiceHealth services={servicesWithIncidents} />
-            </DashboardCollapsibleWidget>
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Service Health
+              </h3>
+            </div>
+            <DashboardServiceHealth services={servicesWithIncidents} />
+          </div>
           </DashboardTemplateWrapper>
 
           {/* Urgency Distribution - Charts */}
-          {urgencyDistribution.length > 0 && (
-            <DashboardTemplateWrapper widgetType="showCharts">
-              <DashboardCollapsibleWidget
-                title="Urgency Distribution"
-                defaultExpanded={false}
-                icon={
-                  <div style={{ 
-                    width: '32px', 
-                    height: '32px', 
-                    borderRadius: '8px', 
-                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
-                      <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                }
-              >
-                <DashboardUrgencyDistribution data={urgencyDistribution} />
-              </DashboardCollapsibleWidget>
-            </DashboardTemplateWrapper>
-          )}
+          <DashboardTemplateWrapper widgetType="showCharts">
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '8px', 
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Urgency Distribution
+              </h3>
+            </div>
+            <DashboardUrgencyDistribution data={urgencyDistribution} />
+          </div>
+          </DashboardTemplateWrapper>
 
           {/* Notifications Widget */}
-          <DashboardCollapsibleWidget
-            title="Browser Notifications"
-            defaultExpanded={false}
-            icon={
+          <DashboardTemplateWrapper widgetType="showActivity">
+          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
               <div style={{ 
                 width: '32px', 
                 height: '32px', 
@@ -1075,15 +1072,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-            }
-          >
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                Browser Notifications
+              </h3>
+            </div>
             <Suspense fallback={null}>
               <DashboardNotifications 
                 criticalCount={allCriticalIncidentsCount}
                 unassignedCount={unassignedCount}
               />
             </Suspense>
-          </DashboardCollapsibleWidget>
+          </div>
+          </DashboardTemplateWrapper>
         </aside>
       </div>
     </main>
