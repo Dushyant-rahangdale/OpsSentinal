@@ -5,6 +5,7 @@ import IncidentsListTable from '@/components/incident/IncidentsListTable';
 import IncidentsFilters from '@/components/incident/IncidentsFilters';
 import PresetSelector from '@/components/PresetSelector';
 import { getAccessiblePresets, searchParamsToCriteria } from '@/lib/search-presets';
+import { createDefaultPresetsForUser } from '@/lib/search-presets-defaults';
 
 export const revalidate = 30;
 
