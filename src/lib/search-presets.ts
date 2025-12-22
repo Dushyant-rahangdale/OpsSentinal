@@ -249,6 +249,12 @@ export async function getAccessiblePresets(userId: string, userTeamIds: string[]
  * Track preset usage
  */
 export async function trackPresetUsage(presetId: string, userId: string): Promise<void> {
+    // Check if models exist
+    if (!prisma.searchPreset || !prisma.searchPresetUsage) {
+        console.warn('SearchPreset models not available. Run "npx prisma generate" to regenerate Prisma client.');
+        return;
+    }
+
     await prisma.$transaction([
         prisma.searchPresetUsage.create({
             data: {
