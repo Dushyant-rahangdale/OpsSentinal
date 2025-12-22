@@ -10,6 +10,7 @@ import SidebarSearch from '@/components/SidebarSearch';
 import QuickActions from '@/components/QuickActions';
 import GlobalKeyboardHandlerWrapper from '@/components/GlobalKeyboardHandlerWrapper';
 import { ToastProvider } from '@/components/ToastProvider';
+import AppErrorBoundary from './error-boundary';
 
 export const revalidate = 30;
 
@@ -49,32 +50,34 @@ export default async function AppLayout({
     : 'No critical incidents';
 
   return (
-    <ToastProvider>
-      <GlobalKeyboardHandlerWrapper />
-      <div className="app-shell">
-        <Sidebar />
-        <div className="content-shell">
-          <header className="topbar-new">
-            <div className="topbar-section topbar-section-left">
-              <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
-            </div>
-            <div className="topbar-section topbar-section-center">
-              <div className="topbar-search-wrapper">
-                <SidebarSearch />
+    <AppErrorBoundary>
+      <ToastProvider>
+        <GlobalKeyboardHandlerWrapper />
+        <div className="app-shell">
+          <Sidebar />
+          <div className="content-shell">
+            <header className="topbar-new">
+              <div className="topbar-section topbar-section-left">
+                <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
               </div>
-              <div className="topbar-actions-wrapper">
-                <QuickActions />
+              <div className="topbar-section topbar-section-center">
+                <div className="topbar-search-wrapper">
+                  <SidebarSearch />
+                </div>
+                <div className="topbar-actions-wrapper">
+                  <QuickActions />
+                </div>
               </div>
+              <div className="topbar-section topbar-section-right">
+                <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
+              </div>
+            </header>
+            <div className="page-shell">
+              {children}
             </div>
-            <div className="topbar-section topbar-section-right">
-              <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
-            </div>
-          </header>
-          <div className="page-shell">
-            {children}
           </div>
         </div>
-      </div>
-    </ToastProvider>
+      </ToastProvider>
+    </AppErrorBoundary>
   );
 }

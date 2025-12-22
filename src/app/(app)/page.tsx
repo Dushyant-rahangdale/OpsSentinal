@@ -158,8 +158,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       },
       include: { user: true, schedule: true }
     }),
+    // Optimized: Only fetch status and urgency for distribution calculation
+    // Limit to recent incidents for performance (last 1000 incidents)
     prisma.incident.findMany({
-      select: { status: true, urgency: true, assigneeId: true }
+      select: { status: true, urgency: true, assigneeId: true },
+      orderBy: { createdAt: 'desc' },
+      take: 1000 // Limit for performance
     }),
     prisma.incident.count({
       where: {
@@ -431,16 +435,47 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               )}
             </div>
             <div className="command-center-time-range">
-              <Suspense fallback={<div style={{ height: '40px' }} />}>
+              <Suspense fallback={
+                <div style={{ 
+                  height: '40px', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  gap: 'var(--spacing-2)'
+                }}>
+                  <div style={{ 
+                    width: '120px', 
+                    height: '32px', 
+                    background: 'var(--color-neutral-200)', 
+                    borderRadius: 'var(--radius-md)',
+                    animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+                  }} />
+                </div>
+              }>
                 <DashboardTimeRange />
               </Suspense>
             </div>
           </div>
           <div className="command-center-actions">
-            <Suspense fallback={<div style={{ width: '100px', height: '40px' }} />}>
+            <Suspense fallback={
+              <div style={{ 
+                width: '100px', 
+                height: '40px',
+                background: 'var(--color-neutral-200)',
+                borderRadius: 'var(--radius-md)',
+                animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+              }} />
+            }>
               <DashboardRefresh />
             </Suspense>
-            <Suspense fallback={<div style={{ width: '100px', height: '40px' }} />}>
+            <Suspense fallback={
+              <div style={{ 
+                width: '100px', 
+                height: '40px',
+                background: 'var(--color-neutral-200)',
+                borderRadius: 'var(--radius-md)',
+                animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+              }} />
+            }>
               <DashboardExport
                 incidents={incidents}
                 filters={{
@@ -507,20 +542,67 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             
             {/* Saved Filters */}
             <div style={{ marginBottom: '1rem' }}>
-              <Suspense fallback={null}>
+              <Suspense fallback={
+                <div style={{ 
+                  height: '32px',
+                  background: 'var(--color-neutral-200)',
+                  borderRadius: 'var(--radius-md)',
+                  animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                  width: '200px'
+                }} />
+              }>
                 <DashboardSavedFilters />
               </Suspense>
             </div>
             
             {/* Quick Filters */}
             <div style={{ marginBottom: '1rem' }}>
-              <Suspense fallback={<div style={{ height: '40px' }} />}>
+              <Suspense fallback={
+                <div style={{ 
+                  display: 'flex',
+                  gap: 'var(--spacing-2)',
+                  height: '40px'
+                }}>
+                  {[1, 2, 3, 4].map(i => (
+                    <div
+                      key={i}
+                      style={{
+                        flex: 1,
+                        height: '40px',
+                        background: 'var(--color-neutral-200)',
+                        borderRadius: 'var(--radius-md)',
+                        animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+                      }}
+                    />
+                  ))}
+                </div>
+              }>
                 <DashboardQuickFilters />
               </Suspense>
             </div>
 
             {/* Filter Chips */}
-            <Suspense fallback={null}>
+            <Suspense fallback={
+              <div style={{ 
+                display: 'flex',
+                gap: 'var(--spacing-2)',
+                flexWrap: 'wrap',
+                minHeight: '40px'
+              }}>
+                {[1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    style={{
+                      width: '80px',
+                      height: '28px',
+                      background: 'var(--color-neutral-200)',
+                      borderRadius: 'var(--radius-full)',
+                      animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+                    }}
+                  />
+                ))}
+              </div>
+            }>
               <DashboardFilterChips services={services} users={users} />
             </Suspense>
 

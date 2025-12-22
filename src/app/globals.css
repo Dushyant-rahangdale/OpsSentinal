@@ -164,6 +164,43 @@
   border-color: var(--primary);
 }
 
+/* Enhanced Focus Styles for Accessibility */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Remove default focus for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skeleton Component Styles */
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-wave {
+  background: linear-gradient(
+    90deg,
+    var(--color-neutral-200) 0px,
+    var(--color-neutral-100) 40px,
+    var(--color-neutral-200) 80px
+  );
+  background-size: 200px 100%;
+  animation: skeleton-wave 1.6s linear infinite;
+}
+
 /* Dark mode font rendering improvements */
 [data-theme='dark'] *,
 .dark * {
@@ -8452,7 +8489,7 @@ span:hover > .info-tooltip {
   top: calc(100% + 0.5rem);
   left: 0;
   right: 0;
-  max-height: 480px;
+  max-height: 500px;
   overflow-y: auto;
   overflow-x: hidden;
   background: #ffffff;
@@ -8462,6 +8499,17 @@ span:hover > .info-tooltip {
   z-index: 1001;
   animation: slideInDown 0.2s ease-out;
   margin-top: 0;
+  padding: 0.5rem 0;
+}
+
+.topbar-search-section {
+  padding-bottom: 0.5rem;
+}
+
+.topbar-search-section:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .topbar-search-results-header {
