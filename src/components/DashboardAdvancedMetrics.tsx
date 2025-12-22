@@ -25,11 +25,11 @@ export default function DashboardAdvancedMetrics({
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem', fontWeight: '600' }}>
             Resolution Rate
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--success)', marginBottom: '0.2rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#16a34a', marginBottom: '0.2rem' }}>
             {resolutionRate}%
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -37,11 +37,11 @@ export default function DashboardAdvancedMetrics({
           </div>
         </div>
         
-        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem', fontWeight: '600' }}>
             Acknowledgment Rate
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '0.2rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#dc2626', marginBottom: '0.2rem' }}>
             {acknowledgmentRate}%
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -49,11 +49,11 @@ export default function DashboardAdvancedMetrics({
           </div>
         </div>
         
-        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem', fontWeight: '600' }}>
             Critical Rate
           </div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: criticalIncidents > 0 ? 'var(--danger)' : 'var(--success)', marginBottom: '0.2rem' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: criticalIncidents > 0 ? '#dc2626' : '#16a34a', marginBottom: '0.2rem' }}>
             {criticalRate}%
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -61,7 +61,7 @@ export default function DashboardAdvancedMetrics({
           </div>
         </div>
         
-        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+        <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem', fontWeight: '600' }}>
             Services Monitored
           </div>

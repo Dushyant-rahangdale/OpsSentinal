@@ -13,21 +13,35 @@ export default function OperationalStatus({ tone, label, detail }: Props) {
         <div className="ops-status-new">
             <div className={`ops-status-indicator ${tone}`}>
                 <div className={`ops-status-pulse ${tone}`} />
-                <div className="ops-status-dot" />
+                <div className="ops-status-dot">
+                    {isDanger ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                    ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    )}
+                </div>
             </div>
             <div className="ops-status-content">
                 <div className="ops-status-header">
                     <span className="ops-status-label">System Status</span>
                     <span className={`ops-status-badge ${tone}`}>
                         {isDanger ? (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                <path d="M6 1L1 3V6C1 9.31371 3.68629 12 7 12C10.3137 12 13 9.31371 13 6V3L8 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M7 6V8M7 4H7.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
                             </svg>
                         ) : (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                <path d="M6 1L1 3V6C1 9.31371 3.68629 12 7 12C10.3137 12 13 9.31371 13 6V3L8 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M4 6L5.5 7.5L9 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <polyline points="9 12 11 14 15 10"/>
                             </svg>
                         )}
                     </span>

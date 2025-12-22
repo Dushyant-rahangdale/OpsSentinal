@@ -74,7 +74,7 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
                 aria-expanded={open}
                 onClick={() => setOpen((prev) => !prev)}
             >
-                <div className="user-avatar-new" style={{ background: `linear-gradient(135deg, rgba(211, 47, 47, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%)` }}>
+                <div className="user-avatar-new">
                     {initials}
                 </div>
                 <div className="user-info">
@@ -107,7 +107,7 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
                 <div className="user-menu-dropdown" role="menu" aria-label="User menu">
                     {/* User Info Header */}
                     <div className="user-menu-header">
-                        <div className="user-menu-avatar-large" style={{ background: `linear-gradient(135deg, rgba(211, 47, 47, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%)` }}>
+                        <div className="user-menu-avatar-large">
                             {initials}
                         </div>
                         <div className="user-menu-details">
