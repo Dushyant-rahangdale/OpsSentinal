@@ -97,11 +97,12 @@ export default function ActionItemsBoard({ actionItems, users, canManage, view, 
             <div>
                 {/* Filters */}
                 <div className="glass-panel" style={{
-                    padding: 'var(--spacing-4)',
+                    padding: 'var(--spacing-5)',
                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                     border: '1px solid #e2e8f0',
-                    borderRadius: 'var(--radius-lg)',
-                    marginBottom: 'var(--spacing-4)',
+                    borderRadius: 'var(--radius-xl)',
+                    marginBottom: 'var(--spacing-6)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
                 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--spacing-3)' }}>
                         <FormField

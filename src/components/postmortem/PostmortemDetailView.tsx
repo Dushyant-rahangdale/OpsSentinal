@@ -102,19 +102,38 @@ export default function PostmortemDetailView({ postmortem, users = [], canEdit =
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
             {/* Hero Section */}
             <div className="glass-panel" style={{ 
-                padding: 'var(--spacing-6)', 
+                padding: 'var(--spacing-8)', 
                 background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                 border: '1px solid #e2e8f0',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+                position: 'relative',
+                overflow: 'hidden',
             }}>
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '300px',
+                    height: '300px',
+                    background: 'radial-gradient(circle, rgba(211, 47, 47, 0.05) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    transform: 'translate(30%, -30%)',
+                    pointerEvents: 'none',
+                }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 'var(--spacing-4)' }}>
                     <div style={{ flex: 1 }}>
                         <h1 style={{ 
-                            fontSize: 'var(--font-size-2xl)', 
-                            fontWeight: '700', 
-                            marginBottom: 'var(--spacing-2)',
-                            color: 'var(--text-primary)',
+                            fontSize: '2.25rem', 
+                            fontWeight: '800', 
+                            marginBottom: 'var(--spacing-3)',
+                            background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            letterSpacing: '-0.02em',
+                            lineHeight: '1.2',
+                            position: 'relative',
+                            zIndex: 1,
                         }}>
                             {postmortem.title}
                         </h1>
@@ -172,13 +191,27 @@ export default function PostmortemDetailView({ postmortem, users = [], canEdit =
             {/* Executive Summary */}
             {postmortem.summary && (
                 <div className="glass-panel" style={{ 
-                    padding: 'var(--spacing-6)', 
+                    padding: 'var(--spacing-8)', 
                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                     border: '1px solid #e2e8f0',
-                    borderRadius: 'var(--radius-lg)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                    borderRadius: 'var(--radius-xl)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
                 }}>
-                    <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-3)' }}>
+                    <h2 style={{ 
+                        fontSize: 'var(--font-size-xl)', 
+                        fontWeight: '700', 
+                        marginBottom: 'var(--spacing-4)',
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-2)',
+                    }}>
+                        <span style={{
+                            width: '4px',
+                            height: '24px',
+                            background: 'linear-gradient(180deg, var(--primary) 0%, #ef4444 100%)',
+                            borderRadius: '2px',
+                        }} />
                         Executive Summary
                     </h2>
                     <p style={{ 
@@ -186,6 +219,7 @@ export default function PostmortemDetailView({ postmortem, users = [], canEdit =
                         whiteSpace: 'pre-wrap',
                         lineHeight: '1.8',
                         fontSize: 'var(--font-size-base)',
+                        paddingLeft: 'var(--spacing-6)',
                     }}>
                         {postmortem.summary}
                     </p>

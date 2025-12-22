@@ -137,11 +137,27 @@ export default async function ActionItemsPage({
 
     return (
         <div style={{ padding: 'var(--spacing-6)', maxWidth: '1600px', margin: '0 auto' }}>
-            <div style={{ marginBottom: 'var(--spacing-6)' }}>
-                <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-2)' }}>
+            <div style={{ 
+                marginBottom: 'var(--spacing-8)',
+                paddingBottom: 'var(--spacing-6)',
+                borderBottom: '2px solid #e2e8f0',
+            }}>
+                <h1 style={{ 
+                    fontSize: '2.5rem', 
+                    fontWeight: '800', 
+                    marginBottom: 'var(--spacing-2)',
+                    background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    letterSpacing: '-0.02em',
+                }}>
                     Action Items
                 </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-base)' }}>
+                <p style={{ 
+                    color: 'var(--text-muted)', 
+                    fontSize: 'var(--font-size-base)',
+                    lineHeight: '1.6',
+                }}>
                     Track and manage action items from postmortems
                 </p>
             </div>

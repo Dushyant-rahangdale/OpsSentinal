@@ -43,13 +43,33 @@ export default async function PostmortemsPage({
         : [];
 
     return (
-        <div style={{ padding: 'var(--spacing-6)' }}>
-            <div style={{ marginBottom: 'var(--spacing-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--spacing-4)' }}>
+        <div style={{ padding: 'var(--spacing-6)', maxWidth: '1400px', margin: '0 auto' }}>
+            <div style={{ 
+                marginBottom: 'var(--spacing-8)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'flex-start', 
+                gap: 'var(--spacing-4)',
+                paddingBottom: 'var(--spacing-6)',
+                borderBottom: '2px solid #e2e8f0',
+            }}>
                 <div>
-                    <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-2)' }}>
+                    <h1 style={{ 
+                        fontSize: '2.5rem', 
+                        fontWeight: '800', 
+                        marginBottom: 'var(--spacing-2)',
+                        background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        letterSpacing: '-0.02em',
+                    }}>
                         Postmortems
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-base)' }}>
+                    <p style={{ 
+                        color: 'var(--text-muted)', 
+                        fontSize: 'var(--font-size-base)',
+                        lineHeight: '1.6',
+                    }}>
                         Learn from incidents and improve your incident response process
                     </p>
                 </div>
@@ -68,16 +88,28 @@ export default async function PostmortemsPage({
             </div>
 
             {/* Filters */}
-            <div style={{ marginBottom: 'var(--spacing-4)', display: 'flex', gap: 'var(--spacing-2)' }}>
+            <div style={{ 
+                marginBottom: 'var(--spacing-6)', 
+                display: 'flex', 
+                gap: 'var(--spacing-2)',
+                padding: 'var(--spacing-1)',
+                background: '#f8fafc',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid #e2e8f0',
+                width: 'fit-content',
+            }}>
                 <Link
                     href="/postmortems"
                     style={{
-                        padding: 'var(--spacing-2) var(--spacing-4)',
+                        padding: 'var(--spacing-2) var(--spacing-5)',
                         borderRadius: 'var(--radius-md)',
-                        background: !status ? 'var(--primary)' : 'var(--color-neutral-100)',
+                        background: !status ? 'var(--primary)' : 'transparent',
                         color: !status ? 'white' : 'var(--text-primary)',
                         textDecoration: 'none',
                         fontSize: 'var(--font-size-sm)',
+                        fontWeight: !status ? '600' : '500',
+                        transition: 'all 0.2s ease',
+                        boxShadow: !status ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
                     }}
                 >
                     All
@@ -85,12 +117,15 @@ export default async function PostmortemsPage({
                 <Link
                     href="/postmortems?status=PUBLISHED"
                     style={{
-                        padding: 'var(--spacing-2) var(--spacing-4)',
+                        padding: 'var(--spacing-2) var(--spacing-5)',
                         borderRadius: 'var(--radius-md)',
-                        background: status === 'PUBLISHED' ? 'var(--primary)' : 'var(--color-neutral-100)',
+                        background: status === 'PUBLISHED' ? 'var(--primary)' : 'transparent',
                         color: status === 'PUBLISHED' ? 'white' : 'var(--text-primary)',
                         textDecoration: 'none',
                         fontSize: 'var(--font-size-sm)',
+                        fontWeight: status === 'PUBLISHED' ? '600' : '500',
+                        transition: 'all 0.2s ease',
+                        boxShadow: status === 'PUBLISHED' ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
                     }}
                 >
                     Published
@@ -98,12 +133,15 @@ export default async function PostmortemsPage({
                 <Link
                     href="/postmortems?status=DRAFT"
                     style={{
-                        padding: 'var(--spacing-2) var(--spacing-4)',
+                        padding: 'var(--spacing-2) var(--spacing-5)',
                         borderRadius: 'var(--radius-md)',
-                        background: status === 'DRAFT' ? 'var(--primary)' : 'var(--color-neutral-100)',
+                        background: status === 'DRAFT' ? 'var(--primary)' : 'transparent',
                         color: status === 'DRAFT' ? 'white' : 'var(--text-primary)',
                         textDecoration: 'none',
                         fontSize: 'var(--font-size-sm)',
+                        fontWeight: status === 'DRAFT' ? '600' : '500',
+                        transition: 'all 0.2s ease',
+                        boxShadow: status === 'DRAFT' ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
                     }}
                 >
                     Drafts
@@ -152,22 +190,40 @@ export default async function PostmortemsPage({
                     </div>
                 </Card>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(500px, 1fr))', gap: 'var(--spacing-5)' }}>
                     {postmortems.map((postmortem) => (
-                        <Card key={postmortem.id} variant="elevated">
-                            <div style={{ padding: 'var(--spacing-5)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 'var(--spacing-3)' }}>
-                                    <div style={{ flex: 1 }}>
+                        <Card 
+                            key={postmortem.id} 
+                            variant="elevated"
+                            style={{
+                                transition: 'all 0.3s ease',
+                                border: '1px solid #e2e8f0',
+                            }}
+                            hover={true}
+                        >
+                            <div style={{ padding: 'var(--spacing-6)' }}>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'start', 
+                                    marginBottom: 'var(--spacing-4)',
+                                    gap: 'var(--spacing-3)',
+                                }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                         <Link
                                             href={`/postmortems/${postmortem.incidentId}`}
                                             style={{
                                                 fontSize: 'var(--font-size-lg)',
-                                                fontWeight: 'var(--font-weight-semibold)',
+                                                fontWeight: '700',
                                                 color: 'var(--text-primary)',
                                                 textDecoration: 'none',
                                                 display: 'block',
-                                                marginBottom: 'var(--spacing-1)',
+                                                marginBottom: 'var(--spacing-2)',
+                                                lineHeight: '1.4',
+                                                transition: 'color 0.2s ease',
                                             }}
+                                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
                                         >
                                             {postmortem.title}
                                         </Link>
@@ -177,9 +233,18 @@ export default async function PostmortemsPage({
                                                 fontSize: 'var(--font-size-sm)',
                                                 color: 'var(--text-muted)',
                                                 textDecoration: 'none',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 'var(--spacing-1)',
+                                                transition: 'color 0.2s ease',
                                             }}
+                                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                                         >
-                                            Incident: {postmortem.incident.title}
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" />
+                                            </svg>
+                                            {postmortem.incident.title}
                                         </Link>
                                     </div>
                                     <Badge
@@ -190,6 +255,9 @@ export default async function PostmortemsPage({
                                                 ? 'default'
                                                 : 'warning'
                                         }
+                                        style={{
+                                            flexShrink: 0,
+                                        }}
                                     >
                                         {postmortem.status}
                                     </Badge>
@@ -198,28 +266,55 @@ export default async function PostmortemsPage({
                                 {postmortem.summary && (
                                     <p
                                         style={{
-                                            color: 'var(--text-muted)',
+                                            color: 'var(--text-secondary)',
                                             fontSize: 'var(--font-size-sm)',
-                                            marginBottom: 'var(--spacing-3)',
-                                            lineHeight: 'var(--line-height-base)',
+                                            marginBottom: 'var(--spacing-4)',
+                                            lineHeight: '1.7',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 3,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
                                         }}
                                     >
-                                        {postmortem.summary.substring(0, 200)}
-                                        {postmortem.summary.length > 200 ? '...' : ''}
+                                        {postmortem.summary}
                                     </p>
                                 )}
 
-                                <div style={{ display: 'flex', gap: 'var(--spacing-4)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                                    <span>
-                                        Created by {postmortem.createdBy.name}
+                                <div style={{ 
+                                    display: 'flex', 
+                                    flexWrap: 'wrap',
+                                    gap: 'var(--spacing-3)', 
+                                    fontSize: 'var(--font-size-xs)', 
+                                    color: 'var(--text-muted)',
+                                    paddingTop: 'var(--spacing-4)',
+                                    borderTop: '1px solid #f1f5f9',
+                                }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                            <circle cx="12" cy="7" r="4" />
+                                        </svg>
+                                        {postmortem.createdBy.name}
                                     </span>
-                                    <span>
+                                    <span>•</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <polyline points="12 6 12 12 16 14" />
+                                        </svg>
                                         {postmortem.createdAt.toLocaleDateString()}
                                     </span>
                                     {postmortem.publishedAt && (
-                                        <span>
-                                            Published {postmortem.publishedAt.toLocaleDateString()}
-                                        </span>
+                                        <>
+                                            <span>•</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}>
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                    <polyline points="14 2 14 8 20 8" />
+                                                </svg>
+                                                Published {postmortem.publishedAt.toLocaleDateString()}
+                                            </span>
+                                        </>
                                     )}
                                 </div>
                             </div>
