@@ -24,7 +24,7 @@ export default async function SearchPresetsPage() {
     const userTeams = await prisma.user.findUnique({
         where: { id: permissions.id },
         select: {
-            teams: {
+            teamMemberships: {
                 select: {
                     teamId: true,
                 },
@@ -32,7 +32,7 @@ export default async function SearchPresetsPage() {
         },
     });
 
-    const userTeamIds = userTeams?.teams.map(t => t.teamId) || [];
+    const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
 
     const [presets, services, users, teams] = await Promise.all([
         getAccessiblePresets(permissions.id, userTeamIds),

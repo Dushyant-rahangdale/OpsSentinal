@@ -32,14 +32,14 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
     const userTeams = await prisma.user.findUnique({
         where: { id: permissions.id },
         select: {
-            teams: {
+            teamMemberships: {
                 select: {
                     teamId: true,
                 },
             },
         },
     });
-    const userTeamIds = userTeams?.teams.map(t => t.teamId) || [];
+    const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
 
     // Get accessible presets (and create defaults if needed)
     let presets = await getAccessiblePresets(permissions.id, userTeamIds);

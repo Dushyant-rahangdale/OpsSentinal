@@ -45,24 +45,47 @@ export default function StatusPageSubscribe({ statusPage, branding = {} }: Statu
     return (
         <section style={{ 
             marginBottom: '3rem',
-            padding: '2.5rem',
+            padding: '3rem',
             background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`,
-            borderRadius: '1rem',
+            borderRadius: '1.5rem',
             color: 'white',
-            boxShadow: `0 8px 32px ${primaryColor}40`,
+            boxShadow: `0 12px 40px ${primaryColor}40`,
+            position: 'relative',
+            overflow: 'hidden',
         }}>
-            <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            {/* Decorative elements */}
+            <div style={{
+                position: 'absolute',
+                top: '-50%',
+                right: '-20%',
+                width: '400px',
+                height: '400px',
+                background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+                borderRadius: '50%',
+            }} />
+            <div style={{
+                position: 'absolute',
+                bottom: '-30%',
+                left: '-10%',
+                width: '300px',
+                height: '300px',
+                background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
+                borderRadius: '50%',
+            }} />
+            <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
                 <h2 style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: '700', 
-                    marginBottom: '0.5rem',
+                    fontSize: '1.75rem', 
+                    fontWeight: '800', 
+                    marginBottom: '0.75rem',
+                    letterSpacing: '-0.01em',
                 }}>
                     {subscriptionText}
                 </h2>
                 <p style={{ 
-                    fontSize: '0.95rem', 
-                    marginBottom: '1.5rem',
-                    opacity: 0.9,
+                    fontSize: '1rem', 
+                    marginBottom: '2rem',
+                    opacity: 0.95,
+                    lineHeight: '1.6',
                 }}>
                     Get notified when incidents occur or are resolved
                 </p>
@@ -77,28 +100,31 @@ export default function StatusPageSubscribe({ statusPage, branding = {} }: Statu
                         style={{
                             flex: '1',
                             minWidth: '200px',
-                            padding: '0.75rem 1rem',
-                            borderRadius: '0.5rem',
+                            padding: '1rem 1.25rem',
+                            borderRadius: '0.75rem',
                             border: 'none',
-                            fontSize: '0.95rem',
+                            fontSize: '1rem',
                             background: 'white',
                             color: '#111827',
+                            fontWeight: '500',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                         }}
                     />
                     <button
                         type="submit"
                         disabled={isPending}
                         style={{
-                            padding: '0.75rem 1.5rem',
+                            padding: '1rem 2rem',
                             background: 'white',
-                            color: '#667eea',
+                            color: primaryColor,
                             border: 'none',
-                            borderRadius: '0.5rem',
-                            fontSize: '0.95rem',
-                            fontWeight: '600',
+                            borderRadius: '0.75rem',
+                            fontSize: '1rem',
+                            fontWeight: '700',
                             cursor: isPending ? 'not-allowed' : 'pointer',
                             opacity: isPending ? 0.7 : 1,
-                            transition: 'all 0.2s ease',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                         }}
                         onMouseEnter={(e) => {
                             if (!isPending) {

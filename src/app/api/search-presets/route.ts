@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         const userTeams = await prisma.user.findUnique({
             where: { id: session.user.id },
             select: {
-                teams: {
+                teamMemberships: {
                     select: {
                         teamId: true,
                     },
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        const userTeamIds = userTeams?.teams.map(t => t.teamId) || [];
+        const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
 
         const presets = await getAccessiblePresets(session.user.id, userTeamIds);
 

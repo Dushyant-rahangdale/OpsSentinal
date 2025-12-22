@@ -151,14 +151,14 @@ async function renderStatusPage(statusPage: any) {
                     select: {
                         incidents: {
                             where: {
-                                status: { not: 'RESOLVED' },
+                                status: { in: ['OPEN', 'ACKNOWLEDGED'] },
                             },
                         },
                     },
                 },
                 incidents: {
                     where: {
-                        status: { not: 'RESOLVED' },
+                        status: { in: ['OPEN', 'ACKNOWLEDGED'] },
                     },
                     select: {
                         urgency: true,
@@ -175,14 +175,14 @@ async function renderStatusPage(statusPage: any) {
                     select: {
                         incidents: {
                             where: {
-                                status: { not: 'RESOLVED' },
+                                status: { in: ['OPEN', 'ACKNOWLEDGED'] },
                             },
                         },
                     },
                 },
                 incidents: {
                     where: {
-                        status: { not: 'RESOLVED' },
+                        status: { in: ['OPEN', 'ACKNOWLEDGED'] },
                     },
                     select: {
                         urgency: true,
@@ -197,10 +197,17 @@ async function renderStatusPage(statusPage: any) {
     // Calculate actual status based on active incidents
     services = services.map(service => {
         const activeIncidents = service.incidents || [];
-        const highUrgencyIncidents = activeIncidents.filter((inc: any) => inc.urgency === 'HIGH');
-        const lowUrgencyIncidents = activeIncidents.filter((inc: any) => inc.urgency === 'LOW');
+        
+        // Filter out resolved incidents (shouldn't happen, but just in case)
+        const unresolvedIncidents = activeIncidents.filter((inc: any) => 
+            inc.status !== 'RESOLVED' && inc.status !== 'SNOOZED' && inc.status !== 'SUPPRESSED'
+        );
+        
+        const highUrgencyIncidents = unresolvedIncidents.filter((inc: any) => inc.urgency === 'HIGH');
+        const lowUrgencyIncidents = unresolvedIncidents.filter((inc: any) => inc.urgency === 'LOW');
 
         // Determine status based on incidents
+        // Priority: HIGH urgency incidents = MAJOR_OUTAGE, LOW urgency = PARTIAL_OUTAGE, none = OPERATIONAL
         let calculatedStatus = 'OPERATIONAL';
         if (highUrgencyIncidents.length > 0) {
             calculatedStatus = 'MAJOR_OUTAGE';
@@ -210,7 +217,7 @@ async function renderStatusPage(statusPage: any) {
 
         return {
             ...service,
-            status: calculatedStatus, // Override with calculated status
+            status: calculatedStatus, // Override with calculated status based on active incidents
         };
     });
 
@@ -256,9 +263,14 @@ async function renderStatusPage(statusPage: any) {
         },
     });
 
-    // Calculate overall status (default to operational if no services)
-    const hasOutage = services.length > 0 && services.some((s: any) => s.status === 'MAJOR_OUTAGE' || s.status === 'PARTIAL_OUTAGE');
-    const hasDegraded = services.length > 0 && services.some((s: any) => s.status === 'DEGRADED');
+    // Calculate overall status based on calculated service statuses
+    // Use the calculated statuses (not the original service.status field)
+    const hasOutage = services.length > 0 && services.some((s: any) => 
+        s.status === 'MAJOR_OUTAGE' || s.status === 'PARTIAL_OUTAGE'
+    );
+    const hasDegraded = services.length > 0 && services.some((s: any) => 
+        s.status === 'DEGRADED' || s.status === 'PARTIAL_OUTAGE'
+    );
     const overallStatus = hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
 
     // Determine max width based on layout
