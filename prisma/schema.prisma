@@ -105,6 +105,7 @@ model User {
   onCallShifts         OnCallShift[]
   escalationRules      EscalationRule[]
   incidentNotes        IncidentNote[]
+  postmortems          Postmortem[]
   notifications        Notification[]
   incidentWatchers     IncidentWatcher[]
   auditLogs            AuditLog[]
@@ -256,6 +257,7 @@ model Incident {
   assignee      User?             @relation(fields: [assigneeId], references: [id])
   events        IncidentEvent[]
   notes         IncidentNote[]
+  postmortem    Postmortem?
   alerts        Alert[] // Relation to raw alerts
   notifications Notification[]
   watchers      IncidentWatcher[]
@@ -351,6 +353,31 @@ model IncidentNote {
   user     User     @relation(fields: [userId], references: [id])
 
   @@index([incidentId, createdAt]) // For querying notes by incident chronologically
+}
+
+model Postmortem {
+  id          String   @id @default(cuid())
+  incidentId String   @unique // One postmortem per incident
+  title       String
+  summary     String? // Executive summary
+  timeline    Json? // Timeline of events (JSON array)
+  impact      Json? // Impact assessment (JSON object)
+  rootCause   String? // Root cause analysis
+  resolution  String? // How it was resolved
+  actionItems Json? // Action items (JSON array)
+  lessons     String? // Lessons learned
+  status      String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  publishedAt DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([incidentId])
+  @@index([status, createdAt])
+  @@index([createdById])
 }
 
 model OnCallSchedule {
