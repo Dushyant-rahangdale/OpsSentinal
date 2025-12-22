@@ -677,10 +677,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <div 
               className="incident-table-scroll"
               style={{ 
-                overflowX: 'auto',
-                overflowY: 'auto',
-                maxHeight: '70vh',
-                minHeight: '400px'
+                overflowX: 'auto'
               }}>
               {incidents.length === 0 ? (
                 <div style={{ 
