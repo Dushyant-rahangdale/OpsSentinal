@@ -61,21 +61,48 @@ export default async function PublicStatusPage() {
                     },
                 },
             });
-        } catch (error) {
+        } catch (error: any) {
             // If creation fails (e.g., table doesn't exist), show a helpful message
             console.error('Status page creation error:', error);
+            const isTableMissing = error.message?.includes('does not exist') || 
+                                  error.code === '42P01' ||
+                                  error.message?.includes('StatusPage');
+            
             return (
-                <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-                    <div style={{ textAlign: 'center', maxWidth: '600px' }}>
-                        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                            Status Page Not Configured
+                <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: '#f9fafb' }}>
+                    <div style={{ textAlign: 'center', maxWidth: '600px', background: 'white', padding: '3rem', borderRadius: '0.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⚠️</div>
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#111827' }}>
+                            Status Page Not Available
                         </h1>
-                        <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-                            The status page has not been set up yet. Please run database migrations and configure the status page in the admin settings.
-                        </p>
-                        <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
-                            Run: <code style={{ background: '#f3f4f6', padding: '0.25rem 0.5rem', borderRadius: '0.25rem' }}>npx prisma migrate deploy</code>
-                        </p>
+                        {isTableMissing ? (
+                            <>
+                                <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                                    The database tables for the status page haven't been created yet. Please run the database migration.
+                                </p>
+                                <div style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1.5rem', textAlign: 'left' }}>
+                                    <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem', fontWeight: '600' }}>Run this command:</p>
+                                    <code style={{ 
+                                        background: '#1f2937', 
+                                        color: '#f9fafb',
+                                        padding: '0.75rem 1rem', 
+                                        borderRadius: '0.25rem',
+                                        display: 'block',
+                                        fontSize: '0.875rem',
+                                        fontFamily: 'monospace'
+                                    }}>
+                                        npx prisma db push
+                                    </code>
+                                </div>
+                                <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                                    After running the migration, refresh this page.
+                                </p>
+                            </>
+                        ) : (
+                            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                                An error occurred while setting up the status page. Please check the server logs or contact support.
+                            </p>
+                        )}
                     </div>
                 </div>
             );
