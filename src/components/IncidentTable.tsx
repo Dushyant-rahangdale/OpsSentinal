@@ -263,6 +263,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                                 )}
                             </button>
                         </th>
+                        <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -329,11 +330,46 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                                     hour12: true
                                 })}
                             </td>
+                            <td style={{ padding: '1rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <Link 
+                                        href={`/incidents/${incident.id}`}
+                                        style={{
+                                            padding: '0.25rem 0.75rem',
+                                            background: 'var(--color-neutral-100)',
+                                            color: 'var(--text-primary)',
+                                            textDecoration: 'none',
+                                            borderRadius: 'var(--radius-sm)',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '500',
+                                            border: '1px solid var(--color-neutral-200)'
+                                        }}
+                                    >
+                                        View
+                                    </Link>
+                                    {incident.status === 'RESOLVED' && (
+                                        <Link 
+                                            href={`/postmortems/${incident.id}`}
+                                            style={{
+                                                padding: '0.25rem 0.75rem',
+                                                background: 'var(--primary)',
+                                                color: 'white',
+                                                textDecoration: 'none',
+                                                borderRadius: 'var(--radius-sm)',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '500'
+                                            }}
+                                        >
+                                            Postmortem
+                                        </Link>
+                                    )}
+                                </div>
+                            </td>
                         </tr>
                     ))}
                     {incidents.length === 0 && (
                         <tr>
-                            <td colSpan={7} style={{ padding: '3rem', textAlign: 'center' }}>
+                            <td colSpan={8} style={{ padding: '3rem', textAlign: 'center' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ fontSize: '3rem' }}>📊</div>
                                     <div>
