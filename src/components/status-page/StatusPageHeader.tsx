@@ -120,23 +120,20 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.75rem',
-                                    padding: '0.75rem 1.25rem',
-                                    background: status.gradient,
-                                    borderRadius: '2rem',
-                                    boxShadow: `0 4px 16px ${status.bg}40`,
-                                    color: 'white',
-                                    fontWeight: '600',
-                                    fontSize: '0.9375rem',
                                 }}>
                                     <div style={{
-                                        width: '12px',
-                                        height: '12px',
+                                        width: '10px',
+                                        height: '10px',
                                         borderRadius: '50%',
-                                        background: 'white',
-                                        boxShadow: `0 0 12px rgba(255,255,255,0.8)`,
-                                        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                        background: status.bg,
                                     }}></div>
-                                    <span>{status.text}</span>
+                                    <span style={{
+                                        fontSize: '1rem',
+                                        color: '#374151',
+                                        fontWeight: '500',
+                                    }}>
+                                        {status.text}
+                                    </span>
                                 </div>
                             </div>
                         </div>

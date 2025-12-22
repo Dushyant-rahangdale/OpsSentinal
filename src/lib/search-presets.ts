@@ -210,6 +210,12 @@ export function criteriaToSearchParams(criteria: FilterCriteria): Record<string,
  * Get all accessible presets for a user
  */
 export async function getAccessiblePresets(userId: string, userTeamIds: string[] = []): Promise<SearchPresetWithCreator[]> {
+    // Check if SearchPreset model exists in Prisma client (defensive check)
+    if (!prisma.searchPreset) {
+        console.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
+        return [];
+    }
+
     const presets = await prisma.searchPreset.findMany({
         where: {
             OR: [
@@ -264,6 +270,12 @@ export async function trackPresetUsage(presetId: string, userId: string): Promis
  * Get popular presets (most used)
  */
 export async function getPopularPresets(limit: number = 10): Promise<SearchPresetWithCreator[]> {
+    // Check if SearchPreset model exists
+    if (!prisma.searchPreset) {
+        console.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
+        return [];
+    }
+
     const presets = await prisma.searchPreset.findMany({
         where: {
             OR: [

@@ -72,6 +72,12 @@ export const DEFAULT_PRESETS: Array<{
  * Create default presets for a user
  */
 export async function createDefaultPresetsForUser(userId: string): Promise<void> {
+    // Check if SearchPreset model exists
+    if (!prisma.searchPreset) {
+        console.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
+        return;
+    }
+
     // Check if user already has presets
     const existingPresets = await prisma.searchPreset.count({
         where: { createdById: userId },

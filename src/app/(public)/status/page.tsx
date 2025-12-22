@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
+import StatusPageServicesGrouped from '@/components/status-page/StatusPageServicesGrouped';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import StatusPageMetrics from '@/components/status-page/StatusPageMetrics';
 import StatusPageSubscribe from '@/components/status-page/StatusPageSubscribe';
@@ -147,6 +148,12 @@ async function renderStatusPage(statusPage: any) {
         services = await prisma.service.findMany({
             where: { id: { in: serviceIds } },
             include: {
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 _count: {
                     select: {
                         incidents: {
@@ -171,6 +178,12 @@ async function renderStatusPage(statusPage: any) {
         // If no services configured, get all services as fallback
         services = await prisma.service.findMany({
             include: {
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 _count: {
                     select: {
                         incidents: {
@@ -327,13 +340,18 @@ async function renderStatusPage(statusPage: any) {
                         <StatusPageAnnouncements announcements={statusPage.announcements} />
                     )}
 
-                    {/* Services */}
+                    {/* Services - OpenAI Style Grouped View */}
                     {statusPage.showServices && (
                         <>
                             {services.length > 0 ? (
-                                <StatusPageServices 
+                                <StatusPageServicesGrouped 
                                     services={services}
                                     statusPageServices={statusPage.services}
+                                    incidents={allIncidents.map(inc => ({
+                                        serviceId: inc.serviceId,
+                                        createdAt: inc.createdAt,
+                                        resolvedAt: inc.resolvedAt,
+                                    }))}
                                 />
                             ) : (
                                 <section style={{ marginBottom: '3rem' }}>
@@ -378,7 +396,9 @@ async function renderStatusPage(statusPage: any) {
                     {statusPage.showIncidents && (
                         <>
                             {recentIncidents.length > 0 ? (
-                                <StatusPageIncidents incidents={recentIncidents} />
+                                <div id="incidents">
+                                    <StatusPageIncidents incidents={recentIncidents} />
+                                </div>
                             ) : (
                                 <section style={{ marginBottom: '3rem' }}>
                                     <h2 style={{ 
