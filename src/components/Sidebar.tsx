@@ -211,79 +211,59 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                 href={item.href}
                 className={`nav-item ${active ? 'active' : ''}`}
                 style={{
-                    padding: '0.875rem 1rem',
+                    padding: '0.625rem 0.75rem',
                     textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.875rem',
-                    borderRadius: '10px',
-                    position: 'relative',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: active 
-                        ? 'rgba(255,255,255,0.18)' 
-                        : 'transparent',
+                    gap: '0.75rem',
+                    borderRadius: '7px',
+                    transition: 'all 0.15s ease',
+                    background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
                     color: active ? 'white' : 'rgba(255,255,255,0.85)',
-                    borderLeft: active ? '3px solid rgba(255,255,255,0.95)' : '3px solid transparent',
-                    paddingLeft: active ? 'calc(1rem - 3px)' : '1rem',
                     fontWeight: active ? '600' : '500',
-                    boxShadow: active 
-                        ? '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)' 
-                        : 'none'
+                    fontSize: '0.875rem'
                 }}
                 onMouseEnter={(e) => {
                     if (!active) {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                        e.currentTarget.style.color = 'white';
-                        e.currentTarget.style.transform = 'translateX(3px)';
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                     }
                 }}
                 onMouseLeave={(e) => {
                     if (!active) {
                         e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
-                        e.currentTarget.style.transform = 'translateX(0)';
                     }
                 }}
             >
                 <span
                     className="nav-icon"
                     style={{
-                        width: '20px',
-                        height: '20px',
+                        width: '18px',
+                        height: '18px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        opacity: active ? 1 : 0.85,
-                        position: 'relative',
-                        filter: active ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' : 'none'
+                        opacity: active ? 1 : 0.8
                     }}
                 >
                     {item.icon}
                 </span>
-                <span style={{ 
-                    fontSize: '0.9rem', 
-                    whiteSpace: 'nowrap', 
-                    flex: 1,
-                    letterSpacing: '0.01em'
-                }}>{item.label}</span>
+                <span style={{ whiteSpace: 'nowrap', flex: 1 }}>{item.label}</span>
                 {showBadge && (
                     <span
                         aria-label={`${activeIncidentsCount} active incidents`}
                         style={{
-                            minWidth: '22px',
-                            height: '22px',
-                            padding: '0 7px',
-                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                            minWidth: '18px',
+                            height: '18px',
+                            padding: '0 5px',
+                            background: '#ef4444',
                             color: 'white',
-                            fontSize: '0.7rem',
+                            fontSize: '0.65rem',
                             fontWeight: '700',
-                            borderRadius: 'var(--radius-full)',
+                            borderRadius: '9px',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
-                            border: '1px solid rgba(255,255,255,0.2)'
+                            justifyContent: 'center'
                         }}>
                         {activeIncidentsCount > 99 ? '99+' : activeIncidentsCount}
                     </span>
@@ -295,7 +275,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
     const renderSection = (sectionName: string, items: NavItem[]) => {
         if (sectionName === 'MAIN') {
             return (
-                <div key={sectionName} style={{ marginBottom: '0' }}>
+                <div key={sectionName} style={{ marginBottom: '1.25rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                         {items.map(renderNavItem)}
                     </div>
@@ -318,40 +298,31 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
         const colors = sectionColors[sectionName] || { dot: 'rgba(255,255,255,0.5)', text: 'rgba(255,255,255,0.75)' };
 
         return (
-            <div key={sectionName} style={{ marginBottom: '1.5rem' }}>
-                {/* Minimal badge-style section header */}
+            <div key={sectionName} style={{ marginBottom: '1.25rem' }}>
+                {/* Minimal section header */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    marginBottom: '0.875rem',
-                    paddingLeft: '0.5rem',
-                    paddingRight: '0.5rem'
+                    marginBottom: '0.625rem',
+                    paddingLeft: '0.25rem'
                 }}>
                     <div style={{
-                        width: '6px',
-                        height: '6px',
+                        width: '4px',
+                        height: '4px',
                         borderRadius: '50%',
                         background: colors.dot,
-                        flexShrink: 0,
-                        boxShadow: `0 0 8px ${colors.dot}`
+                        flexShrink: 0
                     }} />
                     <span style={{
                         fontSize: '0.65rem',
-                        fontWeight: '700',
+                        fontWeight: '600',
                         color: colors.text,
-                        letterSpacing: '1.2px',
-                        textTransform: 'uppercase',
-                        position: 'relative'
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase'
                     }}>
                         {sectionName}
                     </span>
-                    <div style={{
-                        flex: 1,
-                        height: '1px',
-                        background: 'linear-gradient(90deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
-                        marginLeft: '0.5rem'
-                    }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                     {items.map(renderNavItem)}
@@ -446,63 +417,95 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                 }}
                 aria-label="Main navigation"
             >
-                {/* Branding Header - Fixed */}
+                {/* Branding Header - Enhanced */}
                 <div style={{
-                    padding: '1.75rem 1.5rem',
-                    paddingBottom: '1.25rem',
+                    padding: '1.5rem 1.25rem 1.25rem 1.25rem',
                     flexShrink: 0,
                     borderBottom: '1px solid rgba(255,255,255,0.12)',
-                    background: 'rgba(0, 0, 0, 0.05)'
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
+                    position: 'relative',
+                    overflow: 'hidden'
                 }}>
-                    <Link href="/" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                            {/* Logo */}
+                    {/* Subtle background pattern */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 50%)',
+                        pointerEvents: 'none'
+                    }} />
+                    
+                    <Link 
+                        href="/" 
+                        style={{ 
+                            textDecoration: 'none', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '0.875rem',
+                            position: 'relative',
+                            zIndex: 1,
+                            transition: 'transform 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateX(2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateX(0)';
+                        }}
+                    >
+                        <div style={{
+                            width: '42px',
+                            height: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.12) 100%)',
+                            borderRadius: '11px',
+                            flexShrink: 0,
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            {/* Logo glow effect */}
                             <div style={{
-                                width: '48px',
-                                height: '48px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'rgba(255,255,255,0.2)',
-                                borderRadius: '12px',
-                                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))',
-                                flexShrink: 0,
-                                border: '1px solid rgba(255,255,255,0.25)',
-                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.15)'
-                            }}>
-                                <img
-                                    src="/logo.svg"
-                                    alt="OpsGuard Shield"
-                                    style={{
-                                        width: '34px',
-                                        height: '34px',
-                                        objectFit: 'contain',
-                                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))'
-                                    }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '0.375rem' }}>
-                                <h1 style={{
-                                    fontSize: '1.4rem',
-                                    fontWeight: '800',
-                                    color: 'white',
-                                    letterSpacing: '-0.5px',
-                                    margin: 0,
-                                    lineHeight: '1.2',
-                                    textShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                                }}>OpsGuard</h1>
-                                <span style={{
-                                    fontSize: '0.7rem',
-                                    opacity: 0.95,
-                                    fontWeight: '700',
-                                    letterSpacing: '1.5px',
-                                    background: 'rgba(255,255,255,0.25)',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    width: 'fit-content',
-                                    border: '1px solid rgba(255,255,255,0.2)'
-                                }}>ENTERPRISE</span>
-                            </div>
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, transparent 70%)',
+                                pointerEvents: 'none'
+                            }} />
+                            <img
+                                src="/logo.svg"
+                                alt="OpsGuard"
+                                style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    objectFit: 'contain',
+                                    filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.2))',
+                                    position: 'relative',
+                                    zIndex: 1
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                            <h1 style={{
+                                fontSize: '1.35rem',
+                                fontWeight: '800',
+                                color: 'white',
+                                margin: 0,
+                                lineHeight: '1.2',
+                                letterSpacing: '-0.4px',
+                                textShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                            }}>OpsGuard</h1>
+                            <div style={{
+                                fontSize: '0.65rem',
+                                color: 'rgba(255,255,255,0.7)',
+                                fontWeight: '600',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase'
+                            }}>Enterprise</div>
                         </div>
                     </Link>
                 </div>
@@ -516,7 +519,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         flex: 1,
                         overflowY: 'auto',
                         overflowX: 'hidden',
-                        padding: '1.25rem 0.75rem 1.5rem 0.75rem',
+                        padding: '1rem 0.75rem',
                         gap: '0.5rem'
                     }}
                 >
@@ -552,202 +555,112 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                     </button>
                 )}
 
-                {/* User Profile and Footer - Enhanced */}
+                {/* User Profile and Footer - Refined */}
                 <div style={{
-                    padding: '1.25rem 0.75rem 1.5rem 0.75rem',
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.15) 100%)',
-                    borderTop: '1px solid rgba(255,255,255,0.12)',
+                    padding: '1rem 0.75rem',
+                    borderTop: '1px solid rgba(255,255,255,0.1)',
                     flexShrink: 0,
-                    marginTop: 'auto'
+                    marginTop: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
                 }}>
-                    {/* User Profile Card */}
-                    <div style={{
-                        padding: '1rem',
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: '12px',
-                        marginBottom: '0.875rem',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.1)'
-                    }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.1)';
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                            {/* Avatar */}
-                            <div style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
-                                border: '2px solid rgba(255,255,255,0.3)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: '700',
-                                fontSize: '0.875rem',
-                                color: 'white',
-                                flexShrink: 0,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}>
-                                {userName 
-                                    ? userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                                    : userEmail 
-                                        ? userEmail[0].toUpperCase()
-                                        : 'U'}
-                            </div>
-                            {/* User Info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    fontSize: '0.9rem',
-                                    fontWeight: '600',
-                                    color: 'white',
-                                    marginBottom: '0.2rem',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                }}>
-                                    {userName || userEmail || 'User'}
-                                </div>
-                                <div style={{
-                                    fontSize: '0.7rem',
-                                    color: 'rgba(255,255,255,0.7)',
-                                    fontWeight: '600',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
-                                }}>
-                                    {userRole ? userRole.charAt(0) + userRole.slice(1).toLowerCase() : 'User'}
-                                </div>
-                            </div>
-                        </div>
-                        {/* Logout Button */}
-                        <button
-                            onClick={() => window.location.href = '/api/auth/signout'}
-                            style={{
-                                width: '100%',
-                                padding: '0.625rem',
-                                background: 'rgba(255,255,255,0.12)',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                borderRadius: '8px',
-                                color: 'white',
-                                fontSize: '0.85rem',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.18)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                            }}
-                        >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            Sign Out
-                        </button>
-                    </div>
-
-                    {/* Quick Links */}
+                    {/* User Profile - Compact */}
                     <div style={{
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem',
-                        fontSize: '0.8rem'
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem',
+                        background: 'rgba(255,255,255,0.08)',
+                        borderRadius: '8px'
                     }}>
+                        <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'rgba(255,255,255,0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '600',
+                            fontSize: '0.8rem',
+                            color: 'white',
+                            flexShrink: 0,
+                            textTransform: 'uppercase'
+                        }}>
+                            {userName 
+                                ? userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                                : userEmail 
+                                    ? userEmail[0].toUpperCase()
+                                    : 'U'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                color: 'white',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                marginBottom: '0.125rem'
+                            }}>
+                                {userName || userEmail || 'User'}
+                            </div>
+                            <div style={{
+                                fontSize: '0.7rem',
+                                color: 'rgba(255,255,255,0.65)',
+                                textTransform: 'capitalize'
+                            }}>
+                                {userRole ? userRole.toLowerCase() : 'User'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons Row */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '0.5rem'
+                    }}>
+                        {/* Documentation Link */}
                         <Link
                             href="/help"
                             onClick={() => isMobile && setIsMobileMenuOpen(false)}
-                            aria-label="Help and documentation"
+                            aria-label="Documentation"
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.625rem',
+                                padding: '0.5rem',
+                                background: 'rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: '6px',
                                 color: 'rgba(255,255,255,0.9)',
-                                textDecoration: 'none',
+                                fontSize: '0.7rem',
                                 fontWeight: '500',
-                                padding: '0.625rem 0.875rem',
-                                borderRadius: '8px',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.08)'
+                                textDecoration: 'none',
+                                transition: 'all 0.15s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.25rem',
+                                textAlign: 'center'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.color = 'white';
                                 e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                                e.currentTarget.style.transform = 'translateX(2px)';
+                                e.currentTarget.style.color = 'white';
                             }}
                             onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                                 e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                e.currentTarget.style.transform = 'translateX(0)';
                             }}
                         >
-                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" />
                             </svg>
-                            <span>Help & Docs</span>
+                            <span style={{ fontSize: '0.65rem', lineHeight: '1' }}>Docs</span>
                         </Link>
-                        <Link
-                            href="/settings"
-                            onClick={() => isMobile && setIsMobileMenuOpen(false)}
-                            aria-label="Settings"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.625rem',
-                                color: 'rgba(255,255,255,0.9)',
-                                textDecoration: 'none',
-                                fontWeight: '500',
-                                padding: '0.625rem 0.875rem',
-                                borderRadius: '8px',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.08)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.color = 'white';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                                e.currentTarget.style.transform = 'translateX(2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                e.currentTarget.style.transform = 'translateX(0)';
-                            }}
-                        >
-                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="3" />
-                                <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
-                            </svg>
-                            <span>Settings</span>
-                        </Link>
+
+                        {/* Shortcuts Button */}
                         <button
                             onClick={() => {
                                 window.dispatchEvent(new CustomEvent('toggleKeyboardShortcuts'));
@@ -755,42 +668,108 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             }}
                             aria-label="Show keyboard shortcuts"
                             style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.625rem',
+                                padding: '0.5rem',
+                                background: 'rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: '6px',
                                 color: 'rgba(255,255,255,0.9)',
-                                textDecoration: 'none',
+                                fontSize: '0.7rem',
                                 fontWeight: '500',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(255,255,255,0.08)',
                                 cursor: 'pointer',
-                                padding: '0.625rem 0.875rem',
-                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                fontSize: '0.8rem',
-                                borderRadius: '8px',
-                                textAlign: 'left'
+                                transition: 'all 0.15s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.25rem',
+                                textAlign: 'center'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.color = 'white';
                                 e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                                e.currentTarget.style.transform = 'translateX(2px)';
+                                e.currentTarget.style.color = 'white';
                             }}
                             onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
                                 e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                e.currentTarget.style.transform = 'translateX(0)';
                             }}
                         >
-                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                                 <rect x="4" y="2" width="16" height="20" rx="2" />
                                 <path d="M9 6h6m-6 4h6m-2 4h2" />
                             </svg>
-                            <span>Shortcuts</span>
+                            <span style={{ fontSize: '0.65rem', lineHeight: '1' }}>Keys</span>
                         </button>
+
+                        {/* Settings Link */}
+                        <Link
+                            href="/settings"
+                            onClick={() => isMobile && setIsMobileMenuOpen(false)}
+                            aria-label="Settings"
+                            style={{
+                                padding: '0.5rem',
+                                background: 'rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: '6px',
+                                color: 'rgba(255,255,255,0.9)',
+                                fontSize: '0.7rem',
+                                fontWeight: '500',
+                                textDecoration: 'none',
+                                transition: 'all 0.15s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.25rem',
+                                textAlign: 'center'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                                e.currentTarget.style.color = 'white';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
+                            </svg>
+                            <span style={{ fontSize: '0.65rem', lineHeight: '1' }}>Settings</span>
+                        </Link>
                     </div>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={() => window.location.href = '/api/auth/signout'}
+                        style={{
+                            width: '100%',
+                            padding: '0.625rem',
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            borderRadius: '6px',
+                            color: 'white',
+                            fontSize: '0.8rem',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                        }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Sign Out
+                    </button>
                 </div>
 
             </aside>
