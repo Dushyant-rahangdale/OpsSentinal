@@ -91,6 +91,11 @@ export default function CreateIncidentForm({
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                             Title <span style={{ color: 'var(--danger)' }}>*</span>
+                            {title.length > 0 && (
+                                <span style={{ float: 'right', fontSize: '0.75rem', color: title.length > 450 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: '400' }}>
+                                    {title.length}/500
+                                </span>
+                            )}
                         </label>
                         <input
                             name="title"
