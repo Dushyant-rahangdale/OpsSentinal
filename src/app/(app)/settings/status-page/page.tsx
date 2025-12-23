@@ -41,8 +41,15 @@ export default async function StatusPageSettingsPage() {
                 enabled: true,
             },
             include: {
-                services: true,
-                announcements: true,
+                services: {
+                    include: {
+                        service: true,
+                    },
+                },
+                announcements: {
+                    orderBy: { startDate: 'desc' },
+                    take: 20,
+                },
             },
         });
     }

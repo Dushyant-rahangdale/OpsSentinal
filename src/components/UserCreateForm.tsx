@@ -26,12 +26,23 @@ function SubmitButton() {
 export default function UserCreateForm({ action, className = '' }: Props) {
     const [state, formAction] = useActionState(action, { error: null, success: false });
     const formRef = useRef<HTMLFormElement | null>(null);
+    const [email, setEmail] = useState('');
+    const [emailError, setEmailError] = useState<string | null>(null);
 
     useEffect(() => {
         if (state?.success) {
             formRef.current?.reset();
+            setEmail('');
+            setEmailError(null);
         }
     }, [state?.success]);
+
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setEmail(value);
+        const error = getEmailValidationError(value);
+        setEmailError(error);
+    };
 
     return (
         <form ref={formRef} action={formAction} className={`invite-form ${className}`.trim()}>
@@ -54,7 +65,14 @@ export default function UserCreateForm({ action, className = '' }: Props) {
                     placeholder="name@company.com"
                     className="form-input"
                     maxLength={320}
+                    value={email}
+                    onChange={handleEmailChange}
                 />
+                {emailError && (
+                    <div className="form-error" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                        {emailError}
+                    </div>
+                )}
             </div>
             <div className="form-field">
                 <label className="form-label">Role</label>

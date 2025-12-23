@@ -9,7 +9,7 @@ type PostmortemCardProps = {
         incidentId: string;
         title: string;
         summary: string | null;
-        status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+        status: string;
         createdAt: Date;
         publishedAt: Date | null;
         createdBy: {

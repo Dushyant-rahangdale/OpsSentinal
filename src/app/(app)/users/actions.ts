@@ -99,6 +99,12 @@ export async function addUser(_prevState: UserFormState, formData: FormData): Pr
         return { error: 'Name and email are required.' };
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return { error: 'Please enter a valid email address (e.g., name@company.com).' };
+    }
+
     const existing = await prisma.user.findUnique({
         where: { email }
     });

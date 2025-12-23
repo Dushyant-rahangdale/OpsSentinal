@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+// Email validation - RFC 5322 compliant
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// URL validation
+const urlRegex = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+
+// Custom validators
+export const emailValidator = z.string().trim().email('Please enter a valid email address').max(320);
+export const urlValidator = z.string().trim().url('Please enter a valid URL starting with http:// or https://').max(500).optional().nullable();
+export const optionalUrlValidator = z.string().trim().url('Please enter a valid URL starting with http:// or https://').max(500).optional().nullable();
+
 export const IncidentCreateSchema = z.object({
     title: z.string().trim().min(1).max(500),
     description: z.string().trim().max(10000).optional().nullable(),
@@ -41,8 +52,8 @@ export const StatusPageSettingsSchema = z.object({
     showIncidents: z.boolean().optional(),
     showMetrics: z.boolean().optional(),
     footerText: z.string().trim().max(1000).optional().nullable(),
-    contactEmail: z.string().trim().max(320).optional().nullable(),
-    contactUrl: z.string().trim().max(500).optional().nullable(),
+    contactEmail: emailValidator.optional().nullable(),
+    contactUrl: optionalUrlValidator,
     branding: z.unknown().optional().nullable(),
     serviceIds: z.array(z.string()).optional(),
     serviceConfigs: z.record(z.object({

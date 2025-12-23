@@ -126,7 +126,7 @@ export async function deleteService(serviceId: string) {
         entityType: 'SERVICE',
         entityId: serviceId,
         actorId: await getDefaultActorId(),
-        details: { serviceId, deletedIncidents: incidentCount }
+        details: { serviceId }
     });
 
     revalidatePath('/services');

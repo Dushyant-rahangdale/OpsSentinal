@@ -50,7 +50,7 @@ export default async function PreferencesSettingsPage() {
                     emailEnabled={user?.emailNotificationsEnabled ?? false}
                     smsEnabled={user?.smsNotificationsEnabled ?? false}
                     pushEnabled={user?.pushNotificationsEnabled ?? false}
-                    phoneNumber={user?.phoneNumber}
+                    phoneNumber={user?.phoneNumber ?? null}
                 />
             </div>
 
