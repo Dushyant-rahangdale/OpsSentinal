@@ -54,7 +54,7 @@ export default function Skeleton({
 /**
  * SkeletonText component for text loading states
  */
-export function SkeletonText({
+function SkeletonText({
   lines = 3,
   width = '100%',
   className = '',
@@ -76,6 +76,7 @@ export function SkeletonText({
     </div>
   );
 }
+export { SkeletonText };
 
 /**
  * SkeletonCard component for card loading states

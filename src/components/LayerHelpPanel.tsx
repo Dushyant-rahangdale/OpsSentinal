@@ -11,7 +11,7 @@ export default function LayerHelpPanel() {
                 type="button"
                 onClick={() => setIsOpen(true)}
                 aria-label="Open help panel about layers"
-                aria-expanded="false"
+                aria-expanded={isOpen ? 'true' : 'false'}
                 style={{
                     padding: '0.5rem 1rem',
                     borderRadius: '8px',
