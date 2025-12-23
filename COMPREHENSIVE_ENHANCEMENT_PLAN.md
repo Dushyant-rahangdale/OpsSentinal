@@ -1046,6 +1046,9 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - Integrated `getUserFriendlyError` in form components
 - Updated ErrorBoundary to show user-friendly messages
 - Improved API error responses automatically via `jsonError` helper
+- **Updated all server actions** to use user-friendly error messages
+- Created `server-action-helpers.ts` utility for consistent error handling
+- Better validation error messages with context
 - Added unit tests for error message utilities
 
 ---
