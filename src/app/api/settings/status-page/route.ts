@@ -4,6 +4,7 @@ import { assertAdmin } from '@/lib/rbac';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { StatusPageSettingsSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { Prisma } from '@prisma/client';
 
 /**
  * Update Status Page Settings
@@ -59,21 +60,26 @@ export async function POST(req: NextRequest) {
         }
 
         // Update status page
+        const updateData: Prisma.StatusPageUpdateInput = {
+            name,
+            subdomain: subdomain || null,
+            customDomain: customDomain || null,
+            enabled: enabled !== false,
+            showServices: showServices !== false,
+            showIncidents: showIncidents !== false,
+            showMetrics: showMetrics !== false,
+            footerText: footerText || null,
+            contactEmail: contactEmail || null,
+            contactUrl: contactUrl || null
+        };
+
+        if (branding !== undefined) {
+            updateData.branding = branding === null ? Prisma.JsonNull : (branding as Prisma.InputJsonValue);
+        }
+
         await prisma.statusPage.update({
             where: { id: statusPage.id },
-            data: {
-                name,
-                subdomain: subdomain || null,
-                customDomain: customDomain || null,
-                enabled: enabled !== false,
-                showServices: showServices !== false,
-                showIncidents: showIncidents !== false,
-                showMetrics: showMetrics !== false,
-                footerText: footerText || null,
-                contactEmail: contactEmail || null,
-                contactUrl: contactUrl || null,
-                branding: branding || null,
-            },
+            data: updateData,
         });
 
         // Update services

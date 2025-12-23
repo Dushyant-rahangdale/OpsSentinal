@@ -11,6 +11,7 @@
 
 import prisma from './prisma';
 import crypto from 'crypto';
+import { retryFetch, isRetryableHttpError } from './retry';
 
 export type WebhookOptions = {
     url: string;
@@ -75,26 +76,59 @@ export async function sendWebhook(
             requestHeaders['X-OpsGuard-Timestamp'] = Date.now().toString();
         }
 
-        // Create AbortController for timeout
+        // Use retry logic for improved reliability
+        // Create AbortController for timeout compatibility
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+        
         try {
-            const response = await fetch(url, {
-                method,
-                headers: requestHeaders,
-                body: payloadString,
-                signal: controller.signal,
-            });
+            const response = await retryFetch(
+                url,
+                {
+                    method,
+                    headers: requestHeaders,
+                    body: payloadString,
+                    signal: controller.signal,
+                },
+                {
+                    maxAttempts: 3,
+                    initialDelayMs: 1000,
+                    retryableErrors: (error) => {
+                        // Only retry on network errors, timeouts, or 5xx server errors
+                        if (error instanceof Error) {
+                            if (error.name === 'AbortError' || error.message.includes('timeout')) {
+                                return true;
+                            }
+                            if (error.message.includes('fetch') || error.message.includes('network')) {
+                                return true;
+                            }
+                            if (error.message.includes('5')) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            );
 
             clearTimeout(timeoutId);
-
             const responseText = await response.text();
 
-            if (!response.ok) {
+            // Check for non-retryable client errors (4xx)
+            if (!response.ok && !isRetryableHttpError(response.status)) {
                 return {
                     success: false,
                     error: `Webhook returned ${response.status}: ${responseText}`,
+                    statusCode: response.status,
+                    responseBody: responseText,
+                };
+            }
+
+            if (!response.ok) {
+                // This shouldn't happen after retries, but handle gracefully
+                return {
+                    success: false,
+                    error: `Webhook returned ${response.status} after retries: ${responseText}`,
                     statusCode: response.status,
                     responseBody: responseText,
                 };
@@ -106,13 +140,13 @@ export async function sendWebhook(
                 responseBody: responseText,
             };
         } catch (fetchError: any) {
-            clearTimeout(timeoutId);
-            
-            if (fetchError.name === 'AbortError') {
-                return { success: false, error: 'Webhook request timed out' };
+            if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
+                return { success: false, error: 'Webhook request timed out after retries' };
             }
             
             throw fetchError;
+        } finally {
+            clearTimeout(timeoutId);
         }
     } catch (error: any) {
         console.error('Webhook send error:', error);
@@ -121,39 +155,18 @@ export async function sendWebhook(
 }
 
 /**
- * Send webhook with retry logic
+ * Send webhook with retry logic (legacy function - kept for backward compatibility)
+ * Note: sendWebhook now includes retry logic internally, but this function
+ * provides additional retry attempts on top of that
  */
 export async function sendWebhookWithRetry(
     options: WebhookOptions,
     maxRetries: number = 3,
     initialDelay: number = 1000
 ): Promise<WebhookResult> {
-    let lastError: WebhookResult | null = null;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        if (attempt > 0) {
-            // Exponential backoff: 1s, 2s, 4s
-            const delay = initialDelay * Math.pow(2, attempt - 1);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-
-        const result = await sendWebhook(options);
-        
-        if (result.success) {
-            return result;
-        }
-
-        lastError = result;
-
-        // Don't retry on client errors (4xx) except 408, 429
-        if (result.statusCode && result.statusCode >= 400 && result.statusCode < 500) {
-            if (result.statusCode !== 408 && result.statusCode !== 429) {
-                break; // Don't retry client errors
-            }
-        }
-    }
-
-    return lastError || { success: false, error: 'Max retries exceeded' };
+    // sendWebhook now has built-in retry logic, so this is mainly for backward compatibility
+    // If additional retry attempts are needed, they can be added here
+    return await sendWebhook(options);
 }
 
 /**

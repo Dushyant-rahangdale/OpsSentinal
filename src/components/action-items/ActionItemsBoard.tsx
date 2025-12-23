@@ -187,7 +187,7 @@ export default function ActionItemsBoard({ actionItems, users, canManage, view, 
                                         {STATUS_LABELS[status as keyof typeof STATUS_LABELS]}
                                     </h3>
                                     <Badge
-                                        variant={status === 'COMPLETED' ? 'success' : status === 'BLOCKED' ? 'danger' : 'default'}
+                                        variant={status === 'COMPLETED' ? 'success' : status === 'BLOCKED' ? 'error' : 'default'}
                                         style={{
                                             background: `${STATUS_COLORS[status as keyof typeof STATUS_COLORS]}20`,
                                             color: STATUS_COLORS[status as keyof typeof STATUS_COLORS],
@@ -472,4 +472,3 @@ export default function ActionItemsBoard({ actionItems, users, canManage, view, 
         </div>
     );
 }
-

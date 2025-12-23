@@ -3,6 +3,8 @@
  * Sends notifications to Slack when incidents are created, acknowledged, or resolved.
  */
 
+import { retryFetch, isRetryableHttpError } from './retry';
+
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
 export type SlackEventType = 'triggered' | 'acknowledged' | 'resolved';
@@ -120,22 +122,48 @@ export async function sendSlackNotification(
     };
 
     try {
-        const response = await fetch(targetUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        // Use retry logic for improved reliability
+        const response = await retryFetch(
+            targetUrl,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            },
+            {
+                maxAttempts: 3,
+                initialDelayMs: 1000,
+                retryableErrors: (error) => {
+                    // Only retry on network errors or 5xx server errors
+                    if (error instanceof Error) {
+                        return error.message.includes('fetch') || 
+                               error.message.includes('network') ||
+                               error.message.includes('timeout') ||
+                               error.message.includes('5');
+                    }
+                    return false;
+                }
+            }
+        );
+
+        // Check for non-retryable errors (4xx client errors)
+        if (!response.ok && !isRetryableHttpError(response.status)) {
+            const errorText = await response.text();
+            console.error('[Slack] Webhook failed (client error):', errorText);
+            return { success: false, error: errorText };
+        }
 
         if (!response.ok) {
+            // This shouldn't happen after retries, but handle gracefully
             const errorText = await response.text();
-            console.error('[Slack] Webhook failed:', errorText);
+            console.error('[Slack] Webhook failed after retries:', errorText);
             return { success: false, error: errorText };
         }
 
         console.log(`[Slack] Notification sent via ${webhookUrl ? 'Service' : 'Global'} Webhook: ${eventType} - ${incident.title}`);
         return { success: true };
     } catch (error: any) {
-        console.error('[Slack] Webhook error:', error.message);
+        console.error('[Slack] Webhook error after retries:', error.message);
         return { success: false, error: error.message };
     }
 }
