@@ -4,9 +4,71 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import type { QueryMode } from '@prisma/client';
+import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
 
-const INSENSITIVE_MODE: QueryMode = 'insensitive';
+const INSENSITIVE_MODE = 'insensitive' as const;
+
+type IncidentWithService = {
+    id: string;
+    title: string;
+    status: IncidentStatus;
+    urgency: IncidentUrgency;
+    service?: {
+        id: string;
+        name: string;
+    } | null;
+};
+
+type ServiceWithTeam = {
+    id: string;
+    name: string;
+    status?: string | null;
+    team?: {
+        id: string;
+        name: string;
+    } | null;
+};
+
+type TeamSearchResult = {
+    id: string;
+    name: string;
+    description?: string | null;
+};
+
+type UserSearchResult = {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+};
+
+type PolicySearchResult = {
+    id: string;
+    name: string;
+    description?: string | null;
+};
+
+type PostmortemSearchResult = {
+    id: string;
+    incidentId: string;
+    title: string;
+    status: string;
+    incident?:
+        | {
+              id: string;
+              title: string;
+          }
+        | null;
+};
+
+type SearchResponses = [
+    IncidentWithService[],
+    ServiceWithTeam[],
+    TeamSearchResult[],
+    UserSearchResult[],
+    PolicySearchResult[],
+    PostmortemSearchResult[] | []
+];
 
 export async function GET(req: NextRequest) {
     try {
@@ -30,25 +92,25 @@ export async function GET(req: NextRequest) {
         const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
         // Run all searches in parallel for better performance
         // Note: Postmortem search is wrapped to handle missing model gracefully
-        const searchPromises: Promise<any>[] = [
+        const searchPromises = [
             // Search incidents - Enhanced with multiple search strategies
             prisma.incident.findMany({
                 where: {
                     OR: [
                         // Exact match (highest priority)
-                        { title: { equals: searchTerm, mode: 'insensitive' } },
+                        { title: { equals: searchTerm, mode: INSENSITIVE_MODE } },
                         // Contains match
-                        { title: { contains: searchTerm, mode: 'insensitive' } },
-                        { description: { contains: searchTerm, mode: 'insensitive' } },
+                        { title: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                        { description: { contains: searchTerm, mode: INSENSITIVE_MODE } },
                         // Word boundary matches (if multiple words)
                         ...(searchWords.length > 1 ? searchWords.map(word => ({
                             OR: [
-                                { title: { contains: word, mode: 'insensitive' } },
-                                { description: { contains: word, mode: 'insensitive' } }
+                                { title: { contains: word, mode: INSENSITIVE_MODE } },
+                                { description: { contains: word, mode: INSENSITIVE_MODE } }
                             ]
                         })) : []),
                         // ID search
-                        { id: { contains: searchTerm, mode: 'insensitive' } }
+                        { id: { contains: searchTerm, mode: INSENSITIVE_MODE } }
                     ]
                 },
                 take: 10, // Increased from 5
@@ -68,8 +130,8 @@ export async function GET(req: NextRequest) {
             prisma.service.findMany({
                 where: {
                     OR: [
-                        { name: { contains: searchTerm, mode: 'insensitive' } },
-                        { description: { contains: searchTerm, mode: 'insensitive' } }
+                        { name: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                        { description: { contains: searchTerm, mode: INSENSITIVE_MODE } }
                     ]
                 },
                 take: 5,
@@ -86,8 +148,8 @@ export async function GET(req: NextRequest) {
             prisma.team.findMany({
                 where: {
                     OR: [
-                        { name: { contains: searchTerm, mode: 'insensitive' } },
-                        { description: { contains: searchTerm, mode: 'insensitive' } }
+                        { name: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                        { description: { contains: searchTerm, mode: INSENSITIVE_MODE } }
                     ]
                 },
                 take: 5,
@@ -103,8 +165,8 @@ export async function GET(req: NextRequest) {
             prisma.user.findMany({
                 where: {
                     OR: [
-                        { name: { contains: searchTerm, mode: 'insensitive' } },
-                        { email: { contains: searchTerm, mode: 'insensitive' } }
+                        { name: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                        { email: { contains: searchTerm, mode: INSENSITIVE_MODE } }
                     ]
                 },
                 take: 5,
@@ -121,8 +183,8 @@ export async function GET(req: NextRequest) {
             prisma.escalationPolicy.findMany({
                 where: {
                     OR: [
-                        { name: { contains: searchTerm, mode: 'insensitive' } },
-                        { description: { contains: searchTerm, mode: 'insensitive' } }
+                        { name: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                        { description: { contains: searchTerm, mode: INSENSITIVE_MODE } }
                     ]
                 },
                 take: 5,
@@ -144,10 +206,10 @@ export async function GET(req: NextRequest) {
                     return await prisma.postmortem.findMany({
                         where: {
                             OR: [
-                                { title: { contains: searchTerm, mode: 'insensitive' } },
-                                { summary: { contains: searchTerm, mode: 'insensitive' } },
-                                { rootCause: { contains: searchTerm, mode: 'insensitive' } },
-                                { lessons: { contains: searchTerm, mode: 'insensitive' } }
+                                { title: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                                { summary: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                                { rootCause: { contains: searchTerm, mode: INSENSITIVE_MODE } },
+                                { lessons: { contains: searchTerm, mode: INSENSITIVE_MODE } }
                             ],
                             status: { not: 'ARCHIVED' } // Don't show archived postmortems
                         },
@@ -173,7 +235,7 @@ export async function GET(req: NextRequest) {
             })()
         ];
 
-        const [incidents, services, teams, users, policies, postmortemsResult] = await Promise.all(searchPromises);
+        const [incidents, services, teams, users, policies, postmortemsResult] = await Promise.all(searchPromises) as SearchResponses;
 
         // Handle postmortems result (unwrap promise if needed)
         const postmortems = Array.isArray(postmortemsResult) ? postmortemsResult : [];
