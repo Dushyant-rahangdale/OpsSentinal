@@ -1116,6 +1116,33 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
   - `src/components/LayerHelpPanel.tsx` - Added ARIA labels
   - `src/components/TestNotificationButton.tsx` - Improved accessibility
 
+### Retry Logic for External API Calls ✅
+**Date:** January 2025
+
+**Implementation:**
+- **Retry Utility (`src/lib/retry.ts`):**
+  - Generic retry function with exponential backoff
+  - Configurable max attempts, delays, and error filtering
+  - Specialized `retryFetch` for HTTP calls
+  - Proper handling of retryable vs non-retryable errors
+  - Support for custom retry callbacks
+- **Integration:**
+  - Slack webhook notifications now use retry logic
+  - Generic webhook notifications enhanced with retry
+  - Improved resilience against transient network failures
+- **Features:**
+  - Exponential backoff (configurable multiplier)
+  - Maximum delay cap to prevent excessive waits
+  - Smart error detection (5xx, 429, network errors)
+  - Non-retryable errors (4xx client errors)
+  - Configurable retry attempts (default: 3)
+- **Files Created/Modified:**
+  - `src/lib/retry.ts` - Comprehensive retry utility
+  - `tests/lib/retry.test.ts` - 15 tests for retry functionality
+  - `src/lib/slack.ts` - Integrated retry logic
+  - `src/lib/webhooks.ts` - Enhanced with retry logic
+- **Test Results:** 153 tests passing (1 skipped) - 15 new tests
+
 ### Extended Test Coverage & Error Handling ✅
 **Date:** January 2025
 
