@@ -1,4 +1,5 @@
 import { getUserPermissions } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 import SystemNotificationSettings from '@/components/settings/SystemNotificationSettings';
 import SettingsSection from '@/components/settings/SettingsSection';
 import { getNotificationProviders } from './actions';
@@ -61,11 +62,13 @@ export default async function SystemSettingsPage() {
         );
     }
 
-    let providers = [];
+    let providers: Awaited<ReturnType<typeof getNotificationProviders>> = [];
     try {
         providers = await getNotificationProviders();
     } catch (error) {
-        console.error('Error loading notification providers:', error);
+        logger.error('Error loading notification providers', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
         // Continue with empty providers array if there's an error
     }
 

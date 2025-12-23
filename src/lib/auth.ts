@@ -4,6 +4,7 @@ import OIDCProvider from '@/lib/oidc';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 const oidcEnabled = Boolean(
     process.env.OIDC_CLIENT_ID &&
@@ -99,7 +100,9 @@ export const authOptions: NextAuthOptions = {
                     }
                 } catch (error) {
                     // If database fetch fails, keep existing token data
-                    console.error('Error fetching user data in JWT callback:', error);
+                    logger.error('Error fetching user data in JWT callback', {
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    });
                 }
             }
             

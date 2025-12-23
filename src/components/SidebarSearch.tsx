@@ -404,7 +404,8 @@ export default function SidebarSearch() {
                     return;
                 }
                 console.error('Search error:', err);
-                setError('Failed to search. Please try again.');
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                setError(getUserFriendlyError(err) || 'Failed to search. Please try again.');
                 setResults([]);
             } finally {
                 if (!abortController.signal.aborted) {

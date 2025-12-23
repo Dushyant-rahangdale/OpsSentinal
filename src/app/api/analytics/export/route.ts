@@ -5,6 +5,21 @@ import { assertResponderOrAbove } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { jsonError } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { IncidentStatus as IncidentStatusEnum, IncidentUrgency as IncidentUrgencyEnum } from '@prisma/client';
+import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
+
+const incidentStatusValues = new Set<string>(Object.values(IncidentStatusEnum));
+const incidentUrgencyValues = new Set<string>(Object.values(IncidentUrgencyEnum));
+
+const normalizeIncidentStatusParam = (value: string | null): IncidentStatus | 'ALL' => {
+    if (!value || value === 'ALL') return 'ALL';
+    return incidentStatusValues.has(value) ? (value as IncidentStatus) : 'ALL';
+};
+
+const normalizeIncidentUrgencyParam = (value: string | null): IncidentUrgency | 'ALL' => {
+    if (!value || value === 'ALL') return 'ALL';
+    return incidentUrgencyValues.has(value) ? (value as IncidentUrgency) : 'ALL';
+};
 
 const formatMinutes = (ms: number | null) => (ms === null ? '--' : `${(ms / 1000 / 60).toFixed(1)}m`);
 const formatPercent = (value: number) => `${value.toFixed(0)}%`;
@@ -67,8 +82,8 @@ export async function GET(req: NextRequest) {
         const assigneeId = searchParams.get('assignee') && searchParams.get('assignee') !== 'ALL'
             ? searchParams.get('assignee')
             : null;
-        const statusFilter = searchParams.get('status') || 'ALL';
-        const urgencyFilter = searchParams.get('urgency') || 'ALL';
+        const statusFilter = normalizeIncidentStatusParam(searchParams.get('status'));
+        const urgencyFilter = normalizeIncidentUrgencyParam(searchParams.get('urgency'));
         const windowDays = parseInt(searchParams.get('window') || '7', 10);
 
         const now = new Date();
@@ -246,8 +261,8 @@ export async function GET(req: NextRequest) {
         csvRows.push(['INCIDENT STATUS BREAKDOWN']);
         csvRows.push(['---------------------------------------------------------------']);
         csvRows.push(['Status', 'Count', 'Percentage', 'Visual Bar']);
-        const statusMap = new Map(statusTrends.map(s => [s.status, s._count._all]));
-        const statusOrder = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
+        const statusMap = new Map<IncidentStatus, number>(statusTrends.map(s => [s.status, s._count._all]));
+        const statusOrder: IncidentStatus[] = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
         const maxStatusCount = Math.max(...Array.from(statusMap.values()), 1);
         statusOrder.forEach(status => {
             const count = statusMap.get(status) || 0;

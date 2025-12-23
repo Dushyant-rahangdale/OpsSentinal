@@ -25,3 +25,6 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
+// Next.js helper that enforces server-only imports can be mocked as a no-op in tests
+vi.mock('server-only', () => ({}));
+

@@ -2,6 +2,8 @@ import { Prisma } from '@prisma/client';
 import prisma from './prisma';
 import { executeEscalation } from './notifications';
 import { notifySlackForIncident } from './slack';
+import { logger } from './logger';
+import { EVENT_TRANSACTION_MAX_ATTEMPTS } from './config';
 
 export type EventPayload = {
     event_action: 'trigger' | 'resolve' | 'acknowledge';
@@ -10,7 +12,7 @@ export type EventPayload = {
         summary: string;
         source: string;
         severity: 'critical' | 'error' | 'warning' | 'info';
-        custom_details?: any;
+        custom_details?: unknown;
     };
 };
 
@@ -23,7 +25,7 @@ function isRetryableTransactionError(error: unknown): boolean {
 }
 
 async function runSerializableTransaction<T>(operation: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    const maxAttempts = 3;
+    const maxAttempts = EVENT_TRANSACTION_MAX_ATTEMPTS;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         try {
             return await prisma.$transaction(operation, { isolationLevel: 'Serializable' });
@@ -169,24 +171,40 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
         try {
             const { sendServiceNotifications } = await import('./user-notifications');
             await sendServiceNotifications(result.incident.id, 'triggered');
-        } catch (e) {
-            console.error('Service notification failed:', e);
+        } catch (error) {
+            logger.error('Service notification failed', {
+                incidentId: result.incident.id,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
         }
 
         // Execute escalation policy - send notifications via policy steps
         try {
             await executeEscalation(result.incident.id);
-        } catch (e) {
-            console.error('Escalation failed:', e);
+        } catch (error) {
+            logger.error('Escalation failed', {
+                incidentId: result.incident.id,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
         }
     }
 
     if (result.action === 'resolved') {
-        notifySlackForIncident(result.incident.id, 'resolved').catch(console.error);
+        notifySlackForIncident(result.incident.id, 'resolved').catch((error) => {
+            logger.error('Slack notification failed', {
+                incidentId: result.incident.id,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        });
     }
 
     if (result.action === 'acknowledged') {
-        notifySlackForIncident(result.incident.id, 'acknowledged').catch(console.error);
+        notifySlackForIncident(result.incident.id, 'acknowledged').catch((error) => {
+            logger.error('Slack notification failed', {
+                incidentId: result.incident.id,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        });
     }
 
     return result;

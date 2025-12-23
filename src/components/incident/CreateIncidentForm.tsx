@@ -84,7 +84,7 @@ export default function CreateIncidentForm({
         <form id="incident-create-form" action={formAction} style={{ display: 'grid', gap: '2rem' }}>
             {/* Basic Information */}
             <section>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+                <h2 style={{ fontSize: '0.75rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Basic Information
                 </h2>
                 <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -153,7 +153,7 @@ export default function CreateIncidentForm({
 
             {/* Classification & Routing */}
             <section>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+                <h2 style={{ fontSize: '0.75rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Classification & Routing
                 </h2>
                 <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -282,7 +282,7 @@ export default function CreateIncidentForm({
             {/* Custom Fields */}
             {customFields.length > 0 && (
                 <section>
-                    <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+                    <h2 style={{ fontSize: '0.75rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Custom Fields
                     </h2>
                     <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -302,7 +302,7 @@ export default function CreateIncidentForm({
 
             {/* Advanced Options */}
             <section>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+                <h2 style={{ fontSize: '0.75rem', fontWeight: '700', marginBottom: '1.5rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Advanced Options
                 </h2>
                 <div style={{ display: 'grid', gap: '1.5rem' }}>

@@ -13,6 +13,7 @@ import { sendNotification, NotificationChannel } from './notifications';
 import { notifySlackForIncident } from './slack';
 import { isChannelAvailable } from './notification-providers';
 import { createInAppNotifications } from './in-app-notifications';
+import { logger } from './logger';
 
 /**
  * Get user's enabled notification channels based on their preferences
@@ -251,8 +252,10 @@ export async function sendServiceNotifications(
             success: errors.length === 0,
             errors: errors.length > 0 ? errors : undefined
         };
-    } catch (error: any) {
-        console.error('Service notification error:', error);
-        return { success: false, errors: [error.message] };
+    } catch (error) {
+        logger.error('Service notification error', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        return { success: false, errors: [error instanceof Error ? error.message : 'Unknown error'] };
     }
 }

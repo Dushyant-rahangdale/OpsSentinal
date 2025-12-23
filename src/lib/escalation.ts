@@ -1,6 +1,9 @@
+import { Prisma } from '@prisma/client';
 import prisma from './prisma';
 import { sendNotification, NotificationChannel } from './notifications';
 import { buildScheduleBlocks } from './oncall';
+import { logger } from './logger';
+import { ESCALATION_LOCK_TIMEOUT_MS } from './config';
 
 /**
  * Get the current on-call user for a schedule at a given time
@@ -115,7 +118,7 @@ export async function resolveEscalationTarget(
  * Handles multiple steps with delays and different target types.
  */
 export async function executeEscalation(incidentId: string, stepIndex?: number) {
-    const lockTimeoutMs = 5 * 60 * 1000;
+    const lockTimeoutMs = ESCALATION_LOCK_TIMEOUT_MS;
     const incident = await prisma.incident.findUnique({
         where: { id: incidentId },
         include: {
@@ -302,10 +305,10 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     }
 
     await prisma.$transaction(async (tx) => {
-        const updateData: Record<string, unknown> = {
+        const updateData: Prisma.IncidentUpdateInput = {
             currentEscalationStep: nextStepIndex < incident.service.policy.steps.length ? nextStepIndex : null,
             nextEscalationAt,
-            escalationStatus: escalationStatus as any,
+            escalationStatus,
             escalationProcessingAt: null
         };
 
@@ -342,7 +345,10 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         const delayMs = nextStep.delayMinutes * 60 * 1000;
         await scheduleEscalation(incidentId, nextStepIndex, delayMs);
       } catch (error) {
-        console.error(`Failed to schedule escalation job for incident ${incidentId}:`, error);
+        logger.error('Failed to schedule escalation job', {
+            incidentId,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
         // Continue anyway - cron job will pick it up via nextEscalationAt
       }
     }
@@ -364,7 +370,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
  */
 export async function processPendingEscalations() {
     const now = new Date();
-    const lockCutoff = new Date(now.getTime() - 5 * 60 * 1000);
+    const lockCutoff = new Date(now.getTime() - ESCALATION_LOCK_TIMEOUT_MS);
     
     // Find incidents that need escalation (nextEscalationAt is in the past, still open/unacknowledged)
     const incidentsToEscalate = await prisma.incident.findMany({
@@ -426,7 +432,10 @@ export async function processPendingEscalations() {
                 });
             }
         } catch (error) {
-            console.error(`Error processing escalation for incident ${incident.id}:`, error);
+            logger.error('Error processing escalation', {
+                incidentId: incident.id,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
             errors.push(`Incident ${incident.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
             
             // Update incident to prevent infinite retries on same error

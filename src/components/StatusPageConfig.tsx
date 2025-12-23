@@ -232,7 +232,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
                 router.refresh();
             } catch (err: any) {
-                setError(err.message || 'Failed to save settings');
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                setError(getUserFriendlyError(err) || 'Failed to save settings');
             }
         });
     };
@@ -324,7 +325,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                 });
 
             } catch (err: any) {
-                setAnnouncementError(err.message || 'Failed to create announcement');
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                setAnnouncementError(getUserFriendlyError(err) || 'Failed to create announcement');
             }
         });
     };
@@ -347,7 +349,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
                 setAnnouncements((current) => current.filter((announcement) => announcement.id !== id));
             } catch (err: any) {
-                setAnnouncementError(err.message || 'Failed to delete announcement');
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                setAnnouncementError(getUserFriendlyError(err) || 'Failed to delete announcement');
             }
         });
     };

@@ -47,7 +47,8 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                 showToast(`Incident ${status.toLowerCase()} successfully`, 'success');
                 router.refresh();
             } catch (error) {
-                showToast(error instanceof Error ? error.message : 'Failed to update status', 'error');
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                showToast(getUserFriendlyError(error) || 'Failed to update status', 'error');
             }
         });
     };
@@ -109,7 +110,8 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                     showToast(result.error || 'Failed to update incidents', 'error');
                 }
             } catch (error) {
-                showToast(error instanceof Error ? error.message : 'Failed to update incidents', 'error');
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                showToast(getUserFriendlyError(error) || 'Failed to update incidents', 'error');
             }
         });
     };
