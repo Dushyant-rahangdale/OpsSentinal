@@ -7,13 +7,15 @@ let globalModalState: {
     search: boolean;
     quickActions: boolean;
     userMenu: boolean;
+    sidebarMobileMenu: boolean;
 } = {
     search: false,
     quickActions: false,
-    userMenu: false
+    userMenu: false,
+    sidebarMobileMenu: false
 };
 
-type ModalName = 'search' | 'quickActions' | 'userMenu';
+type ModalName = 'search' | 'quickActions' | 'userMenu' | 'sidebarMobileMenu';
 const listeners = new Map<ModalName, Set<() => void>>();
 
 function notifyListeners(modalName: ModalName) {

@@ -58,7 +58,7 @@ export default async function AppLayout({
       <ToastProvider>
         <GlobalKeyboardHandlerWrapper />
         <div className="app-shell">
-          <Sidebar />
+          <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
           <div className="content-shell">
             <header className="topbar-new">
               <div className="topbar-section topbar-section-center">

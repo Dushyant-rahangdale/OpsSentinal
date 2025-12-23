@@ -147,7 +147,13 @@ const navigationItems: NavItem[] = [
     }
 ];
 
-export default function Sidebar() {
+type SidebarProps = {
+    userName?: string | null;
+    userEmail?: string | null;
+    userRole?: string | null;
+};
+
+export default function Sidebar({ userName, userEmail, userRole }: SidebarProps = { userName: null, userEmail: null, userRole: null }) {
     const pathname = usePathname();
     const [activeIncidentsCount, setActiveIncidentsCount] = useState<number | null>(null);
     const [isMobile, setIsMobile] = useState(false);
@@ -205,26 +211,30 @@ export default function Sidebar() {
                 href={item.href}
                 className={`nav-item ${active ? 'active' : ''}`}
                 style={{
-                    padding: '0.75rem 1rem',
+                    padding: '0.875rem 1rem',
                     textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.875rem',
-                    marginLeft: '0.5rem',
-                    marginRight: '0.5rem',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     position: 'relative',
-                    transition: 'all 0.2s ease',
-                    background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: active 
+                        ? 'rgba(255,255,255,0.18)' 
+                        : 'transparent',
                     color: active ? 'white' : 'rgba(255,255,255,0.85)',
-                    borderLeft: active ? '3px solid white' : '3px solid transparent',
-                    paddingLeft: active ? 'calc(1rem - 3px)' : '1rem'
+                    borderLeft: active ? '3px solid rgba(255,255,255,0.95)' : '3px solid transparent',
+                    paddingLeft: active ? 'calc(1rem - 3px)' : '1rem',
+                    fontWeight: active ? '600' : '500',
+                    boxShadow: active 
+                        ? '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)' 
+                        : 'none'
                 }}
                 onMouseEnter={(e) => {
                     if (!active) {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
                         e.currentTarget.style.color = 'white';
-                        e.currentTarget.style.transform = 'translateX(4px)';
+                        e.currentTarget.style.transform = 'translateX(3px)';
                     }
                 }}
                 onMouseLeave={(e) => {
@@ -238,27 +248,33 @@ export default function Sidebar() {
                 <span
                     className="nav-icon"
                     style={{
-                        width: '22px',
-                        height: '22px',
+                        width: '20px',
+                        height: '20px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        opacity: active ? 1 : 0.9,
-                        position: 'relative'
+                        opacity: active ? 1 : 0.85,
+                        position: 'relative',
+                        filter: active ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' : 'none'
                     }}
                 >
                     {item.icon}
                 </span>
-                <span style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', flex: 1 }}>{item.label}</span>
+                <span style={{ 
+                    fontSize: '0.9rem', 
+                    whiteSpace: 'nowrap', 
+                    flex: 1,
+                    letterSpacing: '0.01em'
+                }}>{item.label}</span>
                 {showBadge && (
                     <span
                         aria-label={`${activeIncidentsCount} active incidents`}
                         style={{
-                            minWidth: '20px',
-                            height: '20px',
-                            padding: '0 6px',
-                            background: '#ef4444',
+                            minWidth: '22px',
+                            height: '22px',
+                            padding: '0 7px',
+                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                             color: 'white',
                             fontSize: '0.7rem',
                             fontWeight: '700',
@@ -266,7 +282,8 @@ export default function Sidebar() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            boxShadow: '0 2px 6px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                            border: '1px solid rgba(255,255,255,0.2)'
                         }}>
                         {activeIncidentsCount > 99 ? '99+' : activeIncidentsCount}
                     </span>
@@ -276,35 +293,67 @@ export default function Sidebar() {
     };
 
     const renderSection = (sectionName: string, items: NavItem[]) => {
+        if (sectionName === 'MAIN') {
+            return (
+                <div key={sectionName} style={{ marginBottom: '0' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                        {items.map(renderNavItem)}
+                    </div>
+                </div>
+            );
+        }
+
+        // Minimal badge-style section header for OPERATIONS and INSIGHTS
+        const sectionColors: Record<string, { dot: string; text: string }> = {
+            'OPERATIONS': {
+                dot: 'rgba(59, 130, 246, 0.8)', // Blue
+                text: 'rgba(255,255,255,0.75)'
+            },
+            'INSIGHTS': {
+                dot: 'rgba(168, 85, 247, 0.8)', // Purple
+                text: 'rgba(255,255,255,0.75)'
+            }
+        };
+
+        const colors = sectionColors[sectionName] || { dot: 'rgba(255,255,255,0.5)', text: 'rgba(255,255,255,0.75)' };
+
         return (
-            <div key={sectionName} style={{ marginBottom: sectionName !== 'MAIN' ? '1.5rem' : '0' }}>
-                {sectionName !== 'MAIN' && (
-                    <>
-                        <div style={{
-                            height: '1px',
-                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
-                            margin: '1.5rem 1rem 0.75rem 1rem'
-                        }} />
-                        <div style={{
-                            marginBottom: '0.75rem',
-                            paddingLeft: '1rem',
-                            fontSize: '0.7rem',
-                            fontWeight: '700',
-                            color: 'rgba(255,255,255,0.5)',
-                            letterSpacing: '1.2px',
-                            textTransform: 'uppercase',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                        }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.5">
-                                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-                            </svg>
-                            {sectionName}
-                        </div>
-                    </>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div key={sectionName} style={{ marginBottom: '1.5rem' }}>
+                {/* Minimal badge-style section header */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.875rem',
+                    paddingLeft: '0.5rem',
+                    paddingRight: '0.5rem'
+                }}>
+                    <div style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: colors.dot,
+                        flexShrink: 0,
+                        boxShadow: `0 0 8px ${colors.dot}`
+                    }} />
+                    <span style={{
+                        fontSize: '0.65rem',
+                        fontWeight: '700',
+                        color: colors.text,
+                        letterSpacing: '1.2px',
+                        textTransform: 'uppercase',
+                        position: 'relative'
+                    }}>
+                        {sectionName}
+                    </span>
+                    <div style={{
+                        flex: 1,
+                        height: '1px',
+                        background: 'linear-gradient(90deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
+                        marginLeft: '0.5rem'
+                    }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                     {items.map(renderNavItem)}
                 </div>
             </div>
@@ -380,7 +429,7 @@ export default function Sidebar() {
                 style={{
                     width: isMobile ? '280px' : 'var(--sidebar-width)',
                     background: 'var(--gradient-primary)',
-                    borderRight: 'none',
+                    borderRight: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100vh',
@@ -388,7 +437,7 @@ export default function Sidebar() {
                     top: 0,
                     left: 0,
                     color: 'white',
-                    boxShadow: '4px 0 24px rgba(211, 47, 47, 0.15)',
+                    boxShadow: '2px 0 20px rgba(0, 0, 0, 0.08), inset -1px 0 0 rgba(255, 255, 255, 0.1)',
                     overflow: 'hidden',
                     zIndex: 1000,
                     transition: isMobile ? 'transform var(--transition-slow) var(--ease-out)' : 'none',
@@ -399,55 +448,59 @@ export default function Sidebar() {
             >
                 {/* Branding Header - Fixed */}
                 <div style={{
-                    padding: '1.5rem',
-                    paddingBottom: '1rem',
+                    padding: '1.75rem 1.5rem',
+                    paddingBottom: '1.25rem',
                     flexShrink: 0,
-                    borderBottom: '1px solid rgba(255,255,255,0.1)'
+                    borderBottom: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(0, 0, 0, 0.05)'
                 }}>
                     <Link href="/" style={{ textDecoration: 'none', display: 'block' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                             {/* Logo */}
                             <div style={{
-                                width: '44px',
-                                height: '44px',
+                                width: '48px',
+                                height: '48px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: 'rgba(255,255,255,0.15)',
-                                borderRadius: 'var(--radius-md)',
-                                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-                                flexShrink: 0
+                                background: 'rgba(255,255,255,0.2)',
+                                borderRadius: '12px',
+                                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.25))',
+                                flexShrink: 0,
+                                border: '1px solid rgba(255,255,255,0.25)',
+                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.15)'
                             }}>
                                 <img
                                     src="/logo.svg"
                                     alt="OpsGuard Shield"
                                     style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        objectFit: 'contain'
+                                        width: '34px',
+                                        height: '34px',
+                                        objectFit: 'contain',
+                                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))'
                                     }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '0.375rem' }}>
                                 <h1 style={{
-                                    fontSize: '1.35rem',
+                                    fontSize: '1.4rem',
                                     fontWeight: '800',
                                     color: 'white',
                                     letterSpacing: '-0.5px',
                                     margin: 0,
                                     lineHeight: '1.2',
-                                    textShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                                    textShadow: '0 2px 8px rgba(0,0,0,0.2)'
                                 }}>OpsGuard</h1>
                                 <span style={{
-                                    fontSize: '0.65rem',
-                                    opacity: 0.9,
-                                    fontWeight: '600',
-                                    letterSpacing: '1.2px',
-                                    background: 'rgba(255,255,255,0.2)',
-                                    padding: '2px 6px',
-                                    borderRadius: 'var(--radius-sm)',
+                                    fontSize: '0.7rem',
+                                    opacity: 0.95,
+                                    fontWeight: '700',
+                                    letterSpacing: '1.5px',
+                                    background: 'rgba(255,255,255,0.25)',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
                                     width: 'fit-content',
-                                    marginTop: '3px'
+                                    border: '1px solid rgba(255,255,255,0.2)'
                                 }}>ENTERPRISE</span>
                             </div>
                         </div>
@@ -463,7 +516,7 @@ export default function Sidebar() {
                         flex: 1,
                         overflowY: 'auto',
                         overflowX: 'hidden',
-                        padding: '1rem 0 1.5rem 0',
+                        padding: '1.25rem 0.75rem 1.5rem 0.75rem',
                         gap: '0.5rem'
                     }}
                 >
@@ -501,27 +554,31 @@ export default function Sidebar() {
 
                 {/* User Profile and Footer - Enhanced */}
                 <div style={{
-                    padding: '1rem 1rem 1.25rem 1rem',
-                    background: 'rgba(0,0,0,0.25)',
-                    borderTop: '1px solid rgba(255,255,255,0.1)',
-                    flexShrink: 0
+                    padding: '1.25rem 0.75rem 1.5rem 0.75rem',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.15) 100%)',
+                    borderTop: '1px solid rgba(255,255,255,0.12)',
+                    flexShrink: 0,
+                    marginTop: 'auto'
                 }}>
                     {/* User Profile Card */}
                     <div style={{
-                        padding: '0.875rem',
-                        background: 'rgba(255,255,255,0.08)',
-                        borderRadius: '10px',
-                        marginBottom: '0.75rem',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        transition: 'all 0.2s ease'
+                        padding: '1rem',
+                        background: 'rgba(255,255,255,0.1)',
+                        borderRadius: '12px',
+                        marginBottom: '0.875rem',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.1)'
                     }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
                             e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15)';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
                             e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.1)';
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
@@ -536,11 +593,17 @@ export default function Sidebar() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: '700',
-                                fontSize: '1rem',
+                                fontSize: '0.875rem',
                                 color: 'white',
-                                flexShrink: 0
+                                flexShrink: 0,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
                             }}>
-                                👤
+                                {userName 
+                                    ? userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                                    : userEmail 
+                                        ? userEmail[0].toUpperCase()
+                                        : 'U'}
                             </div>
                             {/* User Info */}
                             <div style={{ flex: 1, minWidth: 0 }}>
@@ -553,7 +616,7 @@ export default function Sidebar() {
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                 }}>
-                                    Current User
+                                    {userName || userEmail || 'User'}
                                 </div>
                                 <div style={{
                                     fontSize: '0.7rem',
@@ -562,7 +625,7 @@ export default function Sidebar() {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px'
                                 }}>
-                                    Administrator
+                                    {userRole ? userRole.charAt(0) + userRole.slice(1).toLowerCase() : 'User'}
                                 </div>
                             </div>
                         </div>
@@ -571,27 +634,32 @@ export default function Sidebar() {
                             onClick={() => window.location.href = '/api/auth/signout'}
                             style={{
                                 width: '100%',
-                                padding: '0.5rem',
-                                background: 'rgba(255,255,255,0.1)',
+                                padding: '0.625rem',
+                                background: 'rgba(255,255,255,0.12)',
                                 border: '1px solid rgba(255,255,255,0.2)',
-                                borderRadius: '6px',
+                                borderRadius: '8px',
                                 color: 'white',
-                                fontSize: '0.8rem',
+                                fontSize: '0.85rem',
                                 fontWeight: '600',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '0.5rem'
+                                gap: '0.5rem',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.18)';
                                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
                                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                             }}
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -615,24 +683,30 @@ export default function Sidebar() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                color: 'rgba(255,255,255,0.85)',
+                                gap: '0.625rem',
+                                color: 'rgba(255,255,255,0.9)',
                                 textDecoration: 'none',
                                 fontWeight: '500',
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '6px',
-                                transition: 'all 0.2s ease'
+                                padding: '0.625rem 0.875rem',
+                                borderRadius: '8px',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.08)'
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.color = 'white';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                e.currentTarget.style.transform = 'translateX(2px)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
-                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.transform = 'translateX(0)';
                             }}
                         >
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" />
                             </svg>
@@ -645,24 +719,30 @@ export default function Sidebar() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                color: 'rgba(255,255,255,0.85)',
+                                gap: '0.625rem',
+                                color: 'rgba(255,255,255,0.9)',
                                 textDecoration: 'none',
                                 fontWeight: '500',
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '6px',
-                                transition: 'all 0.2s ease'
+                                padding: '0.625rem 0.875rem',
+                                borderRadius: '8px',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.08)'
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.color = 'white';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                e.currentTarget.style.transform = 'translateX(2px)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
-                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.transform = 'translateX(0)';
                             }}
                         >
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="3" />
                                 <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
                             </svg>
@@ -678,29 +758,33 @@ export default function Sidebar() {
                                 width: '100%',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
-                                color: 'rgba(255,255,255,0.85)',
+                                gap: '0.625rem',
+                                color: 'rgba(255,255,255,0.9)',
                                 textDecoration: 'none',
                                 fontWeight: '500',
-                                background: 'transparent',
-                                border: 'none',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.08)',
                                 cursor: 'pointer',
-                                padding: '0.5rem 0.75rem',
-                                transition: 'all 0.2s ease',
+                                padding: '0.625rem 0.875rem',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 fontSize: '0.8rem',
-                                borderRadius: '6px',
+                                borderRadius: '8px',
                                 textAlign: 'left'
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.color = 'white';
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                e.currentTarget.style.transform = 'translateX(2px)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
-                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.9)';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.transform = 'translateX(0)';
                             }}
                         >
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
                                 <rect x="4" y="2" width="16" height="20" rx="2" />
                                 <path d="M9 6h6m-6 4h6m-2 4h2" />
                             </svg>
