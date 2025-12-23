@@ -97,6 +97,7 @@ export default function CreateIncidentForm({
                             required
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
+                            maxLength={500}
                             style={{
                                 width: '100%',
                                 padding: '0.875rem',
@@ -115,12 +116,18 @@ export default function CreateIncidentForm({
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                             Description
+                            {description.length > 0 && (
+                                <span style={{ float: 'right', fontSize: '0.75rem', color: description.length > 9500 ? 'var(--danger)' : 'var(--text-muted)', fontWeight: '400' }}>
+                                    {description.length}/10,000
+                                </span>
+                            )}
                         </label>
                         <textarea
                             name="description"
                             rows={5}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            maxLength={10000}
                             style={{
                                 width: '100%',
                                 padding: '0.875rem',
@@ -300,6 +307,7 @@ export default function CreateIncidentForm({
                         </label>
                         <input
                             name="dedupKey"
+                            maxLength={200}
                             style={{
                                 width: '100%',
                                 padding: '0.875rem',

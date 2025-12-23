@@ -35,11 +35,11 @@ export default function TeamCreateForm({ action }: Props) {
         <form ref={formRef} action={formAction} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500' }}>Team Name *</label>
-                <input name="name" required placeholder="e.g. Platform Operations" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                <input name="name" required placeholder="e.g. Platform Operations" maxLength={200} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
             </div>
             <div>
                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: '500' }}>Description</label>
-                <input name="description" placeholder="What does this team own?" style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                <input name="description" placeholder="What does this team own?" maxLength={1000} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '4px' }} />
             </div>
             <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <SubmitButton />

@@ -42,6 +42,7 @@ export default function UserCreateForm({ action, className = '' }: Props) {
                     required
                     placeholder="Full name"
                     className="form-input"
+                    maxLength={200}
                 />
             </div>
             <div className="form-field">
@@ -52,6 +53,7 @@ export default function UserCreateForm({ action, className = '' }: Props) {
                     type="email"
                     placeholder="name@company.com"
                     className="form-input"
+                    maxLength={320}
                 />
             </div>
             <div className="form-field">
