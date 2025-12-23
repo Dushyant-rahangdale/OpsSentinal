@@ -113,11 +113,11 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
     const assigneeId = typeof awaitedSearchParams?.assignee === 'string' && awaitedSearchParams.assignee !== 'ALL'
         ? awaitedSearchParams.assignee
         : null;
-    const statusFilter = allowedStatus.includes(awaitedSearchParams?.status as any)
-        ? awaitedSearchParams?.status
+    const statusFilter: (typeof allowedStatus)[number] | 'ALL' = allowedStatus.includes(awaitedSearchParams?.status as any)
+        ? (awaitedSearchParams?.status as (typeof allowedStatus)[number])
         : 'ALL';
-    const urgencyFilter = allowedUrgency.includes(awaitedSearchParams?.urgency as any)
-        ? awaitedSearchParams?.urgency
+    const urgencyFilter: (typeof allowedUrgency)[number] | 'ALL' = allowedUrgency.includes(awaitedSearchParams?.urgency as any)
+        ? (awaitedSearchParams?.urgency as (typeof allowedUrgency)[number])
         : 'ALL';
     const windowCandidate = Number(awaitedSearchParams?.window ?? 7);
     const windowDays = allowedWindows.has(windowCandidate) ? windowCandidate : 7;
@@ -432,7 +432,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
     }
     const maxTrend = Math.max(1, ...trendSeries.map((entry) => entry.count));
 
-    const statusOrder = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
+    const statusOrder: Array<(typeof allowedStatus)[number]> = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
     const statusMap = new Map(statusTrends.map((entry) => [entry.status, entry._count._all]));
     const statusMix = statusOrder.map((status) => ({
         status,

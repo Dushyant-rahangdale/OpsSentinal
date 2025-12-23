@@ -39,6 +39,7 @@
         "dotenv": "^17.2.3",
         "eslint": "^9",
         "eslint-config-next": "16.1.0",
+        "jsdom": "^27.3.0",
         "prisma": "^5.22.0",
         "ts-node": "^10.9.1",
         "typescript": "^5",
