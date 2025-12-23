@@ -10,6 +10,8 @@ export default function LayerHelpPanel() {
             <button
                 type="button"
                 onClick={() => setIsOpen(true)}
+                aria-label="Open help panel about layers"
+                aria-expanded="false"
                 style={{
                     padding: '0.5rem 1rem',
                     borderRadius: '8px',
@@ -25,7 +27,7 @@ export default function LayerHelpPanel() {
                     marginBottom: '1rem'
                 }}
             >
-                <span>ℹ️</span>
+                <span aria-hidden="true">ℹ️</span>
                 <span>What are Layers?</span>
             </button>
         );
@@ -53,10 +55,11 @@ export default function LayerHelpPanel() {
                 }}>
                     Understanding Layers
                 </h4>
-                <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    style={{
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        aria-label="Close help panel"
+                        style={{
                         background: 'none',
                         border: 'none',
                         fontSize: '1.2rem',

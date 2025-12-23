@@ -31,8 +31,10 @@ export default function TestNotificationButton({ incidentId }: { incidentId: str
                 disabled={loading}
                 className="glass-button"
                 style={{ fontSize: '0.85rem' }}
+                aria-label={loading ? 'Sending test notification' : 'Send test notification'}
+                aria-busy={loading}
             >
-                {loading ? 'Sending...' : '🔔 Test Notify'}
+                {loading ? 'Sending...' : <><span aria-hidden="true">🔔</span> Test Notify</>}
             </button>
             {result && (
                 <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
