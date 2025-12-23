@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from './prisma';
 import { executeEscalation } from './notifications';
 import { notifySlackForIncident } from './slack';
@@ -13,47 +14,73 @@ export type EventPayload = {
     };
 };
 
+function isRetryableTransactionError(error: unknown): boolean {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        return error.code === 'P2034' || error.code === 'P2002';
+    }
+    const message = error instanceof Error ? error.message : '';
+    return message.includes('Serialization') || message.includes('deadlock');
+}
+
+async function runSerializableTransaction<T>(operation: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        try {
+            return await prisma.$transaction(operation, { isolationLevel: 'Serializable' });
+        } catch (error) {
+            if (attempt < maxAttempts - 1 && isRetryableTransactionError(error)) {
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw new Error('Transaction failed after retries.');
+}
+
 export async function processEvent(payload: EventPayload, serviceId: string, integrationId: string) {
     const { event_action, dedup_key, payload: eventData } = payload;
 
-    // 1. Log the raw alert
-    const alert = await prisma.alert.create({
-        data: {
-            dedupKey: dedup_key,
-            status: event_action === 'resolve' ? 'RESOLVED' : 'TRIGGERED',
-            payload: eventData as object,
-            serviceId,
-        }
-    });
+    const result = await runSerializableTransaction(async (tx) => {
+        // 1. Log the raw alert
+        const alert = await tx.alert.create({
+            data: {
+                dedupKey: dedup_key,
+                status: event_action === 'resolve' ? 'RESOLVED' : 'TRIGGERED',
+                payload: eventData as object,
+                serviceId,
+            }
+        });
 
-    // 2. Find existing open incident with this dedup_key
-    const existingIncident = await prisma.incident.findFirst({
-        where: {
-            dedupKey: dedup_key,
-            status: { not: 'RESOLVED' }
-        }
-    });
+        // 2. Find existing open incident with this dedup_key
+        const existingIncident = await tx.incident.findFirst({
+            where: {
+                dedupKey: dedup_key,
+                serviceId,
+                status: { not: 'RESOLVED' }
+            }
+        });
 
-    if (event_action === 'trigger') {
-        if (existingIncident) {
-            // Deduplication: Just append the alert to the incident
-            await prisma.alert.update({
-                where: { id: alert.id },
-                data: { incidentId: existingIncident.id }
-            });
+        if (event_action === 'trigger') {
+            if (existingIncident) {
+                // Deduplication: Just append the alert to the incident
+                await tx.alert.update({
+                    where: { id: alert.id },
+                    data: { incidentId: existingIncident.id }
+                });
 
-            // Log an event instead of note (no userId needed)
-            await prisma.incidentEvent.create({
-                data: {
-                    incidentId: existingIncident.id,
-                    message: `Re-triggered by event from ${eventData.source}. Summary: ${eventData.summary}`
-                }
-            });
+                // Log an event instead of note (no userId needed)
+                await tx.incidentEvent.create({
+                    data: {
+                        incidentId: existingIncident.id,
+                        message: `Re-triggered by event from ${eventData.source}. Summary: ${eventData.summary}`
+                    }
+                });
 
-            return { action: 'deduplicated', incident: existingIncident };
-        } else {
+                return { action: 'deduplicated', incident: existingIncident };
+            }
+
             // Create New Incident
-            const newIncident = await prisma.incident.create({
+            const newIncident = await tx.incident.create({
                 data: {
                     title: eventData.summary,
                     description: eventData.custom_details ? JSON.stringify(eventData.custom_details, null, 2) : null,
@@ -65,96 +92,102 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
             });
 
             // Connect alert to incident
-            await prisma.alert.update({
+            await tx.alert.update({
                 where: { id: alert.id },
                 data: { incidentId: newIncident.id }
             });
 
             // Log timeline event
-            await prisma.incidentEvent.create({
+            await tx.incidentEvent.create({
                 data: {
                     incidentId: newIncident.id,
                     message: `Incident triggered via API from ${eventData.source}`
                 }
             });
 
-            // Send service-level notifications (to team members, assignee, etc.)
-            // Uses user preferences for each recipient
-            try {
-                const { sendServiceNotifications } = await import('./user-notifications');
-                await sendServiceNotifications(newIncident.id, 'triggered');
-            } catch (e) {
-                console.error('Service notification failed:', e);
-            }
-
-            // Execute escalation policy - send notifications via policy steps
-            try {
-                await executeEscalation(newIncident.id);
-            } catch (e) {
-                console.error('Escalation failed:', e);
-            }
-
             return { action: 'triggered', incident: newIncident };
+        }
+
+        if (event_action === 'resolve' && existingIncident) {
+            await tx.alert.update({
+                where: { id: alert.id },
+                data: { incidentId: existingIncident.id }
+            });
+
+            const resolvedIncident = await tx.incident.update({
+                where: { id: existingIncident.id },
+                data: {
+                    status: 'RESOLVED',
+                    escalationStatus: 'COMPLETED',
+                    nextEscalationAt: null,
+                    resolvedAt: existingIncident.resolvedAt ?? new Date()
+                }
+            });
+
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId: existingIncident.id,
+                    message: `Auto-resolved by event from ${eventData.source}.`
+                }
+            });
+
+            return { action: 'resolved', incident: resolvedIncident };
+        }
+
+        if (event_action === 'acknowledge' && existingIncident) {
+            await tx.alert.update({
+                where: { id: alert.id },
+                data: { incidentId: existingIncident.id }
+            });
+
+            const ackIncident = await tx.incident.update({
+                where: { id: existingIncident.id },
+                data: {
+                    status: 'ACKNOWLEDGED',
+                    escalationStatus: 'COMPLETED',
+                    nextEscalationAt: null,
+                    acknowledgedAt: existingIncident.acknowledgedAt ?? new Date()
+                }
+            });
+
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId: existingIncident.id,
+                    message: `Acknowledged via API event.`
+                }
+            });
+
+            return { action: 'acknowledged', incident: ackIncident };
+        }
+
+        return { action: 'ignored', reason: 'No matching incident to resolve/ack' };
+    });
+
+    if (result.action === 'triggered') {
+        // Send service-level notifications (to team members, assignee, etc.)
+        // Uses user preferences for each recipient
+        try {
+            const { sendServiceNotifications } = await import('./user-notifications');
+            await sendServiceNotifications(result.incident.id, 'triggered');
+        } catch (e) {
+            console.error('Service notification failed:', e);
+        }
+
+        // Execute escalation policy - send notifications via policy steps
+        try {
+            await executeEscalation(result.incident.id);
+        } catch (e) {
+            console.error('Escalation failed:', e);
         }
     }
 
-    if (event_action === 'resolve' && existingIncident) {
-        await prisma.alert.update({
-            where: { id: alert.id },
-            data: { incidentId: existingIncident.id }
-        });
-
-        const resolvedIncident = await prisma.incident.update({
-            where: { id: existingIncident.id },
-            data: {
-                status: 'RESOLVED',
-                escalationStatus: 'COMPLETED',
-                nextEscalationAt: null,
-                resolvedAt: existingIncident.resolvedAt ?? new Date()
-            }
-        });
-
-        await prisma.incidentEvent.create({
-            data: {
-                incidentId: existingIncident.id,
-                message: `Auto-resolved by event from ${eventData.source}.`
-            }
-        });
-
-        // Send Slack notification for resolve
-        notifySlackForIncident(existingIncident.id, 'resolved').catch(console.error);
-
-        return { action: 'resolved', incident: resolvedIncident };
+    if (result.action === 'resolved') {
+        notifySlackForIncident(result.incident.id, 'resolved').catch(console.error);
     }
 
-    if (event_action === 'acknowledge' && existingIncident) {
-        await prisma.alert.update({
-            where: { id: alert.id },
-            data: { incidentId: existingIncident.id }
-        });
-
-        const ackIncident = await prisma.incident.update({
-            where: { id: existingIncident.id },
-            data: {
-                status: 'ACKNOWLEDGED',
-                escalationStatus: 'COMPLETED',
-                nextEscalationAt: null,
-                acknowledgedAt: existingIncident.acknowledgedAt ?? new Date()
-            }
-        });
-
-        await prisma.incidentEvent.create({
-            data: {
-                incidentId: existingIncident.id,
-                message: `Acknowledged via API event.`
-            }
-        });
-
-        // Send Slack notification for acknowledge
-        notifySlackForIncident(existingIncident.id, 'acknowledged').catch(console.error);
-
-        return { action: 'acknowledged', incident: ackIncident };
+    if (result.action === 'acknowledged') {
+        notifySlackForIncident(result.incident.id, 'acknowledged').catch(console.error);
     }
 
-    return { action: 'ignored', reason: 'No matching incident to resolve/ack' };
+    return result;
 }

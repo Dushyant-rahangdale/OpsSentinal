@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { CustomFieldCreateSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 /**
  * Create Custom Field
@@ -12,28 +15,26 @@ export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         try {
             await assertAdmin();
         } catch (error) {
-            return NextResponse.json(
-                { error: error instanceof Error ? error.message : 'Unauthorized' },
-                { status: 403 }
-            );
+            return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
         }
 
-        const body = await req.json();
-        const { name, key, type, required, defaultValue, options, showInList } = body;
-
-        // Validate key format
-        if (!/^[a-zA-Z0-9_]+$/.test(key)) {
-            return NextResponse.json(
-                { error: 'Key must contain only letters, numbers, and underscores' },
-                { status: 400 }
-            );
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
         }
+        const parsed = CustomFieldCreateSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
+        const { name, key, type, required, defaultValue, options, showInList } = parsed.data;
 
         // Check if key already exists
         const existing = await prisma.customField.findUnique({
@@ -41,10 +42,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (existing) {
-            return NextResponse.json(
-                { error: 'A custom field with this key already exists' },
-                { status: 400 }
-            );
+            return jsonError('A custom field with this key already exists', 400);
         }
 
         // Get max order
@@ -65,13 +63,11 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ success: true, field: customField });
+        logger.info('api.custom_fields.created', { customFieldId: customField.id });
+        return jsonOk({ success: true, field: customField }, 200);
     } catch (error: any) {
-        console.error('Create custom field error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to create custom field' },
-            { status: 500 }
-        );
+        logger.error('api.custom_fields.create_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to create custom field', 500);
     }
 }
 
@@ -83,7 +79,7 @@ export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const customFields = await prisma.customField.findMany({
@@ -97,13 +93,10 @@ export async function GET() {
             },
         });
 
-        return NextResponse.json({ fields: customFields });
+        return jsonOk({ fields: customFields }, 200);
     } catch (error: any) {
-        console.error('Get custom fields error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to fetch custom fields' },
-            { status: 500 }
-        );
+        logger.error('api.custom_fields.fetch_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to fetch custom fields', 500);
     }
 }
 

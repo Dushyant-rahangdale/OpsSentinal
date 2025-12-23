@@ -3917,6 +3917,11 @@ select option {
   align-items: start;
 }
 
+.settings-grid.settings-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
 .settings-content {
   min-width: 0;
 }

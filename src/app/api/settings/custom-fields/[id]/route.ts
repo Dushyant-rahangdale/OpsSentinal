@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Delete Custom Field
@@ -15,16 +17,13 @@ export async function DELETE(
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         try {
             await assertAdmin();
         } catch (error) {
-            return NextResponse.json(
-                { error: error instanceof Error ? error.message : 'Unauthorized' },
-                { status: 403 }
-            );
+            return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
         }
 
         const { id } = await params;
@@ -39,13 +38,11 @@ export async function DELETE(
             where: { id },
         });
 
-        return NextResponse.json({ success: true });
+        logger.info('api.custom_fields.deleted', { customFieldId: id });
+        return jsonOk({ success: true }, 200);
     } catch (error: any) {
-        console.error('Delete custom field error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to delete custom field' },
-            { status: 500 }
-        );
+        logger.error('api.custom_fields.delete_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to delete custom field', 500);
     }
 }
 

@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { processEvent, EventPayload } from '@/lib/events';
 import { authenticateApiKey, hasApiScopes } from '@/lib/api-auth';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { EventSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 120;
+
+async function getApiUserContext(apiKeyUserId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: apiKeyUserId },
+        select: {
+            id: true,
+            role: true,
+            teamMemberships: { select: { teamId: true } }
+        }
+    });
+
+    if (!user) return null;
+
+    return {
+        id: user.id,
+        role: user.role,
+        teamIds: user.teamMemberships.map((membership) => membership.teamId)
+    };
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,86 +35,96 @@ export async function POST(req: NextRequest) {
         let integrationId: string | null = null;
         let serviceId: string | null = null;
         let apiKeyScopes: string[] | null = null;
+        let apiKeyUserId: string | null = null;
+        let apiKeyId: string | null = null;
 
         if (authHeader?.startsWith('Token token=')) {
             const key = authHeader.split('Token token=')[1];
             const integration = await prisma.integration.findUnique({ where: { key } });
             if (!integration) {
-                return NextResponse.json({ error: 'Invalid Integration Key' }, { status: 403 });
+                return jsonError('Invalid Integration Key', 403);
             }
             integrationId = integration.id;
             serviceId = integration.serviceId;
         } else {
             const apiKey = await authenticateApiKey(req);
             if (!apiKey) {
-                return NextResponse.json({ error: 'Unauthorized. Missing or invalid API key.' }, { status: 401 });
+                return jsonError('Unauthorized. Missing or invalid API key.', 401);
             }
             apiKeyScopes = apiKey.scopes;
+            apiKeyUserId = apiKey.userId;
+            apiKeyId = apiKey.id;
         }
 
         // 2. Parse Body
-        const body = await req.json();
-
-        // Validate payload structure (Basic check)
-        if (!body.event_action || !body.dedup_key || !body.payload) {
-            return NextResponse.json({ error: 'Invalid Payload. Required: event_action, dedup_key, payload' }, { status: 400 });
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
         }
 
-        const eventAction = String(body.event_action);
-        const dedupKey = typeof body.dedup_key === 'string' ? body.dedup_key.trim() : '';
-        const payload = body.payload;
-
-        if (!['trigger', 'resolve', 'acknowledge'].includes(eventAction)) {
-            return NextResponse.json({ error: 'Invalid event_action.' }, { status: 400 });
+        const parsed = EventSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
         }
-
-        if (!dedupKey) {
-            return NextResponse.json({ error: 'dedup_key must be a non-empty string.' }, { status: 400 });
-        }
-
-        if (typeof payload !== 'object' || payload === null) {
-            return NextResponse.json({ error: 'payload must be an object.' }, { status: 400 });
-        }
-
-        if (typeof payload.summary !== 'string' || payload.summary.trim() === '') {
-            return NextResponse.json({ error: 'payload.summary is required.' }, { status: 400 });
-        }
-
-        if (typeof payload.source !== 'string' || payload.source.trim() === '') {
-            return NextResponse.json({ error: 'payload.source is required.' }, { status: 400 });
-        }
-
-        if (!['critical', 'error', 'warning', 'info'].includes(payload.severity)) {
-            return NextResponse.json({ error: 'payload.severity is invalid.' }, { status: 400 });
-        }
+        const eventAction = parsed.data.event_action;
+        const dedupKey = parsed.data.dedup_key;
 
         if (!serviceId) {
             if (!hasApiScopes(apiKeyScopes, ['events:write'])) {
-                return NextResponse.json({ error: 'API key missing scope: events:write.' }, { status: 403 });
+                return jsonError('API key missing scope: events:write.', 403);
             }
             const candidate = body.service_id || body.serviceId;
             if (!candidate || typeof candidate !== 'string') {
-                return NextResponse.json({ error: 'service_id is required when using API keys.' }, { status: 400 });
+                return jsonError('service_id is required when using API keys.', 400);
             }
             const service = await prisma.service.findUnique({ where: { id: candidate } });
             if (!service) {
-                return NextResponse.json({ error: 'Service not found.' }, { status: 404 });
+                return jsonError('Service not found.', 404);
+            }
+            if (!apiKeyUserId) {
+                return jsonError('Unauthorized. API key user not found.', 401);
+            }
+            const apiUser = await getApiUserContext(apiKeyUserId);
+            if (!apiUser) {
+                return jsonError('Unauthorized. API key user not found.', 401);
+            }
+            if (apiUser.role !== 'ADMIN' && apiUser.role !== 'RESPONDER') {
+                if (!service.teamId || !apiUser.teamIds.includes(service.teamId)) {
+                    return jsonError('Forbidden. Service access denied.', 403);
+                }
             }
             serviceId = service.id;
             integrationId = 'api-key';
         }
 
+        const rateKey = integrationId
+            ? `integration:${integrationId}:events`
+            : apiKeyId
+            ? `api:${apiKeyId}:events`
+            : 'anonymous:events';
+        const rate = checkRateLimit(rateKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+        if (!rate.allowed) {
+            const retryAfter = Math.ceil((rate.resetAt - Date.now()) / 1000);
+            return NextResponse.json(
+                { error: 'Rate limit exceeded.' },
+                { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+            );
+        }
+
         // 3. Process Event
         const result = await processEvent(
-            { ...body, event_action: eventAction, dedup_key: dedupKey } as EventPayload,
+            { ...parsed.data, event_action: eventAction, dedup_key: dedupKey } as EventPayload,
             serviceId,
             integrationId || 'api-key'
         );
 
-        return NextResponse.json({ status: 'success', result }, { status: 202 });
+        logger.info('api.event.processed', { action: result.action, serviceId, integrationId });
+        return jsonOk({ status: 'success', result }, 202);
 
     } catch (error: any) {
-        console.error('Event Ingestion Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        logger.error('api.event.error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Internal Server Error', 500);
     }
 }

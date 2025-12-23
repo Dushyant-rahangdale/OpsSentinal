@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { assertResponderOrAbove } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { trackPresetUsage, type FilterCriteria } from '@/lib/search-presets';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { SearchPresetPatchSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 /**
  * Get Preset by ID
@@ -16,7 +19,7 @@ export async function GET(
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const { id } = await params;
@@ -35,7 +38,7 @@ export async function GET(
         });
 
         if (!preset) {
-            return NextResponse.json({ error: 'Preset not found' }, { status: 404 });
+            return jsonError('Preset not found', 404);
         }
 
         // Check access
@@ -59,16 +62,13 @@ export async function GET(
             preset.sharedWithTeams.some(teamId => userTeamIds.includes(teamId));
 
         if (!hasAccess) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+            return jsonError('Access denied', 403);
         }
 
-        return NextResponse.json({ preset });
+        return jsonOk({ preset }, 200);
     } catch (error: any) {
-        console.error('Get preset error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to fetch preset' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.fetch_one_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to fetch preset', 500);
     }
 }
 
@@ -83,7 +83,7 @@ export async function PATCH(
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const { id } = await params;
@@ -94,15 +94,24 @@ export async function PATCH(
         });
 
         if (!preset) {
-            return NextResponse.json({ error: 'Preset not found' }, { status: 404 });
+            return jsonError('Preset not found', 404);
         }
 
         const permissions = await import('@/lib/rbac').then(m => m.getUserPermissions());
         if (preset.createdById !== session.user.id && !permissions.isAdmin) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+            return jsonError('Access denied', 403);
         }
 
-        const body = await req.json();
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
+        }
+        const parsed = SearchPresetPatchSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
         const {
             name,
             description,
@@ -113,29 +122,11 @@ export async function PATCH(
             color,
             order,
             sharedWithTeams,
-        } = body;
+        } = parsed.data;
 
         const updateData: any = {};
 
         if (name !== undefined) {
-            if (typeof name !== 'string') {
-                return NextResponse.json(
-                    { error: 'Preset name must be a string' },
-                    { status: 400 }
-                );
-            }
-            if (name.trim().length === 0) {
-                return NextResponse.json(
-                    { error: 'Preset name cannot be empty' },
-                    { status: 400 }
-                );
-            }
-            if (name.length > 100) {
-                return NextResponse.json(
-                    { error: 'Preset name must be 100 characters or less' },
-                    { status: 400 }
-                );
-            }
             updateData.name = name.trim();
         }
 
@@ -185,13 +176,11 @@ export async function PATCH(
             },
         });
 
-        return NextResponse.json({ preset: updated });
+        logger.info('api.search_presets.updated', { presetId: updated.id });
+        return jsonOk({ preset: updated }, 200);
     } catch (error: any) {
-        console.error('Update preset error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to update preset' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.update_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to update preset', 500);
     }
 }
 
@@ -206,7 +195,7 @@ export async function DELETE(
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const { id } = await params;
@@ -216,24 +205,22 @@ export async function DELETE(
         });
 
         if (!preset) {
-            return NextResponse.json({ error: 'Preset not found' }, { status: 404 });
+            return jsonError('Preset not found', 404);
         }
 
         const permissions = await import('@/lib/rbac').then(m => m.getUserPermissions());
         if (preset.createdById !== session.user.id && !permissions.isAdmin) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+            return jsonError('Access denied', 403);
         }
 
         await prisma.searchPreset.delete({
             where: { id },
         });
 
-        return NextResponse.json({ success: true });
+        logger.info('api.search_presets.deleted', { presetId: id });
+        return jsonOk({ success: true }, 200);
     } catch (error: any) {
-        console.error('Delete preset error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to delete preset' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.delete_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to delete preset', 500);
     }
 }

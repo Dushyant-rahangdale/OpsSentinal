@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { NotificationPatchSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const user = await prisma.user.findUnique({
@@ -16,7 +19,7 @@ export async function GET(req: NextRequest) {
         });
 
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return jsonError('User not found', 404);
         }
 
         const { searchParams } = new URL(req.url);
@@ -71,17 +74,10 @@ export async function GET(req: NextRequest) {
             };
         });
 
-        return NextResponse.json({
-            notifications: formattedNotifications,
-            unreadCount,
-            total
-        });
+        return jsonOk({ notifications: formattedNotifications, unreadCount, total }, 200);
     } catch (error) {
-        console.error('Notifications API error:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch notifications' },
-            { status: 500 }
-        );
+        logger.error('api.notifications.fetch_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Failed to fetch notifications', 500);
     }
 }
 
@@ -95,7 +91,7 @@ export async function PATCH(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const user = await prisma.user.findUnique({
@@ -104,11 +100,20 @@ export async function PATCH(req: NextRequest) {
         });
 
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return jsonError('User not found', 404);
         }
 
-        const body = await req.json();
-        const { notificationIds, markAllAsRead } = body;
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
+        }
+        const parsed = NotificationPatchSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
+        const { notificationIds, markAllAsRead } = parsed.data;
 
         if (markAllAsRead) {
             await prisma.inAppNotification.updateMany({
@@ -121,7 +126,7 @@ export async function PATCH(req: NextRequest) {
                 }
             });
 
-            return NextResponse.json({ success: true, message: 'All notifications marked as read' });
+            return jsonOk({ success: true, message: 'All notifications marked as read' }, 200);
         }
 
         if (notificationIds && Array.isArray(notificationIds)) {
@@ -135,16 +140,13 @@ export async function PATCH(req: NextRequest) {
                 }
             });
 
-            return NextResponse.json({ success: true, message: 'Notifications marked as read' });
+            return jsonOk({ success: true, message: 'Notifications marked as read' }, 200);
         }
 
-        return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+        return jsonError('Invalid request', 400);
     } catch (error) {
-        console.error('Mark notifications as read error:', error);
-        return NextResponse.json(
-            { error: 'Failed to update notifications' },
-            { status: 500 }
-        );
+        logger.error('api.notifications.update_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Failed to update notifications', 500);
     }
 }
 

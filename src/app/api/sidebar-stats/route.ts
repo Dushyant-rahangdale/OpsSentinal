@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const activeIncidentsCount = await prisma.incident.count({
@@ -16,10 +17,10 @@ export async function GET() {
             }
         });
 
-        return NextResponse.json({ activeIncidentsCount });
+        return jsonOk({ activeIncidentsCount }, 200);
     } catch (error) {
-        console.error('Stats error:', error);
-        return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
+        logger.error('api.sidebar_stats.error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Failed to fetch stats', 500);
     }
 }
 

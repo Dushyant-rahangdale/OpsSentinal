@@ -53,37 +53,9 @@ export default async function StatusPageSettingsPage() {
     });
 
     return (
-        <div style={{ padding: 'var(--spacing-6)' }}>
-            <div style={{
-                marginBottom: 'var(--spacing-8)',
-                paddingBottom: 'var(--spacing-6)',
-                borderBottom: '2px solid #e2e8f0',
-            }}>
-                <h1 style={{
-                    fontSize: '2.5rem',
-                    fontWeight: '800',
-                    marginBottom: 'var(--spacing-2)',
-                    background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '-0.02em',
-                }}>
-                    Status Page Settings
-                </h1>
-                <p style={{
-                    color: 'var(--text-muted)',
-                    fontSize: 'var(--font-size-base)',
-                    lineHeight: '1.6',
-                }}>
-                    Configure your public status page with detailed customization options
-                </p>
-            </div>
-
-            <StatusPageConfig
-                statusPage={statusPage}
-                allServices={allServices}
-            />
-        </div>
+        <StatusPageConfig
+            statusPage={statusPage}
+            allServices={allServices}
+        />
     );
 }
-

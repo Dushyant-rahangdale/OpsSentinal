@@ -5,62 +5,74 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { IncidentStatus, IncidentUrgency } from '@prisma/client';
 import { notifySlackForIncident } from '@/lib/slack';
-import { getCurrentUser, assertResponderOrAbove } from '@/lib/rbac';
+import { getCurrentUser, assertResponderOrAbove, assertCanModifyIncident } from '@/lib/rbac';
 
 export async function updateIncidentStatus(id: string, status: IncidentStatus) {
     try {
-        await assertResponderOrAbove();
+        // Check resource-level authorization
+        await assertCanModifyIncident(id);
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
-    // Get current incident to check if we're setting acknowledgedAt for the first time
-    const currentIncident = await prisma.incident.findUnique({ where: { id } });
-    
-    // Build update data
-    const updateData: any = {
-        status,
-        // Track SLA timestamps
-        ...(status === 'ACKNOWLEDGED' && !currentIncident?.acknowledgedAt ? {
-            acknowledgedAt: new Date()
-        } : {}),
-        ...(status === 'RESOLVED' && !currentIncident?.resolvedAt ? {
-            resolvedAt: new Date()
-        } : {}),
-        events: {
-            create: {
-                message: status === 'SNOOZED' 
-                    ? 'Incident snoozed (escalation paused)'
-                    : status === 'SUPPRESSED'
-                    ? 'Incident suppressed (escalation paused)'
-                    : status === 'OPEN' && currentIncident?.status === 'ACKNOWLEDGED'
-                    ? 'Incident unacknowledged (escalation resumed)'
-                    : status === 'OPEN' && (currentIncident?.status === 'SNOOZED' || currentIncident?.status === 'SUPPRESSED')
-                    ? 'Incident unsnoozed/unsuppressed (escalation resumed)'
-                    : `Status updated to ${status}${status === 'ACKNOWLEDGED' || status === 'RESOLVED' ? ' (escalation stopped)' : ''}`
+    const currentIncident = await prisma.$transaction(async (tx) => {
+        // Get current incident to check if we're setting acknowledgedAt for the first time
+        const incident = await tx.incident.findUnique({
+            where: { id },
+            select: { status: true, acknowledgedAt: true, resolvedAt: true }
+        });
+
+        if (!incident) {
+            throw new Error('Incident not found.');
+        }
+
+        // Build update data
+        const updateData: any = {
+            status,
+            // Track SLA timestamps
+            ...(status === 'ACKNOWLEDGED' && !incident.acknowledgedAt ? {
+                acknowledgedAt: new Date()
+            } : {}),
+            ...(status === 'RESOLVED' && !incident.resolvedAt ? {
+                resolvedAt: new Date()
+            } : {}),
+            events: {
+                create: {
+                    message: status === 'SNOOZED' 
+                        ? 'Incident snoozed (escalation paused)'
+                        : status === 'SUPPRESSED'
+                        ? 'Incident suppressed (escalation paused)'
+                        : status === 'OPEN' && incident.status === 'ACKNOWLEDGED'
+                        ? 'Incident unacknowledged (escalation resumed)'
+                        : status === 'OPEN' && (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED')
+                        ? 'Incident unsnoozed/unsuppressed (escalation resumed)'
+                        : `Status updated to ${status}${status === 'ACKNOWLEDGED' || status === 'RESOLVED' ? ' (escalation stopped)' : ''}`
+                }
+            }
+        };
+
+        // Handle escalation status based on new status
+        if (status === 'ACKNOWLEDGED' || status === 'RESOLVED') {
+            // Completed - stop escalation permanently
+            updateData.escalationStatus = 'COMPLETED';
+            updateData.nextEscalationAt = null;
+        } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
+            // Paused - stop escalation temporarily
+            updateData.escalationStatus = 'PAUSED';
+            updateData.nextEscalationAt = null;
+        } else if (status === 'OPEN') {
+            // Resuming from any paused state - resume escalation
+            if (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED' || incident.status === 'ACKNOWLEDGED') {
+                updateData.escalationStatus = 'ESCALATING';
+                updateData.nextEscalationAt = new Date(); // Resume immediately
             }
         }
-    };
+        
+        await tx.incident.update({
+            where: { id },
+            data: updateData
+        });
 
-    // Handle escalation status based on new status
-    if (status === 'ACKNOWLEDGED' || status === 'RESOLVED') {
-        // Completed - stop escalation permanently
-        updateData.escalationStatus = 'COMPLETED';
-        updateData.nextEscalationAt = null;
-    } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
-        // Paused - stop escalation temporarily
-        updateData.escalationStatus = 'PAUSED';
-        updateData.nextEscalationAt = null;
-    } else if (status === 'OPEN') {
-        // Resuming from any paused state - resume escalation
-        if (currentIncident?.status === 'SNOOZED' || currentIncident?.status === 'SUPPRESSED' || currentIncident?.status === 'ACKNOWLEDGED') {
-            updateData.escalationStatus = 'ESCALATING';
-            updateData.nextEscalationAt = new Date(); // Resume immediately
-        }
-    }
-    
-    await prisma.incident.update({
-        where: { id },
-        data: updateData
+        return incident;
     });
 
     // Send service-level notifications for status changes
@@ -86,7 +98,8 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
 
 export async function resolveIncidentWithNote(id: string, resolution: string) {
     try {
-        await assertResponderOrAbove();
+        // Check resource-level authorization
+        await assertCanModifyIncident(id);
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
@@ -102,45 +115,50 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
         throw new Error(`Resolution note must be ${maxLength} characters or fewer.`);
     }
     const user = await getCurrentUser();
-    
-    // Get current incident to check if we're setting resolvedAt for the first time
-    const currentIncident = await prisma.incident.findUnique({ where: { id } });
 
-    await prisma.incident.update({
-        where: { id },
-        data: {
-            status: 'RESOLVED',
-            // Stop escalation when resolved
-            escalationStatus: 'COMPLETED',
-            nextEscalationAt: null,
-            // Track SLA timestamp
-            ...(!currentIncident?.resolvedAt ? {
-                resolvedAt: new Date()
-            } : {}),
-            events: {
-                create: {
-                    message: trimmedResolution ? `Resolved: ${trimmedResolution}` : 'Resolved (escalation stopped)'
+    await prisma.$transaction(async (tx) => {
+        // Get current incident to check if we're setting resolvedAt for the first time
+        const currentIncident = await tx.incident.findUnique({ where: { id } });
+        if (!currentIncident) {
+            throw new Error('Incident not found.');
+        }
+
+        await tx.incident.update({
+            where: { id },
+            data: {
+                status: 'RESOLVED',
+                // Stop escalation when resolved
+                escalationStatus: 'COMPLETED',
+                nextEscalationAt: null,
+                // Track SLA timestamp
+                ...(!currentIncident.resolvedAt ? {
+                    resolvedAt: new Date()
+                } : {}),
+                events: {
+                    create: {
+                        message: trimmedResolution ? `Resolved: ${trimmedResolution}` : 'Resolved (escalation stopped)'
+                    }
                 }
             }
+        });
+
+        if (trimmedResolution && user) {
+            await tx.incidentNote.create({
+                data: {
+                    incidentId: id,
+                    userId: user.id,
+                    content: `Resolution: ${trimmedResolution}`
+                }
+            });
+
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId: id,
+                    message: `Resolution note added by ${user.name}`
+                }
+            });
         }
     });
-
-    if (trimmedResolution && user) {
-        await prisma.incidentNote.create({
-            data: {
-                incidentId: id,
-                userId: user.id,
-                content: `Resolution: ${trimmedResolution}`
-            }
-        });
-
-        await prisma.incidentEvent.create({
-            data: {
-                incidentId: id,
-                message: `Resolution note added by ${user.name}`
-            }
-        });
-    }
 
     // Send service-level notifications for resolution
     // Uses user preferences for each recipient
@@ -158,7 +176,8 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
 
 export async function updateIncidentUrgency(id: string, urgency: string) {
     try {
-        await assertResponderOrAbove();
+        // Check resource-level authorization
+        await assertCanModifyIncident(id);
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
@@ -208,43 +227,56 @@ export async function createIncident(formData: FormData) {
         }
     }
 
-    const incident = await prisma.incident.create({
-        data: {
-            title,
-            description,
-            urgency,
-            serviceId,
-            priority: priority && priority.length ? priority : null,
-            dedupKey: dedupKey && dedupKey.length ? dedupKey : null,
-            assigneeId: assigneeId && assigneeId.length ? assigneeId : null,
-            events: {
-                create: {
-                    message: assigneeId 
-                        ? `Incident created with ${urgency} urgency and assigned to ${(await prisma.user.findUnique({ where: { id: assigneeId }, select: { name: true } }))?.name || 'user'}`
-                        : `Incident created with ${urgency} urgency`
-                }
-            },
-            // Create custom field values
-            customFieldValues: {
-                create: customFieldEntries.map(({ fieldId, value }) => ({
-                    customFieldId: fieldId,
-                    value,
-                })),
-            },
+    const incident = await prisma.$transaction(async (tx) => {
+        let assigneeName: string | null = null;
+        if (assigneeId && assigneeId.length) {
+            const assignee = await tx.user.findUnique({
+                where: { id: assigneeId },
+                select: { name: true }
+            });
+            assigneeName = assignee?.name || null;
         }
-    });
 
-    if (notifyOnCall || notifySlack) {
-        await prisma.incidentEvent.create({
+        const createdIncident = await tx.incident.create({
             data: {
-                incidentId: incident.id,
-                message: `Notifications: ${[
-                    notifyOnCall ? 'On-call' : null,
-                    notifySlack ? 'Service channel' : null
-                ].filter(Boolean).join(', ')}`
+                title,
+                description,
+                urgency,
+                serviceId,
+                priority: priority && priority.length ? priority : null,
+                dedupKey: dedupKey && dedupKey.length ? dedupKey : null,
+                assigneeId: assigneeId && assigneeId.length ? assigneeId : null,
+                events: {
+                    create: {
+                        message: assigneeId 
+                            ? `Incident created with ${urgency} urgency and assigned to ${assigneeName || 'user'}`
+                            : `Incident created with ${urgency} urgency`
+                    }
+                },
+                // Create custom field values
+                customFieldValues: {
+                    create: customFieldEntries.map(({ fieldId, value }) => ({
+                        customFieldId: fieldId,
+                        value,
+                    })),
+                },
             }
         });
-    }
+
+        if (notifyOnCall || notifySlack) {
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId: createdIncident.id,
+                    message: `Notifications: ${[
+                        notifyOnCall ? 'On-call' : null,
+                        notifySlack ? 'Service channel' : null
+                    ].filter(Boolean).join(', ')}`
+                }
+            });
+        }
+
+        return createdIncident;
+    });
 
     // Send service-level notifications for new incident
     // Uses user preferences for each recipient
@@ -276,19 +308,21 @@ export async function addNote(incidentId: string, content: string) {
     }
     const user = await getCurrentUser();
 
-    await prisma.incidentNote.create({
-        data: {
-            incidentId,
-            userId: user.id,
-            content
-        }
-    });
+    await prisma.$transaction(async (tx) => {
+        await tx.incidentNote.create({
+            data: {
+                incidentId,
+                userId: user.id,
+                content
+            }
+        });
 
-    await prisma.incidentEvent.create({
-        data: {
-            incidentId,
-            message: `Note added by ${user.name}`
-        }
+        await tx.incidentEvent.create({
+            data: {
+                incidentId,
+                message: `Note added by ${user.name}`
+            }
+        });
     });
 
     revalidatePath(`/incidents/${incidentId}`);
@@ -296,23 +330,26 @@ export async function addNote(incidentId: string, content: string) {
 
 export async function reassignIncident(incidentId: string, assigneeId: string) {
     try {
-        await assertResponderOrAbove();
+        // Check resource-level authorization
+        await assertCanModifyIncident(incidentId);
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
     
     // Handle unassigning (empty assigneeId)
     if (!assigneeId || assigneeId.trim() === '') {
-        await prisma.incident.update({
-            where: { id: incidentId },
-            data: { assigneeId: null }
-        });
+        await prisma.$transaction(async (tx) => {
+            await tx.incident.update({
+                where: { id: incidentId },
+                data: { assigneeId: null }
+            });
 
-        await prisma.incidentEvent.create({
-            data: {
-                incidentId,
-                message: 'Incident unassigned'
-            }
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId,
+                    message: 'Incident unassigned'
+                }
+            });
         });
 
         revalidatePath(`/incidents/${incidentId}`);
@@ -321,21 +358,24 @@ export async function reassignIncident(incidentId: string, assigneeId: string) {
     }
 
     // Handle assigning to a user
-    const assignee = await prisma.user.findUnique({ where: { id: assigneeId } });
-    if (!assignee) {
-        throw new Error('Assignee not found');
-    }
-
-    await prisma.incident.update({
-        where: { id: incidentId },
-        data: { assigneeId }
-    });
-
-    await prisma.incidentEvent.create({
-        data: {
-            incidentId,
-            message: `Incident manually reassigned to ${assignee.name}`
+    await prisma.$transaction(async (tx) => {
+        const assigneeRecord = await tx.user.findUnique({ where: { id: assigneeId } });
+        if (!assigneeRecord) {
+            throw new Error('Assignee not found');
         }
+
+        await tx.incident.update({
+            where: { id: incidentId },
+            data: { assigneeId }
+        });
+
+        await tx.incidentEvent.create({
+            data: {
+                incidentId,
+                message: `Incident manually reassigned to ${assigneeRecord.name}`
+            }
+        });
+
     });
 
     revalidatePath(`/incidents/${incidentId}`);
@@ -350,28 +390,30 @@ export async function addWatcher(incidentId: string, userId: string, role: strin
     }
     if (!userId) return;
 
-    await prisma.incidentWatcher.upsert({
-        where: {
-            incidentId_userId: {
+    await prisma.$transaction(async (tx) => {
+        await tx.incidentWatcher.upsert({
+            where: {
+                incidentId_userId: {
+                    incidentId,
+                    userId
+                }
+            },
+            update: {
+                role: role || 'FOLLOWER'
+            },
+            create: {
                 incidentId,
-                userId
+                userId,
+                role: role || 'FOLLOWER'
             }
-        },
-        update: {
-            role: role || 'FOLLOWER'
-        },
-        create: {
-            incidentId,
-            userId,
-            role: role || 'FOLLOWER'
-        }
-    });
+        });
 
-    await prisma.incidentEvent.create({
-        data: {
-            incidentId,
-            message: `Watcher added (${role || 'FOLLOWER'})`
-        }
+        await tx.incidentEvent.create({
+            data: {
+                incidentId,
+                message: `Watcher added (${role || 'FOLLOWER'})`
+            }
+        });
     });
 
     revalidatePath(`/incidents/${incidentId}`);
@@ -383,15 +425,17 @@ export async function removeWatcher(incidentId: string, watcherId: string) {
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
-    await prisma.incidentWatcher.delete({
-        where: { id: watcherId }
-    });
+    await prisma.$transaction(async (tx) => {
+        await tx.incidentWatcher.delete({
+            where: { id: watcherId }
+        });
 
-    await prisma.incidentEvent.create({
-        data: {
-            incidentId,
-            message: 'Watcher removed'
-        }
+        await tx.incidentEvent.create({
+            data: {
+                incidentId,
+                message: 'Watcher removed'
+            }
+        });
     });
 
     revalidatePath(`/incidents/${incidentId}`);

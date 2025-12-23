@@ -1,16 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { assertAdmin } from '@/lib/rbac';
-
-type AnnouncementInput = {
-    statusPageId: string;
-    title: string;
-    message: string;
-    type?: string;
-    startDate: string;
-    endDate?: string | null;
-    isActive?: boolean;
-};
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { StatusAnnouncementCreateSchema, StatusAnnouncementDeleteSchema, StatusAnnouncementPatchSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 function parseDate(value: string, fieldName: string) {
     const parsed = new Date(value);
@@ -24,22 +17,21 @@ export async function POST(req: NextRequest) {
     try {
         await assertAdmin();
     } catch (error) {
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Unauthorized' },
-            { status: 403 }
-        );
+        return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
     }
 
     try {
-        const body: AnnouncementInput = await req.json();
-        const { statusPageId, title, message, type, startDate, endDate, isActive } = body;
-
-        if (!statusPageId || !title || !message || !startDate) {
-            return NextResponse.json(
-                { error: 'statusPageId, title, message, and startDate are required' },
-                { status: 400 }
-            );
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
         }
+        const parsed = StatusAnnouncementCreateSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
+        const { statusPageId, title, message, type, startDate, endDate, isActive } = parsed.data;
 
         const announcement = await prisma.statusPageAnnouncement.create({
             data: {
@@ -53,13 +45,11 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ announcement });
+        logger.info('api.status_page.announcement.created', { announcementId: announcement.id });
+        return jsonOk({ announcement }, 200);
     } catch (error: any) {
-        console.error('Status page announcement create error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to create announcement' },
-            { status: 500 }
-        );
+        logger.error('api.status_page.announcement.create_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to create announcement', 500);
     }
 }
 
@@ -67,19 +57,21 @@ export async function PATCH(req: NextRequest) {
     try {
         await assertAdmin();
     } catch (error) {
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Unauthorized' },
-            { status: 403 }
-        );
+        return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
     }
 
     try {
-        const body = await req.json();
-        const { id, title, message, type, startDate, endDate, isActive } = body;
-
-        if (!id) {
-            return NextResponse.json({ error: 'id is required' }, { status: 400 });
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
         }
+        const parsed = StatusAnnouncementPatchSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
+        const { id, title, message, type, startDate, endDate, isActive } = parsed.data;
 
         const updated = await prisma.statusPageAnnouncement.update({
             where: { id },
@@ -93,13 +85,11 @@ export async function PATCH(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ announcement: updated });
+        logger.info('api.status_page.announcement.updated', { announcementId: updated.id });
+        return jsonOk({ announcement: updated }, 200);
     } catch (error: any) {
-        console.error('Status page announcement update error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to update announcement' },
-            { status: 500 }
-        );
+        logger.error('api.status_page.announcement.update_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to update announcement', 500);
     }
 }
 
@@ -107,28 +97,28 @@ export async function DELETE(req: NextRequest) {
     try {
         await assertAdmin();
     } catch (error) {
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Unauthorized' },
-            { status: 403 }
-        );
+        return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
     }
 
     try {
-        const body = await req.json();
-        const { id } = body;
-
-        if (!id) {
-            return NextResponse.json({ error: 'id is required' }, { status: 400 });
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
         }
+        const parsed = StatusAnnouncementDeleteSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
+        const { id } = parsed.data;
 
         await prisma.statusPageAnnouncement.delete({ where: { id } });
 
-        return NextResponse.json({ success: true });
+        logger.info('api.status_page.announcement.deleted', { announcementId: id });
+        return jsonOk({ success: true }, 200);
     } catch (error: any) {
-        console.error('Status page announcement delete error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to delete announcement' },
-            { status: 500 }
-        );
+        logger.error('api.status_page.announcement.delete_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to delete announcement', 500);
     }
 }

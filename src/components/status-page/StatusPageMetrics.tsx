@@ -149,113 +149,240 @@ export default function StatusPageMetrics({
     }
 
     return (
-        <section style={{ marginBottom: '3rem' }}>
-            <h2 style={{ 
-                fontSize: '1.5rem', 
-                fontWeight: '700', 
-                marginBottom: '1rem',
-                color: '#0f172a',
-            }}>
-                Uptime Metrics
-            </h2>
+        <section style={{ marginBottom: '4rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ 
+                    fontSize: '1.875rem', 
+                    fontWeight: '800', 
+                    marginBottom: '0.25rem',
+                    color: '#0f172a',
+                    letterSpacing: '-0.02em',
+                }}>
+                    Uptime Metrics
+                </h2>
+                <p style={{ 
+                    fontSize: '0.875rem', 
+                    color: '#64748b',
+                    margin: 0,
+                }}>
+                    Service availability and performance statistics
+                </p>
+            </div>
             <div style={{ 
                 display: 'grid', 
-                gap: '1rem',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gap: '1.5rem',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
             }}>
-                {metrics.map((metric) => (
-                    <div
-                        key={metric.service}
-                        style={{
-                            padding: '2rem',
-                            background: '#ffffff',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '0.75rem',
-                            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(15, 23, 42, 0.08)';
-                            e.currentTarget.style.borderColor = '#cbd5f5';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.borderColor = '#e5e7eb';
-                        }}
-                    >
-                        <h3 style={{ 
-                            fontSize: '1.25rem', 
-                            fontWeight: '700', 
-                            marginBottom: '1.5rem',
-                            color: '#111827',
-                            letterSpacing: '-0.01em',
-                        }}>
-                            {metric.service}
-                        </h3>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            {/* 30 Days */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: '500' }}>
-                                        30 Days
-                                    </span>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                                        {formatUptimePercent(metric.thirtyDays.uptime)}%
-                                    </span>
-                                </div>
-                                <div style={{
-                                    width: '100%',
-                                    height: '8px',
-                                    background: '#e5e7eb',
-                                    borderRadius: '0.375rem',
-                                    overflow: 'hidden',
-                                }}>
-                                    <div style={{
-                                        width: `${metric.thirtyDays.uptime}%`,
-                                        height: '100%',
-                                        background: metric.thirtyDays.uptime >= 99.9 ? '#10b981' :
-                                                   metric.thirtyDays.uptime >= 99 ? '#f59e0b' : '#ef4444',
-                                        transition: 'width 0.3s ease',
-                                    }} />
-                                </div>
-                                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-                                    {metric.thirtyDays.incidents} incident{metric.thirtyDays.incidents !== 1 ? 's' : ''}
-                                </div>
-                            </div>
+                {metrics.map((metric) => {
+                    const getUptimeColor = (uptime: number) => {
+                        if (uptime >= 99.9) return { bg: '#10b981', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' };
+                        if (uptime >= 99) return { bg: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' };
+                        return { bg: '#ef4444', gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' };
+                    };
 
-                            {/* 90 Days */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: '500' }}>
-                                        90 Days
-                                    </span>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>
-                                        {formatUptimePercent(metric.ninetyDays.uptime)}%
-                                    </span>
-                                </div>
+                    const thirtyColor = getUptimeColor(metric.thirtyDays.uptime);
+                    const ninetyColor = getUptimeColor(metric.ninetyDays.uptime);
+
+                    return (
+                        <div
+                            key={metric.service}
+                            style={{
+                                padding: '2rem',
+                                background: '#ffffff',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: '1rem',
+                                transition: 'all 0.3s ease',
+                                position: 'relative',
+                                overflow: 'hidden',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.boxShadow = '0 12px 24px rgba(15, 23, 42, 0.1)';
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.transform = 'translateY(-4px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.boxShadow = 'none';
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                        >
+                            <h3 style={{ 
+                                fontSize: '1.375rem', 
+                                fontWeight: '800', 
+                                marginBottom: '1.75rem',
+                                color: '#111827',
+                                letterSpacing: '-0.02em',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                            }}>
                                 <div style={{
-                                    width: '100%',
+                                    width: '8px',
                                     height: '8px',
-                                    background: '#e5e7eb',
-                                    borderRadius: '0.375rem',
-                                    overflow: 'hidden',
-                                }}>
+                                    borderRadius: '50%',
+                                    background: ninetyColor.bg,
+                                    boxShadow: `0 0 0 4px ${ninetyColor.bg}20`,
+                                }} />
+                                {metric.service}
+                            </h3>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                {/* 30 Days */}
+                                <div>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center',
+                                        marginBottom: '0.75rem' 
+                                    }}>
+                                        <span style={{ 
+                                            fontSize: '0.875rem', 
+                                            color: '#6b7280', 
+                                            fontWeight: '600',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                        }}>
+                                            30 Days
+                                        </span>
+                                        <span style={{ 
+                                            fontSize: '1.125rem', 
+                                            fontWeight: '800', 
+                                            color: '#111827',
+                                            fontFamily: 'monospace',
+                                        }}>
+                                            {formatUptimePercent(metric.thirtyDays.uptime)}%
+                                        </span>
+                                    </div>
                                     <div style={{
-                                        width: `${metric.ninetyDays.uptime}%`,
-                                        height: '100%',
-                                        background: metric.ninetyDays.uptime >= 99.9 ? '#10b981' :
-                                                   metric.ninetyDays.uptime >= 99 ? '#f59e0b' : '#ef4444',
-                                        transition: 'width 0.3s ease',
-                                    }} />
+                                        width: '100%',
+                                        height: '12px',
+                                        background: '#f1f5f9',
+                                        borderRadius: '0.5rem',
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                        boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
+                                    }}>
+                                        <div style={{
+                                            width: `${metric.thirtyDays.uptime}%`,
+                                            height: '100%',
+                                            background: thirtyColor.gradient,
+                                            transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: `0 2px 8px ${thirtyColor.bg}40`,
+                                            position: 'relative',
+                                        }}>
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+                                                animation: 'shimmer 2s infinite',
+                                            }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ 
+                                        fontSize: '0.8125rem', 
+                                        color: '#9ca3af', 
+                                        marginTop: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                    }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        {metric.thirtyDays.incidents} incident{metric.thirtyDays.incidents !== 1 ? 's' : ''}
+                                    </div>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-                                    {metric.ninetyDays.incidents} incident{metric.ninetyDays.incidents !== 1 ? 's' : ''}
+
+                                {/* 90 Days */}
+                                <div>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center',
+                                        marginBottom: '0.75rem' 
+                                    }}>
+                                        <span style={{ 
+                                            fontSize: '0.875rem', 
+                                            color: '#6b7280', 
+                                            fontWeight: '600',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                        }}>
+                                            90 Days
+                                        </span>
+                                        <span style={{ 
+                                            fontSize: '1.125rem', 
+                                            fontWeight: '800', 
+                                            color: '#111827',
+                                            fontFamily: 'monospace',
+                                        }}>
+                                            {formatUptimePercent(metric.ninetyDays.uptime)}%
+                                        </span>
+                                    </div>
+                                    <div style={{
+                                        width: '100%',
+                                        height: '12px',
+                                        background: '#f1f5f9',
+                                        borderRadius: '0.5rem',
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                        boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
+                                    }}>
+                                        <div style={{
+                                            width: `${metric.ninetyDays.uptime}%`,
+                                            height: '100%',
+                                            background: ninetyColor.gradient,
+                                            transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            boxShadow: `0 2px 8px ${ninetyColor.bg}40`,
+                                            position: 'relative',
+                                        }}>
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+                                                animation: 'shimmer 2s infinite',
+                                            }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ 
+                                        fontSize: '0.8125rem', 
+                                        color: '#9ca3af', 
+                                        marginTop: '0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                    }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        </svg>
+                                        {metric.ninetyDays.incidents} incident{metric.ninetyDays.incidents !== 1 ? 's' : ''}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes shimmer {
+                    0% {
+                        transform: translateX(-100%);
+                    }
+                    100% {
+                        transform: translateX(100%);
+                    }
+                }
+            ` }} />
         </section>
     );
 }

@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { assertAdmin } from '@/lib/rbac';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { StatusPageSettingsSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 /**
  * Update Status Page Settings
@@ -10,14 +13,20 @@ export async function POST(req: NextRequest) {
     try {
         await assertAdmin();
     } catch (error) {
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Unauthorized' },
-            { status: 403 }
-        );
+        return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
     }
 
     try {
-        const body = await req.json();
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
+        }
+        const parsed = StatusPageSettingsSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
         const {
             name,
             subdomain,
@@ -32,7 +41,7 @@ export async function POST(req: NextRequest) {
             branding,
             serviceIds = [],
             serviceConfigs = {},
-        } = body;
+        } = parsed.data;
 
         // Get or create status page
         let statusPage = await prisma.statusPage.findFirst({});
@@ -91,12 +100,10 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        return NextResponse.json({ success: true });
+        logger.info('api.status_page.updated', { statusPageId: statusPage.id });
+        return jsonOk({ success: true }, 200);
     } catch (error: any) {
-        console.error('Status page update error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to update status page' },
-            { status: 500 }
-        );
+        logger.error('api.status_page.update_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to update status page', 500);
     }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 /**
  * RSS Feed for Status Page
@@ -77,7 +78,7 @@ export async function GET() {
             },
         });
     } catch (error: any) {
-        console.error('RSS feed error:', error);
+        logger.error('api.status.rss_error', { error: error instanceof Error ? error.message : String(error) });
         return new NextResponse('Failed to generate RSS feed', { status: 500 });
     }
 }

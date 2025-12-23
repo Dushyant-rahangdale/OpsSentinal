@@ -7,6 +7,10 @@
                     "build":  "next build --webpack",
                     "start":  "next start",
                     "lint":  "eslint",
+                    "test":  "vitest",
+                    "test:ui":  "vitest --ui",
+                    "test:coverage":  "vitest --coverage",
+                    "test:run":  "vitest run",
                     "opsguard":  "node ./scripts/opsguard.mjs"
                 },
     "prisma":  {
@@ -19,7 +23,8 @@
                          "bcryptjs":  "^2.4.3",
                          "next-auth":  "^4.24.11",
                          "react":  "19.2.3",
-                         "react-dom":  "19.2.3"
+                         "react-dom":  "19.2.3",
+                         "zod":  "^3.23.8"
                      },
     "devDependencies":  {
                             "@types/node":  "^20",
@@ -31,7 +36,12 @@
                             "eslint":  "^9",
                             "eslint-config-next":  "16.1.0",
                             "prisma":  "^5.22.0",
-                            "typescript":  "^5"
+                            "vitest":  "^2.1.9",
+                            "typescript":  "^5",
+                            "@testing-library/react":  "^14.0.0",
+                            "@testing-library/jest-dom":  "^6.1.0",
+                            "@vitest/ui":  "^1.0.0",
+                            "@vitest/coverage-v8":  "^1.0.0"
                         },
     "bin":  {
                 "opsguard":  "./scripts/opsguard.mjs"

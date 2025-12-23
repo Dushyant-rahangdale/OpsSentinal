@@ -71,6 +71,141 @@ export async function getUserPermissions() {
     }
 }
 
+/**
+ * Check if user can modify an incident
+ * Users can modify incidents if:
+ * - They are ADMIN or RESPONDER (any incident)
+ * - They are the assignee
+ * - They are a member of the team that owns the service
+ */
+export async function assertCanModifyIncident(incidentId: string) {
+    const user = await getCurrentUser();
+    
+    // Admins and responders can modify any incident
+    if (user.role === 'ADMIN' || user.role === 'RESPONDER') {
+        return user;
+    }
+
+    // Check if user has access to this incident
+    const incident = await prisma.incident.findUnique({
+        where: { id: incidentId },
+        include: {
+            assignee: true,
+            service: {
+                include: {
+                    team: {
+                        include: {
+                            members: {
+                                where: { userId: user.id }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!incident) {
+        throw new Error('Incident not found');
+    }
+
+    // Check if user is assignee
+    if (incident.assigneeId === user.id) {
+        return user;
+    }
+
+    // Check if user is team member
+    if (incident.service.team && incident.service.team.members.length > 0) {
+        return user;
+    }
+
+    throw new Error('Unauthorized. You do not have permission to modify this incident.');
+}
+
+/**
+ * Check if user can view an incident
+ */
+export async function assertCanViewIncident(incidentId: string) {
+    const user = await getCurrentUser();
+    
+    // Admins and responders can view any incident
+    if (user.role === 'ADMIN' || user.role === 'RESPONDER') {
+        return user;
+    }
+
+    // Check if user has access to this incident
+    const incident = await prisma.incident.findUnique({
+        where: { id: incidentId },
+        include: {
+            assignee: true,
+            service: {
+                include: {
+                    team: {
+                        include: {
+                            members: {
+                                where: { userId: user.id }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!incident) {
+        throw new Error('Incident not found');
+    }
+
+    // Check if user is assignee
+    if (incident.assigneeId === user.id) {
+        return user;
+    }
+
+    // Check if user is team member
+    if (incident.service.team && incident.service.team.members.length > 0) {
+        return user;
+    }
+
+    throw new Error('Unauthorized. You do not have permission to view this incident.');
+}
+
+/**
+ * Check if user can modify a service
+ */
+export async function assertCanModifyService(serviceId: string) {
+    const user = await getCurrentUser();
+    
+    // Admins and responders can modify any service
+    if (user.role === 'ADMIN' || user.role === 'RESPONDER') {
+        return user;
+    }
+
+    // Check if user is team member of the service's team
+    const service = await prisma.service.findUnique({
+        where: { id: serviceId },
+        include: {
+            team: {
+                include: {
+                    members: {
+                        where: { userId: user.id }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!service) {
+        throw new Error('Service not found');
+    }
+
+    // Check if user is team member
+    if (service.team && service.team.members.length > 0) {
+        return user;
+    }
+
+    throw new Error('Unauthorized. You do not have permission to modify this service.');
+}
+
 
 
 

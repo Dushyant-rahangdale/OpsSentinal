@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { assertResponderOrAbove, getUserPermissions } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { getAccessiblePresets, type FilterCriteria } from '@/lib/search-presets';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { SearchPresetCreateSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 /**
  * Get All Accessible Presets
@@ -13,7 +16,7 @@ export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         // Get user's teams (if any)
@@ -32,13 +35,10 @@ export async function GET(req: NextRequest) {
 
         const presets = await getAccessiblePresets(session.user.id, userTeamIds);
 
-        return NextResponse.json({ presets });
+        return jsonOk({ presets }, 200);
     } catch (error: any) {
-        console.error('Get search presets error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to fetch search presets' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.fetch_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to fetch search presets', 500);
     }
 }
 
@@ -50,12 +50,21 @@ export async function POST(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         await assertResponderOrAbove();
 
-        const body = await req.json();
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
+        }
+        const parsed = SearchPresetCreateSchema.safeParse(body);
+        if (!parsed.success) {
+            return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
+        }
         const {
             name,
             description,
@@ -65,33 +74,11 @@ export async function POST(req: NextRequest) {
             icon,
             color,
             sharedWithTeams = [],
-        } = body;
+        } = parsed.data;
 
         const permissions = await getUserPermissions();
         if (isPublic && !permissions.isAdmin) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-        }
-
-        // Validation
-        if (typeof name !== 'string' || name.trim().length === 0) {
-            return NextResponse.json(
-                { error: 'Preset name is required' },
-                { status: 400 }
-            );
-        }
-
-        if (name.length > 100) {
-            return NextResponse.json(
-                { error: 'Preset name must be 100 characters or less' },
-                { status: 400 }
-            );
-        }
-
-        if (!filterCriteria || typeof filterCriteria !== 'object') {
-            return NextResponse.json(
-                { error: 'Filter criteria is required' },
-                { status: 400 }
-            );
+            return jsonError('Access denied', 403);
         }
 
         // Get max order for user's presets
@@ -124,12 +111,10 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        return NextResponse.json({ preset });
+        logger.info('api.search_presets.created', { presetId: preset.id });
+        return jsonOk({ preset }, 200);
     } catch (error: any) {
-        console.error('Create search preset error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to create search preset' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.create_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to create search preset', 500);
     }
 }

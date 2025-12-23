@@ -258,6 +258,7 @@ model Incident {
   currentEscalationStep Int? // Current step index (0-based)
   nextEscalationAt      DateTime? // When to execute next escalation step
   escalationStatus      String? // ESCALATING, COMPLETED, PAUSED
+  escalationProcessingAt DateTime? // When escalation processing was claimed
   acknowledgedAt        DateTime? // When incident was acknowledged (for SLA tracking)
   resolvedAt            DateTime? // When incident was resolved (for SLA tracking)
   snoozedUntil          DateTime? // When to auto-unsnooze (for time-based snoozing)
@@ -278,7 +279,9 @@ model Incident {
   tags          IncidentTag[]
 
   @@index([dedupKey]) // Index for fast deduplication lookups
+  @@index([serviceId, dedupKey, status]) // For service-scoped deduplication checks
   @@index([nextEscalationAt, escalationStatus]) // Index for escalation processing queries
+  @@index([escalationProcessingAt]) // For escalation processing locks
   @@index([snoozedUntil]) // Index for auto-unsnooze processing
   @@index([status, createdAt]) // For filtering incidents by status and date
   @@index([serviceId, status]) // For querying incidents by service and status

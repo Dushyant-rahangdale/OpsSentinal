@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { assertResponderOrAbove } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
+import { jsonError } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 const formatMinutes = (ms: number | null) => (ms === null ? '--' : `${(ms / 1000 / 60).toFixed(1)}m`);
 const formatPercent = (value: number) => `${value.toFixed(0)}%`;
@@ -45,16 +47,13 @@ export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         try {
             await assertResponderOrAbove();
         } catch (error) {
-            return NextResponse.json(
-                { error: error instanceof Error ? error.message : 'Unauthorized' },
-                { status: 403 }
-            );
+            return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
         }
 
         const searchParams = req.nextUrl.searchParams;
@@ -327,11 +326,8 @@ export async function GET(req: NextRequest) {
             },
         });
     } catch (error) {
-        console.error('Export error:', error);
-        return NextResponse.json(
-            { error: 'Failed to generate export' },
-            { status: 500 }
-        );
+        logger.error('api.analytics.export_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Failed to generate export', 500);
     }
 }
 

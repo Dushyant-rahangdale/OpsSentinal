@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { assertResponderOrAbove } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Duplicate Preset
@@ -15,7 +17,7 @@ export async function POST(
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         await assertResponderOrAbove();
@@ -28,7 +30,7 @@ export async function POST(
         });
 
         if (!original) {
-            return NextResponse.json({ error: 'Preset not found' }, { status: 404 });
+            return jsonError('Preset not found', 404);
         }
 
         // Check access
@@ -52,7 +54,7 @@ export async function POST(
             original.sharedWithTeams.some(teamId => userTeamIds.includes(teamId));
 
         if (!hasAccess) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+            return jsonError('Access denied', 403);
         }
 
         // Get max order for user's presets
@@ -86,13 +88,10 @@ export async function POST(
             },
         });
 
-        return NextResponse.json({ preset: duplicated });
+        logger.info('api.search_presets.duplicated', { presetId: duplicated.id, sourceId: original.id });
+        return jsonOk({ preset: duplicated }, 200);
     } catch (error: any) {
-        console.error('Duplicate preset error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to duplicate preset' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.duplicate_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to duplicate preset', 500);
     }
 }
-

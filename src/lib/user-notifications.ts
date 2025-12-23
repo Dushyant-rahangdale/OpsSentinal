@@ -169,12 +169,74 @@ export async function sendServiceNotifications(
             return { success: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
         }
 
+        // Batch fetch user notification preferences to avoid N+1 queries
+        const users = await prisma.user.findMany({
+            where: { id: { in: uniqueRecipients } },
+            select: {
+                id: true,
+                emailNotificationsEnabled: true,
+                smsNotificationsEnabled: true,
+                pushNotificationsEnabled: true,
+                phoneNumber: true,
+                email: true
+            }
+        });
+
+        // Check channel availability once
+        const [emailAvailable, smsAvailable, pushAvailable] = await Promise.all([
+            isChannelAvailable('EMAIL'),
+            isChannelAvailable('SMS'),
+            isChannelAvailable('PUSH')
+        ]);
+
+        // Create a map for quick lookup
+        const userMap = new Map(users.map(u => [u.id, u]));
+
         // Send notifications to each recipient based on their preferences
         const message = `[${incident.service.name}] Incident ${eventType}: ${incident.title}`;
-        for (const userId of uniqueRecipients) {
-            const result = await sendUserNotification(incidentId, userId, message);
+        const notificationPromises = uniqueRecipients.map(async (userId) => {
+            const user = userMap.get(userId);
+            if (!user) {
+                return { userId, success: false, error: 'User not found' };
+            }
+
+            // Determine channels for this user
+            const channels: NotificationChannel[] = [];
+            if (user.emailNotificationsEnabled && emailAvailable) {
+                channels.push('EMAIL');
+            }
+            if (user.smsNotificationsEnabled && user.phoneNumber && smsAvailable) {
+                channels.push('SMS');
+            }
+            if (user.pushNotificationsEnabled && pushAvailable) {
+                channels.push('PUSH');
+            }
+
+            if (channels.length === 0) {
+                return { userId, success: false, error: 'No notification channels available' };
+            }
+
+            // Send via all enabled channels
+            const channelResults = await Promise.all(
+                channels.map(channel => sendNotification(incidentId, userId, channel, message))
+            );
+
+            const successful = channelResults.filter(r => r.success);
+            const failed = channelResults.filter(r => !r.success);
+
+            return {
+                userId,
+                success: successful.length > 0,
+                channelsUsed: successful.map((_, i) => channels[i]),
+                errors: failed.map((r, i) => `${channels[i]}: ${r.error || 'Failed'}`)
+            };
+        });
+
+        const notificationResults = await Promise.all(notificationPromises);
+        
+        for (const result of notificationResults) {
             if (!result.success) {
-                errors.push(`User ${userId}: ${result.errors?.join(', ') || 'Failed'}`);
+                errors.push(`User ${result.userId}: ${result.error || result.errors?.join(', ') || 'Failed'}`);
             }
         }
 

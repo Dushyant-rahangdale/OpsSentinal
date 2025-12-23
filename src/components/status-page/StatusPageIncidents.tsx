@@ -60,7 +60,7 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
     };
 
     return (
-        <section style={{ marginBottom: '3rem' }}>
+        <section style={{ marginBottom: '4rem' }}>
             <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
@@ -69,39 +69,60 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                 flexWrap: 'wrap',
                 gap: '1rem',
             }}>
-                <h2 style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: '700', 
-                    color: '#0f172a',
-                    margin: 0,
-                }}>
-                    Recent Incidents
-                </h2>
-                {incidents.length > 0 && (
-                    <div style={{ 
-                        fontSize: '0.875rem', 
-                        color: '#6b7280',
-                        fontWeight: '500',
+                <div>
+                    <h2 style={{ 
+                        fontSize: '1.875rem', 
+                        fontWeight: '800', 
+                        color: '#0f172a',
+                        margin: 0,
+                        marginBottom: '0.25rem',
+                        letterSpacing: '-0.02em',
                     }}>
-                        Showing {startIndex + 1}-{Math.min(endIndex, incidents.length)} of {incidents.length}
-                    </div>
-                )}
+                        Recent Incidents
+                    </h2>
+                    {incidents.length > 0 && (
+                        <p style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#64748b',
+                            margin: 0,
+                        }}>
+                            Showing {startIndex + 1}-{Math.min(endIndex, incidents.length)} of {incidents.length} incidents
+                        </p>
+                    )}
+                </div>
             </div>
             
             {paginatedIncidents.length === 0 ? (
                 <div style={{
-                    padding: '4rem 2rem',
-                    background: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.75rem',
+                    padding: '5rem 2rem',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '1rem',
                     textAlign: 'center',
                     color: '#6b7280',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
                 }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>OK</div>
-                    <p style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#10b981' }}>
+                    <div style={{ 
+                        fontSize: '4rem', 
+                        marginBottom: '1.5rem',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                        fontWeight: '800',
+                    }}>
+                        ✓
+                    </div>
+                    <p style={{ 
+                        fontSize: '1.25rem', 
+                        fontWeight: '700', 
+                        marginBottom: '0.5rem', 
+                        color: '#10b981',
+                        letterSpacing: '-0.01em',
+                    }}>
                         No incidents in the last 90 days
                     </p>
-                    <p style={{ fontSize: '0.875rem' }}>
+                    <p style={{ fontSize: '0.9375rem', color: '#64748b' }}>
                         All systems operational
                     </p>
                 </div>
@@ -120,19 +141,22 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                     style={{
                                         padding: '2rem',
                                         background: '#ffffff',
-                                        border: `1px solid ${statusColor.border}40`,
-                                        borderRadius: '0.75rem',
-                                        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                                        border: `2px solid ${statusColor.border}30`,
+                                        borderRadius: '1rem',
+                                        transition: 'all 0.3s ease',
                                         position: 'relative',
                                         overflow: 'hidden',
+                                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.boxShadow = `0 8px 20px ${statusColor.border}20`;
+                                        e.currentTarget.style.boxShadow = `0 12px 24px ${statusColor.border}25, 0 0 0 1px ${statusColor.border}50`;
                                         e.currentTarget.style.borderColor = `${statusColor.border}`;
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.boxShadow = 'none';
-                                        e.currentTarget.style.borderColor = `${statusColor.border}40`;
+                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                                        e.currentTarget.style.borderColor = `${statusColor.border}30`;
+                                        e.currentTarget.style.transform = 'translateY(0)';
                                     }}
                                 >
                                     {/* Status indicator bar */}
@@ -142,7 +166,8 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                         top: 0,
                                         bottom: 0,
                                         width: '5px',
-                                        background: `linear-gradient(180deg, ${statusColor.border} 0%, ${statusColor.border}80 100%)`,
+                                        background: `linear-gradient(180deg, ${statusColor.border} 0%, ${statusColor.border}cc 100%)`,
+                                        boxShadow: `0 0 8px ${statusColor.border}40`,
                                     }} />
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
@@ -212,25 +237,37 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                                             <span style={{
-                                                padding: '0.5rem 1rem',
-                                                borderRadius: '0.5rem',
+                                                padding: '0.5rem 1.125rem',
+                                                borderRadius: '0.625rem',
                                                 fontSize: '0.8125rem',
                                                 fontWeight: '700',
-                                                background: statusColor.bg,
+                                                background: `linear-gradient(135deg, ${statusColor.bg} 0%, ${statusColor.bg}dd 100%)`,
                                                 color: statusColor.text,
-                                                border: `1px solid ${statusColor.border}40`,
-                                                boxShadow: `0 2px 4px ${statusColor.border}20`,
-                                            }}>
+                                                border: `2px solid ${statusColor.border}60`,
+                                                boxShadow: `0 2px 8px ${statusColor.border}30`,
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                                transition: 'all 0.2s ease',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'scale(1.05)';
+                                                e.currentTarget.style.boxShadow = `0 4px 12px ${statusColor.border}50`;
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = 'scale(1)';
+                                                e.currentTarget.style.boxShadow = `0 2px 8px ${statusColor.border}30`;
+                                            }}
+                                            >
                                                 {statusColor.label}
                                             </span>
                                             {timelineEvents.length > 0 && (
                                                 <button
                                                     onClick={() => toggleIncident(incident.id)}
                                                     style={{
-                                                        padding: '0.5rem 1rem',
+                                                        padding: '0.625rem 1.25rem',
                                                         background: 'white',
                                                         border: '2px solid #e5e7eb',
-                                                        borderRadius: '0.5rem',
+                                                        borderRadius: '0.625rem',
                                                         fontSize: '0.8125rem',
                                                         fontWeight: '600',
                                                         color: '#374151',
@@ -239,16 +276,19 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '0.5rem',
+                                                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         e.currentTarget.style.background = '#f9fafb';
-                                                        e.currentTarget.style.borderColor = '#d1d5db';
-                                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                                        e.currentTarget.style.borderColor = '#cbd5e1';
+                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         e.currentTarget.style.background = 'white';
                                                         e.currentTarget.style.borderColor = '#e5e7eb';
                                                         e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
                                                     }}
                                                 >
                                                     {isExpanded ? (
@@ -284,31 +324,35 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                     )}
 
                                     {isExpanded && timelineEvents.length > 0 && (
-                                        <div style={{
-                                            marginTop: '1.5rem',
-                                            paddingTop: '1.5rem',
-                                            borderTop: '2px solid #e5e7eb',
-                                            paddingLeft: '1rem',
-                                        }}>
-                                            <h4 style={{ 
-                                                fontSize: '0.875rem', 
-                                                fontWeight: '700', 
-                                                marginBottom: '1rem',
-                                                color: '#374151',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.1em',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
+                                            <div style={{
+                                                marginTop: '1.5rem',
+                                                paddingTop: '1.5rem',
+                                                borderTop: '2px solid #e5e7eb',
+                                                paddingLeft: '1rem',
+                                                background: 'linear-gradient(90deg, #f8fafc 0%, transparent 100%)',
+                                                borderRadius: '0.5rem',
+                                                padding: '1.5rem 1rem',
                                             }}>
-                                                <span style={{
-                                                    width: '4px',
-                                                    height: '4px',
-                                                    borderRadius: '50%',
-                                                    background: '#3b82f6',
-                                                }}></span>
-                                                Timeline Updates
-                                            </h4>
+                                                <h4 style={{ 
+                                                    fontSize: '0.875rem', 
+                                                    fontWeight: '700', 
+                                                    marginBottom: '1.25rem',
+                                                    color: '#374151',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.1em',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.75rem',
+                                                }}>
+                                                    <div style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: '#3b82f6',
+                                                        boxShadow: '0 0 0 3px #3b82f620',
+                                                    }}></div>
+                                                    Timeline Updates
+                                                </h4>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                 {timelineEvents.map((event, index) => (
                                                     <div
@@ -333,16 +377,26 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                                         )}
                                                         {/* Timeline dot */}
                                                         <div style={{
-                                                            width: '12px',
-                                                            height: '12px',
+                                                            width: '14px',
+                                                            height: '14px',
                                                             borderRadius: '50%',
-                                                            background: '#3b82f6',
+                                                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                                                             border: '3px solid white',
-                                                            boxShadow: '0 0 0 2px #3b82f6, 0 2px 8px rgba(59, 130, 246, 0.3)',
+                                                            boxShadow: '0 0 0 2px #3b82f6, 0 2px 12px rgba(59, 130, 246, 0.4)',
                                                             marginTop: '0.25rem',
                                                             flexShrink: 0,
                                                             zIndex: 1,
-                                                        }} />
+                                                            transition: 'all 0.2s ease',
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.transform = 'scale(1.2)';
+                                                            e.currentTarget.style.boxShadow = '0 0 0 3px #3b82f6, 0 4px 16px rgba(59, 130, 246, 0.5)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.transform = 'scale(1)';
+                                                            e.currentTarget.style.boxShadow = '0 0 0 2px #3b82f6, 0 2px 12px rgba(59, 130, 246, 0.4)';
+                                                        }}
+                                                        />
                                                         <div style={{ flex: 1, paddingBottom: index < timelineEvents.length - 1 ? '1rem' : '0' }}>
                                                             <p style={{ 
                                                                 color: '#111827', 

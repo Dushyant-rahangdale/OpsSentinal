@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPendingJobs, processJob } from '@/lib/jobs/queue';
 import { processAutoUnsnooze } from '@/app/(app)/incidents/snooze-actions';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Cron endpoint for processing auto-unsnooze
@@ -16,12 +18,12 @@ export async function GET(req: NextRequest) {
     try {
         const cronSecret = process.env.CRON_SECRET;
         if (!cronSecret) {
-            return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+            return jsonError('CRON_SECRET is not configured', 500);
         }
 
         const authHeader = req.headers.get('authorization');
         if (authHeader !== `Bearer ${cronSecret}`) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         // Process AUTO_UNSNOOZE jobs from job queue
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
         // Also process legacy method (direct query) for backward compatibility
         const legacyResult = await processAutoUnsnooze();
 
-        return NextResponse.json({
+        return jsonOk({
             success: true,
             jobs: {
                 processed: processedJobs,
@@ -53,9 +55,9 @@ export async function GET(req: NextRequest) {
                 processed: legacyResult.processed,
             },
             timestamp: new Date().toISOString(),
-        });
+        }, 200);
     } catch (error) {
-        console.error('Error processing auto-unsnooze:', error);
+        logger.error('api.cron.auto_unsnooze_error', { error: error instanceof Error ? error.message : String(error) });
         return NextResponse.json(
             {
                 success: false,

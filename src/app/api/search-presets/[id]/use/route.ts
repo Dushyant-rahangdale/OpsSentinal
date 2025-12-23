@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { trackPresetUsage } from '@/lib/search-presets';
 import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Track Preset Usage
@@ -15,7 +17,7 @@ export async function POST(
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const { id } = await params;
@@ -25,7 +27,7 @@ export async function POST(
         });
 
         if (!preset) {
-            return NextResponse.json({ error: 'Preset not found' }, { status: 404 });
+            return jsonError('Preset not found', 404);
         }
 
         const userTeams = await prisma.user.findUnique({
@@ -47,18 +49,15 @@ export async function POST(
             preset.sharedWithTeams.some(teamId => userTeamIds.includes(teamId));
 
         if (!hasAccess) {
-            return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+            return jsonError('Access denied', 403);
         }
 
         await trackPresetUsage(id, session.user.id);
 
-        return NextResponse.json({ success: true });
+        return jsonOk({ success: true }, 200);
     } catch (error: any) {
-        console.error('Track preset usage error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to track preset usage' },
-            { status: 500 }
-        );
+        logger.error('api.search_presets.track_usage_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Failed to track preset usage', 500);
     }
 }
 

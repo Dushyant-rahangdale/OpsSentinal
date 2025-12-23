@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { processEvent } from '@/lib/events';
 import { transformDatadogToEvent, DatadogEvent } from '@/lib/integrations/datadog';
 import { isIntegrationAuthorized } from '@/lib/integrations/auth';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Datadog Webhook Endpoint
@@ -14,7 +16,7 @@ export async function POST(req: NextRequest) {
         const integrationId = searchParams.get('integrationId');
         
         if (!integrationId) {
-            return NextResponse.json({ error: 'integrationId is required' }, { status: 400 });
+            return jsonError('integrationId is required', 400);
         }
 
         // Verify integration exists and get service
@@ -24,14 +26,19 @@ export async function POST(req: NextRequest) {
         });
 
         if (!integration) {
-            return NextResponse.json({ error: 'Integration not found' }, { status: 404 });
+            return jsonError('Integration not found', 404);
         }
 
         if (!isIntegrationAuthorized(req, integration.key)) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
-        const body = await req.json();
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
+        }
         
         // Transform to standard event format
         const event = transformDatadogToEvent(body as DatadogEvent);
@@ -39,10 +46,10 @@ export async function POST(req: NextRequest) {
         // Process the event
         const result = await processEvent(event, integration.serviceId, integration.id);
 
-        return NextResponse.json({ status: 'success', result }, { status: 202 });
+        return jsonOk({ status: 'success', result }, 202);
     } catch (error: any) {
-        console.error('Datadog Integration Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        logger.error('api.integration.datadog_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Internal Server Error', 500);
     }
 }
 

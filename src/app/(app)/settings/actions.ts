@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { generateApiKey } from '@/lib/api-keys';
+import { validatePasswordStrength } from '@/lib/passwords';
 
 type ActionState = {
     error?: string | null;
@@ -132,8 +133,9 @@ export async function updatePassword(_prevState: ActionState, formData: FormData
         const newPassword = (formData.get('newPassword') as string | null) ?? '';
         const confirmPassword = (formData.get('confirmPassword') as string | null) ?? '';
 
-        if (newPassword.length < 8) {
-            return { error: 'Password must be at least 8 characters.' };
+        const passwordError = validatePasswordStrength(newPassword);
+        if (passwordError) {
+            return { error: passwordError };
         }
 
         if (newPassword !== confirmPassword) {

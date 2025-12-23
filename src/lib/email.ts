@@ -52,8 +52,9 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
         // Production: Use configured provider
         if (emailConfig.provider === 'resend') {
             try {
-                // Dynamic import to avoid requiring package at build time
-                const { Resend } = await import('resend');
+                // Use runtime require to avoid build-time dependency
+                const requireFunc = eval('require') as (id: string) => any;
+                const { Resend } = requireFunc('resend');
                 const resend = new Resend(emailConfig.apiKey);
                 
                 const result = await resend.emails.send({

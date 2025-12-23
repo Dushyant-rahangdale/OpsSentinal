@@ -1,20 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
         const searchParams = req.nextUrl.searchParams;
         const query = searchParams.get('q');
 
         if (!query || query.length < 2) {
-            return NextResponse.json({ results: [] });
+            return jsonOk({ results: [] }, 200);
         }
 
         const searchTerm = query.trim();
@@ -236,16 +238,15 @@ export async function GET(req: NextRequest) {
             return 0;
         });
 
-        return NextResponse.json({ results });
+        return jsonOk({ results }, 200);
     } catch (error: any) {
-        console.error('Search error:', error);
+        logger.error('api.search.error', { error: error instanceof Error ? error.message : String(error) });
         // Provide more detailed error information in development
         const errorMessage = process.env.NODE_ENV === 'development' 
             ? (error?.message || 'Search failed') 
             : 'Search failed. Please try again.';
-        return NextResponse.json({ 
-            error: errorMessage,
+        return jsonError(errorMessage, 500, {
             details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
-        }, { status: 500 });
+        });
     }
 }

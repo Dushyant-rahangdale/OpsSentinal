@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { logAudit } from '@/lib/audit';
+import { validatePasswordStrength } from '@/lib/passwords';
 
 export async function setPassword(formData: FormData) {
     const token = formData.get('token') as string;
@@ -14,7 +15,8 @@ export async function setPassword(formData: FormData) {
         redirect('/set-password?error=missing');
     }
 
-    if (!password || password.length < 10) {
+    const passwordError = validatePasswordStrength(password || '');
+    if (passwordError) {
         redirect(`/set-password?token=${encodeURIComponent(token)}&error=weak`);
     }
 

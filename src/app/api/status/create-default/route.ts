@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Create default status page if it doesn't exist
@@ -13,11 +14,11 @@ export async function POST() {
         });
 
         if (existing) {
-            return NextResponse.json({ 
+            return jsonOk({ 
                 success: true, 
                 message: 'Status page already exists',
                 id: existing.id 
-            });
+            }, 200);
         }
 
         // Create default status page
@@ -31,13 +32,13 @@ export async function POST() {
             },
         });
 
-        return NextResponse.json({ 
+        return jsonOk({ 
             success: true, 
             message: 'Default status page created',
             id: statusPage.id 
-        });
+        }, 200);
     } catch (error: any) {
-        console.error('Create status page error:', error);
+        logger.error('api.status.create_default_error', { error: error instanceof Error ? error.message : String(error) });
         
         // If table doesn't exist, provide helpful error
         if (error.message?.includes('does not exist') || error.code === '42P01') {
@@ -50,10 +51,7 @@ export async function POST() {
             );
         }
 
-        return NextResponse.json(
-            { error: error.message || 'Failed to create status page' },
-            { status: 500 }
-        );
+        return jsonError(error.message || 'Failed to create status page', 500);
     }
 }
 

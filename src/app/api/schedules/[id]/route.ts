@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { authenticateApiKey, hasApiScopes } from '@/lib/api-auth';
 
-export async function GET(req: NextRequest, context: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const apiKey = await authenticateApiKey(req);
     if (!apiKey) {
         return NextResponse.json({ error: 'Unauthorized. Missing or invalid API key.' }, { status: 401 });
@@ -11,8 +11,9 @@ export async function GET(req: NextRequest, context: { params: { id: string } })
         return NextResponse.json({ error: 'API key missing scope: schedules:read.' }, { status: 403 });
     }
 
+    const { id } = await params;
     const schedule = await prisma.onCallSchedule.findUnique({
-        where: { id: context.params.id },
+        where: { id },
         select: {
             id: true,
             name: true,

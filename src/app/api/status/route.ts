@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Status Page API
@@ -22,10 +23,7 @@ export async function GET() {
         });
 
         if (!statusPage) {
-            return NextResponse.json(
-                { error: 'Status page not found or disabled' },
-                { status: 404 }
-            );
+            return jsonError('Status page not found or disabled', 404);
         }
 
         const serviceIds = statusPage.services
@@ -156,7 +154,7 @@ export async function GET() {
             };
         });
 
-        return NextResponse.json({
+        return jsonOk({
             status: overallStatus,
             services: servicesData,
             incidents: recentIncidents.map(inc => ({
@@ -171,12 +169,9 @@ export async function GET() {
                 uptime: uptimeMetrics,
             },
             updatedAt: new Date().toISOString(),
-        });
+        }, 200);
     } catch (error: any) {
-        console.error('Status API error:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch status' },
-            { status: 500 }
-        );
+        logger.error('api.status.error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError('Failed to fetch status', 500);
     }
 }

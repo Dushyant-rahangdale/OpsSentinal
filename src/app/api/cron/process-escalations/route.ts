@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processPendingEscalations } from '@/lib/escalation';
 import { processPendingJobs, getJobStats } from '@/lib/jobs/queue';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Cron endpoint for processing pending escalations and background jobs
@@ -20,7 +22,7 @@ import { processPendingJobs, getJobStats } from '@/lib/jobs/queue';
  * {
  *   "crons": [{
  *     "path": "/api/cron/process-escalations",
- *     "schedule": "*/2 * * * *"
+ *     "schedule": "every 2 minutes"
  *   }]
  * }
  */
@@ -28,12 +30,12 @@ export async function GET(req: NextRequest) {
   try {
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret) {
-      return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+      return jsonError('CRON_SECRET is not configured', 500);
     }
 
     const authHeader = req.headers.get('authorization');
     if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return jsonError('Unauthorized', 401);
     }
 
     // Process escalations (legacy method - based on nextEscalationAt)
@@ -45,7 +47,7 @@ export async function GET(req: NextRequest) {
     // Get job statistics
     const jobStats = await getJobStats();
 
-    return NextResponse.json({
+    return jsonOk({
       success: true,
       escalations: {
         processed: escalationResult.processed,
@@ -59,9 +61,9 @@ export async function GET(req: NextRequest) {
       },
       stats: jobStats,
       timestamp: new Date().toISOString(),
-    });
+    }, 200);
   } catch (error) {
-    console.error('Error processing escalations/jobs:', error);
+    logger.error('api.cron.escalations_error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       {
         success: false,

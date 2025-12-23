@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { processEvent } from '@/lib/events';
 import { transformGrafanaToEvent, GrafanaAlert } from '@/lib/integrations/grafana';
 import { isIntegrationAuthorized } from '@/lib/integrations/auth';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 /**
  * Grafana Webhook Endpoint
@@ -14,7 +16,7 @@ export async function POST(req: NextRequest) {
         const integrationId = searchParams.get('integrationId');
         
         if (!integrationId) {
-            return NextResponse.json({ error: 'integrationId is required' }, { status: 400 });
+            return jsonError('integrationId is required', 400);
         }
 
         const integration = await prisma.integration.findUnique({
@@ -23,21 +25,26 @@ export async function POST(req: NextRequest) {
         });
 
         if (!integration) {
-            return NextResponse.json({ error: 'Integration not found' }, { status: 404 });
+            return jsonError('Integration not found', 404);
         }
 
         if (!isIntegrationAuthorized(req, integration.key)) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return jsonError('Unauthorized', 401);
         }
 
-        const body = await req.json();
+        let body: any;
+        try {
+            body = await req.json();
+        } catch (error) {
+            return jsonError('Invalid JSON in request body.', 400);
+        }
         const event = transformGrafanaToEvent(body as GrafanaAlert);
         const result = await processEvent(event, integration.serviceId, integration.id);
 
-        return NextResponse.json({ status: 'success', result }, { status: 202 });
+        return jsonOk({ status: 'success', result }, 202);
     } catch (error: any) {
-        console.error('Grafana Integration Error:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+        logger.error('api.integration.grafana_error', { error: error instanceof Error ? error.message : String(error) });
+        return jsonError(error.message || 'Internal Server Error', 500);
     }
 }
 
