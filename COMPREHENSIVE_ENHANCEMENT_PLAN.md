@@ -1116,6 +1116,38 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
   - `src/components/LayerHelpPanel.tsx` - Added ARIA labels
   - `src/components/TestNotificationButton.tsx` - Improved accessibility
 
+### Extended Test Coverage & Error Handling ✅
+**Date:** January 2025
+
+**Implementation:**
+- **Test Coverage Expansion:**
+  - Added comprehensive test suite for form validation utilities (21 tests)
+    - Tests for `isValidEmail`, `isValidUrl`, `isValidPhoneNumber`, `isValidDedupKey`
+    - Tests for error message generators (`getEmailValidationError`, `getUrlValidationError`, `getDedupKeyValidationError`)
+  - Added extended validation schema tests (20 tests)
+    - Tests for `IncidentCreateSchema`, `IncidentPatchSchema`, `EventSchema`
+    - Tests for `StatusPageSettingsSchema`, `CustomFieldCreateSchema`
+    - Edge cases and boundary conditions
+- **Error Handling Improvements:**
+  - Integrated `getUserFriendlyError` in `SidebarSearch` component
+  - Integrated `getUserFriendlyError` in `StatusPageConfig` component
+  - Integrated `getUserFriendlyError` in `IncidentsListTable` component
+  - Consistent error messaging across all user-facing components
+- **Bug Fixes:**
+  - Fixed duplicate `fontSize` properties in `CreateIncidentForm.tsx` (4 instances)
+  - Improved test infrastructure to handle server-only imports
+- **Test Results:**
+  - **78 tests passing** (1 skipped for complex mocking scenario)
+  - All validation and utility tests passing
+  - Comprehensive coverage of form validation and error handling
+- **Files Created/Modified:**
+  - `tests/lib/form-validation.test.ts` - Form validation utility tests
+  - `tests/lib/validation-extended.test.ts` - Extended schema validation tests
+  - `src/components/incident/CreateIncidentForm.tsx` - Fixed duplicate properties
+  - `src/components/SidebarSearch.tsx` - Improved error handling
+  - `src/components/StatusPageConfig.tsx` - Improved error handling
+  - `src/components/incident/IncidentsListTable.tsx` - Improved error handling
+
 ## 📄 Documentation
 
 ### Enhancement Summary ✅
