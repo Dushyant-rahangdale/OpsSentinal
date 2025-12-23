@@ -397,8 +397,16 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                 </button>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <div style={{
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch'
+            }}>
+                <table style={{
+                    width: '100%',
+                    minWidth: '1200px',
+                    borderCollapse: 'collapse',
+                    fontSize: '0.9rem'
+                }}>
                     <thead style={{ background: '#f9fafb', borderBottom: '2px solid var(--border)' }}>
                         <tr>
                             {canManageIncidents && (
@@ -436,9 +444,9 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                     </thead>
                     <tbody>
                         {incidents.map((incident) => (
-                            <tr 
+                            <tr
                                 key={incident.id}
-                                style={{ 
+                                style={{
                                     borderBottom: '1px solid var(--border)',
                                     cursor: 'pointer',
                                     transition: 'background 0.15s',
@@ -456,8 +464,8 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                 }}
                                 onClick={(e) => {
                                     // Don't navigate if clicking checkbox or action buttons
-                                    if ((e.target as HTMLElement).tagName !== 'INPUT' && 
-                                        (e.target as HTMLElement).tagName !== 'BUTTON' && 
+                                    if ((e.target as HTMLElement).tagName !== 'INPUT' &&
+                                        (e.target as HTMLElement).tagName !== 'BUTTON' &&
                                         (e.target as HTMLElement).tagName !== 'SELECT' &&
                                         !(e.target as HTMLElement).closest('button') &&
                                         !(e.target as HTMLElement).closest('select')) {
@@ -477,245 +485,245 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     </td>
                                 )}
                                 <td style={{ padding: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <StatusBadge status={incident.status as any} size="sm" showDot />
-                                            {incident.escalationStatus && (
-                                                <EscalationStatusBadge
-                                                    status={incident.escalationStatus}
-                                                    currentStep={incident.currentEscalationStep}
-                                                    nextEscalationAt={incident.nextEscalationAt}
-                                                    size="sm"
-                                                />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <StatusBadge status={incident.status as any} size="sm" showDot />
+                                        {incident.escalationStatus && (
+                                            <EscalationStatusBadge
+                                                status={incident.escalationStatus}
+                                                currentStep={incident.currentEscalationStep}
+                                                nextEscalationAt={incident.nextEscalationAt}
+                                                size="sm"
+                                            />
+                                        )}
+                                    </div>
+                                </td>
+                                <td style={{ padding: '1rem' }}>
+                                    <PriorityBadge priority={incident.priority} size="sm" />
+                                </td>
+                                <td style={{ padding: '1rem' }}>
+                                    <Link
+                                        href={`/incidents/${incident.id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            fontWeight: '700',
+                                            color: 'var(--primary)',
+                                            textDecoration: 'none',
+                                            fontSize: '0.95rem',
+                                            display: 'block',
+                                            marginBottom: '0.25rem'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                    >
+                                        {incident.title}
+                                    </Link>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        #{incident.id.slice(-5).toUpperCase()}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: incident.urgency === 'HIGH' ? 'var(--danger)' : 'var(--warning)', fontWeight: 600, marginTop: '0.25rem' }}>
+                                        {incident.urgency}
+                                    </div>
+                                </td>
+                                <td style={{ padding: '1rem' }}>
+                                    <Link
+                                        href={`/services/${incident.service.id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}
+                                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                    >
+                                        {incident.service.name}
+                                    </Link>
+                                </td>
+                                <td style={{ padding: '1rem' }}>
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                        <AssigneeSection
+                                            assignee={incident.assignee}
+                                            assigneeId={incident.assigneeId}
+                                            users={users}
+                                            incidentId={incident.id}
+                                            canManage={canManageIncidents}
+                                            variant="list"
+                                        />
+                                    </div>
+                                </td>
+                                <td style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    {(() => {
+                                        const formatted = formatDateFriendly(incident.createdAt);
+                                        // formatDateFriendly returns "DD/MM/YYYY HH:MM"
+                                        const [datePart, timePart] = formatted.split(' ');
+                                        return (
+                                            <>
+                                                <div>{datePart || formatted}</div>
+                                                {timePart && (
+                                                    <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                                                        {timePart}
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </td>
+                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                    {canManageIncidents && (
+                                        <div
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}
+                                        >
+                                            {incident.status !== 'ACKNOWLEDGED' && incident.status !== 'RESOLVED' && incident.status !== 'SUPPRESSED' && (
+                                                <button
+                                                    onClick={() => handleStatusChange(incident.id, 'ACKNOWLEDGED')}
+                                                    disabled={isPending}
+                                                    aria-label={`Acknowledge incident ${incident.title}`}
+                                                    style={{
+                                                        padding: '0.4rem 0.75rem',
+                                                        background: 'linear-gradient(180deg, #fff4cc 0%, #ffe9a8 100%)',
+                                                        border: '1px solid #f6c453',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: '#b45309',
+                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                        opacity: isPending ? 0.6 : 1
+                                                    }}
+                                                    title="Acknowledge"
+                                                >
+                                                    ✓ Ack
+                                                </button>
+                                            )}
+                                            {incident.status !== 'SNOOZED' && incident.status !== 'RESOLVED' && (
+                                                <button
+                                                    onClick={() => handleStatusChange(incident.id, 'SNOOZED')}
+                                                    disabled={isPending}
+                                                    aria-label={`Snooze incident ${incident.title}`}
+                                                    style={{
+                                                        padding: '0.4rem 0.75rem',
+                                                        background: '#f3f4f6',
+                                                        border: '1px solid var(--border)',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--text-secondary)',
+                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                        opacity: isPending ? 0.6 : 1
+                                                    }}
+                                                    title="Snooze"
+                                                >
+                                                    ⏰ Snooze
+                                                </button>
+                                            )}
+                                            {incident.status === 'SNOOZED' && (
+                                                <button
+                                                    onClick={() => handleStatusChange(incident.id, 'OPEN')}
+                                                    disabled={isPending}
+                                                    aria-label={`Unsnooze incident ${incident.title}`}
+                                                    style={{
+                                                        padding: '0.4rem 0.75rem',
+                                                        background: '#feecec',
+                                                        border: '1px solid rgba(211,47,47,0.25)',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--danger)',
+                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                        opacity: isPending ? 0.6 : 1
+                                                    }}
+                                                    title="Unsnooze"
+                                                >
+                                                    🔔 Unsnooze
+                                                </button>
+                                            )}
+                                            {incident.status !== 'SUPPRESSED' && incident.status !== 'RESOLVED' && (
+                                                <button
+                                                    onClick={() => handleStatusChange(incident.id, 'SUPPRESSED')}
+                                                    disabled={isPending}
+                                                    aria-label={`Suppress incident ${incident.title}`}
+                                                    style={{
+                                                        padding: '0.4rem 0.75rem',
+                                                        background: '#f3f4f6',
+                                                        border: '1px solid var(--border)',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--text-secondary)',
+                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                        opacity: isPending ? 0.6 : 1
+                                                    }}
+                                                    title="Suppress"
+                                                >
+                                                    🔕 Suppress
+                                                </button>
+                                            )}
+                                            {incident.status === 'SUPPRESSED' && (
+                                                <button
+                                                    onClick={() => handleStatusChange(incident.id, 'OPEN')}
+                                                    disabled={isPending}
+                                                    aria-label={`Unsuppress incident ${incident.title}`}
+                                                    style={{
+                                                        padding: '0.4rem 0.75rem',
+                                                        background: '#feecec',
+                                                        border: '1px solid rgba(211,47,47,0.25)',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--danger)',
+                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                        opacity: isPending ? 0.6 : 1
+                                                    }}
+                                                    title="Unsuppress"
+                                                >
+                                                    🔊 Unsuppress
+                                                </button>
+                                            )}
+                                            {incident.status !== 'RESOLVED' && (
+                                                <Link
+                                                    href={`/incidents/${incident.id}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    aria-label={`Resolve incident ${incident.title}`}
+                                                    style={{
+                                                        padding: '0.4rem 0.75rem',
+                                                        background: 'var(--primary)',
+                                                        border: 'none',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'white',
+                                                        textDecoration: 'none',
+                                                        display: 'inline-block'
+                                                    }}
+                                                >
+                                                    Resolve
+                                                </Link>
                                             )}
                                         </div>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <PriorityBadge priority={incident.priority} size="sm" />
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <Link 
-                                            href={`/incidents/${incident.id}`}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{ 
-                                                fontWeight: '700', 
-                                                color: 'var(--primary)', 
-                                                textDecoration: 'none',
-                                                fontSize: '0.95rem',
-                                                display: 'block',
-                                                marginBottom: '0.25rem'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                        >
-                                            {incident.title}
-                                        </Link>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                            #{incident.id.slice(-5).toUpperCase()}
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', color: incident.urgency === 'HIGH' ? 'var(--danger)' : 'var(--warning)', fontWeight: 600, marginTop: '0.25rem' }}>
-                                            {incident.urgency}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <Link
-                                            href={`/services/${incident.service.id}`}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}
-                                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                        >
-                                            {incident.service.name}
-                                        </Link>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                            <AssigneeSection
-                                                assignee={incident.assignee}
-                                                assigneeId={incident.assigneeId}
-                                                users={users}
-                                                incidentId={incident.id}
-                                                canManage={canManageIncidents}
-                                                variant="list"
-                                            />
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                        {(() => {
-                                            const formatted = formatDateFriendly(incident.createdAt);
-                                            // formatDateFriendly returns "DD/MM/YYYY HH:MM"
-                                            const [datePart, timePart] = formatted.split(' ');
-                                            return (
-                                                <>
-                                                    <div>{datePart || formatted}</div>
-                                                    {timePart && (
-                                                        <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                                                            {timePart}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                    </td>
-                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                        {canManageIncidents && (
-                                            <div 
-                                                onClick={(e) => e.stopPropagation()}
-                                                style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}
-                                            >
-                                                {incident.status !== 'ACKNOWLEDGED' && incident.status !== 'RESOLVED' && incident.status !== 'SUPPRESSED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'ACKNOWLEDGED')}
-                                                        disabled={isPending}
-                                                        aria-label={`Acknowledge incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: 'linear-gradient(180deg, #fff4cc 0%, #ffe9a8 100%)',
-                                                            border: '1px solid #f6c453',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: '#b45309',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Acknowledge"
-                                                    >
-                                                        ✓ Ack
-                                                    </button>
-                                                )}
-                                                {incident.status !== 'SNOOZED' && incident.status !== 'RESOLVED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'SNOOZED')}
-                                                        disabled={isPending}
-                                                        aria-label={`Snooze incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid var(--border)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--text-secondary)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Snooze"
-                                                    >
-                                                        ⏰ Snooze
-                                                    </button>
-                                                )}
-                                                {incident.status === 'SNOOZED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'OPEN')}
-                                                        disabled={isPending}
-                                                        aria-label={`Unsnooze incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#feecec',
-                                                            border: '1px solid rgba(211,47,47,0.25)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--danger)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Unsnooze"
-                                                    >
-                                                        🔔 Unsnooze
-                                                    </button>
-                                                )}
-                                                {incident.status !== 'SUPPRESSED' && incident.status !== 'RESOLVED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'SUPPRESSED')}
-                                                        disabled={isPending}
-                                                        aria-label={`Suppress incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid var(--border)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--text-secondary)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Suppress"
-                                                    >
-                                                        🔕 Suppress
-                                                    </button>
-                                                )}
-                                                {incident.status === 'SUPPRESSED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'OPEN')}
-                                                        disabled={isPending}
-                                                        aria-label={`Unsuppress incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#feecec',
-                                                            border: '1px solid rgba(211,47,47,0.25)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--danger)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Unsuppress"
-                                                    >
-                                                        🔊 Unsuppress
-                                                    </button>
-                                                )}
-                                                {incident.status !== 'RESOLVED' && (
-                                                    <Link
-                                                        href={`/incidents/${incident.id}`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        aria-label={`Resolve incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: 'var(--primary)',
-                                                            border: 'none',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'white',
-                                                            textDecoration: 'none',
-                                                            display: 'inline-block'
-                                                        }}
-                                                    >
-                                                        Resolve
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                </tr>
+                                    )}
+                                </td>
+                            </tr>
                         ))}
                         {incidents.length === 0 && (
                             <tr>
                                 <td colSpan={canManageIncidents ? 8 : 7} style={{ padding: 0 }}>
-                                    <div style={{ 
-                                        padding: '4rem 2rem', 
-                                        textAlign: 'center', 
+                                    <div style={{
+                                        padding: '4rem 2rem',
+                                        textAlign: 'center',
                                         color: 'var(--text-muted)',
                                         background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
                                     }}>
-                                        <div style={{ 
-                                            fontSize: '3rem', 
+                                        <div style={{
+                                            fontSize: '3rem',
                                             marginBottom: '1rem',
                                             opacity: 0.3
                                         }}>📋</div>
-                                        <p style={{ 
-                                            fontSize: '1.1rem', 
-                                            marginBottom: '0.5rem', 
+                                        <p style={{
+                                            fontSize: '1.1rem',
+                                            marginBottom: '0.5rem',
                                             fontWeight: '600',
                                             color: 'var(--text-secondary)'
                                         }}>
                                             No incidents found
                                         </p>
-                                        <p style={{ 
-                                            fontSize: '0.9rem', 
+                                        <p style={{
+                                            fontSize: '0.9rem',
                                             color: 'var(--text-muted)'
                                         }}>
                                             Try adjusting your filters to see more results.
@@ -727,16 +735,16 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                     </tbody>
                 </table>
             </div>
-        
-        {/* Pagination */}
-        {pagination && (
-            <Pagination
-                currentPage={pagination.currentPage}
-                totalPages={pagination.totalPages}
-                totalItems={pagination.totalItems}
-                itemsPerPage={pagination.itemsPerPage}
-            />
-        )}
+
+            {/* Pagination */}
+            {pagination && (
+                <Pagination
+                    currentPage={pagination.currentPage}
+                    totalPages={pagination.totalPages}
+                    totalItems={pagination.totalItems}
+                    itemsPerPage={pagination.itemsPerPage}
+                />
+            )}
         </div>
     );
 }

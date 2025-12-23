@@ -24,7 +24,7 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
 
     if (!service) {
         return (
-            <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+            <main style={{ padding: '2rem' }}>
                 <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', background: 'white' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem' }}>Service Not Found</h2>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>The service you're looking for doesn't exist.</p>
@@ -37,15 +37,15 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
     const updateServiceWithId = updateService.bind(null, id);
 
     return (
-        <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem' }}>
-            <HoverLink 
+        <main style={{ padding: '1.5rem' }}>
+            <HoverLink
                 href={`/services/${id}`}
-                style={{ 
-                    marginBottom: '1.5rem', 
-                    display: 'inline-flex', 
+                style={{
+                    marginBottom: '1.5rem',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    textDecoration: 'none', 
+                    textDecoration: 'none',
                     fontSize: '0.9rem',
                     fontWeight: '500'
                 }}
@@ -56,7 +56,7 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                 Back to {service.name}
             </HoverLink>
 
-            <div style={{ 
+            <div style={{
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
@@ -90,10 +90,10 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                                     defaultValue={service.name}
                                     required
                                     className="focus-border"
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '0.75rem', 
-                                        border: '1px solid var(--border)', 
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
                                         borderRadius: '0px',
                                         fontSize: '0.95rem',
                                         outline: 'none',
@@ -112,11 +112,11 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                                     rows={4}
                                     placeholder="Describe what this service does and its purpose..."
                                     className="focus-border"
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '0.75rem', 
-                                        border: '1px solid var(--border)', 
-                                        borderRadius: '0px', 
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0px',
                                         resize: 'vertical',
                                         fontSize: '0.95rem',
                                         fontFamily: 'inherit',
@@ -142,10 +142,10 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                                     name="teamId"
                                     defaultValue={service.teamId || ''}
                                     className="focus-border"
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '0.75rem', 
-                                        border: '1px solid var(--border)', 
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
                                         borderRadius: '0px',
                                         fontSize: '0.95rem',
                                         background: 'white',
@@ -167,7 +167,7 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                             <div>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                                     Escalation Policy
-                                    <span 
+                                    <span
                                         title="Defines who gets notified when incidents occur and in what order."
                                         style={{
                                             width: '18px',
@@ -191,10 +191,10 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                                     name="escalationPolicyId"
                                     defaultValue={service.escalationPolicyId || ''}
                                     className="focus-border"
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '0.75rem', 
-                                        border: '1px solid var(--border)', 
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
                                         borderRadius: '0px',
                                         fontSize: '0.95rem',
                                         background: 'white',
@@ -226,11 +226,11 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                         </h3>
                         <div style={{ display: 'grid', gap: '1.5rem' }}>
                             {/* Info Box */}
-                            <div style={{ 
-                                padding: '1rem', 
-                                background: '#eff6ff', 
-                                border: '1px solid #3b82f6', 
-                                borderRadius: '0px' 
+                            <div style={{
+                                padding: '1rem',
+                                background: '#eff6ff',
+                                border: '1px solid #3b82f6',
+                                borderRadius: '0px'
                             }}>
                                 <p style={{ fontSize: '0.85rem', color: '#1e40af', margin: 0, lineHeight: 1.6 }}>
                                     <strong>📢 Notification Architecture (PagerDuty-style):</strong>
@@ -247,17 +247,17 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                             </div>
 
                             {/* Slack Webhook */}
-                            <div style={{ 
-                                background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)', 
-                                padding: '1.5rem', 
-                                borderRadius: '0px', 
-                                border: '1px solid var(--border)' 
+                            <div style={{
+                                background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
+                                padding: '1.5rem',
+                                borderRadius: '0px',
+                                border: '1px solid var(--border)'
                             }}>
-                                <label style={{ 
-                                    marginBottom: '0.75rem', 
-                                    fontWeight: '500', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                <label style={{
+                                    marginBottom: '0.75rem',
+                                    fontWeight: '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
                                     gap: '0.75rem',
                                     fontSize: '0.95rem',
                                     color: 'var(--text-primary)'
@@ -277,12 +277,12 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                                     defaultValue={service.slackWebhookUrl || ''}
                                     placeholder="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
                                     className="focus-border"
-                                    style={{ 
-                                        width: '100%', 
-                                        padding: '0.75rem', 
-                                        border: '1px solid var(--border)', 
-                                        borderRadius: '0px', 
-                                        fontFamily: 'monospace', 
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0px',
+                                        fontFamily: 'monospace',
                                         fontSize: '0.85rem',
                                         background: 'white',
                                         outline: 'none',
@@ -302,24 +302,24 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                     </div>
 
                     {/* Form Actions */}
-                    <div style={{ 
-                        paddingTop: '1rem', 
+                    <div style={{
+                        paddingTop: '1rem',
                         borderTop: '1px solid var(--border)',
-                        display: 'flex', 
+                        display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        <Link 
+                        <Link
                             href={`/services/${id}`}
                             className="glass-button"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                         >
                             Cancel
                         </Link>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             className="glass-button primary"
-                            style={{ 
+                            style={{
                                 padding: '0.75rem 2rem',
                                 fontSize: '1rem',
                                 fontWeight: '600'

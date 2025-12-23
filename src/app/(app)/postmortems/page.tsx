@@ -28,35 +28,35 @@ export default async function PostmortemsPage({
     // Get resolved incidents without postmortems for quick create
     const resolvedIncidentsWithoutPostmortems = canCreate
         ? await prisma.incident.findMany({
-              where: {
-                  status: 'RESOLVED',
-                  postmortem: null,
-              },
-              select: {
-                  id: true,
-                  title: true,
-                  resolvedAt: true,
-              },
-              orderBy: { resolvedAt: 'desc' },
-              take: 10,
-          })
+            where: {
+                status: 'RESOLVED',
+                postmortem: null,
+            },
+            select: {
+                id: true,
+                title: true,
+                resolvedAt: true,
+            },
+            orderBy: { resolvedAt: 'desc' },
+            take: 10,
+        })
         : [];
 
     return (
-        <div style={{ padding: 'var(--spacing-6)', maxWidth: '1400px', margin: '0 auto' }}>
-            <div style={{ 
-                marginBottom: 'var(--spacing-8)', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start', 
+        <div style={{ padding: 'var(--spacing-6)' }}>
+            <div style={{
+                marginBottom: 'var(--spacing-8)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
                 gap: 'var(--spacing-4)',
                 paddingBottom: 'var(--spacing-6)',
                 borderBottom: '2px solid #e2e8f0',
             }}>
                 <div>
-                    <h1 style={{ 
-                        fontSize: '2.5rem', 
-                        fontWeight: '800', 
+                    <h1 style={{
+                        fontSize: '2.5rem',
+                        fontWeight: '800',
                         marginBottom: 'var(--spacing-2)',
                         background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
                         WebkitBackgroundClip: 'text',
@@ -65,8 +65,8 @@ export default async function PostmortemsPage({
                     }}>
                         Postmortems
                     </h1>
-                    <p style={{ 
-                        color: 'var(--text-muted)', 
+                    <p style={{
+                        color: 'var(--text-muted)',
                         fontSize: 'var(--font-size-base)',
                         lineHeight: '1.6',
                     }}>
@@ -88,9 +88,9 @@ export default async function PostmortemsPage({
             </div>
 
             {/* Filters */}
-            <div style={{ 
-                marginBottom: 'var(--spacing-6)', 
-                display: 'flex', 
+            <div style={{
+                marginBottom: 'var(--spacing-6)',
+                display: 'flex',
                 gap: 'var(--spacing-2)',
                 padding: 'var(--spacing-1)',
                 background: '#f8fafc',

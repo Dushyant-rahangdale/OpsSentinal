@@ -418,7 +418,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <main style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '2rem' }}>
+    <main style={{ paddingBottom: '2rem' }}>
       {/* Command Center Hero Section */}
       <div className="command-center-hero" style={{
         background: systemStatus.label === 'OPERATIONAL'

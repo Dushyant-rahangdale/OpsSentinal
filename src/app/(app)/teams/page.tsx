@@ -21,7 +21,7 @@ function buildPaginationUrl(baseParams: URLSearchParams, page: number): string {
 function getPageNumbers(currentPage: number, totalPages: number): (number | string)[] {
     const pages: (number | string)[] = [];
     const maxVisible = 7; // Maximum number of page buttons to show
-    
+
     if (totalPages <= maxVisible) {
         // Show all pages if total is less than max
         for (let i = 1; i <= totalPages; i++) {
@@ -30,7 +30,7 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
     } else {
         // Always show first page
         pages.push(1);
-        
+
         if (currentPage <= 4) {
             // Near the beginning: 1 2 3 4 5 ... last
             for (let i = 2; i <= 5; i++) {
@@ -54,7 +54,7 @@ function getPageNumbers(currentPage: number, totalPages: number): (number | stri
             pages.push(totalPages);
         }
     }
-    
+
     return pages;
 }
 
@@ -92,8 +92,8 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
     const [allTeams, totalCount, users, ownerCounts] = await Promise.all([
         prisma.team.findMany({
             include: {
-                members: { 
-                    include: { 
+                members: {
+                    include: {
                         user: {
                             select: {
                                 id: true,
@@ -112,7 +112,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
             orderBy,
         }),
         prisma.team.count({ where }),
-        prisma.user.findMany({ 
+        prisma.user.findMany({
             orderBy: { name: 'asc' },
             select: {
                 id: true,
@@ -130,11 +130,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
 
     // Apply member/service count filters and sorting
     let filteredTeams = allTeams;
-    
+
     if (minMembers !== undefined) {
         filteredTeams = filteredTeams.filter(team => team._count.members >= minMembers);
     }
-    
+
     if (minServices !== undefined) {
         filteredTeams = filteredTeams.filter(team => team._count.services >= minServices);
     }
@@ -196,12 +196,12 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         where: {
                             OR: [
                                 { entityType: 'TEAM', entityId: team.id },
-                                { 
-                                    entityType: 'TEAM_MEMBER', 
-                                    entityId: { 
+                                {
+                                    entityType: 'TEAM_MEMBER',
+                                    entityId: {
                                         not: null,
-                                        startsWith: `${team.id}:` 
-                                    } 
+                                        startsWith: `${team.id}:`
+                                    }
                                 }
                             ]
                         },
@@ -220,12 +220,12 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         where: {
                             OR: [
                                 { entityType: 'TEAM', entityId: team.id },
-                                { 
-                                    entityType: 'TEAM_MEMBER', 
-                                    entityId: { 
+                                {
+                                    entityType: 'TEAM_MEMBER',
+                                    entityId: {
                                         not: null,
-                                        startsWith: `${team.id}:` 
-                                    } 
+                                        startsWith: `${team.id}:`
+                                    }
                                 }
                             ]
                         }
@@ -242,12 +242,12 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
     );
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
+        <main style={{ padding: '1rem' }}>
             {/* Header */}
-            <header style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <header style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
@@ -259,9 +259,9 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <Link 
-                        href="/users" 
-                        className="glass-button" 
+                    <Link
+                        href="/users"
+                        className="glass-button"
                         style={{ textDecoration: 'none' }}
                     >
                         View Users
@@ -271,9 +271,9 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
 
             {/* Create Team Section */}
             {canCreateTeam ? (
-                <div id="create-team" className="glass-panel" style={{ 
-                    padding: '1.5rem', 
-                    marginBottom: '2rem', 
+                <div id="create-team" className="glass-panel" style={{
+                    padding: '1.5rem',
+                    marginBottom: '2rem',
                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                     border: '1px solid #e2e8f0',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -282,12 +282,12 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                     <TeamCreateForm action={createTeam} />
                 </div>
             ) : (
-                <div className="glass-panel" style={{ 
-                    padding: '1.5rem', 
-                    marginBottom: '2rem', 
-                    background: '#f9fafb', 
-                    border: '1px solid #e5e7eb', 
-                    opacity: 0.7 
+                <div className="glass-panel" style={{
+                    padding: '1.5rem',
+                    marginBottom: '2rem',
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
+                    opacity: 0.7
                 }}>
                     <h2 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Create Team</h2>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
@@ -300,9 +300,9 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
             )}
 
             {/* Advanced Search and Filters */}
-            <div className="glass-panel" style={{ 
-                padding: '1.5rem', 
-                marginBottom: '1.5rem', 
+            <div className="glass-panel" style={{
+                padding: '1.5rem',
+                marginBottom: '1.5rem',
                 background: 'white',
                 border: '1px solid #e2e8f0'
             }}>
@@ -311,28 +311,28 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr', gap: '0.75rem', alignItems: 'end' }}>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Search Teams</label>
-                            <input 
-                                name="q" 
-                                defaultValue={query} 
-                                placeholder="Team name or description" 
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.6rem 0.75rem', 
-                                    border: '1px solid var(--border)', 
+                            <input
+                                name="q"
+                                defaultValue={query}
+                                placeholder="Team name or description"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '8px',
                                     fontSize: '0.9rem'
-                                }} 
+                                }}
                             />
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Sort By</label>
-                            <select 
-                                name="sortBy" 
+                            <select
+                                name="sortBy"
                                 defaultValue={sortBy}
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.6rem 0.75rem', 
-                                    border: '1px solid var(--border)', 
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '8px',
                                     fontSize: '0.9rem'
                                 }}
@@ -345,13 +345,13 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Order</label>
-                            <select 
-                                name="sortOrder" 
+                            <select
+                                name="sortOrder"
                                 defaultValue={sortOrder}
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.6rem 0.75rem', 
-                                    border: '1px solid var(--border)', 
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '8px',
                                     fontSize: '0.9rem'
                                 }}
@@ -362,36 +362,36 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Min Members</label>
-                            <input 
+                            <input
                                 type="number"
-                                name="minMembers" 
-                                defaultValue={minMembers} 
+                                name="minMembers"
+                                defaultValue={minMembers}
                                 placeholder="Any"
                                 min="0"
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.6rem 0.75rem', 
-                                    border: '1px solid var(--border)', 
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '8px',
                                     fontSize: '0.9rem'
-                                }} 
+                                }}
                             />
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8rem', fontWeight: '500' }}>Min Services</label>
-                            <input 
+                            <input
                                 type="number"
-                                name="minServices" 
-                                defaultValue={minServices} 
+                                name="minServices"
+                                defaultValue={minServices}
                                 placeholder="Any"
                                 min="0"
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.6rem 0.75rem', 
-                                    border: '1px solid var(--border)', 
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '8px',
                                     fontSize: '0.9rem'
-                                }} 
+                                }}
                             />
                         </div>
                     </div>
@@ -407,18 +407,18 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
             {/* Teams List */}
             <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {teams.length === 0 ? (
-                    <div className="glass-panel empty-state" style={{ 
-                        padding: '3rem', 
-                        textAlign: 'center', 
-                        color: 'var(--text-muted)', 
+                    <div className="glass-panel empty-state" style={{
+                        padding: '3rem',
+                        textAlign: 'center',
+                        color: 'var(--text-muted)',
                         background: 'white',
                         borderRadius: '12px'
                     }}>
                         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
                         <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: '600' }}>No teams found</p>
                         <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                            {query || minMembers !== undefined || minServices !== undefined 
-                                ? 'Try adjusting your search criteria.' 
+                            {query || minMembers !== undefined || minServices !== undefined
+                                ? 'Try adjusting your search criteria.'
                                 : 'Create one above to start organizing responders and services.'}
                         </p>
                         {canCreateTeam && (
@@ -428,7 +428,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         )}
                     </div>
                 ) : teamsWithActivity.map(({ team, activityLogs, activityTotal }) => {
-                    const availableUsers = users.filter((user) => 
+                    const availableUsers = users.filter((user) =>
                         !team.members.some((member) => member.userId === user.id) && user.status !== 'DISABLED'
                     );
 
@@ -463,11 +463,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    gap: '1rem', 
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
                     marginTop: '2rem',
                     padding: '1.25rem 1.5rem',
                     background: 'white',
@@ -482,7 +482,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         <Link
                             href={buildPaginationUrl(baseParams, 1)}
                             className={`glass-button ${page === 1 ? 'disabled' : ''}`}
-                            style={{ 
+                            style={{
                                 padding: '0.4rem 0.8rem',
                                 fontSize: '0.8rem',
                                 textDecoration: 'none',
@@ -495,7 +495,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         <Link
                             href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
                             className={`glass-button ${page === 1 ? 'disabled' : ''}`}
-                            style={{ 
+                            style={{
                                 padding: '0.4rem 0.8rem',
                                 fontSize: '0.8rem',
                                 textDecoration: 'none',
@@ -505,14 +505,14 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         >
                             Previous
                         </Link>
-                        
+
                         {/* Page Number Buttons */}
                         {pageNumbers.map((pageNum, index) => {
                             if (pageNum === '...') {
                                 return (
-                                    <span 
+                                    <span
                                         key={`ellipsis-${index}`}
-                                        style={{ 
+                                        style={{
                                             padding: '0 0.25rem',
                                             color: 'var(--text-muted)',
                                             fontSize: '0.85rem'
@@ -522,21 +522,21 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                                     </span>
                                 );
                             }
-                            
+
                             const isActive = pageNum === page;
                             return (
                                 <Link
                                     key={pageNum}
                                     href={buildPaginationUrl(baseParams, pageNum as number)}
                                     className={`glass-button ${isActive ? 'primary' : ''}`}
-                                    style={{ 
+                                    style={{
                                         padding: '0.4rem 0.75rem',
                                         fontSize: '0.8rem',
                                         textDecoration: 'none',
                                         minWidth: '2.5rem',
                                         textAlign: 'center',
-                                        background: isActive 
-                                            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                                        background: isActive
+                                            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                                             : undefined,
                                         color: isActive ? 'white' : undefined,
                                         border: isActive ? 'none' : undefined,
@@ -548,11 +548,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                                 </Link>
                             );
                         })}
-                        
+
                         <Link
                             href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
                             className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
-                            style={{ 
+                            style={{
                                 padding: '0.4rem 0.8rem',
                                 fontSize: '0.8rem',
                                 textDecoration: 'none',
@@ -565,7 +565,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                         <Link
                             href={buildPaginationUrl(baseParams, totalPages)}
                             className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
-                            style={{ 
+                            style={{
                                 padding: '0.4rem 0.8rem',
                                 fontSize: '0.8rem',
                                 textDecoration: 'none',

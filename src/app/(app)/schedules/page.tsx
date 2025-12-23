@@ -7,55 +7,55 @@ import ScheduleCreateForm from '@/components/ScheduleCreateForm';
 
 export default async function SchedulesPage() {
     const schedules = await prisma.onCallSchedule.findMany({
-        include: { 
-            layers: { 
-                include: { 
+        include: {
+            layers: {
+                include: {
                     users: {
                         select: {
                             userId: true
                         }
-                    } 
-                } 
-            } 
+                    }
+                }
+            }
         },
         orderBy: { createdAt: 'desc' }
     });
-    
+
     const totalLayers = schedules.reduce((sum, schedule) => sum + schedule.layers.length, 0);
     const hasActiveCoverage = schedules.some((schedule) =>
         schedule.layers.some((layer) => layer.users.length > 0)
     );
-    
+
     const permissions = await getUserPermissions();
     const canManageSchedules = permissions.isAdminOrResponder;
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
+        <main style={{ padding: '1rem' }}>
             {/* Header */}
-            <header style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <header style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
             }}>
                 <div>
-                    <p style={{ 
-                        fontSize: '0.85rem', 
-                        fontWeight: '600', 
-                        color: 'var(--accent)', 
+                    <p style={{
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        color: 'var(--accent)',
                         marginBottom: '0.5rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                     }}>
                         On-call
                     </p>
-                    <h1 style={{ 
-                        fontSize: '2rem', 
-                        fontWeight: 'bold', 
-                        color: 'var(--text-primary)', 
-                        marginBottom: '0.5rem' 
+                    <h1 style={{
+                        fontSize: '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
                     }}>
                         Schedules
                     </h1>
@@ -70,8 +70,8 @@ export default async function SchedulesPage() {
                         gap: '0.5rem',
                         padding: '0.5rem 1rem',
                         borderRadius: '20px',
-                        background: hasActiveCoverage 
-                            ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)' 
+                        background: hasActiveCoverage
+                            ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)'
                             : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
                         border: `1px solid ${hasActiveCoverage ? '#a7f3d0' : '#fecaca'}`,
                         fontSize: '0.85rem',
@@ -88,18 +88,18 @@ export default async function SchedulesPage() {
                         {hasActiveCoverage ? 'Rotations active' : 'No active rotations'}
                     </div>
                     {canManageSchedules ? (
-                        <a 
-                            href="#new-schedule" 
+                        <a
+                            href="#new-schedule"
                             className="glass-button primary"
                             style={{ textDecoration: 'none' }}
                         >
                             New Schedule
                         </a>
                     ) : (
-                        <button 
-                            type="button" 
-                            disabled 
-                            className="glass-button primary" 
+                        <button
+                            type="button"
+                            disabled
+                            className="glass-button primary"
                             style={{ opacity: 0.6, cursor: 'not-allowed' }}
                             title="Admin or Responder role required to create schedules"
                         >
@@ -110,7 +110,7 @@ export default async function SchedulesPage() {
             </header>
 
             {/* Statistics */}
-            <ScheduleStats 
+            <ScheduleStats
                 scheduleCount={schedules.length}
                 layerCount={totalLayers}
                 hasActiveCoverage={hasActiveCoverage}
@@ -121,10 +121,10 @@ export default async function SchedulesPage() {
                 {/* Schedules List */}
                 <div>
                     {schedules.length === 0 ? (
-                        <div className="glass-panel empty-state" style={{ 
-                            padding: '3rem', 
-                            textAlign: 'center', 
-                            color: 'var(--text-muted)', 
+                        <div className="glass-panel empty-state" style={{
+                            padding: '3rem',
+                            textAlign: 'center',
+                            color: 'var(--text-muted)',
                             background: 'white',
                             borderRadius: '12px'
                         }}>
@@ -151,23 +151,23 @@ export default async function SchedulesPage() {
                 {/* Sidebar */}
                 <aside>
                     <ScheduleCreateForm action={createSchedule} canCreate={canManageSchedules} />
-                    <div className="glass-panel" style={{ 
+                    <div className="glass-panel" style={{
                         marginTop: '1.5rem',
-                        padding: '1.5rem', 
+                        padding: '1.5rem',
                         background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
                         border: '1px solid #fde68a',
                         borderRadius: '12px'
                     }}>
-                        <h4 style={{ 
-                            fontSize: '1rem', 
-                            fontWeight: '600', 
+                        <h4 style={{
+                            fontSize: '1rem',
+                            fontWeight: '600',
                             marginBottom: '0.5rem',
                             color: '#78350f'
                         }}>
                             Next up
                         </h4>
-                        <p style={{ 
-                            fontSize: '0.9rem', 
+                        <p style={{
+                            fontSize: '0.9rem',
                             color: '#78350f',
                             lineHeight: 1.5,
                             margin: 0

@@ -10,7 +10,7 @@ export default async function PoliciesPage() {
         prisma.escalationPolicy.findMany({
             include: {
                 steps: {
-                    include: { 
+                    include: {
                         targetUser: true,
                         targetTeam: true,
                         targetSchedule: true
@@ -34,11 +34,11 @@ export default async function PoliciesPage() {
     const canCreatePolicy = permissions.isAdmin;
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
-            <header style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start', 
+        <main style={{ padding: '1rem' }}>
+            <header style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
@@ -87,17 +87,17 @@ export default async function PoliciesPage() {
                                     }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                             <div style={{ flex: 1 }}>
-                                                <h3 style={{ 
-                                                    fontWeight: '600', 
-                                                    fontSize: '1.2rem', 
+                                                <h3 style={{
+                                                    fontWeight: '600',
+                                                    fontSize: '1.2rem',
                                                     marginBottom: '0.5rem',
                                                     color: 'var(--text-primary)'
                                                 }}>
                                                     {policy.name}
                                                 </h3>
                                                 {policy.description && (
-                                                    <p style={{ 
-                                                        color: 'var(--text-secondary)', 
+                                                    <p style={{
+                                                        color: 'var(--text-secondary)',
                                                         fontSize: '0.9rem',
                                                         marginBottom: '0.5rem'
                                                     }}>
@@ -134,9 +134,9 @@ export default async function PoliciesPage() {
                                         {/* Preview of steps */}
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             {policy.steps.slice(0, 3).map((step, idx) => (
-                                                <div key={step.id} style={{ 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
+                                                <div key={step.id} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
                                                     gap: '0.75rem',
                                                     fontSize: '0.85rem',
                                                     padding: '0.5rem',
@@ -160,15 +160,15 @@ export default async function PoliciesPage() {
                                                     </div>
                                                     <div style={{ flex: 1, color: 'var(--text-primary)' }}>
                                                         <strong>
-                                                            {step.targetUser?.name || 
-                                                             step.targetTeam?.name || 
-                                                             step.targetSchedule?.name || 
-                                                             'Unknown target'}
+                                                            {step.targetUser?.name ||
+                                                                step.targetTeam?.name ||
+                                                                step.targetSchedule?.name ||
+                                                                'Unknown target'}
                                                         </strong>
                                                         {step.targetType && step.targetType !== 'USER' && (
-                                                            <span style={{ 
-                                                                fontSize: '0.7rem', 
-                                                                color: 'var(--text-muted)', 
+                                                            <span style={{
+                                                                fontSize: '0.7rem',
+                                                                color: 'var(--text-muted)',
                                                                 marginLeft: '0.5rem',
                                                                 fontWeight: 'normal'
                                                             }}>
@@ -182,9 +182,9 @@ export default async function PoliciesPage() {
                                                 </div>
                                             ))}
                                             {policy.steps.length > 3 && (
-                                                <div style={{ 
-                                                    fontSize: '0.8rem', 
-                                                    color: 'var(--text-muted)', 
+                                                <div style={{
+                                                    fontSize: '0.8rem',
+                                                    color: 'var(--text-muted)',
                                                     fontStyle: 'italic',
                                                     paddingLeft: '2rem'
                                                 }}>

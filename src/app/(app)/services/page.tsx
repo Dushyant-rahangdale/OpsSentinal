@@ -45,10 +45,10 @@ async function createService(formData: FormData) {
 }
 
 type ServicesPageProps = {
-    searchParams: Promise<{ 
-        search?: string; 
-        status?: string; 
-        team?: string; 
+    searchParams: Promise<{
+        search?: string;
+        status?: string;
+        team?: string;
         sort?: string;
     }>;
 };
@@ -67,7 +67,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
             orderBy: { name: 'asc' }
         })
     ]);
-    
+
     // Build where clause for filtering
     const where: any = {
         AND: [
@@ -144,7 +144,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
     const canCreateService = permissions.isAdminOrResponder;
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1.5rem' }}>
+        <main style={{ padding: '1.5rem' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                 <div>
                     <h1 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
@@ -154,9 +154,9 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                         Manage your services and monitor their health status
                     </p>
                 </div>
-                <div style={{ 
-                    display: 'flex', 
-                    gap: '0.5rem', 
+                <div style={{
+                    display: 'flex',
+                    gap: '0.5rem',
                     alignItems: 'center',
                     padding: '0.75rem 1rem',
                     background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
@@ -174,17 +174,17 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
 
             {/* Create Service Form */}
             {canCreateService ? (
-                <CreateServiceForm 
+                <CreateServiceForm
                     teams={teams}
                     policies={policies}
                     createAction={createService}
                 />
             ) : (
-                <div className="glass-panel" style={{ 
-                    padding: '1.25rem', 
-                    marginBottom: '1.5rem', 
-                    background: '#f9fafb', 
-                    border: '1px solid #e5e7eb', 
+                <div className="glass-panel" style={{
+                    padding: '1.25rem',
+                    marginBottom: '1.5rem',
+                    background: '#f9fafb',
+                    border: '1px solid #e5e7eb',
                     opacity: 0.7,
                     borderRadius: '0px'
                 }}>
@@ -213,10 +213,10 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
 
             {/* Services Grid */}
             {servicesWithStatus.length === 0 ? (
-                <div className="glass-panel empty-state" style={{ 
-                    padding: '4rem 2rem', 
-                    textAlign: 'center', 
-                    color: 'var(--text-muted)', 
+                <div className="glass-panel empty-state" style={{
+                    padding: '4rem 2rem',
+                    textAlign: 'center',
+                    color: 'var(--text-muted)',
                     background: 'white',
                     borderRadius: '0px',
                     border: '1px solid var(--border)'

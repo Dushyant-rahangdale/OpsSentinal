@@ -46,7 +46,7 @@ export default async function SearchPresetsPage() {
     ]);
 
     return (
-        <div style={{ padding: 'var(--spacing-6)', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ padding: 'var(--spacing-6)' }}>
             <div style={{ marginBottom: 'var(--spacing-6)' }}>
                 <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-2)' }}>
                     Search Presets

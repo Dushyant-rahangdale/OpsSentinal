@@ -85,10 +85,10 @@ const INTEGRATION_TYPES: Array<{ value: IntegrationType; label: string; descript
 
 function getWebhookUrl(integrationType: IntegrationType, integrationId: string): string {
     // In production, this should use the actual domain from environment variables
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
         : 'https://your-domain.com';
-    
+
     switch (integrationType) {
         case 'CLOUDWATCH':
             return `${baseUrl}/api/integrations/cloudwatch?integrationId=${integrationId}`;
@@ -131,7 +131,7 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
 
     if (!service) {
         return (
-            <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
+            <main style={{ padding: '2rem' }}>
                 <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
                     <h2>Service Not Found</h2>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>The service you're looking for doesn't exist.</p>
@@ -144,16 +144,16 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
     const canManageIntegrations = permissions.isAdminOrResponder;
 
     return (
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem' }}>
+        <main style={{ padding: '2rem 1.5rem' }}>
             {/* Header */}
-            <HoverLink 
+            <HoverLink
                 href={`/services/${id}`}
-                style={{ 
-                    marginBottom: '2rem', 
-                    display: 'inline-flex', 
+                style={{
+                    marginBottom: '2rem',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    textDecoration: 'none', 
+                    textDecoration: 'none',
                     fontSize: '0.9rem',
                     fontWeight: '500'
                 }}
@@ -164,7 +164,7 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                 Back to {service.name}
             </HoverLink>
 
-            <div style={{ 
+            <div style={{
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
@@ -193,7 +193,7 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                             const webhookUrl = getWebhookUrl(integrationType, integration.id);
 
                             return (
-                                <div 
+                                <div
                                     key={integration.id}
                                     style={{
                                         padding: '1.5rem',
@@ -211,8 +211,8 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                                                     <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
                                                         {integration.name}
                                                     </h3>
-                                                    <span style={{ 
-                                                        fontSize: '0.8rem', 
+                                                    <span style={{
+                                                        fontSize: '0.8rem',
                                                         padding: '0.25rem 0.75rem',
                                                         background: '#e0f2fe',
                                                         color: '#0c4a6e',
@@ -236,9 +236,9 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                                     </div>
 
                                     {/* Integration Details */}
-                                    <div style={{ 
-                                        marginTop: '1rem', 
-                                        padding: '1rem', 
+                                    <div style={{
+                                        marginTop: '1rem',
+                                        padding: '1rem',
                                         background: '#f8fafc',
                                         border: '1px solid var(--border)',
                                         borderRadius: '0px'
@@ -249,9 +249,9 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                                                     <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                         API Key
                                                     </div>
-                                                    <div style={{ 
-                                                        fontFamily: 'monospace', 
-                                                        padding: '0.75rem', 
+                                                    <div style={{
+                                                        fontFamily: 'monospace',
+                                                        padding: '0.75rem',
                                                         background: 'white',
                                                         border: '1px solid var(--border)',
                                                         borderRadius: '0px',
@@ -265,16 +265,16 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                                                     <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                         Usage Example
                                                     </div>
-                                                    <pre style={{ 
-                                                        background: '#1e293b', 
-                                                        color: '#e2e8f0', 
-                                                        padding: '1rem', 
-                                                        borderRadius: '0px', 
-                                                        overflowX: 'auto', 
+                                                    <pre style={{
+                                                        background: '#1e293b',
+                                                        color: '#e2e8f0',
+                                                        padding: '1rem',
+                                                        borderRadius: '0px',
+                                                        overflowX: 'auto',
                                                         fontSize: '0.8rem',
                                                         margin: 0
                                                     }}>
-{`curl -X POST ${webhookUrl} \\
+                                                        {`curl -X POST ${webhookUrl} \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Token token=${integration.key}" \\
   -d '{
@@ -295,9 +295,9 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                                                     <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                         Webhook URL
                                                     </div>
-                                                    <div style={{ 
-                                                        fontFamily: 'monospace', 
-                                                        padding: '0.75rem', 
+                                                    <div style={{
+                                                        fontFamily: 'monospace',
+                                                        padding: '0.75rem',
                                                         background: 'white',
                                                         border: '1px solid var(--border)',
                                                         borderRadius: '0px',
@@ -312,15 +312,15 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                                                         <CopyButton text={webhookUrl} />
                                                     </div>
                                                 </div>
-                                                <div style={{ 
-                                                    padding: '0.75rem', 
+                                                <div style={{
+                                                    padding: '0.75rem',
                                                     background: '#fef3c7',
                                                     border: '1px solid #fbbf24',
                                                     borderRadius: '0px',
                                                     fontSize: '0.85rem',
                                                     color: '#92400e'
                                                 }}>
-                                                    <strong>Setup Instructions:</strong> Configure your {typeInfo.label} to send webhooks to the URL above. 
+                                                    <strong>Setup Instructions:</strong> Configure your {typeInfo.label} to send webhooks to the URL above.
                                                     The integration will automatically create incidents when alerts are received.
                                                 </div>
                                             </>
@@ -346,21 +346,21 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                     </h2>
                     <form action={createIntegration} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <input type="hidden" name="serviceId" value={service.id} />
-                        
+
                         <div>
                             <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>
                                 Integration Name
                             </label>
-                            <input 
-                                type="text" 
-                                name="name" 
-                                placeholder="e.g. Production CloudWatch, Staging Datadog" 
-                                required 
+                            <input
+                                type="text"
+                                name="name"
+                                placeholder="e.g. Production CloudWatch, Staging Datadog"
+                                required
                                 className="focus-border"
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.75rem', 
-                                    border: '1px solid var(--border)', 
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '0px',
                                     fontSize: '0.95rem',
                                     outline: 'none',
@@ -373,14 +373,14 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                             <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>
                                 Integration Type
                             </label>
-                            <select 
-                                name="type" 
+                            <select
+                                name="type"
                                 required
                                 className="focus-border"
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '0.75rem', 
-                                    border: '1px solid var(--border)', 
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '0px',
                                     fontSize: '0.95rem',
                                     background: 'white',
@@ -397,7 +397,7 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                             </select>
                             <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                                 {INTEGRATION_TYPES.map(type => (
-                                    <div 
+                                    <div
                                         key={type.value}
                                         style={{
                                             padding: '0.75rem',
@@ -419,8 +419,8 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 className="glass-button primary"
                                 style={{ padding: '0.75rem 2rem', fontSize: '1rem', fontWeight: '600' }}
                             >

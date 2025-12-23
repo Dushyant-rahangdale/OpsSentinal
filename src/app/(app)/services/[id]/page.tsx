@@ -108,8 +108,8 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
     const recentIncidents = allIncidents.filter(i => i.createdAt >= sevenDaysAgo).length;
 
     // Calculate resolution rate
-    const resolutionRate = totalIncidents > 0 
-        ? (resolvedIncidents.length / totalIncidents) * 100 
+    const resolutionRate = totalIncidents > 0
+        ? (resolvedIncidents.length / totalIncidents) * 100
         : 100;
 
     // Calculate MTTR (Mean Time To Resolution) in hours
@@ -122,30 +122,30 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
 
     // Calculate incident frequency (incidents per month)
     const serviceAgeDays = (new Date().getTime() - service.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    const incidentsPerMonth = serviceAgeDays > 0 
-        ? (totalIncidents / serviceAgeDays) * 30 
+    const incidentsPerMonth = serviceAgeDays > 0
+        ? (totalIncidents / serviceAgeDays) * 30
         : 0;
 
     // Calculate uptime percentage (simplified - based on resolved vs total)
     // If all incidents are resolved quickly, uptime is high
-    const uptimePercentage = totalIncidents === 0 
-        ? 100 
+    const uptimePercentage = totalIncidents === 0
+        ? 100
         : Math.max(0, 100 - (allOpenIncidents.length / totalIncidents) * 100);
 
     const totalPages = Math.ceil(totalIncidentsCount / INCIDENTS_PER_PAGE);
     const deleteServiceWithId = deleteService.bind(null, service.id);
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 1.5rem' }}>
+        <main style={{ padding: '2rem 1.5rem' }}>
             {/* Back Link */}
-            <HoverLink 
+            <HoverLink
                 href="/services"
-                style={{ 
-                    marginBottom: '2rem', 
-                    display: 'inline-flex', 
+                style={{
+                    marginBottom: '2rem',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    textDecoration: 'none', 
+                    textDecoration: 'none',
                     fontSize: '0.9rem',
                     fontWeight: '500'
                 }}
@@ -157,7 +157,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
             </HoverLink>
 
             {/* Header */}
-            <div style={{ 
+            <div style={{
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
@@ -167,28 +167,28 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                             <StatusBadge status={dynamicStatus as any} size="lg" showDot />
                         </div>
-                        <h1 style={{ 
-                            fontSize: '2.5rem', 
-                            fontWeight: '800', 
-                            marginBottom: '0.5rem', 
-                            color: 'var(--text-primary)', 
-                            letterSpacing: '-0.02em' 
+                        <h1 style={{
+                            fontSize: '2.5rem',
+                            fontWeight: '800',
+                            marginBottom: '0.5rem',
+                            color: 'var(--text-primary)',
+                            letterSpacing: '-0.02em'
                         }}>
                             {service.name}
                         </h1>
                         {service.description && (
-                            <p style={{ 
-                                color: 'var(--text-secondary)', 
-                                fontSize: '1.05rem', 
-                                maxWidth: '800px', 
-                                lineHeight: 1.6 
+                            <p style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '1.05rem',
+                                maxWidth: '800px',
+                                lineHeight: 1.6
                             }}>
                                 {service.description}
                             </p>
                         )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <HoverLink 
+                        <HoverLink
                             href={`/services/${id}/integrations`}
                             className="glass-button"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
@@ -200,7 +200,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                             </svg>
                             Integrations
                         </HoverLink>
-                        <HoverLink 
+                        <HoverLink
                             href={`/services/${id}/settings`}
                             className="glass-button"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
@@ -221,15 +221,15 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                         )}
                     </div>
                 </div>
-                
+
                 {/* Tab Navigation */}
                 <ServiceTabs serviceId={id} />
             </div>
 
             {/* Key Metrics */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                 gap: '1.5rem',
                 marginBottom: '3rem'
             }}>
@@ -243,9 +243,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem', fontWeight: '600' }}>
                         Service Availability
                     </div>
-                    <div style={{ 
-                        fontSize: '2rem', 
-                        fontWeight: '700', 
+                    <div style={{
+                        fontSize: '2rem',
+                        fontWeight: '700',
                         color: uptimePercentage >= 99 ? 'var(--success)' : uptimePercentage >= 95 ? 'var(--warning)' : 'var(--danger)',
                         marginBottom: '0.5rem'
                     }}>
@@ -268,11 +268,11 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                             MTTR
                         </div>
                         <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                            {mttr < 1 
+                            {mttr < 1
                                 ? `${Math.round(mttr * 60)}m`
                                 : mttr < 24
-                                ? `${mttr.toFixed(1)}h`
-                                : `${(mttr / 24).toFixed(1)}d`
+                                    ? `${mttr.toFixed(1)}h`
+                                    : `${(mttr / 24).toFixed(1)}d`
                             }
                         </div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -291,9 +291,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem', fontWeight: '600' }}>
                         Resolution Rate
                     </div>
-                    <div style={{ 
-                        fontSize: '2rem', 
-                        fontWeight: '700', 
+                    <div style={{
+                        fontSize: '2rem',
+                        fontWeight: '700',
                         color: resolutionRate >= 90 ? 'var(--success)' : resolutionRate >= 70 ? 'var(--warning)' : 'var(--danger)',
                         marginBottom: '0.5rem'
                     }}>
@@ -315,7 +315,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                         Incident Frequency
                     </div>
                     <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                        {incidentsPerMonth < 1 
+                        {incidentsPerMonth < 1
                             ? '<1'
                             : incidentsPerMonth.toFixed(1)
                         }
@@ -336,9 +336,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem', fontWeight: '600' }}>
                             Critical Issues
                         </div>
-                        <div style={{ 
-                            fontSize: '2rem', 
-                            fontWeight: '700', 
+                        <div style={{
+                            fontSize: '2rem',
+                            fontWeight: '700',
                             color: 'var(--danger)',
                             marginBottom: '0.5rem'
                         }}>
@@ -361,9 +361,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem', fontWeight: '600' }}>
                             SLA Compliance
                         </div>
-                        <div style={{ 
-                            fontSize: '2rem', 
-                            fontWeight: '700', 
+                        <div style={{
+                            fontSize: '2rem',
+                            fontWeight: '700',
                             color: slaCompliance >= 95 ? 'var(--success)' : slaCompliance >= 80 ? 'var(--warning)' : 'var(--danger)',
                             marginBottom: '0.5rem'
                         }}>
@@ -378,16 +378,16 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
 
             {/* Incidents Section */}
             <div style={{ marginBottom: '2rem' }}>
-                <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     marginBottom: '1.5rem'
                 }}>
                     <div>
-                        <h2 style={{ 
-                            fontSize: '1.5rem', 
-                            fontWeight: '700', 
+                        <h2 style={{
+                            fontSize: '1.5rem',
+                            fontWeight: '700',
                             marginBottom: '0.25rem',
                             color: 'var(--text-primary)'
                         }}>
@@ -397,7 +397,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                             {totalIncidentsCount} total incident{totalIncidentsCount !== 1 ? 's' : ''}
                         </p>
                     </div>
-                    <HoverLink 
+                    <HoverLink
                         href={`/incidents/create?serviceId=${id}`}
                         className="glass-button primary"
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
@@ -411,7 +411,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                     </HoverLink>
                 </div>
 
-                <IncidentList 
+                <IncidentList
                     incidents={service.incidents.map(i => ({
                         id: i.id,
                         title: i.title,
@@ -426,7 +426,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                 />
 
                 {totalPages > 1 && (
-                    <Pagination 
+                    <Pagination
                         currentPage={page}
                         totalPages={totalPages}
                         baseUrl={`/services/${id}`}

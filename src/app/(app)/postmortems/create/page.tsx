@@ -17,7 +17,7 @@ export default async function CreatePostmortemPage() {
 
     if (!canCreate) {
         return (
-            <div style={{ padding: 'var(--spacing-6)', maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ padding: 'var(--spacing-6)' }}>
                 <div style={{ padding: 'var(--spacing-4)', background: 'var(--color-warning-light)', borderRadius: 'var(--radius-md)' }}>
                     <p>You don't have permission to create postmortems.</p>
                 </div>
@@ -50,7 +50,7 @@ export default async function CreatePostmortemPage() {
     });
 
     return (
-        <div style={{ padding: 'var(--spacing-6)', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ padding: 'var(--spacing-6)' }}>
             <div style={{ marginBottom: 'var(--spacing-6)' }}>
                 <Link
                     href="/postmortems"
@@ -73,8 +73,8 @@ export default async function CreatePostmortemPage() {
             </div>
 
             {resolvedIncidents.length === 0 ? (
-                <div className="glass-panel" style={{ 
-                    padding: 'var(--spacing-8)', 
+                <div className="glass-panel" style={{
+                    padding: 'var(--spacing-8)',
                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                     border: '1px solid #e2e8f0',
                     borderRadius: 'var(--radius-lg)',
@@ -102,9 +102,9 @@ export default async function CreatePostmortemPage() {
                     </Link>
                 </div>
             ) : (
-                <PostmortemForm 
-                    incidentId="" 
-                    users={users} 
+                <PostmortemForm
+                    incidentId=""
+                    users={users}
                     resolvedIncidents={resolvedIncidents}
                 />
             )}

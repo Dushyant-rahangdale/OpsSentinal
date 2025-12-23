@@ -77,13 +77,13 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                 }
             },
             where,
-            orderBy: sortBy === 'name' 
-                ? { name: sortOrder as 'asc' | 'desc' } 
-                : sortBy === 'email' 
-                ? { email: sortOrder as 'asc' | 'desc' } 
-                : sortBy === 'status' 
-                ? { status: sortOrder as 'asc' | 'desc' } 
-                : { createdAt: sortOrder as 'asc' | 'desc' },
+            orderBy: sortBy === 'name'
+                ? { name: sortOrder as 'asc' | 'desc' }
+                : sortBy === 'email'
+                    ? { email: sortOrder as 'asc' | 'desc' }
+                    : sortBy === 'status'
+                        ? { status: sortOrder as 'asc' | 'desc' }
+                        : { createdAt: sortOrder as 'asc' | 'desc' },
             skip,
             take: USERS_PER_PAGE
         }),
@@ -118,7 +118,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         invited: 0,
         disabled: 0
     };
-    
+
     // If filters are applied, get filtered stats; otherwise get all stats
     if (query || statusFilter || roleFilter || teamFilter) {
         // With filters, we already have totalCount, get breakdown
@@ -149,7 +149,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     // Get current user for permission checks
     const session = await getServerSession(authOptions);
     const currentUserEmail = session?.user?.email;
-    const currentUser = currentUserEmail 
+    const currentUser = currentUserEmail
         ? await prisma.user.findUnique({
             where: { email: currentUserEmail },
             select: { id: true, role: true }
@@ -167,7 +167,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     if (teamFilter) baseParams.set('teamId', teamFilter);
     if (sortBy !== 'createdAt') baseParams.set('sortBy', sortBy);
     if (sortOrder !== 'desc') baseParams.set('sortOrder', sortOrder);
-    
+
     const historyBaseParams = new URLSearchParams();
     if (query) historyBaseParams.set('q', query);
     if (statusFilter) historyBaseParams.set('status', statusFilter);
@@ -176,13 +176,13 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     if (page > 1) historyBaseParams.set('page', page.toString());
     if (sortBy !== 'createdAt') historyBaseParams.set('sortBy', sortBy);
     if (sortOrder !== 'desc') historyBaseParams.set('sortOrder', sortOrder);
-    
+
     function buildHistoryPaginationUrl(pageNum: number): string {
         const params = new URLSearchParams(historyBaseParams);
         params.set('historyPage', pageNum.toString());
         return `/users?${params.toString()}`;
     }
-    
+
     function buildSortUrl(newSortBy: string): string {
         const params = new URLSearchParams(baseParams);
         if (sortBy === newSortBy && sortOrder === 'asc') {
@@ -198,7 +198,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         params.delete('page'); // Reset to page 1 when sorting
         return `/users?${params.toString()}`;
     }
-    
+
     // Keep old function for backwards compatibility
     function buildSortUrlOld(field: string): string {
         const params = new URLSearchParams(baseParams);
@@ -210,7 +210,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     }
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '2rem' }}>
+        <main style={{ padding: '0 1rem 2rem' }}>
             {/* Hero Section */}
             <div style={{
                 background: 'var(--gradient-primary)',
@@ -243,7 +243,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                     <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px', textAlign: 'center' }}>
                         <div style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1 }}>{stats.invited}</div>
                         <div style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: '0.25rem' }}>INVITED</div>
-                            </div>
+                    </div>
                     <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px', textAlign: 'center' }}>
                         <div style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1 }}>{stats.disabled}</div>
                         <div style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: '0.25rem' }}>DISABLED</div>
@@ -279,47 +279,47 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         <form method="get" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'end' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Search</label>
-                                    <input
-                                        name="q"
-                                        defaultValue={query}
-                                        placeholder="Name or email"
+                                <input
+                                    name="q"
+                                    defaultValue={query}
+                                    placeholder="Name or email"
                                     style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.9rem' }}
                                 />
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Status</label>
                                 <select name="status" defaultValue={statusFilter || ''} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.9rem', background: 'white' }}>
-                                        <option value="">All</option>
-                                        <option value="ACTIVE">Active</option>
-                                        <option value="DISABLED">Disabled</option>
-                                        <option value="INVITED">Invited</option>
-                                    </select>
+                                    <option value="">All</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="DISABLED">Disabled</option>
+                                    <option value="INVITED">Invited</option>
+                                </select>
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Role</label>
                                 <select name="role" defaultValue={roleFilter || ''} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.9rem', background: 'white' }}>
-                                        <option value="">All</option>
-                                        <option value="ADMIN">Admin</option>
-                                        <option value="RESPONDER">Responder</option>
-                                        <option value="USER">User</option>
-                                    </select>
+                                    <option value="">All</option>
+                                    <option value="ADMIN">Admin</option>
+                                    <option value="RESPONDER">Responder</option>
+                                    <option value="USER">User</option>
+                                </select>
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Team</label>
                                 <select name="teamId" defaultValue={teamFilter || ''} style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.9rem', background: 'white' }}>
-                                        <option value="">All</option>
-                                        {teams.map((team) => (
-                                            <option key={team.id} value={team.id}>
-                                                {team.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <option value="">All</option>
+                                    {teams.map((team) => (
+                                        <option key={team.id} value={team.id}>
+                                            {team.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <button type="submit" className="glass-button primary" style={{ whiteSpace: 'nowrap' }}>Apply Filters</button>
                                 <a href="/users" className="glass-button" style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}>Clear</a>
-                                </div>
-                            </form>
+                            </div>
+                        </form>
                     </div>
 
                     {/* Bulk Actions */}
@@ -393,7 +393,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                     Page {page} of {totalPages}
-                            </div>
+                                </div>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <Link
                                         href={buildPaginationUrl(baseParams, 1)}
@@ -472,27 +472,27 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                                 Showing {historySkip + 1}-{Math.min(historySkip + HISTORY_PER_PAGE, auditLogTotal)} of {auditLogTotal} entries
                             </p>
                         </div>
-                        <div style={{ 
+                        <div style={{
                             flex: 1,
-                            overflowY: 'auto', 
+                            overflowY: 'auto',
                             padding: '1rem 1.5rem',
-                            display: 'flex', 
-                            flexDirection: 'column', 
+                            display: 'flex',
+                            flexDirection: 'column',
                             gap: '0.6rem',
                             minHeight: '400px'
                         }}>
-                                {auditLogs.length === 0 ? (
+                            {auditLogs.length === 0 ? (
                                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                                     No access activity yet.
                                 </div>
-                                ) : (
-                                    auditLogs.map((log) => (
-                                    <div 
-                                        key={log.id} 
-                                        style={{ 
-                                            padding: '0.7rem 0.85rem', 
-                                            border: '1px solid var(--border)', 
-                                            borderRadius: '6px', 
+                            ) : (
+                                auditLogs.map((log) => (
+                                    <div
+                                        key={log.id}
+                                        style={{
+                                            padding: '0.7rem 0.85rem',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: '6px',
                                             background: '#f9fafb',
                                             transition: 'background 0.15s ease'
                                         }}
@@ -511,7 +511,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                                 ))
                             )}
                         </div>
-                        
+
                         {/* History Pagination */}
                         {historyTotalPages > 1 && (
                             <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -575,7 +575,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                             </div>
                         )}
                     </div>
-                    </aside>
+                </aside>
             </div>
         </main>
     );

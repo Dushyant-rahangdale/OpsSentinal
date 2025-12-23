@@ -24,7 +24,7 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
             where: { id },
             include: {
                 steps: {
-                    include: { 
+                    include: {
                         targetUser: true,
                         targetTeam: true,
                         targetSchedule: true
@@ -63,21 +63,21 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
     const canManagePolicies = permissions.isAdmin;
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
+        <main style={{ padding: '1rem' }}>
             {/* Header */}
-            <header style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start', 
+            <header style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
             }}>
                 <div style={{ flex: 1 }}>
-                    <Link 
-                        href="/policies" 
+                    <Link
+                        href="/policies"
                         className="schedule-back-link"
-                        style={{ 
+                        style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.5rem',
@@ -91,17 +91,17 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                     >
                         ← Back to policies
                     </Link>
-                    <h1 style={{ 
-                        fontSize: '2rem', 
-                        fontWeight: 'bold', 
-                        color: 'var(--text-primary)', 
-                        marginBottom: '0.5rem' 
+                    <h1 style={{
+                        fontSize: '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
                     }}>
                         {policy.name}
                     </h1>
                     {policy.description && (
-                        <p style={{ 
-                            color: 'var(--text-secondary)', 
+                        <p style={{
+                            color: 'var(--text-secondary)',
                             fontSize: '0.95rem',
                             marginBottom: '0.5rem'
                         }}>
@@ -158,7 +158,7 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
                                     Escalation Steps
                                 </h3>
-                                <span 
+                                <span
                                     title="Escalation steps define who gets notified and when. Steps are executed in order with the specified delay between each step."
                                     style={{
                                         width: '20px',
@@ -361,7 +361,7 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
 
                     {/* Delete Policy */}
                     {canManagePolicies && (
-                        <PolicyDeleteButton 
+                        <PolicyDeleteButton
                             policyId={policy.id}
                             servicesUsingPolicy={services.map(s => ({ id: s.id, name: s.name }))}
                         />

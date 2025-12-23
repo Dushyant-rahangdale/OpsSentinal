@@ -198,21 +198,21 @@ export default async function ScheduleDetailPage({
         }).format(date);
 
     return (
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem' }}>
+        <main style={{ padding: '1rem' }}>
             {/* Header */}
-            <header style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start', 
+            <header style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
                 marginBottom: '2rem',
                 paddingBottom: '1.5rem',
                 borderBottom: '2px solid var(--border)'
             }}>
                 <div style={{ flex: 1 }}>
-                    <Link 
-                        href="/schedules" 
+                    <Link
+                        href="/schedules"
                         className="schedule-back-link"
-                        style={{ 
+                        style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.5rem',
@@ -226,16 +226,16 @@ export default async function ScheduleDetailPage({
                     >
                         ← Back to schedules
                     </Link>
-                    <h1 style={{ 
-                        fontSize: '2rem', 
-                        fontWeight: 'bold', 
-                        color: 'var(--text-primary)', 
-                        marginBottom: '0.5rem' 
+                    <h1 style={{
+                        fontSize: '2rem',
+                        fontWeight: 'bold',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.5rem'
                     }}>
                         {schedule.name}
                     </h1>
-                    <p style={{ 
-                        color: 'var(--text-secondary)', 
+                    <p style={{
+                        color: 'var(--text-secondary)',
                         fontSize: '0.95rem',
                         display: 'flex',
                         alignItems: 'center',
@@ -273,7 +273,7 @@ export default async function ScheduleDetailPage({
                         padding: '0.5rem 1rem',
                         borderRadius: '20px',
                         background: activeBlocks.length > 0
-                            ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)' 
+                            ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)'
                             : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
                         border: `1px solid ${activeBlocks.length > 0 ? '#a7f3d0' : '#fecaca'}`,
                         fontSize: '0.85rem',
@@ -311,7 +311,7 @@ export default async function ScheduleDetailPage({
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
                 <div>
                     <LayerHelpPanel />
-                    
+
                     <section className="glass-panel" style={{
                         padding: '1.5rem',
                         background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
@@ -331,7 +331,7 @@ export default async function ScheduleDetailPage({
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
                                     Layers
                                 </h3>
-                                <span 
+                                <span
                                     title="Layers define rotation patterns. Multiple layers can run simultaneously to provide different coverage (e.g., day shift and night shift). Each layer rotates through its assigned responders based on the rotation length."
                                     style={{
                                         width: '20px',

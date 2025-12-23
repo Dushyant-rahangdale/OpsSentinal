@@ -44,9 +44,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
     ]);
     const permissions = await getUserPermissions();
     const canManageIncident = permissions.isResponderOrAbove;
-    
+
     // Check if postmortem exists for this incident
-    const postmortem = incident.status === 'RESOLVED' 
+    const postmortem = incident.status === 'RESOLVED'
         ? await getPostmortem(id)
         : null;
 
@@ -114,10 +114,10 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
     }
 
     return (
-        <main style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <main style={{ margin: '0 auto' }}>
             {/* Header */}
-            <IncidentHeader 
-                incident={incident as any} 
+            <IncidentHeader
+                incident={incident as any}
                 users={users}
                 canManage={canManageIncident}
             />
@@ -139,12 +139,12 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                     {/* Postmortem Section */}
                     {incident.status === 'RESOLVED' && (
                         <div style={{ marginBottom: '1.5rem' }}>
-                            <div className="glass-panel" style={{ 
-                                padding: '1.5rem', 
-                                background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', 
-                                border: '1px solid #e6e8ef', 
+                            <div className="glass-panel" style={{
+                                padding: '1.5rem',
+                                background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                                border: '1px solid #e6e8ef',
                                 borderRadius: '0px',
-                                boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)' 
+                                boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                     <div>
@@ -154,12 +154,12 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 {postmortem ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-                                        <div style={{ 
-                                            padding: 'var(--spacing-3)', 
-                                            background: 'var(--color-success-light)', 
+                                        <div style={{
+                                            padding: 'var(--spacing-3)',
+                                            background: 'var(--color-success-light)',
                                             borderRadius: 'var(--radius-md)',
                                             border: '1px solid var(--color-success)'
                                         }}>
@@ -184,7 +184,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                         </div>
                     )}
 
-                    <IncidentNotes 
+                    <IncidentNotes
                         notes={incident.notes.map(n => ({
                             id: n.id,
                             content: n.content,
@@ -195,7 +195,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                         onAddNote={handleAddNote}
                     />
 
-                    <IncidentTimeline 
+                    <IncidentTimeline
                         events={incident.events.map(e => ({
                             id: e.id,
                             message: e.message,

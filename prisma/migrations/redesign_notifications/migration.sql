@@ -20,3 +20,4 @@ ALTER TABLE "EscalationRule" DROP COLUMN IF EXISTS "notificationChannels";
 
 
 
+

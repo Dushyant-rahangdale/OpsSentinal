@@ -24,13 +24,13 @@ export default async function PostmortemPage({
     const { incidentId } = await params;
     const searchParamsData = await searchParams;
     const editMode = searchParamsData?.edit === 'true';
-    
+
     const postmortem = await getPostmortem(incidentId);
     const permissions = await getUserPermissions();
     const canEdit = permissions.isResponderOrAbove;
     // All users can view published postmortems, but only responders+ can edit
     const canView = postmortem ? (postmortem.status === 'PUBLISHED' || canEdit) : canEdit;
-    
+
     // Get users for action items assignment
     const users = await prisma.user.findMany({
         where: { status: 'ACTIVE' },
@@ -80,7 +80,7 @@ export default async function PostmortemPage({
 
         // Show create form for new postmortem
         return (
-            <div style={{ padding: 'var(--spacing-6)', maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ padding: 'var(--spacing-6)' }}>
                 <div style={{ marginBottom: 'var(--spacing-6)' }}>
                     <Link
                         href="/postmortems"
@@ -115,7 +115,7 @@ export default async function PostmortemPage({
 
     // Show existing postmortem
     return (
-        <div style={{ padding: 'var(--spacing-6)', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ padding: 'var(--spacing-6)' }}>
             <div style={{ marginBottom: 'var(--spacing-6)' }}>
                 <Link
                     href="/postmortems"
