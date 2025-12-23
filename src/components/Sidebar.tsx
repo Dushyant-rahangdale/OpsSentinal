@@ -211,18 +211,27 @@ export default function Sidebar() {
                     alignItems: 'center',
                     gap: '0.875rem',
                     marginLeft: '0.5rem',
-                    marginRight: '0.5rem'
+                    marginRight: '0.5rem',
+                    borderRadius: '8px',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                    background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+                    color: active ? 'white' : 'rgba(255,255,255,0.85)',
+                    borderLeft: active ? '3px solid white' : '3px solid transparent',
+                    paddingLeft: active ? 'calc(1rem - 3px)' : '1rem'
                 }}
                 onMouseEnter={(e) => {
                     if (!active) {
                         e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                        e.currentTarget.style.color = 'rgba(255,255,255,0.95)';
+                        e.currentTarget.style.color = 'white';
+                        e.currentTarget.style.transform = 'translateX(4px)';
                     }
                 }}
                 onMouseLeave={(e) => {
                     if (!active) {
                         e.currentTarget.style.background = 'transparent';
                         e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
+                        e.currentTarget.style.transform = 'translateX(0)';
                     }
                 }}
             >
@@ -270,18 +279,30 @@ export default function Sidebar() {
         return (
             <div key={sectionName} style={{ marginBottom: sectionName !== 'MAIN' ? '1.5rem' : '0' }}>
                 {sectionName !== 'MAIN' && (
-                    <div style={{
-                        marginTop: '1.75rem',
-                        marginBottom: '0.75rem',
-                        paddingLeft: '1rem',
-                        fontSize: '0.7rem',
-                        fontWeight: '700',
-                        color: 'rgba(255,255,255,0.4)',
-                        letterSpacing: '1.2px',
-                        textTransform: 'uppercase'
-                    }}>
-                        {sectionName}
-                    </div>
+                    <>
+                        <div style={{
+                            height: '1px',
+                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
+                            margin: '1.5rem 1rem 0.75rem 1rem'
+                        }} />
+                        <div style={{
+                            marginBottom: '0.75rem',
+                            paddingLeft: '1rem',
+                            fontSize: '0.7rem',
+                            fontWeight: '700',
+                            color: 'rgba(255,255,255,0.5)',
+                            letterSpacing: '1.2px',
+                            textTransform: 'uppercase',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.5">
+                                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+                            </svg>
+                            {sectionName}
+                        </div>
+                    </>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     {items.map(renderNavItem)}
@@ -478,19 +499,114 @@ export default function Sidebar() {
                     </button>
                 )}
 
-                {/* Useful Footer - Quick Links & Help */}
+                {/* User Profile and Footer - Enhanced */}
                 <div style={{
-                    padding: '1rem 1.5rem',
-                    background: 'rgba(0,0,0,0.2)',
+                    padding: '1rem 1rem 1.25rem 1rem',
+                    background: 'rgba(0,0,0,0.25)',
                     borderTop: '1px solid rgba(255,255,255,0.1)',
-                    fontSize: '0.85rem',
-                    color: 'rgba(255,255,255,0.9)',
                     flexShrink: 0
                 }}>
+                    {/* User Profile Card */}
+                    <div style={{
+                        padding: '0.875rem',
+                        background: 'rgba(255,255,255,0.08)',
+                        borderRadius: '10px',
+                        marginBottom: '0.75rem',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        transition: 'all 0.2s ease'
+                    }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                            {/* Avatar */}
+                            <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '10px',
+                                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
+                                border: '2px solid rgba(255,255,255,0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: '700',
+                                fontSize: '1rem',
+                                color: 'white',
+                                flexShrink: 0
+                            }}>
+                                👤
+                            </div>
+                            {/* User Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                    fontSize: '0.9rem',
+                                    fontWeight: '600',
+                                    color: 'white',
+                                    marginBottom: '0.2rem',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    Current User
+                                </div>
+                                <div style={{
+                                    fontSize: '0.7rem',
+                                    color: 'rgba(255,255,255,0.7)',
+                                    fontWeight: '600',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Administrator
+                                </div>
+                            </div>
+                        </div>
+                        {/* Logout Button */}
+                        <button
+                            onClick={() => window.location.href = '/api/auth/signout'}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                borderRadius: '6px',
+                                color: 'white',
+                                fontSize: '0.8rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Sign Out
+                        </button>
+                    </div>
+
+                    {/* Quick Links */}
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '0.75rem'
+                        gap: '0.5rem',
+                        fontSize: '0.8rem'
                     }}>
                         <Link
                             href="/help"
@@ -503,16 +619,24 @@ export default function Sidebar() {
                                 color: 'rgba(255,255,255,0.85)',
                                 textDecoration: 'none',
                                 fontWeight: '500',
-                                transition: 'color 0.2s'
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '6px',
+                                transition: 'all 0.2s ease'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,1)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'white';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
+                                e.currentTarget.style.background = 'transparent';
+                            }}
                         >
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" />
                             </svg>
-                            <span>Help & Documentation</span>
+                            <span>Help & Docs</span>
                         </Link>
                         <Link
                             href="/settings"
@@ -525,12 +649,20 @@ export default function Sidebar() {
                                 color: 'rgba(255,255,255,0.85)',
                                 textDecoration: 'none',
                                 fontWeight: '500',
-                                transition: 'color 0.2s'
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '6px',
+                                transition: 'all 0.2s ease'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,1)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'white';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
+                                e.currentTarget.style.background = 'transparent';
+                            }}
                         >
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="3" />
                                 <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
                             </svg>
@@ -538,7 +670,6 @@ export default function Sidebar() {
                         </Link>
                         <button
                             onClick={() => {
-                                // Trigger keyboard shortcut modal via custom event
                                 window.dispatchEvent(new CustomEvent('toggleKeyboardShortcuts'));
                                 if (isMobile) setIsMobileMenuOpen(false);
                             }}
@@ -554,18 +685,26 @@ export default function Sidebar() {
                                 background: 'transparent',
                                 border: 'none',
                                 cursor: 'pointer',
-                                padding: '0.5rem 0',
-                                transition: 'color 0.2s',
-                                fontSize: '0.85rem'
+                                padding: '0.5rem 0.75rem',
+                                transition: 'all 0.2s ease',
+                                fontSize: '0.8rem',
+                                borderRadius: '6px',
+                                textAlign: 'left'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,1)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.85)'}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'white';
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'rgba(255,255,255,0.85)';
+                                e.currentTarget.style.background = 'transparent';
+                            }}
                         >
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
                                 <rect x="4" y="2" width="16" height="20" rx="2" />
                                 <path d="M9 6h6m-6 4h6m-2 4h2" />
                             </svg>
-                            <span>Keyboard Shortcuts</span>
+                            <span>Shortcuts</span>
                         </button>
                     </div>
                 </div>
