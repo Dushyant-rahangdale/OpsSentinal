@@ -15,6 +15,7 @@
 
 import prisma from './prisma';
 import { getSMSConfig } from './notification-providers';
+import { getBaseUrl } from './env-validation';
 
 export type SMSOptions = {
     to: string; // Phone number in E.164 format (e.g., +1234567890)
@@ -38,10 +39,10 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                 message: options.message.substring(0, 100),
                 provider: smsConfig.provider,
             });
-            
+
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             return { success: true };
         }
 
@@ -108,16 +109,16 @@ export async function sendIncidentSMS(
             return { success: false, error: 'User has no phone number configured' };
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
-        
+
         const urgencyLabel = incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO';
         const statusLabel = eventType === 'resolved'
             ? '[RESOLVED]'
             : eventType === 'acknowledged'
                 ? '[ACK]'
                 : '[TRIGGERED]';
-        
+
         const message = `${statusLabel} [${urgencyLabel}] ${incident.title}\nService: ${incident.service.name}\nStatus: ${incident.status}\nView: ${incidentUrl}`;
 
         return await sendSMS({

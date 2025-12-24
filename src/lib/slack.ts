@@ -3,6 +3,9 @@
  * Sends notifications to Slack when incidents are created, acknowledged, or resolved.
  */
 
+import prisma from './prisma';
+import { logger } from './logger';
+import { getBaseUrl } from './env-validation';
 import { retryFetch, isRetryableHttpError } from './retry';
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
@@ -48,7 +51,7 @@ export async function sendSlackNotification(
 
     const emoji = STATUS_EMOJI[eventType] || ':information_source:';
     const color = STATUS_COLORS[eventType] || '#757575';
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = getBaseUrl();
     const incidentUrl = `${appUrl}/incidents/${incident.id}`;
 
     const payload = {
@@ -136,10 +139,10 @@ export async function sendSlackNotification(
                 retryableErrors: (error) => {
                     // Only retry on network errors or 5xx server errors
                     if (error instanceof Error) {
-                        return error.message.includes('fetch') || 
-                               error.message.includes('network') ||
-                               error.message.includes('timeout') ||
-                               error.message.includes('5');
+                        return error.message.includes('fetch') ||
+                            error.message.includes('network') ||
+                            error.message.includes('timeout') ||
+                            error.message.includes('5');
                     }
                     return false;
                 }

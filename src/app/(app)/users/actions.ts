@@ -6,6 +6,7 @@ import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { randomBytes } from 'crypto';
 import { getCurrentUser, assertAdmin, assertAdminOrResponder, assertNotSelf } from '@/lib/rbac';
 import { getUserFriendlyError } from '@/lib/user-friendly-errors';
+import { getBaseUrl } from '@/lib/env-validation';
 
 async function assertUserIsNotSoleOwner(userId: string) {
     const ownedMemberships = await prisma.teamMember.findMany({
@@ -34,8 +35,30 @@ async function assertUserIsNotSoleOwner(userId: string) {
     }
 }
 
+async function assertNotLastAdmin(userId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true }
+    });
+
+    // Only check if the user being deleted is an admin
+    if (user?.role !== 'ADMIN') return;
+
+    const adminCount = await prisma.user.count({
+        where: {
+            role: 'ADMIN',
+            status: { not: 'DISABLED' }
+        }
+    });
+
+    if (adminCount <= 1) {
+        throw new Error('Cannot delete the last admin user. Create another admin first.');
+    }
+}
+
 async function deleteUserInternal(userId: string) {
     await assertUserIsNotSoleOwner(userId);
+    await assertNotLastAdmin(userId);
 
     await prisma.$transaction([
         prisma.incident.updateMany({
@@ -78,7 +101,7 @@ async function createInviteToken(email: string) {
         }
     });
 
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const inviteUrl = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;
 
     return inviteUrl;
@@ -326,7 +349,7 @@ export async function deleteUser(userId: string, _formData?: FormData): Promise<
     } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' };
     }
-    
+
     try {
         await deleteUserInternal(userId);
 
@@ -409,6 +432,7 @@ export async function bulkUpdateUsers(_prevState: BulkUserActionState, formData:
         try {
             for (const userId of userIds) {
                 await assertUserIsNotSoleOwner(userId);
+                await assertNotLastAdmin(userId);
             }
         } catch (error) {
             return { error: error instanceof Error ? error.message : 'Unable to delete selected users.' };
@@ -448,6 +472,6 @@ export async function bulkUpdateUsers(_prevState: BulkUserActionState, formData:
         revalidatePath('/users');
         return { success: true, message: `Updated role for ${userIds.length} user(s)` };
     }
-    
+
     return { error: 'Unsupported bulk action.' };
 }

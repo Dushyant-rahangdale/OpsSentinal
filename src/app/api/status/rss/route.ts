@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
 
 /**
@@ -42,23 +43,23 @@ export async function GET() {
             take: 50,
         });
 
+        const baseUrl = getBaseUrl();
         // Generate RSS XML
         const rss = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
         <title>${statusPage.name} - Status Updates</title>
-        <link>${process.env.NEXT_PUBLIC_APP_URL || 'https://status.example.com'}/status</link>
-        <description>Status updates and incident reports for ${statusPage.name}</description>
-        <language>en-us</language>
-        <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
-        <atom:link href="${process.env.NEXT_PUBLIC_APP_URL || 'https://status.example.com'}/api/status/rss" rel="self" type="application/rss+xml" />
+        <link>${baseUrl}/status</link>
+        <description>Current status and incidents</description>
+        <language>en</language>
+        <atom:link href="${baseUrl}/api/status/rss" rel="self" type="application/rss+xml" />
         ${incidents.map(incident => {
-            const status = incident.status === 'RESOLVED' ? 'Resolved' : 
-                          incident.status === 'ACKNOWLEDGED' ? 'Acknowledged' : 
-                          'Investigating';
+            const status = incident.status === 'RESOLVED' ? 'Resolved' :
+                incident.status === 'ACKNOWLEDGED' ? 'Acknowledged' :
+                    'Investigating';
             const pubDate = new Date(incident.createdAt).toUTCString();
-            const guid = `${process.env.NEXT_PUBLIC_APP_URL || 'https://status.example.com'}/status#incident-${incident.id}`;
-            
+            const guid = `${baseUrl}/status#incident-${incident.id}`;
+
             return `
         <item>
             <title>${escapeXml(incident.title)} - ${status}</title>

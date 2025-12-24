@@ -11,6 +11,8 @@
 
 import prisma from './prisma';
 import crypto from 'crypto';
+import { logger } from './logger';
+import { getBaseUrl } from './env-validation';
 import { retryFetch, isRetryableHttpError } from './retry';
 
 export type WebhookOptions = {
@@ -80,7 +82,7 @@ export async function sendWebhook(
         // Create AbortController for timeout compatibility
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
-        
+
         try {
             const response = await retryFetch(
                 url,
@@ -143,7 +145,7 @@ export async function sendWebhook(
             if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
                 return { success: false, error: 'Webhook request timed out after retries' };
             }
-            
+
             throw fetchError;
         } finally {
             clearTimeout(timeoutId);
@@ -187,7 +189,7 @@ export function generateIncidentWebhookPayload(
     },
     eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated'
 ): Record<string, any> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
 
     return {
@@ -266,7 +268,7 @@ export function verifyWebhookSignature(
     try {
         const expectedSignature = generateSignature(payload, secret);
         const providedSignature = signature.replace(/^sha256=/, '');
-        
+
         // Use timing-safe comparison to prevent timing attacks
         return crypto.timingSafeEqual(
             Buffer.from(expectedSignature),

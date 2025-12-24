@@ -15,6 +15,7 @@
 
 import prisma from './prisma';
 import { getPushConfig } from './notification-providers';
+import { getBaseUrl } from './env-validation';
 
 export type PushOptions = {
     userId: string;
@@ -52,10 +53,10 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
                 body: options.body,
                 provider: pushConfig.provider,
             });
-            
+
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             return { success: true };
         }
 
@@ -128,16 +129,16 @@ export async function sendIncidentPush(
             return { success: false, error: 'User or incident not found' };
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
-        
+
         const urgencyLabel = incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO';
         const statusLabel = eventType === 'resolved'
             ? '[RESOLVED]'
             : eventType === 'acknowledged'
                 ? '[ACK]'
                 : '[TRIGGERED]';
-        
+
         const title = `${statusLabel} [${urgencyLabel}] ${incident.title}`;
         const body = `${incident.service.name} -> ${incident.status}`;
 

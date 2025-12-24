@@ -14,6 +14,8 @@
  */
 
 import prisma from './prisma';
+import { getEmailConfig } from './notification-providers';
+import { getBaseUrl } from './env-validation';
 
 export type EmailOptions = {
     to: string;
@@ -42,10 +44,10 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
                 provider: emailConfig.provider,
                 source: emailConfig.source
             });
-            
+
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             return { success: true };
         }
 
@@ -56,7 +58,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
                 const requireFunc = eval('require') as (id: string) => any;
                 const { Resend } = requireFunc('resend');
                 const resend = new Resend(emailConfig.apiKey);
-                
+
                 const result = await resend.emails.send({
                     from: emailConfig.fromEmail,
                     to: options.to,
@@ -124,11 +126,11 @@ export function generateIncidentEmailHTML(incident: {
     createdAt: Date;
     incidentUrl?: string;
 }): string {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     const incidentUrl = incident.incidentUrl || `${baseUrl}/incidents/${incident.id}`;
     const urgencyColor = incident.urgency === 'HIGH' ? '#ef4444' : '#f59e0b';
-    const statusColor = incident.status === 'RESOLVED' ? '#10b981' : 
-                       incident.status === 'ACKNOWLEDGED' ? '#3b82f6' : '#ef4444';
+    const statusColor = incident.status === 'RESOLVED' ? '#10b981' :
+        incident.status === 'ACKNOWLEDGED' ? '#3b82f6' : '#ef4444';
 
     return `
 <!DOCTYPE html>
@@ -223,9 +225,9 @@ export async function sendIncidentEmail(
             return { success: false, error: 'User or incident not found' };
         }
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
-        
+
         const subject = `[${incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO'}] ${incident.title}`;
         const html = generateIncidentEmailHTML({
             ...incident,
