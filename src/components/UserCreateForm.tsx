@@ -1,7 +1,9 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import { getEmailValidationError } from '@/lib/form-validation';
+import { getUserFriendlyError } from '@/lib/user-friendly-errors';
 
 type FormState = {
     error?: string | null;

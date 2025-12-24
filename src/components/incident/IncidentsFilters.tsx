@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import CreatePresetFromCurrent from '@/components/CreatePresetFromCurrent';
+import type { FilterCriteria } from '@/lib/search-presets';
 
 type IncidentsFiltersProps = {
     currentFilter: string;

@@ -5,7 +5,7 @@ import { SelectHTMLAttributes, ReactNode } from 'react';
 type SelectSize = 'sm' | 'md' | 'lg';
 type SelectVariant = 'default' | 'error' | 'success';
 
-interface SelectOption {
+export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
@@ -232,4 +232,3 @@ export default function Select({
     </div>
   );
 }
-

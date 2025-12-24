@@ -141,7 +141,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         }
     });
 
-    if (!incident?.service?.policy?.steps?.length) {
+    if (!incident || !incident.service.policy?.steps?.length) {
         // Clear escalation status if no policy
         await prisma.incident.update({
             where: { id: incidentId },
@@ -155,10 +155,13 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         return { escalated: false, reason: 'No escalation policy configured' };
     }
 
+    const policy = incident.service.policy;
+    const policySteps = policy.steps;
+
     // Use provided stepIndex, or currentEscalationStep from DB, or default to 0
     const currentStepIndex = stepIndex ?? incident.currentEscalationStep ?? 0;
 
-    if (currentStepIndex >= incident.service.policy.steps.length) {
+    if (currentStepIndex >= policySteps.length) {
         // Mark escalation as completed
         await prisma.incident.update({
             where: { id: incidentId },
@@ -206,7 +209,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         return { escalated: false, reason: 'Escalation already in progress' };
     }
 
-    const step = incident.service.policy.steps[currentStepIndex];
+    const step = policySteps[currentStepIndex];
     
     // Resolve target based on target type
     let targetId: string | null = null;
@@ -241,7 +244,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             });
         });
         // Try next step
-        if (currentStepIndex < incident.service.policy.steps.length - 1) {
+        if (currentStepIndex < policySteps.length - 1) {
             return executeEscalation(incidentId, currentStepIndex + 1);
         }
         return { escalated: false, reason: 'Invalid target configuration' };
@@ -268,7 +271,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             });
         });
         // Try next step
-        if (currentStepIndex < incident.service.policy.steps.length - 1) {
+        if (currentStepIndex < policySteps.length - 1) {
             return executeEscalation(incidentId, currentStepIndex + 1);
         }
         return { escalated: false, reason: 'No users to notify' };
@@ -292,12 +295,12 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
 
     // Determine next escalation step and schedule it
     const nextStepIndex = currentStepIndex + 1;
+    const nextStep = nextStepIndex < policySteps.length ? policySteps[nextStepIndex] : null;
     let nextEscalationAt: Date | null = null;
-    let escalationStatus: string = 'COMPLETED';
+    let escalationStatus: string = nextStep ? 'ESCALATING' : 'COMPLETED';
     let nextStepMessage: string | null = null;
 
-    if (nextStepIndex < incident.service.policy.steps.length) {
-        const nextStep = incident.service.policy.steps[nextStepIndex];
+    if (nextStep) {
         const delayMs = nextStep.delayMinutes * 60 * 1000;
         nextEscalationAt = new Date(Date.now() + delayMs);
         escalationStatus = 'ESCALATING';
@@ -306,14 +309,14 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
 
     await prisma.$transaction(async (tx) => {
         const updateData: Prisma.IncidentUpdateInput = {
-            currentEscalationStep: nextStepIndex < incident.service.policy.steps.length ? nextStepIndex : null,
+            currentEscalationStep: nextStepIndex < policySteps.length ? nextStepIndex : null,
             nextEscalationAt,
             escalationStatus,
             escalationProcessingAt: null
         };
 
         if (currentStepIndex === 0 && targetUserIds.length > 0) {
-            updateData.assigneeId = targetUserIds[0];
+            updateData.assignee = { connect: { id: targetUserIds[0] } };
         }
 
         await tx.incident.update({
@@ -339,9 +342,9 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     });
 
     // Schedule next escalation step using PostgreSQL job queue
-    if (nextStepIndex < incident.service.policy.steps.length && nextEscalationAt) {
-      try {
-        const { scheduleEscalation } = await import('./jobs/queue');
+    if (nextStep && nextEscalationAt) {
+        try {
+          const { scheduleEscalation } = await import('./jobs/queue');
         const delayMs = nextStep.delayMinutes * 60 * 1000;
         await scheduleEscalation(incidentId, nextStepIndex, delayMs);
       } catch (error) {
@@ -360,7 +363,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         targetCount: targetUserIds.length,
         stepIndex: currentStepIndex,
         notifications: notificationsSent,
-        nextStepScheduled: nextStepIndex < incident.service.policy.steps.length
+        nextStepScheduled: nextStepIndex < policySteps.length
     };
 }
 

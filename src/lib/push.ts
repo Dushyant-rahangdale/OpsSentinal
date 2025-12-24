@@ -14,6 +14,7 @@
  */
 
 import prisma from './prisma';
+import { getPushConfig } from './notification-providers';
 
 export type PushOptions = {
     userId: string;
@@ -30,8 +31,7 @@ export type PushOptions = {
  */
 export async function sendPush(options: PushOptions): Promise<{ success: boolean; error?: string }> {
     try {
-        // Get push configuration (database first, then env vars)
-        const { getPushConfig } = await import('./notification-providers');
+        // Get push configuration
         const pushConfig = await getPushConfig();
 
         // Get user's FCM token (would be stored in user profile or separate table)
@@ -159,3 +159,4 @@ export async function sendIncidentPush(
         return { success: false, error: error.message };
     }
 }
+

@@ -161,15 +161,21 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     }, {});
 
     const today = new Date();
-    const previewAnnouncements = announcements.filter((announcement) => {
-        if (!announcement.isActive) {
-            return false;
-        }
-        if (!announcement.endDate) {
-            return true;
-        }
-        return new Date(announcement.endDate) >= today;
-    });
+    const previewAnnouncements = announcements
+        .map((announcement) => ({
+            ...announcement,
+            startDate: new Date(announcement.startDate),
+            endDate: announcement.endDate ? new Date(announcement.endDate) : null,
+        }))
+        .filter((announcement) => {
+            if (!announcement.isActive) {
+                return false;
+            }
+            if (!announcement.endDate) {
+                return true;
+            }
+            return announcement.endDate >= today;
+        });
 
     const previewBranding = {
         logoUrl: formData.logoUrl,
@@ -457,23 +463,25 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                     Contact Information
                                 </h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-                                    <FormField
-                                        type="email"
-                                        label="Contact Email"
-                                        value={formData.contactEmail}
-                                        onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                                        placeholder="support@yourcompany.com"
-                                        helperText="Email address for users to contact you"
-                                    />
+                                      <FormField
+                                          type="input"
+                                          inputType="email"
+                                         label="Contact Email"
+                                          value={formData.contactEmail}
+                                          onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                                          placeholder="support@yourcompany.com"
+                                          helperText="Email address for users to contact you"
+                                      />
 
-                                    <FormField
-                                        type="url"
-                                        label="Contact URL"
-                                        value={formData.contactUrl}
-                                        onChange={(e) => setFormData({ ...formData, contactUrl: e.target.value })}
-                                        placeholder="https://yourcompany.com/contact"
-                                        helperText="URL for contact page or support portal"
-                                    />
+                                      <FormField
+                                          type="input"
+                                          inputType="url"
+                                         label="Contact URL"
+                                         value={formData.contactUrl}
+                                         onChange={(e) => setFormData({ ...formData, contactUrl: e.target.value })}
+                                         placeholder="https://yourcompany.com/contact"
+                                         helperText="URL for contact page or support portal"
+                                     />
                                 </div>
                             </div>
                         </Card>
@@ -490,10 +498,11 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                 </h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
                                     <div>
-                                        <FormField
-                                            type="url"
-                                            label="Logo URL"
-                                            value={formData.logoUrl}
+                                          <FormField
+                                              type="input"
+                                              inputType="url"
+                                             label="Logo URL"
+                                             value={formData.logoUrl}
                                             onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
                                             placeholder="https://yourcompany.com/logo.png"
                                             helperText="Full URL to your logo image. Recommended: 200x50px, PNG or SVG format. The logo will appear in the status page header."
@@ -561,9 +570,10 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                         )}
                                     </div>
                                     <div>
-                                        <FormField
-                                            type="url"
-                                            label="Favicon URL"
+                                          <FormField
+                                              type="input"
+                                              inputType="url"
+                                             label="Favicon URL"
                                             value={formData.faviconUrl}
                                             onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
                                             placeholder="https://yourcompany.com/favicon.ico"
@@ -628,12 +638,14 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                 onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                                                 style={{ width: '60px', height: '40px', border: '1px solid #e5e7eb', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
                                             />
-                                            <FormField
-                                                type="input"
-                                                value={formData.primaryColor}
-                                                onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                                                placeholder="#667eea"
-                                            />
+                                              <FormField
+                                                 type="input"
+                                                 inputType="text"
+                                                 label="Primary Color"
+                                                 value={formData.primaryColor}
+                                                 onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                                                  placeholder="#667eea"
+                                              />
                                         </div>
                                     </div>
                                     <div>
@@ -647,12 +659,14 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                 onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
                                                 style={{ width: '60px', height: '40px', border: '1px solid #e5e7eb', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
                                             />
-                                            <FormField
-                                                type="input"
-                                                value={formData.backgroundColor}
-                                                onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                                                placeholder="#ffffff"
-                                            />
+                                              <FormField
+                                                 type="input"
+                                                 inputType="text"
+                                                 label="Background Color"
+                                                 value={formData.backgroundColor}
+                                                 onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
+                                                 placeholder="#ffffff"
+                                              />
                                         </div>
                                     </div>
                                     <div>
@@ -666,12 +680,14 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                 onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
                                                 style={{ width: '60px', height: '40px', border: '1px solid #e5e7eb', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
                                             />
-                                            <FormField
-                                                type="input"
-                                                value={formData.textColor}
-                                                onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
-                                                placeholder="#111827"
-                                            />
+                                              <FormField
+                                                  type="input"
+                                                  inputType="text"
+                                                 label="Text Color"
+                                                 value={formData.textColor}
+                                                 onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
+                                                  placeholder="#111827"
+                                              />
                                         </div>
                                     </div>
                                 </div>

@@ -27,6 +27,8 @@ export default function CustomFieldInput({ field, value = '', onChange, error }:
             case 'TEXT':
                 return (
                     <FormField
+                        type="input"
+                        inputType="text"
                         label={field.name}
                         value={value || field.defaultValue || ''}
                         onChange={handleChange}
@@ -38,8 +40,9 @@ export default function CustomFieldInput({ field, value = '', onChange, error }:
             case 'NUMBER':
                 return (
                     <FormField
+                        type="input"
+                        inputType="number"
                         label={field.name}
-                        type="number"
                         value={value || field.defaultValue || ''}
                         onChange={handleChange}
                         required={field.required}
@@ -50,8 +53,9 @@ export default function CustomFieldInput({ field, value = '', onChange, error }:
             case 'DATE':
                 return (
                     <FormField
+                        type="input"
+                        inputType="date"
                         label={field.name}
-                        type="date"
                         value={value || field.defaultValue || ''}
                         onChange={handleChange}
                         required={field.required}
@@ -104,8 +108,9 @@ export default function CustomFieldInput({ field, value = '', onChange, error }:
             case 'URL':
                 return (
                     <FormField
+                        type="input"
+                        inputType="url"
                         label={field.name}
-                        type="url"
                         value={value || field.defaultValue || ''}
                         onChange={handleChange}
                         required={field.required}
@@ -117,8 +122,9 @@ export default function CustomFieldInput({ field, value = '', onChange, error }:
             case 'EMAIL':
                 return (
                     <FormField
+                        type="input"
+                        inputType="email"
                         label={field.name}
-                        type="email"
                         value={value || field.defaultValue || ''}
                         onChange={handleChange}
                         required={field.required}
@@ -134,6 +140,7 @@ export default function CustomFieldInput({ field, value = '', onChange, error }:
 
     return <div>{renderInput()}</div>;
 }
+
 
 
 

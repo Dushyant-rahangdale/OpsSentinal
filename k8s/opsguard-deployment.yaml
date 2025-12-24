@@ -5,8 +5,14 @@ metadata:
   namespace: opsguard
   labels:
     app: opsguard-app
+    version: v1
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: opsguard-app
@@ -14,15 +20,38 @@ spec:
     metadata:
       labels:
         app: opsguard-app
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/api/metrics"
     spec:
+      # Security context for pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      # Service account (create separately if needed)
+      serviceAccountName: opsguard-app
       initContainers:
       # Run database migrations before starting the app
       - name: db-migrate
         image: your-registry/opsguard:latest  # Update with your image
+        imagePullPolicy: IfNotPresent
         command: ['sh', '-c', 'npx prisma migrate deploy']
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
         env:
         - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=prefer"
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -48,12 +77,23 @@ spec:
             configMapKeyRef:
               name: opsguard-config
               key: POSTGRES_DB
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
       containers:
       - name: opsguard
         image: your-registry/opsguard:latest  # Update with your image
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
           name: http
+          protocol: TCP
         env:
         - name: NODE_ENV
           valueFrom:
@@ -65,6 +105,8 @@ spec:
             configMapKeyRef:
               name: opsguard-config
               key: PORT
+        - name: HOSTNAME
+          value: "0.0.0.0"
         - name: NEXTAUTH_URL
           valueFrom:
             configMapKeyRef:
@@ -76,7 +118,7 @@ spec:
               name: opsguard-secrets
               key: NEXTAUTH_SECRET
         - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)"
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=prefer"
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -102,6 +144,17 @@ spec:
             configMapKeyRef:
               name: opsguard-config
               key: POSTGRES_DB
+        - name: NEXT_TELEMETRY_DISABLED
+          value: "1"
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: false  # Next.js needs write access for .next
         resources:
           requests:
             memory: "512Mi"
@@ -113,15 +166,47 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+            scheme: HTTP
           initialDelaySeconds: 60
           periodSeconds: 30
           timeoutSeconds: 10
+          successThreshold: 1
           failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /api/health
             port: 3000
+            scheme: HTTP
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
+          successThreshold: 1
           failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30
+      # Affinity rules for better distribution
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - opsguard-app
+              topologyKey: kubernetes.io/hostname
+      # Tolerations (adjust based on your cluster)
+      # tolerations:
+      # - key: "node-role.kubernetes.io/master"
+      #   operator: "Exists"
+      #   effect: "NoSchedule"

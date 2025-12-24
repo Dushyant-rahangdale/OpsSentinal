@@ -10,7 +10,7 @@ import PriorityBadge from './PriorityBadge';
 import AssigneeSection from './AssigneeSection';
 import { Incident, Service } from '@prisma/client';
 import { updateIncidentStatus } from '@/app/(app)/incidents/actions';
-import { bulkAcknowledge, bulkResolve, bulkReassign, bulkUpdatePriority, bulkSnooze, bulkUnsnooze, bulkSuppress, bulkUnsuppress } from '@/app/(app)/incidents/bulk-actions';
+import { bulkAcknowledge, bulkResolve, bulkReassign, bulkUpdatePriority, bulkSnooze, bulkUnsnooze, bulkSuppress, bulkUnsuppress, bulkUpdateUrgency, bulkUpdateStatus } from '@/app/(app)/incidents/bulk-actions';
 import { useToast } from '../ToastProvider';
 import Pagination from './Pagination';
 
@@ -37,10 +37,10 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
     const { showToast } = useToast();
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [bulkAction, setBulkAction] = useState<'reassign' | 'priority' | 'snooze' | null>(null);
+    const [bulkAction, setBulkAction] = useState<'reassign' | 'priority' | 'snooze' | 'urgency' | 'status' | null>(null);
     const [isPending, startTransition] = useTransition();
 
-    const handleStatusChange = async (incidentId: string, status: 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED' | 'SUPPRESSED') => {
+    const handleStatusChange = async (incidentId: string, status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED' | 'SUPPRESSED') => {
         startTransition(async () => {
             try {
                 await updateIncidentStatus(incidentId, status);
@@ -72,7 +72,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
         setSelectedIds(newSelected);
     };
 
-    const handleBulkAction = async (action: 'acknowledge' | 'resolve' | 'reassign' | 'priority' | 'snooze' | 'unsnooze' | 'suppress' | 'unsuppress', value?: string | number) => {
+    const handleBulkAction = async (action: 'acknowledge' | 'resolve' | 'reassign' | 'priority' | 'snooze' | 'unsnooze' | 'suppress' | 'unsuppress' | 'urgency' | 'status', value?: string | number) => {
         if (selectedIds.size === 0) {
             showToast('Please select incidents first', 'error');
             return;
@@ -97,6 +97,10 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                     result = await bulkSuppress(Array.from(selectedIds));
                 } else if (action === 'unsuppress') {
                     result = await bulkUnsuppress(Array.from(selectedIds));
+                } else if (action === 'urgency' && value) {
+                    result = await bulkUpdateUrgency(Array.from(selectedIds), value as 'HIGH' | 'LOW');
+                } else if (action === 'status' && value) {
+                    result = await bulkUpdateStatus(Array.from(selectedIds), value as 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED' | 'SUPPRESSED');
                 } else {
                     return;
                 }
@@ -263,6 +267,83 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     Cancel
                                 </button>
                             </div>
+                        ) : bulkAction === 'urgency' ? (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <select
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            handleBulkAction('urgency', e.target.value as 'HIGH' | 'LOW');
+                                        }
+                                    }}
+                                    aria-label="Select urgency for bulk update"
+                                    style={{
+                                        padding: '0.5rem',
+                                        border: 'none',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: 'white',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="">Select urgency...</option>
+                                    <option value="HIGH">HIGH</option>
+                                    <option value="LOW">LOW</option>
+                                </select>
+                                <button
+                                    onClick={() => setBulkAction(null)}
+                                    aria-label="Cancel bulk urgency update"
+                                    style={{
+                                        padding: '0.5rem 0.75rem',
+                                        background: 'rgba(255,255,255,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'white',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : bulkAction === 'status' ? (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <select
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            handleBulkAction('status', e.target.value as 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED' | 'SUPPRESSED');
+                                        }
+                                    }}
+                                    aria-label="Select status for bulk update"
+                                    style={{
+                                        padding: '0.5rem',
+                                        border: 'none',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: 'white',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="">Select status...</option>
+                                    <option value="OPEN">OPEN</option>
+                                    <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
+                                    <option value="RESOLVED">RESOLVED</option>
+                                    <option value="SNOOZED">SNOOZED</option>
+                                    <option value="SUPPRESSED">SUPPRESSED</option>
+                                </select>
+                                <button
+                                    onClick={() => setBulkAction(null)}
+                                    aria-label="Cancel bulk status update"
+                                    style={{
+                                        padding: '0.5rem 0.75rem',
+                                        background: 'rgba(255,255,255,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'white',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         ) : (
                             <>
                                 <button
@@ -343,6 +424,36 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     }}
                                 >
                                     ⏰ Snooze
+                                </button>
+                                <button
+                                    onClick={() => setBulkAction('urgency')}
+                                    aria-label="Update urgency for selected incidents"
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        background: 'rgba(255,255,255,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'white',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ⚠ Urgency
+                                </button>
+                                <button
+                                    onClick={() => setBulkAction('status')}
+                                    aria-label="Update status for selected incidents"
+                                    style={{
+                                        padding: '0.5rem 1rem',
+                                        background: 'rgba(255,255,255,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        color: 'white',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    📊 Status
                                 </button>
                                 <button
                                     onClick={() => {

@@ -3,9 +3,10 @@
 import { ReactNode } from 'react';
 import Input from './Input';
 import Select from './Select';
+import Switch from './Switch';
 import { SelectOption } from './Select';
 
-type FormFieldType = 'input' | 'textarea' | 'select';
+type FormFieldType = 'input' | 'textarea' | 'select' | 'switch';
 
 interface BaseFormFieldProps {
   label: string;
@@ -17,12 +18,13 @@ interface BaseFormFieldProps {
 
 interface InputFormFieldProps extends BaseFormFieldProps {
   type: 'input';
-  inputType?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search';
+  inputType?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search' | 'date' | 'datetime-local';
   placeholder?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
+  step?: string;
 }
 
 interface TextareaFormFieldProps extends BaseFormFieldProps {
@@ -41,7 +43,13 @@ interface SelectFormFieldProps extends BaseFormFieldProps {
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
-type FormFieldProps = InputFormFieldProps | TextareaFormFieldProps | SelectFormFieldProps;
+interface SwitchFormFieldProps extends BaseFormFieldProps {
+  type: 'switch';
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+type FormFieldProps = InputFormFieldProps | TextareaFormFieldProps | SelectFormFieldProps | SwitchFormFieldProps;
 
 /**
  * FormField wrapper component for consistent form inputs
@@ -176,8 +184,22 @@ export default function FormField(props: FormFieldProps) {
     );
   }
 
+  if (props.type === 'switch') {
+    return (
+      <Switch
+        checked={props.checked}
+        onChange={props.onChange}
+        label={label}
+        helperText={helperText}
+        error={error}
+        fullWidth={fullWidth}
+      />
+    );
+  }
+
   return null;
 }
+
 
 
 

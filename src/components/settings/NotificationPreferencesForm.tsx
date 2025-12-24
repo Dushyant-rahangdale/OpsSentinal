@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { updateNotificationPreferences } from '@/app/(app)/settings/actions';
 
 type State = {
-    error: string | null;
-    success: boolean;
+    error?: string | null;
+    success?: boolean;
 };
 
 type Props = {

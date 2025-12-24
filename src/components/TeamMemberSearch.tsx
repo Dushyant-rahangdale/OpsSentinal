@@ -15,7 +15,11 @@ type TeamMemberSearchProps = {
         role: string;
         user: User;
     }>;
-    onFilterChange: (filtered: typeof members) => void;
+    onFilterChange: (filtered: Array<{
+        id: string;
+        role: string;
+        user: User;
+    }>) => void;
 };
 
 export default function TeamMemberSearch({ members, onFilterChange }: TeamMemberSearchProps) {
@@ -158,7 +162,6 @@ export default function TeamMemberSearch({ members, onFilterChange }: TeamMember
         </div>
     );
 }
-
 
 
 

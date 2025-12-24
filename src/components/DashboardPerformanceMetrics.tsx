@@ -60,8 +60,8 @@ export default function DashboardPerformanceMetrics({
     return null;
   };
 
-  const mttaTrendData = getTrendIndicator(mtta, previousMtta, mttaTrend);
-  const mttrTrendData = getTrendIndicator(mttr, previousMttr, mttrTrend);
+  const mttaTrendData = getTrendIndicator(mtta, previousMtta ?? null, mttaTrend);
+  const mttrTrendData = getTrendIndicator(mttr, previousMttr ?? null, mttrTrend);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
@@ -131,4 +131,3 @@ export default function DashboardPerformanceMetrics({
       </div>
   );
 }
-

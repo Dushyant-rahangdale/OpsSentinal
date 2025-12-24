@@ -5,8 +5,11 @@ metadata:
   namespace: opsguard
   labels:
     app: opsguard-postgres
+    version: v1
 spec:
   replicas: 1
+  strategy:
+    type: Recreate  # PostgreSQL requires Recreate strategy for single replica
   selector:
     matchLabels:
       app: opsguard-postgres
@@ -14,13 +17,23 @@ spec:
     metadata:
       labels:
         app: opsguard-postgres
+        version: v1
     spec:
+      # Security context for pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # PostgreSQL user in container
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: postgres
         image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5432
           name: postgres
+          protocol: TCP
         env:
         - name: POSTGRES_DB
           valueFrom:
@@ -37,34 +50,63 @@ spec:
             secretKeyRef:
               name: opsguard-secrets
               key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        # PostgreSQL production optimizations
+        - name: POSTGRES_INITDB_ARGS
+          value: "-E UTF8 --locale=C"
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: false  # PostgreSQL needs write access
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "512Mi"
+            cpu: "500m"
           limits:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "2Gi"
+            cpu: "2000m"
         livenessProbe:
           exec:
             command:
-            - pg_isready
-            - -U
-            - opsguard
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
         readinessProbe:
           exec:
             command:
-            - pg_isready
-            - -U
-            - opsguard
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 30
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:

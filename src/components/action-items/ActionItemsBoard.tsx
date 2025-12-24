@@ -406,7 +406,7 @@ export default function ActionItemsBoard({ actionItems, users, canManage, view, 
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', marginBottom: 'var(--spacing-2)' }}>
                                             <Badge
-                                                variant={item.status === 'COMPLETED' ? 'success' : item.status === 'BLOCKED' ? 'danger' : 'default'}
+                                                variant={item.status === 'COMPLETED' ? 'success' : item.status === 'BLOCKED' ? 'error' : 'default'}
                                             >
                                                 {STATUS_LABELS[item.status]}
                                             </Badge>

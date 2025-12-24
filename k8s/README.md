@@ -122,6 +122,8 @@ kubectl exec -it -n opsguard $POD_NAME -- \
   --role admin
 ```
 
+**📖 For detailed CLI usage in production, see [CLI Production Guide](../CLI_PRODUCTION_GUIDE.md)**
+
 ### 7. Access the Application
 
 **If using LoadBalancer:**

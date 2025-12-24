@@ -14,6 +14,8 @@ import TopbarBreadcrumbs from '@/components/TopbarBreadcrumbs';
 import GlobalKeyboardHandlerWrapper from '@/components/GlobalKeyboardHandlerWrapper';
 import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
+import SkipLinks from '@/components/SkipLinks';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const revalidate = 30;
 
@@ -58,6 +60,7 @@ export default async function AppLayout({
     <AppErrorBoundary>
       <ToastProvider>
         <GlobalKeyboardHandlerWrapper />
+        <SkipLinks />
         <div className="app-shell">
           <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
           <div className="content-shell">
@@ -74,13 +77,14 @@ export default async function AppLayout({
               <div className="topbar-section topbar-section-right">
                 <TopbarClock />
                 <TopbarNotifications />
+                <ThemeToggle />
                 <QuickActions canCreate={canCreate} />
                 <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
               </div>
             </header>
-            <div className="page-shell">
+            <main id="main-content" className="page-shell">
               {children}
-            </div>
+            </main>
           </div>
         </div>
       </ToastProvider>

@@ -46,7 +46,7 @@ export default function PostmortemImpactMetrics({ metrics }: PostmortemImpactMet
             value: metrics.slaBreaches.toString(),
             color: '#dc2626',
         },
-    ].filter(Boolean);
+    ].filter(Boolean) as Array<{ label: string; value: string; color: string }>;
 
     const servicesData = metrics.servicesAffected && metrics.servicesAffected.length > 0
         ? metrics.servicesAffected.map((service, index) => ({
@@ -191,6 +191,7 @@ export default function PostmortemImpactMetrics({ metrics }: PostmortemImpactMet
         </div>
     );
 }
+
 
 
 

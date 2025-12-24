@@ -361,3 +361,98 @@ export async function bulkUnsuppress(incidentIds: string[]) {
         return { success: false, error: 'Failed to unsuppress incidents' };
     }
 }
+
+export async function bulkUpdateUrgency(incidentIds: string[], urgency: 'HIGH' | 'LOW') {
+    if (!incidentIds || incidentIds.length === 0) {
+        return { success: false, error: 'No incidents selected' };
+    }
+
+    try {
+        await assertResponderOrAbove();
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Unauthorized' };
+    }
+
+    try {
+        // Update all selected incidents
+        await prisma.incident.updateMany({
+            where: {
+                id: { in: incidentIds }
+            },
+            data: { urgency }
+        });
+
+        // Log events for each incident
+        const user = await getCurrentUser();
+        for (const incidentId of incidentIds) {
+            await prisma.incidentEvent.create({
+                data: {
+                    incidentId,
+                    message: `Bulk urgency updated to ${urgency}${user ? ` by ${user.name}` : ''}`
+                }
+            });
+        }
+
+        revalidatePath('/incidents');
+        return { success: true, count: incidentIds.length };
+    } catch (error) {
+        console.error('Bulk urgency update failed:', error);
+        return { success: false, error: 'Failed to update urgency' };
+    }
+}
+
+export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED' | 'SUPPRESSED') {
+    if (!incidentIds || incidentIds.length === 0) {
+        return { success: false, error: 'No incidents selected' };
+    }
+
+    try {
+        await assertResponderOrAbove();
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Unauthorized' };
+    }
+
+    try {
+        const updateData: any = { status };
+        
+        // Set appropriate timestamps
+        if (status === 'ACKNOWLEDGED') {
+            updateData.acknowledgedAt = new Date();
+        } else if (status === 'RESOLVED') {
+            updateData.resolvedAt = new Date();
+            updateData.escalationStatus = 'COMPLETED';
+            updateData.nextEscalationAt = null;
+        } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
+            updateData.escalationStatus = 'PAUSED';
+            updateData.nextEscalationAt = null;
+        } else if (status === 'OPEN') {
+            updateData.escalationStatus = 'ESCALATING';
+            updateData.nextEscalationAt = new Date();
+        }
+
+        // Update all selected incidents
+        await prisma.incident.updateMany({
+            where: {
+                id: { in: incidentIds }
+            },
+            data: updateData
+        });
+
+        // Log events for each incident
+        const user = await getCurrentUser();
+        for (const incidentId of incidentIds) {
+            await prisma.incidentEvent.create({
+                data: {
+                    incidentId,
+                    message: `Bulk status updated to ${status}${user ? ` by ${user.name}` : ''}`
+                }
+            });
+        }
+
+        revalidatePath('/incidents');
+        return { success: true, count: incidentIds.length };
+    } catch (error) {
+        console.error('Bulk status update failed:', error);
+        return { success: false, error: 'Failed to update status' };
+    }
+}

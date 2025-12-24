@@ -90,13 +90,16 @@ export default function PostmortemTimelineBuilder({ events, onChange }: Postmort
                             options={Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
                         />
                         <FormField
+                            type="input"
+                            inputType="datetime-local"
                             label="Timestamp"
-                            type="datetime-local"
                             value={newEvent.timestamp || ''}
                             onChange={(e) => setNewEvent({ ...newEvent, timestamp: e.target.value })}
                         />
                     </div>
                     <FormField
+                        type="input"
+                        inputType="text"
                         label="Title"
                         value={newEvent.title || ''}
                         onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
@@ -111,6 +114,8 @@ export default function PostmortemTimelineBuilder({ events, onChange }: Postmort
                         placeholder="Detailed description of what happened..."
                     />
                     <FormField
+                        type="input"
+                        inputType="text"
                         label="Actor (Optional)"
                         value={newEvent.actor || ''}
                         onChange={(e) => setNewEvent({ ...newEvent, actor: e.target.value })}
@@ -210,17 +215,20 @@ export default function PostmortemTimelineBuilder({ events, onChange }: Postmort
                                         onChange={(e) => updateEvent(event.id, { type: e.target.value as any })}
                                         options={Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
                                     />
-                                    <FormField
-                                        label="Timestamp"
-                                        type="datetime-local"
-                                        value={new Date(event.timestamp).toISOString().slice(0, 16)}
-                                        onChange={(e) => updateEvent(event.id, { timestamp: e.target.value })}
-                                    />
-                                    <FormField
-                                        label="Title"
-                                        value={event.title}
-                                        onChange={(e) => updateEvent(event.id, { title: e.target.value })}
-                                    />
+                                        <FormField
+                                            type="input"
+                                            inputType="datetime-local"
+                                            label="Timestamp"
+                                            value={new Date(event.timestamp).toISOString().slice(0, 16)}
+                                            onChange={(e) => updateEvent(event.id, { timestamp: e.target.value })}
+                                        />
+                                        <FormField
+                                            type="input"
+                                            inputType="text"
+                                            label="Title"
+                                            value={event.title}
+                                            onChange={(e) => updateEvent(event.id, { title: e.target.value })}
+                                        />
                                     <FormField
                                         label="Description"
                                         type="textarea"
@@ -228,11 +236,13 @@ export default function PostmortemTimelineBuilder({ events, onChange }: Postmort
                                         value={event.description}
                                         onChange={(e) => updateEvent(event.id, { description: e.target.value })}
                                     />
-                                    <FormField
-                                        label="Actor"
-                                        value={event.actor || ''}
-                                        onChange={(e) => updateEvent(event.id, { actor: e.target.value })}
-                                    />
+                                        <FormField
+                                            type="input"
+                                            inputType="text"
+                                            label="Actor"
+                                            value={event.actor || ''}
+                                            onChange={(e) => updateEvent(event.id, { actor: e.target.value })}
+                                        />
                                 </div>
                             )}
                         </div>
@@ -242,6 +252,7 @@ export default function PostmortemTimelineBuilder({ events, onChange }: Postmort
         </div>
     );
 }
+
 
 
 

@@ -40,7 +40,8 @@ export async function sendServiceNotifications(
         }
 
         // Get notification channels from service configuration
-        const channels: NotificationChannel[] = (incident.service.notificationChannels as NotificationChannel[]) || ['EMAIL', 'SLACK'];
+        const serviceNotificationChannels = (incident.service as { notificationChannels?: NotificationChannel[] }).notificationChannels;
+        const channels: NotificationChannel[] = serviceNotificationChannels || ['EMAIL', 'SLACK'];
         const errors: string[] = [];
 
         // Determine who to notify
@@ -63,7 +64,7 @@ export async function sendServiceNotifications(
         if (uniqueRecipients.length === 0) {
             // No specific recipients, but still send service-level notifications (e.g., Slack)
             // Only send Slack if configured
-            if (channels.includes('SLACK') && incident.service.slackWebhookUrl) {
+            if (channels.includes('SLACK') && incident.service.slackWebhookUrl && eventType !== 'updated') {
                 await notifySlackForIncident(incidentId, eventType).catch(err => {
                     errors.push(`Slack notification failed: ${err.message}`);
                 });
@@ -89,7 +90,7 @@ export async function sendServiceNotifications(
         }
 
         // Send service-level Slack notification (if configured)
-        if (channels.includes('SLACK') && incident.service.slackWebhookUrl) {
+        if (channels.includes('SLACK') && incident.service.slackWebhookUrl && eventType !== 'updated') {
             await notifySlackForIncident(incidentId, eventType).catch(err => {
                 errors.push(`Slack notification failed: ${err.message}`);
             });
@@ -125,6 +126,7 @@ export async function sendServiceNotifications(
  *    - Service notifications: Immediate notification to team when incident created
  *    - Policy notifications: Escalation-based notifications following policy steps
  */
+
 
 
 

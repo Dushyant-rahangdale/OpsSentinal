@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "next dev --webpack",
         "build": "next build --webpack",
-        "start": "next start",
+        "start": "node .next/standalone/server.js",
+        "start:dev": "next start",
         "lint": "eslint",
         "test": "vitest",
         "test:ui": "vitest --ui",

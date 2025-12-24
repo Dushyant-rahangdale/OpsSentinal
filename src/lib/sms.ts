@@ -14,6 +14,7 @@
  */
 
 import prisma from './prisma';
+import { getSMSConfig } from './notification-providers';
 
 export type SMSOptions = {
     to: string; // Phone number in E.164 format (e.g., +1234567890)
@@ -27,8 +28,7 @@ export type SMSOptions = {
  */
 export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; error?: string }> {
     try {
-        // Get SMS configuration (database first, then env vars)
-        const { getSMSConfig } = await import('./notification-providers');
+        // Get SMS configuration
         const smsConfig = await getSMSConfig();
 
         // Development: Log SMS instead of sending if no provider configured
@@ -129,3 +129,4 @@ export async function sendIncidentSMS(
         return { success: false, error: error.message };
     }
 }
+

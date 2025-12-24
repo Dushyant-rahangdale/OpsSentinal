@@ -165,7 +165,7 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
         return { action: 'ignored', reason: 'No matching incident to resolve/ack' };
     });
 
-    if (result.action === 'triggered') {
+    if (result.action === 'triggered' && result.incident) {
         // Send service-level notifications (to team members, assignee, etc.)
         // Uses user preferences for each recipient
         try {
@@ -189,7 +189,7 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
         }
     }
 
-    if (result.action === 'resolved') {
+    if (result.action === 'resolved' && result.incident) {
         notifySlackForIncident(result.incident.id, 'resolved').catch((error) => {
             logger.error('Slack notification failed', {
                 incidentId: result.incident.id,
@@ -198,7 +198,7 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
         });
     }
 
-    if (result.action === 'acknowledged') {
+    if (result.action === 'acknowledged' && result.incident) {
         notifySlackForIncident(result.incident.id, 'acknowledged').catch((error) => {
             logger.error('Slack notification failed', {
                 incidentId: result.incident.id,

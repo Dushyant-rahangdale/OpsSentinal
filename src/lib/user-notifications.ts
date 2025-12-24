@@ -162,7 +162,7 @@ export async function sendServiceNotifications(
 
         if (uniqueRecipients.length === 0) {
             // No specific recipients, but still send service-level Slack notification if configured
-            if (incident.service.slackWebhookUrl) {
+            if (incident.service.slackWebhookUrl && eventType !== 'updated') {
                 await notifySlackForIncident(incidentId, eventType).catch(err => {
                     errors.push(`Slack notification failed: ${err.message}`);
                 });
@@ -242,7 +242,7 @@ export async function sendServiceNotifications(
         }
 
         // Send service-level Slack notification (if configured)
-        if (incident.service.slackWebhookUrl) {
+        if (incident.service.slackWebhookUrl && eventType !== 'updated') {
             await notifySlackForIncident(incidentId, eventType).catch(err => {
                 errors.push(`Slack notification failed: ${err.message}`);
             });

@@ -3,11 +3,15 @@ kind: PersistentVolumeClaim
 metadata:
   name: opsguard-postgres-pvc
   namespace: opsguard
+  labels:
+    app: opsguard-postgres
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
+      storage: 20Gi  # Increased for production
   # Uncomment and configure for specific storage class
-  # storageClassName: standard
+  # For production, use a fast SSD storage class
+  # storageClassName: fast-ssd
+  # volumeMode: Filesystem

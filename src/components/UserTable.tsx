@@ -204,12 +204,22 @@ export default function UserTable({
                 </thead>
                 <tbody>
                     {users.map((user) => {
-                        const updateRole = updateUserRole.bind(null, user.id);
-                        const deactivate = deactivateUser.bind(null, user.id);
-                        const reactivate = reactivateUser.bind(null, user.id);
-                        const removeUser = deleteUser.bind(null, user.id);
+                        const updateRole = async (formData: FormData) => {
+                            await updateUserRole(user.id, formData);
+                        };
+                        const deactivate = async (formData?: FormData) => {
+                            await deactivateUser(user.id, formData);
+                        };
+                        const reactivate = async (formData?: FormData) => {
+                            await reactivateUser(user.id, formData);
+                        };
+                        const removeUser = async (formData?: FormData) => {
+                            await deleteUser(user.id, formData);
+                        };
                         const inviteUser = generateInvite.bind(null, user.id);
-                        const assignToTeam = addUserToTeam.bind(null, user.id);
+                        const assignToTeam = async (formData: FormData) => {
+                            await addUserToTeam(user.id, formData);
+                        };
                         const availableTeams = teams.filter(
                             (team) => !user.teamMemberships?.some((member) => member.teamId === team.id)
                         );

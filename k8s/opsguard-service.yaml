@@ -5,8 +5,19 @@ metadata:
   namespace: opsguard
   labels:
     app: opsguard-app
+  annotations:
+    # For cloud providers, add load balancer annotations
+    # AWS: service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # GCP: cloud.google.com/load-balancer-type: "Internal"
+    # Azure: service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "3000"
+    prometheus.io/path: "/api/metrics"
 spec:
-  type: LoadBalancer
+  type: ClusterIP  # Use ClusterIP with Ingress for production, or LoadBalancer for direct access
+  # For LoadBalancer, uncomment:
+  # type: LoadBalancer
+  # loadBalancerIP: "your-static-ip"  # For static IP
   ports:
   - port: 80
     targetPort: 3000
@@ -14,3 +25,7 @@ spec:
     name: http
   selector:
     app: opsguard-app
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800

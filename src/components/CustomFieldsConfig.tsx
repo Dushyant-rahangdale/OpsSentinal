@@ -142,6 +142,8 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
                                 <FormField
+                                    type="input"
+                                    inputType="text"
                                     label="Field Name"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -149,6 +151,8 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                                     placeholder="e.g., Customer ID"
                                 />
                                 <FormField
+                                    type="input"
+                                    inputType="text"
                                     label="Field Key"
                                     value={formData.key}
                                     onChange={(e) => setFormData({ ...formData, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
@@ -170,6 +174,8 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                                     />
                                 </div>
                                 <FormField
+                                    type="input"
+                                    inputType="text"
                                     label="Default Value (Optional)"
                                     value={formData.defaultValue}
                                     onChange={(e) => setFormData({ ...formData, defaultValue: e.target.value })}
@@ -179,6 +185,8 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
 
                             {formData.type === 'SELECT' && (
                                 <FormField
+                                    type="input"
+                                    inputType="text"
                                     label="Options (comma-separated)"
                                     value={formData.options}
                                     onChange={(e) => setFormData({ ...formData, options: e.target.value })}
@@ -308,7 +316,7 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                                         </p>
                                     </div>
                                     <Button
-                                        variant="error"
+                                        variant="danger"
                                         size="sm"
                                         onClick={() => handleDelete(field.id)}
                                         disabled={isPending}
@@ -324,6 +332,7 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
         </div>
     );
 }
+
 
 
 

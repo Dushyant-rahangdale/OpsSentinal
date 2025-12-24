@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { bootstrapAdmin } from '@/app/setup/actions';
 
 type FormState = {
@@ -11,7 +12,9 @@ type FormState = {
 };
 
 export default function BootstrapSetupForm() {
-    const [state, formAction] = useFormState<FormState>(bootstrapAdmin, {
+    const [state, formAction] = useActionState<FormState, FormData>(async (_prevState, formData) => {
+        return bootstrapAdmin(formData);
+    }, {
         error: null,
         success: false
     });

@@ -11,6 +11,7 @@ interface BadgeProps {
   dot?: boolean;
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 /**
@@ -25,6 +26,7 @@ export default function Badge({
   dot = false,
   children,
   className = '',
+  style: customStyle = {},
 }: BadgeProps) {
   const baseStyles: React.CSSProperties = {
     display: 'inline-flex',
@@ -94,6 +96,7 @@ export default function Badge({
         ...baseStyles,
         ...sizeStyles[size],
         ...variantStyles[variant],
+        ...customStyle,
       }}
     >
       {dot && <span style={dotStyles} />}
@@ -101,6 +104,7 @@ export default function Badge({
     </span>
   );
 }
+
 
 
 

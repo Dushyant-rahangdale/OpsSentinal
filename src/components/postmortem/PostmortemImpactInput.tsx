@@ -40,24 +40,27 @@ export default function PostmortemImpactInput({ metrics, onChange }: PostmortemI
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="Users Affected"
-                    type="number"
                     value={metrics.usersAffected?.toString() || ''}
                     onChange={(e) => updateMetric('usersAffected', e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="0"
                     helperText="Number of users impacted"
                 />
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="Downtime (minutes)"
-                    type="number"
                     value={metrics.downtimeMinutes?.toString() || ''}
                     onChange={(e) => updateMetric('downtimeMinutes', e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="0"
                     helperText="Total downtime duration"
                 />
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="Error Rate (%)"
-                    type="number"
                     value={metrics.errorRate?.toString() || ''}
                     onChange={(e) => updateMetric('errorRate', e.target.value ? parseFloat(e.target.value) : undefined)}
                     placeholder="0"
@@ -65,24 +68,27 @@ export default function PostmortemImpactInput({ metrics, onChange }: PostmortemI
                     step="0.1"
                 />
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="API Errors"
-                    type="number"
                     value={metrics.apiErrors?.toString() || ''}
                     onChange={(e) => updateMetric('apiErrors', e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="0"
                     helperText="Total API errors during incident"
                 />
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="SLA Breaches"
-                    type="number"
                     value={metrics.slaBreaches?.toString() || ''}
                     onChange={(e) => updateMetric('slaBreaches', e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="0"
                     helperText="Number of SLA violations"
                 />
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="Performance Degradation (%)"
-                    type="number"
                     value={metrics.performanceDegradation?.toString() || ''}
                     onChange={(e) => updateMetric('performanceDegradation', e.target.value ? parseFloat(e.target.value) : undefined)}
                     placeholder="0"
@@ -90,8 +96,9 @@ export default function PostmortemImpactInput({ metrics, onChange }: PostmortemI
                     step="0.1"
                 />
                 <FormField
+                    type="input"
+                    inputType="number"
                     label="Revenue Impact ($)"
-                    type="number"
                     value={metrics.revenueImpact?.toString() || ''}
                     onChange={(e) => updateMetric('revenueImpact', e.target.value ? parseFloat(e.target.value) : undefined)}
                     placeholder="0"
@@ -99,6 +106,8 @@ export default function PostmortemImpactInput({ metrics, onChange }: PostmortemI
                     step="0.01"
                 />
                 <FormField
+                    type="input"
+                    inputType="text"
                     label="Services Affected"
                     value={metrics.servicesAffected?.join(', ') || ''}
                     onChange={(e) => updateServicesAffected(e.target.value)}
@@ -109,6 +118,7 @@ export default function PostmortemImpactInput({ metrics, onChange }: PostmortemI
         </div>
     );
 }
+
 
 
 

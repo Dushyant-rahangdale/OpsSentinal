@@ -1,6 +1,6 @@
 'use client';
 
-import { IncidentStatus } from '@prisma/client';
+import type { IncidentStatus, Service } from '@prisma/client';
 import Link from 'next/link';
 import StatusBadge from '../StatusBadge';
 import SLAIndicator from '../SLAIndicator';
@@ -122,7 +122,7 @@ export default function IncidentSidebar({
 
             {/* SLA Indicator */}
             <div style={{ marginBottom: '0.5rem' }}>
-                <SLAIndicator incident={incident as any} service={incident.service} showDetails={true} />
+                <SLAIndicator incident={incident as any} service={incident.service as Service} showDetails={true} />
             </div>
 
             {/* Watchers */}

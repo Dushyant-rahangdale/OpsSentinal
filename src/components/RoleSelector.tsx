@@ -5,7 +5,7 @@ import { useTransition } from 'react';
 type RoleSelectorProps = {
     userId: string;
     currentRole: string;
-    updateRole: (formData: FormData) => Promise<void>;
+    updateRole: (formData: FormData) => Promise<unknown>;
 };
 
 export default function RoleSelector({ userId, currentRole, updateRole }: RoleSelectorProps) {

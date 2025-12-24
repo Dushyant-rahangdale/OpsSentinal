@@ -35,9 +35,9 @@ export default function SettingsNav({ isAdmin = false }: Props) {
             disabled: !isAdmin
         },
         { 
-            href: '/settings/system', 
-            label: 'System Settings', 
-            description: 'Notification providers (Admin only)',
+            href: '/settings/notifications', 
+            label: 'Notification Providers', 
+            description: 'Configure SMS and push providers (Admin only)',
             adminOnly: true,
             disabled: !isAdmin
         }

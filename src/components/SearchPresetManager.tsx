@@ -568,7 +568,7 @@ export default function SearchPresetManager({
                                 Cancel
                             </Button>
                             <Button
-                                variant="error"
+                                variant="danger"
                                 onClick={() => handleDelete(showDeleteConfirm)}
                                 isLoading={isPending}
                             >
@@ -688,4 +688,3 @@ function PresetCard({
         </div>
     );
 }
-

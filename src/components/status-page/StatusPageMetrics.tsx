@@ -143,7 +143,7 @@ export default function StatusPageMetrics({
                         gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
                     }}>
                         {services.map((service) => (
-                            <SkeletonCard key={service.id} height={200} />
+                            <SkeletonCard key={service.id} />
                         ))}
                     </div>
                 }
@@ -353,6 +353,7 @@ export default function StatusPageMetrics({
                     );
                 })}
             </div>
+            </LoadingWrapper>
             <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes shimmer {
                     0% {

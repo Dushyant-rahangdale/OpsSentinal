@@ -1,0 +1,26 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: opsguard-app-pdb
+  namespace: opsguard
+  labels:
+    app: opsguard-app
+spec:
+  minAvailable: 1  # Ensure at least 1 pod is available during disruptions
+  selector:
+    matchLabels:
+      app: opsguard-app
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: opsguard-postgres-pdb
+  namespace: opsguard
+  labels:
+    app: opsguard-postgres
+spec:
+  minAvailable: 1  # For single replica PostgreSQL
+  selector:
+    matchLabels:
+      app: opsguard-postgres
+

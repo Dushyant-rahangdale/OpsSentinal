@@ -122,6 +122,7 @@ export default function PostmortemActionItems({ actionItems, onChange, users = [
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--spacing-2)' }}>
                         <FormField
                             type="input"
+                            inputType="text"
                             label="Title"
                             value={newItem.title || ''}
                             onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
@@ -164,8 +165,9 @@ export default function PostmortemActionItems({ actionItems, onChange, users = [
                             />
                         )}
                         <FormField
+                            type="input"
+                            inputType="date"
                             label="Due Date"
-                            type="date"
                             value={newItem.dueDate || ''}
                             onChange={(e) => setNewItem({ ...newItem, dueDate: e.target.value })}
                         />
@@ -285,6 +287,8 @@ export default function PostmortemActionItems({ actionItems, onChange, users = [
                                         gap: 'var(--spacing-2)',
                                     }}>
                                         <FormField
+                                            type="input"
+                                            inputType="text"
                                             label="Title"
                                             value={item.title}
                                             onChange={(e) => updateItem(item.id, { title: e.target.value })}
@@ -324,12 +328,13 @@ export default function PostmortemActionItems({ actionItems, onChange, users = [
                                                 ]}
                                             />
                                         )}
-                                        <FormField
-                                            label="Due Date"
-                                            type="date"
-                                            value={item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : ''}
-                                            onChange={(e) => updateItem(item.id, { dueDate: e.target.value })}
-                                        />
+                                            <FormField
+                                                type="input"
+                                                inputType="date"
+                                                label="Due Date"
+                                                value={item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => updateItem(item.id, { dueDate: e.target.value })}
+                                            />
                                     </div>
                                 )}
                             </div>
@@ -340,4 +345,3 @@ export default function PostmortemActionItems({ actionItems, onChange, users = [
         </div>
     );
 }
-

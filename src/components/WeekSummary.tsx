@@ -11,13 +11,18 @@ type Shift = {
     userName: string;
 };
 
+type ShiftWithDates = Shift & {
+    startDate: Date;
+    endDate: Date;
+};
+
 type WeekSummaryProps = {
     shifts: Shift[];
     timeZone: string;
 };
 
 export default function WeekSummary({ shifts, timeZone }: WeekSummaryProps) {
-    const weekShifts = useMemo(() => {
+    const weekShifts = useMemo<ShiftWithDates[]>(() => {
         const now = new Date();
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
@@ -39,7 +44,7 @@ export default function WeekSummary({ shifts, timeZone }: WeekSummaryProps) {
     }, [shifts]);
 
     const groupedByDay = useMemo(() => {
-        const groups = new Map<string, Shift[]>();
+        const groups = new Map<string, ShiftWithDates[]>();
         
         weekShifts.forEach(shift => {
             const dayKey = shift.startDate.toLocaleDateString('en-US', { 

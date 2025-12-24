@@ -123,6 +123,7 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
         });
         return map;
     }, [layers]);
+    const defaultLayerColor = { bg: '#e0f2fe', border: '#bae6fd', text: '#0c4a6e' };
 
     const formatTime = (date: Date) => {
         return date.toLocaleTimeString('en-US', {
@@ -296,7 +297,7 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                         {filteredShifts.map(shift => {
                             const position = getShiftPosition(shift);
-                            const colors = layerColors.get(shift.layerName) || layerColors.values().next().value;
+                            const colors = layerColors.get(shift.layerName) || layerColors.values().next().value || defaultLayerColor;
                             const isMultiDay = shift.startDate.toDateString() !== shift.endDate.toDateString();
                             
                             return (
