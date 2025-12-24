@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
 import RoleSelector from './RoleSelector';
@@ -60,8 +60,8 @@ export default function UserTable({
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
-    // Build sort URL function on client side
-    const buildSortUrl = (newSortBy: string): string => {
+    // Build sort URL function on client side - memoized with useCallback
+    const buildSortUrl = useCallback((newSortBy: string): string => {
         const params = new URLSearchParams(searchParams.toString());
         if (sortBy === newSortBy && sortOrder === 'asc') {
             // If already sorted by this field ascending, switch to descending
@@ -78,30 +78,37 @@ export default function UserTable({
         }
         params.delete('page'); // Reset to page 1 when sorting
         return `${pathname}?${params.toString()}`;
-    };
+    }, [searchParams, pathname, sortBy, sortOrder]);
+    
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
 
-    const toggleUser = (id: string) => {
-        const newSelected = new Set(selectedIds);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
-        } else {
-            newSelected.add(id);
-        }
-        setSelectedIds(newSelected);
-    };
+    // Memoize toggle functions to prevent unnecessary re-renders
+    const toggleUser = useCallback((id: string) => {
+        setSelectedIds(prev => {
+            const newSelected = new Set(prev);
+            if (newSelected.has(id)) {
+                newSelected.delete(id);
+            } else {
+                newSelected.add(id);
+            }
+            return newSelected;
+        });
+    }, []);
 
-    const toggleAll = () => {
-        if (selectedIds.size === users.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(users.map(u => u.id)));
-        }
-    };
+    const toggleAll = useCallback(() => {
+        setSelectedIds(prev => {
+            if (prev.size === users.length) {
+                return new Set();
+            } else {
+                return new Set(users.map(u => u.id));
+            }
+        });
+    }, [users]);
 
-    const allSelected = users.length > 0 && selectedIds.size === users.length;
-    const someSelected = selectedIds.size > 0 && selectedIds.size < users.length;
+    // Memoize computed values
+    const allSelected = useMemo(() => users.length > 0 && selectedIds.size === users.length, [users.length, selectedIds.size]);
+    const someSelected = useMemo(() => selectedIds.size > 0 && selectedIds.size < users.length, [selectedIds.size, users.length]);
 
     return (
         <div style={{

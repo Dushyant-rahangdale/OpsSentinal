@@ -753,11 +753,11 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - [x] Implement code splitting - ✅ Configured in next.config.ts
 - [x] Add lazy loading for components - ✅ DashboardClient with lazy loading created
 - [x] Optimize bundle size - ✅ Webpack optimization configured
-- [x] Implement React.memo where appropriate - ✅ Added to IncidentTable, ServiceCard, StatusBadge, PriorityBadge, EscalationStatusBadge, MetricCard, IncidentCard, TeamMemberCard, NoteCard, PostmortemCard, ChartCard, Badge, SLAIndicator (January 2025)
+- [x] Implement React.memo where appropriate - ✅ Added to IncidentTable, ServiceCard, StatusBadge, PriorityBadge, EscalationStatusBadge, MetricCard, IncidentCard, TeamMemberCard, NoteCard, PostmortemCard, ChartCard, Badge, SLAIndicator, IncidentList (January 2025)
 - [x] Add virtual scrolling for long lists - ✅ VirtualList component created (January 2025)
 - [x] Optimize re-renders - ✅ Added React.memo to frequently rendered components (January 2025)
-- [x] Optimize expensive computations - ✅ Added useMemo to NoteCard markdown formatting, LayerCard availableUsers, SLAIndicator calculations, Badge styles, and DashboardPerformanceMetrics trend calculations (January 2025)
-- [x] Optimize event handlers - ✅ Added useCallback to Card, GlobalKeyboardHandlerWrapper, VirtualList, LayerCard, PolicyStepCard, and DashboardPerformanceMetrics format functions (January 2025)
+- [x] Optimize expensive computations - ✅ Added useMemo to NoteCard markdown formatting, LayerCard availableUsers, SLAIndicator calculations, Badge styles, DashboardPerformanceMetrics trend calculations, and UserTable computed values (January 2025)
+- [x] Optimize event handlers - ✅ Added useCallback to Card, GlobalKeyboardHandlerWrapper, VirtualList, LayerCard, PolicyStepCard, DashboardPerformanceMetrics format functions, and UserTable handlers (January 2025)
 - [ ] Add performance monitoring - **Can add**
 
 **Files Created/Modified:**
@@ -777,6 +777,8 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - `src/components/ui/Badge.tsx` - ✅ Added React.memo and useMemo for style objects (January 2025)
 - `src/components/incident/SLAIndicator.tsx` - ✅ Added React.memo with custom comparison and useMemo for SLA calculations (January 2025)
 - `src/components/DashboardPerformanceMetrics.tsx` - ✅ Added useCallback for format functions and useMemo for trend calculations (January 2025)
+- `src/components/service/IncidentList.tsx` - ✅ Added React.memo with custom comparison and moved formatDistanceToNow outside component (January 2025)
+- `src/components/UserTable.tsx` - ✅ Added useCallback for buildSortUrl, toggleUser, toggleAll and useMemo for computed values (January 2025)
 - All page components - Code splitting
 - `next.config.ts` - Bundle optimization
 

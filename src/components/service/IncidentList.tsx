@@ -1,8 +1,10 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import StatusBadge from '../incident/StatusBadge';
-// Simple date formatting helper
+
+// Simple date formatting helper - moved outside component to prevent recreation
 function formatDistanceToNow(date: Date): string {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -33,7 +35,7 @@ type IncidentListProps = {
     serviceId: string;
 };
 
-export default function IncidentList({ incidents, serviceId }: IncidentListProps) {
+function IncidentList({ incidents, serviceId }: IncidentListProps) {
     if (incidents.length === 0) {
         return (
             <div style={{ 
@@ -168,3 +170,20 @@ export default function IncidentList({ incidents, serviceId }: IncidentListProps
     );
 }
 
+// Memoize IncidentList to prevent unnecessary re-renders when parent updates
+export default memo(IncidentList, (prevProps, nextProps) => {
+    // Custom comparison: only re-render if incidents or serviceId changed
+    return (
+        prevProps.serviceId === nextProps.serviceId &&
+        prevProps.incidents.length === nextProps.incidents.length &&
+        prevProps.incidents.every((inc, i) => 
+            inc.id === nextProps.incidents[i]?.id &&
+            inc.status === nextProps.incidents[i]?.status &&
+            inc.urgency === nextProps.incidents[i]?.urgency &&
+            inc.priority === nextProps.incidents[i]?.priority &&
+            inc.createdAt.getTime() === nextProps.incidents[i]?.createdAt.getTime() &&
+            inc.resolvedAt?.getTime() === nextProps.incidents[i]?.resolvedAt?.getTime() &&
+            inc.assignee?.id === nextProps.incidents[i]?.assignee?.id
+        )
+    );
+});
