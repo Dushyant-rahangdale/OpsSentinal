@@ -1,6 +1,6 @@
 'use client';
 
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, ReactNode, memo } from 'react';
 import Spinner from './Spinner';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link';

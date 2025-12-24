@@ -57,6 +57,46 @@ export default function Modal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, closeOnEscape, onClose]);
 
+  // Get all focusable elements within modal
+  const getFocusableElements = (): HTMLElement[] => {
+    if (!modalRef.current) return [];
+    const selector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    return Array.from(modalRef.current.querySelectorAll<HTMLElement>(selector))
+      .filter(el => !el.hasAttribute('disabled') && !el.hasAttribute('aria-hidden'));
+  };
+
+  // Focus trap - keep focus within modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      // If Shift+Tab on first element, move to last
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      // If Tab on last element, move to first
+      if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
+  }, [isOpen]);
+
   // Focus management
   useEffect(() => {
     if (isOpen) {
@@ -65,10 +105,10 @@ export default function Modal({
       
       // Focus modal
       setTimeout(() => {
-        const firstFocusable = modalRef.current?.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        ) as HTMLElement;
-        firstFocusable?.focus();
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length > 0) {
+          focusableElements[0].focus();
+        }
       }, 0);
 
       // Prevent body scroll

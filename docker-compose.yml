@@ -62,3 +62,6 @@ volumes:
 networks:
   opsguard-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: opsguard-br0
+      com.docker.network.driver.mtu: 1500

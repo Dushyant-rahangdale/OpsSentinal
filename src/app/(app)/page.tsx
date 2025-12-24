@@ -20,6 +20,7 @@ import DashboardUrgencyDistribution from '@/components/DashboardUrgencyDistribut
 import DashboardSLAMetrics from '@/components/DashboardSLAMetrics';
 import { calculateSLAMetrics } from '@/lib/sla';
 import { Suspense } from 'react';
+import DashboardRealtimeWrapper from '@/components/DashboardRealtimeWrapper';
 
 export const revalidate = 30;
 
@@ -418,6 +419,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   };
 
   return (
+    <DashboardRealtimeWrapper>
     <main style={{ paddingBottom: '2rem' }}>
       <div className="command-center-hero" style={{
         background: 'var(--gradient-primary)', // Match sidebar theme
@@ -1164,5 +1166,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </aside>
       </div>
     </main>
+    </DashboardRealtimeWrapper>
   );
 }

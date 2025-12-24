@@ -1547,6 +1547,46 @@ select option {
 
 /* Touch-friendly improvements for mobile */
 @media (hover: none) and (pointer: coarse) {
+  /* Ensure all interactive elements have minimum touch target size (44x44px) */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  [role="button"],
+  [role="link"] {
+    min-height: 44px;
+    min-width: 44px;
+    padding: var(--spacing-3) var(--spacing-4);
+  }
+
+  /* Increase spacing between touch targets */
+  button + button,
+  a + a,
+  .touch-target + .touch-target {
+    margin-left: var(--spacing-3);
+  }
+
+  /* Improve tap feedback */
+  button:active,
+  a:active,
+  [role="button"]:active {
+    transform: scale(0.98);
+    opacity: 0.8;
+  }
+
+  /* Better form inputs on mobile */
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: var(--spacing-4);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
   .login-btn {
     min-height: 44px;
     /* Minimum touch target size */
@@ -1566,6 +1606,32 @@ select option {
 
   .login-feature-item {
     min-height: 44px;
+  }
+
+  /* Dashboard mobile optimizations */
+  .command-center-hero {
+    padding: var(--spacing-4) !important;
+  }
+
+  .command-center-header {
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .glass-panel {
+    padding: var(--spacing-4) !important;
+  }
+
+  /* Table mobile optimizations */
+  table {
+    font-size: var(--font-size-sm);
+  }
+
+  /* Card spacing on mobile */
+  .card,
+  [class*="card"] {
+    padding: var(--spacing-4);
+    margin-bottom: var(--spacing-4);
   }
 }
 

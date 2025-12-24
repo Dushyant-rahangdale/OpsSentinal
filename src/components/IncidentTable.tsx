@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, memo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { bulkAcknowledge, bulkResolve } from '@/app/(app)/incidents/bulk-actions';
@@ -21,7 +21,7 @@ type IncidentTableProps = {
     sortOrder?: string;
 };
 
-export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrder = 'desc' }: IncidentTableProps) {
+export default memo(function IncidentTable({ incidents, sortBy = 'createdAt', sortOrder = 'desc' }: IncidentTableProps) {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
@@ -31,10 +31,10 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
     // Handle sort click
     const handleSortClick = (newSortBy: string) => {
         const params = new URLSearchParams(searchParams.toString());
-        
+
         // Always reset page when sorting
         params.delete('page');
-        
+
         if (sortBy === newSortBy && sortOrder === 'asc') {
             // If already sorted by this field ascending, switch to descending
             params.set('sortBy', newSortBy);
@@ -48,7 +48,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
             params.set('sortBy', newSortBy);
             params.set('sortOrder', 'asc');
         }
-        
+
         const queryString = params.toString();
         const newUrl = queryString ? `${pathname}?${queryString}` : pathname || '/';
         router.push(newUrl);
@@ -160,7 +160,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                         <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
                             <button
                                 onClick={() => handleSortClick('status')}
-                                style={{ 
+                                style={{
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
@@ -186,7 +186,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                         <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
                             <button
                                 onClick={() => handleSortClick('urgency')}
-                                style={{ 
+                                style={{
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
@@ -212,7 +212,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                         <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
                             <button
                                 onClick={() => handleSortClick('title')}
-                                style={{ 
+                                style={{
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
@@ -240,7 +240,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                         <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
                             <button
                                 onClick={() => handleSortClick('createdAt')}
-                                style={{ 
+                                style={{
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
@@ -332,7 +332,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                             </td>
                             <td style={{ padding: '1rem' }}>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <Link 
+                                    <Link
                                         href={`/incidents/${incident.id}`}
                                         style={{
                                             padding: '0.25rem 0.75rem',
@@ -348,7 +348,7 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
                                         View
                                     </Link>
                                     {incident.status === 'RESOLVED' && (
-                                        <Link 
+                                        <Link
                                             href={`/postmortems/${incident.id}`}
                                             style={{
                                                 padding: '0.25rem 0.75rem',
@@ -388,4 +388,4 @@ export default function IncidentTable({ incidents, sortBy = 'createdAt', sortOrd
             </table>
         </div>
     );
-}
+});
