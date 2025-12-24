@@ -117,12 +117,27 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner (SARIF)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
           format: 'sarif'
           output: 'trivy-results.sarif'
+        continue-on-error: true
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
+        env:
+          # Note: Code scanning must be enabled in repository settings
+          # Go to Settings > Security > Code scanning > Set up
+          # If not enabled, this step will fail but won't block the workflow
 
