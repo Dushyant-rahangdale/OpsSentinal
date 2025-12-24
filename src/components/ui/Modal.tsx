@@ -93,8 +93,26 @@ export default function Modal({
       }
     };
 
+    // Prevent focus from escaping modal - trap focus within modal
+    const handleFocusIn = (e: FocusEvent) => {
+      if (!modalRef.current) return;
+      
+      // If focus moves outside modal, bring it back
+      if (!modalRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length > 0) {
+          focusableElements[0].focus();
+        }
+      }
+    };
+
     document.addEventListener('keydown', handleTabKey);
-    return () => document.removeEventListener('keydown', handleTabKey);
+    document.addEventListener('focusin', handleFocusIn);
+    return () => {
+      document.removeEventListener('keydown', handleTabKey);
+      document.removeEventListener('focusin', handleFocusIn);
+    };
   }, [isOpen]);
 
   // Focus management
@@ -128,12 +146,37 @@ export default function Modal({
     };
   }, [isOpen]);
 
-  // Handle backdrop click
+  // Handle backdrop click - prevent clicks outside modal from focusing elements
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (closeOnBackdropClick && e.target === e.currentTarget) {
       onClose();
     }
   };
+
+  // Prevent clicks outside modal from focusing elements behind it
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (!modalRef.current) return;
+      
+      // If click is outside modal, prevent default to stop focus
+      if (!modalRef.current.contains(e.target as Node)) {
+        e.preventDefault();
+        // Refocus modal to maintain focus trap
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length > 0) {
+          focusableElements[0].focus();
+        }
+      }
+    };
+
+    // Use capture phase to intercept before other handlers
+    document.addEventListener('mousedown', handleMouseDown, true);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown, true);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
