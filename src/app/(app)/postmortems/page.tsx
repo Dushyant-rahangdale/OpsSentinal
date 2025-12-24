@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import PostmortemCard from '@/components/PostmortemCard';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export default async function PostmortemsPage({
     searchParams,
@@ -24,6 +25,16 @@ export default async function PostmortemsPage({
     const postmortems = await getAllPostmortems(status);
     const permissions = await getUserPermissions();
     const canCreate = permissions.isResponderOrAbove;
+    
+    // Get user timezone for date formatting
+    const email = session?.user?.email ?? null;
+    const user = email
+        ? await prisma.user.findUnique({
+            where: { email },
+            select: { timeZone: true }
+        })
+        : null;
+    const userTimeZone = getUserTimeZone(user);
 
     // Get resolved incidents without postmortems for quick create
     const resolvedIncidentsWithoutPostmortems = canCreate
@@ -180,7 +191,7 @@ export default async function PostmortemsPage({
                                                 {incident.title}
                                             </div>
                                             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                                                Resolved {incident.resolvedAt?.toLocaleDateString()}
+                                                Resolved {incident.resolvedAt ? formatDateTime(incident.resolvedAt, userTimeZone, { format: 'date' }) : 'N/A'}
                                             </div>
                                         </Link>
                                     ))}

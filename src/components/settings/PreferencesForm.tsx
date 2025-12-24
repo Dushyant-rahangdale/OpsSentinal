@@ -1,10 +1,10 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { updatePreferences } from '@/app/(app)/settings/actions';
-import { getAllTimeZones } from '@/lib/timezone';
+import TimeZoneSelect from '@/components/TimeZoneSelect';
 
 type Props = {
     timeZone: string;
@@ -29,13 +29,6 @@ function SubmitButton() {
 export default function PreferencesForm({ timeZone, dailySummary, incidentDigest }: Props) {
     const [state, formAction] = useActionState<State, FormData>(updatePreferences, { error: null, success: false });
     const router = useRouter();
-    const [timezones, setTimezones] = useState<Array<{ value: string; label: string }>>([]);
-
-    // Load timezones on mount
-    useEffect(() => {
-        const tz = getAllTimeZones();
-        setTimezones(tz);
-    }, []);
 
     // Refresh the page after successful update
     useEffect(() => {
@@ -57,11 +50,10 @@ export default function PreferencesForm({ timeZone, dailySummary, incidentDigest
             <div className="settings-form">
                 <div className="settings-field">
                     <label>Timezone</label>
-                    <select name="timeZone" defaultValue={timeZone} key={timeZone}>
-                        {timezones.map(tz => (
-                            <option key={tz.value} value={tz.value}>{tz.label}</option>
-                        ))}
-                    </select>
+                    <TimeZoneSelect 
+                        name="timeZone" 
+                        defaultValue={timeZone}
+                    />
                     <p className="settings-field-hint">All times will be displayed in your selected timezone</p>
                 </div>
                 

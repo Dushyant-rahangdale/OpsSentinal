@@ -6,6 +6,8 @@ import PostmortemImpactMetrics from './PostmortemImpactMetrics';
 import type { ImpactMetrics } from './PostmortemImpactInput';
 import type { ActionItem } from './PostmortemActionItems';
 import { Badge, Button } from '@/components/ui';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 interface PostmortemDetailViewProps {
     postmortem: {
@@ -50,6 +52,8 @@ const STATUS_LABELS = {
 };
 
 export default function PostmortemDetailView({ postmortem, users = [], canEdit = false, incidentId }: PostmortemDetailViewProps) {
+    const { userTimeZone } = useTimezone();
+    
     // Parse data
     const parseTimeline = (timeline: any): TimelineEvent[] => {
         if (!timeline || !Array.isArray(timeline)) return [];
@@ -172,17 +176,17 @@ export default function PostmortemDetailView({ postmortem, users = [], canEdit =
                 }}>
                     <span>Created by <strong>{postmortem.createdBy.name}</strong></span>
                     <span>•</span>
-                    <span>{postmortem.createdAt.toLocaleDateString()}</span>
+                    <span>{formatDateTime(postmortem.createdAt, userTimeZone, { format: 'date' })}</span>
                     {postmortem.publishedAt && (
                         <>
                             <span>•</span>
-                            <span>Published {postmortem.publishedAt.toLocaleDateString()}</span>
+                            <span>Published {formatDateTime(postmortem.publishedAt, userTimeZone, { format: 'date' })}</span>
                         </>
                     )}
                     {postmortem.incident.resolvedAt && (
                         <>
                             <span>•</span>
-                            <span>Resolved {postmortem.incident.resolvedAt.toLocaleDateString()}</span>
+                            <span>Resolved {formatDateTime(postmortem.incident.resolvedAt, userTimeZone, { format: 'date' })}</span>
                         </>
                     )}
                 </div>
@@ -391,7 +395,7 @@ export default function PostmortemDetailView({ postmortem, users = [], canEdit =
                                             )}
                                             <div style={{ display: 'flex', gap: 'var(--spacing-3)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
                                                 {owner && <span>👤 {owner.name}</span>}
-                                                {item.dueDate && <span>📅 Due: {new Date(item.dueDate).toLocaleDateString()}</span>}
+                                                {item.dueDate && <span>📅 Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}</span>}
                                             </div>
                                         </div>
                                     </div>

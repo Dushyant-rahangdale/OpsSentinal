@@ -12,6 +12,7 @@ type TimeZoneSelectProps = {
 
 export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disabled }: TimeZoneSelectProps) {
     const [zones, setZones] = useState<Array<{ value: string; label: string }>>([]);
+    const [selectedValue, setSelectedValue] = useState(defaultValue);
 
     useEffect(() => {
         // Load timezones with labels
@@ -19,8 +20,19 @@ export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disable
         setZones(timezones);
     }, []);
 
+    // Update selected value when defaultValue prop changes (e.g., after save)
+    useEffect(() => {
+        setSelectedValue(defaultValue);
+    }, [defaultValue]);
+
     return (
-        <select name={name} defaultValue={defaultValue} id={id} disabled={disabled}>
+        <select 
+            name={name} 
+            value={selectedValue} 
+            onChange={(e) => setSelectedValue(e.target.value)}
+            id={id} 
+            disabled={disabled}
+        >
             {zones.map((zone) => (
                 <option key={zone.value} value={zone.value}>
                     {zone.label}

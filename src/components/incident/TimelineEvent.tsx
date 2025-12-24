@@ -1,5 +1,8 @@
 'use client';
 
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
+
 type TimelineEventProps = {
     message: string;
     createdAt: Date;
@@ -8,6 +11,7 @@ type TimelineEventProps = {
 };
 
 export default function TimelineEvent({ message, createdAt, isFirst = false, isLast = false }: TimelineEventProps) {
+    const { userTimeZone } = useTimezone();
     return (
         <div style={{ position: 'relative', paddingLeft: '1.5rem', paddingBottom: isLast ? 0 : '1.5rem' }}>
             {/* Timeline line */}
@@ -46,9 +50,9 @@ export default function TimelineEvent({ message, createdAt, isFirst = false, isL
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em'
                 }}>
-                    {new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatDateTime(createdAt, userTimeZone, { format: 'time' })}
                     <span style={{ marginLeft: '0.5rem', opacity: 0.6 }}>
-                        {new Date(createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        {formatDateTime(createdAt, userTimeZone, { format: 'short' })}
                     </span>
                 </div>
                 <div style={{

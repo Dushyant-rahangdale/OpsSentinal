@@ -16,6 +16,7 @@ import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import ThemeToggle from '@/components/ThemeToggle';
+import { TimezoneProvider } from '@/contexts/TimezoneContext';
 
 export const revalidate = 30;
 
@@ -34,7 +35,7 @@ export default async function AppLayout({
   const email = session?.user?.email ?? null;
   const dbUser = email ? await prisma.user.findUnique({
     where: { email },
-    select: { name: true, role: true }
+    select: { name: true, role: true, timeZone: true }
   }) : null;
   
   const userName = dbUser?.name || session?.user?.name || null;
@@ -56,12 +57,15 @@ export default async function AppLayout({
     ? `${criticalOpenCount} critical open`
     : 'No critical incidents';
 
+  const userTimeZone = dbUser?.timeZone || 'UTC';
+
   return (
     <AppErrorBoundary>
       <ToastProvider>
-        <GlobalKeyboardHandlerWrapper />
-        <SkipLinks />
-        <div className="app-shell">
+        <TimezoneProvider initialTimeZone={userTimeZone}>
+          <GlobalKeyboardHandlerWrapper />
+          <SkipLinks />
+          <div className="app-shell">
           <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
           <div className="content-shell">
             <header className="topbar-new">
@@ -87,6 +91,7 @@ export default async function AppLayout({
             </main>
           </div>
         </div>
+        </TimezoneProvider>
       </ToastProvider>
     </AppErrorBoundary>
   );

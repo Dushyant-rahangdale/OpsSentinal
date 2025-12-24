@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { formatDateFriendly } from '@/lib/date-format';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 import StatusBadge from './StatusBadge';
 import EscalationStatusBadge from './EscalationStatusBadge';
 import PriorityBadge from './PriorityBadge';
@@ -35,6 +36,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
     const router = useRouter();
     const searchParams = useSearchParams();
     const { showToast } = useToast();
+    const { userTimeZone } = useTimezone();
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkAction, setBulkAction] = useState<'reassign' | 'priority' | 'snooze' | 'urgency' | 'status' | null>(null);
@@ -661,21 +663,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                    {(() => {
-                                        const formatted = formatDateFriendly(incident.createdAt);
-                                        // formatDateFriendly returns "DD/MM/YYYY HH:MM"
-                                        const [datePart, timePart] = formatted.split(' ');
-                                        return (
-                                            <>
-                                                <div>{datePart || formatted}</div>
-                                                {timePart && (
-                                                    <div style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                                                        {timePart}
-                                                    </div>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
+                                    {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
                                 </td>
                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                     {canManageIncidents && (

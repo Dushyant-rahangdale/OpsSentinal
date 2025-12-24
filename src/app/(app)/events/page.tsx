@@ -1,5 +1,8 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +54,7 @@ export default async function EventLogsPage() {
                             {events.map((event) => (
                                 <tr key={event.id} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                        {new Date(event.createdAt).toLocaleString()}
+                                        {formatDateTime(event.createdAt, userTimeZone, { format: 'datetime' })}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <Link

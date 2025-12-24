@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { assertResponderOrAbove, getCurrentUser } from '@/lib/rbac';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export async function snoozeIncidentWithDuration(incidentId: string, durationMinutes: number, reason?: string) {
     try {
@@ -13,6 +14,7 @@ export async function snoozeIncidentWithDuration(incidentId: string, durationMin
 
     const snoozedUntil = new Date(Date.now() + durationMinutes * 60 * 1000);
     const user = await getCurrentUser();
+    const userTimeZone = getUserTimeZone(user);
 
     await prisma.incident.update({
         where: { id: incidentId },
@@ -24,7 +26,7 @@ export async function snoozeIncidentWithDuration(incidentId: string, durationMin
             nextEscalationAt: null,
             events: {
                 create: {
-                    message: `Incident snoozed until ${snoozedUntil.toLocaleString()}${reason ? ` (Reason: ${reason})` : ''}${user ? ` by ${user.name}` : ''}`
+                    message: `Incident snoozed until ${formatDateTime(snoozedUntil, userTimeZone, { format: 'datetime' })}${reason ? ` (Reason: ${reason})` : ''}${user ? ` by ${user.name}` : ''}`
                 }
             }
         }

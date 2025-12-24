@@ -6,6 +6,8 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import RoleSelector from './RoleSelector';
 import InviteLinkButton from './InviteLinkButton';
 import DeleteUserButton from './DeleteUserButton';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type User = {
     id: string;
@@ -57,6 +59,7 @@ export default function UserTable({
     sortBy = 'createdAt',
     sortOrder = 'desc'
 }: UserTableProps) {
+    const { userTimeZone } = useTimezone();
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
@@ -345,14 +348,7 @@ export default function UserTable({
                                 </td>
                                 <td style={{ padding: '0.875rem 1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                                     {user.createdAt ? (
-                                        new Date(user.createdAt).toLocaleString('en-US', {
-                                            year: 'numeric',
-                                            month: '2-digit',
-                                            day: '2-digit',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: true
-                                        })
+                                        formatDateTime(user.createdAt, userTimeZone, { format: 'datetime' })
                                     ) : (
                                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                                     )}

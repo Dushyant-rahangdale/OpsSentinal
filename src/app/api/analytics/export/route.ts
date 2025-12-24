@@ -7,6 +7,7 @@ import { jsonError } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { IncidentStatus as IncidentStatusEnum, IncidentUrgency as IncidentUrgencyEnum } from '@prisma/client';
 import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 const incidentStatusValues = new Set<string>(Object.values(IncidentStatusEnum));
 const incidentUrgencyValues = new Set<string>(Object.values(IncidentUrgencyEnum));
@@ -45,17 +46,9 @@ function createProgressBar(value: number, max: number, length: number = 20): str
     return '='.repeat(filled) + '-'.repeat(empty) + ` ${(percentage * 100).toFixed(1)}%`;
 }
 
-function formatDate(date: Date): string {
-    // Format as: Dec 21, 2025 09:31 PM
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[date.getMonth()];
-    const day = date.getDate();
-    const year = date.getFullYear();
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${month} ${day}, ${year} ${displayHours}:${minutes} ${ampm}`;
+function formatDate(date: Date, timeZone: string): string {
+    // Format as: Dec 21, 2025 09:31 PM in user's timezone
+    return formatDateTime(date, timeZone, { format: 'datetime', hour12: true });
 }
 
 export async function GET(req: NextRequest) {
@@ -71,6 +64,16 @@ export async function GET(req: NextRequest) {
             return jsonError(error instanceof Error ? error.message : 'Unauthorized', 403);
         }
 
+        // Get user timezone for date formatting
+        const email = session?.user?.email ?? null;
+        const user = email
+            ? await prisma.user.findUnique({
+                where: { email },
+                select: { timeZone: true }
+            })
+            : null;
+        const userTimeZone = getUserTimeZone(user);
+        
         const searchParams = req.nextUrl.searchParams;
         
         const teamId = searchParams.get('team') && searchParams.get('team') !== 'ALL' 
@@ -190,9 +193,9 @@ export async function GET(req: NextRequest) {
         csvRows.push(['              Operational Readiness Dashboard']);
         csvRows.push(['===============================================================']);
         csvRows.push(['']);
-        csvRows.push(['Report Generated:', formatDate(now)]);
+        csvRows.push(['Report Generated:', formatDate(now, userTimeZone)]);
         csvRows.push(['Time Window:', `Last ${windowDays} day${windowDays !== 1 ? 's' : ''}`]);
-        csvRows.push(['Report Period:', `${formatDate(recentStart)} to ${formatDate(now)}`]);
+        csvRows.push(['Report Period:', `${formatDate(recentStart, userTimeZone)} to ${formatDate(now, userTimeZone)}`]);
         csvRows.push(['']);
         
         // Filter information
@@ -321,8 +324,8 @@ export async function GET(req: NextRequest) {
                 incident.status,
                 incident.urgency,
                 incident.assignee?.name || incident.assignee?.email || 'Unassigned',
-                formatDate(incident.createdAt),
-                formatDate(incident.updatedAt),
+                formatDate(incident.createdAt, userTimeZone),
+                formatDate(incident.updatedAt, userTimeZone),
                 duration
             ]);
         });

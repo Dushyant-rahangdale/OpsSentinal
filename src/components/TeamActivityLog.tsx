@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type AuditLog = {
     id: string;
@@ -25,6 +27,7 @@ type TeamActivityLogProps = {
 };
 
 export default function TeamActivityLog({ teamId, logs, totalLogs, currentPage, totalPages, onPageChange }: TeamActivityLogProps) {
+    const { userTimeZone } = useTimezone();
     const formatAction = (action: string) => {
         return action
             .replace(/\./g, ' ')
@@ -106,7 +109,7 @@ export default function TeamActivityLog({ teamId, logs, totalLogs, currentPage, 
                                                 {formatAction(log.action)}
                                             </span>
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                {new Date(log.createdAt).toLocaleString()}
+                                                {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
                                             </span>
                                         </div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>

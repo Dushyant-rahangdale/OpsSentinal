@@ -4,6 +4,7 @@ import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import ConfirmDialog from './ConfirmDialog';
+import { formatDateTime } from '@/lib/timezone';
 
 type Override = {
     id: string;
@@ -24,16 +25,6 @@ type OverrideListProps = {
     title: string;
     emptyMessage: string;
 };
-
-function formatDateTime(date: Date, timeZone: string): string {
-    return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: timeZone
-    });
-}
 
 export default function OverrideList({
     overrides,
@@ -163,7 +154,7 @@ export default function OverrideList({
                                             fontSize: '0.75rem',
                                             fontWeight: '500'
                                         }}>
-                                            {formatDateTime(new Date(override.start), timeZone)}
+                                            {formatDateTime(override.start, timeZone, { format: 'short' })}
                                         </span>
                                         <span>→</span>
                                         <span style={{
@@ -174,7 +165,7 @@ export default function OverrideList({
                                             fontSize: '0.75rem',
                                             fontWeight: '500'
                                         }}>
-                                            {formatDateTime(new Date(override.end), timeZone)}
+                                            {formatDateTime(override.end, timeZone, { format: 'short' })}
                                         </span>
                                     </div>
                                     {override.replacesUser && (

@@ -3,9 +3,11 @@
 import { memo } from 'react';
 import Link from 'next/link';
 import StatusBadge from '../incident/StatusBadge';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 // Simple date formatting helper - moved outside component to prevent recreation
-function formatDistanceToNow(date: Date): string {
+function formatDistanceToNow(date: Date, timeZone: string): string {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -16,7 +18,7 @@ function formatDistanceToNow(date: Date): string {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return formatDateTime(date, timeZone, { format: 'date' });
 }
 
 type Incident = {
@@ -36,6 +38,8 @@ type IncidentListProps = {
 };
 
 function IncidentList({ incidents, serviceId }: IncidentListProps) {
+    const { userTimeZone } = useTimezone();
+    
     if (incidents.length === 0) {
         return (
             <div style={{ 
@@ -161,7 +165,7 @@ function IncidentList({ incidents, serviceId }: IncidentListProps) {
                             )}
                         </div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            {formatDistanceToNow(new Date(incident.createdAt))}
+                            {formatDistanceToNow(new Date(incident.createdAt), userTimeZone)}
                         </div>
                     </Link>
                 ))}

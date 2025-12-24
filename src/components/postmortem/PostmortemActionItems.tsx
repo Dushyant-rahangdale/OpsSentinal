@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Button, FormField } from '@/components/ui';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 export type ActionItem = {
     id: string;
@@ -46,6 +48,7 @@ const PRIORITY_LABELS = {
 };
 
 export default function PostmortemActionItems({ actionItems, onChange, users = [] }: PostmortemActionItemsProps) {
+    const { userTimeZone } = useTimezone();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [newItem, setNewItem] = useState<Partial<ActionItem>>({
         status: 'OPEN',
@@ -255,7 +258,7 @@ export default function PostmortemActionItems({ actionItems, onChange, users = [
                                                 <span>👤 {owner.name}</span>
                                             )}
                                             {item.dueDate && (
-                                                <span>📅 Due: {new Date(item.dueDate).toLocaleDateString()}</span>
+                                                <span>📅 Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}</span>
                                             )}
                                         </div>
                                     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 type TimelineShift = {
     id: string;
@@ -126,20 +127,11 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
     const defaultLayerColor = { bg: '#e0f2fe', border: '#bae6fd', text: '#0c4a6e' };
 
     const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-            timeZone
-        });
+        return formatDateTime(date, timeZone, { format: 'time', hour12: true });
     };
 
     const formatDate = (date: Date) => {
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            timeZone
-        });
+        return formatDateTime(date, timeZone, { format: 'short' }).split(',')[0] || formatDateTime(date, timeZone, { format: 'date' });
     };
 
     return (

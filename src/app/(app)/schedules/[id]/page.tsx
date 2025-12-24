@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
 import { buildScheduleBlocks } from '@/lib/oncall';
+import { formatDateTime, formatDateForInput } from '@/lib/timezone';
 import {
     addLayerUser,
     createLayer,
@@ -9,7 +10,8 @@ import {
     deleteOverride,
     moveLayerUser,
     removeLayerUser,
-    updateLayer
+    updateLayer,
+    updateSchedule
 } from '../actions';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -166,23 +168,8 @@ export default async function ScheduleDetailPage({
             }, null);
     const historyTotalPages = Math.max(1, Math.ceil(historyCount / historyPageSize));
 
-    const formatDateTime = (date: Date) =>
-        date.toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: schedule.timeZone
-        });
-    const formatDateInput = (date: Date) => {
-        const pad = (value: number) => String(value).padStart(2, '0');
-        const year = date.getFullYear();
-        const month = pad(date.getMonth() + 1);
-        const day = pad(date.getDate());
-        const hours = pad(date.getHours());
-        const minutes = pad(date.getMinutes());
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
-    };
+    const formatDateTimeLocal = (date: Date) =>
+        formatDateTime(date, schedule.timeZone, { format: 'short' });
 
     const scheduleTimezoneLabel = new Intl.DateTimeFormat('en-US', {
         timeZone: schedule.timeZone,
@@ -264,6 +251,15 @@ export default async function ScheduleDetailPage({
                             All times shown in schedule timezone
                         </span>
                     </p>
+                    {canManageSchedules && (
+                        <ScheduleEditForm
+                            scheduleId={schedule.id}
+                            currentName={schedule.name}
+                            currentTimeZone={schedule.timeZone}
+                            updateSchedule={updateSchedule}
+                            canManageSchedules={canManageSchedules}
+                        />
+                    )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                     <div style={{
@@ -404,7 +400,7 @@ export default async function ScheduleDetailPage({
                             scheduleId={schedule.id}
                             canManageSchedules={canManageSchedules}
                             createLayer={createLayer}
-                            defaultStartDate={formatDateInput(now)}
+                            defaultStartDate={formatDateForInput(now, schedule.timeZone)}
                         />
                     </section>
 

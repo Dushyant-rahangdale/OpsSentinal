@@ -116,9 +116,12 @@ export default function StatusPageServicesGrouped({
             return 'All time';
         }
         
-        const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+        const browserTz = getBrowserTimeZone();
+        const startFormatted = formatDateTime(start, browserTz, { format: 'short' });
+        const endFormatted = formatDateTime(now, browserTz, { format: 'short' });
+        const startMonth = startFormatted.split(',')[0]?.split(' ')[0] || 'Jan';
         const startYear = start.getFullYear();
-        const endMonth = now.toLocaleDateString('en-US', { month: 'short' });
+        const endMonth = endFormatted.split(',')[0]?.split(' ')[0] || 'Jan';
         const endYear = now.getFullYear();
         
         return `${startMonth} ${startYear}-${endMonth} ${endYear}`;

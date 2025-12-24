@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type ExportProps = {
   incidents: any[];
@@ -19,6 +21,7 @@ type ExportProps = {
 };
 
 export default function DashboardExport({ incidents, filters, metrics }: ExportProps) {
+  const { userTimeZone } = useTimezone();
   const [isExporting, setIsExporting] = useState(false);
 
   const exportToCSV = () => {
@@ -28,7 +31,7 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
     
     // Header
     csvRows.push('OpsGuard Dashboard Export');
-    csvRows.push(`Generated: ${new Date().toLocaleString()}`);
+    csvRows.push(`Generated: ${formatDateTime(new Date(), userTimeZone, { format: 'datetime' })}`);
     csvRows.push('');
     
     // Filters
@@ -58,7 +61,7 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
         incident.urgency || 'N/A',
         incident.service?.name || 'N/A',
         incident.assignee?.name || 'Unassigned',
-        new Date(incident.createdAt).toLocaleString()
+        formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })
       ];
       csvRows.push(row.join(','));
     });

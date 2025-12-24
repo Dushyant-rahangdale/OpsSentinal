@@ -4,6 +4,7 @@ import { sendNotification, NotificationChannel } from './notifications';
 import { buildScheduleBlocks } from './oncall';
 import { logger } from './logger';
 import { ESCALATION_LOCK_TIMEOUT_MS } from './config';
+import { formatDateTime } from './timezone';
 
 /**
  * Get the current on-call user for a schedule at a given time
@@ -304,7 +305,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         const delayMs = nextStep.delayMinutes * 60 * 1000;
         nextEscalationAt = new Date(Date.now() + delayMs);
         escalationStatus = 'ESCALATING';
-        nextStepMessage = `Next escalation step scheduled for ${nextEscalationAt.toLocaleString()} (${nextStep.delayMinutes} minute delay)`;
+        nextStepMessage = `Next escalation step scheduled for ${formatDateTime(nextEscalationAt, 'UTC', { format: 'datetime' })} (${nextStep.delayMinutes} minute delay)`;
     }
 
     await prisma.$transaction(async (tx) => {

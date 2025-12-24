@@ -62,6 +62,41 @@ export async function createSchedule(_prevState: ScheduleFormState, formData: Fo
     }
 }
 
+export async function updateSchedule(scheduleId: string, formData: FormData): Promise<{ error?: string } | undefined> {
+    try {
+        await assertAdminOrResponder();
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin or Responder access required.' };
+    }
+    
+    const name = (formData.get('name') as string)?.trim();
+    const timeZone = (formData.get('timeZone') as string) || 'UTC';
+
+    if (!name) {
+        return { error: 'Schedule name is required.' };
+    }
+
+    try {
+        await prisma.onCallSchedule.update({
+            where: { id: scheduleId },
+            data: { name, timeZone }
+        });
+
+        const scheduleName = await getScheduleName(scheduleId);
+        await notifyScheduleMembers(
+            scheduleId,
+            'Schedule updated',
+            `Schedule "${scheduleName}" timezone and name updated`
+        );
+
+        revalidatePath(`/schedules/${scheduleId}`);
+        revalidatePath('/schedules');
+        return undefined;
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to update schedule.' };
+    }
+}
+
 export async function createLayer(scheduleId: string, formData: FormData): Promise<{ error?: string } | undefined> {
     try {
         await assertAdminOrResponder();

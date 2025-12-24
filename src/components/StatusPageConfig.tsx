@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react';
 import { Card, Button, FormField, Switch, Checkbox } from '@/components/ui';
 import { useRouter } from 'next/navigation';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
@@ -58,6 +60,7 @@ const ANNOUNCEMENT_TYPES = [
 ];
 
 export default function StatusPageConfig({ statusPage, allServices }: StatusPageConfigProps) {
+    const { browserTimeZone } = useTimezone();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -224,7 +227,16 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        ...formData,
+                        name: formData.name,
+                        subdomain: formData.subdomain || null,
+                        customDomain: formData.customDomain || null,
+                        enabled: formData.enabled,
+                        showServices: formData.showServices,
+                        showIncidents: formData.showIncidents,
+                        showMetrics: formData.showMetrics,
+                        footerText: formData.footerText || null,
+                        contactEmail: formData.contactEmail || null,
+                        contactUrl: formData.contactUrl || null,
                         branding: brandingData,
                         serviceIds: Array.from(selectedServices),
                         serviceConfigs: serviceConfigs,
@@ -1185,7 +1197,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                         </div>
                                                         <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
                                                             <span>
-                                                                {new Date(announcement.startDate).toLocaleDateString()} {announcement.endDate ? `- ${new Date(announcement.endDate).toLocaleDateString()}` : ''}
+                                                                {formatDateTime(announcement.startDate, browserTimeZone, { format: 'date' })} {announcement.endDate ? `- ${formatDateTime(announcement.endDate, browserTimeZone, { format: 'date' })}` : ''}
                                                             </span>
                                                             <Button
                                                                 type="button"

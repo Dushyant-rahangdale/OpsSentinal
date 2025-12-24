@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import ApiKeysPanel from '@/components/settings/ApiKeysPanel';
 import SettingsSection from '@/components/settings/SettingsSection';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export default async function ApiKeysSettingsPage() {
     const session = await getServerSession(authOptions);
@@ -10,9 +11,10 @@ export default async function ApiKeysSettingsPage() {
     const user = email
         ? await prisma.user.findUnique({
             where: { email },
-            select: { id: true }
+            select: { id: true, timeZone: true }
         })
         : null;
+    const timeZone = getUserTimeZone(user);
     const keys = user
         ? await prisma.apiKey.findMany({
             where: { userId: user.id },
@@ -31,9 +33,9 @@ export default async function ApiKeysSettingsPage() {
                     name: key.name,
                     prefix: key.prefix,
                     scopes: key.scopes,
-                    createdAt: key.createdAt.toLocaleDateString(),
-                    lastUsedAt: key.lastUsedAt ? key.lastUsedAt.toLocaleDateString() : null,
-                    revokedAt: key.revokedAt ? key.revokedAt.toLocaleDateString() : null
+                    createdAt: formatDateTime(key.createdAt, timeZone, { format: 'date' }),
+                    lastUsedAt: key.lastUsedAt ? formatDateTime(key.lastUsedAt, timeZone, { format: 'date' }) : null,
+                    revokedAt: key.revokedAt ? formatDateTime(key.revokedAt, timeZone, { format: 'date' }) : null
                 }))}
             />
         </SettingsSection>

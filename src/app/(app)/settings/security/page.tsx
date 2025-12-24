@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import SecurityForm from '@/components/settings/SecurityForm';
 import SettingsSection from '@/components/settings/SettingsSection';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export default async function SecuritySettingsPage() {
     const session = await getServerSession(authOptions);
@@ -10,11 +11,12 @@ export default async function SecuritySettingsPage() {
     const user = email
         ? await prisma.user.findUnique({
             where: { email },
-            select: { passwordHash: true, updatedAt: true }
+            select: { passwordHash: true, updatedAt: true, timeZone: true }
         })
         : null;
     const ssoEnabled = Boolean(process.env.OIDC_ISSUER);
     const hasPassword = Boolean(user?.passwordHash);
+    const timeZone = getUserTimeZone(user);
 
     return (
         <SettingsSection
@@ -46,7 +48,7 @@ export default async function SecuritySettingsPage() {
                 <div className="settings-row">
                     <div>
                         <h3>Last updated</h3>
-                        <p>{user?.updatedAt ? user.updatedAt.toLocaleString() : 'No recent changes'}</p>
+                        <p>{user?.updatedAt ? formatDateTime(user.updatedAt, timeZone, { format: 'datetime' }) : 'No recent changes'}</p>
                     </div>
                 </div>
 

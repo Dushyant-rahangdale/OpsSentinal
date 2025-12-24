@@ -175,7 +175,7 @@ export function generateIncidentEmailHTML(incident: {
             ` : ''}
             <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Created:</td>
-                <td style="padding: 8px 0;">${incident.createdAt.toLocaleString()}</td>
+                <td style="padding: 8px 0;">${formatDateTime(incident.createdAt, timeZone, { format: 'datetime' })}</td>
             </tr>
         </table>
     </div>
@@ -229,10 +229,11 @@ export async function sendIncidentEmail(
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
 
         const subject = `[${incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO'}] ${incident.title}`;
+        const userTimeZone = getUserTimeZone(user);
         const html = generateIncidentEmailHTML({
             ...incident,
             incidentUrl
-        });
+        }, userTimeZone);
 
         return await sendEmail({
             to: user.email,

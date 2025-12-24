@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui';
-import { type FilterCriteria, criteriaToSearchParams } from '@/lib/search-presets';
+import { type FilterCriteria, criteriaToSearchParams } from '@/lib/search-presets-utils';
 
 type SearchPreset = {
     id: string;

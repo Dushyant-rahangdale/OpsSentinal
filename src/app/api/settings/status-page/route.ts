@@ -61,17 +61,21 @@ export async function POST(req: NextRequest) {
 
         // Update status page
         const updateData: Prisma.StatusPageUpdateInput = {
-            name,
-            subdomain: subdomain || null,
-            customDomain: customDomain || null,
+            subdomain: subdomain && subdomain.trim() ? subdomain.trim() : null,
+            customDomain: customDomain && customDomain.trim() ? customDomain.trim() : null,
             enabled: enabled !== false,
             showServices: showServices !== false,
             showIncidents: showIncidents !== false,
             showMetrics: showMetrics !== false,
-            footerText: footerText || null,
-            contactEmail: contactEmail || null,
-            contactUrl: contactUrl || null
+            footerText: footerText && footerText.trim() ? footerText.trim() : null,
+            contactEmail: contactEmail && contactEmail.trim() ? contactEmail.trim() : null,
+            contactUrl: contactUrl && contactUrl.trim() ? contactUrl.trim() : null
         };
+
+        // Only update name if it's provided and not empty
+        if (name !== undefined && name !== null && name.trim().length > 0) {
+            updateData.name = name.trim();
+        }
 
         if (branding !== undefined) {
             updateData.branding = branding === null ? Prisma.JsonNull : (branding as Prisma.InputJsonValue);

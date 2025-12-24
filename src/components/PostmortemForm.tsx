@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import PostmortemTimelineBuilder, { type TimelineEvent } from './postmortem/PostmortemTimelineBuilder';
 import PostmortemImpactInput, { type ImpactMetrics } from './postmortem/PostmortemImpactInput';
 import PostmortemActionItems, { type ActionItem } from './postmortem/PostmortemActionItems';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type PostmortemFormProps = {
     incidentId: string;
@@ -35,6 +37,7 @@ type PostmortemFormProps = {
 
 export default function PostmortemForm({ incidentId, initialData, users = [], resolvedIncidents = [] }: PostmortemFormProps) {
     const router = useRouter();
+    const { userTimeZone } = useTimezone();
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
     const [selectedIncidentId, setSelectedIncidentId] = useState<string>(incidentId || '');
@@ -159,7 +162,7 @@ export default function PostmortemForm({ incidentId, initialData, users = [], re
                             onChange={(e) => setSelectedIncidentId(e.target.value)}
                             options={resolvedIncidents.map(incident => ({
                                 value: incident.id,
-                                label: `${incident.title} (${incident.service.name}) - Resolved ${incident.resolvedAt ? new Date(incident.resolvedAt).toLocaleDateString() : 'N/A'}`,
+                                label: `${incident.title} (${incident.service.name}) - Resolved ${incident.resolvedAt ? formatDateTime(incident.resolvedAt, userTimeZone, { format: 'date' }) : 'N/A'}`,
                             }))}
                             placeholder="Select a resolved incident..."
                             helperText="Choose the incident for which you want to create a postmortem"
@@ -176,7 +179,7 @@ export default function PostmortemForm({ incidentId, initialData, users = [], re
                                     <strong>Selected:</strong> {selectedIncident.title}
                                 </div>
                                 <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 'var(--spacing-1)' }}>
-                                    Service: {selectedIncident.service.name} • Resolved: {selectedIncident.resolvedAt ? new Date(selectedIncident.resolvedAt).toLocaleDateString() : 'N/A'}
+                                    Service: {selectedIncident.service.name} • Resolved: {selectedIncident.resolvedAt ? formatDateTime(selectedIncident.resolvedAt, userTimeZone, { format: 'date' }) : 'N/A'}
                                 </div>
                             </div>
                         )}

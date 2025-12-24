@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Button, FormField } from '@/components/ui';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 export type TimelineEvent = {
     id: string;
@@ -32,6 +34,7 @@ const EVENT_TYPE_LABELS = {
 };
 
 export default function PostmortemTimelineBuilder({ events, onChange }: PostmortemTimelineBuilderProps) {
+    const { userTimeZone } = useTimezone();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [newEvent, setNewEvent] = useState<Partial<TimelineEvent>>({
         type: 'DETECTION',
@@ -164,7 +167,7 @@ export default function PostmortemTimelineBuilder({ events, onChange }: Postmort
                                             {EVENT_TYPE_LABELS[event.type]}
                                         </span>
                                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
-                                            {new Date(event.timestamp).toLocaleString()}
+                                            {formatDateTime(event.timestamp, userTimeZone, { format: 'datetime' })}
                                         </span>
                                     </div>
                                     <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: '600', marginBottom: 'var(--spacing-1)' }}>

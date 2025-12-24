@@ -12,15 +12,22 @@ import { authOptions } from '@/lib/auth';
  * - Aggregate and alert on poor performance
  */
 
-// In-memory storage for development (replace with database in production)
-const metricsStore: Array<{
+interface MetricItem {
   name: string;
   value: number;
   rating: string;
   url: string;
   timestamp: number;
   userId?: string;
-}> = [];
+}
+
+// In-memory storage for development (replace with database in production)
+const globalForMetrics = globalThis as unknown as { webVitalsMetrics: MetricItem[] | undefined }
+const metricsStore: MetricItem[] = globalForMetrics.webVitalsMetrics || []
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForMetrics.webVitalsMetrics = metricsStore
+}
 
 // Keep only last 1000 metrics to prevent memory issues
 const MAX_METRICS = 1000;

@@ -1,6 +1,8 @@
 'use client';
 
 import type { TimelineEvent } from './PostmortemTimelineBuilder';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 export type { TimelineEvent };
 
 interface PostmortemTimelineProps {
@@ -31,6 +33,8 @@ const EVENT_TYPE_ICONS = {
 };
 
 export default function PostmortemTimeline({ events, incidentStartTime, incidentEndTime }: PostmortemTimelineProps) {
+    const { userTimeZone } = useTimezone();
+    
     if (!events || events.length === 0) {
         return (
             <div style={{ 
@@ -159,7 +163,7 @@ export default function PostmortemTimeline({ events, incidentStartTime, incident
                                         )}
                                     </div>
                                     <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', fontWeight: '500' }}>
-                                        {eventTime.toLocaleString()}
+                                        {formatDateTime(eventTime, userTimeZone, { format: 'datetime' })}
                                     </span>
                                 </div>
                                 <h4 style={{ 

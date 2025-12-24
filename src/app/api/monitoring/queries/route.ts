@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getQueryStats, getSlowQueries, getRecentQueryErrors } from '@/lib/db-monitoring';
+import { getQueryStats, getSlowQueries, getRecentQueryErrors, getQueryDurationDistribution } from '@/lib/db-monitoring';
 
 /**
  * GET /api/monitoring/queries
@@ -13,8 +13,8 @@ import { getQueryStats, getSlowQueries, getRecentQueryErrors } from '@/lib/db-mo
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const timeWindow = searchParams.get('timeWindow') 
-      ? parseInt(searchParams.get('timeWindow')!, 10) 
+    const timeWindow = searchParams.get('timeWindow')
+      ? parseInt(searchParams.get('timeWindow')!, 10)
       : undefined;
     const slowThreshold = searchParams.get('slowThreshold')
       ? parseInt(searchParams.get('slowThreshold')!, 10)
@@ -26,6 +26,10 @@ export async function GET(request: Request) {
     const stats = getQueryStats(timeWindow);
     const slowQueries = getSlowQueries(slowThreshold, limit);
     const recentErrors = getRecentQueryErrors(limit);
+    const distribution = getQueryDurationDistribution(timeWindow);
+
+
+
 
     return NextResponse.json({
       success: true,
@@ -33,6 +37,7 @@ export async function GET(request: Request) {
         stats,
         slowQueries,
         recentErrors,
+        distribution,
       },
     });
   } catch (error) {

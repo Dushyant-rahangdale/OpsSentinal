@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import ProfileForm from '@/components/settings/ProfileForm';
 import SettingsSection from '@/components/settings/SettingsSection';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export default async function ProfileSettingsPage() {
     const session = await getServerSession(authOptions);
@@ -15,14 +16,16 @@ export default async function ProfileSettingsPage() {
             select: { 
                 name: true,
                 role: true,
-                createdAt: true
+                createdAt: true,
+                timeZone: true
             }
         })
         : null;
 
     const name = user?.name || session?.user?.name || '';
     const role = user?.role || (session?.user as any)?.role || 'USER';
-    const memberSince = user?.createdAt ? user.createdAt.toLocaleDateString() : 'Unknown';
+    const timeZone = getUserTimeZone(user);
+    const memberSince = user?.createdAt ? formatDateTime(user.createdAt, timeZone, { format: 'date' }) : 'Unknown';
 
     return (
         <SettingsSection

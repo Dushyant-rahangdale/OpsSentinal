@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Role, UserStatus, AuditEntityType } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 import {
     addUser,
     addUserToTeam,
@@ -504,7 +505,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                                             <span>{log.actor?.name || "System"}</span>
                                             <span style={{ whiteSpace: 'nowrap' }}>
-                                                {new Date(log.createdAt).toLocaleDateString()} {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
                                             </span>
                                         </div>
                                     </div>

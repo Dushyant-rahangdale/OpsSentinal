@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { assertResponderOrAbove, getCurrentUser } from '@/lib/rbac';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export async function bulkAcknowledge(incidentIds: string[]) {
     if (!incidentIds || incidentIds.length === 0) {
@@ -211,11 +212,12 @@ export async function bulkSnooze(incidentIds: string[], durationMinutes: number,
 
         // Log events for each incident
         const user = await getCurrentUser();
+        const userTimeZone = getUserTimeZone(user);
         for (const incidentId of incidentIds) {
             await prisma.incidentEvent.create({
                 data: {
                     incidentId,
-                    message: `Bulk snoozed until ${snoozedUntil.toLocaleString()}${reason ? `: ${reason}` : ''}${user ? ` by ${user.name}` : ''}`
+                    message: `Bulk snoozed until ${formatDateTime(snoozedUntil, userTimeZone, { format: 'datetime' })}${reason ? `: ${reason}` : ''}${user ? ` by ${user.name}` : ''}`
                 }
             }).catch(() => {}); // Ignore errors if incident was already resolved
         }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
 
 interface Service {
     id: string;
@@ -251,9 +252,8 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                 return;
             }
             const index = Math.floor((incident.createdAt.getTime() - dayStart.getTime()) / (10 * 60 * 1000));
-            const hours = String(incident.createdAt.getHours()).padStart(2, '0');
-            const minutes = String(incident.createdAt.getMinutes()).padStart(2, '0');
-            const label = `${hours}:${minutes}`;
+            const browserTz = getBrowserTimeZone();
+            const label = formatDateTime(incident.createdAt, browserTz, { format: 'time', hour12: false });
             markerMap.set(Math.max(0, Math.min(143, index)), label);
             times.push(label);
         });
@@ -267,7 +267,7 @@ export default function StatusPageServices({ services, statusPageServices, uptim
     const formatTooltipDate = (dateKey: string) => {
         const [year, month, day] = dateKey.split('-').map(Number);
         const date = new Date(year, month - 1, day, 0, 0, 0, 0);
-        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        return formatDateTime(date, getBrowserTimeZone(), { format: 'date' });
     };
     // If statusPageServices is empty, show all services
     // Otherwise, only show configured services

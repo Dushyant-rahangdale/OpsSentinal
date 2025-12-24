@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { bulkAcknowledge, bulkResolve } from '@/app/(app)/incidents/bulk-actions';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type Incident = {
     id: string;
@@ -22,6 +24,7 @@ type IncidentTableMobileProps = {
 };
 
 export default function IncidentTableMobile({ incidents, sortBy = 'createdAt', sortOrder = 'desc' }: IncidentTableMobileProps) {
+    const { userTimeZone } = useTimezone();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
@@ -217,14 +220,7 @@ export default function IncidentTableMobile({ incidents, sortBy = 'createdAt', s
                                     <strong>Assignee:</strong> {incident.assignee ? incident.assignee.name : 'Unassigned'}
                                 </div>
                                 <div>
-                                    <strong>Created:</strong> {new Date(incident.createdAt).toLocaleString('en-US', {
-                                        year: 'numeric',
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: true
-                                    })}
+                                    <strong>Created:</strong> {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
                                 </div>
                             </div>
                         </div>

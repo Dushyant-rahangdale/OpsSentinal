@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 type Shift = {
     id: string;
@@ -47,11 +48,11 @@ export default function WeekSummary({ shifts, timeZone }: WeekSummaryProps) {
         const groups = new Map<string, ShiftWithDates[]>();
         
         weekShifts.forEach(shift => {
-            const dayKey = shift.startDate.toLocaleDateString('en-US', { 
-                weekday: 'long',
-                month: 'short',
-                day: 'numeric'
-            });
+            // Use formatDateTime for consistent timezone formatting
+            const dayKey = formatDateTime(shift.startDate, timeZone, {
+                format: 'date',
+                hour12: false
+            }).split(',')[0] || formatDateTime(shift.startDate, timeZone, { format: 'date' });
             
             if (!groups.has(dayKey)) {
                 groups.set(dayKey, []);
@@ -63,15 +64,10 @@ export default function WeekSummary({ shifts, timeZone }: WeekSummaryProps) {
             day,
             shifts: dayShifts
         }));
-    }, [weekShifts]);
+    }, [weekShifts, timeZone]);
 
     const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-            timeZone
-        });
+        return formatDateTime(date, timeZone, { format: 'time', hour12: true });
     };
 
     return (

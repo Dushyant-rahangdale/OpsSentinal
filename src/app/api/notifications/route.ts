@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { NotificationPatchSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export async function GET(req: NextRequest) {
     try {
@@ -15,12 +16,14 @@ export async function GET(req: NextRequest) {
 
         const user = await prisma.user.findUnique({
             where: { email: session.user.email },
-            select: { id: true }
+            select: { id: true, timeZone: true }
         });
 
         if (!user) {
             return jsonError('User not found', 404);
         }
+
+        const userTimeZone = getUserTimeZone(user);
 
         const { searchParams } = new URL(req.url);
         const limit = parseLimit(searchParams.get('limit'));
@@ -49,7 +52,8 @@ export async function GET(req: NextRequest) {
         ]);
 
         const formattedNotifications = notifications.map((notification) => {
-            const timeAgo = getTimeAgo(notification.createdAt);
+            // Use centralized formatDateTime with 'relative' option for consistency
+            const timeAgo = formatDateTime(notification.createdAt, userTimeZone, { format: 'relative' });
             const typeKey = notification.type.toLowerCase();
             const typeMap: Record<string, 'incident' | 'service' | 'schedule'> = {
                 incident: 'incident',
@@ -150,31 +154,5 @@ export async function PATCH(req: NextRequest) {
     }
 }
 
-function getTimeAgo(date: Date): string {
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-        return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
-    }
-
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) {
-        return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
-    }
-
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) {
-        return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
-    }
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) {
-        return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
-    }
-
-    const diffInWeeks = Math.floor(diffInDays / 7);
-    return `${diffInWeeks} week${diffInWeeks !== 1 ? 's' : ''} ago`;
-}
 
 

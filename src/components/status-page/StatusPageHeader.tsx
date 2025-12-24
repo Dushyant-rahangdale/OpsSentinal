@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 interface StatusPageHeaderProps {
     statusPage: {
@@ -78,12 +79,12 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
             } else if (hours < 24) {
                 setUpdatedLabel(`${hours} hour${hours !== 1 ? 's' : ''} ago`);
             } else {
-                const label = new Intl.DateTimeFormat(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }).format(parsed);
+                // Use browser timezone for public status page
+                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const label = formatDateTime(parsed, browserTz, {
+                    format: 'short',
+                    hour12: true
+                });
                 setUpdatedLabel(label);
             }
         };

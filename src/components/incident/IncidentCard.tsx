@@ -8,6 +8,8 @@ import PriorityBadge from './PriorityBadge';
 import SLAIndicator from './SLAIndicator';
 import EscalationStatusBadge from './EscalationStatusBadge';
 import { Incident, Service } from '@prisma/client';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type IncidentCardProps = {
     incident: Incident & {
@@ -26,6 +28,7 @@ function IncidentCard({
     compact = false 
 }: IncidentCardProps) {
     const router = useRouter();
+    const { userTimeZone } = useTimezone();
 
     const handleServiceClick = (e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
@@ -76,7 +79,7 @@ function IncidentCard({
                         </div>
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right', marginLeft: '1rem' }}>
-                        {new Date(incident.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTime(incident.createdAt, userTimeZone, { format: 'time' })}
                     </div>
                 </div>
                 {showSLA && (
@@ -152,10 +155,10 @@ function IncidentCard({
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right', marginLeft: '1rem' }}>
                     <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
-                        {new Date(incident.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        {formatDateTime(incident.createdAt, userTimeZone, { format: 'short' })}
                     </div>
                     <div>
-                        {new Date(incident.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTime(incident.createdAt, userTimeZone, { format: 'time' })}
                     </div>
                 </div>
             </div>

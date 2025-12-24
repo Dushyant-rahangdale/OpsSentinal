@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from 'react';
 import { updateNotificationProvider } from '@/app/(app)/settings/system/actions';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type Provider = {
     id: string;
@@ -16,6 +18,7 @@ type Props = {
 };
 
 export default function SystemNotificationSettings({ providers }: Props) {
+    const { userTimeZone } = useTimezone();
     const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
     const providerMap = new Map(providers.map(p => [p.provider, p]));
@@ -279,7 +282,7 @@ function ProviderCard({
 
             {existing && !isExpanded && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                    Last updated: {new Date(existing.updatedAt).toLocaleString()}
+                    Last updated: {formatDateTime(existing.updatedAt, userTimeZone, { format: 'datetime' })}
                 </p>
             )}
         </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { formatDateFriendly } from '@/lib/date-format';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type NoteCardProps = {
     content: string;
@@ -11,6 +12,8 @@ type NoteCardProps = {
 };
 
 function NoteCard({ content, userName, createdAt, isResolution = false }: NoteCardProps) {
+    const { userTimeZone } = useTimezone();
+    
     // Memoize markdown formatting to avoid recalculation
     const formattedContent = useMemo(() => {
         const formatMarkdown = (input: string) => {
@@ -79,7 +82,7 @@ function NoteCard({ content, userName, createdAt, isResolution = false }: NoteCa
                         )}
                     </div>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {formatDateFriendly(createdAt)}
+                        {formatDateTime(createdAt, userTimeZone, { format: 'datetime' })}
                     </span>
                 </div>
                 <div

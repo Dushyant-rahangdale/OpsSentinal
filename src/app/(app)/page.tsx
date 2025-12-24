@@ -18,7 +18,7 @@ import DashboardPeriodComparison from '@/components/DashboardPeriodComparison';
 import DashboardServiceHealth from '@/components/DashboardServiceHealth';
 import DashboardUrgencyDistribution from '@/components/DashboardUrgencyDistribution';
 import DashboardSLAMetrics from '@/components/DashboardSLAMetrics';
-import { calculateSLAMetrics } from '@/lib/sla';
+import { calculateSLAMetrics } from '@/lib/sla-server';
 import { Suspense } from 'react';
 import DashboardRealtimeWrapper from '@/components/DashboardRealtimeWrapper';
 

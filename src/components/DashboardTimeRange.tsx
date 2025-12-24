@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 const timeRangeOptions = [
   { value: '7', label: 'Last 7 days' },
@@ -15,6 +17,7 @@ export default function DashboardTimeRange() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { userTimeZone } = useTimezone();
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -116,7 +119,7 @@ export default function DashboardTimeRange() {
             transition: 'all 0.2s ease'
           }}
         >
-          {new Date(customStartParam).toLocaleDateString()} - {new Date(customEndParam).toLocaleDateString()}
+          {formatDateTime(customStartParam, userTimeZone, { format: 'date' })} - {formatDateTime(customEndParam, userTimeZone, { format: 'date' })}
         </button>
       )}
 

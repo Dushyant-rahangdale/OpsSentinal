@@ -412,12 +412,7 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                                                     <circle cx="12" cy="12" r="10"></circle>
                                                                     <polyline points="12 6 12 12 16 14"></polyline>
                                                                 </svg>
-                                                                {new Date(event.createdAt).toLocaleString('en-US', {
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                    hour: '2-digit',
-                                                                    minute: '2-digit',
-                                                                })}
+                                                                {formatDateTime(event.createdAt, browserTimeZone, { format: 'short' })}
                                                             </span>
                                                         </div>
                                                     </div>
