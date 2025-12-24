@@ -67,6 +67,7 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: false  # PostgreSQL needs write access
+        # Resource limits aligned with docker-compose.yml (2 CPUs, 2G memory)
         resources:
           requests:
             memory: "512Mi"
@@ -74,17 +75,18 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "2000m"
+        # Health checks aligned with docker-compose.yml (interval: 10s, timeout: 5s, start_period: 10s)
         livenessProbe:
           exec:
             command:
             - /bin/sh
             - -c
             - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
+          initialDelaySeconds: 10  # Aligned with docker-compose start_period
+          periodSeconds: 10  # Aligned with docker-compose interval
+          timeoutSeconds: 5  # Aligned with docker-compose timeout
           successThreshold: 1
-          failureThreshold: 3
+          failureThreshold: 3  # Aligned with docker-compose retries (using 3 for k8s)
         readinessProbe:
           exec:
             command:

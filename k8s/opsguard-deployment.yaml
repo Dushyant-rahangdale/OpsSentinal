@@ -37,10 +37,16 @@ spec:
       serviceAccountName: opsguard-app
       initContainers:
       # Run database migrations before starting the app
+      # Aligned with docker-compose.yml migration command: node_modules/prisma/build/index.js migrate deploy
       - name: db-migrate
         image: your-registry/opsguard:latest  # Update with your image
         imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', 'npx prisma migrate deploy']
+        command: 
+        - sh
+        - -c
+        - |
+          export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=prefer"
+          cd /app && node_modules/prisma/build/index.js migrate deploy
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
@@ -50,8 +56,6 @@ spec:
               - ALL
           readOnlyRootFilesystem: true
         env:
-        - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=prefer"
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -90,6 +94,14 @@ spec:
       - name: opsguard
         image: your-registry/opsguard:latest  # Update with your image
         imagePullPolicy: IfNotPresent
+        # Command aligned with docker-compose.yml: construct DATABASE_URL and start server
+        # Note: Kubernetes doesn't expand variables in env.value, so we construct it in the command
+        command:
+        - sh
+        - -c
+        - |
+          export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=prefer"
+          node server.js
         ports:
         - containerPort: 3000
           name: http
@@ -117,8 +129,6 @@ spec:
             secretKeyRef:
               name: opsguard-secrets
               key: NEXTAUTH_SECRET
-        - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=prefer"
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -144,6 +154,8 @@ spec:
             configMapKeyRef:
               name: opsguard-config
               key: POSTGRES_DB
+        # DATABASE_URL is constructed in the command above from individual components
+        # This matches docker-compose.yml format: postgresql://user:pass@host:port/db?sslmode=prefer
         - name: NEXT_TELEMETRY_DISABLED
           value: "1"
         # Security context for container
@@ -155,6 +167,7 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: false  # Next.js needs write access for .next
+        # Resource limits aligned with docker-compose.yml (2 CPUs, 2G memory)
         resources:
           requests:
             memory: "512Mi"
@@ -162,16 +175,17 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "2000m"
+        # Health checks aligned with docker-compose.yml (interval: 30s, timeout: 10s, start_period: 40s)
         livenessProbe:
           httpGet:
             path: /api/health
             port: 3000
             scheme: HTTP
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
+          initialDelaySeconds: 40  # Aligned with docker-compose start_period
+          periodSeconds: 30  # Aligned with docker-compose interval
+          timeoutSeconds: 10  # Aligned with docker-compose timeout
           successThreshold: 1
-          failureThreshold: 3
+          failureThreshold: 3  # Aligned with docker-compose retries
         readinessProbe:
           httpGet:
             path: /api/health
