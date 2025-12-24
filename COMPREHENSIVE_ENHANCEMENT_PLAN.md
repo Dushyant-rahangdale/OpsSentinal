@@ -756,8 +756,8 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - [x] Implement React.memo where appropriate - ✅ Added to IncidentTable, ServiceCard, StatusBadge, PriorityBadge, EscalationStatusBadge, MetricCard, IncidentCard, TeamMemberCard, NoteCard, PostmortemCard, ChartCard (January 2025)
 - [x] Add virtual scrolling for long lists - ✅ VirtualList component created (January 2025)
 - [x] Optimize re-renders - ✅ Added React.memo to frequently rendered components (January 2025)
-- [x] Optimize expensive computations - ✅ Added useMemo to NoteCard markdown formatting (January 2025)
-- [x] Optimize event handlers - ✅ Added useCallback to Card component and GlobalKeyboardHandlerWrapper (January 2025)
+- [x] Optimize expensive computations - ✅ Added useMemo to NoteCard markdown formatting and LayerCard availableUsers (January 2025)
+- [x] Optimize event handlers - ✅ Added useCallback to Card, GlobalKeyboardHandlerWrapper, VirtualList, LayerCard, and PolicyStepCard (January 2025)
 - [ ] Add performance monitoring - **Can add**
 
 **Files Created/Modified:**
@@ -1107,7 +1107,8 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - ✅ Verified Kubernetes deployment configuration alignment with Docker Compose
 - ✅ Added React.memo optimizations to frequently rendered components (ServiceCard, StatusBadge, PriorityBadge, EscalationStatusBadge, MetricCard, IncidentCard, TeamMemberCard, NoteCard, PostmortemCard, ChartCard)
 - ✅ Optimized NoteCard with useMemo for markdown formatting
-- ✅ Added useCallback optimizations to Card component and GlobalKeyboardHandlerWrapper
+- ✅ Added useCallback optimizations to Card component, GlobalKeyboardHandlerWrapper, VirtualList, LayerCard, and PolicyStepCard
+- ✅ Added useMemo to LayerCard for availableUsers calculation
 - ✅ Integrated VirtualList into BulkTeamMemberActions for better performance
 - ✅ Created admin monitoring dashboard page for query statistics
 - ✅ Added monitoring link to admin navigation sidebar
