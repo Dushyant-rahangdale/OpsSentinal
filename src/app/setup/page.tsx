@@ -2,6 +2,8 @@ import prisma from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import BootstrapSetupForm from '@/components/BootstrapSetupForm';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SetupPage() {
     const totalUsers = await prisma.user.count();
     if (totalUsers > 0) {

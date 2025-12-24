@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Install security updates and required packages
 RUN apk update && apk upgrade && \
-    apk add --no-cache libc6-compat && \
+    apk add --no-cache libc6-compat openssl openssl-dev && \
     rm -rf /var/cache/apk/*
 
 # Copy package files
@@ -14,7 +14,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm ci --only=production --ignore-scripts && \
+RUN npm ci --only=production --ignore-scripts --legacy-peer-deps && \
     npm cache clean --force && \
     rm -rf /tmp/*
 
@@ -24,7 +24,7 @@ WORKDIR /app
 
 # Install security updates
 RUN apk update && apk upgrade && \
-    apk add --no-cache libc6-compat && \
+    apk add --no-cache libc6-compat openssl openssl-dev && \
     rm -rf /var/cache/apk/*
 
 # Copy package files
@@ -32,7 +32,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies (including dev)
-RUN npm ci --ignore-scripts && \
+RUN npm ci --ignore-scripts --legacy-peer-deps && \
     npm cache clean --force
 
 # Copy application source
@@ -42,6 +42,7 @@ COPY . .
 RUN npx prisma generate
 
 # Build Next.js application with production optimizations
+# Pages that need database access are marked as dynamic, so build works without DB
 RUN npm run build
 
 # Stage 3: Production Runner
@@ -50,7 +51,7 @@ WORKDIR /app
 
 # Install security updates and required runtime packages
 RUN apk update && apk upgrade && \
-    apk add --no-cache curl && \
+    apk add --no-cache curl openssl openssl-dev && \
     rm -rf /var/cache/apk/* && \
     rm -rf /tmp/*
 
@@ -69,7 +70,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# Copy Prisma and all its dependencies from builder (needed for migrations)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts

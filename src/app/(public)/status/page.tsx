@@ -4,7 +4,7 @@ import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 
-export const revalidate = 60; // Revalidate every minute for status page
+export const dynamic = 'force-dynamic';
 
 export default async function PublicStatusPage() {
     // Get the status page configuration

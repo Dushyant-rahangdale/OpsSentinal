@@ -24,31 +24,11 @@ services:
       start_period: 10s
     networks:
       - opsguard-network
-    # Security: Run as non-root user (postgres user in container)
-    user: "999:999"
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    # Logging configuration
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   opsguard-app:
     build:
       context: .
       dockerfile: Dockerfile
-      # Build args for cache optimization
-      args:
-        - BUILDKIT_INLINE_CACHE=1
     container_name: opsguard_app
     restart: unless-stopped
     ports:
@@ -73,37 +53,12 @@ services:
       start_period: 40s
     networks:
       - opsguard-network
-    # Run migrations and start app
     command: >
-      sh -c "npx prisma migrate deploy && node server.js"
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    # Logging configuration
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    # Security: Already running as non-root user (nextjs) from Dockerfile
+      sh -c "cd /app && node_modules/prisma/build/index.js migrate deploy && node server.js"
 
 volumes:
   opsguard_postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${POSTGRES_DATA_PATH:-./data/postgres}
 
 networks:
   opsguard-network:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: opsguard-br0
-      com.docker.network.driver.mtu: 1500
