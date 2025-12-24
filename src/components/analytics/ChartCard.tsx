@@ -1,3 +1,4 @@
+import { memo } from 'react';
 
 interface ChartCardProps {
     title: string;
@@ -6,7 +7,7 @@ interface ChartCardProps {
     className?: string;
 }
 
-export default function ChartCard({ title, children, subtitle, className = '' }: ChartCardProps) {
+function ChartCard({ title, children, subtitle, className = '' }: ChartCardProps) {
     return (
         <div className={`analytics-chart-enhanced ${className}`}>
             <div className="chart-header">
@@ -17,4 +18,7 @@ export default function ChartCard({ title, children, subtitle, className = '' }:
         </div>
     );
 }
+
+// Memoize ChartCard to prevent unnecessary re-renders in analytics dashboards
+export default memo(ChartCard);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, HTMLAttributes } from 'react';
+import { ReactNode, HTMLAttributes, useCallback } from 'react';
 
 type CardVariant = 'default' | 'elevated' | 'outlined' | 'flat';
 
@@ -64,6 +64,19 @@ export default function Card({
       }
     : {};
 
+  // Memoize event handlers to prevent unnecessary re-renders
+  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (hover) {
+      Object.assign(e.currentTarget.style, hoverStyles);
+    }
+  }, [hover, hoverStyles]);
+
+  const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (hover) {
+      Object.assign(e.currentTarget.style, variantStyles[variant]);
+    }
+  }, [hover, variant, variantStyles]);
+
   return (
     <div
       className={`ui-card ui-card-${variant} ${hover ? 'ui-card-hover' : ''} ${className}`}
@@ -72,16 +85,8 @@ export default function Card({
         ...variantStyles[variant],
         ...style,
       }}
-      onMouseEnter={(e) => {
-        if (hover) {
-          Object.assign(e.currentTarget.style, hoverStyles);
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (hover) {
-          Object.assign(e.currentTarget.style, variantStyles[variant]);
-        }
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       {...props}
     >
       {header && (
