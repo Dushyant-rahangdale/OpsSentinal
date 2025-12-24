@@ -758,7 +758,7 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - [x] Optimize re-renders - ✅ Added React.memo to frequently rendered components (January 2025)
 - [x] Optimize expensive computations - ✅ Added useMemo to NoteCard markdown formatting, LayerCard availableUsers, SLAIndicator calculations, Badge styles, DashboardPerformanceMetrics trend calculations, and UserTable computed values (January 2025)
 - [x] Optimize event handlers - ✅ Added useCallback to Card, GlobalKeyboardHandlerWrapper, VirtualList, LayerCard, PolicyStepCard, DashboardPerformanceMetrics format functions, and UserTable handlers (January 2025)
-- [ ] Add performance monitoring - **Can add**
+- [x] Add performance monitoring - ✅ Web Vitals tracking implemented (January 2025)
 
 **Files Created/Modified:**
 - `src/components/ui/VirtualList.tsx` - ✅ Virtual scrolling component (January 2025)
@@ -779,6 +779,10 @@ This document provides a comprehensive analysis of the OpsGuard incident managem
 - `src/components/DashboardPerformanceMetrics.tsx` - ✅ Added useCallback for format functions and useMemo for trend calculations (January 2025)
 - `src/components/service/IncidentList.tsx` - ✅ Added React.memo with custom comparison and moved formatDistanceToNow outside component (January 2025)
 - `src/components/UserTable.tsx` - ✅ Added useCallback for buildSortUrl, toggleUser, toggleAll and useMemo for computed values (January 2025)
+- `src/components/WebVitalsReporter.tsx` - ✅ Web Vitals tracking component (January 2025)
+- `src/app/api/web-vitals/route.ts` - ✅ Web Vitals API endpoint for collecting metrics (January 2025)
+- `src/components/MonitoringDashboard.tsx` - ✅ Added Web Vitals section to monitoring dashboard (January 2025)
+- `src/app/layout.tsx` - ✅ Added WebVitalsReporter to root layout (January 2025)
 - All page components - Code splitting
 - `next.config.ts` - Bundle optimization
 

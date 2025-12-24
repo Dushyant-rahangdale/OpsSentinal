@@ -1,7 +1,27 @@
 import { PrismaClient } from '@prisma/client'
+import { queryMonitor } from './db-monitoring'
 
 const prismaClientSingleton = () => {
-    return new PrismaClient()
+    return new PrismaClient().$extends({
+        query: {
+            $allModels: {
+                async $allOperations({ model, operation, args, query }) {
+                    const start = Date.now()
+                    try {
+                        const result = await query(args)
+                        const duration = Date.now() - start
+                        // console.log(`[Prisma Monitor] ${model}.${operation} took ${duration}ms`); // Debug log
+                        queryMonitor.recordQuery(`${model}.${operation}`, duration, args)
+                        return result
+                    } catch (error) {
+                        const duration = Date.now() - start
+                        queryMonitor.recordQuery(`${model}.${operation}`, duration, args, error as Error)
+                        throw error
+                    }
+                },
+            },
+        },
+    })
 }
 
 declare global {

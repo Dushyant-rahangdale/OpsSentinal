@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Card from './ui/Card';
-import Spinner from './ui/Spinner';
+import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
 
 interface QueryStats {
     totalQueries: number;
@@ -26,9 +26,29 @@ interface MonitoringData {
     recentErrors: QueryMetric[];
 }
 
+interface WebVitalsData {
+    metrics: Array<{
+        name: string;
+        value: number;
+        rating: string;
+        url: string;
+        timestamp: number;
+    }>;
+    aggregates: Record<string, {
+        count: number;
+        avg: number;
+        min: number;
+        max: number;
+        ratings: { good: number; needsImprovement: number; poor: number };
+    }>;
+    total: number;
+}
+
 export default function MonitoringDashboard() {
     const [data, setData] = useState<MonitoringData | null>(null);
+    const [webVitals, setWebVitals] = useState<WebVitalsData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [webVitalsLoading, setWebVitalsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [timeWindow, setTimeWindow] = useState<number | undefined>(undefined);
 
@@ -60,10 +80,31 @@ export default function MonitoringDashboard() {
         }
     };
 
+    const fetchWebVitals = async () => {
+        try {
+            setWebVitalsLoading(true);
+            const response = await fetch('/api/web-vitals?limit=50');
+            if (!response.ok) {
+                throw new Error('Failed to fetch Web Vitals');
+            }
+            const result = await response.json();
+            setWebVitals(result);
+        } catch (err) {
+            // Silently fail for Web Vitals - it's optional
+            console.warn('Failed to fetch Web Vitals:', err);
+        } finally {
+            setWebVitalsLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchData();
+        fetchWebVitals();
         // Refresh every 30 seconds
-        const interval = setInterval(fetchData, 30000);
+        const interval = setInterval(() => {
+            fetchData();
+            fetchWebVitals();
+        }, 30000);
         return () => clearInterval(interval);
     }, [timeWindow]);
 
@@ -305,6 +346,133 @@ export default function MonitoringDashboard() {
                     </div>
                 </Card>
             )}
+
+            {/* Web Vitals Section */}
+            <Card style={{ marginTop: '2rem' }}>
+                <div style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: '600' }}>
+                            Web Vitals Performance
+                        </h3>
+                        <button
+                            onClick={fetchWebVitals}
+                            disabled={webVitalsLoading}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                background: 'var(--primary)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: webVitalsLoading ? 'not-allowed' : 'pointer',
+                                opacity: webVitalsLoading ? 0.6 : 1,
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            {webVitalsLoading ? <Spinner size="sm" /> : 'Refresh'}
+                        </button>
+                    </div>
+
+                    {webVitalsLoading && !webVitals ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                            <Spinner size="md" />
+                        </div>
+                    ) : webVitals && Object.keys(webVitals.aggregates).length > 0 ? (
+                        <>
+                            <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                                gap: '1rem',
+                                marginBottom: '1.5rem'
+                            }}>
+                                {Object.entries(webVitals.aggregates).map(([name, agg]) => {
+                                    const getRatingColor = (rating: string) => {
+                                        if (rating === 'good') return '#16a34a';
+                                        if (rating === 'needsImprovement') return '#f59e0b';
+                                        return '#dc2626';
+                                    };
+
+                                    const getRatingLabel = (name: string) => {
+                                        const labels: Record<string, string> = {
+                                            CLS: 'Cumulative Layout Shift',
+                                            FID: 'First Input Delay',
+                                            FCP: 'First Contentful Paint',
+                                            LCP: 'Largest Contentful Paint',
+                                            TTFB: 'Time to First Byte',
+                                            INP: 'Interaction to Next Paint',
+                                        };
+                                        return labels[name] || name;
+                                    };
+
+                                    const formatValue = (name: string, value: number) => {
+                                        if (name === 'CLS') return value.toFixed(3);
+                                        return `${Math.round(value)}ms`;
+                                    };
+
+                                    const goodPercentage = agg.count > 0 
+                                        ? ((agg.ratings.good / agg.count) * 100).toFixed(1)
+                                        : '0';
+
+                                    return (
+                                        <div 
+                                            key={name}
+                                            style={{ 
+                                                padding: '1rem', 
+                                                background: 'var(--color-neutral-50)', 
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--border)'
+                                            }}
+                                        >
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: '600' }}>
+                                                {getRatingLabel(name)}
+                                            </div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem' }}>
+                                                {formatValue(name, agg.avg)}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                                Avg: {formatValue(name, agg.avg)} | Min: {formatValue(name, agg.min)} | Max: {formatValue(name, agg.max)}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
+                                                <span style={{ color: getRatingColor('good') }}>
+                                                    ✓ {agg.ratings.good} good
+                                                </span>
+                                                <span style={{ color: getRatingColor('needsImprovement') }}>
+                                                    ⚠ {agg.ratings.needsImprovement} needs improvement
+                                                </span>
+                                                <span style={{ color: getRatingColor('poor') }}>
+                                                    ✗ {agg.ratings.poor} poor
+                                                </span>
+                                            </div>
+                                            <div style={{ 
+                                                marginTop: '0.5rem', 
+                                                fontSize: '0.75rem', 
+                                                color: 'var(--text-muted)' 
+                                            }}>
+                                                {goodPercentage}% good ({agg.count} samples)
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {webVitals.total > 0 && (
+                                <div style={{ 
+                                    padding: '0.75rem', 
+                                    background: 'var(--color-neutral-100)', 
+                                    borderRadius: '6px',
+                                    fontSize: '0.85rem',
+                                    color: 'var(--text-muted)'
+                                }}>
+                                    Total metrics collected: {webVitals.total.toLocaleString()}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <p>No Web Vitals data available yet. Metrics will appear as users interact with the application.</p>
+                        </div>
+                    )}
+                </div>
+            </Card>
         </div>
     );
 }
