@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition, useState } from 'react';
+import { useTransition, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import ConfirmDialog from './ConfirmDialog';
@@ -69,7 +69,8 @@ export default function LayerCard({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const handleDelete = async () => {
+    // Memoize event handlers to prevent unnecessary re-renders
+    const handleDelete = useCallback(async () => {
         setShowDeleteConfirm(false);
         startTransition(async () => {
             const result = await deleteLayer(scheduleId, layer.id);
@@ -80,9 +81,9 @@ export default function LayerCard({
                 router.refresh();
             }
         });
-    };
+    }, [scheduleId, layer.id, deleteLayer, showToast, router, startTransition]);
 
-    const handleUpdate = async (formData: FormData) => {
+    const handleUpdate = useCallback(async (formData: FormData) => {
         setIsUpdating(true);
         startTransition(async () => {
             const result = await updateLayer(layer.id, formData);
@@ -94,9 +95,9 @@ export default function LayerCard({
             }
             setIsUpdating(false);
         });
-    };
+    }, [layer.id, updateLayer, showToast, router, startTransition]);
 
-    const handleAddUser = async (formData: FormData) => {
+    const handleAddUser = useCallback(async (formData: FormData) => {
         startTransition(async () => {
             const result = await addLayerUser(layer.id, formData);
             if (result?.error) {
@@ -108,9 +109,9 @@ export default function LayerCard({
                 router.refresh();
             }
         });
-    };
+    }, [layer.id, addLayerUser, users, showToast, router, startTransition]);
 
-    const handleMoveUser = async (userId: string, direction: 'up' | 'down') => {
+    const handleMoveUser = useCallback(async (userId: string, direction: 'up' | 'down') => {
         startTransition(async () => {
             const result = await moveLayerUser(layer.id, userId, direction);
             if (result?.error) {
@@ -120,9 +121,9 @@ export default function LayerCard({
                 router.refresh();
             }
         });
-    };
+    }, [layer.id, moveLayerUser, showToast, router, startTransition]);
 
-    const handleRemoveUser = async (userId: string) => {
+    const handleRemoveUser = useCallback(async (userId: string) => {
         startTransition(async () => {
             const result = await removeLayerUser(layer.id, userId);
             if (result?.error) {
@@ -133,11 +134,13 @@ export default function LayerCard({
                 router.refresh();
             }
         });
-    };
+    }, [layer.id, layer.users, removeLayerUser, showToast, router, startTransition]);
 
-    const availableUsers = users.filter(user => 
-        !layer.users.some(layerUser => layerUser.userId === user.id)
-    );
+    // Memoize availableUsers calculation to avoid recalculation on every render
+    const availableUsers = useMemo(() => 
+        users.filter(user => 
+            !layer.users.some(layerUser => layerUser.userId === user.id)
+        ), [users, layer.users]);
 
     return (
         <>

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useRef, useState, useMemo } from 'react';
+import { ReactNode, useEffect, useRef, useState, useMemo, useCallback } from 'react';
 
 interface VirtualListProps<T> {
   items: T[];
@@ -85,10 +85,10 @@ export default function VirtualList<T>({
     return { startIndex: start, endIndex: end, offsetY: offset };
   }, [scrollTop, containerHeight, itemHeights, items.length, overscan]);
 
-  // Handle scroll
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  // Memoize scroll handler to prevent unnecessary re-renders
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
-  };
+  }, []);
 
   // Visible items
   const visibleItems = useMemo(() => {
