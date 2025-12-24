@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, memo } from 'react';
 import Link from 'next/link';
 import { useToast } from './ToastProvider';
 
@@ -24,7 +24,7 @@ type TeamMemberCardProps = {
     removeMember: () => Promise<{ error?: string } | undefined>;
 };
 
-export default function TeamMemberCard({
+function TeamMemberCard({
     member,
     isSoleOwner,
     canManageMembers,
@@ -244,4 +244,20 @@ export default function TeamMemberCard({
         </div>
     );
 }
+
+// Memoize TeamMemberCard to prevent unnecessary re-renders in team member lists
+export default memo(TeamMemberCard, (prevProps, nextProps) => {
+    // Custom comparison for better performance
+    return (
+        prevProps.member.id === nextProps.member.id &&
+        prevProps.member.role === nextProps.member.role &&
+        prevProps.member.user.id === nextProps.member.user.id &&
+        prevProps.member.user.name === nextProps.member.user.name &&
+        prevProps.member.user.email === nextProps.member.user.email &&
+        prevProps.member.user.status === nextProps.member.user.status &&
+        prevProps.isSoleOwner === nextProps.isSoleOwner &&
+        prevProps.canManageMembers === nextProps.canManageMembers &&
+        prevProps.canAssignOwnerAdmin === nextProps.canAssignOwnerAdmin
+    );
+});
 
