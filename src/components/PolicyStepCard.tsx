@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition, useState } from 'react';
+import { useTransition, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import ConfirmDialog from './ConfirmDialog';
@@ -51,7 +51,8 @@ export default function PolicyStepCard({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
-    const handleDelete = async () => {
+    // Memoize event handlers to prevent unnecessary re-renders
+    const handleDelete = useCallback(async () => {
         setShowDeleteConfirm(false);
         startTransition(async () => {
             try {
@@ -62,9 +63,9 @@ export default function PolicyStepCard({
                 showToast(error instanceof Error ? error.message : 'Failed to delete step', 'error');
             }
         });
-    };
+    }, [step.id, deleteStep, showToast, router, startTransition]);
 
-    const handleUpdate = async (formData: FormData) => {
+    const handleUpdate = useCallback(async (formData: FormData) => {
         startTransition(async () => {
             try {
                 const result = await updateStep(step.id, formData);
@@ -79,9 +80,9 @@ export default function PolicyStepCard({
                 showToast(error instanceof Error ? error.message : 'Failed to update step', 'error');
             }
         });
-    };
+    }, [step.id, updateStep, showToast, router, startTransition]);
 
-    const handleMove = async (direction: 'up' | 'down') => {
+    const handleMove = useCallback(async (direction: 'up' | 'down') => {
         startTransition(async () => {
             try {
                 await moveStep(step.id, direction);
@@ -91,7 +92,7 @@ export default function PolicyStepCard({
                 showToast(error instanceof Error ? error.message : 'Failed to move step', 'error');
             }
         });
-    };
+    }, [step.id, moveStep, showToast, router, startTransition]);
 
     if (isEditing && canManagePolicies) {
         return (
