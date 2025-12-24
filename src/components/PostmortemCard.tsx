@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { Card, Badge } from '@/components/ui';
 
@@ -21,7 +22,7 @@ type PostmortemCardProps = {
     };
 };
 
-export default function PostmortemCard({ postmortem }: PostmortemCardProps) {
+function PostmortemCard({ postmortem }: PostmortemCardProps) {
     return (
         <Card 
             variant="elevated"
@@ -151,6 +152,21 @@ export default function PostmortemCard({ postmortem }: PostmortemCardProps) {
         </Card>
     );
 }
+
+// Memoize PostmortemCard to prevent unnecessary re-renders in postmortem lists
+export default memo(PostmortemCard, (prevProps, nextProps) => {
+    // Custom comparison for better performance
+    return (
+        prevProps.postmortem.id === nextProps.postmortem.id &&
+        prevProps.postmortem.title === nextProps.postmortem.title &&
+        prevProps.postmortem.summary === nextProps.postmortem.summary &&
+        prevProps.postmortem.status === nextProps.postmortem.status &&
+        prevProps.postmortem.createdAt.getTime() === nextProps.postmortem.createdAt.getTime() &&
+        prevProps.postmortem.publishedAt?.getTime() === nextProps.postmortem.publishedAt?.getTime() &&
+        prevProps.postmortem.createdBy.name === nextProps.postmortem.createdBy.name &&
+        prevProps.postmortem.incident.title === nextProps.postmortem.incident.title
+    );
+});
 
 
 

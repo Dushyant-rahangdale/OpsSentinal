@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { formatDateFriendly } from '@/lib/date-format';
 
 type NoteCardProps = {
@@ -9,27 +10,32 @@ type NoteCardProps = {
     isResolution?: boolean;
 };
 
-export default function NoteCard({ content, userName, createdAt, isResolution = false }: NoteCardProps) {
-    const formatMarkdown = (input: string) => {
-        let output = input
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-        
-        output = output.replace(/`([^`]+)`/g, '<code>$1</code>');
-        output = output.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        output = output.replace(/\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>');
-        output = output.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-        output = output.replace(/\n/g, '<br />');
-        
-        return { __html: output };
-    };
+function NoteCard({ content, userName, createdAt, isResolution = false }: NoteCardProps) {
+    // Memoize markdown formatting to avoid recalculation
+    const formattedContent = useMemo(() => {
+        const formatMarkdown = (input: string) => {
+            let output = input
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            
+            output = output.replace(/`([^`]+)`/g, '<code>$1</code>');
+            output = output.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            output = output.replace(/\*(?!\*)([^*]+)\*(?!\*)/g, '<em>$1</em>');
+            output = output.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+            output = output.replace(/\n/g, '<br />');
+            
+            return { __html: output };
+        };
 
-    const displayContent = isResolution && content.startsWith('Resolution:') 
-        ? content.replace(/^Resolution:\s*/i, '')
-        : content;
+        const displayContent = isResolution && content.startsWith('Resolution:') 
+            ? content.replace(/^Resolution:\s*/i, '')
+            : content;
+        
+        return formatMarkdown(displayContent);
+    }, [content, isResolution]);
 
     return (
         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -87,12 +93,15 @@ export default function NoteCard({ content, userName, createdAt, isResolution = 
                         lineHeight: 1.6,
                         color: 'var(--text-primary)'
                     }}
-                    dangerouslySetInnerHTML={formatMarkdown(displayContent)}
+                    dangerouslySetInnerHTML={formattedContent}
                 />
             </div>
         </div>
     );
 }
+
+// Memoize NoteCard to prevent unnecessary re-renders in note lists
+export default memo(NoteCard);
 
 
 
