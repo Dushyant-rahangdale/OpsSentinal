@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo, useCallback } from 'react';
+
 type PerformanceMetricsProps = {
   mtta: number | null; // in minutes
   mttr: number | null; // in minutes
@@ -21,15 +23,16 @@ export default function DashboardPerformanceMetrics({
   previousMtta,
   previousMttr
 }: PerformanceMetricsProps) {
-  const formatTime = (minutes: number | null) => {
+  // Memoize formatTime function to prevent recreation on every render
+  const formatTime = useCallback((minutes: number | null) => {
     if (minutes === null || minutes === 0) return '--';
     if (minutes < 60) return `${Math.round(minutes)}m`;
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  };
+  }, []);
 
-  const formatTimeForDisplay = (minutes: number | null, color?: string) => {
+  const formatTimeForDisplay = useCallback((minutes: number | null, color?: string) => {
     if (minutes === null || minutes === 0) return <span style={{ color }}>--</span>;
     if (minutes < 60) {
       return <span style={{ color }}>{Math.round(minutes)}m</span>;
@@ -45,23 +48,28 @@ export default function DashboardPerformanceMetrics({
       );
     }
     return <span style={{ color }}>{hours}h</span>;
-  };
+  }, []);
 
-  const getTrendIndicator = (current: number | null, previous: number | null, trend?: 'up' | 'down' | 'neutral') => {
-    if (!current || !previous) return null;
-    const change = current - previous;
-    const percentChange = Math.abs((change / previous) * 100);
-    
-    if (trend === 'up' || change > 0) {
-      return { icon: '↑', color: '#ef5350', text: `+${formatTime(Math.abs(change))} (+${percentChange.toFixed(1)}%)` };
-    } else if (trend === 'down' || change < 0) {
-      return { icon: '↓', color: '#16a34a', text: `-${formatTime(Math.abs(change))} (-${percentChange.toFixed(1)}%)` };
-    }
-    return null;
-  };
+  // Memoize trend indicator calculations
+  const { mttaTrendData, mttrTrendData } = useMemo(() => {
+    const getTrendIndicator = (current: number | null, previous: number | null, trend?: 'up' | 'down' | 'neutral') => {
+      if (!current || !previous) return null;
+      const change = current - previous;
+      const percentChange = Math.abs((change / previous) * 100);
+      
+      if (trend === 'up' || change > 0) {
+        return { icon: '↑', color: '#ef5350', text: `+${formatTime(Math.abs(change))} (+${percentChange.toFixed(1)}%)` };
+      } else if (trend === 'down' || change < 0) {
+        return { icon: '↓', color: '#16a34a', text: `-${formatTime(Math.abs(change))} (-${percentChange.toFixed(1)}%)` };
+      }
+      return null;
+    };
 
-  const mttaTrendData = getTrendIndicator(mtta, previousMtta ?? null, mttaTrend);
-  const mttrTrendData = getTrendIndicator(mttr, previousMttr ?? null, mttrTrend);
+    return {
+      mttaTrendData: getTrendIndicator(mtta, previousMtta ?? null, mttaTrend),
+      mttrTrendData: getTrendIndicator(mttr, previousMttr ?? null, mttrTrend)
+    };
+  }, [mtta, mttr, previousMtta, previousMttr, mttaTrend, mttrTrend, formatTime]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>

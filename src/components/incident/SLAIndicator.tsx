@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useMemo } from 'react';
 import { calculateMTTA, calculateMTTR, checkAckSLA, checkResolveSLA, formatTimeMinutesMs } from '@/lib/sla';
 import { getPrioritySLATarget, checkPriorityAckSLA, checkPriorityResolveSLA } from '@/lib/sla-priority';
 import { Incident, Service } from '@prisma/client';
@@ -10,31 +11,45 @@ type SLAIndicatorProps = {
     showDetails?: boolean;
 };
 
-export default function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorProps) {
-    const mtta = calculateMTTA(incident);
-    const mttr = calculateMTTR(incident);
-    
-    // Use priority-based SLA if priority exists, otherwise use service defaults
-    const priorityTarget = getPrioritySLATarget(incident.priority, service);
-    const ackSlaMet = incident.acknowledgedAt 
-        ? (incident.priority ? checkPriorityAckSLA(incident, service) : checkAckSLA(incident, service))
-        : null;
-    const resolveSlaMet = incident.resolvedAt 
-        ? (incident.priority ? checkPriorityResolveSLA(incident, service) : checkResolveSLA(incident, service))
-        : null;
+function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorProps) {
+    // Memoize expensive SLA calculations
+    const { mtta, mttr, ackSlaMet, resolveSlaMet, ackTimeRemaining, resolveTimeRemaining, targetAckMinutes, targetResolveMinutes } = useMemo(() => {
+        const mtta = calculateMTTA(incident);
+        const mttr = calculateMTTR(incident);
+        
+        // Use priority-based SLA if priority exists, otherwise use service defaults
+        const priorityTarget = getPrioritySLATarget(incident.priority, service);
+        const ackSlaMet = incident.acknowledgedAt 
+            ? (incident.priority ? checkPriorityAckSLA(incident, service) : checkAckSLA(incident, service))
+            : null;
+        const resolveSlaMet = incident.resolvedAt 
+            ? (incident.priority ? checkPriorityResolveSLA(incident, service) : checkResolveSLA(incident, service))
+            : null;
 
-    const targetAckMinutes = priorityTarget.ack;
-    const targetResolveMinutes = priorityTarget.resolve;
+        const targetAckMinutes = priorityTarget.ack;
+        const targetResolveMinutes = priorityTarget.resolve;
 
-    // Calculate time remaining for open incidents
-    const now = new Date();
-    const timeSinceCreation = (now.getTime() - incident.createdAt.getTime()) / (1000 * 60);
-    const ackTimeRemaining = incident.status === 'OPEN' && !incident.acknowledgedAt
-        ? targetAckMinutes - timeSinceCreation
-        : null;
-    const resolveTimeRemaining = incident.status !== 'RESOLVED' && !incident.resolvedAt
-        ? targetResolveMinutes - timeSinceCreation
-        : null;
+        // Calculate time remaining for open incidents
+        const now = new Date();
+        const timeSinceCreation = (now.getTime() - incident.createdAt.getTime()) / (1000 * 60);
+        const ackTimeRemaining = incident.status === 'OPEN' && !incident.acknowledgedAt
+            ? targetAckMinutes - timeSinceCreation
+            : null;
+        const resolveTimeRemaining = incident.status !== 'RESOLVED' && !incident.resolvedAt
+            ? targetResolveMinutes - timeSinceCreation
+            : null;
+
+        return {
+            mtta,
+            mttr,
+            ackSlaMet,
+            resolveSlaMet,
+            ackTimeRemaining,
+            resolveTimeRemaining,
+            targetAckMinutes,
+            targetResolveMinutes
+        };
+    }, [incident, service]);
 
     return (
         <div style={{
@@ -160,3 +175,17 @@ export default function SLAIndicator({ incident, service, showDetails = false }:
         </div>
     );
 }
+
+// Memoize SLAIndicator to prevent unnecessary re-renders when parent updates
+export default memo(SLAIndicator, (prevProps, nextProps) => {
+    // Custom comparison: only re-render if incident or service data actually changed
+    return (
+        prevProps.incident.id === nextProps.incident.id &&
+        prevProps.incident.status === nextProps.incident.status &&
+        prevProps.incident.acknowledgedAt?.getTime() === nextProps.incident.acknowledgedAt?.getTime() &&
+        prevProps.incident.resolvedAt?.getTime() === nextProps.incident.resolvedAt?.getTime() &&
+        prevProps.incident.priority === nextProps.incident.priority &&
+        prevProps.service.id === nextProps.service.id &&
+        prevProps.showDetails === nextProps.showDetails
+    );
+});

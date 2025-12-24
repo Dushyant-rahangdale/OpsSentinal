@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, memo, useMemo } from 'react';
 
 type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info';
 type BadgeSize = 'sm' | 'md' | 'lg';
@@ -20,7 +20,7 @@ interface BadgeProps {
  * @example
  * <Badge variant="success" size="md" dot>Active</Badge>
  */
-export default function Badge({
+function Badge({
   variant = 'default',
   size = 'md',
   dot = false,
@@ -28,16 +28,17 @@ export default function Badge({
   className = '',
   style: customStyle = {},
 }: BadgeProps) {
-  const baseStyles: React.CSSProperties = {
+  // Memoize styles to prevent recreation on every render
+  const baseStyles: React.CSSProperties = useMemo(() => ({
     display: 'inline-flex',
     alignItems: 'center',
     gap: 'var(--spacing-1)',
     borderRadius: 'var(--radius-full)',
     fontWeight: 'var(--font-weight-medium)',
     whiteSpace: 'nowrap',
-  };
+  }), []);
 
-  const sizeStyles: Record<BadgeSize, React.CSSProperties> = {
+  const sizeStyles: Record<BadgeSize, React.CSSProperties> = useMemo(() => ({
     sm: {
       padding: 'var(--spacing-1) var(--spacing-2)',
       fontSize: 'var(--font-size-xs)',
@@ -53,9 +54,9 @@ export default function Badge({
       fontSize: 'var(--font-size-base)',
       height: '26px',
     },
-  };
+  }), []);
 
-  const variantStyles: Record<BadgeVariant, React.CSSProperties> = {
+  const variantStyles: Record<BadgeVariant, React.CSSProperties> = useMemo(() => ({
     default: {
       background: 'var(--color-neutral-100)',
       color: 'var(--text-primary)',
@@ -80,14 +81,14 @@ export default function Badge({
       background: 'var(--color-info-light)',
       color: 'var(--color-info-dark)',
     },
-  };
+  }), []);
 
-  const dotStyles: React.CSSProperties = {
+  const dotStyles: React.CSSProperties = useMemo(() => ({
     width: '6px',
     height: '6px',
     borderRadius: 'var(--radius-full)',
     background: 'currentColor',
-  };
+  }), []);
 
   return (
     <span
@@ -104,6 +105,9 @@ export default function Badge({
     </span>
   );
 }
+
+// Memoize Badge to prevent unnecessary re-renders (frequently used component)
+export default memo(Badge);
 
 
 
