@@ -2,7 +2,7 @@
 
 import { Suspense, lazy } from 'react';
 import DashboardRealtimeWrapper from './DashboardRealtimeWrapper';
-import DashboardSkeleton from './DashboardSkeleton';
+import { DashboardSkeleton } from './DashboardSkeleton';
 
 // Lazy load heavy dashboard components
 const DashboardPerformanceMetrics = lazy(() => import('./DashboardPerformanceMetrics'));

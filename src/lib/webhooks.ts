@@ -223,13 +223,271 @@ export function generateIncidentWebhookPayload(
 }
 
 /**
- * Send incident notification webhook
+ * Format payload for Google Chat
+ */
+export function formatGoogleChatPayload(
+    incident: {
+        id: string;
+        title: string;
+        description?: string | null;
+        status: string;
+        urgency: string;
+        service: { name: string; id: string };
+        assignee?: { name: string; email: string; id: string } | null;
+        createdAt: Date;
+        acknowledgedAt?: Date | null;
+        resolvedAt?: Date | null;
+    },
+    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
+    baseUrl: string
+): Record<string, any> {
+    const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
+    const statusColor = eventType === 'triggered' ? '#d32f2f' :
+                        eventType === 'acknowledged' ? '#f9a825' :
+                        eventType === 'resolved' ? '#388e3c' : '#757575';
+    
+    return {
+        cards: [
+            {
+                header: {
+                    title: `Incident ${eventType.toUpperCase()}: ${incident.title}`,
+                    subtitle: incident.service.name,
+                    imageUrl: '',
+                    imageStyle: 'AVATAR'
+                },
+                sections: [
+                    {
+                        widgets: [
+                            {
+                                keyValue: {
+                                    topLabel: 'Status',
+                                    content: incident.status,
+                                    contentMultiline: false,
+                                    bottomLabel: incident.urgency,
+                                    icon: 'DESCRIPTION',
+                                    button: {
+                                        textButton: {
+                                            text: 'VIEW INCIDENT',
+                                            onClick: {
+                                                openLink: {
+                                                    url: incidentUrl
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                keyValue: {
+                                    topLabel: 'Assignee',
+                                    content: incident.assignee?.name || 'Unassigned',
+                                    contentMultiline: false
+                                }
+                            }
+                        ]
+                    },
+                    ...(incident.description ? [{
+                        widgets: [
+                            {
+                                textParagraph: {
+                                    text: incident.description
+                                }
+                            }
+                        ]
+                    }] : [])
+                ]
+            }
+        ]
+    };
+}
+
+/**
+ * Format payload for Microsoft Teams (Adaptive Card)
+ */
+export function formatMicrosoftTeamsPayload(
+    incident: {
+        id: string;
+        title: string;
+        description?: string | null;
+        status: string;
+        urgency: string;
+        service: { name: string; id: string };
+        assignee?: { name: string; email: string; id: string } | null;
+        createdAt: Date;
+        acknowledgedAt?: Date | null;
+        resolvedAt?: Date | null;
+    },
+    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
+    baseUrl: string
+): Record<string, any> {
+    const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
+    const accentColor = eventType === 'triggered' ? '#d32f2f' :
+                       eventType === 'acknowledged' ? '#f9a825' :
+                       eventType === 'resolved' ? '#388e3c' : '#757575';
+    
+    return {
+        type: 'message',
+        attachments: [
+            {
+                contentType: 'application/vnd.microsoft.card.adaptive',
+                content: {
+                    type: 'AdaptiveCard',
+                    version: '1.4',
+                    body: [
+                        {
+                            type: 'TextBlock',
+                            text: `Incident ${eventType.toUpperCase()}: ${incident.title}`,
+                            weight: 'Bolder',
+                            size: 'Large',
+                            wrap: true
+                        },
+                        {
+                            type: 'FactSet',
+                            facts: [
+                                {
+                                    title: 'Service:',
+                                    value: incident.service.name
+                                },
+                                {
+                                    title: 'Status:',
+                                    value: incident.status
+                                },
+                                {
+                                    title: 'Urgency:',
+                                    value: incident.urgency
+                                },
+                                {
+                                    title: 'Assignee:',
+                                    value: incident.assignee?.name || 'Unassigned'
+                                }
+                            ]
+                        },
+                        ...(incident.description ? [{
+                            type: 'TextBlock',
+                            text: incident.description,
+                            wrap: true,
+                            spacing: 'Medium'
+                        }] : [])
+                    ],
+                    actions: [
+                        {
+                            type: 'Action.OpenUrl',
+                            title: 'View Incident',
+                            url: incidentUrl
+                        }
+                    ],
+                    $schema: 'http://adaptivecards.io/schemas/adaptive-card.json'
+                }
+            }
+        ]
+    };
+}
+
+/**
+ * Format payload for Discord (Embed)
+ */
+export function formatDiscordPayload(
+    incident: {
+        id: string;
+        title: string;
+        description?: string | null;
+        status: string;
+        urgency: string;
+        service: { name: string; id: string };
+        assignee?: { name: string; email: string; id: string } | null;
+        createdAt: Date;
+        acknowledgedAt?: Date | null;
+        resolvedAt?: Date | null;
+    },
+    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
+    baseUrl: string
+): Record<string, any> {
+    const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
+    const color = eventType === 'triggered' ? 0xd32f2f :
+                 eventType === 'acknowledged' ? 0xf9a825 :
+                 eventType === 'resolved' ? 0x388e3c : 0x757575;
+    
+    return {
+        embeds: [
+            {
+                title: `Incident ${eventType.toUpperCase()}: ${incident.title}`,
+                description: incident.description || undefined,
+                url: incidentUrl,
+                color: color,
+                fields: [
+                    {
+                        name: 'Service',
+                        value: incident.service.name,
+                        inline: true
+                    },
+                    {
+                        name: 'Status',
+                        value: incident.status,
+                        inline: true
+                    },
+                    {
+                        name: 'Urgency',
+                        value: incident.urgency,
+                        inline: true
+                    },
+                    {
+                        name: 'Assignee',
+                        value: incident.assignee?.name || 'Unassigned',
+                        inline: true
+                    }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: {
+                    text: 'OpsGuard'
+                }
+            }
+        ]
+    };
+}
+
+/**
+ * Format payload based on webhook type
+ */
+export function formatWebhookPayloadByType(
+    webhookType: string,
+    incident: {
+        id: string;
+        title: string;
+        description?: string | null;
+        status: string;
+        urgency: string;
+        service: { name: string; id: string };
+        assignee?: { name: string; email: string; id: string } | null;
+        createdAt: Date;
+        acknowledgedAt?: Date | null;
+        resolvedAt?: Date | null;
+    },
+    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
+    baseUrl: string
+): Record<string, any> {
+    switch (webhookType.toUpperCase()) {
+        case 'GOOGLE_CHAT':
+            return formatGoogleChatPayload(incident, eventType, baseUrl);
+        case 'TEAMS':
+        case 'MICROSOFT_TEAMS':
+            return formatMicrosoftTeamsPayload(incident, eventType, baseUrl);
+        case 'DISCORD':
+            return formatDiscordPayload(incident, eventType, baseUrl);
+        case 'GENERIC':
+        default:
+            return generateIncidentWebhookPayload(incident, eventType);
+    }
+}
+
+/**
+ * Send incident notification webhook with type-specific formatting
  */
 export async function sendIncidentWebhook(
     webhookUrl: string,
     incidentId: string,
     eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
-    secret?: string
+    secret?: string,
+    webhookType?: string
 ): Promise<WebhookResult> {
     try {
         const incident = await prisma.incident.findUnique({
@@ -244,7 +502,10 @@ export async function sendIncidentWebhook(
             return { success: false, error: 'Incident not found' };
         }
 
-        const payload = generateIncidentWebhookPayload(incident, eventType);
+        const baseUrl = getBaseUrl();
+        const payload = webhookType
+            ? formatWebhookPayloadByType(webhookType, incident, eventType, baseUrl)
+            : generateIncidentWebhookPayload(incident, eventType);
 
         return await sendWebhookWithRetry({
             url: webhookUrl,

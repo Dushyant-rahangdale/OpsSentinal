@@ -9,7 +9,7 @@ export default async function AuditLogPage() {
     const session = await getServerSession(authOptions);
     const email = session?.user?.email ?? null;
     const user = email ? await prisma.user.findUnique({ where: { email }, select: { timeZone: true } }) : null;
-    const userTimeZone = getUserTimeZone(user);
+    const userTimeZone = getUserTimeZone(user ?? undefined);
     
     const logs = await prisma.auditLog.findMany({
         include: {

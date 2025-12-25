@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
         return new Response('User not found', { status: 404 });
     }
 
-    const userTimeZone = getUserTimeZone(user);
+    const userTimeZone = getUserTimeZone(user ?? undefined);
 
     // Create a readable stream for SSE
     const stream = new ReadableStream({

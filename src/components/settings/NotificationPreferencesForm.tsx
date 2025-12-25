@@ -13,6 +13,7 @@ type Props = {
     emailEnabled: boolean;
     smsEnabled: boolean;
     pushEnabled: boolean;
+    whatsappEnabled: boolean;
     phoneNumber: string | null;
 };
 
@@ -33,10 +34,12 @@ export default function NotificationPreferencesForm({
     emailEnabled,
     smsEnabled,
     pushEnabled,
+    whatsappEnabled,
     phoneNumber
 }: Props) {
     const [state, formAction, isPending] = useActionState<State, FormData>(updateNotificationPreferences, { error: null, success: false });
     const [smsChecked, setSmsChecked] = useState(smsEnabled);
+    const [whatsappChecked, setWhatsappChecked] = useState(whatsappEnabled);
     const router = useRouter();
 
     // Refresh the page after successful update
@@ -132,6 +135,43 @@ export default function NotificationPreferencesForm({
                             <p>Receive incident notifications via push notifications. Requires Firebase/OneSignal configuration.</p>
                         </div>
                     </div>
+                </label>
+
+                <label className="notification-option">
+                    <div className="notification-option-header">
+                        <input 
+                            type="checkbox" 
+                            name="whatsappNotificationsEnabled" 
+                            defaultChecked={whatsappEnabled}
+                            onChange={(e) => setWhatsappChecked(e.target.checked)}
+                            key={whatsappEnabled ? 'whatsapp-checked' : 'whatsapp-unchecked'}
+                        />
+                        <div className="notification-option-content">
+                            <div className="notification-option-title">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 2C5.58172 2 2 5.58172 2 10C2 12.2091 2.89543 14.2091 4.34315 15.6569L2 18L4.34315 15.6569C5.79086 17.1046 7.79086 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M7 7H13M7 10H13M7 13H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                </svg>
+                                <strong>WhatsApp Notifications</strong>
+                            </div>
+                            <p>Receive incident notifications via WhatsApp. Requires phone number and Twilio WhatsApp Business API configuration.</p>
+                        </div>
+                    </div>
+                    {whatsappChecked && (
+                        <div className="notification-option-field">
+                            <label>Phone Number</label>
+                            <input
+                                type="tel"
+                                name="phoneNumberWhatsApp"
+                                placeholder="+1234567890"
+                                defaultValue={phoneNumber || ''}
+                                required={whatsappChecked}
+                            />
+                            <p className="settings-field-hint">
+                                Enter phone number in E.164 format (e.g., +1234567890). Same number can be used for SMS and WhatsApp.
+                            </p>
+                        </div>
+                    )}
                 </label>
             </div>
 

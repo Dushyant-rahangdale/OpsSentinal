@@ -32,6 +32,8 @@ export default function NotificationProviderSettings() {
     const [onesignalAppId, setOnesignalAppId] = useState('');
     const [onesignalRestApiKey, setOnesignalRestApiKey] = useState('');
 
+    const [whatsappNumber, setWhatsappNumber] = useState('');
+
     // Load existing settings
     useEffect(() => {
         const loadSettings = async () => {
@@ -57,6 +59,9 @@ export default function NotificationProviderSettings() {
                         setFirebaseClientEmail(data.push.clientEmail || '');
                         setOnesignalAppId(data.push.appId || '');
                         setOnesignalRestApiKey(data.push.restApiKey || '');
+                    }
+                    if (data.whatsapp) {
+                        setWhatsappNumber(data.whatsapp.number || '');
                     }
                 }
             } catch (error) {
@@ -102,6 +107,9 @@ export default function NotificationProviderSettings() {
                                 appId: onesignalAppId,
                                 restApiKey: onesignalRestApiKey,
                             }),
+                        },
+                        whatsapp: {
+                            number: whatsappNumber,
                         },
                     }),
                 });
@@ -362,6 +370,72 @@ export default function NotificationProviderSettings() {
                                 </Button>
                             </div>
                         </>
+                    )}
+                </div>
+            </Card>
+
+            {/* WhatsApp Configuration */}
+            <Card variant="elevated">
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+                        WhatsApp Notifications
+                    </h2>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                        Configure WhatsApp Business API via Twilio for incident notifications
+                    </p>
+                </div>
+                <div style={{ padding: '1.5rem', display: 'grid', gap: '1.5rem' }}>
+                    <div style={{
+                        padding: '1rem',
+                        background: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '8px'
+                    }}>
+                        <p style={{ fontSize: '0.85rem', color: '#92400e', margin: 0, lineHeight: 1.6 }}>
+                            <strong>📱 WhatsApp Requirements:</strong>
+                            <br />
+                            • Requires Twilio SMS to be enabled and configured
+                            <br />
+                            • Requires a Twilio WhatsApp Business API number
+                            <br />
+                            • Users must enable WhatsApp notifications in their preferences
+                        </p>
+                    </div>
+
+                    {smsEnabled && smsProvider === 'twilio' ? (
+                        <>
+                            <FormField
+                                type="input"
+                                label="WhatsApp Business Number"
+                                inputType="tel"
+                                value={whatsappNumber}
+                                onChange={(e) => setWhatsappNumber(e.target.value)}
+                                placeholder="+1234567890"
+                                helperText="Your Twilio WhatsApp Business API number in E.164 format. If not set, will use the SMS 'From Number' above."
+                                fullWidth
+                            />
+                            <div style={{
+                                padding: '0.75rem',
+                                background: '#dbeafe',
+                                border: '1px solid #3b82f6',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                color: '#1e40af'
+                            }}>
+                                <strong>Status:</strong> WhatsApp will be available once Twilio is configured and this number is set (or SMS number is used).
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{
+                            padding: '1rem',
+                            background: '#fef2f2',
+                            border: '1px solid #fca5a5',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            color: '#991b1b'
+                        }}>
+                            <strong>⚠️ Twilio SMS Required:</strong> Please enable and configure Twilio SMS provider above to use WhatsApp notifications.
+                        </div>
                     )}
                 </div>
             </Card>

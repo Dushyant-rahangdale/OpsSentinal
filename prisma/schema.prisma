@@ -61,6 +61,7 @@ enum NotificationChannel {
   PUSH
   SLACK
   WEBHOOK
+  WHATSAPP
 }
 
 enum InAppNotificationType {
@@ -101,6 +102,7 @@ model User {
   emailNotificationsEnabled Boolean     @default(false)
   smsNotificationsEnabled   Boolean     @default(false)
   pushNotificationsEnabled  Boolean     @default(false)
+  whatsappNotificationsEnabled Boolean  @default(false)
   phoneNumber               String? // For SMS notifications
   invitedAt                 DateTime?
   deactivatedAt             DateTime?
@@ -128,6 +130,9 @@ model User {
   apiKeys              ApiKey[]
   incidentTemplates    IncidentTemplate[]
   updatedProviders     NotificationProvider[]
+  teamsLed             Team[]            @relation("TeamLead")
+  slackIntegrations    SlackIntegration[]
+  slackOAuthConfigs    SlackOAuthConfig[] @relation("SlackOAuthConfigUpdater")
 }
 
 model Team {
@@ -141,6 +146,8 @@ model Team {
   services          Service[]
   escalationRules   EscalationRule[]
   incidentTemplates IncidentTemplate[]
+  teamLeadId        String?
+  teamLead          User?              @relation("TeamLead", fields: [teamLeadId], references: [id])
 }
 
 model TeamMember {
@@ -165,7 +172,11 @@ model Service {
   teamId               String?
   escalationPolicyId   String?
   slackWebhookUrl      String? // Per-service Slack Webhook URL (only notification config at service level)
+  slackChannel         String? // Slack channel name (e.g., #incidents)
+  slackWorkspaceId     String? // Slack workspace ID for future multi-workspace support
+  slackIntegrationId   String? @unique // Reference to SlackIntegration (OAuth-based)
   webhookUrl           String? // Per-service generic webhook URL
+  serviceNotificationChannels NotificationChannel[] @default([]) // Service-level notification channels (isolated from escalation)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
@@ -177,6 +188,8 @@ model Service {
   alerts            Alert[]
   incidentTemplates IncidentTemplate[]
   statusPageServices StatusPageService[]
+  webhookIntegrations WebhookIntegration[]
+  slackIntegration   SlackIntegration? @relation("ServiceSlackIntegration", fields: [slackIntegrationId], references: [id], onDelete: Cascade)
 }
 
 // Enhanced Escalation Policy
@@ -208,8 +221,11 @@ model EscalationRule {
   targetTeamId     String?
   targetScheduleId String?
 
-  // Note: Notification channels are determined by user preferences, not policy steps
-  // Users choose how they want to be notified (email, SMS, push) in their settings
+  // Notification channels for this escalation step (overrides user preferences if set)
+  notificationChannels NotificationChannel[] // Per-step channel configuration
+  
+  // Team-specific options
+  notifyOnlyTeamLead Boolean @default(false) // If true, only notify team lead instead of all team members
 
   targetUser     User?           @relation(fields: [targetUserId], references: [id])
   targetTeam     Team?           @relation(fields: [targetTeamId], references: [id])
@@ -226,6 +242,58 @@ model Integration {
   updatedAt DateTime @updatedAt
 
   service Service @relation(fields: [serviceId], references: [id])
+}
+
+model WebhookIntegration {
+  id          String   @id @default(cuid())
+  serviceId   String
+  name        String   // "Google Chat", "Microsoft Teams", etc.
+  type        String   // "GOOGLE_CHAT", "TEAMS", "DISCORD", "GENERIC"
+  url         String
+  secret      String?  // For HMAC signature
+  channel     String?  // Channel/room name
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+}
+
+// Slack OAuth Configuration (Global - stored in database)
+model SlackOAuthConfig {
+  id              String   @id @default(cuid())
+  clientId        String   // Slack App Client ID
+  clientSecret    String   // Encrypted Slack App Client Secret
+  redirectUri     String?  // Custom redirect URI (optional)
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedBy       String   // User ID who last updated the config
+  updater         User     @relation("SlackOAuthConfigUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([id]) // Only one config record
+}
+
+// Slack OAuth Integration
+model SlackIntegration {
+  id              String   @id @default(cuid())
+  workspaceId     String   // Slack workspace/team ID
+  workspaceName   String?  // Slack workspace name
+  botToken        String   // Encrypted bot token (xoxb-...)
+  signingSecret   String?  // Encrypted signing secret
+  installedBy     String   // User ID who installed the integration
+  scopes          String[] // OAuth scopes granted
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  service Service? @relation("ServiceSlackIntegration")
+  installer User   @relation(fields: [installedBy], references: [id])
+
+  @@unique([workspaceId]) // One integration per workspace (can be global or service-specific)
+  @@index([workspaceId])
 }
 
 model Alert {

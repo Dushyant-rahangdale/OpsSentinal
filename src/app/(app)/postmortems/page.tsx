@@ -34,7 +34,7 @@ export default async function PostmortemsPage({
             select: { timeZone: true }
         })
         : null;
-    const userTimeZone = getUserTimeZone(user);
+    const userTimeZone = getUserTimeZone(user ?? undefined);
 
     // Get resolved incidents without postmortems for quick create
     const resolvedIncidentsWithoutPostmortems = canCreate

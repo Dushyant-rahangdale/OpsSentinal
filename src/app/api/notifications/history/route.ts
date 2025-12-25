@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
             return jsonError('User not found', 404);
         }
 
-        const userTimeZone = getUserTimeZone(user);
+        const userTimeZone = getUserTimeZone(user ?? undefined);
 
         const { searchParams } = new URL(req.url);
         const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);

@@ -31,6 +31,12 @@ export default function NotificationHistory() {
     const [limit] = useState(50);
     const [filterChannel, setFilterChannel] = useState<string>('');
     const [filterStatus, setFilterStatus] = useState<string>('');
+    const [stats, setStats] = useState({
+        total: 0,
+        sent: 0,
+        pending: 0,
+        failed: 0
+    });
 
     const fetchNotifications = async () => {
         try {
@@ -47,6 +53,16 @@ export default function NotificationHistory() {
                 const data = await response.json();
                 setNotifications(data.notifications || []);
                 setTotal(data.total || 0);
+                
+                // Calculate stats
+                const allNotifications = data.notifications || [];
+                const statsData = {
+                    total: data.total || 0,
+                    sent: allNotifications.filter((n: Notification) => n.status === 'SENT').length,
+                    pending: allNotifications.filter((n: Notification) => n.status === 'PENDING').length,
+                    failed: allNotifications.filter((n: Notification) => n.status === 'FAILED').length
+                };
+                setStats(statsData);
             }
         } catch (error) {
             console.error('Error fetching notification history:', error);
@@ -84,14 +100,50 @@ export default function NotificationHistory() {
                 return '💬';
             case 'WEBHOOK':
                 return '🔗';
+            case 'WHATSAPP':
+                return '💬';
             default:
                 return '📬';
         }
     };
 
     return (
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+            {/* Stats Cards */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '1rem', 
+                marginBottom: '1.5rem' 
+            }}>
+                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                        {stats.total}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Notifications</div>
+                </div>
+                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', background: 'linear-gradient(135deg, #22c55e15 0%, #22c55e05 100%)' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#22c55e', marginBottom: '0.25rem' }}>
+                        {stats.sent}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sent</div>
+                </div>
+                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', background: 'linear-gradient(135deg, #f59e0b15 0%, #f59e0b05 100%)' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#f59e0b', marginBottom: '0.25rem' }}>
+                        {stats.pending}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Pending</div>
+                </div>
+                <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', background: 'linear-gradient(135deg, #dc262615 0%, #dc262605 100%)' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#dc2626', marginBottom: '0.25rem' }}>
+                        {stats.failed}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Failed</div>
+                </div>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <select
                     value={filterChannel}
                     onChange={(e) => {
@@ -111,6 +163,7 @@ export default function NotificationHistory() {
                     <option value="PUSH">Push</option>
                     <option value="SLACK">Slack</option>
                     <option value="WEBHOOK">Webhook</option>
+                    <option value="WHATSAPP">WhatsApp</option>
                 </select>
 
                 <select
@@ -234,6 +287,7 @@ export default function NotificationHistory() {
                     </div>
                 </>
             )}
+            </div>
         </div>
     );
 }

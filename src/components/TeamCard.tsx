@@ -178,7 +178,7 @@ export default function TeamCard({
                     {canUpdateTeam ? (
                         <form action={handleUpdateTeam} style={{ 
                             display: 'grid', 
-                            gridTemplateColumns: '1fr 1fr auto', 
+                            gridTemplateColumns: '1fr 1fr 1fr auto', 
                             gap: '1rem', 
                             alignItems: 'end',
                             padding: '1rem',
@@ -215,6 +215,37 @@ export default function TeamCard({
                                         background: 'white'
                                     }} 
                                 />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
+                                    Team Lead
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400', marginLeft: '0.25rem' }}>
+                                        (Optional)
+                                    </span>
+                                </label>
+                                <select
+                                    name="teamLeadId"
+                                    defaultValue={team.teamLeadId || ''}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px',
+                                        background: 'white',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="">No team lead</option>
+                                    {team.members.map((member) => (
+                                        <option key={member.userId} value={member.userId}>
+                                            {member.user.name} {member.role === 'OWNER' ? '(Owner)' : member.role === 'ADMIN' ? '(Admin)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                    Team lead can be notified separately in escalation policies
+                                </p>
                             </div>
                             <button type="submit" className="glass-button" style={{ height: 'fit-content' }}>
                                 Update

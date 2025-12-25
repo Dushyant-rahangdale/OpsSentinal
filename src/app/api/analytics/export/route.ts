@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
                 select: { timeZone: true }
             })
             : null;
-        const userTimeZone = getUserTimeZone(user);
+        const userTimeZone = getUserTimeZone(user ?? undefined);
         
         const searchParams = req.nextUrl.searchParams;
         

@@ -7,6 +7,11 @@ import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 export const dynamic = 'force-dynamic';
 
 export default async function EventLogsPage() {
+    const session = await getServerSession(authOptions);
+    const email = session?.user?.email ?? null;
+    const user = email ? await prisma.user.findUnique({ where: { email }, select: { timeZone: true } }) : null;
+    const userTimeZone = getUserTimeZone(user ?? undefined);
+
     const events = await prisma.incidentEvent.findMany({
         include: {
             incident: {

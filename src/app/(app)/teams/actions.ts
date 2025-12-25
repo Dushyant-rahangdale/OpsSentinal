@@ -80,12 +80,28 @@ export async function updateTeam(teamId: string, formData: FormData) {
     }
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
+    const teamLeadId = formData.get('teamLeadId') as string;
+
+    // Validate team lead is a team member
+    if (teamLeadId) {
+        const isMember = await prisma.teamMember.findFirst({
+            where: {
+                teamId,
+                userId: teamLeadId
+            }
+        });
+
+        if (!isMember) {
+            return { error: 'Team lead must be a team member' };
+        }
+    }
 
     await prisma.team.update({
         where: { id: teamId },
         data: {
             name,
-            description: description || null
+            description: description || null,
+            teamLeadId: teamLeadId || null
         }
     });
 
@@ -94,7 +110,7 @@ export async function updateTeam(teamId: string, formData: FormData) {
         entityType: 'TEAM',
         entityId: teamId,
         actorId: await getDefaultActorId(),
-        details: { name }
+        details: { name, teamLeadId: teamLeadId || null }
     });
 
     revalidatePath('/teams');

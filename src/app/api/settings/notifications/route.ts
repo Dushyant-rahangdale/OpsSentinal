@@ -23,9 +23,16 @@ export async function GET(req: NextRequest) {
             getPushConfig(),
         ]);
 
+        // Get WhatsApp config (uses Twilio WhatsApp number from env)
+        const whatsappConfig = {
+            number: process.env.TWILIO_WHATSAPP_NUMBER || '',
+            enabled: smsConfig.enabled && smsConfig.provider === 'twilio' && !!process.env.TWILIO_WHATSAPP_NUMBER
+        };
+
         return jsonOk({
             sms: smsConfig,
             push: pushConfig,
+            whatsapp: whatsappConfig,
         });
     } catch (error) {
         return jsonError(getUserFriendlyError(error), 500);

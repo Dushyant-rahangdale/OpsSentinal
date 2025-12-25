@@ -14,7 +14,7 @@ export async function snoozeIncidentWithDuration(incidentId: string, durationMin
 
     const snoozedUntil = new Date(Date.now() + durationMinutes * 60 * 1000);
     const user = await getCurrentUser();
-    const userTimeZone = getUserTimeZone(user);
+    const userTimeZone = getUserTimeZone(user ?? undefined);
 
     await prisma.incident.update({
         where: { id: incidentId },

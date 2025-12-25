@@ -24,7 +24,7 @@ export default async function ProfileSettingsPage() {
 
     const name = user?.name || session?.user?.name || '';
     const role = user?.role || (session?.user as any)?.role || 'USER';
-    const timeZone = getUserTimeZone(user);
+    const timeZone = getUserTimeZone(user ?? undefined);
     const memberSince = user?.createdAt ? formatDateTime(user.createdAt, timeZone, { format: 'date' }) : 'Unknown';
 
     return (

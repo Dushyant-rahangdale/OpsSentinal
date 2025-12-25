@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   opsguard-db:
     image: postgres:15-alpine

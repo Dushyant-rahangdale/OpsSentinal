@@ -18,6 +18,7 @@ export default async function PreferencesSettingsPage() {
                 emailNotificationsEnabled: true,
                 smsNotificationsEnabled: true,
                 pushNotificationsEnabled: true,
+                whatsappNotificationsEnabled: true,
                 phoneNumber: true
             }
         })
@@ -50,6 +51,7 @@ export default async function PreferencesSettingsPage() {
                     emailEnabled={user?.emailNotificationsEnabled ?? false}
                     smsEnabled={user?.smsNotificationsEnabled ?? false}
                     pushEnabled={user?.pushNotificationsEnabled ?? false}
+                    whatsappEnabled={user?.whatsappNotificationsEnabled ?? false}
                     phoneNumber={user?.phoneNumber ?? null}
                 />
             </div>

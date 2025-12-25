@@ -105,6 +105,14 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                     },
                     orderBy: { role: 'asc' }
                 },
+                // teamLead relation - uncomment after running: npx prisma generate
+                // teamLead: {
+                //     select: {
+                //         id: true,
+                //         name: true,
+                //         email: true
+                //     }
+                // },
                 services: { select: { id: true, name: true } },
                 _count: { select: { members: true, services: true } }
             },

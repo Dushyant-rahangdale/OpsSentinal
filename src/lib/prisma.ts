@@ -15,7 +15,11 @@ const prismaClientSingleton = () => {
                         return result
                     } catch (error) {
                         const duration = Date.now() - start
-                        queryMonitor.recordQuery(`${model}.${operation}`, duration, args, error as Error)
+                        // Ensure error is properly typed for monitoring
+                        const errorForMonitoring = error instanceof Error 
+                            ? error 
+                            : new Error(error ? String(error) : 'Unknown error occurred')
+                        queryMonitor.recordQuery(`${model}.${operation}`, duration, args, errorForMonitoring)
                         throw error
                     }
                 },

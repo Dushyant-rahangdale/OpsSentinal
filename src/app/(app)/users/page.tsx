@@ -153,13 +153,16 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     const currentUser = currentUserEmail
         ? await prisma.user.findUnique({
             where: { email: currentUserEmail },
-            select: { id: true, role: true }
+            select: { id: true, role: true, timeZone: true }
         })
         : null;
     const currentUserId = currentUser?.id || '';
     const currentUserRole = (currentUser?.role as Role) || 'USER';
     const isAdmin = currentUserRole === 'ADMIN';
     const isAdminOrResponder = currentUserRole === 'ADMIN' || currentUserRole === 'RESPONDER';
+    
+    // Get user timezone for date formatting
+    const userTimeZone = getUserTimeZone(currentUser ?? undefined);
 
     const baseParams = new URLSearchParams();
     if (query) baseParams.set('q', query);

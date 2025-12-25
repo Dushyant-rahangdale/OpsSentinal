@@ -14,7 +14,7 @@ export default async function ApiKeysSettingsPage() {
             select: { id: true, timeZone: true }
         })
         : null;
-    const timeZone = getUserTimeZone(user);
+    const timeZone = getUserTimeZone(user ?? undefined);
     const keys = user
         ? await prisma.apiKey.findMany({
             where: { userId: user.id },

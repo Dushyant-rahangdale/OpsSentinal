@@ -25,7 +25,7 @@ export default async function TemplatesPage() {
             select: { timeZone: true }
         })
         : null;
-    const userTimeZone = getUserTimeZone(user);
+    const userTimeZone = getUserTimeZone(user ?? undefined);
 
     async function handleDelete(formData: FormData) {
         'use server';

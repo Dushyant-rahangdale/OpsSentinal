@@ -23,6 +23,7 @@ import OverrideList from '@/components/OverrideList';
 import CurrentCoverageDisplay from '@/components/CurrentCoverageDisplay';
 import ScheduleTimeline from '@/components/ScheduleTimeline';
 import LayerHelpPanel from '@/components/LayerHelpPanel';
+import ScheduleEditForm from '@/components/ScheduleEditForm';
 
 // Revalidate every 30 seconds to ensure current coverage is up-to-date
 export const revalidate = 30;

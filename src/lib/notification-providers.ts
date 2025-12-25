@@ -39,7 +39,7 @@ export interface EmailConfig {
     host?: string;
 }
 
-export type NotificationChannelType = 'EMAIL' | 'SMS' | 'PUSH';
+export type NotificationChannelType = 'EMAIL' | 'SMS' | 'PUSH' | 'WHATSAPP';
 
 export async function getEmailConfig(): Promise<EmailConfig> {
     const defaultFromEmail = process.env.EMAIL_FROM || `noreply@${process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'opsguard.com'}`;
@@ -90,6 +90,10 @@ export async function isChannelAvailable(channel: NotificationChannelType): Prom
             return (await getSMSConfig()).enabled;
         case 'PUSH':
             return (await getPushConfig()).enabled;
+        case 'WHATSAPP':
+            // WhatsApp requires Twilio with WhatsApp Business API
+            const smsConfig = await getSMSConfig();
+            return smsConfig.enabled && smsConfig.provider === 'twilio';
         default:
             return false;
     }

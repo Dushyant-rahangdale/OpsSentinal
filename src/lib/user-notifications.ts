@@ -18,6 +18,8 @@ import { logger } from './logger';
 /**
  * Get user's enabled notification channels based on their preferences
  * and system provider availability
+ * 
+ * Returns channels in priority order: PUSH → SMS → WhatsApp → EMAIL
  */
 export async function getUserNotificationChannels(userId: string): Promise<NotificationChannel[]> {
     const user = await prisma.user.findUnique({
@@ -26,6 +28,7 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
             emailNotificationsEnabled: true,
             smsNotificationsEnabled: true,
             pushNotificationsEnabled: true,
+            whatsappNotificationsEnabled: true,
             phoneNumber: true,
             email: true
         }
@@ -37,9 +40,10 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
 
     const channels: NotificationChannel[] = [];
 
-    // Email: Check user preference and system availability
-    if (user.emailNotificationsEnabled && await isChannelAvailable('EMAIL')) {
-        channels.push('EMAIL');
+    // Priority order: PUSH → SMS → WhatsApp → EMAIL
+    // Push: Check user preference and system availability
+    if (user.pushNotificationsEnabled && await isChannelAvailable('PUSH')) {
+        channels.push('PUSH');
     }
 
     // SMS: Check user preference, phone number, and system availability
@@ -47,9 +51,17 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
         channels.push('SMS');
     }
 
-    // Push: Check user preference and system availability
-    if (user.pushNotificationsEnabled && await isChannelAvailable('PUSH')) {
-        channels.push('PUSH');
+    // WhatsApp: Check user preference and system availability (Twilio)
+    if (user.whatsappNotificationsEnabled && user.phoneNumber) {
+        const smsConfig = await import('./notification-providers').then(m => m.getSMSConfig());
+        if (smsConfig.enabled && smsConfig.provider === 'twilio') {
+            channels.push('WHATSAPP');
+        }
+    }
+
+    // Email: Check user preference and system availability
+    if (user.emailNotificationsEnabled && await isChannelAvailable('EMAIL')) {
+        channels.push('EMAIL');
     }
 
     // No fallback - respect user's notification preferences
@@ -59,13 +71,34 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
 
 /**
  * Send notifications to a user based on their preferences
+ * @param incidentId - The incident ID
+ * @param userId - The user ID to notify
+ * @param message - The notification message
+ * @param escalationChannels - Optional: Override user preferences with escalation step channels
  */
 export async function sendUserNotification(
     incidentId: string,
     userId: string,
-    message: string
+    message: string,
+    escalationChannels?: NotificationChannel[]
 ): Promise<{ success: boolean; channelsUsed: NotificationChannel[]; errors?: string[] }> {
-    const channels = await getUserNotificationChannels(userId);
+    let channels: NotificationChannel[];
+    
+    // If escalation step specifies channels, use those (filtered by user preferences and availability)
+    if (escalationChannels && escalationChannels.length > 0) {
+        const userChannels = await getUserNotificationChannels(userId);
+        // Intersection: only use channels that are both in escalation step AND available for user
+        channels = escalationChannels.filter(ch => userChannels.includes(ch));
+        
+        // If no intersection, fall back to user preferences
+        if (channels.length === 0) {
+            channels = userChannels;
+        }
+    } else {
+        // Use user preferences
+        channels = await getUserNotificationChannels(userId);
+    }
+    
     const errors: string[] = [];
     const channelsUsed: NotificationChannel[] = [];
 
@@ -178,6 +211,7 @@ export async function sendServiceNotifications(
                 emailNotificationsEnabled: true,
                 smsNotificationsEnabled: true,
                 pushNotificationsEnabled: true,
+                whatsappNotificationsEnabled: true,
                 phoneNumber: true,
                 email: true
             }
@@ -189,6 +223,10 @@ export async function sendServiceNotifications(
             isChannelAvailable('SMS'),
             isChannelAvailable('PUSH')
         ]);
+        
+        // Check WhatsApp availability (requires Twilio)
+        const smsConfig = await import('./notification-providers').then(m => m.getSMSConfig());
+        const whatsappAvailable = smsConfig.enabled && smsConfig.provider === 'twilio';
 
         // Create a map for quick lookup
         const userMap = new Map(users.map(u => [u.id, u]));
@@ -202,15 +240,19 @@ export async function sendServiceNotifications(
             }
 
             // Determine channels for this user
+            // Priority order: PUSH → SMS → WhatsApp → EMAIL
             const channels: NotificationChannel[] = [];
-            if (user.emailNotificationsEnabled && emailAvailable) {
-                channels.push('EMAIL');
+            if (user.pushNotificationsEnabled && pushAvailable) {
+                channels.push('PUSH');
             }
             if (user.smsNotificationsEnabled && user.phoneNumber && smsAvailable) {
                 channels.push('SMS');
             }
-            if (user.pushNotificationsEnabled && pushAvailable) {
-                channels.push('PUSH');
+            if (user.whatsappNotificationsEnabled && user.phoneNumber && whatsappAvailable) {
+                channels.push('WHATSAPP');
+            }
+            if (user.emailNotificationsEnabled && emailAvailable) {
+                channels.push('EMAIL');
             }
 
             if (channels.length === 0) {

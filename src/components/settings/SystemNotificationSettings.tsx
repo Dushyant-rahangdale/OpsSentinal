@@ -117,6 +117,8 @@ function ProviderCard({
     isExpanded: boolean;
     onToggle: () => void;
 }) {
+    // Get user timezone for date formatting
+    const { userTimeZone } = useTimezone();
     const [enabled, setEnabled] = useState(existing?.enabled || false);
     const [config, setConfig] = useState<Record<string, any>>(existing?.config || {});
     const [isSaving, setIsSaving] = useState(false);

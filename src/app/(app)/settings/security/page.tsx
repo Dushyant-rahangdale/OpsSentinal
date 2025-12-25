@@ -16,7 +16,7 @@ export default async function SecuritySettingsPage() {
         : null;
     const ssoEnabled = Boolean(process.env.OIDC_ISSUER);
     const hasPassword = Boolean(user?.passwordHash);
-    const timeZone = getUserTimeZone(user);
+    const timeZone = getUserTimeZone(user ?? undefined);
 
     return (
         <SettingsSection

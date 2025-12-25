@@ -26,7 +26,7 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                 steps: {
                     include: {
                         targetUser: true,
-                        targetTeam: true,
+                        targetTeam: true, // teamLead will be included if Prisma client is regenerated
                         targetSchedule: true
                     },
                     orderBy: { stepOrder: 'asc' }
@@ -201,6 +201,8 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                                             stepOrder: step.stepOrder,
                                             delayMinutes: step.delayMinutes,
                                             targetType: step.targetType,
+                                            notificationChannels: step.notificationChannels || [],
+                                            notifyOnlyTeamLead: step.notifyOnlyTeamLead || false,
                                             targetUser: step.targetUser ? {
                                                 id: step.targetUser.id,
                                                 name: step.targetUser.name,
@@ -208,7 +210,13 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                                             } : null,
                                             targetTeam: step.targetTeam ? {
                                                 id: step.targetTeam.id,
-                                                name: step.targetTeam.name
+                                                name: step.targetTeam.name,
+                                                // teamLead available after Prisma client regeneration
+                                                teamLead: (step.targetTeam as any).teamLead ? {
+                                                    id: (step.targetTeam as any).teamLead.id,
+                                                    name: (step.targetTeam as any).teamLead.name,
+                                                    email: (step.targetTeam as any).teamLead.email
+                                                } : null
                                             } : null,
                                             targetSchedule: step.targetSchedule ? {
                                                 id: step.targetSchedule.id,
@@ -217,18 +225,9 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                                         }}
                                         policyId={policy.id}
                                         canManagePolicies={canManagePolicies}
-                                        updateStep={async (stepId, formData) => {
-                                            await updatePolicyStep(stepId, formData);
-                                            return undefined;
-                                        }}
-                                        deleteStep={async (stepId) => {
-                                            await deletePolicyStep(stepId);
-                                            return undefined;
-                                        }}
-                                        moveStep={async (stepId, direction) => {
-                                            await movePolicyStep(stepId, direction);
-                                            return undefined;
-                                        }}
+                                        updateStep={updatePolicyStep}
+                                        deleteStep={deletePolicyStep}
+                                        moveStep={movePolicyStep}
                                         isFirst={index === 0}
                                         isLast={index === policy.steps.length - 1}
                                     />
@@ -242,10 +241,7 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                                 users={users}
                                 teams={teams}
                                 schedules={schedules}
-                                addStep={async (policyId, formData) => {
-                                    await addPolicyStep(policyId, formData);
-                                    return undefined;
-                                }}
+                                addStep={addPolicyStep}
                             />
                         )}
                     </section>

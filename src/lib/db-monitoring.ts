@@ -53,10 +53,40 @@ class QueryMonitor {
 
     // Log errors
     if (error) {
+      // Extract error information more comprehensively
+      let errorMessage = 'Unknown error';
+      let errorStack: string | undefined;
+      let errorCode: string | undefined;
+      let errorMeta: unknown;
+      
+      if (error instanceof Error) {
+        errorMessage = error.message || 'Error without message';
+        errorStack = error.stack;
+        
+        // Handle Prisma errors specifically
+        if ('code' in error) {
+          errorCode = String(error.code);
+        }
+        if ('meta' in error) {
+          errorMeta = error.meta;
+        }
+      } else {
+        // Try to stringify non-Error objects
+        try {
+          errorMessage = JSON.stringify(error);
+        } catch {
+          errorMessage = String(error) || 'Non-serializable error';
+        }
+      }
+      
       console.error(`[DB Monitor] Query error:`, {
         query: metric.query,
-        error: error.message,
-        params,
+        message: errorMessage,
+        code: errorCode,
+        meta: errorMeta,
+        stack: errorStack,
+        params: params ? JSON.stringify(params, null, 2) : undefined,
+        errorType: error?.constructor?.name || typeof error,
       });
     }
   }

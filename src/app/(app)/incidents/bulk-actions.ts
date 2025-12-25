@@ -212,7 +212,7 @@ export async function bulkSnooze(incidentIds: string[], durationMinutes: number,
 
         // Log events for each incident
         const user = await getCurrentUser();
-        const userTimeZone = getUserTimeZone(user);
+        const userTimeZone = getUserTimeZone(user ?? undefined);
         for (const incidentId of incidentIds) {
             await prisma.incidentEvent.create({
                 data: {

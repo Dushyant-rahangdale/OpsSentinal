@@ -115,7 +115,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
             select: { timeZone: true }
         })
         : null;
-    const userTimeZone = getUserTimeZone(user);
+    const userTimeZone = getUserTimeZone(user ?? undefined);
     
     const awaitedSearchParams = await searchParams;
     const teamId = typeof awaitedSearchParams?.team === 'string' && awaitedSearchParams.team !== 'ALL'

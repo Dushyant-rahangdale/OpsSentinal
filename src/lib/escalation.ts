@@ -7,9 +7,10 @@ import { ESCALATION_LOCK_TIMEOUT_MS } from './config';
 import { formatDateTime } from './timezone';
 
 /**
- * Get the current on-call user for a schedule at a given time
+ * Get all active on-call users for a schedule at a given time
+ * Returns array of all users who are on-call across all active layers
  */
-async function getOnCallUserForSchedule(scheduleId: string, atTime: Date): Promise<string | null> {
+async function getOnCallUsersForSchedule(scheduleId: string, atTime: Date): Promise<string[]> {
     const schedule = await prisma.onCallSchedule.findUnique({
         where: { id: scheduleId },
         include: {
@@ -34,7 +35,7 @@ async function getOnCallUserForSchedule(scheduleId: string, atTime: Date): Promi
     });
 
     if (!schedule || schedule.layers.length === 0) {
-        return null;
+        return [];
     }
 
     // Build schedule blocks to find who's on-call
@@ -68,19 +69,42 @@ async function getOnCallUserForSchedule(scheduleId: string, atTime: Date): Promi
         windowEnd
     );
 
-    // Find the block that covers the current time
-    const activeBlock = blocks.find(block => 
+    // Find all blocks that are active at the current time
+    // Multiple layers can be active simultaneously (e.g., "day" and "night" layers)
+    const activeBlocks = blocks.filter(block => 
         block.start.getTime() <= atTime.getTime() && 
         block.end.getTime() > atTime.getTime()
     );
 
-    return activeBlock?.userId || null;
+    // Extract unique user IDs from all active blocks
+    const userIds = new Set<string>();
+    for (const block of activeBlocks) {
+        if (block.userId) {
+            userIds.add(block.userId);
+        }
+    }
+
+    return Array.from(userIds);
 }
 
 /**
  * Get all users in a team
+ * If notifyOnlyTeamLead is true, returns only the team lead
  */
-async function getTeamUsers(teamId: string): Promise<string[]> {
+async function getTeamUsers(teamId: string, notifyOnlyTeamLead: boolean = false): Promise<string[]> {
+    if (notifyOnlyTeamLead) {
+        const team = await prisma.team.findUnique({
+            where: { id: teamId },
+            select: { teamLeadId: true }
+        });
+        
+        if (team?.teamLeadId) {
+            return [team.teamLeadId];
+        }
+        // If team has no lead but notifyOnlyTeamLead is true, return empty array
+        return [];
+    }
+    
     const members = await prisma.teamMember.findMany({
         where: { teamId },
         select: { userId: true }
@@ -90,24 +114,23 @@ async function getTeamUsers(teamId: string): Promise<string[]> {
 
 /**
  * Resolve escalation target to a list of user IDs
- * Currently supports: User (direct), Team (all members), Schedule (on-call user)
- * Future: Could support Schedule (all on-call users across layers)
+ * Supports: User (direct), Team (all members or only lead), Schedule (all active on-call users)
  */
 export async function resolveEscalationTarget(
     targetType: 'USER' | 'TEAM' | 'SCHEDULE',
     targetId: string,
-    atTime: Date = new Date()
+    atTime: Date = new Date(),
+    notifyOnlyTeamLead: boolean = false
 ): Promise<string[]> {
     switch (targetType) {
         case 'USER':
             return [targetId];
         
         case 'TEAM':
-            return await getTeamUsers(targetId);
+            return await getTeamUsers(targetId, notifyOnlyTeamLead);
         
         case 'SCHEDULE':
-            const onCallUserId = await getOnCallUserForSchedule(targetId, atTime);
-            return onCallUserId ? [onCallUserId] : [];
+            return await getOnCallUsersForSchedule(targetId, atTime);
         
         default:
             return [];
@@ -232,11 +255,21 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     }
 
     if (!targetId) {
+        const errorMessage = `Escalation step ${currentStepIndex + 1} has invalid target configuration (${step.targetType} with no target ID).`;
+        logger.error('Escalation step has invalid target', {
+            incidentId,
+            stepIndex: currentStepIndex,
+            targetType: step.targetType,
+            targetUserId: step.targetUserId,
+            targetTeamId: step.targetTeamId,
+            targetScheduleId: step.targetScheduleId
+        });
+        
         await prisma.$transaction(async (tx) => {
             await tx.incidentEvent.create({
                 data: {
                     incidentId,
-                    message: `Escalation step ${currentStepIndex + 1} has invalid target configuration. Skipping.`
+                    message: errorMessage + ' Skipping.'
                 }
             });
             await tx.incident.update({
@@ -252,18 +285,29 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     }
 
     // Resolve to user IDs using resolveEscalationTarget
+    const notifyOnlyTeamLead = step.notifyOnlyTeamLead || false;
     const targetUserIds = await resolveEscalationTarget(
         step.targetType,
         targetId,
-        new Date()
+        new Date(),
+        notifyOnlyTeamLead
     );
 
     if (targetUserIds.length === 0) {
+        const errorMessage = `Escalation step ${currentStepIndex + 1} (${step.targetType}: ${targetName}) resolved to no users.`;
+        logger.warn('Escalation target resolved to no users', {
+            incidentId,
+            stepIndex: currentStepIndex,
+            targetType: step.targetType,
+            targetId,
+            targetName
+        });
+        
         await prisma.$transaction(async (tx) => {
             await tx.incidentEvent.create({
                 data: {
                     incidentId,
-                    message: `Escalation step ${currentStepIndex + 1} (${step.targetType}: ${targetName}) resolved to no users. Skipping.`
+                    message: errorMessage + ' Skipping.'
                 }
             });
             await tx.incident.update({
@@ -278,14 +322,17 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         return { escalated: false, reason: 'No users to notify' };
     }
 
-    // Send notifications to all resolved users based on their preferences
-    // Each user chooses how they want to be notified (email, SMS, push) in their settings
+    // Send notifications to all resolved users
+    // Use escalation step channels if specified, otherwise use user preferences
     const { sendUserNotification } = await import('./user-notifications');
     const notificationsSent = [];
+    const escalationChannels = step.notificationChannels && step.notificationChannels.length > 0
+        ? step.notificationChannels as any[]
+        : undefined;
     
     for (const userId of targetUserIds) {
         const message = `[OpsGuard] Incident: ${incident.title}${currentStepIndex > 0 ? ` (Escalation Level ${currentStepIndex + 1})` : ''}`;
-        const result = await sendUserNotification(incidentId, userId, message);
+        const result = await sendUserNotification(incidentId, userId, message, escalationChannels);
         notificationsSent.push({ userId, result });
     }
 
@@ -436,23 +483,44 @@ export async function processPendingEscalations() {
                 });
             }
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            
             logger.error('Error processing escalation', {
                 incidentId: incident.id,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: errorMessage,
+                stack: errorStack,
+                currentStep: incident.currentEscalationStep,
+                escalationStatus: incident.escalationStatus
             });
-            errors.push(`Incident ${incident.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            errors.push(`Incident ${incident.id}: ${errorMessage}`);
             
             // Update incident to prevent infinite retries on same error
-            await prisma.incident.update({
-                where: { id: incident.id },
-                data: {
-                    escalationStatus: 'COMPLETED',
-                    nextEscalationAt: null,
-                    escalationProcessingAt: null
-                }
-            }).catch(() => {
-                // Ignore update errors
-            });
+            try {
+                await prisma.incident.update({
+                    where: { id: incident.id },
+                    data: {
+                        escalationStatus: 'COMPLETED',
+                        nextEscalationAt: null,
+                        escalationProcessingAt: null
+                    }
+                });
+                
+                // Log error event
+                await prisma.incidentEvent.create({
+                    data: {
+                        incidentId: incident.id,
+                        message: `Escalation processing failed: ${errorMessage}`
+                    }
+                }).catch(() => {
+                    // Ignore event creation errors
+                });
+            } catch (updateError) {
+                logger.error('Failed to update incident after escalation error', {
+                    incidentId: incident.id,
+                    updateError: updateError instanceof Error ? updateError.message : 'Unknown error'
+                });
+            }
         }
     }
 

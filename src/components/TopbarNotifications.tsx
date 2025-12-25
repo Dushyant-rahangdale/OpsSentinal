@@ -228,8 +228,8 @@ export default function TopbarNotifications() {
                             ))
                         )}
                     </div>
-                    {notifications.length > 0 && (
-                        <div className="topbar-notifications-footer">
+                    <div className="topbar-notifications-footer">
+                        {notifications.length > 0 && (
                             <button
                                 type="button"
                                 className="topbar-notifications-view-all"
@@ -258,8 +258,19 @@ export default function TopbarNotifications() {
                             >
                                 {unreadCount > 0 ? 'Mark all as read' : 'Refresh notifications'}
                             </button>
-                        </div>
-                    )}
+                        )}
+                        <button
+                            type="button"
+                            className="topbar-notifications-view-all"
+                            onClick={() => {
+                                setOpen(false);
+                                window.location.href = '/settings/notifications/history';
+                            }}
+                            style={{ marginTop: notifications.length > 0 ? '0.5rem' : '0' }}
+                        >
+                            📊 View Notification Status
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

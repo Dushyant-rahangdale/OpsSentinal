@@ -229,7 +229,7 @@ export async function sendIncidentEmail(
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
 
         const subject = `[${incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO'}] ${incident.title}`;
-        const userTimeZone = getUserTimeZone(user);
+        const userTimeZone = getUserTimeZone(user ?? undefined);
         const html = generateIncidentEmailHTML({
             ...incident,
             incidentUrl
