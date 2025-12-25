@@ -7,14 +7,33 @@ import { formatDateTime } from '@/lib/timezone';
 export default function TopbarClock() {
     const { userTimeZone } = useTimezone();
     const [time, setTime] = useState(new Date());
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // Mark as mounted to prevent hydration mismatch
+        setMounted(true);
+        
         const timer = setInterval(() => {
             setTime(new Date());
         }, 1000);
 
         return () => clearInterval(timer);
     }, []);
+
+    // Don't render time until mounted to avoid hydration mismatch
+    if (!mounted) {
+        return (
+            <div className="topbar-clock" title="">
+                <div className="topbar-clock-time">
+                    <span className="topbar-clock-hours">--</span>
+                    <span className="topbar-clock-separator">:</span>
+                    <span className="topbar-clock-minutes">--</span>
+                    <span className="topbar-clock-seconds">--</span>
+                </div>
+                <div className="topbar-clock-date">--</div>
+            </div>
+        );
+    }
 
     // Format time in user's timezone - extract hours, minutes, seconds
     const timeFormatter = new Intl.DateTimeFormat('en-US', {
