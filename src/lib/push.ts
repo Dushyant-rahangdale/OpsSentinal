@@ -35,14 +35,14 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
         // Get push configuration
         const pushConfig = await getPushConfig();
 
-        // Get user's FCM token (would be stored in user profile or separate table)
-        const user = await prisma.user.findUnique({
-            where: { id: options.userId },
-            // TODO: Add fcmToken field to User model or create UserDevice table
+        // Get user's device tokens
+        const devices = await prisma.userDevice.findMany({
+            where: { userId: options.userId },
+            orderBy: { lastUsed: 'desc' }
         });
 
-        if (!user) {
-            return { success: false, error: 'User not found' };
+        if (devices.length === 0) {
+            return { success: false, error: 'No device tokens found for user' };
         }
 
         // Development: Log push instead of sending if no provider configured
@@ -61,6 +61,9 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
         }
 
         // Production: Use configured provider
+        let successCount = 0;
+        let errorMessages: string[] = [];
+
         if (pushConfig.provider === 'firebase') {
             // TODO: Implement Firebase when npm package is installed
             // const admin = require('firebase-admin');
@@ -71,31 +74,56 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
             //             privateKey: pushConfig.privateKey,
             //             clientEmail: pushConfig.clientEmail,
             //         })
-            // });
+            //     });
             // }
-            // const message = {
-            //     notification: { title: options.title, body: options.body },
-            //     data: options.data,
-            //     token: user.fcmToken,
-            // };
-            // await admin.messaging().send(message);
-            console.log('Would send via Firebase:', { userId: options.userId, title: options.title });
-            return { success: true };
-        }
-
-        if (pushConfig.provider === 'onesignal') {
+            // Send to all devices
+            // for (const device of devices) {
+            //     try {
+            //         const message = {
+            //             notification: { title: options.title, body: options.body },
+            //             data: options.data,
+            //             token: device.token,
+            //         };
+            //         await admin.messaging().send(message);
+            //         await prisma.userDevice.update({
+            //             where: { id: device.id },
+            //             data: { lastUsed: new Date() }
+            //         });
+            //         successCount++;
+            //     } catch (error: any) {
+            //         errorMessages.push(`Device ${device.deviceId}: ${error.message}`);
+            //     }
+            // }
+            console.log('Would send via Firebase to', devices.length, 'devices:', { userId: options.userId, title: options.title });
+            successCount = devices.length;
+        } else if (pushConfig.provider === 'onesignal') {
             // TODO: Implement OneSignal when npm package is installed
             // const { Client } = require('onesignal-node');
             // const client = new Client(pushConfig.appId, pushConfig.restApiKey);
+            // const deviceTokens = devices.map(d => d.token);
             // await client.createNotification({
             //     headings: { en: options.title },
             //     contents: { en: options.body },
-            //     include_external_user_ids: [options.userId],
+            //     include_player_ids: deviceTokens,
             //     data: options.data,
             // });
-            console.log('Would send via OneSignal:', { userId: options.userId, title: options.title });
-            return { success: true };
+            console.log('Would send via OneSignal to', devices.length, 'devices:', { userId: options.userId, title: options.title });
+            successCount = devices.length;
+        } else {
+            return { success: false, error: 'No push notification provider configured' };
         }
+
+        // Update lastUsed for successful devices
+        if (successCount > 0) {
+            await prisma.userDevice.updateMany({
+                where: { userId: options.userId },
+                data: { lastUsed: new Date() }
+            });
+        }
+
+        return successCount > 0 
+            ? { success: true }
+            : { success: false, error: errorMessages.join('; ') || 'Failed to send to all devices' };
 
         // No provider configured
         return { success: false, error: 'No push notification provider configured' };

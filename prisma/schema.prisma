@@ -115,6 +115,7 @@ model User {
   postmortems          Postmortem[]
   notifications        Notification[]
   inAppNotifications   InAppNotification[]
+  devices              UserDevice[]
   incidentWatchers     IncidentWatcher[]
   auditLogs            AuditLog[]
   overrides            OnCallOverride[]       @relation("OverrideUser")
@@ -472,6 +473,7 @@ model Notification {
   deliveredAt DateTime?
   failedAt    DateTime?
   errorMsg    String?
+  attempts    Int                 @default(0) // Retry attempt count
   createdAt   DateTime            @default(now())
 
   incident Incident @relation(fields: [incidentId], references: [id])
@@ -498,6 +500,25 @@ model InAppNotification {
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+}
+
+// User device tokens for push notifications
+model UserDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  deviceId  String   // Unique device identifier
+  token     String   // FCM/APNS token
+  platform  String   // 'ios', 'android', 'web'
+  userAgent String?  // Browser/device info
+  lastUsed  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([token])
 }
 
 model AuditLog {

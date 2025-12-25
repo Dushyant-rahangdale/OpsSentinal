@@ -1,5 +1,6 @@
 import prisma from './prisma';
 import { sendIncidentEmail } from './email';
+import { retry } from './retry';
 
 export type NotificationChannel = 'EMAIL' | 'SMS' | 'PUSH' | 'SLACK' | 'WEBHOOK';
 
@@ -19,7 +20,8 @@ export async function sendNotification(
             userId,
             channel,
             message,
-            status: 'PENDING'
+            status: 'PENDING',
+            attempts: 0
         }
     });
 
@@ -127,7 +129,8 @@ export async function sendNotification(
             data: {
                 status: 'FAILED',
                 failedAt: new Date(),
-                errorMsg: error.message
+                errorMsg: error.message,
+                attempts: (notification.attempts || 0) + 1
             }
         });
 
