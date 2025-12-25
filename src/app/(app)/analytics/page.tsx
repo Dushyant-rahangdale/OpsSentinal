@@ -9,6 +9,9 @@ import ProgressBar from '@/components/analytics/ProgressBar';
 import PieChart from '@/components/analytics/PieChart';
 import GaugeChart from '@/components/analytics/GaugeChart';
 import FilterChips from '@/components/analytics/FilterChips';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
 
 const formatMinutes = (ms: number | null) => (ms === null ? '--' : `${(ms / 1000 / 60).toFixed(1)}m`);
 const formatPercent = (value: number) => `${value.toFixed(0)}%`;
@@ -70,8 +73,8 @@ function toDateKey(date: Date) {
     return `${year}-${month}-${day}`;
 }
 
-function formatDayLabel(date: Date) {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function formatDayLabel(date: Date, timeZone: string = 'UTC') {
+    return formatDateTime(date, timeZone, { format: 'short' });
 }
 
 function percentile(values: number[], percentileValue: number) {
@@ -103,6 +106,17 @@ const allowedUrgency = ['HIGH', 'LOW'] as const;
 const allowedWindows = new Set([1, 3, 7, 14, 30, 60, 90]);
 
 export default async function AnalyticsPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
+    // Get user timezone for date formatting
+    const session = await getServerSession(authOptions);
+    const email = session?.user?.email ?? null;
+    const user = email
+        ? await prisma.user.findUnique({
+            where: { email },
+            select: { timeZone: true }
+        })
+        : null;
+    const userTimeZone = getUserTimeZone(user ?? undefined);
+    
     const awaitedSearchParams = await searchParams;
     const teamId = typeof awaitedSearchParams?.team === 'string' && awaitedSearchParams.team !== 'ALL'
         ? awaitedSearchParams.team
@@ -420,7 +434,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
     const trendSeries = Array.from({ length: trendWindowDays }, (_, index) => {
         const day = new Date(trendStartDay);
         day.setDate(trendStartDay.getDate() + index);
-        return { date: day, key: toDateKey(day), label: formatDayLabel(day), count: 0 };
+        return { date: day, key: toDateKey(day), label: formatDayLabel(day, userTimeZone), count: 0 };
     });
     const trendIndex = new Map(trendSeries.map((entry, index) => [entry.key, index]));
     for (const incident of incidentsTrend) {
