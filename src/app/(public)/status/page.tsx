@@ -1,6 +1,9 @@
 import prisma from '@/lib/prisma';
 import { Metadata } from 'next';
 import { getBaseUrl } from '@/lib/env-validation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
@@ -74,6 +77,14 @@ export default async function PublicStatusPage() {
             },
         },
     });
+
+    // Check if authentication is required
+    if (statusPage?.requireAuth) {
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            redirect('/login?callbackUrl=/status');
+        }
+    }
 
     // If no status page exists, create a default one
     if (!statusPage) {

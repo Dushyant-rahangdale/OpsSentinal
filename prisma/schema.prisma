@@ -733,7 +733,7 @@ model StatusPage {
   organizationName String? // Dedicated organization name for email branding
   subdomain     String? @unique // Custom subdomain (e.g., status.yourcompany.com)
   customDomain  String? @unique // Custom domain (e.g., status.yourcompany.com)
-  enabled       Boolean @default(true)
+  enabled       Boolean @default(false)
   showServices  Boolean @default(true)
   showIncidents Boolean @default(true)
   showMetrics   Boolean @default(true)

@@ -37,7 +37,7 @@ export default async function StatusPageSettingsPage() {
         statusPage = await prisma.statusPage.create({
             data: {
                 name: 'Status Page',
-                enabled: true,
+                enabled: false,
             },
             include: {
                 services: {

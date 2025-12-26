@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 /**
  * RSS Feed for Status Page
@@ -23,6 +25,14 @@ export async function GET() {
 
         if (!statusPage) {
             return new NextResponse('Status page not found', { status: 404 });
+        }
+
+        // Check if authentication is required
+        if (statusPage.requireAuth) {
+            const session = await getServerSession(authOptions);
+            if (!session) {
+                return new NextResponse('Authentication required', { status: 401 });
+            }
         }
 
         const serviceIds = statusPage.services.map(sp => sp.serviceId);

@@ -1,6 +1,8 @@
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 /**
  * Status Page API
@@ -24,6 +26,14 @@ export async function GET() {
 
         if (!statusPage) {
             return jsonError('Status page not found or disabled', 404);
+        }
+
+        // Check if authentication is required
+        if (statusPage.requireAuth) {
+            const session = await getServerSession(authOptions);
+            if (!session) {
+                return jsonError('Authentication required', 401);
+            }
         }
 
         const serviceIds = statusPage.services
@@ -130,7 +140,7 @@ export async function GET() {
             const periodEnd = new Date();
             const totalMinutes = (periodEnd.getTime() - thirtyDaysAgo.getTime()) / (1000 * 60);
             let downtimeMinutes = 0;
-            
+
             serviceIncidents.forEach(incident => {
                 if (incident.status === 'SUPPRESSED' || incident.status === 'SNOOZED') {
                     return;
