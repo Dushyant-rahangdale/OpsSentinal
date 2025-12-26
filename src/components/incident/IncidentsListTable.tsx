@@ -655,7 +655,10 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                         <AssigneeSection
                                             assignee={incident.assignee}
                                             assigneeId={incident.assigneeId}
+                                            team={null}
+                                            teamId={null}
                                             users={users}
+                                            teams={[]}
                                             incidentId={incident.id}
                                             canManage={canManageIncidents}
                                             variant="list"

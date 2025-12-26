@@ -23,16 +23,14 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
 
     const permissions = await getUserPermissions();
     const canCreateIncident = permissions.isResponderOrAbove;
-    
-    // Get current user for filtering
-    const currentUser = await prisma.user.findUnique({ 
-        where: { id: permissions.id } 
-    });
 
-    // Get user's teams for preset access
-    const userTeams = await prisma.user.findUnique({
+    // Get current user with team memberships in a single query (optimized)
+    const currentUser = await prisma.user.findUnique({
         where: { id: permissions.id },
         select: {
+            id: true,
+            name: true,
+            email: true,
             teamMemberships: {
                 select: {
                     teamId: true,
@@ -40,11 +38,12 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
             },
         },
     });
-    const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
+
+    const userTeamIds = currentUser?.teamMemberships.map(t => t.teamId) || [];
 
     // Get accessible presets (and create defaults if needed)
     let presets = await getAccessiblePresets(permissions.id, userTeamIds);
-    
+
     // Create default presets if user has none
     if (presets.length === 0 && permissions.isResponderOrAbove) {
         await createDefaultPresetsForUser(permissions.id);
@@ -116,9 +115,9 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
     // Get paginated incidents
     let incidents = await prisma.incident.findMany({
         where,
-        include: { 
-            service: true, 
-            assignee: true 
+        include: {
+            service: true,
+            assignee: true
         },
         orderBy,
         skip,
@@ -166,14 +165,14 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                         + Create Incident
                     </Link>
                 ) : (
-                    <button 
-                        type="button" 
-                        disabled 
-                        className="glass-button primary" 
-                        style={{ 
-                            textDecoration: 'none', 
+                    <button
+                        type="button"
+                        disabled
+                        className="glass-button primary"
+                        style={{
+                            textDecoration: 'none',
                             borderRadius: '0px',
-                            opacity: 0.6, 
+                            opacity: 0.6,
                             cursor: 'not-allowed',
                             whiteSpace: 'nowrap'
                         }}
@@ -210,7 +209,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                     currentCriteria={currentCriteria}
                 />
                 <div style={{ flex: 1 }}>
-                    <IncidentsFilters 
+                    <IncidentsFilters
                         currentFilter={currentFilter}
                         currentSort={currentSort}
                         currentPriority={currentPriority}
@@ -221,7 +220,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                 </div>
             </div>
 
-            <IncidentsListTable 
+            <IncidentsListTable
                 incidents={incidents as any}
                 users={users}
                 canManageIncidents={permissions.isResponderOrAbove}

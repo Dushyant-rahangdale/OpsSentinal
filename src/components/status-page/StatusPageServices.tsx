@@ -19,6 +19,12 @@ interface StatusPageService {
     showOnPage: boolean;
 }
 
+interface PrivacySettings {
+    showServiceMetrics?: boolean;
+    showServiceDescriptions?: boolean;
+    showUptimeHistory?: boolean;
+}
+
 interface StatusPageServicesProps {
     services: Service[];
     statusPageServices: StatusPageService[];
@@ -30,6 +36,7 @@ interface StatusPageServicesProps {
         status: string;
         urgency: string;
     }>;
+    privacySettings?: PrivacySettings;
 }
 
 const STATUS_CONFIG = {
@@ -86,7 +93,13 @@ type TimelineData = {
     status: TimelineSliceStatus[];
 };
 
-export default function StatusPageServices({ services, statusPageServices, uptime90, incidents }: StatusPageServicesProps) {
+export default function StatusPageServices({ services, statusPageServices, uptime90, incidents, privacySettings }: StatusPageServicesProps) {
+    // Privacy defaults
+    const privacy = {
+        showServiceMetrics: privacySettings?.showServiceMetrics !== false,
+        showServiceDescriptions: privacySettings?.showServiceDescriptions !== false,
+        showUptimeHistory: privacySettings?.showUptimeHistory !== false,
+    };
     const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
     const [hoveredServiceId, setHoveredServiceId] = useState<string | null>(null);
     const [visibleDays, setVisibleDays] = useState(90);
@@ -297,18 +310,18 @@ export default function StatusPageServices({ services, statusPageServices, uptim
     if (visibleServices.length === 0) return null;
 
     return (
-        <section style={{ marginBottom: '4rem' }}>
+        <section style={{ marginBottom: 'clamp(2rem, 6vw, 4rem)' }}>
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '1.5rem',
+                marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
                 gap: '1rem',
                 flexWrap: 'wrap',
             }}>
                 <div>
                     <h2 style={{
-                        fontSize: '1.875rem',
+                        fontSize: 'clamp(1.5rem, 4vw, 1.875rem)',
                         fontWeight: '800',
                         color: '#0f172a',
                         margin: 0,
@@ -318,7 +331,7 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                         Services
                     </h2>
                     <p style={{ 
-                        fontSize: '0.875rem', 
+                        fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)', 
                         color: '#64748b',
                         margin: 0,
                         display: 'flex',
@@ -335,11 +348,11 @@ export default function StatusPageServices({ services, statusPageServices, uptim
             </div>
             <div style={{
                 display: 'flex',
-                gap: '1.25rem',
+                gap: 'clamp(0.75rem, 2vw, 1.25rem)',
                 flexWrap: 'wrap',
                 alignItems: 'center',
-                marginBottom: '1.5rem',
-                padding: '1rem 1.25rem',
+                marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+                padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 1.25rem)',
                 background: '#f8fafc',
                 borderRadius: '0.75rem',
                 border: '1px solid #e2e8f0',
@@ -433,8 +446,8 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                             style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '1rem',
-                                padding: '1.5rem 1.5rem',
+                                gap: 'clamp(0.75rem, 2vw, 1rem)',
+                                padding: 'clamp(1rem, 3vw, 1.5rem)',
                                 borderTop: index === 0 ? 'none' : '1px solid #e2e8f0',
                                 position: 'relative',
                                 background: isRowHovered 
@@ -459,17 +472,16 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                             <div style={{ 
                                 display: 'flex', 
                                 justifyContent: 'space-between', 
-                                gap: '1.5rem', 
-                                alignItems: 'flex-start' 
+                                gap: 'clamp(1rem, 3vw, 1.5rem)', 
+                                alignItems: 'flex-start',
+                                flexWrap: 'wrap',
                             }}>
-                                <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
                                     <div style={{
-                                        fontSize: '1.125rem',
+                                        fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
                                         fontWeight: '700',
                                         color: '#0f172a',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
+                                        wordBreak: 'break-word',
                                         marginBottom: '0.5rem',
                                         letterSpacing: '-0.01em',
                                     }}>
@@ -529,7 +541,7 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                                     >
                                         {statusConfig.label}
                                     </span>
-                                    {uptimeValue90 !== undefined && (
+                                    {privacy.showServiceMetrics && uptimeValue90 !== undefined && (
                                         <div style={{ 
                                             display: 'flex',
                                             alignItems: 'center',
@@ -547,21 +559,22 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                                 </div>
                             </div>
 
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: `repeat(${displayedHistory.length || visibleDays}, minmax(0, 1fr))`,
-                                gap: '2px',
-                                height: '20px',
-                                padding: '0.45rem 0.65rem',
-                                alignItems: 'center',
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                overflow: 'hidden',
-                                borderRadius: '0.65rem',
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.05)',
-                            }}>
+                            {privacy.showUptimeHistory && (
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: `repeat(${displayedHistory.length || visibleDays}, minmax(0, 1fr))`,
+                                    gap: '2px',
+                                    height: '20px',
+                                    padding: '0.45rem 0.65rem',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                    boxSizing: 'border-box',
+                                    overflow: 'hidden',
+                                    borderRadius: '0.65rem',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    boxShadow: 'inset 0 1px 2px rgba(15, 23, 42, 0.05)',
+                                }}>
                                 {(displayedHistory.length ? displayedHistory : new Array(visibleDays).fill(null)).map((entry, barIndex) => {
                                     const barStatus = entry?.status || 'operational';
                                     const isHovered = hoveredBar?.serviceId === service.id && hoveredBar?.date === entry?.date;
@@ -656,7 +669,8 @@ export default function StatusPageServices({ services, statusPageServices, uptim
                                         />
                                     );
                                 })}
-                            </div>
+                                </div>
+                            )}
                             {hoveredBar && hoveredBar.serviceId === service.id && (() => {
                                 const tooltipEntry = displayedHistory.find(e => e.date === hoveredBar.date);
                                 const dayStatus = tooltipEntry?.status || 'operational';

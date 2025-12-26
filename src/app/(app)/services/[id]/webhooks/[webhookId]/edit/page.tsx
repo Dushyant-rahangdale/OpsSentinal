@@ -2,16 +2,17 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import HoverLink from '@/components/service/HoverLink';
 import ServiceTabs from '@/components/service/ServiceTabs';
+import DeleteWebhookButton from '@/components/service/DeleteWebhookButton';
 import { updateWebhookIntegration, deleteWebhookIntegration } from '../../actions';
 import { notFound } from 'next/navigation';
 
-export default async function EditWebhookPage({ 
-    params 
-}: { 
-    params: Promise<{ id: string; webhookId: string }> 
+export default async function EditWebhookPage({
+    params
+}: {
+    params: Promise<{ id: string; webhookId: string }>
 }) {
     const { id, webhookId } = await params;
-    
+
     const [service, webhook] = await Promise.all([
         prisma.service.findUnique({
             where: { id },
@@ -114,6 +115,7 @@ export default async function EditWebhookPage({
                                     <option value="GENERIC">Generic Webhook</option>
                                     <option value="GOOGLE_CHAT">Google Chat</option>
                                     <option value="TEAMS">Microsoft Teams</option>
+                                    <option value="SLACK">Slack</option>
                                     <option value="DISCORD">Discord</option>
                                 </select>
                             </div>
@@ -212,23 +214,10 @@ export default async function EditWebhookPage({
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        <form action={deleteWebhookWithIds}>
-                            <button
-                                type="submit"
-                                className="glass-button"
-                                style={{
-                                    color: 'var(--danger)',
-                                    borderColor: 'var(--danger)'
-                                }}
-                                onClick={(e) => {
-                                    if (!confirm('Are you sure you want to delete this webhook integration?')) {
-                                        e.preventDefault();
-                                    }
-                                }}
-                            >
-                                Delete
-                            </button>
-                        </form>
+                        <DeleteWebhookButton
+                            deleteAction={deleteWebhookWithIds}
+                            redirectTo={`/services/${id}/settings`}
+                        />
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <Link
                                 href={`/services/${id}/settings`}
@@ -255,5 +244,6 @@ export default async function EditWebhookPage({
         </main>
     );
 }
+
 
 

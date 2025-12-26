@@ -56,8 +56,9 @@ export default async function SecuritySettingsPage() {
 
             <SecurityForm hasPassword={hasPassword} />
             <div className="settings-note" style={{ marginTop: '1.5rem' }}>
-                For password resets or session issues, contact your OpsGuard administrator.
+                For password resets or session issues, contact your OpsSure administrator.
             </div>
         </SettingsSection>
     );
 }
+

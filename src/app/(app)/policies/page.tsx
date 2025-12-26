@@ -6,7 +6,7 @@ import Link from 'next/link';
 export const revalidate = 30;
 
 export default async function PoliciesPage() {
-    const [policies, users] = await Promise.all([
+    const [policies, users, teams] = await Promise.all([
         prisma.escalationPolicy.findMany({
             include: {
                 steps: {
@@ -27,6 +27,10 @@ export default async function PoliciesPage() {
             where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
             select: { id: true, name: true, email: true },
             orderBy: { name: 'asc' }
+        }),
+        prisma.team.findMany({
+            orderBy: { name: 'asc' },
+            select: { id: true, name: true }
         })
     ]);
 
@@ -257,7 +261,7 @@ export default async function PoliciesPage() {
                                     Step 1: Immediately notify *
                                 </label>
                                 <select
-                                    name="step-0-userId"
+                                    name="step-0-target"
                                     required
                                     style={{
                                         width: '100%',
@@ -268,12 +272,21 @@ export default async function PoliciesPage() {
                                         background: 'white'
                                     }}
                                 >
-                                    <option value="">Select a user</option>
-                                    {users.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name} ({u.email})
-                                        </option>
-                                    ))}
+                                    <option value="">Select target...</option>
+                                    <optgroup label="Teams">
+                                        {teams.map((t) => (
+                                            <option key={`team-${t.id}`} value={`team:${t.id}`}>
+                                                {t.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Users">
+                                        {users.map((u) => (
+                                            <option key={`user-${u.id}`} value={`user:${u.id}`}>
+                                                {u.name} ({u.email})
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 </select>
                                 <input type="hidden" name="step-0-delayMinutes" value="0" />
                             </div>
@@ -283,7 +296,7 @@ export default async function PoliciesPage() {
                                     Step 2: If no response, notify after (optional)
                                 </label>
                                 <select
-                                    name="step-1-userId"
+                                    name="step-1-target"
                                     style={{
                                         width: '100%',
                                         padding: '0.6rem',
@@ -295,11 +308,20 @@ export default async function PoliciesPage() {
                                     }}
                                 >
                                     <option value="">(None)</option>
-                                    {users.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name} ({u.email})
-                                        </option>
-                                    ))}
+                                    <optgroup label="Teams">
+                                        {teams.map((t) => (
+                                            <option key={`team-${t.id}`} value={`team:${t.id}`}>
+                                                {t.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Users">
+                                        {users.map((u) => (
+                                            <option key={`user-${u.id}`} value={`user:${u.id}`}>
+                                                {u.name} ({u.email})
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 </select>
                                 <input
                                     name="step-1-delayMinutes"
@@ -323,7 +345,7 @@ export default async function PoliciesPage() {
                                     Step 3: Final escalation (optional)
                                 </label>
                                 <select
-                                    name="step-2-userId"
+                                    name="step-2-target"
                                     style={{
                                         width: '100%',
                                         padding: '0.6rem',
@@ -335,11 +357,20 @@ export default async function PoliciesPage() {
                                     }}
                                 >
                                     <option value="">(None)</option>
-                                    {users.map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name} ({u.email})
-                                        </option>
-                                    ))}
+                                    <optgroup label="Teams">
+                                        {teams.map((t) => (
+                                            <option key={`team-${t.id}`} value={`team:${t.id}`}>
+                                                {t.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Users">
+                                        {users.map((u) => (
+                                            <option key={`user-${u.id}`} value={`user:${u.id}`}>
+                                                {u.name} ({u.email})
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 </select>
                                 <input
                                     name="step-2-delayMinutes"

@@ -39,10 +39,10 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
     if (announcements.length === 0) return null;
 
     return (
-        <section style={{ marginBottom: '4rem' }}>
-            <div style={{ marginBottom: '1.5rem' }}>
+        <section style={{ marginBottom: 'clamp(2rem, 6vw, 4rem)' }}>
+            <div style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
                 <h2 style={{ 
-                    fontSize: '1.875rem', 
+                    fontSize: 'clamp(1.5rem, 4vw, 1.875rem)', 
                     fontWeight: '800', 
                     marginBottom: '0.25rem',
                     color: '#0f172a',
@@ -51,14 +51,14 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
                     Announcements
                 </h2>
                 <p style={{ 
-                    fontSize: '0.875rem', 
+                    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)', 
                     color: '#64748b',
                     margin: 0,
                 }}>
                     Important updates and notifications
                 </p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(1rem, 3vw, 1.25rem)' }}>
                 {announcements.map((announcement, index) => {
                     const color = TYPE_COLORS[announcement.type as keyof typeof TYPE_COLORS] || TYPE_COLORS.INFO;
                     const label = TYPE_LABELS[announcement.type as keyof typeof TYPE_LABELS] || 'Information';
@@ -67,7 +67,7 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
                         <div
                             key={announcement.id}
                             style={{
-                                padding: '1.75rem',
+                                padding: 'clamp(1.25rem, 3vw, 1.75rem)',
                                 background: 'white',
                                 border: `2px solid ${color}30`,
                                 borderRadius: '1rem',
@@ -101,22 +101,23 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
                                 display: 'flex', 
                                 justifyContent: 'space-between', 
                                 alignItems: 'start', 
-                                marginBottom: '1rem', 
+                                marginBottom: 'clamp(0.75rem, 2vw, 1rem)', 
                                 flexWrap: 'wrap', 
-                                gap: '1rem',
-                                paddingLeft: '1rem',
+                                gap: 'clamp(0.75rem, 2vw, 1rem)',
+                                paddingLeft: 'clamp(0.75rem, 2vw, 1rem)',
                             }}>
                                 <div style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
-                                    gap: '0.875rem',
-                                    flex: 1,
+                                    gap: 'clamp(0.5rem, 2vw, 0.875rem)',
+                                    flex: '1 1 200px',
                                     minWidth: 0,
+                                    flexWrap: 'wrap',
                                 }}>
                                     <span style={{
-                                        padding: '0.375rem 0.875rem',
+                                        padding: 'clamp(0.25rem, 1vw, 0.375rem) clamp(0.625rem, 2vw, 0.875rem)',
                                         borderRadius: '0.5rem',
-                                        fontSize: '0.75rem',
+                                        fontSize: 'clamp(0.6875rem, 1.5vw, 0.75rem)',
                                         fontWeight: '700',
                                         background: `linear-gradient(135deg, ${color}20 0%, ${color}15 100%)`,
                                         color: color,
@@ -128,14 +129,12 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
                                         {label}
                                     </span>
                                     <h3 style={{ 
-                                        fontSize: '1.25rem', 
+                                        fontSize: 'clamp(1.125rem, 3vw, 1.25rem)', 
                                         fontWeight: '700', 
                                         color: '#111827', 
                                         margin: 0,
                                         letterSpacing: '-0.01em',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
+                                        wordBreak: 'break-word',
                                     }}>
                                         {announcement.title}
                                     </h3>
@@ -144,7 +143,7 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.5rem',
-                                    fontSize: '0.875rem', 
+                                    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)', 
                                     color: '#6b7280',
                                     flexShrink: 0,
                                 }}>
@@ -160,8 +159,8 @@ export default function StatusPageAnnouncements({ announcements }: StatusPageAnn
                                 lineHeight: '1.75', 
                                 whiteSpace: 'pre-wrap',
                                 margin: 0,
-                                paddingLeft: '1rem',
-                                fontSize: '0.9375rem',
+                                paddingLeft: 'clamp(0.75rem, 2vw, 1rem)',
+                                fontSize: 'clamp(0.875rem, 2vw, 0.9375rem)',
                             }}>
                                 {announcement.message}
                             </p>

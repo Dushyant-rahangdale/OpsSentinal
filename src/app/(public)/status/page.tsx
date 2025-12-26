@@ -1,10 +1,54 @@
 import prisma from '@/lib/prisma';
+import { Metadata } from 'next';
+import { getBaseUrl } from '@/lib/env-validation';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
+import StatusPageSubscribe from '@/components/status-page/StatusPageSubscribe';
+import StatusPageMetrics from '@/components/status-page/StatusPageMetrics';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+    const statusPage = await prisma.statusPage.findFirst({
+        where: { enabled: true },
+    });
+
+    if (!statusPage) {
+        return {
+            title: 'Status Page',
+            description: 'Service status and incident information',
+        };
+    }
+
+    const branding = statusPage.branding && typeof statusPage.branding === 'object' && !Array.isArray(statusPage.branding) ? statusPage.branding as Record<string, any> : {};
+    const metaTitle = (branding.metaTitle as string) || statusPage.name;
+    const metaDescription = (branding.metaDescription as string) || `Status page for ${statusPage.name}`;
+    const baseUrl = getBaseUrl();
+
+    return {
+        title: metaTitle,
+        description: metaDescription,
+        openGraph: {
+            title: metaTitle,
+            description: metaDescription,
+            url: `${baseUrl}/status`,
+            siteName: statusPage.name,
+            type: 'website',
+        },
+        twitter: {
+            card: 'summary',
+            title: metaTitle,
+            description: metaDescription,
+        },
+        alternates: {
+            types: {
+                'application/rss+xml': `${baseUrl}/api/status/rss`,
+            },
+        },
+    };
+}
 
 export default async function PublicStatusPage() {
     // Get the status page configuration
@@ -115,8 +159,8 @@ export default async function PublicStatusPage() {
 
 async function renderStatusPage(statusPage: any) {
     // Parse branding
-    const branding = statusPage.branding && typeof statusPage.branding === 'object'
-        ? statusPage.branding
+    const branding = statusPage.branding && typeof statusPage.branding === 'object' && !Array.isArray(statusPage.branding)
+        ? statusPage.branding as Record<string, any>
         : {};
 
     const primaryColor = branding.primaryColor || '#667eea';
@@ -169,36 +213,8 @@ async function renderStatusPage(statusPage: any) {
             },
         });
     } else {
-        // If no services configured, get all services as fallback
-        services = await prisma.service.findMany({
-            include: {
-                team: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                _count: {
-                    select: {
-                        incidents: {
-                            where: {
-                                status: { in: ['OPEN', 'ACKNOWLEDGED'] },
-                            },
-                        },
-                    },
-                },
-                incidents: {
-                    where: {
-                        status: { in: ['OPEN', 'ACKNOWLEDGED'] },
-                    },
-                    select: {
-                        urgency: true,
-                        status: true,
-                    },
-                },
-            },
-            take: 20, // Limit to prevent too many
-        });
+        // If no services configured, show empty state (do not fetch all services)
+        services = [];
     }
 
     // Calculate actual status based on active incidents
@@ -251,6 +267,7 @@ async function renderStatusPage(statusPage: any) {
 
     // Calculate uptime metrics for last 30 and 90 days
     const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
     // Get incidents for status history and uptime calculation
@@ -290,10 +307,30 @@ async function renderStatusPage(statusPage: any) {
     }));
 
     // Determine max width based on layout
-    const maxWidth = layout === 'wide' ? '1600px' : layout === 'compact' ? '900px' : '1200px';
+    const maxWidth = layout === 'wide' ? '1600px' : layout === 'compact' ? '900px' : '1280px';
+
+    // Structured data for SEO
+    const baseUrl = getBaseUrl();
+    const structuredData = {
+        '@context': 'https://schema.org',
+        '@type': 'Service',
+        name: statusPage.name,
+        description: branding.metaDescription || `Status page for ${statusPage.name}`,
+        url: `${baseUrl}/status`,
+        serviceStatus: overallStatus === 'operational' ? 'https://schema.org/ServiceAvailable' :
+            overallStatus === 'degraded' ? 'https://schema.org/ServiceTemporarilyUnavailable' :
+                'https://schema.org/ServiceUnavailable',
+        areaServed: 'Worldwide',
+    };
 
     return (
         <>
+            {/* Structured Data (JSON-LD) */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+            />
+
             {/* Custom CSS */}
             {customCss && (
                 <style dangerouslySetInnerHTML={{ __html: customCss }} />
@@ -332,8 +369,13 @@ async function renderStatusPage(statusPage: any) {
                 {/* Main Content */}
                 <main style={{
                     width: '100%',
+                    maxWidth: maxWidth,
                     margin: '0 auto',
                     padding: layout === 'compact' ? '1.5rem' : '2rem',
+                    paddingLeft: 'clamp(1rem, 4vw, 2rem)',
+                    paddingRight: 'clamp(1rem, 4vw, 2rem)',
+                    paddingTop: 'clamp(1.5rem, 4vw, 2rem)',
+                    paddingBottom: 'clamp(1.5rem, 4vw, 2rem)',
                     boxSizing: 'border-box',
                 }}>
                     {/* Announcements */}
@@ -350,6 +392,11 @@ async function renderStatusPage(statusPage: any) {
                                     statusPageServices={statusPage.services}
                                     uptime90={serviceUptime90}
                                     incidents={incidentsForHistory}
+                                    privacySettings={{
+                                        showServiceMetrics: statusPage.showServiceMetrics !== false,
+                                        showServiceDescriptions: statusPage.showServiceDescriptions !== false,
+                                        showUptimeHistory: statusPage.showUptimeHistory !== false,
+                                    }}
                                 />
                             ) : (
                                 <section style={{ marginBottom: '3rem' }}>
@@ -379,12 +426,41 @@ async function renderStatusPage(statusPage: any) {
                         </>
                     )}
 
+                    {/* Metrics */}
+                    {statusPage.showMetrics && services.length > 0 && (
+                        <StatusPageMetrics
+                            services={services.map(s => ({ id: s.id, name: s.name }))}
+                            incidents={allIncidents.map(inc => ({
+                                id: inc.id,
+                                serviceId: inc.serviceId,
+                                createdAt: inc.createdAt,
+                                resolvedAt: inc.resolvedAt,
+                                status: inc.status,
+                                urgency: inc.urgency,
+                            }))}
+                            thirtyDaysAgo={thirtyDaysAgo}
+                            ninetyDaysAgo={ninetyDaysAgo}
+                            uptimeExcellentThreshold={statusPage.uptimeExcellentThreshold ?? 99.9}
+                            uptimeGoodThreshold={statusPage.uptimeGoodThreshold ?? 99.0}
+                        />
+                    )}
+
                     {/* Recent Incidents */}
                     {statusPage.showIncidents && (
                         <>
                             {recentIncidents.length > 0 ? (
                                 <div id="incidents">
-                                    <StatusPageIncidents incidents={recentIncidents} />
+                                    <StatusPageIncidents
+                                        incidents={recentIncidents}
+                                        privacySettings={{
+                                            showIncidentTitles: statusPage.showIncidentTitles !== false,
+                                            showIncidentDescriptions: statusPage.showIncidentDescriptions !== false,
+                                            showAffectedServices: statusPage.showAffectedServices !== false,
+                                            showIncidentTimestamps: statusPage.showIncidentTimestamps !== false,
+                                            showIncidentUrgency: statusPage.showIncidentUrgency !== false,
+                                            showIncidentDetails: statusPage.showIncidentDetails !== false,
+                                        }}
+                                    />
                                 </div>
                             ) : (
                                 <section style={{ marginBottom: '3rem' }}>
@@ -413,6 +489,39 @@ async function renderStatusPage(statusPage: any) {
                             )}
                         </>
                     )}
+
+                    {/* Subscription */}
+                    <section style={{ marginBottom: 'clamp(2rem, 6vw, 4rem)' }}>
+                        <div style={{
+                            padding: 'clamp(1.5rem, 4vw, 2rem)',
+                            background: backgroundColor,
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '0.75rem',
+                            maxWidth: '500px',
+                            width: '100%',
+                            margin: '0 auto',
+                            boxSizing: 'border-box',
+                        }}>
+                            <h2 style={{
+                                fontSize: 'clamp(1.125rem, 3vw, 1.25rem)',
+                                fontWeight: '700',
+                                marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
+                                color: textColor,
+                                textAlign: 'center',
+                            }}>
+                                Subscribe to Updates
+                            </h2>
+                            <p style={{
+                                fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+                                color: '#6b7280',
+                                marginBottom: 'clamp(1.25rem, 3vw, 1.5rem)',
+                                textAlign: 'center',
+                            }}>
+                                Get notified when incidents occur or status changes
+                            </p>
+                            <StatusPageSubscribe statusPageId={statusPage.id} />
+                        </div>
+                    </section>
 
                     {/* Footer */}
                     {showFooter && (statusPage.footerText || showRssLink || showApiLink) && (

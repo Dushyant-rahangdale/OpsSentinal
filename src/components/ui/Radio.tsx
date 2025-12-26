@@ -1,6 +1,6 @@
 'use client';
 
-import { InputHTMLAttributes, ReactNode } from 'react';
+import { InputHTMLAttributes, ReactNode, useId } from 'react';
 
 interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   label?: string;
@@ -32,7 +32,8 @@ export default function Radio({
   id,
   ...props
 }: RadioProps) {
-  const radioId = id || `radio-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const radioId = id || generatedId;
   const hasError = !!error;
 
   const sizeStyles = {
@@ -132,7 +133,7 @@ export function RadioGroup({
   children: ReactNode;
   className?: string;
 }) {
-  const groupId = `radio-group-${Math.random().toString(36).substr(2, 9)}`;
+  const groupId = useId();
 
   return (
     <div className={`ui-radio-group ${className}`} role="radiogroup" aria-labelledby={label ? `${groupId}-label` : undefined}>

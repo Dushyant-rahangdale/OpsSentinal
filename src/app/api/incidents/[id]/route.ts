@@ -184,5 +184,67 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     logger.info('api.incident.updated', { incidentId: incident.id, apiKeyId: apiKey.id });
+
+    // Trigger status page webhooks for incident updates
+    try {
+        const updatedIncident = await prisma.incident.findUnique({
+            where: { id },
+            include: {
+                service: { select: { id: true, name: true } },
+                assignee: { select: { id: true, name: true, email: true } },
+            },
+        });
+
+        if (updatedIncident) {
+            const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+            let eventType = 'incident.updated';
+
+            if (updatedIncident.status === 'RESOLVED') {
+                eventType = 'incident.resolved';
+            }
+
+            await triggerWebhooksForService(
+                updatedIncident.serviceId,
+                eventType,
+                {
+                    id: updatedIncident.id,
+                    title: updatedIncident.title,
+                    description: updatedIncident.description,
+                    status: updatedIncident.status,
+                    urgency: updatedIncident.urgency,
+                    priority: updatedIncident.priority,
+                    service: {
+                        id: updatedIncident.service.id,
+                        name: updatedIncident.service.name,
+                    },
+                    assignee: updatedIncident.assignee,
+                    createdAt: updatedIncident.createdAt.toISOString(),
+                    acknowledgedAt: updatedIncident.acknowledgedAt?.toISOString() || null,
+                    resolvedAt: updatedIncident.resolvedAt?.toISOString() || null,
+                }
+            );
+        }
+    } catch (e) {
+        // Log but don't fail the request
+        logger.error('api.incident.webhook_trigger_failed', { error: e instanceof Error ? e.message : String(e) });
+    }
+
+    // Trigger service-level notifications (Slack, Webhooks)
+    try {
+        // Determine event type based on status change
+        let eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated' = 'updated';
+        if (status === 'ACKNOWLEDGED') eventType = 'acknowledged';
+        else if (status === 'RESOLVED') eventType = 'resolved';
+        // If status didn't change but we had an update, it's 'updated'
+
+        const { sendServiceNotifications } = await import('@/lib/service-notifications');
+        // Run in background
+        sendServiceNotifications(incident.id, eventType).catch(err => {
+            logger.error('api.incident.service_notification_failed', { error: err.message, incidentId: incident.id });
+        });
+    } catch (e) {
+        logger.error('api.incident.service_notification_import_failed', { error: e instanceof Error ? e.message : String(e) });
+    }
+
     return jsonOk({ incident }, 200);
 }

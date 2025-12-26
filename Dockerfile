@@ -13,7 +13,9 @@ RUN apk update && apk upgrade && \
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install production dependencies only
+# Install production dependencies including optional dependencies
+# Optional dependencies (twilio, @sendgrid/mail, resend, nodemailer, firebase-admin, onesignal-node, @aws-sdk/client-sns)
+# are needed for notification features. npm ci --only=production installs optionalDependencies by default.
 RUN npm ci --only=production --ignore-scripts --legacy-peer-deps && \
     npm cache clean --force && \
     rm -rf /tmp/*

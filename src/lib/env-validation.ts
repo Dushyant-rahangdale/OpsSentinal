@@ -19,7 +19,7 @@ export function getBaseUrl(): string {
             throw new Error(
                 'NEXT_PUBLIC_APP_URL environment variable is required in production. ' +
                 'This is used for notification links, webhooks, and RSS feeds. ' +
-                'Please set it to your application URL (e.g., https://opsguard.yourdomain.com)'
+                'Please set it to your application URL (e.g., https://opssure.yourdomain.com)'
             );
         }
 
@@ -52,7 +52,7 @@ export function validateProductionEnv(): void {
         },
         {
             name: 'NEXTAUTH_URL',
-            description: 'Full URL of your application (e.g., https://opsguard.yourdomain.com)'
+            description: 'Full URL of your application (e.g., https://opssure.yourdomain.com)'
         },
         {
             name: 'NEXT_PUBLIC_APP_URL',
@@ -115,5 +115,6 @@ export function getFromEmail(): string {
         logger.warn('EMAIL_FROM not set and cannot derive from NEXT_PUBLIC_APP_URL. Using default.');
     }
 
-    return 'noreply@opsguard.local';
+    return 'noreply@opssure.local';
 }
+

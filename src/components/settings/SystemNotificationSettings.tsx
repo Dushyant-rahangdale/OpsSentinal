@@ -26,16 +26,22 @@ export default function SystemNotificationSettings({ providers }: Props) {
     // For WhatsApp, we need to read from Twilio provider config
     const twilioProvider = providerMap.get('twilio');
     const whatsappConfig = twilioProvider?.config as any;
-    const whatsappEnabled = twilioProvider?.enabled && !!whatsappConfig?.whatsappNumber;
-    
+    const whatsappEnabled = !!(whatsappConfig?.whatsappEnabled && whatsappConfig?.whatsappNumber);
+
     // Create a virtual WhatsApp provider entry
     const whatsappProvider: Provider | undefined = whatsappConfig?.whatsappNumber ? {
         id: twilioProvider?.id || '',
         provider: 'whatsapp',
         enabled: whatsappEnabled,
-        config: { whatsappNumber: whatsappConfig.whatsappNumber },
+        config: {
+            whatsappNumber: whatsappConfig.whatsappNumber,
+            whatsappEnabled: whatsappConfig.whatsappEnabled,
+            whatsappAccountSid: whatsappConfig.whatsappAccountSid,
+            whatsappAuthToken: whatsappConfig.whatsappAuthToken
+        },
         updatedAt: twilioProvider?.updatedAt || new Date()
     } : undefined;
+
 
     const providerConfigs = [
         {
@@ -53,7 +59,9 @@ export default function SystemNotificationSettings({ providers }: Props) {
             name: 'WhatsApp (via Twilio)',
             description: 'Send WhatsApp notifications via Twilio WhatsApp Business API',
             fields: [
-                { name: 'whatsappNumber', label: 'WhatsApp Business Number', type: 'tel', required: true, placeholder: 'whatsapp:+14155238886' }
+                { name: 'whatsappNumber', label: 'WhatsApp Business Number', type: 'tel', required: true, placeholder: 'whatsapp:+14155238886' },
+                { name: 'whatsappAccountSid', label: 'Account SID (Optional - overrides Twilio SMS config)', type: 'text', required: false, placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+                { name: 'whatsappAuthToken', label: 'Auth Token (Optional - overrides Twilio SMS config)', type: 'password', required: false, placeholder: 'Your Twilio auth token' }
             ],
             requiresProvider: 'twilio' // Special: WhatsApp config is stored in Twilio provider config
         },
@@ -63,7 +71,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
             description: 'Send emails via Resend API',
             fields: [
                 { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 're_xxxxxxxxxxxx' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opsguard.com' }
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssure.com' }
             ]
         },
         {
@@ -72,7 +80,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
             description: 'Send emails via SendGrid API',
             fields: [
                 { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'SG.xxxxxxxxxxxx' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opsguard.com' }
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssure.com' }
             ]
         },
         {
@@ -84,7 +92,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
                 { name: 'port', label: 'Port', type: 'number', required: true, placeholder: '587' },
                 { name: 'user', label: 'Username', type: 'text', required: true, placeholder: 'user@example.com' },
                 { name: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Your SMTP password' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opsguard.com' },
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssure.com' },
                 { name: 'secure', label: 'Use TLS/SSL', type: 'checkbox', required: false }
             ]
         },
@@ -113,8 +121,8 @@ export default function SystemNotificationSettings({ providers }: Props) {
         <div style={{ display: 'grid', gap: '1.5rem' }}>
             {providerConfigs.map(providerConfig => {
                 // For WhatsApp, use the virtual provider we created
-                const existing = providerConfig.key === 'whatsapp' 
-                    ? whatsappProvider 
+                const existing = providerConfig.key === 'whatsapp'
+                    ? whatsappProvider
                     : providerMap.get(providerConfig.key);
                 const isExpanded = expandedProvider === providerConfig.key;
 
@@ -148,12 +156,18 @@ function ProviderCard({
 }) {
     // Get user timezone for date formatting
     const { userTimeZone } = useTimezone();
-    
-    // For WhatsApp, enabled state depends on whether number is set and Twilio is enabled
-    const initialEnabled = providerConfig.key === 'whatsapp' 
-        ? (twilioProvider?.enabled && !!existing?.config?.whatsappNumber) || false
+
+    // For WhatsApp, enabled state is stored in the whatsappEnabled field of Twilio config
+    const initialEnabled = providerConfig.key === 'whatsapp'
+        ? !!(existing?.config?.whatsappEnabled && existing?.config?.whatsappNumber)
         : (existing?.enabled || false);
-    
+
+    // Check if provider has required configuration  
+    const hasRequiredConfig = existing?.config && Object.keys(existing.config).length > 0 &&
+        providerConfig.fields
+            .filter((f: any) => f.required)
+            .every((f: any) => existing.config[f.name] && existing.config[f.name].toString().trim() !== '');
+
     const [enabled, setEnabled] = useState(initialEnabled);
     const [config, setConfig] = useState<Record<string, any>>(existing?.config || {});
     const [isSaving, setIsSaving] = useState(false);
@@ -179,24 +193,35 @@ function ProviderCard({
 
             // Special handling for WhatsApp - it's stored in Twilio provider config
             if (providerConfig.key === 'whatsapp') {
+                // Update Twilio provider config with WhatsApp number and enabled state
+                // Create Twilio provider if it doesn't exist
                 if (!twilioProvider) {
-                    throw new Error('Twilio must be configured first before setting up WhatsApp');
-                }
-                
-                // Update Twilio provider config with WhatsApp number
-                const twilioConfig = twilioProvider.config as any;
-                const updatedTwilioConfig = {
-                    ...twilioConfig,
-                    whatsappNumber: enabled ? config.whatsappNumber : ''
-                };
+                    const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                    await updateNotificationProvider(null, 'twilio', false, {
+                        whatsappNumber: config.whatsappNumber || '',
+                        whatsappEnabled: enabled,
+                        whatsappAccountSid: config.whatsappAccountSid || '',
+                        whatsappAuthToken: config.whatsappAuthToken || ''
+                    });
+                } else {
+                    const twilioConfig = twilioProvider.config as any;
 
-                const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
-                await updateNotificationProvider(twilioProvider.id, 'twilio', twilioProvider.enabled, updatedTwilioConfig);
+                    const updatedTwilioConfig = {
+                        ...twilioConfig,
+                        whatsappNumber: config.whatsappNumber || '',
+                        whatsappEnabled: enabled,
+                        whatsappAccountSid: config.whatsappAccountSid || '',
+                        whatsappAuthToken: config.whatsappAuthToken || ''
+                    };
+
+                    const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                    await updateNotificationProvider(twilioProvider.id, 'twilio', twilioProvider.enabled, updatedTwilioConfig);
+                }
             } else {
                 const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
                 await updateNotificationProvider(existing?.id || null, providerConfig.key, enabled, config);
             }
-            
+
             setSaveStatus('success');
             setTimeout(() => {
                 setSaveStatus('idle');
@@ -237,37 +262,113 @@ function ProviderCard({
                         {providerConfig.description}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onToggle}
-                    className="glass-button"
-                    style={{ padding: '0.5rem 1rem' }}
-                >
-                    {isExpanded ? 'Collapse' : 'Configure'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {/* Quick Enable/Disable Toggle */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: (hasRequiredConfig || enabled) ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: (hasRequiredConfig || enabled) ? 1 : 0.6 }}>
+                        <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={async (e) => {
+                                const newEnabled = e.target.checked;
+
+                                // Check if provider is configured before enabling
+                                if (newEnabled && !hasRequiredConfig) {
+                                    alert('Please configure this provider first before enabling it. Click "Configure" to add required settings.');
+                                    return;
+                                }
+
+                                // Update local state
+                                setEnabled(newEnabled);
+
+                                // Save immediately
+                                try {
+                                    if (providerConfig.key === 'whatsapp') {
+                                        // Create Twilio provider if it doesn't exist
+                                        if (!twilioProvider) {
+                                            const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                                            await updateNotificationProvider(null, 'twilio', false, {
+                                                whatsappNumber: config.whatsappNumber || '',
+                                                whatsappEnabled: newEnabled
+                                            });
+                                        } else {
+                                            const twilioConfig = twilioProvider.config as any;
+                                            const updatedTwilioConfig = {
+                                                ...twilioConfig,
+                                                whatsappNumber: config.whatsappNumber || twilioConfig.whatsappNumber || '',
+                                                whatsappEnabled: newEnabled
+                                            };
+
+                                            const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                                            await updateNotificationProvider(twilioProvider.id, 'twilio', twilioProvider.enabled, updatedTwilioConfig);
+                                        }
+                                    } else {
+                                        const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                                        await updateNotificationProvider(existing?.id || null, providerConfig.key, newEnabled, config);
+                                    }
+
+                                    // Refresh to show updated data
+                                    setTimeout(() => window.location.reload(), 500);
+                                } catch (err: any) {
+                                    // Revert on error
+                                    setEnabled(!newEnabled);
+                                    alert(`Failed to ${newEnabled ? 'enable' : 'disable'} provider: ${err.message}`);
+                                }
+                            }}
+                            disabled={isSaving || (!enabled && !hasRequiredConfig)}
+                            title={!hasRequiredConfig && !enabled ? 'Configure this provider first' : ''}
+                            style={{
+                                width: '3rem',
+                                height: '1.5rem',
+                                appearance: 'none',
+                                backgroundColor: enabled ? '#10b981' : '#d1d5db',
+                                borderRadius: '0.75rem',
+                                position: 'relative',
+                                cursor: (hasRequiredConfig || enabled) ? 'pointer' : 'not-allowed',
+                                transition: 'background-color 0.2s',
+                                border: 'none',
+                                outline: 'none'
+                            }}
+                        />
+                        <style>{`
+                            input[type="checkbox"]:after {
+                                content: '';
+                                position: absolute;
+                                top: 2px;
+                                left: 2px;
+                                width: 1.25rem;
+                                height: 1.25rem;
+                                background: white;
+                                border-radius: 50%;
+                                transition: transform 0.2s;
+                            }
+                            input[type="checkbox"]:checked:after {
+                                transform: translateX(1.5rem);
+                            }
+                        `}</style>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', minWidth: '3rem' }}>
+                            {enabled ? 'On' : 'Off'}
+                        </span>
+                    </label>
+
+                    <button
+                        type="button"
+                        onClick={onToggle}
+                        className="glass-button"
+                        style={{ padding: '0.5rem 1rem' }}
+                    >
+                        {isExpanded ? 'Collapse' : 'Configure'}
+                    </button>
+                </div>
             </div>
 
             {isExpanded && (
                 <form onSubmit={handleSave} style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-                    {providerConfig.key === 'whatsapp' && !twilioProvider?.enabled && (
-                        <div style={{
-                            padding: '0.75rem',
-                            background: '#fef3c7',
-                            border: '1px solid #f59e0b',
-                            borderRadius: '6px',
-                            fontSize: '0.85rem',
-                            color: '#92400e'
-                        }}>
-                            <strong>⚠️ Requirement:</strong> Twilio SMS must be enabled and configured first before setting up WhatsApp.
-                        </div>
-                    )}
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                             <input
                                 type="checkbox"
                                 checked={enabled}
                                 onChange={(e) => setEnabled(e.target.checked)}
-                                disabled={providerConfig.key === 'whatsapp' && !twilioProvider?.enabled}
                             />
                             Enable {providerConfig.name}
                         </label>
@@ -355,4 +456,5 @@ function ProviderCard({
         </div>
     );
 }
+
 

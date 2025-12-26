@@ -43,7 +43,7 @@ export interface EmailConfig {
 export type NotificationChannelType = 'EMAIL' | 'SMS' | 'PUSH' | 'WHATSAPP';
 
 export async function getEmailConfig(): Promise<EmailConfig> {
-    const defaultFromEmail = `noreply@${process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'opsguard.com'}`;
+    const defaultFromEmail = `noreply@${process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'opssure.com'}`;
 
     try {
         // Check Resend first
@@ -110,6 +110,70 @@ export async function getEmailConfig(): Promise<EmailConfig> {
     };
 }
 
+/**
+ * Get email config for status page subscriptions
+ * Respects the emailProvider setting from StatusPage
+ */
+export async function getStatusPageEmailConfig(statusPageId?: string): Promise<EmailConfig> {
+    const defaultFromEmail = `noreply@${process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'opssure.com'}`;
+
+    try {
+        // Get status page email provider preference
+        let preferredProvider: string | null = null;
+        if (statusPageId) {
+            const statusPage = await prisma.statusPage.findUnique({
+                where: { id: statusPageId },
+                select: { emailProvider: true }
+            });
+            preferredProvider = statusPage?.emailProvider || null;
+        }
+
+        // If status page has a preferred provider, try it first
+        if (preferredProvider) {
+            const provider = await prisma.notificationProvider.findUnique({
+                where: { provider: preferredProvider }
+            });
+
+            if (provider && provider.enabled && provider.config) {
+                const config = provider.config as any;
+                if (preferredProvider === 'resend' && config.apiKey) {
+                    return {
+                        enabled: true,
+                        provider: 'resend',
+                        apiKey: config.apiKey,
+                        fromEmail: config.fromEmail || defaultFromEmail,
+                        source: 'status-page-resend'
+                    };
+                } else if (preferredProvider === 'sendgrid' && config.apiKey) {
+                    return {
+                        enabled: true,
+                        provider: 'sendgrid',
+                        apiKey: config.apiKey,
+                        fromEmail: config.fromEmail || defaultFromEmail,
+                        source: 'status-page-sendgrid'
+                    };
+                } else if (preferredProvider === 'smtp' && config.host) {
+                    return {
+                        enabled: true,
+                        provider: 'smtp',
+                        apiKey: config.password,
+                        fromEmail: config.fromEmail || defaultFromEmail,
+                        source: 'status-page-smtp',
+                        host: config.host
+                    };
+                }
+            }
+        }
+
+        // Fall back to default email config
+        return await getEmailConfig();
+    } catch (error) {
+        console.error('Failed to load status page email config:', error);
+        // Fall back to default email config
+        return await getEmailConfig();
+    }
+}
+
 export async function isChannelAvailable(channel: NotificationChannelType): Promise<boolean> {
     switch (channel) {
         case 'EMAIL':
@@ -119,12 +183,49 @@ export async function isChannelAvailable(channel: NotificationChannelType): Prom
         case 'PUSH':
             return (await getPushConfig()).enabled;
         case 'WHATSAPP':
-            // WhatsApp requires Twilio with WhatsApp Business API
-            const smsConfig = await getSMSConfig();
-            return smsConfig.enabled && smsConfig.provider === 'twilio';
+            // WhatsApp has independent enabled state stored in Twilio config
+            return (await getWhatsAppConfig()).enabled;
         default:
             return false;
     }
+}
+
+/**
+ * Get WhatsApp configuration (stored in Twilio provider config)
+ */
+export async function getWhatsAppConfig(): Promise<SMSConfig> {
+    try {
+        const twilioProvider = await prisma.notificationProvider.findUnique({
+            where: { provider: 'twilio' }
+        });
+
+        if (twilioProvider && twilioProvider.config) {
+            const config = twilioProvider.config as any;
+
+            // Prioritize specific WhatsApp credentials, fall back to global Twilio credentials
+            const accountSid = config.whatsappAccountSid || config.accountSid;
+            const authToken = config.whatsappAuthToken || config.authToken;
+
+            // Check if WhatsApp is enabled (independent of Twilio SMS)
+            if (config.whatsappEnabled && accountSid && authToken && config.whatsappNumber) {
+                return {
+                    enabled: true,
+                    provider: 'twilio',
+                    accountSid: accountSid,
+                    authToken: authToken,
+                    fromNumber: config.fromNumber,
+                    whatsappNumber: config.whatsappNumber,
+                };
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load WhatsApp config from database:', error);
+    }
+
+    return {
+        enabled: false,
+        provider: null,
+    };
 }
 
 /**
@@ -222,3 +323,4 @@ export async function getPushConfig(): Promise<PushConfig> {
         provider: null,
     };
 }
+

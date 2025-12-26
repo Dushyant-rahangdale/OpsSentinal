@@ -58,11 +58,11 @@ class QueryMonitor {
       let errorStack: string | undefined;
       let errorCode: string | undefined;
       let errorMeta: unknown;
-      
+
       if (error instanceof Error) {
         errorMessage = error.message || 'Error without message';
         errorStack = error.stack;
-        
+
         // Handle Prisma errors specifically
         if ('code' in error) {
           errorCode = String(error.code);
@@ -78,7 +78,7 @@ class QueryMonitor {
           errorMessage = String(error) || 'Non-serializable error';
         }
       }
-      
+
       console.error(`[DB Monitor] Query error:`, {
         query: metric.query,
         message: errorMessage,

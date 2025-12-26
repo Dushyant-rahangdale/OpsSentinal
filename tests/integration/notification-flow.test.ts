@@ -3,7 +3,7 @@
  * 
  * Tests the end-to-end flow:
  * 1. Incident created
- * 2. Service notifications sent (isolated)
+ * 2. Service notifications sent (service channels)
  * 3. Escalation policy executed
  * 4. Notifications sent to users based on preferences/step config
  */
@@ -36,14 +36,6 @@ describe('Notification Flow Integration Tests', () => {
 
     it('should send service notifications and escalation notifications separately', async () => {
         // Setup
-        const user = await prisma.user.create({
-            data: {
-                name: 'Test User',
-                email: 'test@example.com',
-                emailNotificationsEnabled: true
-            }
-        });
-
         const service = await prisma.service.create({
             data: {
                 name: 'Test Service',
@@ -81,15 +73,16 @@ describe('Notification Flow Integration Tests', () => {
         const emailSpy = vi.spyOn(require('../../src/lib/email'), 'sendIncidentEmail');
         emailSpy.mockResolvedValue({ success: true });
 
-        // 1. Send service notifications (isolated)
+        // 1. Send service notifications
         const serviceResult = await sendServiceNotifications(incident.id, 'triggered');
         expect(serviceResult.success).toBe(true);
         expect(slackSpy).toHaveBeenCalled();
+        expect(emailSpy).not.toHaveBeenCalled();
 
         // 2. Execute escalation (separate from service notifications)
         const escalationResult = await executeEscalation(incident.id, 0);
         expect(escalationResult.escalated).toBe(true);
-        expect(emailSpy).toHaveBeenCalled(); // User preference: email enabled
+        expect(emailSpy).toHaveBeenCalled(); // Escalation uses user preferences
     });
 
     it('should handle team escalation with notifyOnlyTeamLead option', async () => {
@@ -246,5 +239,6 @@ describe('Notification Flow Integration Tests', () => {
         expect(emailSpy).toHaveBeenCalled();
     });
 });
+
 
 

@@ -12,7 +12,7 @@ The Slack integration supports two methods:
 
 1. Go to https://api.slack.com/apps
 2. Click "Create New App" → "From scratch"
-3. Name your app (e.g., "OpsGuard") and select your workspace
+3. Name your app (e.g., "OpsSure") and select your workspace
 4. Click "Create App"
 
 ### 2. Configure OAuth & Permissions
@@ -136,5 +136,7 @@ Add this to your `ENCRYPTION_KEY` environment variable.
 - `GET /api/slack/channels` - List available channels
 - `POST /api/slack/actions` - Handle interactive button clicks
 - `DELETE /api/slack/disconnect` - Disconnect integration
+
+
 
 

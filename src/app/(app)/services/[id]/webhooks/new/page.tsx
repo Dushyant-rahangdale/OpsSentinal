@@ -108,6 +108,7 @@ export default async function NewWebhookPage({ params }: { params: Promise<{ id:
                                     <option value="GENERIC">Generic Webhook</option>
                                     <option value="GOOGLE_CHAT">Google Chat</option>
                                     <option value="TEAMS">Microsoft Teams</option>
+                                    <option value="SLACK">Slack</option>
                                     <option value="DISCORD">Discord</option>
                                 </select>
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
@@ -212,5 +213,6 @@ export default async function NewWebhookPage({ params }: { params: Promise<{ id:
         </main>
     );
 }
+
 
 

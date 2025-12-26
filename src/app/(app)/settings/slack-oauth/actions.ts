@@ -17,7 +17,7 @@ export async function saveSlackOAuthConfig(formData: FormData): Promise<{ error?
     const clientSecret = formData.get('clientSecret') as string;
     const redirectUri = formData.get('redirectUri') as string;
     const enabledValue = formData.get('enabled');
-    const enabled = enabledValue === 'on' || enabledValue === 'true' || enabledValue === true;
+    const enabled = enabledValue === 'on' || enabledValue === 'true';
 
     if (!clientId) {
         return { error: 'Client ID is required' };

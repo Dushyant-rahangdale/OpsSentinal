@@ -89,25 +89,25 @@ enum EscalationTargetType {
 }
 
 model User {
-  id                        String      @id @default(cuid())
-  name                      String
-  email                     String      @unique
-  role                      Role        @default(USER)
-  status                    UserStatus  @default(INVITED)
-  passwordHash              String?
-  timeZone                  String      @default("UTC")
-  dailySummary              Boolean     @default(true)
-  incidentDigest            DigestLevel @default(HIGH)
+  id                           String      @id @default(cuid())
+  name                         String
+  email                        String      @unique
+  role                         Role        @default(USER)
+  status                       UserStatus  @default(INVITED)
+  passwordHash                 String?
+  timeZone                     String      @default("UTC")
+  dailySummary                 Boolean     @default(true)
+  incidentDigest               DigestLevel @default(HIGH)
   // Notification preferences (user-level, like PagerDuty)
-  emailNotificationsEnabled Boolean     @default(false)
-  smsNotificationsEnabled   Boolean     @default(false)
-  pushNotificationsEnabled  Boolean     @default(false)
-  whatsappNotificationsEnabled Boolean  @default(false)
-  phoneNumber               String? // For SMS notifications
-  invitedAt                 DateTime?
-  deactivatedAt             DateTime?
-  createdAt                 DateTime    @default(now())
-  updatedAt                 DateTime    @updatedAt
+  emailNotificationsEnabled    Boolean     @default(false)
+  smsNotificationsEnabled      Boolean     @default(false)
+  pushNotificationsEnabled     Boolean     @default(false)
+  whatsappNotificationsEnabled Boolean     @default(false)
+  phoneNumber                  String? // For SMS notifications
+  invitedAt                    DateTime?
+  deactivatedAt                DateTime?
+  createdAt                    DateTime    @default(now())
+  updatedAt                    DateTime    @updatedAt
 
   assignedIncidents    Incident[]
   teamMemberships      TeamMember[]
@@ -130,9 +130,13 @@ model User {
   apiKeys              ApiKey[]
   incidentTemplates    IncidentTemplate[]
   updatedProviders     NotificationProvider[]
-  teamsLed             Team[]            @relation("TeamLead")
+  teamsLed             Team[]                 @relation("TeamLead")
   slackIntegrations    SlackIntegration[]
-  slackOAuthConfigs    SlackOAuthConfig[] @relation("SlackOAuthConfigUpdater")
+  slackOAuthConfigs    SlackOAuthConfig[]     @relation("SlackOAuthConfigUpdater")
+
+  @@index([email]) // CRITICAL: Performance index for email lookups (fixes 2-4s queries)
+  @@index([role, status]) // For filtering users by role and status
+  @@index([status]) // For active user queries
 }
 
 model Team {
@@ -146,6 +150,7 @@ model Team {
   services          Service[]
   escalationRules   EscalationRule[]
   incidentTemplates IncidentTemplate[]
+  incidents         Incident[] // Team-assigned incidents
   teamLeadId        String?
   teamLead          User?              @relation("TeamLead", fields: [teamLeadId], references: [id])
 }
@@ -155,6 +160,7 @@ model TeamMember {
   userId String
   teamId String
   role   TeamRole @default(MEMBER)
+  receiveTeamNotifications Boolean @default(true) // Team-specific notification preference
 
   user User @relation(fields: [userId], references: [id])
   team Team @relation(fields: [teamId], references: [id])
@@ -163,33 +169,33 @@ model TeamMember {
 }
 
 model Service {
-  id                   String        @id @default(cuid())
-  name                 String
-  description          String?
-  status               ServiceStatus @default(OPERATIONAL)
-  targetAckMinutes     Int           @default(15)
-  targetResolveMinutes Int           @default(120)
-  teamId               String?
-  escalationPolicyId   String?
-  slackWebhookUrl      String? // Per-service Slack Webhook URL (only notification config at service level)
-  slackChannel         String? // Slack channel name (e.g., #incidents)
-  slackWorkspaceId     String? // Slack workspace ID for future multi-workspace support
-  slackIntegrationId   String? @unique // Reference to SlackIntegration (OAuth-based)
-  webhookUrl           String? // Per-service generic webhook URL
+  id                          String                @id @default(cuid())
+  name                        String
+  description                 String?
+  status                      ServiceStatus         @default(OPERATIONAL)
+  targetAckMinutes            Int                   @default(15)
+  targetResolveMinutes        Int                   @default(120)
+  teamId                      String?
+  escalationPolicyId          String?
+  slackWebhookUrl             String? // Per-service Slack Webhook URL (only notification config at service level)
+  slackChannel                String? // Slack channel name (e.g., #incidents)
+  slackWorkspaceId            String? // Slack workspace ID for future multi-workspace support
+  slackIntegrationId          String?               @unique // Reference to SlackIntegration (OAuth-based)
+  webhookUrl                  String? // Per-service generic webhook URL
   serviceNotificationChannels NotificationChannel[] @default([]) // Service-level notification channels (isolated from escalation)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
 
   team      Team?             @relation(fields: [teamId], references: [id])
   incidents Incident[]
   policy    EscalationPolicy? @relation(fields: [escalationPolicyId], references: [id])
 
-  integrations      Integration[]
-  alerts            Alert[]
-  incidentTemplates IncidentTemplate[]
-  statusPageServices StatusPageService[]
+  integrations        Integration[]
+  alerts              Alert[]
+  incidentTemplates   IncidentTemplate[]
+  statusPageServices  StatusPageService[]
   webhookIntegrations WebhookIntegration[]
-  slackIntegration   SlackIntegration? @relation("ServiceSlackIntegration", fields: [slackIntegrationId], references: [id], onDelete: Cascade)
+  slackIntegration    SlackIntegration?    @relation("ServiceSlackIntegration", fields: [slackIntegrationId], references: [id], onDelete: Cascade)
 }
 
 // Enhanced Escalation Policy
@@ -223,7 +229,7 @@ model EscalationRule {
 
   // Notification channels for this escalation step (overrides user preferences if set)
   notificationChannels NotificationChannel[] // Per-step channel configuration
-  
+
   // Team-specific options
   notifyOnlyTeamLead Boolean @default(false) // If true, only notify team lead instead of all team members
 
@@ -245,16 +251,16 @@ model Integration {
 }
 
 model WebhookIntegration {
-  id          String   @id @default(cuid())
-  serviceId   String
-  name        String   // "Google Chat", "Microsoft Teams", etc.
-  type        String   // "GOOGLE_CHAT", "TEAMS", "DISCORD", "GENERIC"
-  url         String
-  secret      String?  // For HMAC signature
-  channel     String?  // Channel/room name
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  serviceId String
+  name      String // "Google Chat", "Microsoft Teams", etc.
+  type      String // "GOOGLE_CHAT", "TEAMS", "DISCORD", "GENERIC"
+  url       String
+  secret    String? // For HMAC signature
+  channel   String? // Channel/room name
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
@@ -263,34 +269,34 @@ model WebhookIntegration {
 
 // Slack OAuth Configuration (Global - stored in database)
 model SlackOAuthConfig {
-  id              String   @id @default(cuid())
-  clientId        String   // Slack App Client ID
-  clientSecret    String   // Encrypted Slack App Client Secret
-  redirectUri     String?  // Custom redirect URI (optional)
-  enabled         Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  updatedBy       String   // User ID who last updated the config
-  updater         User     @relation("SlackOAuthConfigUpdater", fields: [updatedBy], references: [id])
+  id           String   @id @default(cuid())
+  clientId     String // Slack App Client ID
+  clientSecret String // Encrypted Slack App Client Secret
+  redirectUri  String? // Custom redirect URI (optional)
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  updatedBy    String // User ID who last updated the config
+  updater      User     @relation("SlackOAuthConfigUpdater", fields: [updatedBy], references: [id])
 
   @@unique([id]) // Only one config record
 }
 
 // Slack OAuth Integration
 model SlackIntegration {
-  id              String   @id @default(cuid())
-  workspaceId     String   // Slack workspace/team ID
-  workspaceName   String?  // Slack workspace name
-  botToken        String   // Encrypted bot token (xoxb-...)
-  signingSecret   String?  // Encrypted signing secret
-  installedBy     String   // User ID who installed the integration
-  scopes          String[] // OAuth scopes granted
-  enabled         Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  workspaceId   String // Slack workspace/team ID
+  workspaceName String? // Slack workspace name
+  botToken      String // Encrypted bot token (xoxb-...)
+  signingSecret String? // Encrypted signing secret
+  installedBy   String // User ID who installed the integration
+  scopes        String[] // OAuth scopes granted
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  service Service? @relation("ServiceSlackIntegration")
-  installer User   @relation(fields: [installedBy], references: [id])
+  service   Service? @relation("ServiceSlackIntegration")
+  installer User     @relation(fields: [installedBy], references: [id])
 
   @@unique([workspaceId]) // One integration per workspace (can be global or service-specific)
   @@index([workspaceId])
@@ -315,37 +321,39 @@ model Alert {
 }
 
 model Incident {
-  id                    String          @id @default(cuid())
-  title                 String
-  description           String?
-  status                IncidentStatus  @default(OPEN)
-  urgency               IncidentUrgency @default(HIGH)
-  priority              String? // P1, P2.. P5
-  dedupKey              String? // Key for deduplication
-  serviceId             String
-  assigneeId            String?
-  currentEscalationStep Int? // Current step index (0-based)
-  nextEscalationAt      DateTime? // When to execute next escalation step
-  escalationStatus      String? // ESCALATING, COMPLETED, PAUSED
+  id                     String          @id @default(cuid())
+  title                  String
+  description            String?
+  status                 IncidentStatus  @default(OPEN)
+  urgency                IncidentUrgency @default(HIGH)
+  priority               String? // P1, P2.. P5
+  dedupKey               String? // Key for deduplication
+  serviceId              String
+  assigneeId             String?
+  teamId                 String? // Team assignment (mutually exclusive with assigneeId)
+  currentEscalationStep  Int? // Current step index (0-based)
+  nextEscalationAt       DateTime? // When to execute next escalation step
+  escalationStatus       String? // ESCALATING, COMPLETED, PAUSED
   escalationProcessingAt DateTime? // When escalation processing was claimed
-  acknowledgedAt        DateTime? // When incident was acknowledged (for SLA tracking)
-  resolvedAt            DateTime? // When incident was resolved (for SLA tracking)
-  snoozedUntil          DateTime? // When to auto-unsnooze (for time-based snoozing)
-  snoozeReason          String? // Reason for snoozing
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  acknowledgedAt         DateTime? // When incident was acknowledged (for SLA tracking)
+  resolvedAt             DateTime? // When incident was resolved (for SLA tracking)
+  snoozedUntil           DateTime? // When to auto-unsnooze (for time-based snoozing)
+  snoozeReason           String? // Reason for snoozing
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 
-  service       Service           @relation(fields: [serviceId], references: [id])
-  assignee      User?             @relation(fields: [assigneeId], references: [id])
-  events        IncidentEvent[]
-  notes         IncidentNote[]
-  postmortem    Postmortem?
+  service                 Service                  @relation(fields: [serviceId], references: [id])
+  assignee                User?                    @relation(fields: [assigneeId], references: [id])
+  team                    Team?                    @relation(fields: [teamId], references: [id])
+  events                  IncidentEvent[]
+  notes                   IncidentNote[]
+  postmortem              Postmortem?
   statusPageAnnouncements StatusPageAnnouncement[]
-  customFieldValues CustomFieldValue[]
-  alerts        Alert[] // Relation to raw alerts
-  notifications Notification[]
-  watchers      IncidentWatcher[]
-  tags          IncidentTag[]
+  customFieldValues       CustomFieldValue[]
+  alerts                  Alert[] // Relation to raw alerts
+  notifications           Notification[]
+  watchers                IncidentWatcher[]
+  tags                    IncidentTag[]
 
   @@index([dedupKey]) // Index for fast deduplication lookups
   @@index([serviceId, dedupKey, status]) // For service-scoped deduplication checks
@@ -355,8 +363,11 @@ model Incident {
   @@index([status, createdAt]) // For filtering incidents by status and date
   @@index([serviceId, status]) // For querying incidents by service and status
   @@index([assigneeId, status]) // For querying incidents by assignee and status
+  @@index([teamId, status]) // For querying incidents by team and status
   @@index([createdAt]) // For time-based queries and sorting
   @@index([urgency, status]) // For filtering by urgency and status
+  @@index([status, urgency, createdAt]) // Composite for count queries with urgency and date filter
+  @@index([status, assigneeId]) // For unassigned count queries (assigneeId: null)
 }
 
 model Tag {
@@ -442,8 +453,8 @@ model IncidentNote {
 }
 
 model Postmortem {
-  id          String   @id @default(cuid())
-  incidentId String   @unique // One postmortem per incident
+  id          String    @id @default(cuid())
+  incidentId  String    @unique // One postmortem per incident
   title       String
   summary     String? // Executive summary
   timeline    Json? // Timeline of events (JSON array)
@@ -452,14 +463,14 @@ model Postmortem {
   resolution  String? // How it was resolved
   actionItems Json? // Action items (JSON array)
   lessons     String? // Lessons learned
-  status      String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
   publishedAt DateTime?
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  createdBy User    @relation(fields: [createdById], references: [id])
+  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id])
 
   @@index([incidentId])
   @@index([status, createdAt])
@@ -527,6 +538,9 @@ model OnCallShift {
 
   schedule OnCallSchedule @relation(fields: [scheduleId], references: [id])
   user     User           @relation(fields: [userId], references: [id])
+
+  @@index([start, end]) // For date range queries (active shifts)
+  @@index([userId, start, end]) // For user-specific shift queries
 }
 
 // Notification model for contact attempts
@@ -554,7 +568,7 @@ model Notification {
 }
 
 model InAppNotification {
-  id         String                 @id @default(cuid())
+  id         String                @id @default(cuid())
   userId     String
   type       InAppNotificationType
   title      String
@@ -562,22 +576,23 @@ model InAppNotification {
   entityType String?
   entityId   String?
   readAt     DateTime?
-  createdAt  DateTime               @default(now())
+  createdAt  DateTime              @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt])
-  @@index([userId, readAt])
+  @@index([userId, createdAt]) // For chronological queries
+  @@index([userId, readAt]) // For unread count queries
+  @@index([userId, readAt, createdAt]) // Optomized for "Unread" queries (readAt: null)
 }
 
 // User device tokens for push notifications
 model UserDevice {
   id        String   @id @default(cuid())
   userId    String
-  deviceId  String   // Unique device identifier
-  token     String   // FCM/APNS token
-  platform  String   // 'ios', 'android', 'web'
-  userAgent String?  // Browser/device info
+  deviceId  String // Unique device identifier
+  token     String // FCM/APNS token
+  platform  String // 'ios', 'android', 'web'
+  userAgent String? // Browser/device info
   lastUsed  DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -631,6 +646,8 @@ model Session {
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // For session lookups by user
 }
 
 model VerificationToken {
@@ -711,36 +728,67 @@ model BackgroundJob {
 
 // Status Page Configuration
 model StatusPage {
-  id              String   @id @default(cuid())
-  name            String   @default("Status Page")
-  subdomain       String?  @unique // Custom subdomain (e.g., status.yourcompany.com)
-  customDomain    String?  @unique // Custom domain (e.g., status.yourcompany.com)
-  enabled         Boolean  @default(true)
-  showServices    Boolean  @default(true)
-  showIncidents   Boolean  @default(true)
-  showMetrics     Boolean  @default(true)
-  branding        Json?    // Logo, colors, favicon
-  footerText      String?
-  contactEmail    String?
-  contactUrl      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String  @id @default(cuid())
+  name          String  @default("Status Page")
+  organizationName String? // Dedicated organization name for email branding
+  subdomain     String? @unique // Custom subdomain (e.g., status.yourcompany.com)
+  customDomain  String? @unique // Custom domain (e.g., status.yourcompany.com)
+  enabled       Boolean @default(true)
+  showServices  Boolean @default(true)
+  showIncidents Boolean @default(true)
+  showMetrics   Boolean @default(true)
+  branding      Json? // Logo, colors, favicon
+  footerText    String?
+  contactEmail  String?
+  contactUrl    String?
 
-  services        StatusPageService[]
-  announcements   StatusPageAnnouncement[]
+  // Privacy settings
+  privacyMode              String? @default("PUBLIC") // PUBLIC, RESTRICTED, PRIVATE
+  showIncidentDetails      Boolean @default(true)
+  showIncidentTitles       Boolean @default(true)
+  showIncidentDescriptions Boolean @default(true)
+  showAffectedServices     Boolean @default(true)
+  showIncidentTimestamps   Boolean @default(true)
+  showServiceMetrics       Boolean @default(true)
+  showServiceDescriptions  Boolean @default(true)
+  showTeamInformation      Boolean @default(false)
+  showCustomFields         Boolean @default(false)
+  showIncidentAssignees    Boolean @default(false)
+  showIncidentUrgency      Boolean @default(true)
+  showUptimeHistory        Boolean @default(true)
+  showRecentIncidents      Boolean @default(true)
+  maxIncidentsToShow       Int     @default(50)
+  incidentHistoryDays      Int     @default(90)
+  allowedCustomFields      Json? // Array of custom field IDs to show
+  dataRetentionDays        Int? // Auto-hide incidents older than X days
+  requireAuth              Boolean @default(false) // Require authentication
+  authProvider             String? // SSO provider if requireAuth=true
+  emailProvider            String? // Email provider for subscription notifications (resend, sendgrid, smtp, or null for auto)
+
+  // Uptime threshold configuration
+  uptimeExcellentThreshold Float @default(99.9) // Threshold for excellent uptime (green)
+  uptimeGoodThreshold      Float @default(99.0) // Threshold for good uptime (yellow)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services      StatusPageService[]
+  announcements StatusPageAnnouncement[]
+  subscriptions StatusPageSubscription[]
+  webhooks      StatusPageWebhook[]
 
   @@index([enabled])
 }
 
 // Services shown on status page
 model StatusPageService {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
   statusPageId String
-  serviceId  String
-  displayName String? // Override service name for status page
-  showOnPage Boolean  @default(true)
-  order      Int      @default(0)
-  createdAt  DateTime @default(now())
+  serviceId    String
+  displayName  String? // Override service name for status page
+  showOnPage   Boolean  @default(true)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
 
   statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
   service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
@@ -751,17 +799,17 @@ model StatusPageService {
 
 // Announcements/Communications on status page
 model StatusPageAnnouncement {
-  id          String   @id @default(cuid())
+  id           String    @id @default(cuid())
   statusPageId String
-  title       String
-  message     String
-  type        String   @default("INFO") // INFO, WARNING, MAINTENANCE, INCIDENT
-  incidentId  String?  // Link to incident if applicable
-  startDate   DateTime
-  endDate     DateTime?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  title        String
+  message      String
+  type         String    @default("INFO") // INFO, WARNING, MAINTENANCE, INCIDENT
+  incidentId   String? // Link to incident if applicable
+  startDate    DateTime
+  endDate      DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
   incident   Incident?  @relation(fields: [incidentId], references: [id], onDelete: SetNull)
@@ -770,21 +818,58 @@ model StatusPageAnnouncement {
   @@index([incidentId])
 }
 
+// Status Page Subscriptions (Email notifications)
+model StatusPageSubscription {
+  id                String    @id @default(cuid())
+  statusPageId      String
+  email             String
+  phone             String? // For SMS (future)
+  token             String    @unique // Unsubscribe token
+  subscribedAt      DateTime  @default(now())
+  unsubscribedAt    DateTime?
+  verified          Boolean   @default(false)
+  verificationToken String?
+  preferences       Json? // Notification preferences (all incidents, major only, etc.)
+
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@unique([statusPageId, email])
+  @@index([statusPageId, verified])
+  @@index([token])
+}
+
+// Status Page Webhooks (External integrations)
+model StatusPageWebhook {
+  id              String    @id @default(cuid())
+  statusPageId    String
+  url             String
+  secret          String // Webhook secret for verification
+  events          Json // Array of events to send (incident.created, incident.updated, etc.)
+  enabled         Boolean   @default(true)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@index([statusPageId, enabled])
+}
+
 // Custom Fields System
 model CustomField {
-  id          String   @id @default(cuid())
-  name        String
-  key         String   @unique // Unique identifier (e.g., "customer_id")
-  type        CustomFieldType
-  required    Boolean  @default(false)
+  id           String          @id @default(cuid())
+  name         String
+  key          String          @unique // Unique identifier (e.g., "customer_id")
+  type         CustomFieldType
+  required     Boolean         @default(false)
   defaultValue String?
-  options     Json?    // For SELECT type: array of options
-  order       Int      @default(0)
-  showInList  Boolean  @default(false) // Show in incident table
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  options      Json? // For SELECT type: array of options
+  order        Int             @default(0)
+  showInList   Boolean         @default(false) // Show in incident table
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
-  values      CustomFieldValue[]
+  values CustomFieldValue[]
 
   @@index([key])
   @@index([order])
@@ -804,7 +889,7 @@ model CustomFieldValue {
   id            String   @id @default(cuid())
   incidentId    String
   customFieldId String
-  value         String?  // Store as string, parse based on field type
+  value         String? // Store as string, parse based on field type
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -819,37 +904,37 @@ model CustomFieldValue {
 
 // Search Presets / Saved Searches
 model SearchPreset {
-  id              String   @id @default(cuid())
-  name            String
-  description     String?
-  createdById     String
-  isShared        Boolean  @default(false) // Shared with team/organization
-  isDefault       Boolean  @default(false) // Default preset for new users
-  isPublic        Boolean  @default(false) // Public preset visible to all users
-  
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  createdById String
+  isShared    Boolean @default(false) // Shared with team/organization
+  isDefault   Boolean @default(false) // Default preset for new users
+  isPublic    Boolean @default(false) // Public preset visible to all users
+
   // Filter criteria (stored as JSON for flexibility)
-  filterCriteria  Json     // { filter, search, priority, urgency, sort, serviceIds?, assigneeIds?, dateRange?, etc. }
-  
+  filterCriteria Json // { filter, search, priority, urgency, sort, serviceIds?, assigneeIds?, dateRange?, etc. }
+
   // Metadata
-  icon            String?  // Optional icon identifier
-  color           String?  // Optional color for visual distinction
-  order           Int      @default(0) // Display order
-  
+  icon  String? // Optional icon identifier
+  color String? // Optional color for visual distinction
+  order Int     @default(0) // Display order
+
   // Analytics
-  usageCount      Int      @default(0) // How many times this preset has been used
-  lastUsedAt      DateTime? // Last time this preset was used
-  
+  usageCount Int       @default(0) // How many times this preset has been used
+  lastUsedAt DateTime? // Last time this preset was used
+
   // Sharing
   sharedWithTeams String[] // Array of team IDs that can access this preset
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  createdBy       User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
   // Usage tracking
-  usageHistory    SearchPresetUsage[]
-  
+  usageHistory SearchPresetUsage[]
+
   @@index([createdById])
   @@index([isShared, isPublic])
   @@index([order])
@@ -858,15 +943,24 @@ model SearchPreset {
 
 // Track preset usage for analytics
 model SearchPresetUsage {
-  id            String   @id @default(cuid())
-  presetId      String
-  userId        String
-  usedAt        DateTime @default(now())
-  
-  preset        SearchPreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id       String   @id @default(cuid())
+  presetId String
+  userId   String
+  usedAt   DateTime @default(now())
+
+
+  preset SearchPreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([presetId])
   @@index([userId])
   @@index([usedAt])
+}
+
+// System-wide settings (singleton pattern)
+model SystemSettings {
+  id        String   @id @default("default")
+  appUrl    String?  // Application base URL for links in emails, webhooks, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -320,9 +320,10 @@ export default function KeyboardShortcuts({ isOpen, onClose }: { isOpen: boolean
                     color: 'var(--text-muted)'
                 }}>
                     <span>Use these shortcuts to navigate faster</span>
-                    <span style={{ fontWeight: '600', color: 'var(--primary)' }}>OpsGuard</span>
+                    <span style={{ fontWeight: '600', color: 'var(--primary)' }}>OpsSure</span>
                 </div>
             </div>
         </div>
     );
 }
+

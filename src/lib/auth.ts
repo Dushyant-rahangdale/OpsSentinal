@@ -13,7 +13,7 @@ const oidcEnabled = Boolean(
 );
 
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma),
+    adapter: PrismaAdapter(prisma as any),
     session: { strategy: 'jwt' },
     providers: [
         ...(oidcEnabled
@@ -83,7 +83,7 @@ export const authOptions: NextAuthOptions = {
                 token.name = (user as any).name;
                 token.email = (user as any).email;
             }
-            
+
             // Fetch latest user data from database on each request to ensure name is up-to-date
             // This ensures name changes reflect immediately without requiring re-login
             if (token.sub && typeof token.sub === 'string') {
@@ -92,7 +92,7 @@ export const authOptions: NextAuthOptions = {
                         where: { id: token.sub },
                         select: { name: true, email: true, role: true }
                     });
-                    
+
                     if (dbUser) {
                         token.name = dbUser.name;
                         token.email = dbUser.email;
@@ -105,7 +105,7 @@ export const authOptions: NextAuthOptions = {
                     });
                 }
             }
-            
+
             return token;
         },
         async session({ session, token }) {

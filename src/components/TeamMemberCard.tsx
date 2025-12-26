@@ -1,17 +1,22 @@
 'use client';
 
-import { useTransition, memo } from 'react';
+import { useTransition, memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from './ToastProvider';
 
 type TeamMember = {
     id: string;
     role: string;
+    receiveTeamNotifications: boolean;
     user: {
         id: string;
         name: string;
         email: string;
         status?: string;
+        emailNotificationsEnabled?: boolean;
+        smsNotificationsEnabled?: boolean;
+        pushNotificationsEnabled?: boolean;
+        whatsappNotificationsEnabled?: boolean;
     };
 };
 
@@ -19,8 +24,10 @@ type TeamMemberCardProps = {
     member: TeamMember;
     isSoleOwner: boolean;
     canManageMembers: boolean;
+    canManageNotifications: boolean;
     canAssignOwnerAdmin: boolean;
     updateMemberRole: (formData: FormData) => Promise<{ error?: string } | undefined>;
+    updateMemberNotifications: (receiveNotifications: boolean) => Promise<{ error?: string } | undefined>;
     removeMember: () => Promise<{ error?: string } | undefined>;
 };
 
@@ -28,13 +35,17 @@ function TeamMemberCard({
     member,
     isSoleOwner,
     canManageMembers,
+    canManageNotifications,
     canAssignOwnerAdmin,
     updateMemberRole,
+    updateMemberNotifications,
     removeMember
 }: TeamMemberCardProps) {
     const [isPending, startTransition] = useTransition();
     const [isRemoving, startRemoving] = useTransition();
+    const [isNotifyPending, startNotifyTransition] = useTransition();
     const { showToast } = useToast();
+    const [teamNotifyEnabled, setTeamNotifyEnabled] = useState(member.receiveTeamNotifications);
 
     const roleColors = {
         OWNER: { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca' },
@@ -44,6 +55,16 @@ function TeamMemberCard({
 
     const roleInfo = roleColors[member.role as keyof typeof roleColors] || roleColors.MEMBER;
     const canEditRole = canManageMembers && !isSoleOwner && (canAssignOwnerAdmin || (member.role !== 'OWNER' && member.role !== 'ADMIN'));
+    const hasAnyNotificationEnabled = Boolean(
+        member.user.emailNotificationsEnabled ||
+        member.user.smsNotificationsEnabled ||
+        member.user.pushNotificationsEnabled ||
+        member.user.whatsappNotificationsEnabled
+    );
+
+    useEffect(() => {
+        setTeamNotifyEnabled(member.receiveTeamNotifications);
+    }, [member.receiveTeamNotifications]);
 
     const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newRole = e.target.value;
@@ -67,6 +88,23 @@ function TeamMemberCard({
                 showToast(result.error, 'error');
             } else {
                 showToast(`${member.user.name} removed from team`, 'success');
+            }
+        });
+    };
+
+    const handleNotificationToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const nextValue = e.target.checked;
+        setTeamNotifyEnabled(nextValue);
+        startNotifyTransition(async () => {
+            const result = await updateMemberNotifications(nextValue);
+            if (result?.error) {
+                setTeamNotifyEnabled(!nextValue);
+                showToast(result.error, 'error');
+            } else {
+                showToast(
+                    nextValue ? 'Team notifications enabled' : 'Team notifications disabled',
+                    'success'
+                );
             }
         });
     };
@@ -142,6 +180,19 @@ function TeamMemberCard({
                                 Disabled
                             </span>
                         )}
+                        {!hasAnyNotificationEnabled && (
+                            <span style={{
+                                fontSize: '0.65rem',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '999px',
+                                background: '#fff7ed',
+                                color: '#9a3412',
+                                fontWeight: '600',
+                                border: '1px solid #fed7aa'
+                            }}>
+                                No channels enabled
+                            </span>
+                        )}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {member.user.email}
@@ -153,12 +204,38 @@ function TeamMemberCard({
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Role Badge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.3rem 0.5rem',
+                            borderRadius: '8px',
+                            background: teamNotifyEnabled ? '#e0f2fe' : '#f8fafc',
+                            border: `1px solid ${teamNotifyEnabled ? '#3b82f6' : '#e2e8f0'}`,
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: teamNotifyEnabled ? '#1d4ed8' : '#64748b',
+                            opacity: canManageNotifications ? 1 : 0.6,
+                            cursor: canManageNotifications ? 'pointer' : 'not-allowed'
+                        }}
+                        title={canManageNotifications ? 'Toggle team notifications for this member' : 'Admin or Team Owner access required'}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={teamNotifyEnabled}
+                            onChange={handleNotificationToggle}
+                            disabled={!canManageNotifications || isNotifyPending}
+                            style={{ cursor: canManageNotifications ? 'pointer' : 'not-allowed' }}
+                        />
+                        Team notify
+                    </label>
                     {canEditRole ? (
                         <select 
                             name="role" 
                             defaultValue={member.role} 
                             onChange={handleRoleChange}
-                            disabled={isPending}
+                            disabled={isPending || isNotifyPending}
                             style={{ 
                                 padding: '0.4rem 0.75rem', 
                                 border: `1px solid ${roleInfo.border}`, 
@@ -251,12 +328,18 @@ export default memo(TeamMemberCard, (prevProps, nextProps) => {
     return (
         prevProps.member.id === nextProps.member.id &&
         prevProps.member.role === nextProps.member.role &&
+        prevProps.member.receiveTeamNotifications === nextProps.member.receiveTeamNotifications &&
         prevProps.member.user.id === nextProps.member.user.id &&
         prevProps.member.user.name === nextProps.member.user.name &&
         prevProps.member.user.email === nextProps.member.user.email &&
         prevProps.member.user.status === nextProps.member.user.status &&
+        prevProps.member.user.emailNotificationsEnabled === nextProps.member.user.emailNotificationsEnabled &&
+        prevProps.member.user.smsNotificationsEnabled === nextProps.member.user.smsNotificationsEnabled &&
+        prevProps.member.user.pushNotificationsEnabled === nextProps.member.user.pushNotificationsEnabled &&
+        prevProps.member.user.whatsappNotificationsEnabled === nextProps.member.user.whatsappNotificationsEnabled &&
         prevProps.isSoleOwner === nextProps.isSoleOwner &&
         prevProps.canManageMembers === nextProps.canManageMembers &&
+        prevProps.canManageNotifications === nextProps.canManageNotifications &&
         prevProps.canAssignOwnerAdmin === nextProps.canAssignOwnerAdmin
     );
 });

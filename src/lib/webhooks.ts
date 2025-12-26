@@ -67,15 +67,15 @@ export async function sendWebhook(
         // Prepare headers
         const requestHeaders: Record<string, string> = {
             'Content-Type': 'application/json',
-            'User-Agent': 'OpsGuard/1.0',
+            'User-Agent': 'OpsSure/1.0',
             ...headers,
         };
 
         // Add signature if secret provided
         if (secret) {
             const signature = generateSignature(payloadString, secret);
-            requestHeaders['X-OpsGuard-Signature'] = `sha256=${signature}`;
-            requestHeaders['X-OpsGuard-Timestamp'] = Date.now().toString();
+            requestHeaders['X-OpsSure-Signature'] = `sha256=${signature}`;
+            requestHeaders['X-OpsSure-Timestamp'] = Date.now().toString();
         }
 
         // Use retry logic for improved reliability
@@ -243,9 +243,9 @@ export function formatGoogleChatPayload(
 ): Record<string, any> {
     const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
     const statusColor = eventType === 'triggered' ? '#d32f2f' :
-                        eventType === 'acknowledged' ? '#f9a825' :
-                        eventType === 'resolved' ? '#388e3c' : '#757575';
-    
+        eventType === 'acknowledged' ? '#f9a825' :
+            eventType === 'resolved' ? '#388e3c' : '#757575';
+
     return {
         cards: [
             {
@@ -322,9 +322,9 @@ export function formatMicrosoftTeamsPayload(
 ): Record<string, any> {
     const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
     const accentColor = eventType === 'triggered' ? '#d32f2f' :
-                       eventType === 'acknowledged' ? '#f9a825' :
-                       eventType === 'resolved' ? '#388e3c' : '#757575';
-    
+        eventType === 'acknowledged' ? '#f9a825' :
+            eventType === 'resolved' ? '#388e3c' : '#757575';
+
     return {
         type: 'message',
         attachments: [
@@ -404,9 +404,9 @@ export function formatDiscordPayload(
 ): Record<string, any> {
     const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
     const color = eventType === 'triggered' ? 0xd32f2f :
-                 eventType === 'acknowledged' ? 0xf9a825 :
-                 eventType === 'resolved' ? 0x388e3c : 0x757575;
-    
+        eventType === 'acknowledged' ? 0xf9a825 :
+            eventType === 'resolved' ? 0x388e3c : 0x757575;
+
     return {
         embeds: [
             {
@@ -438,8 +438,93 @@ export function formatDiscordPayload(
                 ],
                 timestamp: new Date().toISOString(),
                 footer: {
-                    text: 'OpsGuard'
+                    text: 'OpsSure'
                 }
+            }
+        ]
+    };
+}
+
+/**
+ * Format payload for Slack (Block Kit)
+ */
+export function formatSlackPayload(
+    incident: {
+        id: string;
+        title: string;
+        description?: string | null;
+        status: string;
+        urgency: string;
+        service: { name: string; id: string };
+        assignee?: { name: string; email: string; id: string } | null;
+        createdAt: Date;
+        acknowledgedAt?: Date | null;
+        resolvedAt?: Date | null;
+    },
+    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
+    baseUrl: string
+): Record<string, any> {
+    const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
+
+    // Status color mapping
+    const statusEmoji = eventType === 'triggered' ? '🔴' :
+        eventType === 'acknowledged' ? '🟡' :
+            eventType === 'resolved' ? '🟢' : '⚪';
+
+    const headerText = `${statusEmoji} Incident ${eventType.charAt(0).toUpperCase() + eventType.slice(1)}: ${incident.title}`;
+
+    return {
+        blocks: [
+            {
+                type: 'header',
+                text: {
+                    type: 'plain_text',
+                    text: headerText.substring(0, 150), // Slack header limit
+                    emoji: true
+                }
+            },
+            {
+                type: 'section',
+                fields: [
+                    {
+                        type: 'mrkdwn',
+                        text: `*Service:*\n${incident.service.name}`
+                    },
+                    {
+                        type: 'mrkdwn',
+                        text: `*Status:*\n${incident.status}`
+                    },
+                    {
+                        type: 'mrkdwn',
+                        text: `*Urgency:*\n${incident.urgency}`
+                    },
+                    {
+                        type: 'mrkdwn',
+                        text: `*Assignee:*\n${incident.assignee?.name || 'Unassigned'}`
+                    }
+                ]
+            },
+            ...(incident.description ? [{
+                type: 'section',
+                text: {
+                    type: 'mrkdwn',
+                    text: `*Description:*\n${incident.description}`
+                }
+            }] : []),
+            {
+                type: 'actions',
+                elements: [
+                    {
+                        type: 'button',
+                        text: {
+                            type: 'plain_text',
+                            text: 'View Incident',
+                            emoji: true
+                        },
+                        url: incidentUrl,
+                        style: eventType === 'resolved' ? 'primary' : 'danger'
+                    }
+                ]
             }
         ]
     };
@@ -471,6 +556,8 @@ export function formatWebhookPayloadByType(
         case 'TEAMS':
         case 'MICROSOFT_TEAMS':
             return formatMicrosoftTeamsPayload(incident, eventType, baseUrl);
+        case 'SLACK':
+            return formatSlackPayload(incident, eventType, baseUrl);
         case 'DISCORD':
             return formatDiscordPayload(incident, eventType, baseUrl);
         case 'GENERIC':
@@ -539,6 +626,7 @@ export function verifyWebhookSignature(
         return false;
     }
 }
+
 
 
 

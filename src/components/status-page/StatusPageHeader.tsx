@@ -107,12 +107,12 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                 transition: 'all 0.3s ease',
             }}
         >
-            <div style={{ 
-                width: '100%', 
+            <div style={{
+                width: '100%',
                 maxWidth: '1400px',
-                margin: '0 auto', 
-                padding: '2.5rem 2rem', 
-                boxSizing: 'border-box' 
+                margin: '0 auto',
+                padding: 'clamp(0.5rem, 2vw, 1.5rem) clamp(0.5rem, 2vw, 1.5rem)',
+                boxSizing: 'border-box'
             }}>
                 <div style={{
                     display: 'flex',
@@ -120,44 +120,44 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                     alignItems: 'center',
                     flexDirection: 'row',
                     flexWrap: 'wrap',
-                    gap: '1.5rem',
+                    gap: 'clamp(0.5rem, 1.5vw, 1rem)', // Reduce gap
                     opacity: isVisible ? 1 : 0,
                     transform: isVisible ? 'translateY(0)' : 'translateY(-10px)',
                     transition: 'opacity 0.5s ease, transform 0.5s ease',
                 }}>
-                    <div style={{ 
-                        display: 'flex', 
+                    <div style={{
+                        display: 'flex',
                         alignItems: 'center',
-                        gap: '1.25rem',
-                        flex: 1,
-                        minWidth: '260px',
-                        flexWrap: 'nowrap',
+                        gap: 'clamp(0.5rem, 1.5vw, 1rem)', // Reduce gap
+                        flex: '1 1 auto', // Allow it to shrink
+                        minWidth: 0,
+                        flexWrap: 'wrap',
                         justifyContent: 'flex-start',
                     }}>
                         {logoUrl && (
                             <div style={{
                                 flexShrink: 0,
-                                padding: '0.5rem',
-                                borderRadius: '0.75rem',
+                                padding: 'clamp(0.25rem, 1vw, 0.5rem)',
+                                borderRadius: '0.5rem', // Smaller radius
                                 background: '#ffffff',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
                                 transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                             }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.05)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
-                            }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                                }}
                             >
                                 <img
                                     src={logoUrl}
                                     alt={statusPage.name}
                                     style={{
-                                        height: '44px',
-                                        maxWidth: '200px',
+                                        height: 'clamp(24px, 4vw, 40px)', // Smaller logo
+                                        maxWidth: 'clamp(80px, 20vw, 180px)',
                                         objectFit: 'contain',
                                         display: 'block',
                                     }}
@@ -167,9 +167,9 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                                 />
                             </div>
                         )}
-                        <div style={{ textAlign: 'left' }}>
+                        <div style={{ textAlign: 'left', flex: '1 1 auto', minWidth: 0 }}>
                             <h1 style={{
-                                fontSize: '2.5rem',
+                                fontSize: 'clamp(1rem, 4vw, 2.25rem)', // Smaller title
                                 fontWeight: '800',
                                 margin: 0,
                                 color: textColor,
@@ -178,54 +178,59 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                                 backgroundClip: 'text',
+                                lineHeight: '1.2',
+                                wordBreak: 'break-word',
                             }}>
                                 {statusPage.name}
                             </h1>
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '0.75rem',
-                                marginTop: '0.5rem',
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'clamp(0.375rem, 1.5vw, 0.75rem)',
+                                marginTop: 'clamp(0.125rem, 0.5vw, 0.25rem)', // Tighter margin
                                 flexWrap: 'wrap',
                             }}>
-                                <p style={{ 
-                                    margin: 0, 
-                                    color: '#475569', 
-                                    fontSize: '1rem',
+                                <p style={{
+                                    margin: 0,
+                                    color: '#475569',
+                                    fontSize: 'clamp(0.75rem, 2vw, 0.95rem)', // Smaller subtitle
                                     fontWeight: '500',
                                 }}>
                                     {status.text}
                                 </p>
                                 {updatedLabel && (
                                     <>
-                                        <span style={{ color: '#cbd5e1', fontSize: '0.875rem' }}>|</span>
+                                        <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>|</span>
                                         <p
                                             suppressHydrationWarning
-                                            style={{ 
-                                                margin: 0, 
-                                                color: '#94a3b8', 
-                                                fontSize: '0.875rem',
+                                            style={{
+                                                margin: 0,
+                                                color: '#94a3b8',
+                                                fontSize: '0.75rem', // Smaller text
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '0.375rem',
+                                                gap: '0.25rem',
                                             }}
                                         >
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <circle cx="12" cy="12" r="10"></circle>
                                                 <polyline points="12 6 12 12 16 14"></polyline>
                                             </svg>
-                                            Updated {updatedLabel}
+                                            {updatedLabel}
                                         </p>
                                     </>
                                 )}
                             </div>
                         </div>
                     </div>
-                    <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '1rem', 
-                        flexShrink: 0 
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        flexShrink: 0,
+                        flex: '0 0 auto', // Don't grow if not needed
+                        justifyContent: 'flex-end',
+                        marginTop: '0', // Removing top margin relying on flex wrap gap
                     }}>
                         <div style={{
                             position: 'relative',
@@ -233,43 +238,31 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                             alignItems: 'center',
                             gap: '0.5rem',
                         }}>
-                            {status.pulse && (
-                                <span style={{
-                                    position: 'absolute',
-                                    left: '-4px',
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
-                                    background: status.color,
-                                    opacity: 0.6,
-                                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                }} />
-                            )}
                             <span style={{
-                                padding: '0.5rem 1rem',
+                                padding: '0.375rem 0.75rem', // Smaller padding
                                 background: status.background,
                                 color: status.color,
-                                border: `2px solid ${status.border}`,
+                                border: `1px solid ${status.border}`, // Thinner border
                                 borderRadius: '999px',
-                                fontSize: '0.8125rem',
+                                fontSize: '0.7rem', // Smaller font
                                 fontWeight: '700',
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                boxShadow: `0 2px 8px ${status.border}40`,
+                                letterSpacing: '0.05em',
+                                boxShadow: `0 1px 2px ${status.border}40`,
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
+                                gap: '0.375rem',
                                 position: 'relative',
                                 transition: 'all 0.2s ease',
                             }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.05)';
-                                e.currentTarget.style.boxShadow = `0 4px 12px ${status.border}60`;
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.boxShadow = `0 2px 8px ${status.border}40`;
-                            }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                    e.currentTarget.style.boxShadow = `0 4px 12px ${status.border}60`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = `0 1px 2px ${status.border}40`;
+                                }}
                             >
                                 {status.badge}
                             </span>

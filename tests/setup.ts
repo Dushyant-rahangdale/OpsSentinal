@@ -1,11 +1,15 @@
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
 
-// Cleanup after each test
-afterEach(() => {
-  cleanup();
-});
+// Cleanup after each test (only if @testing-library/react is available)
+try {
+  const { cleanup } = require('@testing-library/react');
+  afterEach(() => {
+    cleanup();
+  });
+} catch {
+  // @testing-library/react not available, skip cleanup
+}
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({

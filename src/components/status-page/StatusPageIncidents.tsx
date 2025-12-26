@@ -25,16 +25,36 @@ interface Incident {
     events: IncidentEvent[];
 }
 
+interface PrivacySettings {
+    showIncidentTitles?: boolean;
+    showIncidentDescriptions?: boolean;
+    showAffectedServices?: boolean;
+    showIncidentTimestamps?: boolean;
+    showIncidentUrgency?: boolean;
+    showIncidentDetails?: boolean;
+}
+
 interface StatusPageIncidentsProps {
     incidents: Incident[];
+    privacySettings?: PrivacySettings;
 }
 
 const INCIDENTS_PER_PAGE = 10;
 
-export default function StatusPageIncidents({ incidents }: StatusPageIncidentsProps) {
+export default function StatusPageIncidents({ incidents, privacySettings }: StatusPageIncidentsProps) {
     const browserTimeZone = useBrowserTimezone();
     const [expandedIncidents, setExpandedIncidents] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
+
+    // Privacy defaults - show everything if not specified
+    const privacy = {
+        showIncidentTitles: privacySettings?.showIncidentTitles !== false,
+        showIncidentDescriptions: privacySettings?.showIncidentDescriptions !== false,
+        showAffectedServices: privacySettings?.showAffectedServices !== false,
+        showIncidentTimestamps: privacySettings?.showIncidentTimestamps !== false,
+        showIncidentUrgency: privacySettings?.showIncidentUrgency !== false,
+        showIncidentDetails: privacySettings?.showIncidentDetails !== false,
+    };
 
     const totalPages = Math.ceil(incidents.length / INCIDENTS_PER_PAGE);
     const startIndex = (currentPage - 1) * INCIDENTS_PER_PAGE;
@@ -63,18 +83,18 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
     };
 
     return (
-        <section style={{ marginBottom: '4rem' }}>
+        <section style={{ marginBottom: 'clamp(2rem, 6vw, 4rem)' }}>
             <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                marginBottom: '1.5rem',
+                marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
                 flexWrap: 'wrap',
                 gap: '1rem',
             }}>
                 <div>
                     <h2 style={{ 
-                        fontSize: '1.875rem', 
+                        fontSize: 'clamp(1.5rem, 4vw, 1.875rem)', 
                         fontWeight: '800', 
                         color: '#0f172a',
                         margin: 0,
@@ -85,7 +105,7 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                     </h2>
                     {incidents.length > 0 && (
                         <p style={{ 
-                            fontSize: '0.875rem', 
+                            fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)', 
                             color: '#64748b',
                             margin: 0,
                         }}>
@@ -142,7 +162,7 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                     key={incident.id}
                                     className="status-incident-card"
                                     style={{
-                                        padding: '2rem',
+                                        padding: 'clamp(1.25rem, 4vw, 2rem)',
                                         background: '#ffffff',
                                         border: `2px solid ${statusColor.border}30`,
                                         borderRadius: '1rem',
@@ -173,61 +193,86 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                         boxShadow: `0 0 8px ${statusColor.border}40`,
                                     }} />
 
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
-                                        <div style={{ flex: 1, minWidth: 0, paddingLeft: '1rem' }}>
-                                            <h3 style={{ 
-                                                fontSize: '1.375rem', 
-                                                fontWeight: '800', 
-                                                color: '#111827',
-                                                marginBottom: '0.75rem',
-                                                letterSpacing: '-0.02em',
-                                                lineHeight: '1.3',
-                                            }}>
-                                                {incident.title}
-                                            </h3>
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                gap: '1rem', 
-                                                fontSize: '0.875rem', 
-                                                color: '#6b7280', 
-                                                flexWrap: 'wrap',
-                                                alignItems: 'center',
-                                            }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 'clamp(0.75rem, 2vw, 1rem)', gap: '1rem', flexWrap: 'wrap' }}>
+                                        <div style={{ flex: 1, minWidth: 0, paddingLeft: 'clamp(0.75rem, 2vw, 1rem)' }}>
+                                            {privacy.showIncidentTitles && (
+                                                <h3 style={{ 
+                                                    fontSize: 'clamp(1.125rem, 3vw, 1.375rem)', 
+                                                    fontWeight: '800', 
+                                                    color: '#111827',
+                                                    marginBottom: '0.75rem',
+                                                    letterSpacing: '-0.02em',
+                                                    lineHeight: '1.3',
+                                                    wordBreak: 'break-word',
+                                                }}>
+                                                    {incident.title}
+                                                </h3>
+                                            )}
+                                            {!privacy.showIncidentTitles && (
+                                                <h3 style={{ 
+                                                    fontSize: 'clamp(1.125rem, 3vw, 1.375rem)', 
+                                                    fontWeight: '800', 
+                                                    color: '#111827',
+                                                    marginBottom: '0.75rem',
+                                                    letterSpacing: '-0.02em',
+                                                    lineHeight: '1.3',
+                                                }}>
+                                                    Incident
+                                                </h3>
+                                            )}
+                                            {(privacy.showAffectedServices || privacy.showIncidentTimestamps) && (
                                                 <div style={{ 
                                                     display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '0.5rem',
+                                                    gap: '1rem', 
+                                                    fontSize: '0.875rem', 
+                                                    color: '#6b7280', 
+                                                    flexWrap: 'wrap',
+                                                    alignItems: 'center',
                                                 }}>
-                                                    <span style={{
-                                                        padding: '0.25rem 0.625rem',
-                                                        borderRadius: '0.375rem',
-                                                        background: '#f3f4f6',
-                                                        fontWeight: '600',
-                                                        color: '#374151',
-                                                    }}>
-                                                        {incident.service.name}
-                                                    </span>
+                                                    {privacy.showAffectedServices && (
+                                                        <>
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '0.5rem',
+                                                            }}>
+                                                                <span style={{
+                                                                    padding: '0.25rem 0.625rem',
+                                                                    borderRadius: '0.375rem',
+                                                                    background: '#f3f4f6',
+                                                                    fontWeight: '600',
+                                                                    color: '#374151',
+                                                                }}>
+                                                                    {incident.service.name}
+                                                                </span>
+                                                            </div>
+                                                            {privacy.showIncidentTimestamps && <span>|</span>}
+                                                        </>
+                                                    )}
+                                                    {privacy.showIncidentTimestamps && (
+                                                        <>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                                                </svg>
+                                                                {formatDateTime(incident.createdAt, browserTimeZone, { format: 'datetime' })}
+                                                            </span>
+                                                            {incident.resolvedAt && (
+                                                                <>
+                                                                    <span>|</span>
+                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: '#10b981' }}>
+                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                                                        </svg>
+                                                                        Resolved {formatDateTime(incident.resolvedAt, browserTimeZone, { format: 'short' })}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <span>|</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <circle cx="12" cy="12" r="10"></circle>
-                                                        <polyline points="12 6 12 12 16 14"></polyline>
-                                                    </svg>
-                                                    {formatDateTime(incident.createdAt, browserTimeZone, { format: 'datetime' })}
-                                                </span>
-                                                {incident.resolvedAt && (
-                                                    <>
-                                                        <span>|</span>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: '#10b981' }}>
-                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                                            </svg>
-                                                            Resolved {formatDateTime(incident.resolvedAt, browserTimeZone, { format: 'short' })}
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </div>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                                             <span style={{
@@ -305,7 +350,7 @@ export default function StatusPageIncidents({ incidents }: StatusPageIncidentsPr
                                         </div>
                                     </div>
 
-                                    {incident.description && (
+                                    {privacy.showIncidentDescriptions && incident.description && (
                                         <p style={{ 
                                             color: '#374151', 
                                             lineHeight: '1.7',

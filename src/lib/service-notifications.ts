@@ -70,23 +70,23 @@ export async function sendServiceNotifications(
                             serviceName: incident.service.name,
                             assigneeName: incident.assignee?.name
                         },
-                        eventType === 'triggered' ? 'triggered' : 
-                        eventType === 'acknowledged' ? 'acknowledged' : 
-                        eventType === 'resolved' ? 'resolved' : 'triggered',
+                        eventType === 'triggered' ? 'triggered' :
+                            eventType === 'acknowledged' ? 'acknowledged' :
+                                eventType === 'resolved' ? 'resolved' : 'triggered',
                         true, // includeInteractiveButtons
                         incident.serviceId // Pass serviceId to get correct token
                     );
-                    
+
                     if (!slackResult.success) {
                         errors.push(`Slack channel notification failed: ${slackResult.error}`);
                     }
-                } 
+                }
                 // Fallback to webhook if channel not configured but webhook URL exists
                 else if (incident.service.slackWebhookUrl && eventType !== 'updated') {
-                    await notifySlackForIncident(incidentId, 
-                        eventType === 'triggered' ? 'triggered' : 
-                        eventType === 'acknowledged' ? 'acknowledged' : 
-                        'resolved'
+                    await notifySlackForIncident(incidentId,
+                        eventType === 'triggered' ? 'triggered' :
+                            eventType === 'acknowledged' ? 'acknowledged' :
+                                'resolved'
                     ).catch(err => {
                         errors.push(`Slack webhook notification failed: ${err.message}`);
                     });
@@ -105,9 +105,9 @@ export async function sendServiceNotifications(
             const webhookPromises = incident.service.webhookIntegrations.map(async (webhook) => {
                 try {
                     const webhookEventType = eventType === 'triggered' ? 'triggered' :
-                                          eventType === 'acknowledged' ? 'acknowledged' :
-                                          eventType === 'resolved' ? 'resolved' : 'updated';
-                    
+                        eventType === 'acknowledged' ? 'acknowledged' :
+                            eventType === 'resolved' ? 'resolved' : 'updated';
+
                     const result = await sendIncidentWebhook(
                         webhook.url,
                         incidentId,
@@ -115,7 +115,7 @@ export async function sendServiceNotifications(
                         webhook.secret || undefined,
                         webhook.type // Pass webhook type for proper formatting
                     );
-                    
+
                     if (!result.success) {
                         return { webhookId: webhook.id, error: result.error };
                     }
@@ -142,15 +142,15 @@ export async function sendServiceNotifications(
         if (incident.service.webhookUrl && !serviceChannels.includes('WEBHOOK')) {
             try {
                 const webhookEventType = eventType === 'triggered' ? 'triggered' :
-                                      eventType === 'acknowledged' ? 'acknowledged' :
-                                      eventType === 'resolved' ? 'resolved' : 'updated';
-                
+                    eventType === 'acknowledged' ? 'acknowledged' :
+                        eventType === 'resolved' ? 'resolved' : 'updated';
+
                 const result = await sendIncidentWebhook(
                     incident.service.webhookUrl,
                     incidentId,
                     webhookEventType
                 );
-                
+
                 if (!result.success) {
                     errors.push(`Legacy webhook failed: ${result.error}`);
                 }
@@ -163,9 +163,9 @@ export async function sendServiceNotifications(
             }
         }
 
-        return { 
-            success: errors.length === 0, 
-            errors: errors.length > 0 ? errors : undefined 
+        return {
+            success: errors.length === 0,
+            errors: errors.length > 0 ? errors : undefined
         };
     } catch (error: any) {
         logger.error('Service notification error', {

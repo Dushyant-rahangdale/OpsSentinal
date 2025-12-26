@@ -27,7 +27,7 @@ export default async function PreferencesSettingsPage() {
     return (
         <SettingsSection
             title="Preferences"
-            description="Personalize how OpsGuard appears and notifies you."
+            description="Personalize how OpsSure appears and notifies you."
         >
             <div style={{ marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-primary)' }}>
@@ -62,3 +62,4 @@ export default async function PreferencesSettingsPage() {
         </SettingsSection>
     );
 }
+

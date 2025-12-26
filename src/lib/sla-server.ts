@@ -21,25 +21,51 @@ export async function calculateSLAMetrics(serviceId?: string, startDate?: Date, 
         where.createdAt = {};
         if (startDate) where.createdAt.gte = startDate;
         if (endDate) where.createdAt.lte = endDate;
+    } else {
+        // If no date range specified, limit to last 1000 resolved incidents for performance
+        // This prevents fetching all historical incidents which can be very slow
+        const recentDate = new Date();
+        recentDate.setDate(recentDate.getDate() - 365); // Last year max
+        where.createdAt = { gte: recentDate };
     }
 
     const resolvedIncidents = await prisma.incident.findMany({
         where,
-        include: {
-            service: true,
+        select: {
+            id: true,
+            createdAt: true,
+            acknowledgedAt: true,
+            resolvedAt: true,
+            service: {
+                select: {
+                    targetAckMinutes: true,
+                    targetResolveMinutes: true
+                }
+            },
             events: {
                 orderBy: { createdAt: 'asc' },
-                take: 1
+                take: 1,
+                select: {
+                    createdAt: true
+                }
             },
             notes: {
                 orderBy: { createdAt: 'asc' },
-                take: 1
+                take: 1,
+                select: {
+                    createdAt: true
+                }
             },
             alerts: {
                 orderBy: { createdAt: 'asc' },
-                take: 1
+                take: 1,
+                select: {
+                    createdAt: true
+                }
             }
-        }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1000 // Limit to prevent performance issues with large datasets
     });
 
     if (resolvedIncidents.length === 0) {

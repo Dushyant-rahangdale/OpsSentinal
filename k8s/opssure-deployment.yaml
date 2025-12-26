@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opsguard-app
-  namespace: opsguard
+  name: opssure-app
+  namespace: opssure
   labels:
-    app: opsguard-app
+    app: opssure-app
     version: v1
 spec:
   replicas: 2
@@ -15,11 +15,11 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: opsguard-app
+      app: opssure-app
   template:
     metadata:
       labels:
-        app: opsguard-app
+        app: opssure-app
         version: v1
       annotations:
         prometheus.io/scrape: "true"
@@ -34,12 +34,12 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       # Service account (create separately if needed)
-      serviceAccountName: opsguard-app
+      serviceAccountName: opssure-app
       initContainers:
       # Run database migrations before starting the app
       # Aligned with docker-compose.yml migration command: node_modules/prisma/build/index.js migrate deploy
       - name: db-migrate
-        image: your-registry/opsguard:latest  # Update with your image
+        image: your-registry/opssure:latest  # Update with your image
         imagePullPolicy: IfNotPresent
         command: 
         - sh
@@ -59,27 +59,27 @@ spec:
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: POSTGRES_PASSWORD
         - name: POSTGRES_HOST
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_HOST
         - name: POSTGRES_PORT
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_PORT
         - name: POSTGRES_DB
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_DB
         - name: NODE_ENV
           value: "production"
@@ -91,8 +91,8 @@ spec:
             memory: "256Mi"
             cpu: "500m"
       containers:
-      - name: opsguard
-        image: your-registry/opsguard:latest  # Update with your image
+      - name: opssure
+        image: your-registry/opssure:latest  # Update with your image
         imagePullPolicy: IfNotPresent
         # Command aligned with docker-compose.yml: construct DATABASE_URL and start server
         # Note: Kubernetes doesn't expand variables in env.value, so we construct it in the command
@@ -110,49 +110,49 @@ spec:
         - name: NODE_ENV
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: NODE_ENV
         - name: PORT
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: PORT
         - name: HOSTNAME
           value: "0.0.0.0"
         - name: NEXTAUTH_URL
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: NEXTAUTH_URL
         - name: NEXTAUTH_SECRET
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: NEXTAUTH_SECRET
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: POSTGRES_PASSWORD
         - name: POSTGRES_HOST
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_HOST
         - name: POSTGRES_PORT
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_PORT
         - name: POSTGRES_DB
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_DB
         # DATABASE_URL is constructed in the command above from individual components
         # This matches docker-compose.yml format: postgresql://user:pass@host:port/db?sslmode=prefer
@@ -220,10 +220,11 @@ spec:
                 - key: app
                   operator: In
                   values:
-                  - opsguard-app
+                  - opssure-app
               topologyKey: kubernetes.io/hostname
       # Tolerations (adjust based on your cluster)
       # tolerations:
       # - key: "node-role.kubernetes.io/master"
       #   operator: "Exists"
       #   effect: "NoSchedule"
+

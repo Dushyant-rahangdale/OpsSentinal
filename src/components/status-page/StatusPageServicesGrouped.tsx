@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
 
 interface Service {
     id: string;
@@ -33,34 +34,34 @@ interface StatusPageServicesGroupedProps {
 }
 
 const STATUS_CONFIG = {
-    OPERATIONAL: { 
-        color: '#10b981', 
+    OPERATIONAL: {
+        color: '#10b981',
         label: 'Operational',
     },
-    DEGRADED: { 
-        color: '#f59e0b', 
+    DEGRADED: {
+        color: '#f59e0b',
         label: 'Degraded',
     },
-    PARTIAL_OUTAGE: { 
-        color: '#f59e0b', 
+    PARTIAL_OUTAGE: {
+        color: '#f59e0b',
         label: 'Partial Outage',
     },
-    MAJOR_OUTAGE: { 
-        color: '#ef4444', 
+    MAJOR_OUTAGE: {
+        color: '#ef4444',
         label: 'Major Outage',
     },
-    MAINTENANCE: { 
-        color: '#3b82f6', 
+    MAINTENANCE: {
+        color: '#3b82f6',
         label: 'Maintenance',
     },
 };
 
 type TimePeriod = '30d' | '90d' | 'all';
 
-export default function StatusPageServicesGrouped({ 
-    services, 
+export default function StatusPageServicesGrouped({
+    services,
     statusPageServices,
-    incidents 
+    incidents
 }: StatusPageServicesGroupedProps) {
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('90d');
 
@@ -68,12 +69,12 @@ export default function StatusPageServicesGrouped({
     const calculateUptime = (serviceIds: string[], periodStart: Date) => {
         const periodEnd = new Date();
         const totalMinutes = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60);
-        
+
         // Get incidents for these services in the period
         const groupIncidents = incidents.filter(
-            inc => serviceIds.includes(inc.serviceId) && 
-                   inc.createdAt >= periodStart &&
-                   (inc.resolvedAt || inc.createdAt) <= periodEnd
+            inc => serviceIds.includes(inc.serviceId) &&
+                inc.createdAt >= periodStart &&
+                (inc.resolvedAt || inc.createdAt) <= periodEnd
         );
 
         // Calculate downtime minutes
@@ -85,10 +86,10 @@ export default function StatusPageServicesGrouped({
             downtimeMinutes += incidentMinutes;
         });
 
-        const uptimePercent = totalMinutes > 0 
-            ? ((totalMinutes - downtimeMinutes) / totalMinutes) * 100 
+        const uptimePercent = totalMinutes > 0
+            ? ((totalMinutes - downtimeMinutes) / totalMinutes) * 100
             : 100;
-        
+
         return Math.max(0, Math.min(100, uptimePercent));
     };
 
@@ -111,11 +112,11 @@ export default function StatusPageServicesGrouped({
     const getPeriodLabel = (period: TimePeriod): string => {
         const now = new Date();
         const start = getPeriodStart(period);
-        
+
         if (period === 'all') {
             return 'All time';
         }
-        
+
         const browserTz = getBrowserTimeZone();
         const startFormatted = formatDateTime(start, browserTz, { format: 'short' });
         const endFormatted = formatDateTime(now, browserTz, { format: 'short' });
@@ -123,7 +124,7 @@ export default function StatusPageServicesGrouped({
         const startYear = start.getFullYear();
         const endMonth = endFormatted.split(',')[0]?.split(' ')[0] || 'Jan';
         const endYear = now.getFullYear();
-        
+
         return `${startMonth} ${startYear}-${endMonth} ${endYear}`;
     };
 
@@ -166,17 +167,17 @@ export default function StatusPageServicesGrouped({
     return (
         <section style={{ marginBottom: '3rem' }}>
             {/* Header with period selector */}
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '2rem',
                 flexWrap: 'wrap',
                 gap: '1rem',
             }}>
-                <h2 style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: '600', 
+                <h2 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '600',
                     color: '#111827',
                     margin: 0,
                 }}>
@@ -212,7 +213,7 @@ export default function StatusPageServicesGrouped({
                     const serviceIds = groupServices.map(s => s.id);
                     const uptime = calculateUptime(serviceIds, periodStart);
                     const componentCount = groupServices.length;
-                    
+
                     // Determine group status (worst status in group)
                     const groupStatus = groupServices.reduce((worst, service) => {
                         const serviceStatus = service.status || 'OPERATIONAL';
@@ -228,8 +229,8 @@ export default function StatusPageServicesGrouped({
                         return currentPriority > worstPriority ? serviceStatus : worst;
                     }, 'OPERATIONAL' as string);
 
-                    const statusConfig = STATUS_CONFIG[groupStatus as keyof typeof STATUS_CONFIG] || 
-                                       STATUS_CONFIG.OPERATIONAL;
+                    const statusConfig = STATUS_CONFIG[groupStatus as keyof typeof STATUS_CONFIG] ||
+                        STATUS_CONFIG.OPERATIONAL;
 
                     return (
                         <div
@@ -324,8 +325,8 @@ export default function StatusPageServicesGrouped({
                                 }}>
                                     {groupServices.map((service) => {
                                         const serviceStatus = service.status || 'OPERATIONAL';
-                                        const serviceStatusConfig = STATUS_CONFIG[serviceStatus as keyof typeof STATUS_CONFIG] || 
-                                                                   STATUS_CONFIG.OPERATIONAL;
+                                        const serviceStatusConfig = STATUS_CONFIG[serviceStatus as keyof typeof STATUS_CONFIG] ||
+                                            STATUS_CONFIG.OPERATIONAL;
                                         const activeIncidents = service._count.incidents;
 
                                         return (

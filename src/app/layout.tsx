@@ -3,7 +3,7 @@ import './globals.css';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 
 export const metadata: Metadata = {
-  title: 'OpsGuard | Enterprise Incident Management',
+  title: 'OpsSure | Enterprise Incident Management',
   description: 'PagerDuty Clone',
 };
 
@@ -17,3 +17,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+

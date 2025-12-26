@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: opsguard-postgres-pvc
-  namespace: opsguard
+  name: opssure-postgres-pvc
+  namespace: opssure
   labels:
-    app: opsguard-postgres
+    app: opssure-postgres
 spec:
   accessModes:
     - ReadWriteOnce
@@ -15,3 +15,4 @@ spec:
   # For production, use a fast SSD storage class
   # storageClassName: fast-ssd
   # volumeMode: Filesystem
+

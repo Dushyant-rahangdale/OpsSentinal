@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opsguard-postgres
-  namespace: opsguard
+  name: opssure-postgres
+  namespace: opssure
   labels:
-    app: opsguard-postgres
+    app: opssure-postgres
     version: v1
 spec:
   replicas: 1
@@ -12,11 +12,11 @@ spec:
     type: Recreate  # PostgreSQL requires Recreate strategy for single replica
   selector:
     matchLabels:
-      app: opsguard-postgres
+      app: opssure-postgres
   template:
     metadata:
       labels:
-        app: opsguard-postgres
+        app: opssure-postgres
         version: v1
     spec:
       # Security context for pod
@@ -38,17 +38,17 @@ spec:
         - name: POSTGRES_DB
           valueFrom:
             configMapKeyRef:
-              name: opsguard-config
+              name: opssure-config
               key: POSTGRES_DB
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: POSTGRES_USER
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: opsguard-secrets
+              name: opssure-secrets
               key: POSTGRES_PASSWORD
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
@@ -112,4 +112,5 @@ spec:
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:
-          claimName: opsguard-postgres-pvc
+          claimName: opssure-postgres-pvc
+

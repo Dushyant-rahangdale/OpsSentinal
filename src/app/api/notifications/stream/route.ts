@@ -28,10 +28,18 @@ export async function GET(req: NextRequest) {
     const stream = new ReadableStream({
         async start(controller) {
             const encoder = new TextEncoder();
+            let isClosed = false;
 
             // Send initial connection message
             const send = (data: string) => {
-                controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                if (!isClosed) {
+                    try {
+                        controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                    } catch (error) {
+                        console.error('Error sending SSE data:', error);
+                        isClosed = true;
+                    }
+                }
             };
 
             send(JSON.stringify({ type: 'connected', message: 'Notification stream connected' }));
@@ -112,8 +120,13 @@ export async function GET(req: NextRequest) {
 
             // Cleanup on client disconnect
             req.signal.addEventListener('abort', () => {
+                isClosed = true;
                 clearInterval(pollInterval);
-                controller.close();
+                try {
+                    controller.close();
+                } catch (error) {
+                    // Controller already closed, ignore
+                }
             });
         }
     });

@@ -71,8 +71,8 @@ async function getOnCallUsersForSchedule(scheduleId: string, atTime: Date): Prom
 
     // Find all blocks that are active at the current time
     // Multiple layers can be active simultaneously (e.g., "day" and "night" layers)
-    const activeBlocks = blocks.filter(block => 
-        block.start.getTime() <= atTime.getTime() && 
+    const activeBlocks = blocks.filter(block =>
+        block.start.getTime() <= atTime.getTime() &&
         block.end.getTime() > atTime.getTime()
     );
 
@@ -97,16 +97,30 @@ async function getTeamUsers(teamId: string, notifyOnlyTeamLead: boolean = false)
             where: { id: teamId },
             select: { teamLeadId: true }
         });
-        
+
         if (team?.teamLeadId) {
-            return [team.teamLeadId];
+            const leadMembership = await prisma.teamMember.findFirst({
+                where: {
+                    teamId,
+                    userId: team.teamLeadId,
+                    receiveTeamNotifications: true
+                },
+                select: { userId: true }
+            });
+
+            if (leadMembership) {
+                return [team.teamLeadId];
+            }
         }
         // If team has no lead but notifyOnlyTeamLead is true, return empty array
         return [];
     }
-    
+
     const members = await prisma.teamMember.findMany({
-        where: { teamId },
+        where: {
+            teamId,
+            receiveTeamNotifications: true
+        },
         select: { userId: true }
     });
     return members.map(m => m.userId);
@@ -125,13 +139,13 @@ export async function resolveEscalationTarget(
     switch (targetType) {
         case 'USER':
             return [targetId];
-        
+
         case 'TEAM':
             return await getTeamUsers(targetId, notifyOnlyTeamLead);
-        
+
         case 'SCHEDULE':
             return await getOnCallUsersForSchedule(targetId, atTime);
-        
+
         default:
             return [];
     }
@@ -151,7 +165,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
                     policy: {
                         include: {
                             steps: {
-                                include: { 
+                                include: {
                                     targetUser: true,
                                     targetTeam: true,
                                     targetSchedule: true
@@ -234,11 +248,11 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     }
 
     const step = policySteps[currentStepIndex];
-    
+
     // Resolve target based on target type
     let targetId: string | null = null;
     let targetName: string = 'Unknown';
-    
+
     switch (step.targetType) {
         case 'USER':
             targetId = step.targetUserId || null;
@@ -264,7 +278,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             targetTeamId: step.targetTeamId,
             targetScheduleId: step.targetScheduleId
         });
-        
+
         await prisma.$transaction(async (tx) => {
             await tx.incidentEvent.create({
                 data: {
@@ -293,6 +307,39 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         notifyOnlyTeamLead
     );
 
+    // Assign the incident immediately when the escalation step runs (before notifications)
+    await prisma.$transaction(async (tx) => {
+        const currentIncident = await tx.incident.findUnique({
+            where: { id: incidentId },
+            select: { assigneeId: true, teamId: true }
+        });
+
+        if (currentIncident?.assigneeId || currentIncident?.teamId) {
+            return;
+        }
+
+        if (step.targetType === 'TEAM' && targetId) {
+            await tx.incident.update({
+                where: { id: incidentId },
+                data: {
+                    team: { connect: { id: targetId } },
+                    assignee: { disconnect: true }
+                }
+            });
+            return;
+        }
+
+        if (targetUserIds.length > 0) {
+            await tx.incident.update({
+                where: { id: incidentId },
+                data: {
+                    assignee: { connect: { id: targetUserIds[0] } },
+                    team: { disconnect: true }
+                }
+            });
+        }
+    });
+
     if (targetUserIds.length === 0) {
         const errorMessage = `Escalation step ${currentStepIndex + 1} (${step.targetType}: ${targetName}) resolved to no users.`;
         logger.warn('Escalation target resolved to no users', {
@@ -302,7 +349,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             targetId,
             targetName
         });
-        
+
         await prisma.$transaction(async (tx) => {
             await tx.incidentEvent.create({
                 data: {
@@ -329,15 +376,15 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     const escalationChannels = step.notificationChannels && step.notificationChannels.length > 0
         ? step.notificationChannels as any[]
         : undefined;
-    
+
     for (const userId of targetUserIds) {
-        const message = `[OpsGuard] Incident: ${incident.title}${currentStepIndex > 0 ? ` (Escalation Level ${currentStepIndex + 1})` : ''}`;
+        const message = `[OpsSure] Incident: ${incident.title}${currentStepIndex > 0 ? ` (Escalation Level ${currentStepIndex + 1})` : ''}`;
         const result = await sendUserNotification(incidentId, userId, message, escalationChannels);
         notificationsSent.push({ userId, result });
     }
 
     // Create event message
-    const targetDescription = step.targetType === 'USER' 
+    const targetDescription = step.targetType === 'USER'
         ? targetName
         : `${step.targetType}: ${targetName} (${targetUserIds.length} user${targetUserIds.length !== 1 ? 's' : ''})`;
 
@@ -356,6 +403,12 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     }
 
     await prisma.$transaction(async (tx) => {
+        // Check current assignee/team state from database to avoid race conditions
+        const currentIncident = await tx.incident.findUnique({
+            where: { id: incidentId },
+            select: { assigneeId: true, teamId: true }
+        });
+
         const updateData: Prisma.IncidentUpdateInput = {
             currentEscalationStep: nextStepIndex < policySteps.length ? nextStepIndex : null,
             nextEscalationAt,
@@ -363,10 +416,20 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             escalationProcessingAt: null
         };
 
-        // Assign the first user from the first step that resolves to users
-        // Only assign if the incident doesn't already have an assignee
-        if (!incident.assigneeId && targetUserIds.length > 0) {
-            updateData.assignee = { connect: { id: targetUserIds[0] } };
+        // Assign based on target type
+        // Only assign if the incident doesn't already have an assignee or team
+        if (!currentIncident?.assigneeId && !currentIncident?.teamId && targetUserIds.length > 0) {
+            if (step.targetType === 'TEAM' && targetId) {
+                // Assign to team
+                updateData.team = { connect: { id: targetId } };
+                // Clear any user assignment
+                updateData.assignee = { disconnect: true };
+            } else {
+                // Assign to first user (for USER or SCHEDULE target types)
+                updateData.assignee = { connect: { id: targetUserIds[0] } };
+                // Clear any team assignment
+                updateData.team = { disconnect: true };
+            }
         }
 
         await tx.incident.update({
@@ -394,20 +457,20 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     // Schedule next escalation step using PostgreSQL job queue
     if (nextStep && nextEscalationAt) {
         try {
-          const { scheduleEscalation } = await import('./jobs/queue');
-        const delayMs = nextStep.delayMinutes * 60 * 1000;
-        await scheduleEscalation(incidentId, nextStepIndex, delayMs);
-      } catch (error) {
-        logger.error('Failed to schedule escalation job', {
-            incidentId,
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
-        // Continue anyway - cron job will pick it up via nextEscalationAt
-      }
+            const { scheduleEscalation } = await import('./jobs/queue');
+            const delayMs = nextStep.delayMinutes * 60 * 1000;
+            await scheduleEscalation(incidentId, nextStepIndex, delayMs);
+        } catch (error) {
+            logger.error('Failed to schedule escalation job', {
+                incidentId,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            // Continue anyway - cron job will pick it up via nextEscalationAt
+        }
     }
 
-    return { 
-        escalated: true, 
+    return {
+        escalated: true,
         targetName,
         targetType: step.targetType,
         targetCount: targetUserIds.length,
@@ -424,7 +487,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
 export async function processPendingEscalations() {
     const now = new Date();
     const lockCutoff = new Date(now.getTime() - ESCALATION_LOCK_TIMEOUT_MS);
-    
+
     // Find incidents that need escalation (nextEscalationAt is in the past, still open/unacknowledged)
     const incidentsToEscalate = await prisma.incident.findMany({
         where: {
@@ -487,7 +550,7 @@ export async function processPendingEscalations() {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             const errorStack = error instanceof Error ? error.stack : undefined;
-            
+
             logger.error('Error processing escalation', {
                 incidentId: incident.id,
                 error: errorMessage,
@@ -496,7 +559,7 @@ export async function processPendingEscalations() {
                 escalationStatus: incident.escalationStatus
             });
             errors.push(`Incident ${incident.id}: ${errorMessage}`);
-            
+
             // Update incident to prevent infinite retries on same error
             try {
                 await prisma.incident.update({
@@ -507,7 +570,7 @@ export async function processPendingEscalations() {
                         escalationProcessingAt: null
                     }
                 });
-                
+
                 // Log error event
                 await prisma.incidentEvent.create({
                     data: {

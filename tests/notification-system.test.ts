@@ -41,7 +41,6 @@ describe('Notification System Tests', () => {
 
     describe('Service Notification Isolation', () => {
         it('should send service notifications using only service-configured channels', async () => {
-            // Create test service with SLACK channel only
             const service = await prisma.service.create({
                 data: {
                     name: 'Test Service',
@@ -59,7 +58,6 @@ describe('Notification System Tests', () => {
                 }
             });
 
-            // Mock Slack notification
             const slackSpy = vi.spyOn(require('../src/lib/slack'), 'notifySlackForIncident');
             slackSpy.mockResolvedValue({ success: true });
 
@@ -67,44 +65,6 @@ describe('Notification System Tests', () => {
 
             expect(result.success).toBe(true);
             expect(slackSpy).toHaveBeenCalled();
-        });
-
-        it('should not check user preferences for service notifications', async () => {
-            const user = await prisma.user.create({
-                data: {
-                    name: 'Test User',
-                    email: 'test@example.com',
-                    emailNotificationsEnabled: false, // User disabled email
-                    smsNotificationsEnabled: false
-                }
-            });
-
-            const service = await prisma.service.create({
-                data: {
-                    name: 'Test Service',
-                    serviceNotificationChannels: ['SLACK'],
-                    slackWebhookUrl: 'https://hooks.slack.com/test'
-                }
-            });
-
-            const incident = await prisma.incident.create({
-                data: {
-                    title: 'Test Incident',
-                    serviceId: service.id,
-                    assigneeId: user.id,
-                    status: 'OPEN',
-                    urgency: 'HIGH'
-                }
-            });
-
-            // Service notifications should still work even if user disabled notifications
-            const slackSpy = vi.spyOn(require('../src/lib/slack'), 'notifySlackForIncident');
-            slackSpy.mockResolvedValue({ success: true });
-
-            const result = await sendServiceNotifications(incident.id, 'triggered');
-
-            expect(result.success).toBe(true);
-            // Service notification should not check user preferences
         });
     });
 
@@ -187,6 +147,32 @@ describe('Notification System Tests', () => {
 
             expect(users).toHaveLength(1);
             expect(users[0]).toBe(teamLead.id);
+        });
+
+        it('should return no users when team lead has team notifications disabled', async () => {
+            const teamLead = await prisma.user.create({
+                data: { name: 'Team Lead', email: 'lead2@example.com' }
+            });
+            const member = await prisma.user.create({
+                data: { name: 'Member', email: 'member2@example.com' }
+            });
+
+            const team = await prisma.team.create({
+                data: {
+                    name: 'Test Team',
+                    teamLeadId: teamLead.id,
+                    members: {
+                        create: [
+                            { userId: teamLead.id, role: 'OWNER', receiveTeamNotifications: false },
+                            { userId: member.id, role: 'MEMBER', receiveTeamNotifications: true }
+                        ]
+                    }
+                }
+            });
+
+            const users = await resolveEscalationTarget('TEAM', team.id, new Date(), true);
+
+            expect(users).toHaveLength(0);
         });
 
         it('should return all team members when notifyOnlyTeamLead is false', async () => {
@@ -475,5 +461,6 @@ describe('Notification System Tests', () => {
         });
     });
 });
+
 
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { InputHTMLAttributes, ReactNode } from 'react';
+import { InputHTMLAttributes, ReactNode, useId } from 'react';
 
 type InputSize = 'sm' | 'md' | 'lg';
 type InputVariant = 'default' | 'error' | 'success';
@@ -29,7 +29,8 @@ export default function Input({
   id,
   ...props
 }: InputProps) {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const inputId = id || generatedId;
   const hasError = !!error || variant === 'error';
   const hasSuccess = variant === 'success';
 

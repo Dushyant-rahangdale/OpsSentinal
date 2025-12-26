@@ -71,7 +71,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
 
             try {
                 const client = twilio(smsConfig.accountSid, smsConfig.authToken);
-                
+
                 // Format phone number to E.164 if needed
                 let toNumber = options.to.trim();
                 if (!toNumber.startsWith('+')) {
@@ -89,20 +89,20 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     toNumber = toNumber.replace(/[\s\-\(\)]/g, '');
                 }
 
-                console.log('Sending SMS via Twilio:', { 
-                    to: toNumber, 
+                console.log('Sending SMS via Twilio:', {
+                    to: toNumber,
                     from: smsConfig.fromNumber,
                     messageLength: options.message.length
                 });
-                
+
                 const result = await client.messages.create({
                     body: options.message,
                     from: smsConfig.fromNumber,
                     to: toNumber
                 });
 
-                console.log('SMS sent successfully via Twilio:', { 
-                    to: toNumber, 
+                console.log('SMS sent successfully via Twilio:', {
+                    to: toNumber,
                     from: smsConfig.fromNumber,
                     messageSid: result.sid,
                     status: result.status
@@ -117,32 +117,32 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     to: options.to,
                     from: smsConfig.fromNumber
                 });
-                
+
                 // Provide user-friendly error messages for common Twilio errors
                 let errorMessage = error.message || `Twilio error: ${error.code || 'Unknown error'}`;
-                
+
                 // Handle unverified number error (common with trial accounts)
                 if (error.code === 21211 || error.message?.includes('unverified')) {
                     errorMessage = `Phone number ${options.to} is not verified in your Twilio account. Trial accounts can only send to verified numbers. Please verify the number at https://twilio.com/user/account/phone-numbers/verified or upgrade your Twilio account.`;
                 }
-                
+
                 // Handle invalid phone number format
                 if (error.code === 21211 || error.message?.includes('Invalid')) {
                     errorMessage = `Invalid phone number format: ${options.to}. Please ensure the number is in E.164 format (e.g., +1234567890) and is verified in your Twilio account.`;
                 }
-                
+
                 // Handle authentication errors
                 if (error.code === 20003 || error.status === 401) {
                     errorMessage = 'Twilio authentication failed. Please check your Account SID and Auth Token in Settings → System → Notification Providers.';
                 }
-                
+
                 // Handle insufficient balance
                 if (error.code === 21212 || error.message?.includes('insufficient')) {
                     errorMessage = 'Twilio account has insufficient balance. Please add funds to your Twilio account.';
                 }
-                
-                return { 
-                    success: false, 
+
+                return {
+                    success: false,
                     error: errorMessage
                 };
             }
@@ -227,45 +227,37 @@ export async function sendIncidentSMS(
         const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
 
-        // Emojis and labels based on event type
-        const eventEmoji = eventType === 'triggered' ? '🚨' :
-                          eventType === 'acknowledged' ? '⚠️' :
-                          '✅';
-        
-        const statusLabel = eventType === 'resolved' ? 'RES' :
-                           eventType === 'acknowledged' ? 'ACK' :
-                           'TRIG';
-        
-        const urgencyLabel = incident.urgency === 'HIGH' ? 'CRIT' : 'INFO';
+        // Emojis and labels based on event type and urgency
+        const eventEmoji = incident.urgency === 'HIGH'
+            ? (eventType === 'triggered' ? '🚨' : eventType === 'acknowledged' ? '⚠️' : '✅')
+            : (eventType === 'triggered' ? '⚠️' : eventType === 'acknowledged' ? 'ℹ️' : '✅');
 
-        // Build concise message for Twilio trial (keep under 160 chars)
-        // Format: [EMOJI] [STATUS] Title | Service | URL
-        const titleMaxLength = 40;
+        const statusLabel = eventType === 'resolved' ? 'RESOLVED' :
+            eventType === 'acknowledged' ? 'ACK' :
+                incident.urgency === 'HIGH' ? 'CRITICAL' : 'INCIDENT';
+
+        // Build professional OpsSure branded message (optimized for SMS)
+        const titleMaxLength = 35;
         const serviceMaxLength = 15;
-        
-        let title = incident.title.length > titleMaxLength 
-            ? incident.title.substring(0, titleMaxLength - 3) + '...' 
+
+        let title = incident.title.length > titleMaxLength
+            ? incident.title.substring(0, titleMaxLength - 1) + '…'
             : incident.title;
-        
+
         let service = incident.service.name.length > serviceMaxLength
-            ? incident.service.name.substring(0, serviceMaxLength - 3) + '...'
+            ? incident.service.name.substring(0, serviceMaxLength - 1) + '…'
             : incident.service.name;
-        
-        // Shorten URL if needed (keep last 25 chars)
-        let url = incidentUrl;
-        if (url.length > 25) {
-            url = '...' + url.substring(url.length - 22);
-        }
-        
-        // Build message: EMOJI STATUS Title | Service | URL
-        let message = `${eventEmoji} ${statusLabel} ${title} | ${service} | ${url}`;
-        
-        // Final safety check - truncate if still too long
-        if (message.length > 155) {
-            const excess = message.length - 155;
-            title = title.substring(0, title.length - excess - 3) + '...';
-            message = `${eventEmoji} ${statusLabel} ${title} | ${service} | ${url}`;
-        }
+
+        // Professional OpsSure SMS format with clean structure:
+        // Line 1: [OPSSURE] STATUS
+        // Line 2: Incident Title
+        // Line 3: Service Name
+        // Line 4: Link
+        let message = eventType === 'resolved'
+            ? `[OPSSURE] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
+            : eventType === 'acknowledged'
+                ? `[OPSSURE] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
+                : `[OPSSURE] ${eventEmoji} ${incident.urgency === 'HIGH' ? 'CRITICAL ALERT' : 'INCIDENT'}\n${title}\n⚠ ${service}\n${incidentUrl}`;
 
         // Format phone number to E.164 format if needed
         let phoneNumber = user.phoneNumber.trim();
@@ -287,4 +279,5 @@ export async function sendIncidentSMS(
         return { success: false, error: error.message };
     }
 }
+
 

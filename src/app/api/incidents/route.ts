@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { IncidentCreateSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { executeEscalation } from '@/lib/escalation';
 
 function parseLimit(value: string | null) {
     const limit = Number(value);
@@ -148,5 +149,60 @@ export async function POST(req: NextRequest) {
     });
 
     logger.info('api.incident.created', { incidentId: incident.id, serviceId: incident.serviceId, apiKeyId: apiKey.id });
+
+    // Execute escalation policy to assign/notify per policy steps
+    try {
+        await executeEscalation(incident.id);
+    } catch (e) {
+        logger.error('api.incident.escalation_failed', { error: e instanceof Error ? e.message : String(e), incidentId: incident.id });
+    }
+
+    // Trigger status page webhooks for incident.created event
+    try {
+        const incidentWithRelations = await prisma.incident.findUnique({
+            where: { id: incident.id },
+            include: {
+                service: { select: { id: true, name: true } },
+                assignee: { select: { id: true, name: true, email: true } },
+            },
+        });
+
+        if (incidentWithRelations) {
+            const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+            await triggerWebhooksForService(
+                incident.serviceId,
+                'incident.created',
+                {
+                    id: incidentWithRelations.id,
+                    title: incidentWithRelations.title,
+                    description: incidentWithRelations.description,
+                    status: incidentWithRelations.status,
+                    urgency: incidentWithRelations.urgency,
+                    priority: incidentWithRelations.priority,
+                    service: {
+                        id: incidentWithRelations.service.id,
+                        name: incidentWithRelations.service.name,
+                    },
+                    assignee: incidentWithRelations.assignee,
+                    createdAt: incidentWithRelations.createdAt.toISOString(),
+                }
+            );
+        }
+    } catch (e) {
+        // Log but don't fail the request
+        logger.error('api.incident.webhook_trigger_failed', { error: e instanceof Error ? e.message : String(e) });
+    }
+
+    // Trigger service-level notifications (Slack, Webhooks)
+    try {
+        const { sendServiceNotifications } = await import('@/lib/service-notifications');
+        // Run in background, don't await to keep API fast
+        sendServiceNotifications(incident.id, 'triggered').catch(err => {
+            logger.error('api.incident.service_notification_failed', { error: err.message, incidentId: incident.id });
+        });
+    } catch (e) {
+        logger.error('api.incident.service_notification_import_failed', { error: e instanceof Error ? e.message : String(e) });
+    }
+
     return jsonOk({ incident }, 201);
 }

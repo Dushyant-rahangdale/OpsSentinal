@@ -7,7 +7,7 @@ export default function SendTestAlertPage() {
     const [serviceId, setServiceId] = useState('');
     const [integrationKey, setIntegrationKey] = useState('');
     const [dedupKey, setDedupKey] = useState('test_alert_' + Date.now());
-    const [summary, setSummary] = useState('Test Alert from OpsGuard');
+    const [summary, setSummary] = useState('Test Alert from OpsSure');
     const [severity, setSeverity] = useState<'critical' | 'error' | 'warning' | 'info'>('critical');
     const [eventAction, setEventAction] = useState<'trigger' | 'resolve' | 'acknowledge'>('trigger');
     const [response, setResponse] = useState<any>(null);
@@ -36,7 +36,7 @@ export default function SendTestAlertPage() {
                     dedup_key: dedupKey,
                     payload: {
                         summary,
-                        source: 'opsguard-test-ui',
+                        source: 'opssure-test-ui',
                         severity,
                         custom_details: {
                             test: true,
@@ -172,3 +172,4 @@ export default function SendTestAlertPage() {
         </main>
     );
 }
+

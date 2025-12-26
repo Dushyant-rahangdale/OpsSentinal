@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
         }
         const {
             name,
+            organizationName,
             subdomain,
             customDomain,
             enabled,
@@ -42,6 +43,28 @@ export async function POST(req: NextRequest) {
             branding,
             serviceIds = [],
             serviceConfigs = {},
+            // Privacy settings
+            privacyMode,
+            showIncidentDetails,
+            showIncidentTitles,
+            showIncidentDescriptions,
+            showAffectedServices,
+            showIncidentTimestamps,
+            showServiceMetrics,
+            showServiceDescriptions,
+            showTeamInformation,
+            showCustomFields,
+            showIncidentAssignees,
+            showIncidentUrgency,
+            showUptimeHistory,
+            showRecentIncidents,
+            maxIncidentsToShow,
+            incidentHistoryDays,
+            allowedCustomFields,
+            dataRetentionDays,
+            requireAuth,
+            authProvider,
+            emailProvider,
         } = parsed.data;
 
         // Get or create status page
@@ -51,6 +74,7 @@ export async function POST(req: NextRequest) {
             statusPage = await prisma.statusPage.create({
                 data: {
                     name: name || 'Status Page',
+                    organizationName: organizationName || null,
                     enabled: enabled !== false,
                     showServices: showServices !== false,
                     showIncidents: showIncidents !== false,
@@ -61,6 +85,7 @@ export async function POST(req: NextRequest) {
 
         // Update status page
         const updateData: Prisma.StatusPageUpdateInput = {
+            organizationName: organizationName !== undefined ? (organizationName && organizationName.trim() ? organizationName.trim() : null) : undefined,
             subdomain: subdomain && subdomain.trim() ? subdomain.trim() : null,
             customDomain: customDomain && customDomain.trim() ? customDomain.trim() : null,
             enabled: enabled !== false,
@@ -79,6 +104,35 @@ export async function POST(req: NextRequest) {
 
         if (branding !== undefined) {
             updateData.branding = branding === null ? Prisma.JsonNull : (branding as Prisma.InputJsonValue);
+        }
+
+        // Privacy settings
+        if (privacyMode !== undefined) updateData.privacyMode = privacyMode;
+        if (showIncidentDetails !== undefined) updateData.showIncidentDetails = showIncidentDetails;
+        if (showIncidentTitles !== undefined) updateData.showIncidentTitles = showIncidentTitles;
+        if (showIncidentDescriptions !== undefined) updateData.showIncidentDescriptions = showIncidentDescriptions;
+        if (showAffectedServices !== undefined) updateData.showAffectedServices = showAffectedServices;
+        if (showIncidentTimestamps !== undefined) updateData.showIncidentTimestamps = showIncidentTimestamps;
+        if (showServiceMetrics !== undefined) updateData.showServiceMetrics = showServiceMetrics;
+        if (showServiceDescriptions !== undefined) updateData.showServiceDescriptions = showServiceDescriptions;
+        if (showTeamInformation !== undefined) updateData.showTeamInformation = showTeamInformation;
+        if (showCustomFields !== undefined) updateData.showCustomFields = showCustomFields;
+        if (showIncidentAssignees !== undefined) updateData.showIncidentAssignees = showIncidentAssignees;
+        if (showIncidentUrgency !== undefined) updateData.showIncidentUrgency = showIncidentUrgency;
+        if (showUptimeHistory !== undefined) updateData.showUptimeHistory = showUptimeHistory;
+        if (showRecentIncidents !== undefined) updateData.showRecentIncidents = showRecentIncidents;
+        if (maxIncidentsToShow !== undefined) updateData.maxIncidentsToShow = maxIncidentsToShow;
+        if (incidentHistoryDays !== undefined) updateData.incidentHistoryDays = incidentHistoryDays;
+        if (allowedCustomFields !== undefined) {
+            updateData.allowedCustomFields = allowedCustomFields === null ? Prisma.JsonNull : (allowedCustomFields as Prisma.InputJsonValue);
+        }
+        if (dataRetentionDays !== undefined) updateData.dataRetentionDays = dataRetentionDays;
+        if (requireAuth !== undefined) updateData.requireAuth = requireAuth;
+        if (authProvider !== undefined) {
+            updateData.authProvider = authProvider && authProvider.trim() ? authProvider.trim() : null;
+        }
+        if (emailProvider !== undefined) {
+            updateData.emailProvider = emailProvider && emailProvider.trim() ? emailProvider.trim() : null;
         }
 
         await prisma.statusPage.update({
@@ -114,6 +168,19 @@ export async function POST(req: NextRequest) {
         return jsonOk({ success: true }, 200);
     } catch (error: any) {
         logger.error('api.status_page.update_error', { error: error instanceof Error ? error.message : String(error) });
+
+        // Handle Prisma unique constraint violations
+        if (error.code === 'P2002') {
+            const field = error.meta?.target?.[0];
+            if (field === 'subdomain') {
+                return jsonError('This subdomain is already in use. Please choose a different one.', 400);
+            }
+            if (field === 'customDomain') {
+                return jsonError('This custom domain is already in use. Please choose a different one.', 400);
+            }
+            return jsonError('A record with this value already exists.', 400);
+        }
+
         return jsonError(error.message || 'Failed to update status page', 500);
     }
 }

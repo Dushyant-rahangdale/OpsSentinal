@@ -12,26 +12,38 @@ export async function createPolicy(formData: FormData) {
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
     }
-    
+
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
 
     // Parse escalation steps from form data
-    const steps: Array<{ targetUserId: string; delayMinutes: number; stepOrder: number }> = [];
+    const steps: Array<{ targetType: 'USER' | 'TEAM' | 'SCHEDULE'; targetUserId?: string; targetTeamId?: string; delayMinutes: number; stepOrder: number }> = [];
     let stepIndex = 0;
-    
+
     while (true) {
-        const userId = formData.get(`step-${stepIndex}-userId`);
+        const targetValue = formData.get(`step-${stepIndex}-target`); // Changed from userId to target
         const delay = formData.get(`step-${stepIndex}-delayMinutes`);
-        
-        if (!userId) break;
-        
-        steps.push({
-            targetUserId: userId as string,
-            delayMinutes: parseInt(delay as string || '0'),
-            stepOrder: stepIndex
-        });
-        
+
+        if (!targetValue) break;
+
+        const [type, id] = (targetValue as string).split(':');
+
+        if (type === 'user') {
+            steps.push({
+                targetType: 'USER',
+                targetUserId: id,
+                delayMinutes: parseInt(delay as string || '0'),
+                stepOrder: stepIndex
+            });
+        } else if (type === 'team') {
+            steps.push({
+                targetType: 'TEAM',
+                targetTeamId: id,
+                delayMinutes: parseInt(delay as string || '0'),
+                stepOrder: stepIndex
+            });
+        }
+
         stepIndex++;
     }
 
@@ -208,12 +220,12 @@ export async function updatePolicyStep(stepId: string, formData: FormData): Prom
     const targetTeamId = formData.get('targetTeamId') as string | null;
     const targetScheduleId = formData.get('targetScheduleId') as string | null;
     const delayMinutes = parseInt(formData.get('delayMinutes') as string || '0');
-    
+
     // Get notification channels from form (checkboxes)
     const notificationChannels = formData.getAll('notificationChannels') as string[];
     // Default to empty array if none selected (will use user preferences)
     const finalChannels = notificationChannels.length > 0 ? notificationChannels : [];
-    
+
     // Get notify only team lead option
     const notifyOnlyTeamLead = formData.get('notifyOnlyTeamLead') === 'true';
 

@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['@prisma/client', 'react-icons'],
   },
+  // Turbopack: explicitly configure to allow custom webpack config
+  turbopack: {},
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
@@ -90,7 +92,8 @@ const nextConfig: NextConfig = {
       );
     }
     
-    if (!isServer) {
+    // Only apply optimizations in production builds
+    if (!isServer && process.env.NODE_ENV === 'production') {
       // Optimize client-side bundle
       config.optimization = {
         ...config.optimization,

@@ -500,7 +500,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             }} />
                             <img
                                 src="/logo.svg"
-                                alt="OpsGuard"
+                                alt="OpsSure"
                                 style={{
                                     width: '28px',
                                     height: '28px',
@@ -520,7 +520,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 lineHeight: '1.2',
                                 letterSpacing: '-0.4px',
                                 textShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                            }}>OpsGuard</h1>
+                            }}>OpsSure</h1>
                             <div style={{
                                 fontSize: '0.65rem',
                                 color: 'rgba(255,255,255,0.7)',
@@ -798,3 +798,4 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
         </>
     );
 }
+

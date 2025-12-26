@@ -1,6 +1,6 @@
 # Kubernetes Deployment Guide
 
-Deploy OpsGuard to Kubernetes for production-grade orchestration.
+Deploy OpsSure to Kubernetes for production-grade orchestration.
 
 ## Prerequisites
 
@@ -16,25 +16,25 @@ Deploy OpsGuard to Kubernetes for production-grade orchestration.
 
 ```bash
 # Build the image
-docker build -t opsguard:v1.0.0 .
+docker build -t opssure:v1.0.0 .
 
 # Tag for your registry
-docker tag opsguard:v1.0.0 your-registry.com/opsguard:v1.0.0
+docker tag opssure:v1.0.0 your-registry.com/opssure:v1.0.0
 
 # Push to registry
-docker push your-registry.com/opsguard:v1.0.0
+docker push your-registry.com/opssure:v1.0.0
 ```
 
 ### 2. Update Image Reference
 
-Edit `k8s/opsguard-deployment.yaml` and replace:
+Edit `k8s/opssure-deployment.yaml` and replace:
 ```yaml
-image: your-registry/opsguard:latest
+image: your-registry/opssure:latest
 ```
 
 With your actual image:
 ```yaml
-image: your-registry.com/opsguard:v1.0.0
+image: your-registry.com/opssure:v1.0.0
 ```
 
 ### 3. Update Configuration
@@ -63,15 +63,15 @@ echo -n 'whatsapp:+1234567890' | base64  # For TWILIO_WHATSAPP_NUMBER (optional)
 
 Or create secrets via kubectl:
 ```bash
-kubectl create secret generic opsguard-secrets \
-  --from-literal=POSTGRES_USER=opsguard \
+kubectl create secret generic opssure-secrets \
+  --from-literal=POSTGRES_USER=opssure \
   --from-literal=POSTGRES_PASSWORD=your-secure-password \
   --from-literal=NEXTAUTH_SECRET=$(openssl rand -base64 32) \
   --from-literal=TWILIO_ACCOUNT_SID=your-twilio-account-sid \
   --from-literal=TWILIO_AUTH_TOKEN=your-twilio-auth-token \
   --from-literal=TWILIO_FROM_NUMBER=+1234567890 \
   --from-literal=TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890 \
-  -n opsguard --dry-run=client -o yaml > k8s/secret.yaml
+  -n opssure --dry-run=client -o yaml > k8s/secret.yaml
 ```
 
 **Note:** Twilio secrets are optional. Only include them if you want to enable SMS/WhatsApp notifications.
@@ -86,8 +86,8 @@ kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/postgres-pvc.yaml
 kubectl apply -f k8s/postgres-deployment.yaml
 kubectl apply -f k8s/postgres-service.yaml
-kubectl apply -f k8s/opsguard-deployment.yaml
-kubectl apply -f k8s/opsguard-service.yaml
+kubectl apply -f k8s/opssure-deployment.yaml
+kubectl apply -f k8s/opssure-service.yaml
 
 # Optional: Deploy Ingress
 kubectl apply -f k8s/ingress.yaml
@@ -105,29 +105,29 @@ kubectl apply -f k8s/
 kubectl get namespaces
 
 # Check all resources
-kubectl get all -n opsguard
+kubectl get all -n opssure
 
 # Check pods status
-kubectl get pods -n opsguard
+kubectl get pods -n opssure
 
 # Check services
-kubectl get services -n opsguard
+kubectl get services -n opssure
 ```
 
 Wait for pods to be in `Running` state:
 ```bash
-kubectl wait --for=condition=ready pod -l app=opsguard-app -n opsguard --timeout=300s
+kubectl wait --for=condition=ready pod -l app=opssure-app -n opssure --timeout=300s
 ```
 
 ### 6. Create Admin User
 
 ```bash
 # Get pod name
-POD_NAME=$(kubectl get pod -n opsguard -l app=opsguard-app -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pod -n opssure -l app=opssure-app -o jsonpath='{.items[0].metadata.name}')
 
 # Create admin user
-kubectl exec -it -n opsguard $POD_NAME -- \
-  node scripts/opsguard.mjs \
+kubectl exec -it -n opssure $POD_NAME -- \
+  node scripts/opssure.mjs \
   --user admin \
   --email admin@example.com \
   --password admin \
@@ -140,7 +140,7 @@ kubectl exec -it -n opsguard $POD_NAME -- \
 
 **If using LoadBalancer:**
 ```bash
-kubectl get service opsguard-service -n opsguard
+kubectl get service opssure-service -n opssure
 # Note the EXTERNAL-IP
 ```
 
@@ -148,7 +148,7 @@ Access at: `http://<EXTERNAL-IP>`
 
 **If using Port Forward (for testing):**
 ```bash
-kubectl port-forward -n opsguard service/opsguard-service 3000:80
+kubectl port-forward -n opssure service/opssure-service 3000:80
 ```
 
 Access at: `http://localhost:3000`
@@ -176,12 +176,12 @@ If you want to enable SMS and WhatsApp notifications via Twilio:
      TWILIO_WHATSAPP_NUMBER: <base64-encoded-whatsapp-number>  # Optional: whatsapp:+1234567890
    ```
 
-3. **Uncomment Twilio environment variables** in `k8s/opsguard-deployment.yaml`:
+3. **Uncomment Twilio environment variables** in `k8s/opssure-deployment.yaml`:
    ```yaml
    - name: TWILIO_ACCOUNT_SID
      valueFrom:
        secretKeyRef:
-         name: opsguard-secrets
+         name: opssure-secrets
          key: TWILIO_ACCOUNT_SID
          optional: true
    # ... (repeat for other Twilio vars)
@@ -220,7 +220,7 @@ resources:
     cpu: "2000m"
 ```
 
-**Application resources** (`k8s/opsguard-deployment.yaml`):
+**Application resources** (`k8s/opssure-deployment.yaml`):
 ```yaml
 resources:
   requests:
@@ -235,7 +235,7 @@ resources:
 
 Scale the application horizontally:
 ```bash
-kubectl scale deployment -n opsguard opsguard-app --replicas=3
+kubectl scale deployment -n opssure opssure-app --replicas=3
 ```
 
 Or edit the deployment:
@@ -259,25 +259,25 @@ For production, configure Ingress with TLS:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: opsguard-ingress
-  namespace: opsguard
+  name: opssure-ingress
+  namespace: opssure
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   tls:
   - hosts:
-    - opsguard.yourdomain.com
-    secretName: opsguard-tls
+    - opssure.yourdomain.com
+    secretName: opssure-tls
   rules:
-  - host: opsguard.yourdomain.com
+  - host: opssure.yourdomain.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: opsguard-service
+            name: opssure-service
             port:
               number: 80
 ```
@@ -288,55 +288,55 @@ spec:
 
 ```bash
 # Application logs
-kubectl logs -f -n opsguard deployment/opsguard-app
+kubectl logs -f -n opssure deployment/opssure-app
 
 # Database logs
-kubectl logs -f -n opsguard deployment/opsguard-postgres
+kubectl logs -f -n opssure deployment/opssure-postgres
 
 # Specific pod
-kubectl logs -f -n opsguard <pod-name>
+kubectl logs -f -n opssure <pod-name>
 
 # Previous pod logs (after crash)
-kubectl logs -n opsguard <pod-name> --previous
+kubectl logs -n opssure <pod-name> --previous
 ```
 
 ### Exec into Pods
 
 ```bash
 # Application pod
-kubectl exec -it -n opsguard <app-pod-name> -- sh
+kubectl exec -it -n opssure <app-pod-name> -- sh
 
 # Database pod
-kubectl exec -it -n opsguard <postgres-pod-name> -- sh
+kubectl exec -it -n opssure <postgres-pod-name> -- sh
 
 # Run psql
-kubectl exec -it -n opsguard <postgres-pod-name> -- psql -U opsguard -d opsguard_db
+kubectl exec -it -n opssure <postgres-pod-name> -- psql -U opssure -d opssure_db
 ```
 
 ### Update Deployment
 
 **Update image version:**
 ```bash
-kubectl set image -n opsguard deployment/opsguard-app \
-  opsguard=your-registry.com/opsguard:v1.1.0
+kubectl set image -n opssure deployment/opssure-app \
+  opssure=your-registry.com/opssure:v1.1.0
 
 # Watch rollout
-kubectl rollout status -n opsguard deployment/opsguard-app
+kubectl rollout status -n opssure deployment/opssure-app
 ```
 
 **Rollback deployment:**
 ```bash
-kubectl rollout undo -n opsguard deployment/opsguard-app
+kubectl rollout undo -n opssure deployment/opssure-app
 
 # Rollback to specific revision
-kubectl rollout undo -n opsguard deployment/opsguard-app --to-revision=2
+kubectl rollout undo -n opssure deployment/opssure-app --to-revision=2
 ```
 
 ### Restart Deployment
 
 ```bash
-kubectl rollout restart -n opsguard deployment/opsguard-app
-kubectl rollout restart -n opsguard deployment/opsguard-postgres
+kubectl rollout restart -n opssure deployment/opssure-app
+kubectl rollout restart -n opssure deployment/opssure-postgres
 ```
 
 ## Backup and Recovery
@@ -345,17 +345,17 @@ kubectl rollout restart -n opsguard deployment/opsguard-postgres
 
 **Manual backup:**
 ```bash
-POD_NAME=$(kubectl get pod -n opsguard -l app=opsguard-postgres -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pod -n opssure -l app=opssure-postgres -o jsonpath='{.items[0].metadata.name}')
 
-kubectl exec -n opsguard $POD_NAME -- \
-  pg_dump -U opsguard opsguard_db > backup_$(date +%Y%m%d_%H%M%S).sql
+kubectl exec -n opssure $POD_NAME -- \
+  pg_dump -U opssure opssure_db > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 **Restore from backup:**
 ```bash
 cat backup_20250121_120000.sql | \
-kubectl exec -i -n opsguard $POD_NAME -- \
-  psql -U opsguard opsguard_db
+kubectl exec -i -n opssure $POD_NAME -- \
+  psql -U opssure opssure_db
 ```
 
 **Automated backups with CronJob:**
@@ -366,7 +366,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: postgres-backup
-  namespace: opsguard
+  namespace: opssure
 spec:
   schedule: "0 2 * * *"  # Daily at 2 AM
   jobTemplate:
@@ -379,12 +379,12 @@ spec:
             command:
             - /bin/sh
             - -c
-            - pg_dump -h opsguard-postgres-service -U opsguard opsguard_db > /backup/backup_$(date +%Y%m%d).sql
+            - pg_dump -h opssure-postgres-service -U opssure opssure_db > /backup/backup_$(date +%Y%m%d).sql
             env:
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: opsguard-secrets
+                  name: opssure-secrets
                   key: POSTGRES_PASSWORD
             volumeMounts:
             - name: backup-storage
@@ -407,8 +407,8 @@ The deployment includes liveness and readiness probes:
 - Readiness: `GET /api/health`
 
 **Database:**
-- Liveness: `pg_isready -U opsguard`
-- Readiness: `pg_isready -U opsguard`
+- Liveness: `pg_isready -U opssure`
+- Readiness: `pg_isready -U opssure`
 
 ### Metrics
 
@@ -430,13 +430,13 @@ metadata:
 
 ```bash
 # Check pod status
-kubectl get pods -n opsguard
+kubectl get pods -n opssure
 
 # Describe pod for events
-kubectl describe pod -n opsguard <pod-name>
+kubectl describe pod -n opssure <pod-name>
 
 # Check logs
-kubectl logs -n opsguard <pod-name>
+kubectl logs -n opssure <pod-name>
 ```
 
 Common issues:
@@ -448,7 +448,7 @@ Common issues:
 
 ```bash
 # Test database connectivity from app pod
-kubectl exec -it -n opsguard <app-pod-name> -- \
+kubectl exec -it -n opssure <app-pod-name> -- \
   sh -c 'apk add postgresql-client && psql $DATABASE_URL'
 ```
 
@@ -456,20 +456,20 @@ kubectl exec -it -n opsguard <app-pod-name> -- \
 
 ```bash
 # Check service
-kubectl get service -n opsguard opsguard-service
+kubectl get service -n opssure opssure-service
 
 # Check endpoints
-kubectl get endpoints -n opsguard opsguard-service
+kubectl get endpoints -n opssure opssure-service
 
 # Test from within cluster
-kubectl run -it --rm debug --image=curlimages/curl -n opsguard -- \
-  curl http://opsguard-service/api/health
+kubectl run -it --rm debug --image=curlimages/curl -n opssure -- \
+  curl http://opssure-service/api/health
 ```
 
 ### View Events
 
 ```bash
-kubectl get events -n opsguard --sort-by='.lastTimestamp'
+kubectl get events -n opssure --sort-by='.lastTimestamp'
 ```
 
 ## Cleanup
@@ -481,7 +481,7 @@ kubectl get events -n opsguard --sort-by='.lastTimestamp'
 kubectl delete -f k8s/
 
 # Or delete namespace (removes everything)
-kubectl delete namespace opsguard
+kubectl delete namespace opssure
 ```
 
 **Note:** This will delete the PVC and all data. Backup first!
@@ -514,3 +514,4 @@ kubectl delete namespace opsguard
 - [Main Setup Guide](../SETUP.md)
 - [Deployment Guide](../DEPLOYMENT.md)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
+

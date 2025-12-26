@@ -497,7 +497,7 @@ function GuidedSlackSetup() {
                                 <strong>2.</strong> Fill in the app details:
                             </p>
                             <ul style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 0 1.5rem', lineHeight: 1.8 }}>
-                                <li>App Name: <strong>OpsGuard</strong> (or any name you prefer)</li>
+                                <li>App Name: <strong>OpsSure</strong> (or any name you prefer)</li>
                                 <li>Pick Workspace: Select your Slack workspace</li>
                                 <li>Click <strong>"Create App"</strong></li>
                             </ul>
@@ -795,4 +795,5 @@ function GuidedSlackSetup() {
         </div>
     );
 }
+
 

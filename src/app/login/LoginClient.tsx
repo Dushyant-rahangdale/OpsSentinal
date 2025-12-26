@@ -170,15 +170,15 @@ export default function LoginClient({ callbackUrl, errorCode, passwordSet }: Pro
 
             <div className="login-card">
                 {/* Brand Section */}
-                <section className="login-brand" aria-label="OpsGuard product information">
+                <section className="login-brand" aria-label="OpsSure product information">
                     <div className="login-brand-content">
                         <div className="login-brand-header">
                             <div className="login-logo-container">
-                                <img src="/logo.svg" alt="OpsGuard" className="login-brand-logo" />
+                                <img src="/logo.svg" alt="OpsSure" className="login-brand-logo" />
                             </div>
                             <div className="login-badge" aria-hidden="true">
                                 <span className="login-badge-dot"></span>
-                                OpsGuard Platform
+                                OpsSure Platform
                             </div>
                         </div>
                         
@@ -248,12 +248,12 @@ export default function LoginClient({ callbackUrl, errorCode, passwordSet }: Pro
                     <div className="login-form-wrapper">
                         <div className="login-form-header">
                             <div className="login-form-logo">
-                                <img src="/logo.svg" alt="OpsGuard" className="login-form-logo-img" />
+                                <img src="/logo.svg" alt="OpsSure" className="login-form-logo-img" />
                             </div>
                             <div className="login-form-branding">
                                 <h2 className="login-title">Welcome back</h2>
                                 <p className="login-subtitle">
-                                    Sign in to access your OpsGuard dashboard
+                                    Sign in to access your OpsSure dashboard
                                 </p>
                             </div>
                         </div>
@@ -453,7 +453,7 @@ export default function LoginClient({ callbackUrl, errorCode, passwordSet }: Pro
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
-                            <span>Need help? Contact your OpsGuard administrator.</span>
+                            <span>Need help? Contact your OpsSure administrator.</span>
                         </div>
                     </div>
                 </section>
@@ -461,3 +461,4 @@ export default function LoginClient({ callbackUrl, errorCode, passwordSet }: Pro
         </main>
     );
 }
+

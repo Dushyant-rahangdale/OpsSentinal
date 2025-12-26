@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from './src/lib/rate-limit';
 
-const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status'];
+const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status', '/setup'];
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((value) => value.trim())
@@ -28,7 +28,7 @@ function isPublicPath(pathname: string) {
  */
 function getSecurityHeaders(): Record<string, string> {
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     return {
         // Prevent MIME type sniffing
         'X-Content-Type-Options': 'nosniff',

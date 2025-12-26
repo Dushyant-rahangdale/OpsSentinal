@@ -30,7 +30,7 @@ export default async function ProfileSettingsPage() {
     return (
         <SettingsSection
             title="Profile"
-            description="Identity details tied to your OpsGuard account."
+            description="Identity details tied to your OpsSure account."
         >
             <ProfileForm
                 name={name}
@@ -39,8 +39,9 @@ export default async function ProfileSettingsPage() {
                 memberSince={memberSince}
             />
             <div className="settings-note" style={{ marginTop: '1.5rem' }}>
-                Updates are managed by your identity provider or an OpsGuard administrator.
+                Updates are managed by your identity provider or an OpsSure administrator.
             </div>
         </SettingsSection>
     );
 }
+

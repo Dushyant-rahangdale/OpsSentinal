@@ -1,6 +1,6 @@
 'use client';
 
-import { InputHTMLAttributes, ReactNode } from 'react';
+import { InputHTMLAttributes, ReactNode, useId } from 'react';
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   label?: string;
@@ -30,7 +30,8 @@ export default function Checkbox({
   id,
   ...props
 }: CheckboxProps) {
-  const checkboxId = id || `checkbox-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const checkboxId = id || generatedId;
   const hasError = !!error;
 
   const sizeStyles = {

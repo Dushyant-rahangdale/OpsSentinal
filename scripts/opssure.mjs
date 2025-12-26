@@ -6,10 +6,10 @@ import dotenv from 'dotenv';
 function printHelp() {
     const lines = [
         'Usage:',
-        '  opsguard --user <name> --email <email> --password <password> [--role <role>] [--update]',
+        '  opssure --user <name> --email <email> --password <password> [--role <role>] [--update]',
         '',
         'Examples:',
-        '  opsguard --user admin --password admin --email admin@example.com --role admin',
+        '  opssure --user admin --password admin --email admin@example.com --role admin',
         '',
         'Notes:',
         '  - Role values: admin, responder, user',
@@ -126,3 +126,4 @@ main().catch((error) => {
     console.error(`Error: ${error.message}`);
     process.exitCode = 1;
 });
+

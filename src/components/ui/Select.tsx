@@ -1,6 +1,6 @@
 'use client';
 
-import { SelectHTMLAttributes, ReactNode } from 'react';
+import { SelectHTMLAttributes, ReactNode, useId } from 'react';
 
 type SelectSize = 'sm' | 'md' | 'lg';
 type SelectVariant = 'default' | 'error' | 'success';
@@ -52,7 +52,8 @@ export default function Select({
   id,
   ...props
 }: SelectProps) {
-  const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const selectId = id || generatedId;
   const hasError = !!error || variant === 'error';
   const hasSuccess = variant === 'success';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useId } from 'react';
 import Input from './Input';
 import Select from './Select';
 import Switch from './Switch';
@@ -65,6 +65,7 @@ type FormFieldProps = InputFormFieldProps | TextareaFormFieldProps | SelectFormF
  */
 export default function FormField(props: FormFieldProps) {
   const { label, error, helperText, required, fullWidth } = props;
+  const id = useId();
 
   if (props.type === 'input') {
     return (
@@ -80,6 +81,7 @@ export default function FormField(props: FormFieldProps) {
         fullWidth={fullWidth}
         leftIcon={props.leftIcon}
         rightIcon={props.rightIcon}
+        id={id}
       />
     );
   }
@@ -96,18 +98,18 @@ export default function FormField(props: FormFieldProps) {
         helperText={helperText}
         required={required}
         fullWidth={fullWidth}
+        id={id}
       />
     );
   }
 
   if (props.type === 'textarea') {
-    const textareaId = `textarea-${Math.random().toString(36).substr(2, 9)}`;
     const hasError = !!error;
 
     return (
       <div className={`ui-formfield-wrapper ${fullWidth ? 'ui-formfield-full-width' : ''}`} style={{ width: fullWidth ? '100%' : 'auto' }}>
         <label
-          htmlFor={textareaId}
+          htmlFor={id}
           className="ui-formfield-label"
           style={{
             display: 'block',
@@ -121,7 +123,7 @@ export default function FormField(props: FormFieldProps) {
           {required && <span style={{ color: 'var(--color-error)', marginLeft: 'var(--spacing-1)' }}>*</span>}
         </label>
         <textarea
-          id={textareaId}
+          id={id}
           rows={props.rows || 4}
           placeholder={props.placeholder}
           value={props.value}
@@ -148,11 +150,11 @@ export default function FormField(props: FormFieldProps) {
             e.currentTarget.style.boxShadow = 'none';
           }}
           aria-invalid={hasError}
-          aria-describedby={error ? `${textareaId}-error` : helperText ? `${textareaId}-helper` : undefined}
+          aria-describedby={error ? `${id}-error` : helperText ? `${id}-helper` : undefined}
         />
         {error && (
           <div
-            id={`${textareaId}-error`}
+            id={`${id}-error`}
             className="ui-formfield-error"
             style={{
               marginTop: 'var(--spacing-2)',
@@ -169,7 +171,7 @@ export default function FormField(props: FormFieldProps) {
         )}
         {helperText && !error && (
           <div
-            id={`${textareaId}-helper`}
+            id={`${id}-helper`}
             className="ui-formfield-helper"
             style={{
               marginTop: 'var(--spacing-2)',
@@ -193,6 +195,7 @@ export default function FormField(props: FormFieldProps) {
         helperText={helperText}
         error={error}
         fullWidth={fullWidth}
+        id={id}
       />
     );
   }

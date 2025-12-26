@@ -30,7 +30,7 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
     const csvRows: string[] = [];
     
     // Header
-    csvRows.push('OpsGuard Dashboard Export');
+    csvRows.push('OpsSure Dashboard Export');
     csvRows.push(`Generated: ${formatDateTime(new Date(), userTimeZone, { format: 'datetime' })}`);
     csvRows.push('');
     
@@ -119,4 +119,5 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
     </button>
   );
 }
+
 

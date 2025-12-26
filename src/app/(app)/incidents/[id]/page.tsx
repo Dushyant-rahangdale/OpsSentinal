@@ -24,6 +24,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                 }
             },
             assignee: true,
+            team: true,
             events: { orderBy: { createdAt: 'desc' } },
             notes: { include: { user: true }, orderBy: { createdAt: 'desc' } },
             watchers: { include: { user: true }, orderBy: { createdAt: 'asc' } },
@@ -38,8 +39,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
 
     if (!incident) notFound();
 
-    const [users, customFields] = await Promise.all([
+    const [users, teams, customFields] = await Promise.all([
         prisma.user.findMany(),
+        prisma.team.findMany(),
         prisma.customField.findMany({ orderBy: { order: 'asc' } }),
     ]);
     const permissions = await getUserPermissions();
@@ -119,6 +121,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
             <IncidentHeader
                 incident={incident as any}
                 users={users}
+                teams={teams}
                 canManage={canManageIncident}
             />
 

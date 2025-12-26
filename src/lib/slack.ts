@@ -303,7 +303,7 @@ function buildSlackBlocks(
         elements: [
             {
                 type: 'mrkdwn',
-                text: `*OpsGuard* | Incident #${incident.id.slice(-5).toUpperCase()}`
+                text: `*OpsSure* | Incident #${incident.id.slice(-5).toUpperCase()}`
             }
         ]
     });
@@ -417,3 +417,4 @@ export async function sendSlackInteractiveMessage(
 
     return sendSlackMessageToChannel(channel, incidentDetails, eventType, true, serviceId || incident.serviceId);
 }
+

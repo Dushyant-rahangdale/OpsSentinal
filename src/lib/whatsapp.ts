@@ -6,7 +6,7 @@
 import prisma from './prisma';
 import { logger } from './logger';
 import { getBaseUrl } from './env-validation';
-import { getSMSConfig } from './notification-providers';
+import { getWhatsAppConfig } from './notification-providers';
 
 export type WhatsAppOptions = {
     userId: string;
@@ -44,10 +44,10 @@ export async function sendIncidentWhatsApp(
             return { success: false, error: 'User has no phone number configured' };
         }
 
-        // Get Twilio config
-        const smsConfig = await getSMSConfig();
-        if (!smsConfig.enabled || smsConfig.provider !== 'twilio') {
-            return { success: false, error: 'Twilio not configured' };
+        // Get WhatsApp config (independent of Twilio SMS)
+        const whatsappConfig = await getWhatsAppConfig();
+        if (!whatsappConfig.enabled || whatsappConfig.provider !== 'twilio') {
+            return { success: false, error: 'WhatsApp not configured or enabled' };
         }
 
         // Format phone number for WhatsApp (must be E.164 format)
@@ -61,12 +61,8 @@ export async function sendIncidentWhatsApp(
 
         const whatsappNumber = `whatsapp:${phoneNumber}`;
         // Get WhatsApp from number from database config
-        const whatsappFromNumber = (smsConfig as any).whatsappNumber;
-        const fromNumber = smsConfig.fromNumber 
-            ? `whatsapp:${smsConfig.fromNumber}`
-            : whatsappFromNumber
-                ? `whatsapp:${whatsappFromNumber}`
-                : null;
+        const whatsappFromNumber = whatsappConfig.whatsappNumber;
+        const fromNumber = whatsappFromNumber ? `whatsapp:${whatsappFromNumber}` : null;
 
         if (!fromNumber) {
             return { success: false, error: 'Twilio WhatsApp number not configured' };
@@ -75,71 +71,37 @@ export async function sendIncidentWhatsApp(
         // Format message
         const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
-        
-        const eventEmoji = eventType === 'triggered' ? '🚨' :
-                          eventType === 'acknowledged' ? '⚠️' :
-                          '✅';
-        
-        const statusLabel = eventType === 'resolved' ? 'RES' :
-                           eventType === 'acknowledged' ? 'ACK' :
-                           'TRIG';
-        
-        const urgencyLabel = incident.urgency === 'HIGH' ? 'CRIT' : 'INFO';
 
-        // Build concise message for Twilio trial (keep under 300 chars)
-        const titleMaxLength = 50;
-        const serviceMaxLength = 20;
-        
-        let title = incident.title.length > titleMaxLength 
-            ? incident.title.substring(0, titleMaxLength - 3) + '...' 
+        // Build professional OpsSure branded message for WhatsApp
+        // Using WhatsApp formatting: *bold*, _italics_, ~strikethrough~, ```monospace```
+
+        let header = `*[OPSSURE]*`;
+        let statusLine = '';
+
+        if (eventType === 'triggered') {
+            statusLine = `🚨 *CRITICAL ALERT*`;
+            if (incident.urgency !== 'HIGH') statusLine = `⚠️ *INCIDENT ALERT*`;
+        } else if (eventType === 'acknowledged') {
+            statusLine = `👀 *ACKNOWLEDGED*`;
+        } else if (eventType === 'resolved') {
+            statusLine = `✅ *RESOLVED*`;
+        }
+
+        // Truncate for sanity, though WhatsApp limit is 1600 chars
+        const titleMaxLength = 100;
+        let title = incident.title.length > titleMaxLength
+            ? incident.title.substring(0, titleMaxLength) + '...'
             : incident.title;
-        
-        let service = incident.service.name.length > serviceMaxLength
-            ? incident.service.name.substring(0, serviceMaxLength - 3) + '...'
-            : incident.service.name;
-        
-        // Shorten URL if needed
-        let url = incidentUrl;
-        if (url.length > 30) {
-            url = '...' + url.substring(url.length - 27);
-        }
-        
-        // Build message: EMOJI *Status* Title | Service | URL
-        let message = `${eventEmoji} *${statusLabel} ${urgencyLabel}*\n`;
-        message += `*${title}*\n`;
-        message += `${service}\n`;
-        message += `${url}`;
-        
-        // Add assignee if available (truncate name if needed)
+
+        // Build the message body
+        let message = `${header}\n\n${statusLine}\n\n*${title}*\n\n`;
+        message += `🛠 *Service:* ${incident.service.name}\n`;
+
         if (incident.assignee) {
-            let assignee = incident.assignee.name.length > 15
-                ? incident.assignee.name.substring(0, 15 - 3) + '...'
-                : incident.assignee.name;
-            message = `${eventEmoji} *${statusLabel} ${urgencyLabel}*\n`;
-            message += `*${title}*\n`;
-            message += `${service} | ${assignee}\n`;
-            message += `${url}`;
+            message += `👤 *Assignee:* ${incident.assignee.name}\n`;
         }
-        
-        // Final safety check - rebuild if too long
-        if (message.length > 280) {
-            const excess = message.length - 280;
-            title = title.substring(0, Math.max(10, title.length - excess - 3)) + '...';
-            if (incident.assignee) {
-                let assignee = incident.assignee.name.length > 15
-                    ? incident.assignee.name.substring(0, 15 - 3) + '...'
-                    : incident.assignee.name;
-                message = `${eventEmoji} *${statusLabel} ${urgencyLabel}*\n`;
-                message += `*${title}*\n`;
-                message += `${service} | ${assignee}\n`;
-                message += `${url}`;
-            } else {
-                message = `${eventEmoji} *${statusLabel} ${urgencyLabel}*\n`;
-                message += `*${title}*\n`;
-                message += `${service}\n`;
-                message += `${url}`;
-            }
-        }
+
+        message += `🔗 *Link:* ${incidentUrl}`;
 
         // Send via Twilio WhatsApp API
         // Use dynamic require wrapped in a function to prevent webpack from statically analyzing it
@@ -161,8 +123,8 @@ export async function sendIncidentWhatsApp(
             logger.warn('Twilio package not installed', { error: error?.message });
             return { success: false, error: 'Twilio package not installed. Install it with: npm install twilio' };
         }
-        
-        const client = twilio(smsConfig.accountSid, smsConfig.authToken);
+
+        const client = twilio(whatsappConfig.accountSid, whatsappConfig.authToken);
 
         try {
             const messageResult = await client.messages.create({
@@ -186,7 +148,7 @@ export async function sendIncidentWhatsApp(
                     userId,
                     phoneNumber
                 });
-                
+
                 try {
                     const { sendIncidentSMS } = await import('./sms');
                     return await sendIncidentSMS(userId, incidentId, eventType);
@@ -227,9 +189,9 @@ export async function sendWhatsApp(
     from?: string
 ): Promise<{ success: boolean; error?: string; messageSid?: string }> {
     try {
-        const smsConfig = await getSMSConfig();
-        if (!smsConfig.enabled || smsConfig.provider !== 'twilio') {
-            return { success: false, error: 'Twilio not configured' };
+        const whatsappConfig = await getWhatsAppConfig();
+        if (!whatsappConfig.enabled || whatsappConfig.provider !== 'twilio') {
+            return { success: false, error: 'WhatsApp not configured or enabled' };
         }
 
         // Format phone numbers
@@ -242,14 +204,12 @@ export async function sendWhatsApp(
 
         const whatsappTo = `whatsapp:${toNumber}`;
         // Get WhatsApp from number from database config
-        const whatsappFromNumber = (smsConfig as any).whatsappNumber;
-        const whatsappFrom = from 
+        const whatsappFromNumber = whatsappConfig.whatsappNumber;
+        const whatsappFrom = from
             ? `whatsapp:${from}`
             : whatsappFromNumber
                 ? `whatsapp:${whatsappFromNumber}`
-                : smsConfig.fromNumber
-                    ? `whatsapp:${smsConfig.fromNumber}`
-                    : null;
+                : null;
 
         if (!whatsappFrom) {
             return { success: false, error: 'WhatsApp from number not configured' };
@@ -274,8 +234,8 @@ export async function sendWhatsApp(
             logger.warn('Twilio package not installed', { error: error?.message });
             return { success: false, error: 'Twilio package not installed. Install it with: npm install twilio' };
         }
-        
-        const client = twilio(smsConfig.accountSid, smsConfig.authToken);
+
+        const client = twilio(whatsappConfig.accountSid, whatsappConfig.authToken);
 
         const messageResult = await client.messages.create({
             from: whatsappFrom,
@@ -292,5 +252,6 @@ export async function sendWhatsApp(
         return { success: false, error: error.message };
     }
 }
+
 
 

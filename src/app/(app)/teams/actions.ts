@@ -3,7 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
-import { assertAdminOrResponder, assertAdmin } from '@/lib/rbac';
+import { assertAdminOrResponder, assertAdmin, assertAdminOrTeamOwner } from '@/lib/rbac';
 
 type TeamFormState = {
     error?: string | null;
@@ -158,7 +158,7 @@ export async function addTeamMember(teamId: string, formData: FormData) {
     }
     const userId = formData.get('userId') as string;
     const role = (formData.get('role') as string) || 'MEMBER';
-    
+
     // Only admins can assign OWNER/ADMIN roles
     if ((role === 'OWNER' || role === 'ADMIN') && currentUser.role !== 'ADMIN') {
         return { error: 'Only admins can assign OWNER or ADMIN roles.' };
@@ -203,7 +203,7 @@ export async function updateTeamMemberRole(memberId: string, formData: FormData)
     if (!member) {
         return { error: 'Member not found.' };
     }
-    
+
     // Only admins can assign OWNER/ADMIN roles
     if ((role === 'OWNER' || role === 'ADMIN') && currentUser.role !== 'ADMIN') {
         return { error: 'Only admins can assign OWNER or ADMIN roles.' };
@@ -233,6 +233,42 @@ export async function updateTeamMemberRole(memberId: string, formData: FormData)
     revalidatePath('/teams');
     revalidatePath('/users');
     revalidatePath('/audit');
+}
+
+export async function updateTeamMemberNotifications(memberId: string, receiveNotifications: boolean): Promise<{ error?: string } | undefined> {
+    const member = await prisma.teamMember.findUnique({
+        where: { id: memberId },
+        select: { teamId: true, userId: true }
+    });
+
+    if (!member) {
+        return { error: 'Member not found.' };
+    }
+
+    try {
+        await assertAdminOrTeamOwner(member.teamId);
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin or Team Owner access required.' };
+    }
+
+    await prisma.teamMember.update({
+        where: { id: memberId },
+        data: { receiveTeamNotifications: receiveNotifications }
+    });
+
+    await logAudit({
+        action: 'team.member.notifications.updated',
+        entityType: 'TEAM_MEMBER',
+        entityId: memberId,
+        actorId: await getDefaultActorId(),
+        details: {
+            teamId: member.teamId,
+            userId: member.userId,
+            receiveTeamNotifications: receiveNotifications
+        }
+    });
+
+    revalidatePath('/teams');
 }
 
 export async function removeTeamMember(memberId: string): Promise<{ error?: string } | undefined> {

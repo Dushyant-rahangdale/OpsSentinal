@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalState } from '@/hooks/useModalState';
+import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
 
 type SearchResult = {
     type: 'incident' | 'service' | 'team' | 'user' | 'policy' | 'postmortem';
@@ -26,7 +27,7 @@ type RecentSearch = {
     resultCount?: number;
 };
 
-const RECENT_SEARCHES_KEY = 'opsguard-recent-searches-v2';
+const RECENT_SEARCHES_KEY = 'opssure-recent-searches-v2';
 const MAX_RECENT_SEARCHES = 8;
 
 // Enhanced quick action suggestions with better categorization
@@ -961,3 +962,4 @@ function highlightMatch(text: string, query: string): React.ReactNode {
         </>
     );
 }
+
