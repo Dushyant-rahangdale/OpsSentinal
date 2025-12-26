@@ -159,9 +159,20 @@ export async function addTeamMember(teamId: string, formData: FormData) {
     const userId = formData.get('userId') as string;
     const role = (formData.get('role') as string) || 'MEMBER';
 
-    // Only admins can assign OWNER/ADMIN roles
-    if ((role === 'OWNER' || role === 'ADMIN') && currentUser.role !== 'ADMIN') {
-        return { error: 'Only admins can assign OWNER or ADMIN roles.' };
+    // Only admins or team owners can assign OWNER/ADMIN roles
+    if (role === 'OWNER' || role === 'ADMIN') {
+        const isAdmin = currentUser.role === 'ADMIN';
+        const isTeamOwner = await prisma.teamMember.findFirst({
+            where: {
+                teamId,
+                userId: currentUser.id,
+                role: 'OWNER'
+            }
+        });
+
+        if (!isAdmin && !isTeamOwner) {
+            return { error: 'Only admins or team owners can assign OWNER or ADMIN roles.' };
+        }
     }
 
     if (!userId) return;
@@ -204,9 +215,20 @@ export async function updateTeamMemberRole(memberId: string, formData: FormData)
         return { error: 'Member not found.' };
     }
 
-    // Only admins can assign OWNER/ADMIN roles
-    if ((role === 'OWNER' || role === 'ADMIN') && currentUser.role !== 'ADMIN') {
-        return { error: 'Only admins can assign OWNER or ADMIN roles.' };
+    // Only admins or team owners can assign OWNER/ADMIN roles
+    if (role === 'OWNER' || role === 'ADMIN') {
+        const isAdmin = currentUser.role === 'ADMIN';
+        const isTeamOwner = await prisma.teamMember.findFirst({
+            where: {
+                teamId: member.teamId,
+                userId: currentUser.id,
+                role: 'OWNER'
+            }
+        });
+
+        if (!isAdmin && !isTeamOwner) {
+            return { error: 'Only admins or team owners can assign OWNER or ADMIN roles.' };
+        }
     }
 
     if (member.role === 'OWNER' && role !== 'OWNER') {
