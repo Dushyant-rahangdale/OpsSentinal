@@ -27,7 +27,7 @@ type RecentSearch = {
     resultCount?: number;
 };
 
-const RECENT_SEARCHES_KEY = 'opssure-recent-searches-v2';
+const RECENT_SEARCHES_KEY = 'opssentinal-recent-searches-v2';
 const MAX_RECENT_SEARCHES = 8;
 
 // Enhanced quick action suggestions with better categorization
@@ -962,4 +962,5 @@ function highlightMatch(text: string, query: string): React.ReactNode {
         </>
     );
 }
+
 

@@ -10,7 +10,7 @@ param(
 )
 
 $ComposeFile = if ($Dev) { "docker-compose.dev.yml" } else { "docker-compose.yml" }
-$ServiceName = "opssure-db"
+$ServiceName = "opssentinal-db"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Recreate Database Container Script" -ForegroundColor Cyan
@@ -132,7 +132,8 @@ Write-Host ""
 Write-Host "Useful commands:" -ForegroundColor Yellow
 Write-Host "  View logs: docker-compose -f $ComposeFile logs -f $ServiceName" -ForegroundColor Cyan
 Write-Host "  Check status: docker-compose -f $ComposeFile ps $ServiceName" -ForegroundColor Cyan
-Write-Host "  Connect to DB: docker-compose -f $ComposeFile exec $ServiceName psql -U opssure -d opssure_db" -ForegroundColor Cyan
+Write-Host "  Connect to DB: docker-compose -f $ComposeFile exec $ServiceName psql -U opssentinal -d opssentinal_db" -ForegroundColor Cyan
+
 
 
 

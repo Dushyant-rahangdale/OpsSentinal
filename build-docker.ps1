@@ -1,5 +1,5 @@
 # Temporary build script to work around OneDrive file locking issues
-$tempDir = "$env:TEMP\opssure-build-$(Get-Date -Format 'yyyyMMddHHmmss')"
+$tempDir = "$env:TEMP\opssentinal-build-$(Get-Date -Format 'yyyyMMddHHmmss')"
 $sourceDir = $PSScriptRoot
 
 Write-Host "Copying files to temporary location: $tempDir"
@@ -20,12 +20,13 @@ Copy-Item "$sourceDir\docker-compose.yml" "$tempDir\" -Force
 
 Write-Host "Building Docker image from temporary location..."
 Set-Location $tempDir
-docker-compose build opssure-app
+docker-compose build opssentinal-app
 
 Write-Host "Cleaning up temporary files..."
 Set-Location $sourceDir
 Remove-Item $tempDir -Recurse -Force
 
 Write-Host "Build complete!"
+
 
 

@@ -7,9 +7,9 @@ param(
     [string]$Mode = "restart"
 )
 
-$Namespace = "opssure"
-$DeploymentName = "opssure-postgres"
-$LabelSelector = "app=opssure-postgres"
+$Namespace = "opssentinal"
+$DeploymentName = "opssentinal-postgres"
+$LabelSelector = "app=opssentinal-postgres"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Recreate Database Pod Script" -ForegroundColor Cyan
@@ -97,7 +97,7 @@ switch ($Mode) {
         kubectl delete deployment $DeploymentName -n $Namespace
         
         Write-Host "Deleting PVC (this deletes all data)..." -ForegroundColor Yellow
-        kubectl delete pvc opssure-postgres-pvc -n $Namespace
+        kubectl delete pvc opssentinal-postgres-pvc -n $Namespace
         
         Write-Host "Recreating PVC..." -ForegroundColor Yellow
         kubectl apply -f k8s/postgres-pvc.yaml
@@ -122,6 +122,7 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Done!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
+
 
 
 

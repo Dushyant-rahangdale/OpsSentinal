@@ -409,7 +409,7 @@ export async function createIncident(formData: FormData) {
     // Uses user preferences for each recipient
     try {
         const { sendServiceNotifications } = await import('@/lib/service-notifications');
-        await sendServiceNotifications(incident.id, 'triggered', escalatedUsers);
+        await sendServiceNotifications(incident.id, 'triggered');
     } catch (e) {
         console.error('Service notification failed:', e);
     }

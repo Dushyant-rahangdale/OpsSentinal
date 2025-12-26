@@ -71,7 +71,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
             description: 'Send emails via Resend API',
             fields: [
                 { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 're_xxxxxxxxxxxx' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssure.com' }
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssentinal.com' }
             ]
         },
         {
@@ -80,7 +80,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
             description: 'Send emails via SendGrid API',
             fields: [
                 { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'SG.xxxxxxxxxxxx' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssure.com' }
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssentinal.com' }
             ]
         },
         {
@@ -92,7 +92,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
                 { name: 'port', label: 'Port', type: 'number', required: true, placeholder: '587' },
                 { name: 'user', label: 'Username', type: 'text', required: true, placeholder: 'user@example.com' },
                 { name: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Your SMTP password' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssure.com' },
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opssentinal.com' },
                 { name: 'secure', label: 'Use TLS/SSL', type: 'checkbox', required: false }
             ]
         },
@@ -456,5 +456,6 @@ function ProviderCard({
         </div>
     );
 }
+
 
 

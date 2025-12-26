@@ -1,8 +1,9 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: opssure
+  name: opssentinal
   labels:
-    name: opssure
-    app: opssure
+    name: opssentinal
+    app: opssentinal
+
 

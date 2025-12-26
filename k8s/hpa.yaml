@@ -1,15 +1,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: opssure-app-hpa
-  namespace: opssure
+  name: opssentinal-app-hpa
+  namespace: opssentinal
   labels:
-    app: opssure-app
+    app: opssentinal-app
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: opssure-app
+    name: opssentinal-app
   minReplicas: 2
   maxReplicas: 10
   metrics:
@@ -42,5 +42,6 @@ spec:
         value: 2
         periodSeconds: 60
       selectPolicy: Max
+
 
 

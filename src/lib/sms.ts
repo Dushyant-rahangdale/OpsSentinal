@@ -236,7 +236,7 @@ export async function sendIncidentSMS(
             eventType === 'acknowledged' ? 'ACK' :
                 incident.urgency === 'HIGH' ? 'CRITICAL' : 'INCIDENT';
 
-        // Build professional OpsSure branded message (optimized for SMS)
+        // Build professional opssentinal branded message (optimized for SMS)
         const titleMaxLength = 35;
         const serviceMaxLength = 15;
 
@@ -248,16 +248,16 @@ export async function sendIncidentSMS(
             ? incident.service.name.substring(0, serviceMaxLength - 1) + '…'
             : incident.service.name;
 
-        // Professional OpsSure SMS format with clean structure:
-        // Line 1: [OPSSURE] STATUS
+        // Professional opssentinal SMS format with clean structure:
+        // Line 1: [opssentinal] STATUS
         // Line 2: Incident Title
         // Line 3: Service Name
         // Line 4: Link
         let message = eventType === 'resolved'
-            ? `[OPSSURE] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
+            ? `[opssentinal] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
             : eventType === 'acknowledged'
-                ? `[OPSSURE] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
-                : `[OPSSURE] ${eventEmoji} ${incident.urgency === 'HIGH' ? 'CRITICAL ALERT' : 'INCIDENT'}\n${title}\n⚠ ${service}\n${incidentUrl}`;
+                ? `[opssentinal] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
+                : `[opssentinal] ${eventEmoji} ${incident.urgency === 'HIGH' ? 'CRITICAL ALERT' : 'INCIDENT'}\n${title}\n⚠ ${service}\n${incidentUrl}`;
 
         // Format phone number to E.164 format if needed
         let phoneNumber = user.phoneNumber.trim();
@@ -279,5 +279,6 @@ export async function sendIncidentSMS(
         return { success: false, error: error.message };
     }
 }
+
 
 

@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: opssure-ingress
-  namespace: opssure
+  name: opssentinal-ingress
+  namespace: opssentinal
   annotations:
     # Nginx Ingress Controller annotations
     kubernetes.io/ingress.class: nginx
@@ -28,19 +28,20 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: opssure.example.com  # Update with your domain
+  - host: opssentinal.example.com  # Update with your domain
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: opssure-service
+            name: opssentinal-service
             port:
               number: 80
   # TLS/HTTPS configuration
   tls:
   - hosts:
-    - opssure.example.com  # Update with your domain
-    secretName: opssure-tls
+    - opssentinal.example.com  # Update with your domain
+    secretName: opssentinal-tls
+
 

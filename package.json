@@ -1,5 +1,5 @@
 {
-    "name": "opssure",
+    "name": "opssentinal",
     "version": "0.1.0",
     "private": true,
     "scripts": {
@@ -15,7 +15,7 @@
         "test:ui": "vitest --ui",
         "test:coverage": "vitest --coverage",
         "test:run": "vitest run",
-        "opssure": "node ./scripts/opssure.mjs",
+        "opssentinal": "node ./scripts/opssentinal.mjs",
         "prepare": "husky install"
     },
     "dependencies": {
@@ -60,6 +60,6 @@
         "vitest": "^2.1.9"
     },
     "bin": {
-        "opssure": "./scripts/opssure.mjs"
+        "opssentinal": "./scripts/opssentinal.mjs"
     }
 }

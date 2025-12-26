@@ -1,10 +1,10 @@
 <#
-Simple cleanup script for OpsSure local development resources.
+Simple cleanup script for opssentinal local development resources.
 It stops Node.js processes tied to this repo, brings down Docker Compose stacks,
-and removes OpsSure-specific Docker volumes and caches.
+and removes opssentinal-specific Docker volumes and caches.
 #>
 
-Write-Host "=== OpsSure Cleanup ===" -ForegroundColor Cyan
+Write-Host "=== opssentinal Cleanup ===" -ForegroundColor Cyan
 
 function Stop-ProcessOnPort {
     param([int]$Port)
@@ -39,7 +39,7 @@ foreach ($proc in $nodeProcs) {
     try {
         $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId = $($proc.Id)" -ErrorAction SilentlyContinue).CommandLine
         if ($cmd) {
-            if ($cmd -like "*$currentDir*" -or $cmd -like "*next dev*" -or $cmd -like "*next start*" -or $cmd -like "*opssure*") {
+            if ($cmd -like "*$currentDir*" -or $cmd -like "*next dev*" -or $cmd -like "*next start*" -or $cmd -like "*opssentinal*") {
                 Write-Host "   Killing Node.js process $($proc.Id)" -ForegroundColor Gray
                 Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
                 $stopped++
@@ -82,8 +82,8 @@ Run-DockerComposeDown -file "docker-compose.dev.yml"
 Run-DockerComposeDown -file "docker-compose.yml"
 
 Write-Host ""
-Write-Host "4. Removing OpsSure Docker volumes" -ForegroundColor Yellow
-$volumes = docker volume ls --filter "name=opssure" --format "{{.Name}}" 2>$null
+Write-Host "4. Removing opssentinal Docker volumes" -ForegroundColor Yellow
+$volumes = docker volume ls --filter "name=opssentinal" --format "{{.Name}}" 2>$null
 foreach ($vol in $volumes) {
     if ($vol) {
         Write-Host "   Removing volume $vol" -ForegroundColor Gray
@@ -104,4 +104,5 @@ if (Test-Path "node_modules/.cache") {
 
 Write-Host ""
 Write-Host "Cleanup finished. You can restart containers with docker-compose." -ForegroundColor Cyan
+
 

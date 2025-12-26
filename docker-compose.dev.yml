@@ -1,35 +1,35 @@
 services:
-  opssure-db:
+  opssentinal-db:
     image: postgres:15-alpine
-    container_name: opssure_postgres_dev
+    container_name: opssentinal_postgres_dev
     restart: unless-stopped
     environment:
-      POSTGRES_USER: opsguard
+      POSTGRES_USER: opssentinal
       POSTGRES_PASSWORD: devpassword
-      POSTGRES_DB: opssure_db
+      POSTGRES_DB: opssentinal_db
     ports:
       - "5432:5432"
     volumes:
-      - opssure_postgres_dev_data:/var/lib/postgresql/data
+      - opssentinal_postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U opsguard -d opssure_db" ]
+      test: [ "CMD-SHELL", "pg_isready -U opssentinal -d opssentinal_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - opssure-dev-network
+      - opssentinal-dev-network
 
-  opssure-app:
+  opssentinal-app:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: opssure_app_dev
+    container_name: opssentinal_app_dev
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://opsguard:devpassword@opssure-db:5432/opssure_db
+      - DATABASE_URL=postgresql://opssentinal:devpassword@opssentinal-db:5432/opssentinal_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key-for-development-only
       # NOTE: Notification providers (Twilio, Email, Push) are configured via UI
@@ -47,18 +47,17 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      opssure-db:
+      opssentinal-db:
         condition: service_healthy
     networks:
-      - opssure-dev-network
+      - opssentinal-dev-network
     command: >
       sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
 
 volumes:
-  opssure_postgres_dev_data:
+  opssentinal_postgres_dev_data:
     driver: local
 
 networks:
-  opssure-dev-network:
+  opssentinal-dev-network:
     driver: bridge
-

@@ -1,6 +1,6 @@
 # Kubernetes Deployment Guide
 
-Deploy OpsSure to Kubernetes for production-grade orchestration.
+Deploy opssentinal to Kubernetes for production-grade orchestration.
 
 ## Prerequisites
 
@@ -16,25 +16,25 @@ Deploy OpsSure to Kubernetes for production-grade orchestration.
 
 ```bash
 # Build the image
-docker build -t opssure:v1.0.0 .
+docker build -t opssentinal:v1.0.0 .
 
 # Tag for your registry
-docker tag opssure:v1.0.0 your-registry.com/opssure:v1.0.0
+docker tag opssentinal:v1.0.0 your-registry.com/opssentinal:v1.0.0
 
 # Push to registry
-docker push your-registry.com/opssure:v1.0.0
+docker push your-registry.com/opssentinal:v1.0.0
 ```
 
 ### 2. Update Image Reference
 
-Edit `k8s/opssure-deployment.yaml` and replace:
+Edit `k8s/opssentinal-deployment.yaml` and replace:
 ```yaml
-image: your-registry/opssure:latest
+image: your-registry/opssentinal:latest
 ```
 
 With your actual image:
 ```yaml
-image: your-registry.com/opssure:v1.0.0
+image: your-registry.com/opssentinal:v1.0.0
 ```
 
 ### 3. Update Configuration
@@ -63,15 +63,15 @@ echo -n 'whatsapp:+1234567890' | base64  # For TWILIO_WHATSAPP_NUMBER (optional)
 
 Or create secrets via kubectl:
 ```bash
-kubectl create secret generic opssure-secrets \
-  --from-literal=POSTGRES_USER=opssure \
+kubectl create secret generic opssentinal-secrets \
+  --from-literal=POSTGRES_USER=opssentinal \
   --from-literal=POSTGRES_PASSWORD=your-secure-password \
   --from-literal=NEXTAUTH_SECRET=$(openssl rand -base64 32) \
   --from-literal=TWILIO_ACCOUNT_SID=your-twilio-account-sid \
   --from-literal=TWILIO_AUTH_TOKEN=your-twilio-auth-token \
   --from-literal=TWILIO_FROM_NUMBER=+1234567890 \
   --from-literal=TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890 \
-  -n opssure --dry-run=client -o yaml > k8s/secret.yaml
+  -n opssentinal --dry-run=client -o yaml > k8s/secret.yaml
 ```
 
 **Note:** Twilio secrets are optional. Only include them if you want to enable SMS/WhatsApp notifications.
@@ -86,8 +86,8 @@ kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/postgres-pvc.yaml
 kubectl apply -f k8s/postgres-deployment.yaml
 kubectl apply -f k8s/postgres-service.yaml
-kubectl apply -f k8s/opssure-deployment.yaml
-kubectl apply -f k8s/opssure-service.yaml
+kubectl apply -f k8s/opssentinal-deployment.yaml
+kubectl apply -f k8s/opssentinal-service.yaml
 
 # Optional: Deploy Ingress
 kubectl apply -f k8s/ingress.yaml
@@ -105,29 +105,29 @@ kubectl apply -f k8s/
 kubectl get namespaces
 
 # Check all resources
-kubectl get all -n opssure
+kubectl get all -n opssentinal
 
 # Check pods status
-kubectl get pods -n opssure
+kubectl get pods -n opssentinal
 
 # Check services
-kubectl get services -n opssure
+kubectl get services -n opssentinal
 ```
 
 Wait for pods to be in `Running` state:
 ```bash
-kubectl wait --for=condition=ready pod -l app=opssure-app -n opssure --timeout=300s
+kubectl wait --for=condition=ready pod -l app=opssentinal-app -n opssentinal --timeout=300s
 ```
 
 ### 6. Create Admin User
 
 ```bash
 # Get pod name
-POD_NAME=$(kubectl get pod -n opssure -l app=opssure-app -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pod -n opssentinal -l app=opssentinal-app -o jsonpath='{.items[0].metadata.name}')
 
 # Create admin user
-kubectl exec -it -n opssure $POD_NAME -- \
-  node scripts/opssure.mjs \
+kubectl exec -it -n opssentinal $POD_NAME -- \
+  node scripts/opssentinal.mjs \
   --user admin \
   --email admin@example.com \
   --password admin \
@@ -140,7 +140,7 @@ kubectl exec -it -n opssure $POD_NAME -- \
 
 **If using LoadBalancer:**
 ```bash
-kubectl get service opssure-service -n opssure
+kubectl get service opssentinal-service -n opssentinal
 # Note the EXTERNAL-IP
 ```
 
@@ -148,7 +148,7 @@ Access at: `http://<EXTERNAL-IP>`
 
 **If using Port Forward (for testing):**
 ```bash
-kubectl port-forward -n opssure service/opssure-service 3000:80
+kubectl port-forward -n opssentinal service/opssentinal-service 3000:80
 ```
 
 Access at: `http://localhost:3000`
@@ -176,12 +176,12 @@ If you want to enable SMS and WhatsApp notifications via Twilio:
      TWILIO_WHATSAPP_NUMBER: <base64-encoded-whatsapp-number>  # Optional: whatsapp:+1234567890
    ```
 
-3. **Uncomment Twilio environment variables** in `k8s/opssure-deployment.yaml`:
+3. **Uncomment Twilio environment variables** in `k8s/opssentinal-deployment.yaml`:
    ```yaml
    - name: TWILIO_ACCOUNT_SID
      valueFrom:
        secretKeyRef:
-         name: opssure-secrets
+         name: opssentinal-secrets
          key: TWILIO_ACCOUNT_SID
          optional: true
    # ... (repeat for other Twilio vars)
@@ -220,7 +220,7 @@ resources:
     cpu: "2000m"
 ```
 
-**Application resources** (`k8s/opssure-deployment.yaml`):
+**Application resources** (`k8s/opssentinal-deployment.yaml`):
 ```yaml
 resources:
   requests:
@@ -235,7 +235,7 @@ resources:
 
 Scale the application horizontally:
 ```bash
-kubectl scale deployment -n opssure opssure-app --replicas=3
+kubectl scale deployment -n opssentinal opssentinal-app --replicas=3
 ```
 
 Or edit the deployment:
@@ -259,25 +259,25 @@ For production, configure Ingress with TLS:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: opssure-ingress
-  namespace: opssure
+  name: opssentinal-ingress
+  namespace: opssentinal
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   tls:
   - hosts:
-    - opssure.yourdomain.com
-    secretName: opssure-tls
+    - opssentinal.yourdomain.com
+    secretName: opssentinal-tls
   rules:
-  - host: opssure.yourdomain.com
+  - host: opssentinal.yourdomain.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: opssure-service
+            name: opssentinal-service
             port:
               number: 80
 ```
@@ -288,55 +288,55 @@ spec:
 
 ```bash
 # Application logs
-kubectl logs -f -n opssure deployment/opssure-app
+kubectl logs -f -n opssentinal deployment/opssentinal-app
 
 # Database logs
-kubectl logs -f -n opssure deployment/opssure-postgres
+kubectl logs -f -n opssentinal deployment/opssentinal-postgres
 
 # Specific pod
-kubectl logs -f -n opssure <pod-name>
+kubectl logs -f -n opssentinal <pod-name>
 
 # Previous pod logs (after crash)
-kubectl logs -n opssure <pod-name> --previous
+kubectl logs -n opssentinal <pod-name> --previous
 ```
 
 ### Exec into Pods
 
 ```bash
 # Application pod
-kubectl exec -it -n opssure <app-pod-name> -- sh
+kubectl exec -it -n opssentinal <app-pod-name> -- sh
 
 # Database pod
-kubectl exec -it -n opssure <postgres-pod-name> -- sh
+kubectl exec -it -n opssentinal <postgres-pod-name> -- sh
 
 # Run psql
-kubectl exec -it -n opssure <postgres-pod-name> -- psql -U opssure -d opssure_db
+kubectl exec -it -n opssentinal <postgres-pod-name> -- psql -U opssentinal -d opssentinal_db
 ```
 
 ### Update Deployment
 
 **Update image version:**
 ```bash
-kubectl set image -n opssure deployment/opssure-app \
-  opssure=your-registry.com/opssure:v1.1.0
+kubectl set image -n opssentinal deployment/opssentinal-app \
+  opssentinal=your-registry.com/opssentinal:v1.1.0
 
 # Watch rollout
-kubectl rollout status -n opssure deployment/opssure-app
+kubectl rollout status -n opssentinal deployment/opssentinal-app
 ```
 
 **Rollback deployment:**
 ```bash
-kubectl rollout undo -n opssure deployment/opssure-app
+kubectl rollout undo -n opssentinal deployment/opssentinal-app
 
 # Rollback to specific revision
-kubectl rollout undo -n opssure deployment/opssure-app --to-revision=2
+kubectl rollout undo -n opssentinal deployment/opssentinal-app --to-revision=2
 ```
 
 ### Restart Deployment
 
 ```bash
-kubectl rollout restart -n opssure deployment/opssure-app
-kubectl rollout restart -n opssure deployment/opssure-postgres
+kubectl rollout restart -n opssentinal deployment/opssentinal-app
+kubectl rollout restart -n opssentinal deployment/opssentinal-postgres
 ```
 
 ## Backup and Recovery
@@ -345,17 +345,17 @@ kubectl rollout restart -n opssure deployment/opssure-postgres
 
 **Manual backup:**
 ```bash
-POD_NAME=$(kubectl get pod -n opssure -l app=opssure-postgres -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pod -n opssentinal -l app=opssentinal-postgres -o jsonpath='{.items[0].metadata.name}')
 
-kubectl exec -n opssure $POD_NAME -- \
-  pg_dump -U opssure opssure_db > backup_$(date +%Y%m%d_%H%M%S).sql
+kubectl exec -n opssentinal $POD_NAME -- \
+  pg_dump -U opssentinal opssentinal_db > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 **Restore from backup:**
 ```bash
 cat backup_20250121_120000.sql | \
-kubectl exec -i -n opssure $POD_NAME -- \
-  psql -U opssure opssure_db
+kubectl exec -i -n opssentinal $POD_NAME -- \
+  psql -U opssentinal opssentinal_db
 ```
 
 **Automated backups with CronJob:**
@@ -366,7 +366,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: postgres-backup
-  namespace: opssure
+  namespace: opssentinal
 spec:
   schedule: "0 2 * * *"  # Daily at 2 AM
   jobTemplate:
@@ -379,12 +379,12 @@ spec:
             command:
             - /bin/sh
             - -c
-            - pg_dump -h opssure-postgres-service -U opssure opssure_db > /backup/backup_$(date +%Y%m%d).sql
+            - pg_dump -h opssentinal-postgres-service -U opssentinal opssentinal_db > /backup/backup_$(date +%Y%m%d).sql
             env:
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: opssure-secrets
+                  name: opssentinal-secrets
                   key: POSTGRES_PASSWORD
             volumeMounts:
             - name: backup-storage
@@ -407,8 +407,8 @@ The deployment includes liveness and readiness probes:
 - Readiness: `GET /api/health`
 
 **Database:**
-- Liveness: `pg_isready -U opssure`
-- Readiness: `pg_isready -U opssure`
+- Liveness: `pg_isready -U opssentinal`
+- Readiness: `pg_isready -U opssentinal`
 
 ### Metrics
 
@@ -430,13 +430,13 @@ metadata:
 
 ```bash
 # Check pod status
-kubectl get pods -n opssure
+kubectl get pods -n opssentinal
 
 # Describe pod for events
-kubectl describe pod -n opssure <pod-name>
+kubectl describe pod -n opssentinal <pod-name>
 
 # Check logs
-kubectl logs -n opssure <pod-name>
+kubectl logs -n opssentinal <pod-name>
 ```
 
 Common issues:
@@ -448,7 +448,7 @@ Common issues:
 
 ```bash
 # Test database connectivity from app pod
-kubectl exec -it -n opssure <app-pod-name> -- \
+kubectl exec -it -n opssentinal <app-pod-name> -- \
   sh -c 'apk add postgresql-client && psql $DATABASE_URL'
 ```
 
@@ -456,20 +456,20 @@ kubectl exec -it -n opssure <app-pod-name> -- \
 
 ```bash
 # Check service
-kubectl get service -n opssure opssure-service
+kubectl get service -n opssentinal opssentinal-service
 
 # Check endpoints
-kubectl get endpoints -n opssure opssure-service
+kubectl get endpoints -n opssentinal opssentinal-service
 
 # Test from within cluster
-kubectl run -it --rm debug --image=curlimages/curl -n opssure -- \
-  curl http://opssure-service/api/health
+kubectl run -it --rm debug --image=curlimages/curl -n opssentinal -- \
+  curl http://opssentinal-service/api/health
 ```
 
 ### View Events
 
 ```bash
-kubectl get events -n opssure --sort-by='.lastTimestamp'
+kubectl get events -n opssentinal --sort-by='.lastTimestamp'
 ```
 
 ## Cleanup
@@ -481,7 +481,7 @@ kubectl get events -n opssure --sort-by='.lastTimestamp'
 kubectl delete -f k8s/
 
 # Or delete namespace (removes everything)
-kubectl delete namespace opssure
+kubectl delete namespace opssentinal
 ```
 
 **Note:** This will delete the PVC and all data. Backup first!
@@ -514,4 +514,5 @@ kubectl delete namespace opssure
 - [Main Setup Guide](../SETUP.md)
 - [Deployment Guide](../DEPLOYMENT.md)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
+
 

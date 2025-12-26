@@ -78,17 +78,19 @@ export default async function SystemSettingsPage() {
         // Continue with empty providers array if there's an error
     }
 
-    // Fetch app URL settings
-    let appUrlData = { appUrl: null, fallback: 'http://localhost:3000' };
+    // Fetch app URL settings directly from DB
+    let appUrlData = { appUrl: null as string | null, fallback: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' };
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/settings/app-url`, {
-            cache: 'no-store'
-        });
-        if (response.ok) {
-            appUrlData = await response.json();
+        const settings = await import('@/lib/prisma').then(m => m.default.systemSettings.findUnique({
+            where: { id: 'default' },
+            select: { appUrl: true }
+        }));
+
+        if (settings) {
+            appUrlData.appUrl = settings.appUrl;
         }
     } catch (error) {
-        logger.warn('Failed to fetch app URL settings', {
+        logger.warn('Failed to fetch app URL settings from DB', {
             error: error instanceof Error ? error.message : 'Unknown error'
         });
     }

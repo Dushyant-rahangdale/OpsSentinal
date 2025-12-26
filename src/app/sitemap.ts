@@ -1,9 +1,9 @@
 import { MetadataRoute } from 'next';
 import prisma from '@/lib/prisma';
-import { getBaseUrl } from '@/lib/env-validation';
+import { getAppUrl } from '@/lib/app-config';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = getBaseUrl();
+    const baseUrl = await getAppUrl();
     const routes: MetadataRoute.Sitemap = [
         {
             url: baseUrl,

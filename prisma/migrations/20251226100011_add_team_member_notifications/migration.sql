@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE "EscalationRule" ADD COLUMN     "notificationChannels" "NotificationChannel"[];
+-- ALTER TABLE "EscalationRule" ADD COLUMN     "notificationChannels" "NotificationChannel"[];
 
 -- AlterTable
 ALTER TABLE "Incident" ADD COLUMN     "teamId" TEXT;

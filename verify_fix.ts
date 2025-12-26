@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient({
     datasources: {
         db: {
-            url: 'postgresql://opssure:opssure_secure_password_change_me@localhost:5432/opssure_db'
+            url: 'postgresql://opssentinal:opssentinal_secure_password_change_me@localhost:5432/opssentinal_db'
         }
     }
 });
@@ -23,4 +23,5 @@ async function main() {
 }
 
 main();
+
 

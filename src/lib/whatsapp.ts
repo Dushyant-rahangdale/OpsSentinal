@@ -72,10 +72,10 @@ export async function sendIncidentWhatsApp(
         const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
 
-        // Build professional OpsSure branded message for WhatsApp
+        // Build professional opssentinal branded message for WhatsApp
         // Using WhatsApp formatting: *bold*, _italics_, ~strikethrough~, ```monospace```
 
-        let header = `*[OPSSURE]*`;
+        let header = `*[opssentinal]*`;
         let statusLine = '';
 
         if (eventType === 'triggered') {
@@ -252,6 +252,7 @@ export async function sendWhatsApp(
         return { success: false, error: error.message };
     }
 }
+
 
 
 
