@@ -181,7 +181,7 @@ export default function TeamCard({
                 <div style={{ marginBottom: '2rem' }}>
                     {canUpdateTeam ? (
                         <form
-                            key={`team-form-${team.id}-${team.teamLeadId || 'none'}`}
+                            key={`team-form-${team.id}-${team.teamLeadId || 'none'}-${team.updatedAt || Date.now()}`}
                             action={handleUpdateTeam}
                             style={{
                                 display: 'grid',
