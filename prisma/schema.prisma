@@ -761,7 +761,7 @@ model StatusPage {
   incidentHistoryDays      Int     @default(90)
   allowedCustomFields      Json? // Array of custom field IDs to show
   dataRetentionDays        Int? // Auto-hide incidents older than X days
-  requireAuth              Boolean @default(true) // Require authentication
+  requireAuth              Boolean @default(false) // Require authentication
   authProvider             String? // SSO provider if requireAuth=true
   emailProvider            String? // Email provider for subscription notifications (resend, sendgrid, smtp, or null for auto)
 
