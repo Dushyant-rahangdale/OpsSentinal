@@ -86,6 +86,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         subdomain: statusPage.subdomain || '',
         customDomain: statusPage.customDomain || '',
         enabled: statusPage.enabled,
+        requireAuth: statusPage.requireAuth,
         showServices: statusPage.showServices,
         showIncidents: statusPage.showIncidents,
         showMetrics: statusPage.showMetrics,
