@@ -19,7 +19,6 @@ export default async function StatusPageSettingsPage() {
 
     // Get or create status page
     let statusPage = await prisma.statusPage.findFirst({
-        where: { enabled: true },
         include: {
             services: {
                 include: {
