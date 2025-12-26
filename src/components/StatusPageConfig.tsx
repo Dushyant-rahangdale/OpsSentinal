@@ -635,10 +635,19 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
                                                 <Switch
                                                     checked={formData.enabled}
-                                                    onChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked, requireAuth: !checked }))}
+                                                    onChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))}
                                                     label="Enable Status Page"
-                                                    helperText="When enabled, the status page will be publicly accessible (no authentication required)."
+                                                    helperText="Make the status page accessible to users."
                                                 />
+
+                                                {formData.enabled && (
+                                                    <Switch
+                                                        checked={!formData.requireAuth}
+                                                        onChange={(checked) => setFormData(prev => ({ ...prev, requireAuth: !checked }))}
+                                                        label="Public Access"
+                                                        helperText="When enabled, anyone can view the status page without logging in. When disabled, users must log in to view the status page."
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                     </Card>
