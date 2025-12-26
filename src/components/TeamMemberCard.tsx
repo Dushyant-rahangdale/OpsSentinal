@@ -276,7 +276,7 @@ function TeamMemberCard({
                     )}
                     {!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN') && canManageMembers && (
                         <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: '500' }}>
-                            ⚠️ Admin required
+                            ⚠️ Admin/Owner required
                         </span>
                     )}
                 </div>

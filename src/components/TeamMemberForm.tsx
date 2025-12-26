@@ -18,12 +18,12 @@ type TeamMemberFormProps = {
     teamId: string;
 };
 
-export default function TeamMemberForm({ 
-    availableUsers, 
-    canManageMembers, 
-    canAssignOwnerAdmin, 
+export default function TeamMemberForm({
+    availableUsers,
+    canManageMembers,
+    canAssignOwnerAdmin,
     addMember,
-    teamId 
+    teamId
 }: TeamMemberFormProps) {
     const [isPending, startTransition] = useTransition();
     const { showToast } = useToast();
@@ -36,7 +36,7 @@ export default function TeamMemberForm({
         const userId = formData.get('userId') as string;
         const role = formData.get('role') as string;
         const userName = availableUsers.find(u => u.id === userId)?.name || 'User';
-        
+
         startTransition(async () => {
             const result = await addMember(formData);
             if (result?.error) {
@@ -75,14 +75,14 @@ export default function TeamMemberForm({
                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                     Select User
                 </label>
-                <select 
-                    name="userId" 
+                <select
+                    name="userId"
                     required
                     disabled={isPending || availableUsers.length === 0}
-                    style={{ 
+                    style={{
                         width: '100%',
-                        padding: '0.6rem', 
-                        border: '1px solid var(--border)', 
+                        padding: '0.6rem',
+                        border: '1px solid var(--border)',
                         borderRadius: '8px',
                         background: availableUsers.length === 0 ? '#f3f4f6' : 'white',
                         cursor: availableUsers.length === 0 ? 'not-allowed' : 'pointer',
@@ -97,46 +97,46 @@ export default function TeamMemberForm({
                     ))}
                 </select>
             </div>
-            
+
             <div>
                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                     Role
                 </label>
-                <select 
-                    name="role" 
-                    defaultValue="MEMBER" 
+                <select
+                    name="role"
+                    defaultValue="MEMBER"
                     disabled={!canAssignOwnerAdmin || isPending}
-                    style={{ 
+                    style={{
                         width: '100%',
-                        padding: '0.6rem', 
-                        border: '1px solid var(--border)', 
+                        padding: '0.6rem',
+                        border: '1px solid var(--border)',
                         borderRadius: '8px',
                         background: !canAssignOwnerAdmin ? '#f3f4f6' : 'white',
                         opacity: !canAssignOwnerAdmin ? 0.7 : 1,
                         cursor: !canAssignOwnerAdmin ? 'not-allowed' : 'pointer'
                     }}
-                    title={!canAssignOwnerAdmin ? 'Only admins can assign OWNER or ADMIN roles' : undefined}
+                    title={!canAssignOwnerAdmin ? 'Admin or Team Owner access required to assign OWNER or ADMIN roles' : undefined}
                 >
                     <option value="OWNER" disabled={!canAssignOwnerAdmin}>
-                        Owner{!canAssignOwnerAdmin ? ' (Admin only)' : ''}
+                        Owner{!canAssignOwnerAdmin ? ' (Admin/Owner only)' : ''}
                     </option>
                     <option value="ADMIN" disabled={!canAssignOwnerAdmin}>
-                        Admin{!canAssignOwnerAdmin ? ' (Admin only)' : ''}
+                        Admin{!canAssignOwnerAdmin ? ' (Admin/Owner only)' : ''}
                     </option>
                     <option value="MEMBER">Member</option>
                 </select>
                 {!canAssignOwnerAdmin && (
                     <p style={{ fontSize: '0.75rem', color: '#dc2626', fontStyle: 'italic', marginTop: '0.25rem' }}>
-                        ⚠️ Only admins can assign OWNER or ADMIN roles
+                        ⚠️ Admin or Team Owner access required to assign OWNER or ADMIN roles
                     </p>
                 )}
             </div>
-            
-            <button 
-                type="submit" 
-                className="glass-button primary" 
+
+            <button
+                type="submit"
+                className="glass-button primary"
                 disabled={availableUsers.length === 0 || isPending}
-                style={{ 
+                style={{
                     opacity: availableUsers.length === 0 || isPending ? 0.6 : 1,
                     cursor: availableUsers.length === 0 || isPending ? 'not-allowed' : 'pointer'
                 }}
