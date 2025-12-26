@@ -45,6 +45,7 @@ export const NotificationPatchSchema = z.object({
 
 export const StatusPageSettingsSchema = z.object({
     name: z.string().trim().min(1).max(200).optional(),
+    organizationName: z.string().trim().max(200).optional().nullable(),
     subdomain: z.string().trim().max(200).optional().nullable(),
     customDomain: z.string().trim().max(200).optional().nullable(),
     enabled: z.boolean().optional(),
@@ -60,7 +61,29 @@ export const StatusPageSettingsSchema = z.object({
         displayName: z.string().trim().max(200).optional().nullable(),
         order: z.number().int().optional(),
         showOnPage: z.boolean().optional()
-    })).optional()
+    })).optional(),
+    // Privacy settings
+    privacyMode: z.enum(['PUBLIC', 'RESTRICTED', 'PRIVATE']).optional().nullable(),
+    showIncidentDetails: z.boolean().optional(),
+    showIncidentTitles: z.boolean().optional(),
+    showIncidentDescriptions: z.boolean().optional(),
+    showAffectedServices: z.boolean().optional(),
+    showIncidentTimestamps: z.boolean().optional(),
+    showServiceMetrics: z.boolean().optional(),
+    showServiceDescriptions: z.boolean().optional(),
+    showTeamInformation: z.boolean().optional(),
+    showCustomFields: z.boolean().optional(),
+    showIncidentAssignees: z.boolean().optional(),
+    showIncidentUrgency: z.boolean().optional(),
+    showUptimeHistory: z.boolean().optional(),
+    showRecentIncidents: z.boolean().optional(),
+    maxIncidentsToShow: z.number().int().min(1).max(500).optional(),
+    incidentHistoryDays: z.number().int().min(1).max(365).optional(),
+    allowedCustomFields: z.array(z.string()).optional().nullable(),
+    dataRetentionDays: z.number().int().min(1).optional().nullable(),
+    requireAuth: z.boolean().optional(),
+    authProvider: z.string().optional().nullable(),
+    emailProvider: z.string().optional().nullable(),
 });
 
 export const StatusAnnouncementCreateSchema = z.object({
@@ -70,7 +93,8 @@ export const StatusAnnouncementCreateSchema = z.object({
     type: z.string().trim().max(50).optional(),
     startDate: z.string().min(1),
     endDate: z.string().optional().nullable(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    notifySubscribers: z.boolean().optional()
 });
 
 export const StatusAnnouncementPatchSchema = z.object({
