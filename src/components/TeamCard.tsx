@@ -180,16 +180,19 @@ export default function TeamCard({
                 {/* Update Team Form */}
                 <div style={{ marginBottom: '2rem' }}>
                     {canUpdateTeam ? (
-                        <form action={handleUpdateTeam} style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr 1fr auto',
-                            gap: '1rem',
-                            alignItems: 'end',
-                            padding: '1rem',
-                            background: '#f8fafc',
-                            borderRadius: '12px',
-                            border: '1px solid #e2e8f0'
-                        }}>
+                        <form
+                            key={`team-form-${team.id}-${team.teamLeadId || 'none'}`}
+                            action={handleUpdateTeam}
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr 1fr auto',
+                                gap: '1rem',
+                                alignItems: 'end',
+                                padding: '1rem',
+                                background: '#f8fafc',
+                                borderRadius: '12px',
+                                border: '1px solid #e2e8f0'
+                            }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>Team Name</label>
                                 <input
