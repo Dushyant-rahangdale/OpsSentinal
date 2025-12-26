@@ -79,11 +79,18 @@ export default async function PublicStatusPage() {
     });
 
     // Check if authentication is required
+    console.log('[DEBUG] Status Page requireAuth:', statusPage?.requireAuth);
     if (statusPage?.requireAuth) {
+        console.log('[DEBUG] Authentication required, checking session...');
         const session = await getServerSession(authOptions);
+        console.log('[DEBUG] Session:', session ? 'EXISTS' : 'NULL');
         if (!session) {
+            console.log('[DEBUG] No session, redirecting to login');
             redirect('/login?callbackUrl=/status');
         }
+        console.log('[DEBUG] Session valid, allowing access');
+    } else {
+        console.log('[DEBUG] No authentication required, allowing public access');
     }
 
     // If no status page exists, create a default one
