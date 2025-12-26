@@ -221,7 +221,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                     borderRadius: '0px',
                     border: '1px solid var(--border)'
                 }}>
-
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
                         No services found
                     </h3>
@@ -230,11 +230,6 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                             ? 'Try adjusting your filters or search query.'
                             : 'Create your first service to get started.'}
                     </p>
-                    {canCreateService && !searchQuery && statusFilter === 'all' && !teamFilter && (
-                        <Link href="/services" className="glass-button primary" style={{ display: 'inline-block' }}>
-                            Create Service
-                        </Link>
-                    )}
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
