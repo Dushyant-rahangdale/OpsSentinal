@@ -14,6 +14,8 @@ export type WhatsAppOptions = {
     eventType: 'triggered' | 'acknowledged' | 'resolved';
 };
 
+const normalizeWhatsAppNumber = (value: string) => value.replace(/^whatsapp:/i, '');
+
 /**
  * Send WhatsApp notification for an incident
  * Uses Twilio WhatsApp API (format: whatsapp:+1234567890)
@@ -62,7 +64,8 @@ export async function sendIncidentWhatsApp(
         const whatsappNumber = `whatsapp:${phoneNumber}`;
         // Get WhatsApp from number from database config
         const whatsappFromNumber = whatsappConfig.whatsappNumber;
-        const fromNumber = whatsappFromNumber ? `whatsapp:${whatsappFromNumber}` : null;
+        const normalizedFromNumber = whatsappFromNumber ? normalizeWhatsAppNumber(whatsappFromNumber) : '';
+        const fromNumber = normalizedFromNumber ? `whatsapp:${normalizedFromNumber}` : null;
 
         if (!fromNumber) {
             return { success: false, error: 'Twilio WhatsApp number not configured' };
@@ -72,19 +75,15 @@ export async function sendIncidentWhatsApp(
         const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
 
-        // Build professional OpsSentinal branded message for WhatsApp
-        // Using WhatsApp formatting: *bold*, _italics_, ~strikethrough~, ```monospace```
-
-        let header = `*[OpsSentinal]*`;
         let statusLine = '';
 
         if (eventType === 'triggered') {
-            statusLine = `🚨 *CRITICAL ALERT*`;
-            if (incident.urgency !== 'HIGH') statusLine = `⚠️ *INCIDENT ALERT*`;
+            statusLine = '!! *CRITICAL ALERT*';
+            if (incident.urgency !== 'HIGH') statusLine = '*INCIDENT ALERT*';
         } else if (eventType === 'acknowledged') {
-            statusLine = `👀 *ACKNOWLEDGED*`;
+            statusLine = '*ACKNOWLEDGED*';
         } else if (eventType === 'resolved') {
-            statusLine = `✅ *RESOLVED*`;
+            statusLine = '*RESOLVED*';
         }
 
         // Truncate for sanity, though WhatsApp limit is 1600 chars
@@ -92,16 +91,6 @@ export async function sendIncidentWhatsApp(
         let title = incident.title.length > titleMaxLength
             ? incident.title.substring(0, titleMaxLength) + '...'
             : incident.title;
-
-        // Build the message body
-        let message = `${header}\n\n${statusLine}\n\n*${title}*\n\n`;
-        message += `🛠 *Service:* ${incident.service.name}\n`;
-
-        if (incident.assignee) {
-            message += `👤 *Assignee:* ${incident.assignee.name}\n`;
-        }
-
-        message += `🔗 *Link:* ${incidentUrl}`;
 
         // Send via Twilio WhatsApp API
         // Use dynamic require wrapped in a function to prevent webpack from statically analyzing it
@@ -127,40 +116,35 @@ export async function sendIncidentWhatsApp(
         const client = twilio(whatsappConfig.accountSid, whatsappConfig.authToken);
 
         try {
+            if (!whatsappConfig.whatsappContentSid) {
+                return { success: false, error: 'WhatsApp template (contentSid) not configured' };
+            }
+
+            // Use Twilio Content API (Templates) - Required for 24h window
+            // Variables: 1: Title, 2: Service, 3: Status, 4: Link
+            const variables = {
+                '1': title,
+                '2': incident.service.name,
+                '3': statusLine.replace(/[\*\_]/g, ''), // Remove markdown for plain text template
+                '4': incidentUrl
+            };
+
             const messageResult = await client.messages.create({
                 from: fromNumber,
                 to: whatsappNumber,
-                body: message
+                contentSid: whatsappConfig.whatsappContentSid,
+                contentVariables: JSON.stringify(variables)
             });
 
-            logger.info('WhatsApp notification sent', {
+            logger.info('WhatsApp notification sent via Template', {
                 userId,
                 incidentId,
-                eventType,
+                contentSid: whatsappConfig.whatsappContentSid,
                 messageSid: messageResult.sid
             });
 
             return { success: true };
         } catch (twilioError: any) {
-            // If WhatsApp fails, try fallback to SMS
-            if (twilioError.code === 21211 || twilioError.message?.includes('not a valid WhatsApp')) {
-                logger.warn('WhatsApp number not valid, falling back to SMS', {
-                    userId,
-                    phoneNumber
-                });
-
-                try {
-                    const { sendIncidentSMS } = await import('./sms');
-                    return await sendIncidentSMS(userId, incidentId, eventType);
-                } catch (smsError: any) {
-                    logger.error('SMS fallback also failed', {
-                        userId,
-                        error: smsError.message
-                    });
-                    return { success: false, error: `WhatsApp and SMS both failed: ${smsError.message}` };
-                }
-            }
-
             logger.error('WhatsApp send error', {
                 userId,
                 incidentId,
@@ -205,11 +189,12 @@ export async function sendWhatsApp(
         const whatsappTo = `whatsapp:${toNumber}`;
         // Get WhatsApp from number from database config
         const whatsappFromNumber = whatsappConfig.whatsappNumber;
-        const whatsappFrom = from
-            ? `whatsapp:${from}`
+        const normalizedFrom = from
+            ? normalizeWhatsAppNumber(from)
             : whatsappFromNumber
-                ? `whatsapp:${whatsappFromNumber}`
-                : null;
+                ? normalizeWhatsAppNumber(whatsappFromNumber)
+                : '';
+        const whatsappFrom = normalizedFrom ? `whatsapp:${normalizedFrom}` : null;
 
         if (!whatsappFrom) {
             return { success: false, error: 'WhatsApp from number not configured' };

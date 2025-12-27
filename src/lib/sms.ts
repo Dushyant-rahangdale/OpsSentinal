@@ -141,6 +141,11 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     errorMessage = 'Twilio account has insufficient balance. Please add funds to your Twilio account.';
                 }
 
+                // Handle "From" number mismatch (Error 21660)
+                if (error.code === 21660) {
+                    errorMessage = `Configuration Error: The 'From' number ${smsConfig.fromNumber} is not a valid SMS-capable number in your Twilio account. It might be a WhatsApp-only number. Please update your configuration in Settings → System with a valid Twilio SMS phone number.`;
+                }
+
                 return {
                     success: false,
                     error: errorMessage

@@ -279,20 +279,39 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             targetScheduleId: step.targetScheduleId
         });
 
+        const isLastStep = currentStepIndex >= policySteps.length - 1;
+
         await prisma.$transaction(async (tx) => {
             await tx.incidentEvent.create({
                 data: {
                     incidentId,
-                    message: errorMessage + ' Skipping.'
+                    message: errorMessage + (isLastStep ? ' Escalation complete.' : ' Skipping to next step.')
                 }
             });
-            await tx.incident.update({
-                where: { id: incidentId },
-                data: { escalationProcessingAt: null }
-            });
+
+            if (isLastStep) {
+                await tx.incident.update({
+                    where: { id: incidentId },
+                    data: {
+                        escalationStatus: 'COMPLETED',
+                        nextEscalationAt: null,
+                        escalationProcessingAt: null,
+                        currentEscalationStep: null
+                    }
+                });
+            } else {
+                await tx.incident.update({
+                    where: { id: incidentId },
+                    data: {
+                        currentEscalationStep: currentStepIndex + 1,
+                        escalationProcessingAt: null
+                    }
+                });
+            }
         });
+
         // Try next step
-        if (currentStepIndex < policySteps.length - 1) {
+        if (!isLastStep) {
             return executeEscalation(incidentId, currentStepIndex + 1);
         }
         return { escalated: false, reason: 'Invalid target configuration' };
@@ -350,20 +369,39 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
             targetName
         });
 
+        const isLastStep = currentStepIndex >= policySteps.length - 1;
+
         await prisma.$transaction(async (tx) => {
             await tx.incidentEvent.create({
                 data: {
                     incidentId,
-                    message: errorMessage + ' Skipping.'
+                    message: errorMessage + (isLastStep ? ' Escalation complete.' : ' Skipping to next step.')
                 }
             });
-            await tx.incident.update({
-                where: { id: incidentId },
-                data: { escalationProcessingAt: null }
-            });
+
+            if (isLastStep) {
+                await tx.incident.update({
+                    where: { id: incidentId },
+                    data: {
+                        escalationStatus: 'COMPLETED',
+                        nextEscalationAt: null,
+                        escalationProcessingAt: null,
+                        currentEscalationStep: null
+                    }
+                });
+            } else {
+                await tx.incident.update({
+                    where: { id: incidentId },
+                    data: {
+                        currentEscalationStep: currentStepIndex + 1,
+                        escalationProcessingAt: null
+                    }
+                });
+            }
         });
+
         // Try next step
-        if (currentStepIndex < policySteps.length - 1) {
+        if (!isLastStep) {
             return executeEscalation(incidentId, currentStepIndex + 1);
         }
         return { escalated: false, reason: 'No users to notify' };

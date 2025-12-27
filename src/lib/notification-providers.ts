@@ -11,6 +11,7 @@ export interface SMSConfig {
     authToken?: string;
     fromNumber?: string;
     whatsappNumber?: string; // WhatsApp Business API number (optional)
+    whatsappContentSid?: string; // Twilio Content API SID for templates
     // AWS SNS config
     region?: string;
     accessKeyId?: string;
@@ -207,7 +208,8 @@ export async function getWhatsAppConfig(): Promise<SMSConfig> {
             const authToken = config.whatsappAuthToken || config.authToken;
 
             // Check if WhatsApp is enabled (independent of Twilio SMS)
-            if (config.whatsappEnabled && accountSid && authToken && config.whatsappNumber) {
+            const whatsappEnabled = config.whatsappEnabled !== undefined ? config.whatsappEnabled : true;
+            if (whatsappEnabled && accountSid && authToken && config.whatsappNumber) {
                 return {
                     enabled: true,
                     provider: 'twilio',
@@ -215,6 +217,7 @@ export async function getWhatsAppConfig(): Promise<SMSConfig> {
                     authToken: authToken,
                     fromNumber: config.fromNumber,
                     whatsappNumber: config.whatsappNumber,
+                    whatsappContentSid: config.whatsappContentSid,
                 };
             }
         }
@@ -247,6 +250,7 @@ export async function getSMSConfig(): Promise<SMSConfig> {
                     authToken: config.authToken,
                     fromNumber: config.fromNumber,
                     whatsappNumber: config.whatsappNumber,
+                    whatsappContentSid: config.whatsappContentSid,
                 };
             }
         }

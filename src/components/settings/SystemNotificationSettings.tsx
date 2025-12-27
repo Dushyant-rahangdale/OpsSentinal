@@ -36,6 +36,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
         config: {
             whatsappNumber: whatsappConfig.whatsappNumber,
             whatsappEnabled: whatsappConfig.whatsappEnabled,
+            whatsappContentSid: whatsappConfig.whatsappContentSid,
             whatsappAccountSid: whatsappConfig.whatsappAccountSid,
             whatsappAuthToken: whatsappConfig.whatsappAuthToken
         },
@@ -60,6 +61,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
             description: 'Send WhatsApp notifications via Twilio WhatsApp Business API',
             fields: [
                 { name: 'whatsappNumber', label: 'WhatsApp Business Number', type: 'tel', required: true, placeholder: 'whatsapp:+14155238886' },
+                { name: 'whatsappContentSid', label: 'WhatsApp Template SID (Optional)', type: 'text', required: false, placeholder: 'HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
                 { name: 'whatsappAccountSid', label: 'Account SID (Optional - overrides Twilio SMS config)', type: 'text', required: false, placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
                 { name: 'whatsappAuthToken', label: 'Auth Token (Optional - overrides Twilio SMS config)', type: 'password', required: false, placeholder: 'Your Twilio auth token' }
             ],
@@ -200,6 +202,7 @@ function ProviderCard({
                     await updateNotificationProvider(null, 'twilio', false, {
                         whatsappNumber: config.whatsappNumber || '',
                         whatsappEnabled: enabled,
+                        whatsappContentSid: config.whatsappContentSid || '',
                         whatsappAccountSid: config.whatsappAccountSid || '',
                         whatsappAuthToken: config.whatsappAuthToken || ''
                     });
@@ -208,10 +211,11 @@ function ProviderCard({
 
                     const updatedTwilioConfig = {
                         ...twilioConfig,
-                        whatsappNumber: config.whatsappNumber || '',
+                        whatsappNumber: config.whatsappNumber || twilioConfig.whatsappNumber || '',
                         whatsappEnabled: enabled,
-                        whatsappAccountSid: config.whatsappAccountSid || '',
-                        whatsappAuthToken: config.whatsappAuthToken || ''
+                        whatsappContentSid: config.whatsappContentSid || twilioConfig.whatsappContentSid || '',
+                        whatsappAccountSid: config.whatsappAccountSid || twilioConfig.whatsappAccountSid || '',
+                        whatsappAuthToken: config.whatsappAuthToken || twilioConfig.whatsappAuthToken || ''
                     };
 
                     const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');

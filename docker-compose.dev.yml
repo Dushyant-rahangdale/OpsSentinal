@@ -32,6 +32,7 @@ services:
       - DATABASE_URL=postgresql://opssentinal:devpassword@opssentinal-db:5432/opssentinal_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key-for-development-only
+      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
       # NOTE: Notification providers (Twilio, Email, Push) are configured via UI
       # Environment variables are NOT used - configure at Settings → System → Notification Providers
     volumes:

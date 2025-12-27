@@ -69,8 +69,10 @@ export async function GET(req: NextRequest) {
         // Get WhatsApp config from database
         const whatsappProvider = twilioProvider?.config as any;
         const whatsappNumber = whatsappProvider?.whatsappNumber || '';
+        const whatsappContentSid = whatsappProvider?.whatsappContentSid || '';
         const whatsappConfig = {
             number: whatsappNumber,
+            contentSid: whatsappContentSid,
             enabled: smsConfig.enabled && smsConfig.provider === 'twilio' && !!whatsappNumber
         };
 
@@ -96,6 +98,10 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
+        const existingTwilioProvider = await prisma.notificationProvider.findUnique({
+            where: { provider: 'twilio' }
+        });
+        const existingTwilioConfig = (existingTwilioProvider?.config as any) || {};
 
         // Save SMS provider (Twilio or AWS SNS)
         if (body.sms) {
@@ -108,10 +114,13 @@ export async function POST(req: NextRequest) {
                 smsConfig.accountSid = body.sms.accountSid || '';
                 smsConfig.authToken = body.sms.authToken || '';
                 smsConfig.fromNumber = body.sms.fromNumber || '';
-                // Store WhatsApp number in Twilio config
-                if (body.whatsapp?.number) {
-                    smsConfig.whatsappNumber = body.whatsapp.number;
-                }
+                // Store WhatsApp config in Twilio provider config
+                const whatsappNumber = body.whatsapp?.number ?? existingTwilioConfig.whatsappNumber ?? '';
+                smsConfig.whatsappNumber = whatsappNumber;
+                smsConfig.whatsappContentSid = body.whatsapp?.contentSid ?? existingTwilioConfig.whatsappContentSid ?? '';
+                smsConfig.whatsappEnabled = body.whatsapp?.enabled ?? existingTwilioConfig.whatsappEnabled ?? !!whatsappNumber;
+                smsConfig.whatsappAccountSid = existingTwilioConfig.whatsappAccountSid;
+                smsConfig.whatsappAuthToken = existingTwilioConfig.whatsappAuthToken;
             } else if (body.sms.provider === 'aws-sns') {
                 smsConfig.region = body.sms.region || 'us-east-1';
                 smsConfig.accessKeyId = body.sms.accessKeyId || '';

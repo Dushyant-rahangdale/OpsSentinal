@@ -497,7 +497,7 @@ export default function SidebarSearch() {
                     </span>
                     <div className="search-trigger-shortcut">
                         <kbd className="search-shortcut-key">
-                            {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}
+                            {typeof window !== 'undefined' && window.navigator && window.navigator.platform && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}
                         </kbd>
                         <kbd className="search-shortcut-key">K</kbd>
                     </div>

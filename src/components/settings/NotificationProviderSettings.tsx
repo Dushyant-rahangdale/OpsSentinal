@@ -14,7 +14,7 @@ export default function NotificationProviderSettings() {
     const { showToast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(true);
-    
+
     const [smsEnabled, setSmsEnabled] = useState(false);
     const [smsProvider, setSmsProvider] = useState<'twilio' | 'aws-sns'>('twilio');
     const [twilioAccountSid, setTwilioAccountSid] = useState('');
@@ -33,6 +33,7 @@ export default function NotificationProviderSettings() {
     const [onesignalRestApiKey, setOnesignalRestApiKey] = useState('');
 
     const [whatsappNumber, setWhatsappNumber] = useState('');
+    const [whatsappContentSid, setWhatsappContentSid] = useState('');
 
     // Load existing settings
     useEffect(() => {
@@ -62,6 +63,7 @@ export default function NotificationProviderSettings() {
                     }
                     if (data.whatsapp) {
                         setWhatsappNumber(data.whatsapp.number || '');
+                        setWhatsappContentSid(data.whatsapp.contentSid || '');
                     }
                 }
             } catch (error) {
@@ -110,6 +112,7 @@ export default function NotificationProviderSettings() {
                         },
                         whatsapp: {
                             number: whatsappNumber,
+                            contentSid: whatsappContentSid,
                         },
                     }),
                 });
@@ -235,11 +238,11 @@ export default function NotificationProviderSettings() {
                                     }}>
                                         <strong>ℹ️ Twilio Trial Account Note:</strong>
                                         <br />
-                                        Trial accounts can only send SMS to verified phone numbers. 
+                                        Trial accounts can only send SMS to verified phone numbers.
                                         Verify recipient numbers at{' '}
-                                        <a 
-                                            href="https://twilio.com/user/account/phone-numbers/verified" 
-                                            target="_blank" 
+                                        <a
+                                            href="https://twilio.com/user/account/phone-numbers/verified"
+                                            target="_blank"
                                             rel="noopener noreferrer"
                                             style={{ color: '#2563eb', textDecoration: 'underline' }}
                                         >
@@ -435,6 +438,16 @@ export default function NotificationProviderSettings() {
                                 onChange={(e) => setWhatsappNumber(e.target.value)}
                                 placeholder="+1234567890"
                                 helperText="Your Twilio WhatsApp Business API number in E.164 format. If not set, will use the SMS 'From Number' above."
+                                fullWidth
+                            />
+                            <FormField
+                                type="input"
+                                label="WhatsApp Template SID (Optional)"
+                                inputType="text"
+                                value={whatsappContentSid}
+                                onChange={(e) => setWhatsappContentSid(e.target.value)}
+                                placeholder="HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                helperText="Twilio Content SID for template messages. Required to send notifications outside the 24-hour window."
                                 fullWidth
                             />
                             <div style={{
