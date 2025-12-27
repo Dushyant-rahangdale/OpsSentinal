@@ -38,7 +38,7 @@ export async function snoozeIncidentWithDuration(incidentId: string, durationMin
         await scheduleAutoUnsnooze(incidentId, snoozedUntil);
     } catch (error) {
         console.error(`Failed to schedule auto-unsnooze job for incident ${incidentId}:`, error);
-        // Continue anyway - cron job will pick it up via snoozedUntil field
+        // Continue anyway - internal worker will pick it up via snoozedUntil field
     }
 
     revalidatePath(`/incidents/${incidentId}`);

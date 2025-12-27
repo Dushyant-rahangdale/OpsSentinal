@@ -3,7 +3,6 @@ import { logger } from '@/lib/logger';
 import SystemNotificationSettings from '@/components/settings/SystemNotificationSettings';
 import AppUrlSettings from '@/components/settings/AppUrlSettings';
 import SettingsSection from '@/components/settings/SettingsSection';
-import CronStatusPanel from '@/components/settings/CronStatusPanel';
 import { getNotificationProviders } from './actions';
 
 // Force dynamic rendering to always fetch fresh data
@@ -106,13 +105,6 @@ export default async function SystemSettingsPage() {
                     appUrl={appUrlData.appUrl}
                     fallback={appUrlData.fallback}
                 />
-            </SettingsSection>
-
-            <SettingsSection
-                title="Cron Scheduler"
-                description="Monitor the internal escalation/job scheduler running in this app process."
-            >
-                <CronStatusPanel />
             </SettingsSection>
 
             <SettingsSection

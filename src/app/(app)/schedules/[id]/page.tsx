@@ -252,6 +252,17 @@ export default async function ScheduleDetailPage({
                             All times shown in schedule timezone
                         </span>
                     </p>
+                    <div style={{
+                        marginTop: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        background: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                        color: '#92400e'
+                    }}>
+                        Times entered are interpreted in the schedule timezone. If you change the timezone, re-save layers and overrides.
+                    </div>
                     {canManageSchedules && (
                         <ScheduleEditForm
                             scheduleId={schedule.id}

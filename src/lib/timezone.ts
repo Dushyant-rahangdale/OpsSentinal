@@ -217,6 +217,66 @@ export function isValidTimeZone(timeZone: string): boolean {
  * Format date for input fields (datetime-local format)
  * Converts UTC date to local timezone for display in input
  */
+function getTimeZoneOffsetMs(date: Date, timeZone: string): number {
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(date);
+        const partMap: Record<string, string> = {};
+        for (const part of parts) {
+            if (part.type !== 'literal') {
+                partMap[part.type] = part.value;
+            }
+        }
+        const asUtc = Date.UTC(
+            Number(partMap.year),
+            Number(partMap.month) - 1,
+            Number(partMap.day),
+            Number(partMap.hour),
+            Number(partMap.minute),
+            Number(partMap.second)
+        );
+        return asUtc - date.getTime();
+    } catch {
+        return 0;
+    }
+}
+
+/**
+ * Parse a datetime-local value as a date in the provided timezone.
+ */
+export function parseDateTimeInTimeZone(value: string, timeZone: string): Date | null {
+    if (!value) {
+        return null;
+    }
+
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+    if (!match) {
+        return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+
+    if ([year, month, day, hour, minute].some(Number.isNaN)) {
+        return null;
+    }
+
+    const utcMillis = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+    const offsetMs = getTimeZoneOffsetMs(new Date(utcMillis), timeZone);
+    return new Date(utcMillis - offsetMs);
+}
 export function formatDateForInput(date: Date | string, timeZone: string): string {
     const d = typeof date === 'string' ? new Date(date) : date;
     
@@ -244,4 +304,5 @@ export function formatDateForInput(date: Date | string, timeZone: string): strin
 
     return `${year}-${month}-${day}T${hour}:${minute}`;
 }
+
 

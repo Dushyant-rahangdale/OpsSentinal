@@ -17,6 +17,7 @@ import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import ThemeToggle from '@/components/ThemeToggle';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
+import { startCronScheduler } from '@/lib/cron-scheduler';
 
 export const revalidate = 30;
 
@@ -25,6 +26,8 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  startCronScheduler();
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     redirect('/login');

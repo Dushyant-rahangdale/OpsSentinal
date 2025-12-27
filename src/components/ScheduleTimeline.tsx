@@ -28,7 +28,7 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
         const startDate = new Date(now);
         startDate.setDate(now.getDate() + dateRange.start);
         startDate.setHours(0, 0, 0, 0);
-        
+
         const endDate = new Date(now);
         endDate.setDate(now.getDate() + dateRange.end);
         endDate.setHours(23, 59, 59, 999);
@@ -48,25 +48,25 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
 
         // Group by layer and date to show only one shift per layer per day
         const byLayerAndDay = new Map<string, TimelineShift & { startDate: Date; endDate: Date }>();
-        
+
         inRangeShifts.forEach(shift => {
             // Create a key based on layer name and the day the shift starts
             const shiftStartDay = new Date(shift.startDate);
             shiftStartDay.setHours(0, 0, 0, 0);
             const dayKey = `${shift.layerName}-${shiftStartDay.toISOString().split('T')[0]}`;
-            
+
             if (!byLayerAndDay.has(dayKey)) {
                 byLayerAndDay.set(dayKey, shift);
             } else {
                 const existing = byLayerAndDay.get(dayKey)!;
                 // Prefer the shift that starts on this day (not a continuation from previous day)
                 const shiftStartsOnDay = shift.startDate.getDate() === shiftStartDay.getDate() &&
-                                         shift.startDate.getMonth() === shiftStartDay.getMonth() &&
-                                         shift.startDate.getFullYear() === shiftStartDay.getFullYear();
+                    shift.startDate.getMonth() === shiftStartDay.getMonth() &&
+                    shift.startDate.getFullYear() === shiftStartDay.getFullYear();
                 const existingStartsOnDay = existing.startDate.getDate() === shiftStartDay.getDate() &&
-                                           existing.startDate.getMonth() === shiftStartDay.getMonth() &&
-                                           existing.startDate.getFullYear() === shiftStartDay.getFullYear();
-                
+                    existing.startDate.getMonth() === shiftStartDay.getMonth() &&
+                    existing.startDate.getFullYear() === shiftStartDay.getFullYear();
+
                 if (shiftStartsOnDay && !existingStartsOnDay) {
                     byLayerAndDay.set(dayKey, shift);
                 } else if (shiftStartsOnDay && existingStartsOnDay) {
@@ -102,10 +102,10 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
         const totalMs = timelineEnd.getTime() - timelineStart.getTime();
         const shiftStartMs = shift.startDate.getTime() - timelineStart.getTime();
         const shiftDurationMs = shift.endDate.getTime() - shift.startDate.getTime();
-        
+
         const left = Math.max(0, (shiftStartMs / totalMs) * 100);
         const width = Math.min(100, (shiftDurationMs / totalMs) * 100);
-        
+
         return { left: `${left}%`, width: `${width}%` };
     };
 
@@ -117,7 +117,7 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
             { bg: '#d1fae5', border: '#a7f3d0', text: '#065f46' },
             { bg: '#fee2e2', border: '#fecaca', text: '#991b1b' }
         ];
-        
+
         const map = new Map<string, typeof colors[0]>();
         layers.forEach((layer, index) => {
             map.set(layer.name, colors[index % colors.length]);
@@ -151,17 +151,17 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                 borderBottom: '1px solid #e2e8f0'
             }}>
                 <div>
-                    <h3 style={{ 
-                        fontSize: '1.25rem', 
-                        fontWeight: '700', 
-                        color: 'var(--text-primary)', 
+                    <h3 style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '700',
+                        color: 'var(--text-primary)',
                         margin: 0,
                         marginBottom: '0.25rem'
                     }}>
                         Timeline View
                     </h3>
-                    <p style={{ 
-                        fontSize: '0.85rem', 
+                    <p style={{
+                        fontSize: '0.85rem',
                         color: 'var(--text-muted)',
                         margin: 0
                     }}>
@@ -190,8 +190,8 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                             type="button"
                             onClick={() => setDateRange({ start: 0, end: 6 })}
                             className="glass-button"
-                            style={{ 
-                                padding: '0.4rem 0.75rem', 
+                            style={{
+                                padding: '0.4rem 0.75rem',
                                 fontSize: '0.85rem',
                                 background: dateRange.end === 6 ? '#e0f2fe' : 'white'
                             }}
@@ -202,8 +202,8 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                             type="button"
                             onClick={() => setDateRange({ start: 0, end: 13 })}
                             className="glass-button"
-                            style={{ 
-                                padding: '0.4rem 0.75rem', 
+                            style={{
+                                padding: '0.4rem 0.75rem',
                                 fontSize: '0.85rem',
                                 background: dateRange.end === 13 ? '#e0f2fe' : 'white'
                             }}
@@ -214,8 +214,8 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                             type="button"
                             onClick={() => setDateRange({ start: 0, end: 29 })}
                             className="glass-button"
-                            style={{ 
-                                padding: '0.4rem 0.75rem', 
+                            style={{
+                                padding: '0.4rem 0.75rem',
                                 fontSize: '0.85rem',
                                 background: dateRange.end === 29 ? '#e0f2fe' : 'white'
                             }}
@@ -234,8 +234,8 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                     borderRadius: '8px'
                 }}>
                     <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📊</div>
-                    <p style={{ 
-                        fontSize: '0.9rem', 
+                    <p style={{
+                        fontSize: '0.9rem',
                         color: 'var(--text-muted)',
                         margin: 0
                     }}>
@@ -291,7 +291,7 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                             const position = getShiftPosition(shift);
                             const colors = layerColors.get(shift.layerName) || layerColors.values().next().value || defaultLayerColor;
                             const isMultiDay = shift.startDate.toDateString() !== shift.endDate.toDateString();
-                            
+
                             return (
                                 <div
                                     key={shift.id}
@@ -307,24 +307,28 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        marginBottom: '0.5rem'
+                                        alignItems: 'flex-start',
+                                        marginBottom: '0.5rem',
+                                        gap: '0.75rem',
+                                        flexWrap: 'wrap'
                                     }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <span style={{
                                                 padding: '0.25rem 0.5rem',
                                                 borderRadius: '4px',
                                                 fontSize: '0.75rem',
                                                 fontWeight: '600',
                                                 background: colors.border,
-                                                color: colors.text
+                                                color: colors.text,
+                                                whiteSpace: 'nowrap'
                                             }}>
                                                 {shift.layerName}
                                             </span>
                                             <span style={{
                                                 fontWeight: '600',
                                                 fontSize: '0.9rem',
-                                                color: colors.text
+                                                color: colors.text,
+                                                wordBreak: 'break-word'
                                             }}>
                                                 {shift.userName}
                                             </span>
@@ -334,7 +338,8 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                                                     padding: '0.15rem 0.4rem',
                                                     borderRadius: '4px',
                                                     background: '#fef3c7',
-                                                    color: '#78350f'
+                                                    color: '#78350f',
+                                                    whiteSpace: 'nowrap'
                                                 }}>
                                                     Override
                                                 </span>
@@ -343,13 +348,23 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                                         <div style={{
                                             fontSize: '0.8rem',
                                             color: colors.text,
-                                            opacity: 0.8
+                                            opacity: 0.8,
+                                            whiteSpace: 'nowrap',
+                                            flexShrink: 0
                                         }}>
                                             {formatTime(shift.startDate)} - {formatTime(shift.endDate)}
-                                            {isMultiDay && ` (${formatDate(shift.startDate)} - ${formatDate(shift.endDate)})`}
+                                            {isMultiDay && (
+                                                <div style={{
+                                                    fontSize: '0.75rem',
+                                                    marginTop: '0.25rem',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    ({formatDate(shift.startDate)} - {formatDate(shift.endDate)})
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    
+
                                     {/* Visual bar */}
                                     <div style={{
                                         position: 'absolute',

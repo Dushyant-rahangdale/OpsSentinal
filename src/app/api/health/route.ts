@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { startCronScheduler } from '@/lib/cron-scheduler';
+
+// Start internal cron when the health endpoint is first loaded.
+startCronScheduler();
 
 // Generate a unique ID when the server process starts
 const SERVER_INSTANCE_ID = Date.now().toString();

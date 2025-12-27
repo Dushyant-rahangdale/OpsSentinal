@@ -437,7 +437,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
         const delayMs = nextStep.delayMinutes * 60 * 1000;
         nextEscalationAt = new Date(Date.now() + delayMs);
         escalationStatus = 'ESCALATING';
-        nextStepMessage = `Next escalation step scheduled for ${formatDateTime(nextEscalationAt, 'UTC', { format: 'datetime' })} (${nextStep.delayMinutes} minute delay)`;
+        nextStepMessage = `Next escalation step scheduled for [[scheduledAt=${nextEscalationAt.toISOString()}]] (${nextStep.delayMinutes} minute delay)`;
     }
 
     await prisma.$transaction(async (tx) => {
@@ -503,7 +503,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
                 incidentId,
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
-            // Continue anyway - cron job will pick it up via nextEscalationAt
+            // Continue anyway - internal worker will pick it up via nextEscalationAt
         }
     }
 

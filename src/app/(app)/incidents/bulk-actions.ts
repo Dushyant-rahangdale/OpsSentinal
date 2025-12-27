@@ -533,30 +533,66 @@ export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | '
     }
 
     try {
-        const updateData: any = { status };
+        if (status === 'OPEN') {
+            const incidents = await prisma.incident.findMany({
+                where: { id: { in: incidentIds } },
+                select: {
+                    id: true,
+                    status: true,
+                    currentEscalationStep: true,
+                    service: {
+                        select: {
+                            policy: {
+                                select: {
+                                    steps: {
+                                        orderBy: { stepOrder: 'asc' },
+                                        select: { delayMinutes: true }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
 
-        // Set appropriate timestamps
-        if (status === 'ACKNOWLEDGED') {
-            updateData.acknowledgedAt = new Date();
-        } else if (status === 'RESOLVED') {
-            updateData.resolvedAt = new Date();
-            updateData.escalationStatus = 'COMPLETED';
-            updateData.nextEscalationAt = null;
-        } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
-            updateData.escalationStatus = 'PAUSED';
-            updateData.nextEscalationAt = null;
-        } else if (status === 'OPEN') {
-            updateData.escalationStatus = 'ESCALATING';
-            updateData.nextEscalationAt = new Date();
+            for (const incident of incidents) {
+                let nextEscalationAt: Date | null = new Date();
+                if (incident.status === 'ACKNOWLEDGED') {
+                    const stepIndex = incident.currentEscalationStep ?? 0;
+                    const delayMinutes = incident.service?.policy?.steps?.[stepIndex]?.delayMinutes ?? 0;
+                    nextEscalationAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+                }
+
+                await prisma.incident.update({
+                    where: { id: incident.id },
+                    data: {
+                        status,
+                        escalationStatus: 'ESCALATING',
+                        nextEscalationAt
+                    }
+                });
+            }
+        } else {
+            const updateData: any = { status };
+
+            if (status === 'ACKNOWLEDGED') {
+                updateData.acknowledgedAt = new Date();
+            } else if (status === 'RESOLVED') {
+                updateData.resolvedAt = new Date();
+                updateData.escalationStatus = 'COMPLETED';
+                updateData.nextEscalationAt = null;
+            } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
+                updateData.escalationStatus = 'PAUSED';
+                updateData.nextEscalationAt = null;
+            }
+
+            await prisma.incident.updateMany({
+                where: {
+                    id: { in: incidentIds }
+                },
+                data: updateData
+            });
         }
-
-        // Update all selected incidents
-        await prisma.incident.updateMany({
-            where: {
-                id: { in: incidentIds }
-            },
-            data: updateData
-        });
 
         // Log events for each incident
         const user = await getCurrentUser();

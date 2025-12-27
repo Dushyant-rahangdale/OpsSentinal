@@ -13,7 +13,7 @@ const MAX_RETRY_DELAY_MS = 300000; // 5 minutes
 
 /**
  * Retry failed notifications
- * Should be called periodically (e.g., via cron job)
+ * Should be called periodically by the internal worker
  */
 export async function retryFailedNotifications(): Promise<{
     retried: number;

@@ -20,7 +20,7 @@ interface DateTimeInputProps {
 export default function DateTimeInput({
   label,
   name,
-  value = '',
+  value,
   onChange,
   min,
   max,
@@ -32,30 +32,41 @@ export default function DateTimeInput({
   className = '',
 }: DateTimeInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!disabled) {
-      if (onChange) {
-        onChange(e.target.value);
-      }
+    if (!disabled && onChange) {
+      onChange(e.target.value);
     }
   };
 
+  // Use uncontrolled mode if value is provided but no onChange
+  // Use controlled mode if both value and onChange are provided
+  const inputProps: any = {
+    type: "datetime-local",
+    name,
+    label,
+    onChange: handleChange,
+    min,
+    max,
+    error,
+    helperText,
+    required,
+    fullWidth,
+    disabled,
+  };
+
+  // Only add value/defaultValue if actually provided
+  if (value !== undefined && value !== '') {
+    if (onChange) {
+      // Controlled mode
+      inputProps.value = value;
+    } else {
+      // Uncontrolled mode with default
+      inputProps.defaultValue = value;
+    }
+  }
+
   return (
     <div className={`ui-datetime-input ${fullWidth ? 'ui-datetime-input-full-width' : ''} ${className}`} style={{ width: fullWidth ? '100%' : 'auto' }}>
-      <Input
-        type="datetime-local"
-        name={name}
-        label={label}
-        value={value}
-        onChange={handleChange}
-        min={min}
-        max={max}
-        error={error}
-        helperText={helperText}
-        required={required}
-        fullWidth={fullWidth}
-        disabled={disabled}
-      />
+      <Input {...inputProps} />
     </div>
   );
 }
-

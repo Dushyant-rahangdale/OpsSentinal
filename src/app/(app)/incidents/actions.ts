@@ -19,7 +19,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
         // Get current incident to check if we're setting acknowledgedAt for the first time
         const incident = await tx.incident.findUnique({
             where: { id },
-            select: { status: true, acknowledgedAt: true, resolvedAt: true }
+            select: { status: true, acknowledgedAt: true, resolvedAt: true, currentEscalationStep: true }
         });
 
         if (!incident) {
@@ -64,7 +64,32 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
             // Resuming from any paused state - resume escalation
             if (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED' || incident.status === 'ACKNOWLEDGED') {
                 updateData.escalationStatus = 'ESCALATING';
-                updateData.nextEscalationAt = new Date(); // Resume immediately
+                if (incident.status === 'ACKNOWLEDGED') {
+                    const policyData = await tx.incident.findUnique({
+                        where: { id },
+                        select: {
+                            currentEscalationStep: true,
+                            service: {
+                                select: {
+                                    policy: {
+                                        select: {
+                                            steps: {
+                                                orderBy: { stepOrder: 'asc' },
+                                                select: { delayMinutes: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    const stepIndex = policyData?.currentEscalationStep ?? 0;
+                    const delayMinutes = policyData?.service?.policy?.steps?.[stepIndex]?.delayMinutes ?? 0;
+                    updateData.nextEscalationAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+                } else {
+                    updateData.nextEscalationAt = new Date(); // Resume immediately
+                }
             }
         }
 

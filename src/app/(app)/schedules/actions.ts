@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { assertAdminOrResponder } from '@/lib/rbac';
 import { createInAppNotifications, getScheduleUserIds } from '@/lib/in-app-notifications';
+import { parseDateTimeInTimeZone } from '@/lib/timezone';
 type ScheduleFormState = {
     error?: string | null;
     success?: boolean;
@@ -68,7 +69,7 @@ export async function updateSchedule(scheduleId: string, formData: FormData): Pr
     } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unauthorized. Admin or Responder access required.' };
     }
-    
+
     const name = (formData.get('name') as string)?.trim();
     const timeZone = (formData.get('timeZone') as string) || 'UTC';
 
@@ -112,13 +113,22 @@ export async function createLayer(scheduleId: string, formData: FormData): Promi
         return { error: 'Invalid layer data. Name, start date, and rotation length are required.' };
     }
 
-    const startDate = new Date(start);
-    const endDate = end ? new Date(end) : null;
+    const schedule = await prisma.onCallSchedule.findUnique({
+        where: { id: scheduleId },
+        select: { timeZone: true }
+    });
 
-    if (Number.isNaN(startDate.getTime())) {
+    if (!schedule) {
+        return { error: 'Schedule not found.' };
+    }
+
+    const startDate = parseDateTimeInTimeZone(start, schedule.timeZone);
+    const endDate = end ? parseDateTimeInTimeZone(end, schedule.timeZone) : null;
+
+    if (!startDate) {
         return { error: 'Invalid start date.' };
     }
-    if (endDate && Number.isNaN(endDate.getTime())) {
+    if (end && !endDate) {
         return { error: 'Invalid end date.' };
     }
     if (endDate && endDate <= startDate) {
@@ -273,13 +283,22 @@ export async function updateLayer(layerId: string, formData: FormData): Promise<
         return { error: 'Invalid layer data. Name, start date, and rotation length are required.' };
     }
 
-    const startDate = new Date(start);
-    const endDate = end ? new Date(end) : null;
+    const layerMeta = await prisma.onCallLayer.findUnique({
+        where: { id: layerId },
+        select: { scheduleId: true, schedule: { select: { timeZone: true } } }
+    });
 
-    if (Number.isNaN(startDate.getTime())) {
+    if (!layerMeta) {
+        return { error: 'Layer not found.' };
+    }
+
+    const startDate = parseDateTimeInTimeZone(start, layerMeta.schedule.timeZone);
+    const endDate = end ? parseDateTimeInTimeZone(end, layerMeta.schedule.timeZone) : null;
+
+    if (!startDate) {
         return { error: 'Invalid start date.' };
     }
-    if (endDate && Number.isNaN(endDate.getTime())) {
+    if (end && !endDate) {
         return { error: 'Invalid end date.' };
     }
     if (endDate && endDate <= startDate) {
@@ -297,22 +316,15 @@ export async function updateLayer(layerId: string, formData: FormData): Promise<
             }
         });
 
-        const layer = await prisma.onCallLayer.findUnique({
-            where: { id: layerId },
-            select: { scheduleId: true }
-        });
+        const scheduleName = await getScheduleName(layerMeta.scheduleId);
+        await notifyScheduleMembers(
+            layerMeta.scheduleId,
+            'Schedule updated',
+            `Layer "${name}" updated in ${scheduleName}`
+        );
 
-        if (layer) {
-            const scheduleName = await getScheduleName(layer.scheduleId);
-            await notifyScheduleMembers(
-                layer.scheduleId,
-                'Schedule updated',
-                `Layer "${name}" updated in ${scheduleName}`
-            );
-
-            revalidatePath(`/schedules/${layer.scheduleId}`);
-            revalidatePath('/schedules');
-        }
+        revalidatePath(`/schedules/${layerMeta.scheduleId}`);
+        revalidatePath('/schedules');
     } catch (error) {
         return { error: error instanceof Error ? error.message : 'Failed to update layer.' };
     }
@@ -410,10 +422,19 @@ export async function createOverride(scheduleId: string, formData: FormData): Pr
         return { error: 'User, start date, and end date are required.' };
     }
 
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    const schedule = await prisma.onCallSchedule.findUnique({
+        where: { id: scheduleId },
+        select: { timeZone: true }
+    });
 
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    if (!schedule) {
+        return { error: 'Schedule not found.' };
+    }
+
+    const startDate = parseDateTimeInTimeZone(start, schedule.timeZone);
+    const endDate = parseDateTimeInTimeZone(end, schedule.timeZone);
+
+    if (!startDate || !endDate) {
         return { error: 'Invalid date format.' };
     }
 
@@ -483,3 +504,4 @@ export async function deleteOverride(scheduleId: string, overrideId: string): Pr
         return { error: error instanceof Error ? error.message : 'Failed to delete override.' };
     }
 }
+

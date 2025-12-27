@@ -24,6 +24,22 @@ export default function IncidentTimeline({
     incidentResolvedAt 
 }: IncidentTimelineProps) {
     const { userTimeZone } = useTimezone();
+
+    const formatEscalationMessage = (message: string) => {
+        const match = message.match(/\[\[scheduledAt=([^\]]+)\]\]/);
+        if (!match) {
+            return message;
+        }
+
+        const scheduledAtRaw = match[1];
+        const scheduledAt = new Date(scheduledAtRaw);
+        if (Number.isNaN(scheduledAt.getTime())) {
+            return message.replace(match[0], scheduledAtRaw);
+        }
+
+        const formatted = formatDateTime(scheduledAt, userTimeZone, { format: 'datetime' });
+        return message.replace(match[0], formatted);
+    };
     
     // Create a comprehensive timeline with incident lifecycle events
     const timelineEvents: Array<{
@@ -297,7 +313,7 @@ export default function IncidentTimeline({
                                                     lineHeight: 1.6,
                                                     fontWeight: event.type !== 'EVENT' ? '600' : '400',
                                                 }}>
-                                                    {event.message}
+                                                    {formatEscalationMessage(event.message)}
                                                 </div>
                                             </div>
                                         </div>
