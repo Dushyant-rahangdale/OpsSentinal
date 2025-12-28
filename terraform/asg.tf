@@ -21,12 +21,32 @@ resource "aws_launch_template" "app_lt" {
 
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
+  # Spot Instance Configuration
+  instance_market_options {
+    market_type = "spot"
+    spot_options {
+      spot_instance_type = "one-time"
+      instance_interruption_behavior = "terminate"
+    }
+  }
+
+  # IPv6-only networking (no public IPv4)
+  network_interfaces {
+    associate_public_ip_address = false
+    ipv6_address_count         = 1
+    delete_on_termination      = true
+    device_index              = 0
+    security_groups           = [aws_security_group.web_sg.id]
+  }
+
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
     github_username = var.github_username
     github_token    = var.github_token
     db_password     = var.db_password
     nextauth_secret = var.nextauth_secret
     nextauth_url    = var.nextauth_url
+    origin_cert     = var.origin_cert
+    origin_key      = var.origin_key
   }))
 
   block_device_mappings {

@@ -28,10 +28,28 @@ export async function GET(request: NextRequest) {
         });
 
         const SLACK_CLIENT_ID = config?.clientId || process.env.SLACK_CLIENT_ID;
-        const SLACK_CLIENT_SECRET = config ? await decrypt(config.clientSecret) : process.env.SLACK_CLIENT_SECRET;
+
+        let SLACK_CLIENT_SECRET: string | undefined;
+        try {
+            SLACK_CLIENT_SECRET = config ? await decrypt(config.clientSecret) : process.env.SLACK_CLIENT_SECRET;
+        } catch (decryptError: any) {
+            logger.error('[Slack] Failed to decrypt Slack Client Secret', {
+                error: decryptError.message,
+                configId: config?.id
+            });
+            return NextResponse.json(
+                { error: 'Failed to decrypt Slack configuration. Please re-configure Slack OAuth settings.' },
+                { status: 500 }
+            );
+        }
+
         const SLACK_REDIRECT_URI = config?.redirectUri || process.env.SLACK_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/slack/oauth/callback`;
 
         if (!SLACK_CLIENT_ID || !SLACK_CLIENT_SECRET) {
+            logger.warn('[Slack] Slack OAuth attempted but not fully configured', {
+                hasClientId: !!SLACK_CLIENT_ID,
+                hasClientSecret: !!SLACK_CLIENT_SECRET
+            });
             return NextResponse.json(
                 { error: 'Slack OAuth not configured. Please configure Slack OAuth settings in Settings > Slack OAuth Configuration.' },
                 { status: 503 }
@@ -65,7 +83,7 @@ export async function GET(request: NextRequest) {
         // Store state temporarily (in production, use Redis or session)
         // For now, we'll validate it in the callback
         const response = NextResponse.redirect(authUrl);
-        
+
         // Store state in cookie (encrypted in production)
         response.cookies.set('slack_oauth_state', state, {
             httpOnly: true,
@@ -91,14 +109,15 @@ export async function GET(request: NextRequest) {
             maxAge: 600
         });
 
+        logger.info('[Slack] Redirecting to Slack OAuth', { state, hasServiceId: !!serviceId });
         return response;
     } catch (error: any) {
-        logger.error('[Slack] OAuth initiation error', {
+        logger.error('[Slack] OAuth initiation unexpected error', {
             error: error.message,
             stack: error.stack
         });
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: `Internal server error: ${error.message}` },
             { status: 500 }
         );
     }

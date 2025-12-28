@@ -15,10 +15,11 @@ export async function GET(req: NextRequest) {
         }
 
         // Fetch all email providers from database
-        const [resendProvider, sendgridProvider, smtpProvider] = await Promise.all([
+        const [resendProvider, sendgridProvider, smtpProvider, sesProvider] = await Promise.all([
             prisma.notificationProvider.findUnique({ where: { provider: 'resend' } }),
             prisma.notificationProvider.findUnique({ where: { provider: 'sendgrid' } }),
             prisma.notificationProvider.findUnique({ where: { provider: 'smtp' } }),
+            prisma.notificationProvider.findUnique({ where: { provider: 'ses' } }),
         ]);
 
         const providers = [];
@@ -48,6 +49,16 @@ export async function GET(req: NextRequest) {
             if (config?.host && config?.user && config?.password) {
                 providers.push({
                     provider: 'smtp',
+                    enabled: true,
+                });
+            }
+        }
+
+        if (sesProvider && sesProvider.enabled) {
+            const config = sesProvider.config as any;
+            if (config?.accessKeyId && config?.secretAccessKey) {
+                providers.push({
+                    provider: 'ses',
                     enabled: true,
                 });
             }

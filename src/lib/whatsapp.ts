@@ -93,25 +93,7 @@ export async function sendIncidentWhatsApp(
             : incident.title;
 
         // Send via Twilio WhatsApp API
-        // Use dynamic require wrapped in a function to prevent webpack from statically analyzing it
-        let twilio: any;
-        try {
-            // Wrap in function to prevent webpack static analysis
-            const loadTwilio = () => {
-                try {
-                    return require('twilio');
-                } catch {
-                    return null;
-                }
-            };
-            twilio = loadTwilio();
-            if (!twilio) {
-                throw new Error('Twilio package not installed');
-            }
-        } catch (error: any) {
-            logger.warn('Twilio package not installed', { error: error?.message });
-            return { success: false, error: 'Twilio package not installed. Install it with: npm install twilio' };
-        }
+        const twilio = (await import('twilio')).default as any;
 
         const client = twilio(whatsappConfig.accountSid, whatsappConfig.authToken);
 
@@ -200,25 +182,8 @@ export async function sendWhatsApp(
             return { success: false, error: 'WhatsApp from number not configured' };
         }
 
-        // Use dynamic require wrapped in a function to prevent webpack from statically analyzing it
-        let twilio: any;
-        try {
-            // Wrap in function to prevent webpack static analysis
-            const loadTwilio = () => {
-                try {
-                    return require('twilio');
-                } catch {
-                    return null;
-                }
-            };
-            twilio = loadTwilio();
-            if (!twilio) {
-                throw new Error('Twilio package not installed');
-            }
-        } catch (error: any) {
-            logger.warn('Twilio package not installed', { error: error?.message });
-            return { success: false, error: 'Twilio package not installed. Install it with: npm install twilio' };
-        }
+        // Send via Twilio WhatsApp API
+        const twilio = (await import('twilio')).default as any;
 
         const client = twilio(whatsappConfig.accountSid, whatsappConfig.authToken);
 

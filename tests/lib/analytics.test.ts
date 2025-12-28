@@ -64,7 +64,7 @@ describe('Analytics and Reporting', () => {
             ];
 
             const byHour = incidents.reduce((acc, inc) => {
-                const hour = inc.createdAt.getHours();
+                const hour = inc.createdAt.getUTCHours();
                 acc[hour] = (acc[hour] || 0) + 1;
                 return acc;
             }, {} as Record<number, number>);
@@ -81,7 +81,7 @@ describe('Analytics and Reporting', () => {
             ];
 
             const byDay = incidents.reduce((acc, inc) => {
-                const day = inc.createdAt.getDay();
+                const day = inc.createdAt.getUTCDay();
                 acc[day] = (acc[day] || 0) + 1;
                 return acc;
             }, {} as Record<number, number>);

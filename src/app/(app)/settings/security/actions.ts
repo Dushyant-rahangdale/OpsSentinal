@@ -27,7 +27,10 @@ function isValidDomain(domain: string) {
     return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain);
 }
 
-export async function saveOidcConfig(formData: FormData): Promise<{ error?: string; success?: boolean } | undefined> {
+export async function saveOidcConfig(
+    prevState: { error?: string | null; success?: boolean } | undefined,
+    formData: FormData
+): Promise<{ error?: string | null; success?: boolean }> {
     try {
         await assertAdmin();
     } catch (error) {

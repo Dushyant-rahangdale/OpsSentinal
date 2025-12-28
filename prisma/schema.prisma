@@ -133,6 +133,7 @@ model User {
   teamsLed             Team[]                 @relation("TeamLead")
   slackIntegrations    SlackIntegration[]
   slackOAuthConfigs    SlackOAuthConfig[]     @relation("SlackOAuthConfigUpdater")
+  oidcConfigs          OidcConfig[]
 
   @@index([email]) // CRITICAL: Performance index for email lookups (fixes 2-4s queries)
   @@index([role, status]) // For filtering users by role and status

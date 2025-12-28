@@ -64,7 +64,7 @@ export async function getOidcConfig(): Promise<OidcConfig | null> {
     }
 
     try {
-        const clientSecret = decrypt(config.clientSecret);
+        const clientSecret = await decrypt(config.clientSecret);
         return {
             enabled: config.enabled,
             issuer: config.issuer,

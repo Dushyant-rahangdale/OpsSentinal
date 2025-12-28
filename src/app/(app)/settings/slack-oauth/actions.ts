@@ -31,7 +31,7 @@ export async function saveSlackOAuthConfig(formData: FormData): Promise<{ error?
     // If updating and secret is not provided (or is placeholder), keep existing
     let encryptedSecret = existing?.clientSecret;
     if (clientSecret && clientSecret !== '********' && clientSecret.trim() !== '') {
-        encryptedSecret = encrypt(clientSecret);
+        encryptedSecret = await encrypt(clientSecret);
     } else if (!existing) {
         return { error: 'Client Secret is required for new configuration' };
     }

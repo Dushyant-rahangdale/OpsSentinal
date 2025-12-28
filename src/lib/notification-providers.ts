@@ -30,7 +30,7 @@ export interface PushConfig {
     restApiKey?: string;
 }
 
-export type EmailProvider = 'resend' | 'sendgrid' | 'smtp' | null;
+export type EmailProvider = 'resend' | 'sendgrid' | 'smtp' | 'ses' | null;
 
 export interface EmailConfig {
     enabled: boolean;
@@ -39,6 +39,10 @@ export interface EmailConfig {
     fromEmail?: string;
     source?: string;
     host?: string;
+    accessKeyId?: string;
+    user?: string;
+    port?: string | number;
+    secure?: boolean;
 }
 
 export type NotificationChannelType = 'EMAIL' | 'SMS' | 'PUSH' | 'WHATSAPP';
@@ -97,7 +101,30 @@ export async function getEmailConfig(): Promise<EmailConfig> {
                     apiKey: config.password,
                     fromEmail: config.fromEmail || defaultFromEmail,
                     source: 'smtp',
-                    host: config.host
+                    host: config.host,
+                    user: config.user,
+                    port: config.port,
+                    secure: config.secure === true
+                };
+            }
+        }
+
+        // Check Amazon SES
+        const sesProvider = await prisma.notificationProvider.findUnique({
+            where: { provider: 'ses' }
+        });
+
+        if (sesProvider && sesProvider.enabled && sesProvider.config) {
+            const config = sesProvider.config as any;
+            if (config.accessKeyId && config.secretAccessKey) {
+                return {
+                    enabled: true,
+                    provider: 'ses',
+                    apiKey: config.secretAccessKey,
+                    accessKeyId: config.accessKeyId,
+                    fromEmail: config.fromEmail || defaultFromEmail,
+                    source: 'ses',
+                    host: config.region || 'us-east-1'
                 };
             }
         }
@@ -160,7 +187,20 @@ export async function getStatusPageEmailConfig(statusPageId?: string): Promise<E
                         apiKey: config.password,
                         fromEmail: config.fromEmail || defaultFromEmail,
                         source: 'status-page-smtp',
-                        host: config.host
+                        host: config.host,
+                        user: config.user,
+                        port: config.port,
+                        secure: config.secure === true
+                    };
+                } else if (preferredProvider === 'ses' && config.accessKeyId) {
+                    return {
+                        enabled: true,
+                        provider: 'ses',
+                        apiKey: config.secretAccessKey,
+                        accessKeyId: config.accessKeyId,
+                        fromEmail: config.fromEmail || defaultFromEmail,
+                        source: 'status-page-ses',
+                        host: config.region || 'us-east-1'
                     };
                 }
             }
@@ -327,5 +367,3 @@ export async function getPushConfig(): Promise<PushConfig> {
         provider: null,
     };
 }
-
-

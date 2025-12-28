@@ -1,0 +1,27 @@
+# OpsSentinal Terraform Variables Example
+# Copy this file to terraform.tfvars and replace placeholders with your actual values
+
+github_username = "your-github-username"
+github_token    = "ghp_your_personal_access_token"
+
+db_password     = "your-secure-db-password"
+nextauth_secret = "your-random-nextauth-secret"
+nextauth_url    = "https://your-domain.com"
+
+your_ip         = "1.2.3.4/32"  # Your current public IP for SSH access (find it at https://ifconfig.me)
+
+# Cloudflare Origin CA Certificate (generated in SSL/TLS > Origin Server)
+origin_cert = <<-EOT
+-----BEGIN CERTIFICATE-----
+MIIDzTCCArWgAwIBAgIUYmZjY...
+... (copy everything from Cloudflare) ...
+-----END CERTIFICATE-----
+EOT
+
+# Cloudflare Origin CA Private Key
+origin_key = <<-EOT
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BA...
+... (copy everything from Cloudflare) ...
+-----END PRIVATE KEY-----
+EOT
