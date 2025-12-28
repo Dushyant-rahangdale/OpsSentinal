@@ -17,6 +17,9 @@ import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { startCronScheduler } from '@/lib/cron-scheduler';
 
+// Force all app routes to be dynamic - prevents static generation during build
+// This is necessary because the app requires database access via middleware/auth
+export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
 export default async function AppLayout({
