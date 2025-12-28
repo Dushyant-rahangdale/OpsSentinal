@@ -25,7 +25,7 @@ COPY prisma ./prisma/
 # Install production dependencies including optional dependencies
 # Optional dependencies (twilio, @sendgrid/mail, resend, nodemailer, firebase-admin, onesignal-node, @aws-sdk/client-sns)
 # are needed for notification features. npm ci --only=production installs optionalDependencies by default.
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,target=/root/.npm,id=npm-deps-${TARGETPLATFORM},sharing=locked \
     npm ci --only=production --ignore-scripts --legacy-peer-deps --prefer-offline --no-audit --no-fund && \
     npm cache clean --force && \
     rm -rf /tmp/*
@@ -53,7 +53,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies (including dev)
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,target=/root/.npm,id=npm-builder-${TARGETPLATFORM},sharing=locked \
     npm ci --ignore-scripts --legacy-peer-deps --prefer-offline --no-audit --no-fund && \
     npm cache clean --force
 
@@ -65,7 +65,7 @@ RUN npx prisma generate
 
 # Build Next.js application with production optimizations
 # Pages that need database access are marked as dynamic, so build works without DB
-RUN --mount=type=cache,target=/app/.next/cache \
+RUN --mount=type=cache,target=/app/.next/cache,id=next-build-cache-${TARGETPLATFORM},sharing=locked \
     npm run build
 
 # Stage 3: Production Runner
