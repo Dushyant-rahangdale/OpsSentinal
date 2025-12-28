@@ -15,6 +15,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:run": "vitest run",
+    "test:ci": "npx vitest run --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit.xml",
     "OpsSentinal": "node ./scripts/OpsSentinal.mjs",
     "prepare": "husky install"
   },

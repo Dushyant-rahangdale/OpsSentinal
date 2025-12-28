@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -57,4 +58,19 @@ jobs:
 
       - name: Unit tests
         # DB-backed tests share a single database; run files serially to avoid cross-test contention.
-        run: npm run test:run -- --no-file-parallelism --maxWorkers=1
+        run: mkdir -p reports && npm run test:ci
+
+      - name: Upload test report artifact (JUnit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-junit
+          path: reports/junit.xml
+
+      - name: Publish test results to GitHub Checks
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit tests (Vitest)
+          path: reports/junit.xml
+          reporter: java-junit

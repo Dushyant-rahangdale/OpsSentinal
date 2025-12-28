@@ -51,6 +51,7 @@ query_*.js
 verify_fix.ts
 *.sql
 !prisma/migrations/**/*.sql
+/reports/
 
 # build scripts
 build-docker.ps1
