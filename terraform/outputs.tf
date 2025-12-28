@@ -1,6 +1,6 @@
-output "public_ip" {
-  description = "The static public IP of the server. Point your Cloudflare DNS 'A Record' here."
-  value       = aws_eip.web_eip.public_ip
+output "asg_name" {
+  description = "Name of the Auto Scaling Group"
+  value       = aws_autoscaling_group.app_asg.name
 }
 
 output "security_group_id" {
