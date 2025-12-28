@@ -1,7 +1,6 @@
 output "public_ip" {
   description = "The static public IP of the server. Point your Cloudflare DNS 'A Record' here."
   value       = aws_eip.web_eip.public_ip
-  sensitive   = true
 }
 
 output "security_group_id" {
