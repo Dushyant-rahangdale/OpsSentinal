@@ -43,6 +43,11 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Set a dummy DATABASE_URL for build time only (Prisma requires it for validation)
+# This will be overridden by the actual DATABASE_URL at runtime
+ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
+ENV DATABASE_URL=$DATABASE_URL
+
 # Build Next.js application with production optimizations
 # Pages that need database access are marked as dynamic, so build works without DB
 RUN npm run build
