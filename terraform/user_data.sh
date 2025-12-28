@@ -35,9 +35,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: ops_user
-      POSTGRES_PASSWORD: secure_password_Replace_Me
-      POSTGRES_DB: opssentinal
+      POSTGRES_USER: $${POSTGRES_USER}
+      POSTGRES_PASSWORD: $${POSTGRES_PASSWORD}
+      POSTGRES_DB: $${POSTGRES_DB}
     ports:
       - "5432:5432"
 
