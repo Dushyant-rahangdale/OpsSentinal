@@ -50,17 +50,29 @@ chown ec2-user:ec2-user docker-compose.yml
 # Login to GHCR (Securely passed via Terraform template)
 echo "${github_token}" | docker login ghcr.io -u ${github_username} --password-stdin
 
+# Create .env file with injected secrets
+cat <<ENV > .env
+DATABASE_URL="postgresql://ops_user:${db_password}@db:5432/opssentinal"
+NEXTAUTH_SECRET="${nextauth_secret}"
+NEXTAUTH_URL="${nextauth_url}"
+
+# Postgres Config for Docker Compose (referenced as env vars)
+POSTGRES_USER="ops_user"
+POSTGRES_PASSWORD="${db_password}"
+POSTGRES_DB="opssentinal"
+
+# GitHub Package Token (if app needs it at runtime)
+# GITHUB_TOKEN="${github_token}"
+ENV
+
+chown ec2-user:ec2-user .env
+
 # Pull and Start Logic
 # We create a start script so it can be re-run easily
 cat <<'SCRIPT' > /home/ec2-user/app/start.sh
 #!/bin/bash
 cd /home/ec2-user/app
-# Ensure .env exists (User must populate it manually or via Secrets Manager in real prod)
-if [ ! -f .env ]; then
-  echo "waiting for .env file..."
-  # Just a placeholder to prevent crash loop if .env missing
-  touch .env
-fi
+# No longer waiting for manual .env since we created it via Terraform
 
 docker-compose pull
 docker-compose up -d

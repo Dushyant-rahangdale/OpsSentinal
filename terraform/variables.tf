@@ -14,6 +14,23 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "db_password" {
+  description = "Postgres DB password"
+  type        = string
+  sensitive   = true
+}
+
+variable "nextauth_secret" {
+  description = "NextAuth Secret used for encryption"
+  type        = string
+  sensitive   = true
+}
+
+variable "nextauth_url" {
+  description = "Full URL of your application (e.g. https://status.example.com)"
+  type        = string
+}
+
 variable "project_name" {
   description = "Project name for resource tagging"
   default     = "opssentinal"

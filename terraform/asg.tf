@@ -24,6 +24,9 @@ resource "aws_launch_template" "app_lt" {
   user_data = base64encode(templatefile("${path.module}/user_data.sh", {
     github_username = var.github_username
     github_token    = var.github_token
+    db_password     = var.db_password
+    nextauth_secret = var.nextauth_secret
+    nextauth_url    = var.nextauth_url
   }))
 
   block_device_mappings {
