@@ -10,64 +10,64 @@ chkconfig docker on
 curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
-# Install Nginx
-yum install -y nginx
-systemctl enable nginx
-systemctl start nginx
-
-# Create a robust Nginx Config for Cloudflare -> Docker
-cat <<EOT > /etc/nginx/conf.d/opssentinal.conf
-server {
-    listen 80;
-    server_name _;
-
-    # Security: Hide Nginx Version
-    server_tokens off;
-
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Content-Type-Options "nosniff";
-
-    # Rate Limiting (Needs setup in nginx.conf, but good base here)
-    
-    # Real IP from Cloudflare
-    # (Optional: install realip module for better logs)
-    
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-        
-        # Pass Real IP
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOT
-
-# Remove default nginx server if exists to avoid conflicts
-rm -f /etc/nginx/conf.d/default.conf
-# Restart Nginx to load config
-systemctl restart nginx
-
 # Create app directory
 mkdir -p /home/ec2-user/app
-chown ec2-user:ec2-user /home/ec2-user/app
+cd /home/ec2-user/app
 
-# Attempt to pull and run the public application (if available)
-# Note: This assumes the package is Public. If private, manual login is required once.
-echo "Attempting initial deployment..."
-docker pull ghcr.io/dushyant-rahangdale/opssentinal:latest || echo "Image pull failed. Is it private? Please SSH and login."
+# Write Docker Compose File
+cat <<EOT > docker-compose.yml
+services:
+  app:
+    image: ghcr.io/dushyant-rahangdale/opssentinal:latest
+    container_name: opssentinal
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
 
-docker run -d \
-  --name opssentinal \
-  --restart always \
-  -p 3000:3000 \
-  --env-file /home/ec2-user/.env \
-  ghcr.io/dushyant-rahangdale/opssentinal:latest || echo "Container start failed. Check .env file."
+  db:
+    image: postgres:15-alpine
+    container_name: opssentinal_db
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ops_user
+      POSTGRES_PASSWORD: secure_password_Replace_Me
+      POSTGRES_DB: opssentinal
+    ports:
+      - "5432:5432"
 
+volumes:
+  postgres_data:
+EOT
+
+chown ec2-user:ec2-user docker-compose.yml
+
+# Login to GHCR (Securely passed via Terraform template)
+echo "${github_token}" | docker login ghcr.io -u ${github_username} --password-stdin
+
+# Pull and Start Logic
+# We create a start script so it can be re-run easily
+cat <<'SCRIPT' > /home/ec2-user/app/start.sh
+#!/bin/bash
+cd /home/ec2-user/app
+# Ensure .env exists (User must populate it manually or via Secrets Manager in real prod)
+if [ ! -f .env ]; then
+  echo "waiting for .env file..."
+  # Just a placeholder to prevent crash loop if .env missing
+  touch .env
+fi
+
+docker-compose pull
+docker-compose up -d
+SCRIPT
+
+chmod +x /home/ec2-user/app/start.sh
+chown ec2-user:ec2-user /home/ec2-user/app/start.sh
+
+# Run it now
+/home/ec2-user/app/start.sh

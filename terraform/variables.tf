@@ -3,6 +3,17 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "github_username" {
+  description = "GitHub username to pull container image"
+  type        = string
+}
+
+variable "github_token" {
+  description = "GitHub Personal Access Token (CR_PAT) to pull container image"
+  type        = string
+  sensitive   = true
+}
+
 variable "project_name" {
   description = "Project name for resource tagging"
   default     = "opssentinal"
