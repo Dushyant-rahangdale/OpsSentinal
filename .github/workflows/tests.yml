@@ -52,7 +52,9 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Prepare test database schema
-        run: npx prisma migrate deploy
+        # Migrations in this repo may lag behind schema.prisma; for CI tests we need the latest schema.
+        run: npx prisma db push --force-reset --accept-data-loss --skip-generate
 
       - name: Unit tests
-        run: npm run test:run
+        # DB-backed tests share a single database; run files serially to avoid cross-test contention.
+        run: npm run test:run -- --no-file-parallelism --maxWorkers=1

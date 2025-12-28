@@ -1,108 +1,112 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import PublicStatusPage from '@/app/(public)/status/page';
 
 // Mock the prisma client
-const mockPrisma = {
-    statusPage: {
-        findFirst: vi.fn(),
-        create: vi.fn(),
-    },
-    service: {
-        findMany: vi.fn(),
-    },
-    incident: {
-        findMany: vi.fn(),
-    },
-};
+const mockPrisma = vi.hoisted(() => ({
+  statusPage: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+  },
+  service: {
+    findMany: vi.fn(),
+  },
+  incident: {
+    findMany: vi.fn(),
+  },
+}));
 
 vi.mock('@/lib/prisma', () => ({
-    default: mockPrisma,
+  default: mockPrisma,
 }));
 
 // Mock child components to simplify testing
 vi.mock('@/components/status-page/StatusPageHeader', () => ({
-    default: () => <div data-testid="status-page-header">Header</div>,
+  default: () => <div data-testid="status-page-header">Header</div>,
 }));
 vi.mock('@/components/status-page/StatusPageServices', () => ({
-    default: () => <div data-testid="status-page-services">Services</div>,
+  default: () => <div data-testid="status-page-services">Services</div>,
 }));
 vi.mock('@/components/status-page/StatusPageIncidents', () => ({
-    default: () => <div data-testid="status-page-incidents">Incidents</div>,
+  default: () => <div data-testid="status-page-incidents">Incidents</div>,
 }));
 vi.mock('@/components/status-page/StatusPageAnnouncements', () => ({
-    default: () => <div data-testid="status-page-announcements">Announcements</div>,
+  default: () => <div data-testid="status-page-announcements">Announcements</div>,
 }));
 
 describe('PublicStatusPage Custom CSS', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders custom css when provided in status page config', async () => {
+    const customCss = '.custom-class { color: red !important; }';
+
+    // Mock the status page response with custom CSS
+    mockPrisma.statusPage.findFirst.mockResolvedValue({
+      id: 'sp-1',
+      name: 'Status Page',
+      enabled: true,
+      showServices: true,
+      showIncidents: true,
+      branding: {
+        customCss: customCss,
+        primaryColor: '#000000',
+      },
+      services: [],
+      announcements: [],
+    });
+    mockPrisma.service.findMany.mockResolvedValue([]);
+    mockPrisma.incident.findMany.mockResolvedValue([]);
+
+    // We need to await the component since it's an async server component
+    // In actual Next.js this is handled by the framework, but for testing we await it directly
+    const component = await PublicStatusPage();
+    render(component);
+
+    // Look for the style tag containing our custom CSS
+    // The style tag is rendered using dangerouslySetInnerHTML, so we can check if the text exists in the document
+    // We might need to inspect the rendered HTML or look for a style element
+    const styleTags = document.querySelectorAll('style');
+    let cssFound = false;
+
+    styleTags.forEach(tag => {
+      if (tag.innerHTML.includes(customCss)) {
+        cssFound = true;
+      }
     });
 
-    it('renders custom css when provided in status page config', async () => {
-        const customCss = '.custom-class { color: red !important; }';
+    expect(cssFound).toBe(true);
+  });
 
-        // Mock the status page response with custom CSS
-        mockPrisma.statusPage.findFirst.mockResolvedValue({
-            id: 'sp-1',
-            name: 'Status Page',
-            enabled: true,
-            showServices: true,
-            showIncidents: true,
-            branding: {
-                customCss: customCss,
-                primaryColor: '#000000',
-            },
-            services: [],
-            announcements: [],
-        });
+  it('does not render custom css when not provided', async () => {
+    mockPrisma.statusPage.findFirst.mockResolvedValue({
+      id: 'sp-1',
+      name: 'Status Page',
+      enabled: true,
+      branding: {
+        customCss: '',
+      },
+      services: [],
+      announcements: [],
+    });
+    mockPrisma.service.findMany.mockResolvedValue([]);
+    mockPrisma.incident.findMany.mockResolvedValue([]);
 
-        // We need to await the component since it's an async server component
-        // In actual Next.js this is handled by the framework, but for testing we await it directly
-        const component = await PublicStatusPage();
-        render(component);
+    const component = await PublicStatusPage();
+    render(component);
 
-        // Look for the style tag containing our custom CSS
-        // The style tag is rendered using dangerouslySetInnerHTML, so we can check if the text exists in the document
-        // We might need to inspect the rendered HTML or look for a style element
-        const styleTags = document.querySelectorAll('style');
-        let cssFound = false;
+    const styleTags = document.querySelectorAll('style');
+    let cssFound = false;
 
-        styleTags.forEach(tag => {
-            if (tag.innerHTML.includes(customCss)) {
-                cssFound = true;
-            }
-        });
+    const customCssSignature = '.custom-class';
 
-        expect(cssFound).toBe(true);
+    styleTags.forEach(tag => {
+      if (tag.innerHTML.includes(customCssSignature)) {
+        cssFound = true;
+      }
     });
 
-    it('does not render custom css when not provided', async () => {
-        mockPrisma.statusPage.findFirst.mockResolvedValue({
-            id: 'sp-1',
-            name: 'Status Page',
-            enabled: true,
-            branding: {
-                customCss: '',
-            },
-            services: [],
-            announcements: [],
-        });
-
-        const component = await PublicStatusPage();
-        render(component);
-
-        const styleTags = document.querySelectorAll('style');
-        let cssFound = false;
-
-        const customCssSignature = '.custom-class';
-
-        styleTags.forEach(tag => {
-            if (tag.innerHTML.includes(customCssSignature)) {
-                cssFound = true;
-            }
-        });
-
-        expect(cssFound).toBe(false);
-    });
+    expect(cssFound).toBe(false);
+  });
 });
