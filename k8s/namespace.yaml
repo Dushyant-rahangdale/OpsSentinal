@@ -1,7 +1,8 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: opsguard
+  name: OpsSentinal
   labels:
-    name: opsguard
-    app: opsguard
+    name: OpsSentinal
+    app: OpsSentinal
+

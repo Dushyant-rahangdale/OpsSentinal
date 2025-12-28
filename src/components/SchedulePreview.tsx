@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 type PreviewLayer = {
     id: string;
@@ -63,14 +64,8 @@ export default function SchedulePreview({ layers, timeZone, startDate, endDate }
         return blocks.sort((a, b) => a.start.getTime() - b.start.getTime());
     }, [layers, startDate, endDate]);
 
-    const formatDateTime = (date: Date) => {
-        return date.toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone
-        });
+    const formatDateTimeLocal = (date: Date) => {
+        return formatDateTime(date, timeZone, { format: 'short' });
     };
 
     if (previewBlocks.length === 0) {
@@ -138,7 +133,7 @@ export default function SchedulePreview({ layers, timeZone, startDate, endDate }
                                 </span>
                             </div>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                {formatDateTime(block.start)} - {formatDateTime(block.end)}
+                                {formatDateTimeLocal(block.start)} - {formatDateTimeLocal(block.end)}
                             </span>
                         </div>
                     </div>

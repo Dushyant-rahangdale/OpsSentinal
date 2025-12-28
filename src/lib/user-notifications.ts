@@ -3,7 +3,7 @@
  * 
  * Architecture:
  * - Users configure their notification preferences (email, SMS, push)
- * - System-level providers are configured via env vars (Twilio, SMTP, etc.)
+ * - System-level providers are configured via database (Settings → System → Notification Providers)
  * - Service-level: Only Slack webhook URL
  * - When sending notifications, check user preferences and system provider availability
  */
@@ -18,6 +18,8 @@ import { logger } from './logger';
 /**
  * Get user's enabled notification channels based on their preferences
  * and system provider availability
+ * 
+ * Returns channels in priority order: PUSH → SMS → WhatsApp → EMAIL
  */
 export async function getUserNotificationChannels(userId: string): Promise<NotificationChannel[]> {
     const user = await prisma.user.findUnique({
@@ -26,6 +28,7 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
             emailNotificationsEnabled: true,
             smsNotificationsEnabled: true,
             pushNotificationsEnabled: true,
+            whatsappNotificationsEnabled: true,
             phoneNumber: true,
             email: true
         }
@@ -37,9 +40,10 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
 
     const channels: NotificationChannel[] = [];
 
-    // Email: Check user preference and system availability
-    if (user.emailNotificationsEnabled && await isChannelAvailable('EMAIL')) {
-        channels.push('EMAIL');
+    // Priority order: PUSH → SMS → WhatsApp → EMAIL
+    // Push: Check user preference and system availability
+    if (user.pushNotificationsEnabled && await isChannelAvailable('PUSH')) {
+        channels.push('PUSH');
     }
 
     // SMS: Check user preference, phone number, and system availability
@@ -47,9 +51,17 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
         channels.push('SMS');
     }
 
-    // Push: Check user preference and system availability
-    if (user.pushNotificationsEnabled && await isChannelAvailable('PUSH')) {
-        channels.push('PUSH');
+    // WhatsApp: Check user preference and system availability (Twilio)
+    if (user.whatsappNotificationsEnabled && user.phoneNumber) {
+        const whatsappConfig = await import('./notification-providers').then(m => m.getWhatsAppConfig());
+        if (whatsappConfig.enabled && whatsappConfig.provider === 'twilio') {
+            channels.push('WHATSAPP');
+        }
+    }
+
+    // Email: Check user preference and system availability
+    if (user.emailNotificationsEnabled && await isChannelAvailable('EMAIL')) {
+        channels.push('EMAIL');
     }
 
     // No fallback - respect user's notification preferences
@@ -59,13 +71,34 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
 
 /**
  * Send notifications to a user based on their preferences
+ * @param incidentId - The incident ID
+ * @param userId - The user ID to notify
+ * @param message - The notification message
+ * @param escalationChannels - Optional: Override user preferences with escalation step channels
  */
 export async function sendUserNotification(
     incidentId: string,
     userId: string,
-    message: string
+    message: string,
+    escalationChannels?: NotificationChannel[]
 ): Promise<{ success: boolean; channelsUsed: NotificationChannel[]; errors?: string[] }> {
-    const channels = await getUserNotificationChannels(userId);
+    let channels: NotificationChannel[];
+
+    // If escalation step specifies channels, use those (filtered by user preferences and availability)
+    if (escalationChannels && escalationChannels.length > 0) {
+        const userChannels = await getUserNotificationChannels(userId);
+        // Intersection: only use channels that are both in escalation step AND available for user
+        channels = escalationChannels.filter(ch => userChannels.includes(ch));
+
+        // If no intersection, fall back to user preferences
+        if (channels.length === 0) {
+            channels = userChannels;
+        }
+    } else {
+        // Use user preferences
+        channels = await getUserNotificationChannels(userId);
+    }
+
     const errors: string[] = [];
     const channelsUsed: NotificationChannel[] = [];
 
@@ -73,7 +106,7 @@ export async function sendUserNotification(
         return {
             success: false,
             channelsUsed: [],
-            errors: ['No notification channels available for user']
+            errors: ['User has not enabled any notification channels. Please configure notification preferences in Settings.']
         };
     }
 
@@ -100,7 +133,7 @@ export async function sendUserNotification(
  */
 export async function sendServiceNotifications(
     incidentId: string,
-    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated'
+    eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated', excludeUserIds: string[] = []
 ): Promise<{ success: boolean; errors?: string[] }> {
     try {
         const incident = await prisma.incident.findUnique({
@@ -140,7 +173,7 @@ export async function sendServiceNotifications(
         }
 
         // Remove duplicates
-        const uniqueRecipients = [...new Set(recipients)];
+        const uniqueRecipients = [...new Set(recipients)].filter(id => !excludeUserIds.includes(id));
 
         const eventTitle = eventType === 'triggered'
             ? 'New Incident'
@@ -178,6 +211,7 @@ export async function sendServiceNotifications(
                 emailNotificationsEnabled: true,
                 smsNotificationsEnabled: true,
                 pushNotificationsEnabled: true,
+                whatsappNotificationsEnabled: true,
                 phoneNumber: true,
                 email: true
             }
@@ -189,6 +223,10 @@ export async function sendServiceNotifications(
             isChannelAvailable('SMS'),
             isChannelAvailable('PUSH')
         ]);
+
+        // Check WhatsApp availability (requires Twilio)
+        const whatsappConfig = await import('./notification-providers').then(m => m.getWhatsAppConfig());
+        const whatsappAvailable = whatsappConfig.enabled && whatsappConfig.provider === 'twilio';
 
         // Create a map for quick lookup
         const userMap = new Map(users.map(u => [u.id, u]));
@@ -202,19 +240,23 @@ export async function sendServiceNotifications(
             }
 
             // Determine channels for this user
+            // Priority order: PUSH → SMS → WhatsApp → EMAIL
             const channels: NotificationChannel[] = [];
-            if (user.emailNotificationsEnabled && emailAvailable) {
-                channels.push('EMAIL');
+            if (user.pushNotificationsEnabled && pushAvailable) {
+                channels.push('PUSH');
             }
             if (user.smsNotificationsEnabled && user.phoneNumber && smsAvailable) {
                 channels.push('SMS');
             }
-            if (user.pushNotificationsEnabled && pushAvailable) {
-                channels.push('PUSH');
+            if (user.whatsappNotificationsEnabled && user.phoneNumber && whatsappAvailable) {
+                channels.push('WHATSAPP');
+            }
+            if (user.emailNotificationsEnabled && emailAvailable) {
+                channels.push('EMAIL');
             }
 
             if (channels.length === 0) {
-                return { userId, success: false, error: 'No notification channels available' };
+                return { userId, success: false, error: 'User has not enabled any notification channels. Please configure notification preferences in Settings.' };
             }
 
             // Send via all enabled channels
@@ -234,18 +276,28 @@ export async function sendServiceNotifications(
         });
 
         const notificationResults = await Promise.all(notificationPromises);
-        
+
         for (const result of notificationResults) {
             if (!result.success) {
                 errors.push(`User ${result.userId}: ${result.error || result.errors?.join(', ') || 'Failed'}`);
             }
         }
 
-        // Send service-level Slack notification (if configured)
+        // Send service-level Slack notification (if configured legacy way)
         if (incident.service.slackWebhookUrl && eventType !== 'updated') {
             await notifySlackForIncident(incidentId, eventType).catch(err => {
                 errors.push(`Slack notification failed: ${err.message}`);
             });
+        }
+
+        // Trigger Service Webhook Integrations (Slack/Generic/Teams)
+        // This connects the "User Notification" flow to the "Service Integration" flow
+        try {
+            const { sendServiceNotifications: sendIntegrationNotifications } = await import('./service-notifications');
+            await sendIntegrationNotifications(incidentId, eventType);
+        } catch (err: any) {
+            console.error('Failed to send service integration notifications:', err);
+            // Don't block the response, just log it
         }
 
         return {

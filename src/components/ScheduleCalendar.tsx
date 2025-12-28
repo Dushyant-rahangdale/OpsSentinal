@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 type CalendarShift = {
     id: string;
@@ -244,16 +245,8 @@ export default function ScheduleCalendar({ shifts, timeZone }: ScheduleCalendarP
                                     {(showAll ? cell.shifts : preview).map((shift) => {
                                         const start = new Date(shift.start);
                                         const end = new Date(shift.end);
-                                        const startTime = start.toLocaleTimeString('en-US', { 
-                                            hour: 'numeric', 
-                                            minute: '2-digit',
-                                            hour12: true 
-                                        });
-                                        const endTime = end.toLocaleTimeString('en-US', { 
-                                            hour: 'numeric', 
-                                            minute: '2-digit',
-                                            hour12: true 
-                                        });
+                                        const startTime = formatDateTime(start, timeZone, { format: 'time' });
+                                        const endTime = formatDateTime(end, timeZone, { format: 'time' });
                                         const isMultiDay = start.toDateString() !== end.toDateString();
                                         return (
                                             <div key={shift.id} className="calendar-shift" title={`${startTime} - ${endTime}${isMultiDay ? ' (spans multiple days)' : ''}`}>

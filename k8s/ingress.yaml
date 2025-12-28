@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: opsguard-ingress
-  namespace: opsguard
+  name: OpsSentinal-ingress
+  namespace: OpsSentinal
   annotations:
     # Nginx Ingress Controller annotations
     kubernetes.io/ingress.class: nginx
@@ -28,18 +28,19 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: opsguard.example.com  # Update with your domain
+  - host: OpsSentinal.example.com  # Update with your domain
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: opsguard-service
+            name: OpsSentinal-service
             port:
               number: 80
   # TLS/HTTPS configuration
   tls:
   - hosts:
-    - opsguard.example.com  # Update with your domain
-    secretName: opsguard-tls
+    - OpsSentinal.example.com  # Update with your domain
+    secretName: OpsSentinal-tls
+

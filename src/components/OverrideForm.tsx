@@ -17,16 +17,23 @@ export default function OverrideForm({ scheduleId, users, canManageSchedules, cr
     const { showToast } = useToast();
     const [isPending, startTransition] = useTransition();
 
-    const handleSubmit = async (formData: FormData) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
         startTransition(async () => {
-            const result = await createOverride(scheduleId, formData);
-            if (result?.error) {
-                showToast(result.error, 'error');
-            } else {
-                const userId = formData.get('userId') as string;
-                const userName = users.find(u => u.id === userId)?.name || 'User';
-                showToast(`Override created for ${userName}`, 'success');
-                router.refresh();
+            try {
+                const result = await createOverride(scheduleId, formData);
+                if (result?.error) {
+                    showToast(result.error, 'error');
+                } else {
+                    const userId = formData.get('userId') as string;
+                    const userName = users.find(u => u.id === userId)?.name || 'User';
+                    showToast(`Override created for ${userName}`, 'success');
+                    router.refresh();
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                showToast(errorMessage || 'Failed to create override', 'error');
             }
         });
     };
@@ -122,7 +129,7 @@ export default function OverrideForm({ scheduleId, users, canManageSchedules, cr
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', fontStyle: 'italic', lineHeight: 1.5 }}>
                 Temporarily replace on-call coverage. Times use your browser local time.
             </p>
-            <form action={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                         On-call user

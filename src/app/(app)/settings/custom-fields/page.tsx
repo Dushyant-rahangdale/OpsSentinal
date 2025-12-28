@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import CustomFieldsConfig from '@/components/CustomFieldsConfig';
+import SettingsPage from '@/components/settings/SettingsPage';
+import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
 
 export default async function CustomFieldsPage() {
     const session = await getServerSession(authOptions);
@@ -29,20 +31,22 @@ export default async function CustomFieldsPage() {
     });
 
     return (
-        <div style={{ padding: 'var(--spacing-6)' }}>
-            <div style={{ marginBottom: 'var(--spacing-6)' }}>
-                <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-2)' }}>
-                    Custom Fields
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-base)' }}>
-                    Define custom fields to capture additional incident information
-                </p>
-            </div>
-
-            <CustomFieldsConfig customFields={customFields} />
-        </div>
+        <SettingsPage
+            currentPageId="custom-fields"
+            backHref="/settings"
+            title="Custom Fields"
+            description="Define custom fields to capture additional incident information."
+        >
+            <SettingsSectionCard
+                title="Custom field builder"
+                description="Create, edit, and manage structured incident metadata."
+            >
+                <CustomFieldsConfig customFields={customFields} />
+            </SettingsSectionCard>
+        </SettingsPage>
     );
 }
+
 
 
 

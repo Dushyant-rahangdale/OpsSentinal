@@ -1,0 +1,22 @@
+-- AlterTable
+ALTER TABLE "StatusPage" ADD COLUMN "privacyMode" TEXT DEFAULT 'PUBLIC',
+ADD COLUMN "showIncidentDetails" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showIncidentTitles" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showIncidentDescriptions" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showAffectedServices" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showIncidentTimestamps" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showServiceMetrics" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showServiceDescriptions" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showTeamInformation" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "showCustomFields" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "showIncidentAssignees" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "showIncidentUrgency" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showUptimeHistory" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showRecentIncidents" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "maxIncidentsToShow" INTEGER NOT NULL DEFAULT 50,
+ADD COLUMN "incidentHistoryDays" INTEGER NOT NULL DEFAULT 90,
+ADD COLUMN "allowedCustomFields" JSONB,
+ADD COLUMN "dataRetentionDays" INTEGER,
+ADD COLUMN "requireAuth" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "authProvider" TEXT;
+

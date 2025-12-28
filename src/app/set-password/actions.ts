@@ -17,7 +17,8 @@ export async function setPassword(formData: FormData) {
 
     const passwordError = validatePasswordStrength(password || '');
     if (passwordError) {
-        redirect(`/set-password?token=${encodeURIComponent(token)}&error=weak`);
+        const code = passwordError.includes('include') ? 'complexity' : 'weak';
+        redirect(`/set-password?token=${encodeURIComponent(token)}&error=${code}`);
     }
 
     if (password !== confirmPassword) {

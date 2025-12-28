@@ -6,16 +6,41 @@ type IncidentResolutionProps = {
     onResolve: (formData: FormData) => void;
 };
 
+import { useFormStatus } from 'react-dom';
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+
+    return (
+        <button
+            type="submit"
+            disabled={pending}
+            className="glass-button primary"
+            style={{
+                width: '100%',
+                borderRadius: '0px',
+                padding: '0.875rem 1.5rem',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                opacity: pending ? 0.7 : 1,
+                cursor: pending ? 'not-allowed' : 'pointer'
+            }}
+        >
+            {pending ? 'Resolving...' : 'Resolve with Note'}
+        </button>
+    );
+}
+
 export default function IncidentResolution({ incidentId, canManage, onResolve }: IncidentResolutionProps) {
     if (!canManage) {
         return (
-            <div className="glass-panel" style={{ 
-                padding: '1.5rem', 
-                background: '#f9fafb', 
-                border: '1px solid #e5e7eb', 
+            <div className="glass-panel" style={{
+                padding: '1.5rem',
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
                 borderRadius: '0px',
-                boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)', 
-                opacity: 0.7 
+                boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
+                opacity: 0.7
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h4 style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>Resolution</h4>
@@ -30,12 +55,12 @@ export default function IncidentResolution({ incidentId, canManage, onResolve }:
                         disabled
                         rows={4}
                         placeholder="Root cause, fix applied, or summary..."
-                        style={{ 
-                            width: '100%', 
-                            padding: '0.75rem', 
-                            borderRadius: '0px', 
-                            border: '1px solid #e2e8f0', 
-                            resize: 'vertical', 
+                        style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0px',
+                            border: '1px solid #e2e8f0',
+                            resize: 'vertical',
                             background: '#f3f4f6',
                             fontSize: '0.9rem'
                         }}
@@ -52,12 +77,12 @@ export default function IncidentResolution({ incidentId, canManage, onResolve }:
     }
 
     return (
-        <div className="glass-panel" style={{ 
-            padding: '1.5rem', 
-            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', 
-            border: '1px solid #e6e8ef', 
+        <div className="glass-panel" style={{
+            padding: '1.5rem',
+            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+            border: '1px solid #e6e8ef',
             borderRadius: '0px',
-            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)' 
+            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h4 style={{ fontWeight: '700' }}>Resolution</h4>
@@ -71,12 +96,12 @@ export default function IncidentResolution({ incidentId, canManage, onResolve }:
                     maxLength={1000}
                     rows={4}
                     placeholder="Root cause, fix applied, or summary..."
-                    style={{ 
-                        width: '100%', 
-                        padding: '0.875rem', 
-                        borderRadius: '0px', 
-                        border: '1px solid var(--border)', 
-                        resize: 'vertical', 
+                    style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        borderRadius: '0px',
+                        border: '1px solid var(--border)',
+                        resize: 'vertical',
                         background: '#fff',
                         fontSize: '0.9rem',
                         fontFamily: 'inherit',
@@ -93,19 +118,7 @@ export default function IncidentResolution({ incidentId, canManage, onResolve }:
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     10-1000 chars. Supports **bold**, *italic*, `code`, links.
                 </div>
-                <button 
-                    type="submit" 
-                    className="glass-button primary" 
-                    style={{ 
-                        width: '100%',
-                        borderRadius: '0px',
-                        padding: '0.875rem 1.5rem',
-                        fontWeight: 600,
-                        fontSize: '0.9rem'
-                    }}
-                >
-                    Resolve with Note
-                </button>
+                <SubmitButton />
             </form>
         </div>
     );

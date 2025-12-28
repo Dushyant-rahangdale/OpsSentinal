@@ -9,6 +9,7 @@ type ServiceCardProps = {
         id: string;
         name: string;
         description: string | null;
+        region?: string | null;
         status: string;
         team: { id: string; name: string } | null;
         policy: { id: string; name: string } | null;
@@ -70,8 +71,14 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
                         )}
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                     <span>{service.team?.name || 'Unassigned'}</span>
+                    {service.region && (
+                        <>
+                            <span>ƒ?›</span>
+                            <span>{service.region}</span>
+                        </>
+                    )}
                     {openIncidents.length > 0 && (
                         <>
                             <span>•</span>
@@ -191,6 +198,27 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
                             {service.description}
                         </p>
                     )}
+                    {service.region && (
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.3rem 0.65rem',
+                            borderRadius: '999px',
+                            border: '1px solid rgba(15, 23, 42, 0.1)',
+                            background: 'rgba(15, 23, 42, 0.03)',
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            marginBottom: '0.75rem',
+                        }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            {service.region}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -309,6 +337,7 @@ export default memo(ServiceCard, (prevProps, nextProps) => {
         prevProps.service.id === nextProps.service.id &&
         prevProps.service.name === nextProps.service.name &&
         prevProps.service.description === nextProps.service.description &&
+        prevProps.service.region === nextProps.service.region &&
         prevProps.service.status === nextProps.service.status &&
         prevProps.service.dynamicStatus === nextProps.service.dynamicStatus &&
         prevProps.service.team?.id === nextProps.service.team?.id &&

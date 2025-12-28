@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 interface StatusPageHeaderProps {
     statusPage: {
@@ -42,9 +43,9 @@ const STATUS_CONFIG = {
 
 export default function StatusPageHeader({ statusPage, overallStatus, branding = {}, lastUpdated }: StatusPageHeaderProps) {
     const status = STATUS_CONFIG[overallStatus];
-    const logoUrl = branding.logoUrl;
+    const logoUrl = branding.logoUrl || '/logo.svg';
     const primaryColor = branding.primaryColor || '#667eea';
-    const textColor = branding.textColor || '#111827';
+    const textColor = branding.textColor || 'var(--status-text, #111827)';
     const [updatedLabel, setUpdatedLabel] = useState<string | null>(null);
     const [isVisible, setIsVisible] = useState(false);
 
@@ -72,24 +73,25 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
             const hours = Math.floor(minutes / 60);
 
             if (seconds < 60) {
-                setUpdatedLabel('just now');
+                const remaining = Math.max(0, 60 - seconds);
+                setUpdatedLabel(`00:${String(remaining).padStart(2, '0')}`);
             } else if (minutes < 60) {
                 setUpdatedLabel(`${minutes} minute${minutes !== 1 ? 's' : ''} ago`);
             } else if (hours < 24) {
                 setUpdatedLabel(`${hours} hour${hours !== 1 ? 's' : ''} ago`);
             } else {
-                const label = new Intl.DateTimeFormat(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }).format(parsed);
+                // Use browser timezone for public status page
+                const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const label = formatDateTime(parsed, browserTz, {
+                    format: 'short',
+                    hour12: true
+                });
                 setUpdatedLabel(label);
             }
         };
 
         updateLabel();
-        const interval = setInterval(updateLabel, 60000); // Update every minute
+        const interval = setInterval(updateLabel, 1000); // Update every second for the countdown
         return () => clearInterval(interval);
     }, [lastUpdated]);
 
@@ -99,19 +101,19 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
             style={{
                 background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
                 borderBottom: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100,
                 transition: 'all 0.3s ease',
             }}
         >
-            <div style={{ 
-                width: '100%', 
+            <div style={{
+                width: '100%',
                 maxWidth: '1400px',
-                margin: '0 auto', 
-                padding: '2.5rem 2rem', 
-                boxSizing: 'border-box' 
+                margin: '0 auto',
+                padding: 'clamp(0.5rem, 2vw, 1.5rem) clamp(0.5rem, 2vw, 1.5rem)',
+                boxSizing: 'border-box'
             }}>
                 <div style={{
                     display: 'flex',
@@ -119,44 +121,44 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                     alignItems: 'center',
                     flexDirection: 'row',
                     flexWrap: 'wrap',
-                    gap: '1.5rem',
+                    gap: 'clamp(0.5rem, 1.5vw, 1rem)', // Reduce gap
                     opacity: isVisible ? 1 : 0,
                     transform: isVisible ? 'translateY(0)' : 'translateY(-10px)',
                     transition: 'opacity 0.5s ease, transform 0.5s ease',
                 }}>
-                    <div style={{ 
-                        display: 'flex', 
+                    <div style={{
+                        display: 'flex',
                         alignItems: 'center',
-                        gap: '1.25rem',
-                        flex: 1,
-                        minWidth: '260px',
-                        flexWrap: 'nowrap',
+                        gap: 'clamp(0.5rem, 1.5vw, 1rem)', // Reduce gap
+                        flex: '1 1 auto', // Allow it to shrink
+                        minWidth: 0,
+                        flexWrap: 'wrap',
                         justifyContent: 'flex-start',
                     }}>
                         {logoUrl && (
                             <div style={{
                                 flexShrink: 0,
-                                padding: '0.5rem',
-                                borderRadius: '0.75rem',
+                                padding: 'clamp(0.25rem, 1vw, 0.5rem)',
+                                borderRadius: '0.5rem', // Smaller radius
                                 background: '#ffffff',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
                                 transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                             }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.05)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
-                            }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                                }}
                             >
                                 <img
                                     src={logoUrl}
                                     alt={statusPage.name}
                                     style={{
-                                        height: '44px',
-                                        maxWidth: '200px',
+                                        height: 'clamp(24px, 4vw, 40px)', // Smaller logo
+                                        maxWidth: 'clamp(80px, 20vw, 180px)',
                                         objectFit: 'contain',
                                         display: 'block',
                                     }}
@@ -166,65 +168,70 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                                 />
                             </div>
                         )}
-                        <div style={{ textAlign: 'left' }}>
+                        <div style={{ textAlign: 'left', flex: '1 1 auto', minWidth: 0 }}>
                             <h1 style={{
-                                fontSize: '2.5rem',
+                                fontSize: 'clamp(1rem, 4vw, 2.25rem)', // Smaller title
                                 fontWeight: '800',
                                 margin: 0,
                                 color: textColor,
                                 letterSpacing: '-0.03em',
-                                background: `linear-gradient(135deg, ${textColor} 0%, ${textColor}dd 100%)`,
+                                background: `linear-gradient(135deg, ${textColor} 0%, color-mix(in srgb, ${textColor} 85%, transparent) 100%)`,
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                                 backgroundClip: 'text',
+                                lineHeight: '1.2',
+                                wordBreak: 'break-word',
                             }}>
                                 {statusPage.name}
                             </h1>
-                            <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '0.75rem',
-                                marginTop: '0.5rem',
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'clamp(0.375rem, 1.5vw, 0.75rem)',
+                                marginTop: 'clamp(0.125rem, 0.5vw, 0.25rem)', // Tighter margin
                                 flexWrap: 'wrap',
                             }}>
-                                <p style={{ 
-                                    margin: 0, 
-                                    color: '#475569', 
-                                    fontSize: '1rem',
-                                    fontWeight: '500',
-                                }}>
-                                    {status.text}
-                                </p>
+                                    <p style={{
+                                        margin: 0,
+                                        color: 'var(--status-text-muted, #475569)',
+                                        fontSize: 'clamp(0.75rem, 2vw, 0.95rem)', // Smaller subtitle
+                                        fontWeight: '500',
+                                    }}>
+                                        {status.text}
+                                    </p>
                                 {updatedLabel && (
                                     <>
-                                        <span style={{ color: '#cbd5e1', fontSize: '0.875rem' }}>|</span>
+                                        <span style={{ color: 'var(--status-text-subtle, #cbd5e1)', fontSize: '0.75rem' }}>|</span>
                                         <p
                                             suppressHydrationWarning
-                                            style={{ 
-                                                margin: 0, 
-                                                color: '#94a3b8', 
-                                                fontSize: '0.875rem',
+                                            style={{
+                                                margin: 0,
+                                                color: 'var(--status-text-subtle, #94a3b8)',
+                                                fontSize: '0.75rem', // Smaller text
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '0.375rem',
+                                                gap: '0.25rem',
                                             }}
                                         >
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <circle cx="12" cy="12" r="10"></circle>
                                                 <polyline points="12 6 12 12 16 14"></polyline>
                                             </svg>
-                                            Updated {updatedLabel}
+                                            {updatedLabel}
                                         </p>
                                     </>
                                 )}
                             </div>
                         </div>
                     </div>
-                    <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '1rem', 
-                        flexShrink: 0 
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        flexShrink: 0,
+                        flex: '0 0 auto', // Don't grow if not needed
+                        justifyContent: 'flex-end',
+                        marginTop: '0', // Removing top margin relying on flex wrap gap
                     }}>
                         <div style={{
                             position: 'relative',
@@ -232,43 +239,31 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                             alignItems: 'center',
                             gap: '0.5rem',
                         }}>
-                            {status.pulse && (
-                                <span style={{
-                                    position: 'absolute',
-                                    left: '-4px',
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
-                                    background: status.color,
-                                    opacity: 0.6,
-                                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                                }} />
-                            )}
                             <span style={{
-                                padding: '0.5rem 1rem',
+                                padding: '0.375rem 0.75rem', // Smaller padding
                                 background: status.background,
                                 color: status.color,
-                                border: `2px solid ${status.border}`,
+                                border: `1px solid ${status.border}`, // Thinner border
                                 borderRadius: '999px',
-                                fontSize: '0.8125rem',
+                                fontSize: '0.7rem', // Smaller font
                                 fontWeight: '700',
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                boxShadow: `0 2px 8px ${status.border}40`,
+                                letterSpacing: '0.05em',
+                                boxShadow: `0 1px 2px ${status.border}40`,
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
+                                gap: '0.375rem',
                                 position: 'relative',
                                 transition: 'all 0.2s ease',
                             }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.05)';
-                                e.currentTarget.style.boxShadow = `0 4px 12px ${status.border}60`;
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.boxShadow = `0 2px 8px ${status.border}40`;
-                            }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                    e.currentTarget.style.boxShadow = `0 4px 12px ${status.border}60`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = `0 1px 2px ${status.border}40`;
+                                }}
                             >
                                 {status.badge}
                             </span>
@@ -276,31 +271,15 @@ export default function StatusPageHeader({ statusPage, overallStatus, branding =
                         {(statusPage.contactEmail || statusPage.contactUrl) && (
                             <a
                                 href={statusPage.contactUrl || `mailto:${statusPage.contactEmail}`}
+                                className="status-page-button"
+                                data-variant="primary"
                                 style={{
-                                    padding: '0.625rem 1.25rem',
-                                    borderRadius: '0.625rem',
-                                    border: `2px solid ${primaryColor}`,
-                                    background: 'transparent',
-                                    color: primaryColor,
                                     textDecoration: 'none',
-                                    fontSize: '0.875rem',
-                                    fontWeight: '600',
-                                    transition: 'all 0.2s ease',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: '700',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '0.5rem',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = primaryColor;
-                                    e.currentTarget.style.color = '#ffffff';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = `0 4px 12px ${primaryColor}40`;
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = primaryColor;
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = 'none';
                                 }}
                             >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

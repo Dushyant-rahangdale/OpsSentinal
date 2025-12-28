@@ -45,12 +45,14 @@ export const NotificationPatchSchema = z.object({
 
 export const StatusPageSettingsSchema = z.object({
     name: z.string().trim().min(1).max(200).optional(),
+    organizationName: z.string().trim().max(200).optional().nullable(),
     subdomain: z.string().trim().max(200).optional().nullable(),
     customDomain: z.string().trim().max(200).optional().nullable(),
     enabled: z.boolean().optional(),
     showServices: z.boolean().optional(),
     showIncidents: z.boolean().optional(),
     showMetrics: z.boolean().optional(),
+    showSubscribe: z.boolean().optional(),
     footerText: z.string().trim().max(1000).optional().nullable(),
     contactEmail: emailValidator.optional().nullable(),
     contactUrl: optionalUrlValidator,
@@ -60,8 +62,52 @@ export const StatusPageSettingsSchema = z.object({
         displayName: z.string().trim().max(200).optional().nullable(),
         order: z.number().int().optional(),
         showOnPage: z.boolean().optional()
-    })).optional()
+    })).optional(),
+    // Privacy settings
+    privacyMode: z.enum(['PUBLIC', 'RESTRICTED', 'PRIVATE', 'CUSTOM']).optional().nullable(),
+    showIncidentDetails: z.boolean().optional(),
+    showIncidentTitles: z.boolean().optional(),
+    showIncidentDescriptions: z.boolean().optional(),
+    showAffectedServices: z.boolean().optional(),
+    showIncidentTimestamps: z.boolean().optional(),
+    showServiceMetrics: z.boolean().optional(),
+    showServiceDescriptions: z.boolean().optional(),
+    showServiceRegions: z.boolean().optional(),
+    showServicesByRegion: z.boolean().optional(),
+    showServiceOwners: z.boolean().optional(),
+    showServiceSlaTier: z.boolean().optional(),
+    showTeamInformation: z.boolean().optional(),
+    showCustomFields: z.boolean().optional(),
+    showIncidentAssignees: z.boolean().optional(),
+    showIncidentUrgency: z.boolean().optional(),
+    showUptimeHistory: z.boolean().optional(),
+    showRecentIncidents: z.boolean().optional(),
+    showChangelog: z.boolean().optional(),
+    showRegionHeatmap: z.boolean().optional(),
+    showPostIncidentReview: z.boolean().optional(),
+    maxIncidentsToShow: z.number().int().min(1).max(500).optional(),
+    incidentHistoryDays: z.number().int().min(1).max(365).optional(),
+    allowedCustomFields: z.array(z.string()).optional().nullable(),
+    dataRetentionDays: z.number().int().min(1).optional().nullable(),
+    requireAuth: z.boolean().optional(),
+    authProvider: z.string().optional().nullable(),
+    emailProvider: z.string().optional().nullable(),
+    enableUptimeExports: z.boolean().optional(),
+    statusApiRequireToken: z.boolean().optional(),
+    statusApiRateLimitEnabled: z.boolean().optional(),
+    statusApiRateLimitMax: z.number().int().min(1).max(10000).optional(),
+    statusApiRateLimitWindowSec: z.number().int().min(10).max(86400).optional(),
 });
+
+export const StatusApiTokenCreateSchema = z.object({
+    statusPageId: z.string().min(1),
+    name: z.string().trim().min(1).max(200),
+});
+
+export const StatusApiTokenRevokeSchema = z.object({
+    id: z.string().min(1),
+});
+
 
 export const StatusAnnouncementCreateSchema = z.object({
     statusPageId: z.string().min(1),
@@ -70,7 +116,9 @@ export const StatusAnnouncementCreateSchema = z.object({
     type: z.string().trim().max(50).optional(),
     startDate: z.string().min(1),
     endDate: z.string().optional().nullable(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    notifySubscribers: z.boolean().optional(),
+    affectedServiceIds: z.array(z.string().min(1)).optional().nullable(),
 });
 
 export const StatusAnnouncementPatchSchema = z.object({
@@ -80,7 +128,8 @@ export const StatusAnnouncementPatchSchema = z.object({
     type: z.string().trim().max(50).optional(),
     startDate: z.string().optional(),
     endDate: z.string().optional().nullable(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    affectedServiceIds: z.array(z.string().min(1)).optional().nullable(),
 });
 
 export const StatusAnnouncementDeleteSchema = z.object({

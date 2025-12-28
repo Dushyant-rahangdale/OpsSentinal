@@ -45,7 +45,7 @@ export default function KeyboardShortcuts({ isOpen, onClose }: { isOpen: boolean
         // Focus trap - keep focus within modal
         const handleTab = (e: KeyboardEvent) => {
             if (!modalRef.current) return;
-            
+
             const focusableElements = modalRef.current.querySelectorAll(
                 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
             );
@@ -67,7 +67,7 @@ export default function KeyboardShortcuts({ isOpen, onClose }: { isOpen: boolean
 
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('keydown', handleTab);
-        
+
         // Focus the close button when modal opens
         const closeButton = modalRef.current?.querySelector('button[aria-label="Close"]') as HTMLElement;
         setTimeout(() => closeButton?.focus(), 0);
@@ -151,7 +151,7 @@ export default function KeyboardShortcuts({ isOpen, onClose }: { isOpen: boolean
                             </svg>
                         </div>
                         <div>
-                            <h2 
+                            <h2
                                 id="keyboard-shortcuts-title"
                                 style={{
                                     fontSize: '1.5rem',
@@ -214,15 +214,15 @@ export default function KeyboardShortcuts({ isOpen, onClose }: { isOpen: boolean
                 </div>
 
                 {/* Content */}
-                <div style={{ 
+                <div style={{
                     padding: '2rem',
                     overflowY: 'auto',
                     flex: 1
                 }}>
                     {Object.entries(grouped).map(([category, items], categoryIndex) => (
-                        <div 
-                            key={category} 
-                            style={{ 
+                        <div
+                            key={category}
+                            style={{
                                 marginBottom: categoryIndex < Object.keys(grouped).length - 1 ? '2.5rem' : '0'
                             }}
                         >
@@ -320,9 +320,10 @@ export default function KeyboardShortcuts({ isOpen, onClose }: { isOpen: boolean
                     color: 'var(--text-muted)'
                 }}>
                     <span>Use these shortcuts to navigate faster</span>
-                    <span style={{ fontWeight: '600', color: 'var(--primary)' }}>OpsGuard</span>
+                    <span style={{ fontWeight: '600', color: 'var(--primary)' }}>OpsSentinal</span>
                 </div>
             </div>
         </div>
     );
 }
+

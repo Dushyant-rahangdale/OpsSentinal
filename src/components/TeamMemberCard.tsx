@@ -1,17 +1,22 @@
 'use client';
 
-import { useTransition, memo } from 'react';
+import { useTransition, memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from './ToastProvider';
 
 type TeamMember = {
     id: string;
     role: string;
+    receiveTeamNotifications: boolean;
     user: {
         id: string;
         name: string;
         email: string;
         status?: string;
+        emailNotificationsEnabled?: boolean;
+        smsNotificationsEnabled?: boolean;
+        pushNotificationsEnabled?: boolean;
+        whatsappNotificationsEnabled?: boolean;
     };
 };
 
@@ -19,8 +24,10 @@ type TeamMemberCardProps = {
     member: TeamMember;
     isSoleOwner: boolean;
     canManageMembers: boolean;
+    canManageNotifications: boolean;
     canAssignOwnerAdmin: boolean;
     updateMemberRole: (formData: FormData) => Promise<{ error?: string } | undefined>;
+    updateMemberNotifications: (receiveNotifications: boolean) => Promise<{ error?: string } | undefined>;
     removeMember: () => Promise<{ error?: string } | undefined>;
 };
 
@@ -28,13 +35,17 @@ function TeamMemberCard({
     member,
     isSoleOwner,
     canManageMembers,
+    canManageNotifications,
     canAssignOwnerAdmin,
     updateMemberRole,
+    updateMemberNotifications,
     removeMember
 }: TeamMemberCardProps) {
     const [isPending, startTransition] = useTransition();
     const [isRemoving, startRemoving] = useTransition();
+    const [isNotifyPending, startNotifyTransition] = useTransition();
     const { showToast } = useToast();
+    const [teamNotifyEnabled, setTeamNotifyEnabled] = useState(member.receiveTeamNotifications);
 
     const roleColors = {
         OWNER: { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca' },
@@ -44,6 +55,16 @@ function TeamMemberCard({
 
     const roleInfo = roleColors[member.role as keyof typeof roleColors] || roleColors.MEMBER;
     const canEditRole = canManageMembers && !isSoleOwner && (canAssignOwnerAdmin || (member.role !== 'OWNER' && member.role !== 'ADMIN'));
+    const hasAnyNotificationEnabled = Boolean(
+        member.user.emailNotificationsEnabled ||
+        member.user.smsNotificationsEnabled ||
+        member.user.pushNotificationsEnabled ||
+        member.user.whatsappNotificationsEnabled
+    );
+
+    useEffect(() => {
+        setTeamNotifyEnabled(member.receiveTeamNotifications);
+    }, [member.receiveTeamNotifications]);
 
     const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newRole = e.target.value;
@@ -71,14 +92,31 @@ function TeamMemberCard({
         });
     };
 
+    const handleNotificationToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const nextValue = e.target.checked;
+        setTeamNotifyEnabled(nextValue);
+        startNotifyTransition(async () => {
+            const result = await updateMemberNotifications(nextValue);
+            if (result?.error) {
+                setTeamNotifyEnabled(!nextValue);
+                showToast(result.error, 'error');
+            } else {
+                showToast(
+                    nextValue ? 'Team notifications enabled' : 'Team notifications disabled',
+                    'success'
+                );
+            }
+        });
+    };
+
     return (
-        <div 
-            style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                padding: '1rem', 
-                border: `1px solid ${roleInfo.border}`, 
+        <div
+            style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1rem',
+                border: `1px solid ${roleInfo.border}`,
                 borderRadius: '12px',
                 background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
                 transition: 'all 0.2s',
@@ -88,21 +126,21 @@ function TeamMemberCard({
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
                 {/* User Avatar */}
-                <Link 
+                <Link
                     href={`/users?q=${encodeURIComponent(member.user.email)}`}
                     style={{ textDecoration: 'none' }}
                 >
-                    <div 
-                        style={{ 
-                            width: '40px', 
-                            height: '40px', 
-                            borderRadius: '50%', 
+                    <div
+                        style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
                             background: `linear-gradient(135deg, ${roleInfo.bg} 0%, ${roleInfo.border} 100%)`,
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            fontWeight: 'bold', 
-                            fontSize: '0.9rem', 
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '0.9rem',
                             color: roleInfo.color,
                             border: `2px solid ${roleInfo.border}`,
                             cursor: 'pointer',
@@ -119,10 +157,10 @@ function TeamMemberCard({
                 {/* User Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                        <Link 
+                        <Link
                             href={`/users?q=${encodeURIComponent(member.user.email)}`}
-                            style={{ 
-                                fontWeight: '600', 
+                            style={{
+                                fontWeight: '600',
                                 color: 'var(--text-primary)',
                                 textDecoration: 'none',
                                 fontSize: '0.95rem'
@@ -131,15 +169,28 @@ function TeamMemberCard({
                             {member.user.name}
                         </Link>
                         {member.user.status === 'DISABLED' && (
-                            <span style={{ 
-                                fontSize: '0.65rem', 
-                                padding: '0.15rem 0.4rem', 
-                                borderRadius: '999px', 
-                                background: '#fee2e2', 
+                            <span style={{
+                                fontSize: '0.65rem',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '999px',
+                                background: '#fee2e2',
                                 color: '#991b1b',
                                 fontWeight: '600'
                             }}>
                                 Disabled
+                            </span>
+                        )}
+                        {!hasAnyNotificationEnabled && (
+                            <span style={{
+                                fontSize: '0.65rem',
+                                padding: '0.15rem 0.4rem',
+                                borderRadius: '999px',
+                                background: '#fff7ed',
+                                color: '#9a3412',
+                                fontWeight: '600',
+                                border: '1px solid #fed7aa'
+                            }}>
+                                Set notification preferences
                             </span>
                         )}
                     </div>
@@ -153,15 +204,41 @@ function TeamMemberCard({
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Role Badge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.3rem 0.5rem',
+                            borderRadius: '8px',
+                            background: teamNotifyEnabled ? '#e0f2fe' : '#f8fafc',
+                            border: `1px solid ${teamNotifyEnabled ? '#3b82f6' : '#e2e8f0'}`,
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: teamNotifyEnabled ? '#1d4ed8' : '#64748b',
+                            opacity: canManageNotifications ? 1 : 0.6,
+                            cursor: canManageNotifications ? 'pointer' : 'not-allowed'
+                        }}
+                        title={canManageNotifications ? 'Toggle team notifications for this member' : 'Admin or Team Owner access required'}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={teamNotifyEnabled}
+                            onChange={handleNotificationToggle}
+                            disabled={!canManageNotifications || isNotifyPending}
+                            style={{ cursor: canManageNotifications ? 'pointer' : 'not-allowed' }}
+                        />
+                        Team notify
+                    </label>
                     {canEditRole ? (
-                        <select 
-                            name="role" 
-                            defaultValue={member.role} 
+                        <select
+                            name="role"
+                            defaultValue={member.role}
                             onChange={handleRoleChange}
-                            disabled={isPending}
-                            style={{ 
-                                padding: '0.4rem 0.75rem', 
-                                border: `1px solid ${roleInfo.border}`, 
+                            disabled={isPending || isNotifyPending}
+                            style={{
+                                padding: '0.4rem 0.75rem',
+                                border: `1px solid ${roleInfo.border}`,
                                 borderRadius: '8px',
                                 background: roleInfo.bg,
                                 color: roleInfo.color,
@@ -176,9 +253,9 @@ function TeamMemberCard({
                             <option value="MEMBER">Member</option>
                         </select>
                     ) : (
-                        <span 
-                            style={{ 
-                                padding: '0.4rem 0.75rem', 
+                        <span
+                            style={{
+                                padding: '0.4rem 0.75rem',
                                 borderRadius: '8px',
                                 background: roleInfo.bg,
                                 color: roleInfo.color,
@@ -191,7 +268,7 @@ function TeamMemberCard({
                             {member.role}
                         </span>
                     )}
-                    
+
                     {isSoleOwner && (
                         <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: '500' }}>
                             ⚠️ Last owner
@@ -199,25 +276,25 @@ function TeamMemberCard({
                     )}
                     {!canAssignOwnerAdmin && (member.role === 'OWNER' || member.role === 'ADMIN') && canManageMembers && (
                         <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: '500' }}>
-                            ⚠️ Admin required
+                            ⚠️ Admin/Owner required
                         </span>
                     )}
                 </div>
 
                 {/* Remove Button */}
                 {canManageMembers ? (
-                    <button 
+                    <button
                         onClick={handleRemove}
                         disabled={isSoleOwner || isRemoving}
                         title={isSoleOwner ? 'Reassign owner before removing' : 'Remove member from team'}
-                        style={{ 
-                            background: isSoleOwner ? '#f3f4f6' : '#fee2e2', 
-                            color: isSoleOwner ? '#9ca3af' : '#dc2626', 
-                            border: 'none', 
-                            padding: '0.4rem 0.75rem', 
-                            borderRadius: '8px', 
-                            cursor: isSoleOwner || isRemoving ? 'not-allowed' : 'pointer', 
-                            fontWeight: '600', 
+                        style={{
+                            background: isSoleOwner ? '#f3f4f6' : '#fee2e2',
+                            color: isSoleOwner ? '#9ca3af' : '#dc2626',
+                            border: 'none',
+                            padding: '0.4rem 0.75rem',
+                            borderRadius: '8px',
+                            cursor: isSoleOwner || isRemoving ? 'not-allowed' : 'pointer',
+                            fontWeight: '600',
                             fontSize: '0.75rem',
                             opacity: isSoleOwner || isRemoving ? 0.6 : 1,
                             transition: 'all 0.2s'
@@ -251,12 +328,18 @@ export default memo(TeamMemberCard, (prevProps, nextProps) => {
     return (
         prevProps.member.id === nextProps.member.id &&
         prevProps.member.role === nextProps.member.role &&
+        prevProps.member.receiveTeamNotifications === nextProps.member.receiveTeamNotifications &&
         prevProps.member.user.id === nextProps.member.user.id &&
         prevProps.member.user.name === nextProps.member.user.name &&
         prevProps.member.user.email === nextProps.member.user.email &&
         prevProps.member.user.status === nextProps.member.user.status &&
+        prevProps.member.user.emailNotificationsEnabled === nextProps.member.user.emailNotificationsEnabled &&
+        prevProps.member.user.smsNotificationsEnabled === nextProps.member.user.smsNotificationsEnabled &&
+        prevProps.member.user.pushNotificationsEnabled === nextProps.member.user.pushNotificationsEnabled &&
+        prevProps.member.user.whatsappNotificationsEnabled === nextProps.member.user.whatsappNotificationsEnabled &&
         prevProps.isSoleOwner === nextProps.isSoleOwner &&
         prevProps.canManageMembers === nextProps.canManageMembers &&
+        prevProps.canManageNotifications === nextProps.canManageNotifications &&
         prevProps.canAssignOwnerAdmin === nextProps.canAssignOwnerAdmin
     );
 });

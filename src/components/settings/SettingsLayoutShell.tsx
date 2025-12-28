@@ -5,10 +5,11 @@ import SettingsNav from '@/components/settings/SettingsNav';
 
 type Props = {
     isAdmin: boolean;
+    isResponderOrAbove: boolean;
     children: React.ReactNode;
 };
 
-export default function SettingsLayoutShell({ isAdmin, children }: Props) {
+export default function SettingsLayoutShell({ isAdmin, isResponderOrAbove, children }: Props) {
     const pathname = usePathname();
     const isStatusPage = pathname === '/settings/status-page' || pathname.startsWith('/settings/status-page/');
 
@@ -22,8 +23,10 @@ export default function SettingsLayoutShell({ isAdmin, children }: Props) {
                         : 'Manage your account preferences, security, and system configuration.'}
                 </p>
             </header>
-            <div className={`settings-grid${isStatusPage ? ' settings-grid-single' : ''}`}>
-                {!isStatusPage && <SettingsNav isAdmin={isAdmin} />}
+            <div className={`settings-layout${isStatusPage ? ' settings-layout-full' : ''}`}>
+                <aside className="settings-nav-shell">
+                    <SettingsNav isAdmin={isAdmin} isResponderOrAbove={isResponderOrAbove} />
+                </aside>
                 <section className="settings-content">
                     {children}
                 </section>

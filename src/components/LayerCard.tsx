@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import ConfirmDialog from './ConfirmDialog';
 import { DateTimeInput } from '@/components/ui';
+import { formatDateForInput } from '@/lib/timezone';
 
 type LayerCardProps = {
     layer: {
@@ -39,16 +40,6 @@ function formatShortTime(date: Date, timeZone: string): string {
         hour12: false,
         timeZone: timeZone
     }).format(date);
-}
-
-function formatDateInput(date: Date): string {
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const year = date.getFullYear();
-    const month = pad(date.getMonth() + 1);
-    const day = pad(date.getDate());
-    const hours = pad(date.getHours());
-    const minutes = pad(date.getMinutes());
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 export default function LayerCard({
@@ -283,7 +274,7 @@ export default function LayerCard({
                                 </label>
                                 <DateTimeInput
                                     name="start"
-                                    value={formatDateInput(new Date(layer.start))}
+                                    value={formatDateForInput(new Date(layer.start), timeZone)}
                                     required
                                     fullWidth
                                     disabled={isUpdating}
@@ -295,7 +286,7 @@ export default function LayerCard({
                                 </label>
                                 <DateTimeInput
                                     name="end"
-                                    value={layer.end ? formatDateInput(new Date(layer.end)) : ''}
+                                    value={layer.end ? formatDateForInput(new Date(layer.end), timeZone) : ''}
                                     fullWidth
                                     disabled={isUpdating}
                                 />

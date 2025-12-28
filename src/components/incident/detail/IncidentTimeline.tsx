@@ -1,7 +1,8 @@
 'use client';
 
 import TimelineEvent from '../TimelineEvent';
-import { formatTime, formatDateShort, formatDateGroup } from '@/lib/date-format';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type Event = {
     id: string;
@@ -22,6 +23,24 @@ export default function IncidentTimeline({
     incidentAcknowledgedAt,
     incidentResolvedAt 
 }: IncidentTimelineProps) {
+    const { userTimeZone } = useTimezone();
+
+    const formatEscalationMessage = (message: string) => {
+        const match = message.match(/\[\[scheduledAt=([^\]]+)\]\]/);
+        if (!match) {
+            return message;
+        }
+
+        const scheduledAtRaw = match[1];
+        const scheduledAt = new Date(scheduledAtRaw);
+        if (Number.isNaN(scheduledAt.getTime())) {
+            return message.replace(match[0], scheduledAtRaw);
+        }
+
+        const formatted = formatDateTime(scheduledAt, userTimeZone, { format: 'datetime' });
+        return message.replace(match[0], formatted);
+    };
+    
     // Create a comprehensive timeline with incident lifecycle events
     const timelineEvents: Array<{
         id: string;
@@ -75,21 +94,47 @@ export default function IncidentTimeline({
     // Sort by date (oldest first for timeline)
     timelineEvents.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-    // Group events by date
+    // Group events by date (using user's timezone)
     const groupedEvents = timelineEvents.reduce((acc, event) => {
-        const date = new Date(event.createdAt);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+        const eventDate = new Date(event.createdAt);
+        
+        // Get current date in user's timezone
+        const now = new Date();
+        const todayStr = formatDateTime(now, userTimeZone, { format: 'date' });
+        const eventDateStr = formatDateTime(eventDate, userTimeZone, { format: 'date' });
         
         let groupKey: string;
-        if (date >= today) {
+        if (eventDateStr === todayStr) {
             groupKey = 'Today';
-        } else if (date >= yesterday) {
-            groupKey = 'Yesterday';
         } else {
-            groupKey = formatDateGroup(date);
+            // Get yesterday's date in user's timezone
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = formatDateTime(yesterday, userTimeZone, { format: 'date' });
+            
+            if (eventDateStr === yesterdayStr) {
+                groupKey = 'Yesterday';
+            } else {
+                // Use formatDateTime for timezone-aware date grouping
+                // formatDateTime returns format like "Jan 15, 2024", convert to full month name
+                const monthMap: Record<string, string> = {
+                    'Jan': 'January', 'Feb': 'February', 'Mar': 'March', 'Apr': 'April',
+                    'May': 'May', 'Jun': 'June', 'Jul': 'July', 'Aug': 'August',
+                    'Sep': 'September', 'Oct': 'October', 'Nov': 'November', 'Dec': 'December'
+                };
+                // Split by comma to separate date and year
+                const parts = eventDateStr.split(',');
+                if (parts.length === 2) {
+                    const monthDay = parts[0].trim(); // "Jan 15"
+                    const year = parts[1].trim(); // "2024"
+                    const [monthAbbr, day] = monthDay.split(' ');
+                    const fullMonth = monthMap[monthAbbr] || monthAbbr;
+                    groupKey = `${fullMonth} ${day}, ${year}`;
+                } else {
+                    // Fallback: use formatted string as-is
+                    groupKey = eventDateStr;
+                }
+            }
         }
 
         if (!acc[groupKey]) {
@@ -252,10 +297,10 @@ export default function IncidentTimeline({
                                                         {event.type === 'CREATED' ? 'Created' : event.type === 'ACKNOWLEDGED' ? 'Acknowledged' : event.type === 'RESOLVED' ? 'Resolved' : 'Event'}
                                                     </span>
                                                     <span>
-                                                        {formatTime(event.createdAt)}
+                                                        {formatDateTime(event.createdAt, userTimeZone, { format: 'time' })}
                                                     </span>
                                                     <span style={{ opacity: 0.6 }}>
-                                                        {formatDateShort(event.createdAt)}
+                                                        {formatDateTime(event.createdAt, userTimeZone, { format: 'short' })}
                                                     </span>
                                                 </div>
                                                 <div style={{
@@ -268,7 +313,7 @@ export default function IncidentTimeline({
                                                     lineHeight: 1.6,
                                                     fontWeight: event.type !== 'EVENT' ? '600' : '400',
                                                 }}>
-                                                    {event.message}
+                                                    {formatEscalationMessage(event.message)}
                                                 </div>
                                             </div>
                                         </div>

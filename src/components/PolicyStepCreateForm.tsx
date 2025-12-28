@@ -24,8 +24,12 @@ export default function PolicyStepCreateForm({
     const [isPending, startTransition] = useTransition();
     const [showForm, setShowForm] = useState(false);
     const [targetType, setTargetType] = useState<'USER' | 'TEAM' | 'SCHEDULE'>('USER');
+    const [notificationChannels, setNotificationChannels] = useState<string[]>([]);
+    const [notifyOnlyTeamLead, setNotifyOnlyTeamLead] = useState(false);
 
-    const handleSubmit = async (formData: FormData) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
         startTransition(async () => {
             try {
                 const result = await addStep(policyId, formData);
@@ -37,7 +41,8 @@ export default function PolicyStepCreateForm({
                     router.refresh();
                 }
             } catch (error) {
-                showToast(error instanceof Error ? error.message : 'Failed to add step', 'error');
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                showToast(errorMessage || 'Failed to add step', 'error');
             }
         });
     };
@@ -81,7 +86,7 @@ export default function PolicyStepCreateForm({
                     ×
                 </button>
             </div>
-            <form action={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
                         Target Type *
@@ -208,17 +213,7 @@ export default function PolicyStepCreateForm({
                         Wait time before this step is executed. Use 0 for immediate notification.
                     </p>
                 </div>
-                <div style={{ 
-                    padding: '0.75rem', 
-                    background: '#eff6ff', 
-                    border: '1px solid #3b82f6', 
-                    borderRadius: '0px',
-                    fontSize: '0.85rem',
-                    color: '#1e40af'
-                }}>
-                    <strong>📢 Notification Channels:</strong> Users will receive notifications based on their personal preferences (configured in Settings → Preferences). 
-                    Each user chooses how they want to be notified (email, SMS, push) in their profile.
-                </div>
+                {/* Notification channels and notifyOnlyTeamLead are now handled above */}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
                         type="submit"

@@ -128,42 +128,47 @@ export async function addUser(_prevState: UserFormState, formData: FormData): Pr
         return { error: 'Please enter a valid email address (e.g., name@company.com).' };
     }
 
-    const existing = await prisma.user.findUnique({
-        where: { email }
-    });
+    try {
+        const existing = await prisma.user.findUnique({
+            where: { email }
+        });
 
-    if (existing?.status === 'DISABLED') {
-        return { error: 'User is disabled. Reactivate before adding again.' };
-    }
-
-    if (existing) {
-        return { error: 'A user with that email already exists.' };
-    }
-
-    const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            role: (role as 'ADMIN' | 'RESPONDER' | 'USER') || 'USER',
-            status: 'INVITED',
-            invitedAt: new Date()
+        if (existing?.status === 'DISABLED') {
+            return { error: 'User is disabled. Reactivate before adding again.' };
         }
-    });
 
-    const inviteUrl = await createInviteToken(email);
+        if (existing) {
+            return { error: 'A user with that email already exists.' };
+        }
 
-    await logAudit({
-        action: 'user.invited',
-        entityType: 'USER',
-        entityId: user.id,
-        actorId: await getDefaultActorId(),
-        details: { email, role: role || 'USER' }
-    });
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email,
+                role: (role as 'ADMIN' | 'RESPONDER' | 'USER') || 'USER',
+                status: 'INVITED',
+                invitedAt: new Date()
+            }
+        });
 
-    revalidatePath('/users');
-    revalidatePath('/audit');
+        const inviteUrl = await createInviteToken(email);
 
-    return { success: true, inviteUrl };
+        await logAudit({
+            action: 'user.invited',
+            entityType: 'USER',
+            entityId: user.id,
+            actorId: await getDefaultActorId(),
+            details: { email, role: role || 'USER' }
+        });
+
+        revalidatePath('/users');
+        revalidatePath('/audit');
+
+        return { success: true, inviteUrl };
+    } catch (error) {
+        console.error('Failed to add user:', error);
+        return { error: error instanceof Error ? error.message : 'Failed to create user or generate invite.' };
+    }
 }
 
 export async function updateUserRole(userId: string, formData: FormData) {

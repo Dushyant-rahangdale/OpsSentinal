@@ -12,7 +12,7 @@ export async function getCurrentUser() {
     }
     const user = await prisma.user.findUnique({
         where: { email: session.user.email },
-        select: { id: true, role: true, email: true, name: true }
+        select: { id: true, role: true, email: true, name: true, timeZone: true }
     });
     if (!user) {
         throw new Error('User not found');
@@ -33,6 +33,28 @@ export async function assertAdminOrResponder() {
     if (user.role !== 'ADMIN' && user.role !== 'RESPONDER') {
         throw new Error('Unauthorized. Admin or Responder access required.');
     }
+    return user;
+}
+
+export async function assertAdminOrTeamOwner(teamId: string) {
+    const user = await getCurrentUser();
+    if (user.role === 'ADMIN') {
+        return user;
+    }
+
+    const membership = await prisma.teamMember.findFirst({
+        where: {
+            teamId,
+            userId: user.id,
+            role: 'OWNER'
+        },
+        select: { id: true }
+    });
+
+    if (!membership) {
+        throw new Error('Unauthorized. Admin or Team Owner access required.');
+    }
+
     return user;
 }
 
@@ -205,7 +227,6 @@ export async function assertCanModifyService(serviceId: string) {
 
     throw new Error('Unauthorized. You do not have permission to modify this service.');
 }
-
 
 
 

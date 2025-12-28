@@ -1,6 +1,10 @@
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 
 /**
  * Status Page API
@@ -8,7 +12,7 @@ import { logger } from '@/lib/logger';
  * 
  * GET /api/status
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
         const statusPage = await prisma.statusPage.findFirst({
             where: { enabled: true },
@@ -26,6 +30,30 @@ export async function GET() {
             return jsonError('Status page not found or disabled', 404);
         }
 
+        const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
+            requireToken: statusPage.statusApiRequireToken,
+            rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
+            rateLimitMax: statusPage.statusApiRateLimitMax,
+            rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+        });
+        if (!authResult.allowed) {
+            if (authResult.status === 429) {
+                return NextResponse.json(
+                    { error: authResult.error || 'Rate limit exceeded' },
+                    { status: 429, headers: authResult.retryAfter ? { 'Retry-After': String(authResult.retryAfter) } : undefined }
+                );
+            }
+            return jsonError(authResult.error || 'Unauthorized', authResult.status || 401);
+        }
+
+        // Check if authentication is required
+        if (statusPage.requireAuth) {
+            const session = await getServerSession(authOptions);
+            if (!session) {
+                return jsonError('Authentication required', 401);
+            }
+        }
+
         const serviceIds = statusPage.services
             .filter(sp => sp.showOnPage)
             .map(sp => sp.serviceId);
@@ -37,6 +65,12 @@ export async function GET() {
         const services = await prisma.service.findMany({
             where: { id: { in: effectiveServiceIds } },
             include: {
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 _count: {
                     select: {
                         incidents: {
@@ -101,6 +135,9 @@ export async function GET() {
         const servicesData = services.map(service => ({
             id: service.id,
             name: service.name,
+            region: service.region ?? null,
+            slaTier: service.slaTier ?? null,
+            ownerTeam: service.team ? { id: service.team.id, name: service.team.name } : null,
             status: serviceStatusMap.get(service.id) || service.status,
             activeIncidents: service._count.incidents,
         }));
@@ -130,7 +167,7 @@ export async function GET() {
             const periodEnd = new Date();
             const totalMinutes = (periodEnd.getTime() - thirtyDaysAgo.getTime()) / (1000 * 60);
             let downtimeMinutes = 0;
-            
+
             serviceIncidents.forEach(incident => {
                 if (incident.status === 'SUPPRESSED' || incident.status === 'SNOOZED') {
                     return;
@@ -162,6 +199,7 @@ export async function GET() {
                 title: inc.title,
                 status: inc.status,
                 service: inc.service.name,
+                serviceRegion: inc.service.region ?? null,
                 createdAt: inc.createdAt.toISOString(),
                 resolvedAt: inc.resolvedAt?.toISOString() || null,
             })),

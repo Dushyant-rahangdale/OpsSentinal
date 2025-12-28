@@ -19,15 +19,19 @@ async function createService(formData: FormData) {
     }
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
-    const slackWebhookUrl = formData.get('slackWebhookUrl') as string;
+    const region = formData.get('region') as string;
+    const slaTier = formData.get('slaTier') as string;
     const teamId = formData.get('teamId') as string;
+    const escalationPolicyId = formData.get('escalationPolicyId') as string;
 
     const service = await prisma.service.create({
         data: {
             name,
             description,
-            slackWebhookUrl: slackWebhookUrl || undefined,
-            teamId: teamId || undefined
+            region: region || null,
+            slaTier: slaTier || null,
+            teamId: teamId || undefined,
+            escalationPolicyId: escalationPolicyId || undefined
         }
     });
 
@@ -230,11 +234,6 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                             ? 'Try adjusting your filters or search query.'
                             : 'Create your first service to get started.'}
                     </p>
-                    {canCreateService && !searchQuery && statusFilter === 'all' && !teamFilter && (
-                        <Link href="/services" className="glass-button primary" style={{ display: 'inline-block' }}>
-                            Create Service
-                        </Link>
-                    )}
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>

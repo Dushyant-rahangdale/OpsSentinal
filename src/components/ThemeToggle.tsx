@@ -39,57 +39,31 @@ export default function ThemeToggle() {
     }
 
     return (
-        <div style={{
-            display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'center',
-            padding: '0.5rem',
-            background: 'var(--color-neutral-100)',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border)'
-        }}>
+        <div className="theme-toggle">
             <button
+                type="button"
                 onClick={() => setTheme('light')}
                 aria-label="Switch to light theme"
-                style={{
-                    padding: '0.5rem',
-                    background: theme === 'light' ? 'var(--primary)' : 'transparent',
-                    color: theme === 'light' ? 'white' : 'var(--text-primary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontSize: '1rem'
-                }}
+                aria-pressed={theme === 'light'}
+                className={`theme-toggle-button${theme === 'light' ? ' is-active' : ''}`}
             >
                 ☀️
             </button>
             <button
+                type="button"
                 onClick={() => setTheme('system')}
                 aria-label="Use system theme"
-                style={{
-                    padding: '0.5rem',
-                    background: theme === 'system' ? 'var(--primary)' : 'transparent',
-                    color: theme === 'system' ? 'white' : 'var(--text-primary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontSize: '1rem'
-                }}
+                aria-pressed={theme === 'system'}
+                className={`theme-toggle-button${theme === 'system' ? ' is-active' : ''}`}
             >
                 💻
             </button>
             <button
+                type="button"
                 onClick={() => setTheme('dark')}
                 aria-label="Switch to dark theme"
-                style={{
-                    padding: '0.5rem',
-                    background: theme === 'dark' ? 'var(--primary)' : 'transparent',
-                    color: theme === 'dark' ? 'white' : 'var(--text-primary)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    fontSize: '1rem'
-                }}
+                aria-pressed={theme === 'dark'}
+                className={`theme-toggle-button${theme === 'dark' ? ' is-active' : ''}`}
             >
                 🌙
             </button>

@@ -12,26 +12,38 @@ export async function createPolicy(formData: FormData) {
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
     }
-    
+
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
 
     // Parse escalation steps from form data
-    const steps: Array<{ targetUserId: string; delayMinutes: number; stepOrder: number }> = [];
+    const steps: Array<{ targetType: 'USER' | 'TEAM' | 'SCHEDULE'; targetUserId?: string; targetTeamId?: string; delayMinutes: number; stepOrder: number }> = [];
     let stepIndex = 0;
-    
+
     while (true) {
-        const userId = formData.get(`step-${stepIndex}-userId`);
+        const targetValue = formData.get(`step-${stepIndex}-target`); // Changed from userId to target
         const delay = formData.get(`step-${stepIndex}-delayMinutes`);
-        
-        if (!userId) break;
-        
-        steps.push({
-            targetUserId: userId as string,
-            delayMinutes: parseInt(delay as string || '0'),
-            stepOrder: stepIndex
-        });
-        
+
+        if (!targetValue) break;
+
+        const [type, id] = (targetValue as string).split(':');
+
+        if (type === 'user') {
+            steps.push({
+                targetType: 'USER',
+                targetUserId: id,
+                delayMinutes: parseInt(delay as string || '0'),
+                stepOrder: stepIndex
+            });
+        } else if (type === 'team') {
+            steps.push({
+                targetType: 'TEAM',
+                targetTeamId: id,
+                delayMinutes: parseInt(delay as string || '0'),
+                stepOrder: stepIndex
+            });
+        }
+
         stepIndex++;
     }
 
@@ -130,11 +142,11 @@ export async function deletePolicy(policyId: string) {
     redirect('/policies');
 }
 
-export async function addPolicyStep(policyId: string, formData: FormData) {
+export async function addPolicyStep(policyId: string, formData: FormData): Promise<{ error?: string } | undefined> {
     try {
         await assertAdmin();
     } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' };
     }
 
     const targetType = formData.get('targetType') as 'USER' | 'TEAM' | 'SCHEDULE' || 'USER';
@@ -142,9 +154,8 @@ export async function addPolicyStep(policyId: string, formData: FormData) {
     const targetTeamId = formData.get('targetTeamId') as string | null;
     const targetScheduleId = formData.get('targetScheduleId') as string | null;
     const delayMinutes = parseInt(formData.get('delayMinutes') as string || '0');
-
-    // Note: Notification channels are now user preferences, not policy step configuration
-    // Each user chooses how they want to be notified in their settings
+    const notificationChannels = formData.getAll('notificationChannels') as string[];
+    const notifyOnlyTeamLead = formData.get('notifyOnlyTeamLead') === 'true';
 
     // Validate that appropriate target ID is provided
     let targetId: string | null = null;
@@ -157,7 +168,7 @@ export async function addPolicyStep(policyId: string, formData: FormData) {
     }
 
     if (!targetId) {
-        throw new Error(`Target ${targetType} is required`);
+        return { error: `Target ${targetType} is required` };
     }
 
     // Get current max step order
@@ -168,34 +179,40 @@ export async function addPolicyStep(policyId: string, formData: FormData) {
 
     const nextStepOrder = maxStep ? maxStep.stepOrder + 1 : 0;
 
-    await prisma.escalationRule.create({
-        data: {
-            policyId,
-            targetType,
-            targetUserId: targetType === 'USER' ? targetId : null,
-            targetTeamId: targetType === 'TEAM' ? targetId : null,
-            targetScheduleId: targetType === 'SCHEDULE' ? targetId : null,
-            delayMinutes,
-            stepOrder: nextStepOrder
-        }
-    });
+    try {
+        await prisma.escalationRule.create({
+            data: {
+                policyId,
+                targetType,
+                targetUserId: targetType === 'USER' ? targetId : null,
+                targetTeamId: targetType === 'TEAM' ? targetId : null,
+                targetScheduleId: targetType === 'SCHEDULE' ? targetId : null,
+                delayMinutes,
+                stepOrder: nextStepOrder,
+                notificationChannels: notificationChannels.length > 0 ? notificationChannels as any[] : [],
+                notifyOnlyTeamLead: targetType === 'TEAM' ? notifyOnlyTeamLead : false
+            }
+        });
 
-    await logAudit({
-        action: 'escalation_policy.step_added',
-        entityType: 'SERVICE',
-        entityId: policyId,
-        actorId: await getDefaultActorId(),
-        details: { stepOrder: nextStepOrder, targetType }
-    });
+        await logAudit({
+            action: 'escalation_policy.step_added',
+            entityType: 'SERVICE',
+            entityId: policyId,
+            actorId: await getDefaultActorId(),
+            details: { stepOrder: nextStepOrder, targetType }
+        });
 
-    revalidatePath(`/policies/${policyId}`);
+        revalidatePath(`/policies/${policyId}`);
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to add escalation step' };
+    }
 }
 
-export async function updatePolicyStep(stepId: string, formData: FormData) {
+export async function updatePolicyStep(stepId: string, formData: FormData): Promise<{ error?: string } | undefined> {
     try {
         await assertAdmin();
     } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' };
     }
 
     const targetType = formData.get('targetType') as 'USER' | 'TEAM' | 'SCHEDULE' || undefined;
@@ -203,11 +220,14 @@ export async function updatePolicyStep(stepId: string, formData: FormData) {
     const targetTeamId = formData.get('targetTeamId') as string | null;
     const targetScheduleId = formData.get('targetScheduleId') as string | null;
     const delayMinutes = parseInt(formData.get('delayMinutes') as string || '0');
-    
+
     // Get notification channels from form (checkboxes)
     const notificationChannels = formData.getAll('notificationChannels') as string[];
-    // Default to EMAIL if none selected, otherwise use existing
-    const finalChannels = notificationChannels.length > 0 ? notificationChannels : undefined;
+    // Default to empty array if none selected (will use user preferences)
+    const finalChannels = notificationChannels.length > 0 ? notificationChannels : [];
+
+    // Get notify only team lead option
+    const notifyOnlyTeamLead = formData.get('notifyOnlyTeamLead') === 'true';
 
     const step = await prisma.escalationRule.findUnique({
         where: { id: stepId },
@@ -235,7 +255,7 @@ export async function updatePolicyStep(stepId: string, formData: FormData) {
     }
 
     if (!targetId) {
-        throw new Error(`Target ${finalTargetType} is required`);
+        return { error: `Target ${finalTargetType} is required` };
     }
 
     const updateData: any = {
@@ -243,35 +263,36 @@ export async function updatePolicyStep(stepId: string, formData: FormData) {
         targetUserId: finalTargetType === 'USER' ? targetId : null,
         targetTeamId: finalTargetType === 'TEAM' ? targetId : null,
         targetScheduleId: finalTargetType === 'SCHEDULE' ? targetId : null,
-        delayMinutes
+        delayMinutes,
+        notificationChannels: finalChannels as any[],
+        notifyOnlyTeamLead: finalTargetType === 'TEAM' ? notifyOnlyTeamLead : false
     };
 
-    // Only update notification channels if provided
-    if (finalChannels !== undefined) {
-        updateData.notificationChannels = finalChannels.length > 0 ? finalChannels : ['EMAIL'];
+    try {
+        await prisma.escalationRule.update({
+            where: { id: stepId },
+            data: updateData
+        });
+
+        await logAudit({
+            action: 'escalation_policy.step_updated',
+            entityType: 'SERVICE',
+            entityId: step.policyId,
+            actorId: await getDefaultActorId(),
+            details: { stepId, stepOrder: step.stepOrder, targetType: finalTargetType }
+        });
+
+        revalidatePath(`/policies/${step.policyId}`);
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to update escalation step' };
     }
-
-    await prisma.escalationRule.update({
-        where: { id: stepId },
-        data: updateData
-    });
-
-    await logAudit({
-        action: 'escalation_policy.step_updated',
-        entityType: 'SERVICE',
-        entityId: step.policyId,
-        actorId: await getDefaultActorId(),
-        details: { stepId, stepOrder: step.stepOrder, targetType: finalTargetType }
-    });
-
-    revalidatePath(`/policies/${step.policyId}`);
 }
 
-export async function deletePolicyStep(stepId: string) {
+export async function deletePolicyStep(stepId: string): Promise<{ error?: string } | undefined> {
     try {
         await assertAdmin();
     } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' };
     }
 
     const step = await prisma.escalationRule.findUnique({
@@ -280,48 +301,52 @@ export async function deletePolicyStep(stepId: string) {
     });
 
     if (!step) {
-        throw new Error('Escalation step not found');
+        return { error: 'Escalation step not found' };
     }
 
     const policyId = step.policyId;
     const deletedStepOrder = step.stepOrder;
 
-    await prisma.escalationRule.delete({
-        where: { id: stepId }
-    });
+    try {
+        await prisma.escalationRule.delete({
+            where: { id: stepId }
+        });
 
-    // Reorder remaining steps
-    const remainingSteps = await prisma.escalationRule.findMany({
-        where: { policyId },
-        orderBy: { stepOrder: 'asc' }
-    });
+        // Reorder remaining steps
+        const remainingSteps = await prisma.escalationRule.findMany({
+            where: { policyId },
+            orderBy: { stepOrder: 'asc' }
+        });
 
-    // Update step orders to be sequential
-    for (let i = 0; i < remainingSteps.length; i++) {
-        if (remainingSteps[i].stepOrder !== i) {
-            await prisma.escalationRule.update({
-                where: { id: remainingSteps[i].id },
-                data: { stepOrder: i }
-            });
+        // Update step orders to be sequential
+        for (let i = 0; i < remainingSteps.length; i++) {
+            if (remainingSteps[i].stepOrder !== i) {
+                await prisma.escalationRule.update({
+                    where: { id: remainingSteps[i].id },
+                    data: { stepOrder: i }
+                });
+            }
         }
+
+        await logAudit({
+            action: 'escalation_policy.step_deleted',
+            entityType: 'SERVICE',
+            entityId: policyId,
+            actorId: await getDefaultActorId(),
+            details: { deletedStepOrder }
+        });
+
+        revalidatePath(`/policies/${policyId}`);
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to delete escalation step' };
     }
-
-    await logAudit({
-        action: 'escalation_policy.step_deleted',
-        entityType: 'SERVICE',
-        entityId: policyId,
-        actorId: await getDefaultActorId(),
-        details: { deletedStepOrder }
-    });
-
-    revalidatePath(`/policies/${policyId}`);
 }
 
-export async function movePolicyStep(stepId: string, direction: 'up' | 'down') {
+export async function movePolicyStep(stepId: string, direction: 'up' | 'down'): Promise<{ error?: string } | undefined> {
     try {
         await assertAdmin();
     } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
+        return { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' };
     }
 
     const step = await prisma.escalationRule.findUnique({
@@ -330,7 +355,7 @@ export async function movePolicyStep(stepId: string, direction: 'up' | 'down') {
     });
 
     if (!step) {
-        throw new Error('Escalation step not found');
+        return { error: 'Escalation step not found' };
     }
 
     const policyId = step.policyId;
@@ -338,7 +363,7 @@ export async function movePolicyStep(stepId: string, direction: 'up' | 'down') {
     const newOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1;
 
     if (newOrder < 0) {
-        throw new Error('Cannot move step up: already at first position');
+        return { error: 'Cannot move step up: already at first position' };
     }
 
     // Get all steps
@@ -348,34 +373,38 @@ export async function movePolicyStep(stepId: string, direction: 'up' | 'down') {
     });
 
     if (newOrder >= allSteps.length) {
-        throw new Error('Cannot move step down: already at last position');
+        return { error: 'Cannot move step down: already at last position' };
     }
 
     // Find the step at the target position
     const targetStep = allSteps.find(s => s.stepOrder === newOrder);
     if (!targetStep) {
-        throw new Error('Target step not found');
+        return { error: 'Target step not found' };
     }
 
-    // Swap step orders
-    await prisma.$transaction([
-        prisma.escalationRule.update({
-            where: { id: stepId },
-            data: { stepOrder: newOrder }
-        }),
-        prisma.escalationRule.update({
-            where: { id: targetStep.id },
-            data: { stepOrder: currentOrder }
-        })
-    ]);
+    try {
+        // Swap step orders
+        await prisma.$transaction([
+            prisma.escalationRule.update({
+                where: { id: stepId },
+                data: { stepOrder: newOrder }
+            }),
+            prisma.escalationRule.update({
+                where: { id: targetStep.id },
+                data: { stepOrder: currentOrder }
+            })
+        ]);
 
-    await logAudit({
-        action: 'escalation_policy.step_moved',
-        entityType: 'SERVICE',
-        entityId: policyId,
-        actorId: await getDefaultActorId(),
-        details: { stepId, from: currentOrder, to: newOrder }
-    });
+        await logAudit({
+            action: 'escalation_policy.step_moved',
+            entityType: 'SERVICE',
+            entityId: policyId,
+            actorId: await getDefaultActorId(),
+            details: { stepId, from: currentOrder, to: newOrder }
+        });
 
-    revalidatePath(`/policies/${policyId}`);
+        revalidatePath(`/policies/${policyId}`);
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : 'Failed to move escalation step' };
+    }
 }

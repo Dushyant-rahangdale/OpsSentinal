@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { assertResponderOrAbove, getCurrentUser } from '@/lib/rbac';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export async function bulkAcknowledge(incidentIds: string[]) {
     if (!incidentIds || incidentIds.length === 0) {
@@ -22,7 +23,7 @@ export async function bulkAcknowledge(incidentIds: string[]) {
                 id: { in: incidentIds },
                 status: { not: 'RESOLVED' } // Only update non-resolved incidents
             },
-            data: { 
+            data: {
                 status: 'ACKNOWLEDGED',
                 acknowledgedAt: new Date()
             }
@@ -37,6 +38,48 @@ export async function bulkAcknowledge(incidentIds: string[]) {
                     message: `Bulk acknowledged${user ? ` by ${user.name}` : ''}`
                 }
             });
+
+            // Send notifications
+            try {
+                const { sendServiceNotifications } = await import('@/lib/user-notifications');
+                await sendServiceNotifications(incidentId, 'acknowledged');
+
+                const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+                await notifyStatusPageSubscribers(incidentId, 'acknowledged');
+
+                // Webhooks for ack? Usually incident.acknowledged
+                // Not strictly required by user request but good for consistency
+                const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+                const incident = await prisma.incident.findUnique({
+                    where: { id: incidentId },
+                    include: {
+                        service: { select: { id: true, name: true } },
+                        assignee: { select: { id: true, name: true, email: true } },
+                    }
+                });
+
+                if (incident) {
+                    await triggerWebhooksForService(
+                        incident.serviceId,
+                        'incident.acknowledged',
+                        {
+                            id: incident.id,
+                            title: incident.title,
+                            description: incident.description,
+                            status: incident.status,
+                            urgency: incident.urgency,
+                            priority: incident.priority,
+                            service: incident.service,
+                            assignee: incident.assignee,
+                            createdAt: incident.createdAt.toISOString(),
+                            acknowledgedAt: incident.acknowledgedAt?.toISOString() || new Date().toISOString()
+                        }
+                    );
+                }
+
+            } catch (e) {
+                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+            }
         }
 
         revalidatePath('/incidents');
@@ -65,7 +108,7 @@ export async function bulkResolve(incidentIds: string[]) {
             where: {
                 id: { in: incidentIds }
             },
-            data: { 
+            data: {
                 status: 'RESOLVED',
                 escalationStatus: 'COMPLETED',
                 nextEscalationAt: null,
@@ -82,6 +125,46 @@ export async function bulkResolve(incidentIds: string[]) {
                     message: `Bulk resolved${user ? ` by ${user.name}` : ''}`
                 }
             });
+
+            // Send notifications
+            try {
+                const { sendServiceNotifications } = await import('@/lib/user-notifications');
+                await sendServiceNotifications(incidentId, 'resolved');
+
+                const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+                await notifyStatusPageSubscribers(incidentId, 'resolved');
+
+                const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+                // Fetch incident details for webhook
+                const incident = await prisma.incident.findUnique({
+                    where: { id: incidentId },
+                    include: {
+                        service: { select: { id: true, name: true } },
+                        assignee: { select: { id: true, name: true, email: true } },
+                    }
+                });
+
+                if (incident) {
+                    await triggerWebhooksForService(
+                        incident.serviceId,
+                        'incident.resolved',
+                        {
+                            id: incident.id,
+                            title: incident.title,
+                            description: incident.description,
+                            status: incident.status,
+                            urgency: incident.urgency,
+                            priority: incident.priority,
+                            service: incident.service,
+                            assignee: incident.assignee,
+                            createdAt: incident.createdAt.toISOString(),
+                            resolvedAt: incident.resolvedAt?.toISOString() || new Date().toISOString()
+                        }
+                    );
+                }
+            } catch (e) {
+                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+            }
         }
 
         revalidatePath('/incidents');
@@ -131,6 +214,42 @@ export async function bulkReassign(incidentIds: string[], assigneeId: string) {
                     message: `Bulk reassigned to ${assignee.name}${user ? ` by ${user.name}` : ''}`
                 }
             });
+
+            // Send notifications
+            try {
+                const { sendServiceNotifications } = await import('@/lib/user-notifications');
+                await sendServiceNotifications(incidentId, 'updated');
+
+                // Webhook for assignment change (incident.updated or incident.assigned if supported)
+                const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+                const incident = await prisma.incident.findUnique({
+                    where: { id: incidentId },
+                    include: {
+                        service: { select: { id: true, name: true } },
+                        assignee: { select: { id: true, name: true, email: true } },
+                    }
+                });
+
+                if (incident) {
+                    await triggerWebhooksForService(
+                        incident.serviceId,
+                        'incident.updated',
+                        {
+                            id: incident.id,
+                            title: incident.title,
+                            description: incident.description,
+                            status: incident.status,
+                            urgency: incident.urgency,
+                            priority: incident.priority,
+                            service: incident.service,
+                            assignee: incident.assignee,
+                            createdAt: incident.createdAt.toISOString()
+                        }
+                    );
+                }
+            } catch (e) {
+                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+            }
         }
 
         revalidatePath('/incidents');
@@ -211,13 +330,14 @@ export async function bulkSnooze(incidentIds: string[], durationMinutes: number,
 
         // Log events for each incident
         const user = await getCurrentUser();
+        const userTimeZone = getUserTimeZone(user ?? undefined);
         for (const incidentId of incidentIds) {
             await prisma.incidentEvent.create({
                 data: {
                     incidentId,
-                    message: `Bulk snoozed until ${snoozedUntil.toLocaleString()}${reason ? `: ${reason}` : ''}${user ? ` by ${user.name}` : ''}`
+                    message: `Bulk snoozed until ${formatDateTime(snoozedUntil, userTimeZone, { format: 'datetime' })}${reason ? `: ${reason}` : ''}${user ? ` by ${user.name}` : ''}`
                 }
-            }).catch(() => {}); // Ignore errors if incident was already resolved
+            }).catch(() => { }); // Ignore errors if incident was already resolved
         }
 
         revalidatePath('/incidents');
@@ -263,7 +383,7 @@ export async function bulkUnsnooze(incidentIds: string[]) {
                     incidentId,
                     message: `Bulk unsnoozed${user ? ` by ${user.name}` : ''}`
                 }
-            }).catch(() => {}); // Ignore errors if incident wasn't snoozed
+            }).catch(() => { }); // Ignore errors if incident wasn't snoozed
         }
 
         revalidatePath('/incidents');
@@ -307,7 +427,7 @@ export async function bulkSuppress(incidentIds: string[]) {
                     incidentId,
                     message: `Bulk suppressed${user ? ` by ${user.name}` : ''}`
                 }
-            }).catch(() => {}); // Ignore errors if incident was already resolved
+            }).catch(() => { }); // Ignore errors if incident was already resolved
         }
 
         revalidatePath('/incidents');
@@ -351,7 +471,7 @@ export async function bulkUnsuppress(incidentIds: string[]) {
                     incidentId,
                     message: `Bulk unsuppressed${user ? ` by ${user.name}` : ''}`
                 }
-            }).catch(() => {}); // Ignore errors if incident wasn't suppressed
+            }).catch(() => { }); // Ignore errors if incident wasn't suppressed
         }
 
         revalidatePath('/incidents');
@@ -413,30 +533,66 @@ export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | '
     }
 
     try {
-        const updateData: any = { status };
-        
-        // Set appropriate timestamps
-        if (status === 'ACKNOWLEDGED') {
-            updateData.acknowledgedAt = new Date();
-        } else if (status === 'RESOLVED') {
-            updateData.resolvedAt = new Date();
-            updateData.escalationStatus = 'COMPLETED';
-            updateData.nextEscalationAt = null;
-        } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
-            updateData.escalationStatus = 'PAUSED';
-            updateData.nextEscalationAt = null;
-        } else if (status === 'OPEN') {
-            updateData.escalationStatus = 'ESCALATING';
-            updateData.nextEscalationAt = new Date();
-        }
+        if (status === 'OPEN') {
+            const incidents = await prisma.incident.findMany({
+                where: { id: { in: incidentIds } },
+                select: {
+                    id: true,
+                    status: true,
+                    currentEscalationStep: true,
+                    service: {
+                        select: {
+                            policy: {
+                                select: {
+                                    steps: {
+                                        orderBy: { stepOrder: 'asc' },
+                                        select: { delayMinutes: true }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
 
-        // Update all selected incidents
-        await prisma.incident.updateMany({
-            where: {
-                id: { in: incidentIds }
-            },
-            data: updateData
-        });
+            for (const incident of incidents) {
+                let nextEscalationAt: Date | null = new Date();
+                if (incident.status === 'ACKNOWLEDGED') {
+                    const stepIndex = incident.currentEscalationStep ?? 0;
+                    const delayMinutes = incident.service?.policy?.steps?.[stepIndex]?.delayMinutes ?? 0;
+                    nextEscalationAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+                }
+
+                await prisma.incident.update({
+                    where: { id: incident.id },
+                    data: {
+                        status,
+                        escalationStatus: 'ESCALATING',
+                        nextEscalationAt
+                    }
+                });
+            }
+        } else {
+            const updateData: any = { status };
+
+            if (status === 'ACKNOWLEDGED') {
+                updateData.acknowledgedAt = new Date();
+            } else if (status === 'RESOLVED') {
+                updateData.resolvedAt = new Date();
+                updateData.escalationStatus = 'COMPLETED';
+                updateData.nextEscalationAt = null;
+            } else if (status === 'SNOOZED' || status === 'SUPPRESSED') {
+                updateData.escalationStatus = 'PAUSED';
+                updateData.nextEscalationAt = null;
+            }
+
+            await prisma.incident.updateMany({
+                where: {
+                    id: { in: incidentIds }
+                },
+                data: updateData
+            });
+        }
 
         // Log events for each incident
         const user = await getCurrentUser();
@@ -447,6 +603,63 @@ export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | '
                     message: `Bulk status updated to ${status}${user ? ` by ${user.name}` : ''}`
                 }
             });
+
+            // Send notifications based on status
+            try {
+                const { sendServiceNotifications } = await import('@/lib/user-notifications');
+                const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+                const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+
+                if (status === 'ACKNOWLEDGED') {
+                    await sendServiceNotifications(incidentId, 'acknowledged');
+                    await notifyStatusPageSubscribers(incidentId, 'acknowledged');
+                } else if (status === 'RESOLVED') {
+                    await sendServiceNotifications(incidentId, 'resolved');
+                    await notifyStatusPageSubscribers(incidentId, 'resolved');
+                } else if (status === 'OPEN') {
+                    await sendServiceNotifications(incidentId, 'updated');
+                    // Note: subscribers don't usually get "re-opened" emails unless we specifically want to
+                    // But webhooks might care.
+                }
+
+                // Webhooks
+                const incident = await prisma.incident.findUnique({
+                    where: { id: incidentId },
+                    include: {
+                        service: { select: { id: true, name: true } },
+                        assignee: { select: { id: true, name: true, email: true } },
+                    }
+                });
+
+                if (incident) {
+                    let eventType = 'incident.updated';
+                    if (status === 'RESOLVED') eventType = 'incident.resolved';
+                    else if (status === 'ACKNOWLEDGED') eventType = 'incident.acknowledged';
+                    else if (status === 'SNOOZED') eventType = 'incident.snoozed';
+                    else if (status === 'SUPPRESSED') eventType = 'incident.suppressed';
+
+                    await triggerWebhooksForService(
+                        incident.serviceId,
+                        eventType,
+                        {
+                            id: incident.id,
+                            title: incident.title,
+                            description: incident.description,
+                            status: incident.status,
+                            urgency: incident.urgency,
+                            priority: incident.priority,
+                            service: incident.service,
+                            assignee: incident.assignee,
+                            createdAt: incident.createdAt.toISOString(),
+                            acknowledgedAt: incident.acknowledgedAt?.toISOString() || null,
+                            resolvedAt: incident.resolvedAt?.toISOString() || null
+                        }
+                    );
+                }
+
+            } catch (e) {
+                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+            }
         }
 
         revalidatePath('/incidents');

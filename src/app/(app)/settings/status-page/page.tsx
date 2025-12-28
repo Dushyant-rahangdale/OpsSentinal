@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import StatusPageConfig from '@/components/StatusPageConfig';
+import SettingsPage from '@/components/settings/SettingsPage';
 
 export default async function StatusPageSettingsPage() {
     const session = await getServerSession(authOptions);
@@ -19,7 +20,6 @@ export default async function StatusPageSettingsPage() {
 
     // Get or create status page
     let statusPage = await prisma.statusPage.findFirst({
-        where: { enabled: true },
         include: {
             services: {
                 include: {
@@ -38,7 +38,7 @@ export default async function StatusPageSettingsPage() {
         statusPage = await prisma.statusPage.create({
             data: {
                 name: 'Status Page',
-                enabled: true,
+                enabled: false,
             },
             include: {
                 services: {
@@ -59,19 +59,28 @@ export default async function StatusPageSettingsPage() {
         orderBy: { name: 'asc' },
     });
 
-    const formattedStatusPage = {
+    const formattedStatusPage: any = {
         ...statusPage,
         announcements: statusPage.announcements.map((announcement) => ({
             ...announcement,
             startDate: announcement.startDate.toISOString(),
-            endDate: announcement.endDate ? announcement.endDate.toISOString() : null
-        }))
+            endDate: announcement.endDate ? announcement.endDate.toISOString() : null,
+            affectedServiceIds: Array.isArray(announcement.affectedServiceIds)
+                ? (announcement.affectedServiceIds as string[])
+                : null,
+        })),
     };
 
     return (
-        <StatusPageConfig
-            statusPage={formattedStatusPage}
-            allServices={allServices}
-        />
+        <SettingsPage
+            backHref="/settings"
+            title="Status Page"
+            description="Customize your public status page appearance and content."
+        >
+            <StatusPageConfig
+                statusPage={formattedStatusPage}
+                allServices={allServices}
+            />
+        </SettingsPage>
     );
 }

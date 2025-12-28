@@ -75,19 +75,35 @@ export async function updateService(serviceId: string, formData: FormData) {
     }
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
+    const region = formData.get('region') as string;
+    const slaTier = formData.get('slaTier') as string;
     const slackWebhookUrl = formData.get('slackWebhookUrl') as string;
+    const slackChannel = formData.get('slackChannel') as string;
     const teamId = formData.get('teamId') as string;
     const escalationPolicyId = formData.get('escalationPolicyId') as string;
+    
+    // Get service notification channels (isolated from escalation)
+    // Filter to only valid NotificationChannel enum values
+    const allChannels = formData.getAll('serviceNotificationChannels') as string[];
+    const validChannels = ['SLACK', 'WEBHOOK', 'EMAIL', 'SMS', 'PUSH', 'WHATSAPP'];
+    const serviceNotificationChannels = allChannels.filter(ch => 
+        validChannels.includes(ch) && !ch.includes(',')
+    );
 
     await prisma.service.update({
         where: { id: serviceId },
         data: {
             name,
             description,
-            slackWebhookUrl: slackWebhookUrl || null, // Set to null if empty to clear it
+            region: region || null,
+            slaTier: slaTier || null,
+            slackWebhookUrl: slackWebhookUrl || null,
+            slackChannel: slackChannel || null,
             teamId: teamId || null,
-            escalationPolicyId: escalationPolicyId || null
-            // Note: Notification channels are now user preferences, not service-level
+            escalationPolicyId: escalationPolicyId || null,
+            serviceNotificationChannels: serviceNotificationChannels.length > 0 
+                ? (serviceNotificationChannels as any[])
+                : [] // Default: no channels selected
         }
     });
 
@@ -100,8 +116,10 @@ export async function updateService(serviceId: string, formData: FormData) {
     });
 
     revalidatePath(`/services/${serviceId}`);
+    revalidatePath(`/services/${serviceId}/settings`);
     revalidatePath('/services');
     revalidatePath('/audit');
+    redirect(`/services/${serviceId}/settings?saved=1`);
 }
 
 export async function deleteService(serviceId: string) {

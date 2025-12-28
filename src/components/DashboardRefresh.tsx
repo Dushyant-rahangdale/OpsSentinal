@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type DashboardRefreshProps = {
   autoRefreshInterval?: number; // in seconds, default 60
@@ -9,6 +11,7 @@ type DashboardRefreshProps = {
 
 export default function DashboardRefresh({ autoRefreshInterval = 60 }: DashboardRefreshProps) {
   const router = useRouter();
+  const { userTimeZone } = useTimezone();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
@@ -86,7 +89,7 @@ export default function DashboardRefresh({ autoRefreshInterval = 60 }: Dashboard
       <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.9)', fontWeight: '500' }}>
         {mounted && lastUpdated ? (
           <>
-            Updated: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            Updated: {formatDateTime(lastUpdated, userTimeZone, { format: 'time' })}
             {autoRefreshEnabled && (
               <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', opacity: 0.8 }}>
                 (Auto: {timeUntilRefresh}s)

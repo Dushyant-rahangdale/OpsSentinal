@@ -3,6 +3,8 @@
 import { memo } from 'react';
 import Link from 'next/link';
 import { Card, Badge } from '@/components/ui';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type PostmortemCardProps = {
     postmortem: {
@@ -23,6 +25,8 @@ type PostmortemCardProps = {
 };
 
 function PostmortemCard({ postmortem }: PostmortemCardProps) {
+    const { userTimeZone } = useTimezone();
+    
     return (
         <Card 
             variant="elevated"
@@ -133,7 +137,7 @@ function PostmortemCard({ postmortem }: PostmortemCardProps) {
                             <circle cx="12" cy="12" r="10" />
                             <polyline points="12 6 12 12 16 14" />
                         </svg>
-                        {postmortem.createdAt.toLocaleDateString()}
+                        {formatDateTime(postmortem.createdAt, userTimeZone, { format: 'date' })}
                     </span>
                     {postmortem.publishedAt && (
                         <>
@@ -143,7 +147,7 @@ function PostmortemCard({ postmortem }: PostmortemCardProps) {
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                     <polyline points="14 2 14 8 20 8" />
                                 </svg>
-                                Published {postmortem.publishedAt.toLocaleDateString()}
+                                Published {formatDateTime(postmortem.publishedAt, userTimeZone, { format: 'date' })}
                             </span>
                         </>
                     )}

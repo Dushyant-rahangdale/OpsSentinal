@@ -49,17 +49,17 @@ export default function ConfirmDialog({
         danger: {
             confirmBg: 'var(--danger)',
             confirmHover: '#b91c1c',
-            icon: '⚠️'
+            icon: '!'
         },
         warning: {
             confirmBg: '#f59e0b',
             confirmHover: '#d97706',
-            icon: '⚠️'
+            icon: '!'
         },
         info: {
             confirmBg: '#3b82f6',
             confirmHover: '#2563eb',
-            icon: 'ℹ️'
+            icon: 'i'
         }
     };
 

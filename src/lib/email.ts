@@ -2,20 +2,21 @@
  * Email Notification Service
  * Sends email notifications for incidents
  * 
+ * Email providers are configured via the UI at Settings → System → Notification Providers
+ * 
  * To use with Resend (recommended):
  * 1. Install: npm install resend
- * 2. Set RESEND_API_KEY in .env
- * 3. Uncomment the Resend implementation below
+ * 2. Configure Resend in Settings → System → Notification Providers
  * 
  * To use with SendGrid:
  * 1. Install: npm install @sendgrid/mail
- * 2. Set SENDGRID_API_KEY in .env
- * 3. Use SendGrid implementation
+ * 2. Configure SendGrid in Settings → System → Notification Providers
  */
 
 import prisma from './prisma';
 import { getEmailConfig } from './notification-providers';
 import { getBaseUrl } from './env-validation';
+import { getUserTimeZone, formatDateTime } from './timezone';
 
 export type EmailOptions = {
     to: string;
@@ -26,22 +27,30 @@ export type EmailOptions = {
 
 /**
  * Send email notification
- * Currently uses console.log for development
- * Replace with actual email service in production
+ * @param options Email options
+ * @param providedConfig Optional email config - if provided, uses this instead of fetching from DB
  */
-export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
+export async function sendEmail(
+    options: EmailOptions,
+    providedConfig?: any
+): Promise<{ success: boolean; error?: string }> {
     try {
-        // Get email configuration (database first, then env vars)
-        const { getEmailConfig } = await import('./notification-providers');
-        const emailConfig = await getEmailConfig();
+        // Use provided config or get from database
+        let emailConfig: any;
+        if (providedConfig) {
+            emailConfig = providedConfig;
+        } else {
+            const { getEmailConfig } = await import('./notification-providers');
+            emailConfig = await getEmailConfig();
+        }
 
-        // Development: Log email instead of sending if no provider configured
-        if (process.env.NODE_ENV === 'development' || !emailConfig.enabled) {
-            console.log('Email Notification:', {
+        // Log email if no provider configured or disabled
+        if (!emailConfig.enabled || !emailConfig.provider) {
+            console.log('Email Notification (not sent - provider not configured):', {
                 to: options.to,
                 subject: options.subject,
                 preview: options.text || options.html.substring(0, 100),
-                provider: emailConfig.provider,
+                provider: emailConfig.provider || 'none',
                 source: emailConfig.source
             });
 
@@ -87,21 +96,129 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
         }
 
         if (emailConfig.provider === 'sendgrid') {
-            // TODO: Implement SendGrid when npm package is installed
-            // const sgMail = require('@sendgrid/mail');
-            // sgMail.setApiKey(emailConfig.apiKey);
-            // await sgMail.send({...});
-            console.log('Would send via SendGrid:', { to: options.to, from: emailConfig.fromEmail });
-            return { success: true };
+            try {
+                // Use runtime require to avoid build-time dependency
+                const requireFunc = eval('require') as (id: string) => any;
+                const sgMail = requireFunc('@sendgrid/mail');
+
+                // Validate API key
+                if (!emailConfig.apiKey || emailConfig.apiKey.trim() === '') {
+                    console.error('SendGrid API key is missing or empty');
+                    return { success: false, error: 'SendGrid API key is not configured' };
+                }
+
+                // Validate from email
+                if (!emailConfig.fromEmail || emailConfig.fromEmail.trim() === '') {
+                    console.error('SendGrid from email is missing or empty');
+                    return { success: false, error: 'SendGrid from email is not configured' };
+                }
+
+                sgMail.setApiKey(emailConfig.apiKey);
+
+                const result = await sgMail.send({
+                    to: options.to,
+                    from: emailConfig.fromEmail,
+                    subject: options.subject,
+                    html: options.html,
+                    text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+                });
+
+                // Check response for errors
+                const response = result[0];
+                if (response) {
+                    if (response.statusCode >= 200 && response.statusCode < 300) {
+                        const messageId = response.headers?.['x-message-id'] || 'unknown';
+                        console.log('Email sent via SendGrid:', {
+                            to: options.to,
+                            from: emailConfig.fromEmail,
+                            subject: options.subject,
+                            statusCode: response.statusCode,
+                            messageId: messageId,
+                            note: 'Check SendGrid Activity Feed for delivery status. If email not received, verify sender email is authenticated in SendGrid.'
+                        });
+                        return { success: true };
+                    } else {
+                        console.error('SendGrid returned error status:', {
+                            statusCode: response.statusCode,
+                            body: response.body,
+                            headers: response.headers
+                        });
+                        return {
+                            success: false,
+                            error: `SendGrid API returned status ${response.statusCode}: ${JSON.stringify(response.body)}`
+                        };
+                    }
+                } else {
+                    console.error('SendGrid returned empty response');
+                    return { success: false, error: 'SendGrid API returned empty response' };
+                }
+            } catch (error: any) {
+                // If SendGrid package is not installed, fall back to console log
+                if (error.code === 'MODULE_NOT_FOUND') {
+                    console.error('SendGrid package not installed. Install with: npm install @sendgrid/mail');
+                    return { success: false, error: 'SendGrid package not installed. Install with: npm install @sendgrid/mail' };
+                }
+
+                // Log full error details
+                console.error('SendGrid send error:', {
+                    message: error.message,
+                    code: error.code,
+                    response: error.response?.body,
+                    statusCode: error.response?.statusCode,
+                    headers: error.response?.headers
+                });
+
+                // Extract error message from SendGrid response if available
+                const errorMessage = error.response?.body?.errors
+                    ? JSON.stringify(error.response.body.errors)
+                    : error.message || 'SendGrid API error';
+
+                return { success: false, error: errorMessage };
+            }
         }
 
         if (emailConfig.provider === 'smtp') {
-            // TODO: Implement SMTP when nodemailer is installed
-            // const nodemailer = require('nodemailer');
-            // const transporter = nodemailer.createTransport({...});
-            // await transporter.sendMail({...});
-            console.log('Would send via SMTP:', { to: options.to, from: emailConfig.fromEmail, host: emailConfig.host });
-            return { success: true };
+            try {
+                // Use runtime require to avoid build-time dependency
+                const requireFunc = eval('require') as (id: string) => any;
+                const nodemailer = requireFunc('nodemailer');
+
+                // Validate required SMTP config
+                if (!emailConfig.host || !emailConfig.port || !emailConfig.user || !emailConfig.password) {
+                    return { success: false, error: 'SMTP configuration incomplete. Please configure Host, Port, Username, and Password in Settings → System → Notification Providers' };
+                }
+
+                // Create transporter
+                const transporter = nodemailer.createTransport({
+                    host: emailConfig.host,
+                    port: parseInt(emailConfig.port.toString()),
+                    secure: emailConfig.secure || false, // true for 465, false for other ports
+                    auth: {
+                        user: emailConfig.user,
+                        pass: emailConfig.password,
+                    },
+                });
+
+                // Send email
+                const info = await transporter.sendMail({
+                    from: emailConfig.fromEmail,
+                    to: options.to,
+                    subject: options.subject,
+                    html: options.html,
+                    text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+                });
+
+                console.log('Email sent via SMTP:', { to: options.to, messageId: info.messageId });
+                return { success: true };
+            } catch (error: any) {
+                // If nodemailer package is not installed, fall back to console log
+                if (error.code === 'MODULE_NOT_FOUND') {
+                    console.error('Nodemailer package not installed. Install with: npm install nodemailer');
+                    return { success: false, error: 'Nodemailer package not installed. Install with: npm install nodemailer' };
+                }
+                console.error('SMTP send error:', error);
+                return { success: false, error: error.message || 'SMTP send error' };
+            }
         }
 
         // No provider configured
@@ -124,81 +241,184 @@ export function generateIncidentEmailHTML(incident: {
     service: { name: string };
     assignee?: { name: string; email: string } | null;
     createdAt: Date;
+    acknowledgedAt?: Date | null;
+    resolvedAt?: Date | null;
     incidentUrl?: string;
-}): string {
+}, timeZone: string = 'UTC', eventType?: 'triggered' | 'acknowledged' | 'resolved'): string {
+    const {
+        EmailContainer,
+        EmailHeader,
+        EmailContent,
+        StatusBadge,
+        EmailButton,
+        InfoCard,
+        EmailFooter
+    } = require('./email-components');
+
     const baseUrl = getBaseUrl();
     const incidentUrl = incident.incidentUrl || `${baseUrl}/incidents/${incident.id}`;
-    const urgencyColor = incident.urgency === 'HIGH' ? '#ef4444' : '#f59e0b';
-    const statusColor = incident.status === 'RESOLVED' ? '#10b981' :
-        incident.status === 'ACKNOWLEDGED' ? '#3b82f6' : '#ef4444';
 
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${incident.title}</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 8px; margin-bottom: 20px;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">${incident.title}</h1>
-    </div>
-    
-    <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; width: 120px;">Service:</td>
-                <td style="padding: 8px 0;">${incident.service.name}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Status:</td>
-                <td style="padding: 8px 0;">
-                    <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; text-transform: uppercase;">
-                        ${incident.status}
-                    </span>
-                </td>
-            </tr>
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Urgency:</td>
-                <td style="padding: 8px 0;">
-                    <span style="background: ${urgencyColor}; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; text-transform: uppercase;">
-                        ${incident.urgency}
-                    </span>
-                </td>
-            </tr>
-            ${incident.assignee ? `
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Assignee:</td>
-                <td style="padding: 8px 0;">${incident.assignee.name}</td>
-            </tr>
+    const normalizedEventType = eventType
+        || (incident.status === 'RESOLVED'
+            ? 'resolved'
+            : incident.status === 'ACKNOWLEDGED'
+                ? 'acknowledged'
+                : 'triggered');
+
+    const headerTitle = normalizedEventType === 'resolved'
+        ? 'Incident Resolved'
+        : normalizedEventType === 'acknowledged'
+            ? 'Incident Acknowledged'
+            : incident.urgency === 'HIGH'
+                ? 'Critical Incident Alert'
+                : 'Incident Notification';
+    const headerSubtitle = `Service: ${incident.service.name}`;
+
+    const updateTitle = normalizedEventType === 'resolved'
+        ? 'Resolved'
+        : normalizedEventType === 'acknowledged'
+            ? 'Acknowledged'
+            : incident.urgency === 'HIGH'
+                ? 'Critical Incident'
+                : 'New Incident';
+    const updateMessage = normalizedEventType === 'resolved'
+        ? 'This incident has been resolved. Review the summary and timeline below.'
+        : normalizedEventType === 'acknowledged'
+            ? 'This incident has been acknowledged and is being actively worked.'
+            : 'A new incident has been reported. Review the details and take action.';
+
+    const theme = normalizedEventType === 'resolved'
+        ? {
+            badgeType: 'success' as const,
+            accent: '#16a34a',
+            background: '#ecfdf5',
+            border: '#86efac',
+            title: '#14532d',
+            text: '#15803d'
+        }
+        : normalizedEventType === 'acknowledged'
+            ? {
+                badgeType: 'warning' as const,
+                accent: '#f59e0b',
+                background: '#fff7ed',
+                border: '#fed7aa',
+                title: '#92400e',
+                text: '#b45309'
+            }
+            : incident.urgency === 'HIGH'
+                ? {
+                    badgeType: 'error' as const,
+                    accent: '#dc2626',
+                    background: '#fee2e2',
+                    border: '#fecaca',
+                    title: '#991b1b',
+                    text: '#b91c1c'
+                }
+                : {
+                    badgeType: 'info' as const,
+                    accent: '#2563eb',
+                    background: '#eff6ff',
+                    border: '#bfdbfe',
+                    title: '#1e3a8a',
+                    text: '#1d4ed8'
+                };
+
+    const formatDuration = (start: Date, end?: Date | null) => {
+        if (!end) return 'N/A';
+        const diffMs = end.getTime() - start.getTime();
+        if (!Number.isFinite(diffMs) || diffMs < 0) return 'N/A';
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const days = Math.floor(totalMinutes / 1440);
+        const hours = Math.floor((totalMinutes % 1440) / 60);
+        const minutes = totalMinutes % 60;
+        const parts: string[] = [];
+        if (days > 0) parts.push(`${days}d`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`);
+        return parts.join(' ');
+    };
+
+    const infoItems = [
+        { label: 'Service', value: incident.service.name, highlight: true },
+        { label: 'Status', value: incident.status },
+        { label: 'Urgency', value: incident.urgency },
+        { label: 'Assignee', value: incident.assignee?.name || 'Unassigned' },
+        { label: 'Created', value: formatDateTime(incident.createdAt, timeZone, { format: 'datetime' }) }
+    ];
+
+    if (incident.acknowledgedAt) {
+        infoItems.push({
+            label: 'Acknowledged',
+            value: formatDateTime(incident.acknowledgedAt, timeZone, { format: 'datetime' })
+        });
+    }
+
+    if (incident.resolvedAt) {
+        infoItems.push({
+            label: 'Resolved',
+            value: formatDateTime(incident.resolvedAt, timeZone, { format: 'datetime' })
+        });
+        infoItems.push({
+            label: 'Time to Resolve',
+            value: formatDuration(incident.createdAt, incident.resolvedAt)
+        });
+    }
+
+    const content = `
+        ${EmailHeader(headerTitle, headerSubtitle)}
+        
+        ${EmailContent(`
+            <div style="text-align: left; margin-bottom: 20px;">
+                ${StatusBadge(updateTitle.toUpperCase(), theme.badgeType)}
+            </div>
+
+            <div style="background: ${theme.background}; border: 1px solid ${theme.border}; border-left: 4px solid ${theme.accent}; padding: 16px 18px; border-radius: 12px; margin-bottom: 26px;">
+                <p style="margin: 0; color: ${theme.title}; font-size: 14px; font-weight: 700;">
+                    ${updateTitle}
+                </p>
+                <p style="margin: 6px 0 0; color: ${theme.text}; font-size: 13px; line-height: 1.6;">
+                    ${updateMessage}
+                </p>
+            </div>
+
+            <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 22px; font-weight: 700; line-height: 1.35;">
+                ${incident.title}
+            </h2>
+
+            <h3 style="margin: 26px 0 12px 0; color: #111827; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">
+                Incident Summary
+            </h3>
+            ${InfoCard(infoItems)}
+
+            ${incident.description ? `
+            <h3 style="margin: 26px 0 12px 0; color: #111827; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">
+                Overview
+            </h3>
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px;">
+                <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.7; white-space: pre-wrap;">
+                    ${incident.description}
+                </p>
+            </div>
             ` : ''}
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Created:</td>
-                <td style="padding: 8px 0;">${incident.createdAt.toLocaleString()}</td>
-            </tr>
-        </table>
-    </div>
-    
-    ${incident.description ? `
-    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
-        <h3 style="margin-top: 0; color: #1f2937;">Description</h3>
-        <p style="color: #4b5563; white-space: pre-wrap;">${incident.description}</p>
-    </div>
-    ` : ''}
-    
-    <div style="text-align: center; margin-top: 30px;">
-        <a href="${incidentUrl}" style="display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-            View Incident
-        </a>
-    </div>
-    
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
-        <p>This is an automated notification from OpsGuard Incident Management System.</p>
-    </div>
-</body>
-</html>
-    `.trim();
+
+            ${normalizedEventType === 'resolved' ? `
+            <h3 style="margin: 26px 0 12px 0; color: #111827; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">
+                Resolution
+            </h3>
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px;">
+                <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.7;">
+                    Incident marked resolved${incident.resolvedAt ? ` on ${formatDateTime(incident.resolvedAt, timeZone, { format: 'datetime' })}.` : '.'}
+                </p>
+            </div>
+            ` : ''}
+
+            ${EmailButton(normalizedEventType === 'resolved' ? 'View Resolution' : 'View Incident', incidentUrl)}
+        `)}
+        
+        ${EmailFooter()}
+    `;
+
+    return EmailContainer(content);
 }
 
 /**
@@ -228,20 +448,29 @@ export async function sendIncidentEmail(
         const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
 
-        const subject = `[${incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO'}] ${incident.title}`;
+        const subjectTag = eventType === 'resolved'
+            ? 'RESOLVED'
+            : eventType === 'acknowledged'
+                ? 'ACKNOWLEDGED'
+                : incident.urgency === 'HIGH'
+                    ? 'CRITICAL'
+                    : 'NEW';
+        const subject = `[${subjectTag}] ${incident.title}`;
+        const userTimeZone = getUserTimeZone(user ?? undefined);
         const html = generateIncidentEmailHTML({
             ...incident,
             incidentUrl
-        });
+        }, userTimeZone, eventType);
 
         return await sendEmail({
             to: user.email,
             subject,
             html,
-            text: `${incident.title}\n\nService: ${incident.service.name}\nStatus: ${incident.status}\nUrgency: ${incident.urgency}\n\nView: ${incidentUrl}`
+            text: `${incident.title}\n\nService: ${incident.service.name}\nStatus: ${incident.status}\nUrgency: ${incident.urgency}\n\n${subjectTag} update. View: ${incidentUrl}`
         });
     } catch (error: any) {
         console.error('Send incident email error:', error);
         return { success: false, error: error.message };
     }
 }
+

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type TimelineIncident = {
   id: string;
@@ -18,6 +20,7 @@ type DashboardTimelineViewProps = {
 };
 
 export default function DashboardTimelineView({ incidents, services }: DashboardTimelineViewProps) {
+  const { userTimeZone } = useTimezone();
   const [selectedService, setSelectedService] = useState<string>('all');
   const [zoomLevel, setZoomLevel] = useState<'day' | 'week' | 'month'>('week');
 
@@ -76,13 +79,18 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
   const formatTimeLabel = (dateStr: string) => {
     const date = new Date(dateStr);
     if (zoomLevel === 'day') {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return formatDateTime(date, userTimeZone, { format: 'date' });
     } else if (zoomLevel === 'week') {
       const endDate = new Date(date);
       endDate.setDate(endDate.getDate() + 6);
-      return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      return `${formatDateTime(date, userTimeZone, { format: 'short' }).split(',')[0]} - ${formatDateTime(endDate, userTimeZone, { format: 'short' }).split(',')[0]}`;
     } else {
-      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: userTimeZone
+      });
+      return formatter.format(date);
     }
   };
 
@@ -214,7 +222,7 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                         </div>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {new Date(incident.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTime(incident.createdAt, userTimeZone, { format: 'time' })}
                       </div>
                     </div>
                   ))}

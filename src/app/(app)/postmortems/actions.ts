@@ -14,6 +14,7 @@ export type PostmortemData = {
     actionItems?: any[];
     lessons?: string;
     status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    isPublic?: boolean;
 };
 
 /**

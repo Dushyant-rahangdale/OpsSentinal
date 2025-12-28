@@ -1,7 +1,8 @@
 import prisma from './prisma';
 import { sendIncidentEmail } from './email';
+import { retry } from './retry';
 
-export type NotificationChannel = 'EMAIL' | 'SMS' | 'PUSH' | 'SLACK' | 'WEBHOOK';
+export type NotificationChannel = 'EMAIL' | 'SMS' | 'PUSH' | 'SLACK' | 'WEBHOOK' | 'WHATSAPP';
 
 /**
  * Send notifications to escalation policy targets for an incident.
@@ -19,7 +20,8 @@ export async function sendNotification(
             userId,
             channel,
             message,
-            status: 'PENDING'
+            status: 'PENDING',
+            attempts: 0
         }
     });
 
@@ -96,6 +98,14 @@ export async function sendNotification(
                     : { success: false, error: webhookResult.error };
                 break;
             
+            case 'WHATSAPP':
+                const { sendIncidentWhatsApp } = await import('./whatsapp');
+                const incidentForWhatsApp = await prisma.incident.findUnique({ where: { id: incidentId } });
+                const eventTypeWhatsApp = incidentForWhatsApp?.status === 'RESOLVED' ? 'resolved' :
+                                         incidentForWhatsApp?.status === 'ACKNOWLEDGED' ? 'acknowledged' : 'triggered';
+                result = await sendIncidentWhatsApp(userId, incidentId, eventTypeWhatsApp);
+                break;
+            
             default:
                 result = { success: false, error: `Unknown channel: ${channel}` };
         }
@@ -127,7 +137,8 @@ export async function sendNotification(
             data: {
                 status: 'FAILED',
                 failedAt: new Date(),
-                errorMsg: error.message
+                errorMsg: error.message,
+                attempts: (notification.attempts || 0) + 1
             }
         });
 

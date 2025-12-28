@@ -1,7 +1,8 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { calculateMTTA, calculateMTTR, checkAckSLA, checkResolveSLA, formatTimeMinutesMs } from '@/lib/sla';
+import { calculateMTTA, calculateMTTR, checkAckSLA, checkResolveSLA } from '@/lib/sla';
+import { formatTimeMinutesMs } from '@/lib/time-format';
 import { getPrioritySLATarget, checkPriorityAckSLA, checkPriorityResolveSLA } from '@/lib/sla-priority';
 import { Incident, Service } from '@prisma/client';
 

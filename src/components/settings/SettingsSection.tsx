@@ -7,11 +7,13 @@ type Props = {
     description?: string;
     children: ReactNode;
     icon?: ReactNode;
+    className?: string;
+    contentClassName?: string;
 };
 
-export default function SettingsSection({ title, description, children, icon }: Props) {
+export default function SettingsSection({ title, description, children, icon, className = '', contentClassName = '' }: Props) {
     return (
-        <div className="settings-section">
+        <div className={`settings-section ${className}`.trim()}>
             <header className="settings-section-header">
                 {icon && (
                     <div style={{ 
@@ -27,7 +29,7 @@ export default function SettingsSection({ title, description, children, icon }: 
                 {!icon && <h2>{title}</h2>}
                 {description && <p>{description}</p>}
             </header>
-            <div className="settings-section-content">
+            <div className={`settings-section-content ${contentClassName}`.trim()}>
                 {children}
             </div>
         </div>

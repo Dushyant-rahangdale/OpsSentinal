@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { startCronScheduler } from '@/lib/cron-scheduler';
+
+// Start internal cron when the health endpoint is first loaded.
+startCronScheduler();
+
+// Generate a unique ID when the server process starts
+const SERVER_INSTANCE_ID = Date.now().toString();
 
 /**
  * Health check endpoint
@@ -27,13 +34,13 @@ export async function GET() {
         // Use Promise.race to add timeout
         const dbCheck = Promise.race([
             prisma.$queryRaw`SELECT 1`,
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Database connection timeout')), 5000)
             )
         ]);
         await dbCheck;
         const dbLatency = Date.now() - dbStartTime;
-        
+
         checks.database = {
             status: 'healthy',
             latency: dbLatency,
@@ -54,7 +61,7 @@ export async function GET() {
             heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
             external: Math.round(memUsage.external / 1024 / 1024),
         };
-        
+
         // Consider unhealthy if heap used > 90% of heap total
         const heapUsagePercent = (memUsage.heapUsed / memUsage.heapTotal) * 100;
         checks.memory = {
@@ -71,12 +78,12 @@ export async function GET() {
     // Determine overall status
     const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
     const anyUnhealthy = Object.values(checks).some(check => check.status === 'unhealthy');
-    
-    const overallStatus = allHealthy 
-        ? 'healthy' 
-        : anyUnhealthy 
-        ? 'unhealthy' 
-        : 'degraded';
+
+    const overallStatus = allHealthy
+        ? 'healthy'
+        : anyUnhealthy
+            ? 'unhealthy'
+            : 'degraded';
 
     const response = {
         status: overallStatus,
@@ -85,6 +92,7 @@ export async function GET() {
         uptime: Math.round(process.uptime()),
         version: process.env.npm_package_version || '1.0.0',
         environment: process.env.NODE_ENV || 'development',
+        instanceId: SERVER_INSTANCE_ID,
     };
 
     const statusCode = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503;

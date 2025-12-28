@@ -5,6 +5,8 @@ import { assertResponderOrAbove, getUserPermissions } from '@/lib/rbac';
 import { getAccessiblePresets } from '@/lib/search-presets';
 import prisma from '@/lib/prisma';
 import SearchPresetManager from '@/components/SearchPresetManager';
+import SettingsPage from '@/components/settings/SettingsPage';
+import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
 
 export default async function SearchPresetsPage() {
     const session = await getServerSession(authOptions);
@@ -46,25 +48,27 @@ export default async function SearchPresetsPage() {
     ]);
 
     return (
-        <div style={{ padding: 'var(--spacing-6)' }}>
-            <div style={{ marginBottom: 'var(--spacing-6)' }}>
-                <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--spacing-2)' }}>
-                    Search Presets
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-base)' }}>
-                    Create and manage saved search filters for quick access to incidents
-                </p>
-            </div>
-
-            <SearchPresetManager
-                presets={presets}
-                services={services}
-                users={users}
-                teams={teams}
-                currentUserId={permissions.id}
-                isAdmin={permissions.isAdmin}
-            />
-        </div>
+        <SettingsPage
+            currentPageId="search-presets"
+            backHref="/settings"
+            title="Search Presets"
+            description="Create and manage saved search filters for quick access to incidents."
+        >
+            <SettingsSectionCard
+                title="Saved searches"
+                description="Build filters you can reuse across incident views."
+            >
+                <SearchPresetManager
+                    presets={presets}
+                    services={services}
+                    users={users}
+                    teams={teams}
+                    currentUserId={permissions.id}
+                    isAdmin={permissions.isAdmin}
+                />
+            </SettingsSectionCard>
+        </SettingsPage>
     );
 }
+
 

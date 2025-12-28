@@ -43,9 +43,41 @@ export default function TopbarNotifications() {
     useEffect(() => {
         fetchNotifications();
         
-        // Refresh notifications every 30 seconds
-        const interval = setInterval(fetchNotifications, 30000);
-        return () => clearInterval(interval);
+        // Set up SSE connection for real-time updates
+        const eventSource = new EventSource('/api/notifications/stream');
+        
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'notifications' && data.notifications) {
+                    // Add new notifications to the list
+                    setNotifications((prev) => {
+                        const existingIds = new Set(prev.map(n => n.id));
+                        const newNotifications = data.notifications.filter((n: Notification) => !existingIds.has(n.id));
+                        return [...newNotifications, ...prev].slice(0, 50); // Keep latest 50
+                    });
+                }
+                
+                if (data.type === 'unread_count') {
+                    setUnreadCount(data.count || 0);
+                }
+            } catch (error) {
+                console.error('Error parsing SSE message:', error);
+            }
+        };
+        
+        eventSource.onerror = (error) => {
+            console.error('SSE connection error:', error);
+            // Fallback to polling if SSE fails
+            const interval = setInterval(fetchNotifications, 30000);
+            eventSource.close();
+            return () => clearInterval(interval);
+        };
+        
+        return () => {
+            eventSource.close();
+        };
     }, [fetchNotifications]);
 
     // Mark notifications as read when dropdown opens
@@ -196,8 +228,8 @@ export default function TopbarNotifications() {
                             ))
                         )}
                     </div>
-                    {notifications.length > 0 && (
-                        <div className="topbar-notifications-footer">
+                    <div className="topbar-notifications-footer">
+                        {notifications.length > 0 && (
                             <button
                                 type="button"
                                 className="topbar-notifications-view-all"
@@ -226,8 +258,19 @@ export default function TopbarNotifications() {
                             >
                                 {unreadCount > 0 ? 'Mark all as read' : 'Refresh notifications'}
                             </button>
-                        </div>
-                    )}
+                        )}
+                        <button
+                            type="button"
+                            className="topbar-notifications-view-all"
+                            onClick={() => {
+                                setOpen(false);
+                                window.location.href = '/settings/notifications/history';
+                            }}
+                            style={{ marginTop: notifications.length > 0 ? '0.5rem' : '0' }}
+                        >
+                            📊 View Notification Status
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
 
 interface Service {
     id: string;
@@ -33,34 +34,34 @@ interface StatusPageServicesGroupedProps {
 }
 
 const STATUS_CONFIG = {
-    OPERATIONAL: { 
-        color: '#10b981', 
+    OPERATIONAL: {
+        color: '#10b981',
         label: 'Operational',
     },
-    DEGRADED: { 
-        color: '#f59e0b', 
+    DEGRADED: {
+        color: '#f59e0b',
         label: 'Degraded',
     },
-    PARTIAL_OUTAGE: { 
-        color: '#f59e0b', 
+    PARTIAL_OUTAGE: {
+        color: '#f59e0b',
         label: 'Partial Outage',
     },
-    MAJOR_OUTAGE: { 
-        color: '#ef4444', 
+    MAJOR_OUTAGE: {
+        color: '#ef4444',
         label: 'Major Outage',
     },
-    MAINTENANCE: { 
-        color: '#3b82f6', 
+    MAINTENANCE: {
+        color: 'var(--status-primary, #3b82f6)',
         label: 'Maintenance',
     },
 };
 
 type TimePeriod = '30d' | '90d' | 'all';
 
-export default function StatusPageServicesGrouped({ 
-    services, 
+export default function StatusPageServicesGrouped({
+    services,
     statusPageServices,
-    incidents 
+    incidents
 }: StatusPageServicesGroupedProps) {
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('90d');
 
@@ -68,12 +69,12 @@ export default function StatusPageServicesGrouped({
     const calculateUptime = (serviceIds: string[], periodStart: Date) => {
         const periodEnd = new Date();
         const totalMinutes = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60);
-        
+
         // Get incidents for these services in the period
         const groupIncidents = incidents.filter(
-            inc => serviceIds.includes(inc.serviceId) && 
-                   inc.createdAt >= periodStart &&
-                   (inc.resolvedAt || inc.createdAt) <= periodEnd
+            inc => serviceIds.includes(inc.serviceId) &&
+                inc.createdAt >= periodStart &&
+                (inc.resolvedAt || inc.createdAt) <= periodEnd
         );
 
         // Calculate downtime minutes
@@ -85,10 +86,10 @@ export default function StatusPageServicesGrouped({
             downtimeMinutes += incidentMinutes;
         });
 
-        const uptimePercent = totalMinutes > 0 
-            ? ((totalMinutes - downtimeMinutes) / totalMinutes) * 100 
+        const uptimePercent = totalMinutes > 0
+            ? ((totalMinutes - downtimeMinutes) / totalMinutes) * 100
             : 100;
-        
+
         return Math.max(0, Math.min(100, uptimePercent));
     };
 
@@ -111,16 +112,19 @@ export default function StatusPageServicesGrouped({
     const getPeriodLabel = (period: TimePeriod): string => {
         const now = new Date();
         const start = getPeriodStart(period);
-        
+
         if (period === 'all') {
             return 'All time';
         }
-        
-        const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+
+        const browserTz = getBrowserTimeZone();
+        const startFormatted = formatDateTime(start, browserTz, { format: 'short' });
+        const endFormatted = formatDateTime(now, browserTz, { format: 'short' });
+        const startMonth = startFormatted.split(',')[0]?.split(' ')[0] || 'Jan';
         const startYear = start.getFullYear();
-        const endMonth = now.toLocaleDateString('en-US', { month: 'short' });
+        const endMonth = endFormatted.split(',')[0]?.split(' ')[0] || 'Jan';
         const endYear = now.getFullYear();
-        
+
         return `${startMonth} ${startYear}-${endMonth} ${endYear}`;
     };
 
@@ -163,24 +167,24 @@ export default function StatusPageServicesGrouped({
     return (
         <section style={{ marginBottom: '3rem' }}>
             {/* Header with period selector */}
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '2rem',
                 flexWrap: 'wrap',
                 gap: '1rem',
             }}>
-                <h2 style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: '600', 
-                    color: '#111827',
+                <h2 style={{
+                    fontSize: '1.5rem',
+                    fontWeight: '600',
+                    color: 'var(--status-text, #111827)',
                     margin: 0,
                 }}>
                     System status
                 </h2>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280', marginRight: '0.5rem' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--status-text-muted, #6b7280)', marginRight: '0.5rem' }}>
                         {getPeriodLabel(selectedPeriod)}
                     </span>
                     <select
@@ -191,8 +195,8 @@ export default function StatusPageServicesGrouped({
                             border: '1px solid #e5e7eb',
                             borderRadius: '0.5rem',
                             fontSize: '0.875rem',
-                            background: 'white',
-                            color: '#374151',
+                            background: 'var(--status-panel-bg, #ffffff)',
+                            color: 'var(--status-text, #374151)',
                             cursor: 'pointer',
                         }}
                     >
@@ -209,7 +213,7 @@ export default function StatusPageServicesGrouped({
                     const serviceIds = groupServices.map(s => s.id);
                     const uptime = calculateUptime(serviceIds, periodStart);
                     const componentCount = groupServices.length;
-                    
+
                     // Determine group status (worst status in group)
                     const groupStatus = groupServices.reduce((worst, service) => {
                         const serviceStatus = service.status || 'OPERATIONAL';
@@ -225,23 +229,23 @@ export default function StatusPageServicesGrouped({
                         return currentPriority > worstPriority ? serviceStatus : worst;
                     }, 'OPERATIONAL' as string);
 
-                    const statusConfig = STATUS_CONFIG[groupStatus as keyof typeof STATUS_CONFIG] || 
-                                       STATUS_CONFIG.OPERATIONAL;
+                    const statusConfig = STATUS_CONFIG[groupStatus as keyof typeof STATUS_CONFIG] ||
+                        STATUS_CONFIG.OPERATIONAL;
 
                     return (
                         <div
                             key={groupName}
                             style={{
-                                border: '1px solid #e5e7eb',
+                                border: '1px solid var(--status-panel-border, #e5e7eb)',
                                 borderRadius: '0.75rem',
                                 overflow: 'hidden',
-                                background: 'white',
+                                background: 'var(--status-panel-bg, #ffffff)',
                             }}
                         >
                             {/* Group Header */}
                             <div style={{
                                 padding: '1.5rem',
-                                borderBottom: '1px solid #e5e7eb',
+                                borderBottom: '1px solid var(--status-panel-border, #e5e7eb)',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
@@ -252,14 +256,14 @@ export default function StatusPageServicesGrouped({
                                     <h3 style={{
                                         fontSize: '1.125rem',
                                         fontWeight: '600',
-                                        color: '#111827',
+                                        color: 'var(--status-text, #111827)',
                                         marginBottom: '0.25rem',
                                     }}>
                                         {groupName}
                                     </h3>
                                     <div style={{
                                         fontSize: '0.875rem',
-                                        color: '#6b7280',
+                                        color: 'var(--status-text-muted, #6b7280)',
                                     }}>
                                         {componentCount} component{componentCount !== 1 ? 's' : ''}
                                     </div>
@@ -274,14 +278,14 @@ export default function StatusPageServicesGrouped({
                                         <div style={{
                                             fontSize: '1.5rem',
                                             fontWeight: '600',
-                                            color: '#111827',
+                                            color: 'var(--status-text, #111827)',
                                             lineHeight: '1.2',
                                         }}>
                                             {uptime.toFixed(2)}%
                                         </div>
                                         <div style={{
                                             fontSize: '0.75rem',
-                                            color: '#6b7280',
+                                            color: 'var(--status-text-muted, #6b7280)',
                                             marginTop: '0.25rem',
                                         }}>
                                             uptime
@@ -300,7 +304,7 @@ export default function StatusPageServicesGrouped({
                                         }}></div>
                                         <span style={{
                                             fontSize: '0.875rem',
-                                            color: '#374151',
+                                            color: 'var(--status-text, #374151)',
                                             fontWeight: '500',
                                         }}>
                                             {statusConfig.label}
@@ -312,7 +316,7 @@ export default function StatusPageServicesGrouped({
                             {/* Components List */}
                             <div style={{
                                 padding: '1rem 1.5rem',
-                                background: '#f9fafb',
+                                background: 'var(--status-panel-muted-bg, #f9fafb)',
                             }}>
                                 <div style={{
                                     display: 'grid',
@@ -321,8 +325,8 @@ export default function StatusPageServicesGrouped({
                                 }}>
                                     {groupServices.map((service) => {
                                         const serviceStatus = service.status || 'OPERATIONAL';
-                                        const serviceStatusConfig = STATUS_CONFIG[serviceStatus as keyof typeof STATUS_CONFIG] || 
-                                                                   STATUS_CONFIG.OPERATIONAL;
+                                        const serviceStatusConfig = STATUS_CONFIG[serviceStatus as keyof typeof STATUS_CONFIG] ||
+                                            STATUS_CONFIG.OPERATIONAL;
                                         const activeIncidents = service._count.incidents;
 
                                         return (
@@ -330,8 +334,8 @@ export default function StatusPageServicesGrouped({
                                                 key={service.id}
                                                 style={{
                                                     padding: '0.75rem',
-                                                    background: 'white',
-                                                    border: '1px solid #e5e7eb',
+                                                    background: 'var(--status-panel-bg, #ffffff)',
+                                                    border: '1px solid var(--status-panel-border, #e5e7eb)',
                                                     borderRadius: '0.5rem',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -343,7 +347,7 @@ export default function StatusPageServicesGrouped({
                                                     <div style={{
                                                         fontSize: '0.875rem',
                                                         fontWeight: '500',
-                                                        color: '#111827',
+                                                        color: 'var(--status-text, #111827)',
                                                         marginBottom: '0.25rem',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
@@ -377,14 +381,14 @@ export default function StatusPageServicesGrouped({
                             {/* View History Link */}
                             <div style={{
                                 padding: '1rem 1.5rem',
-                                borderTop: '1px solid #e5e7eb',
-                                background: 'white',
+                                borderTop: '1px solid var(--status-panel-border, #e5e7eb)',
+                                background: 'var(--status-panel-bg, #ffffff)',
                             }}>
                                 <a
                                     href="#incidents"
                                     style={{
                                         fontSize: '0.875rem',
-                                        color: '#3b82f6',
+                                        color: 'var(--status-primary, #3b82f6)',
                                         textDecoration: 'none',
                                         fontWeight: '500',
                                         display: 'inline-flex',

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from './src/lib/rate-limit';
 
-const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status'];
+const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status', '/setup'];
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((value) => value.trim())
@@ -28,7 +28,7 @@ function isPublicPath(pathname: string) {
  */
 function getSecurityHeaders(): Record<string, string> {
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     return {
         // Prevent MIME type sniffing
         'X-Content-Type-Options': 'nosniff',
@@ -161,6 +161,13 @@ export async function middleware(req: NextRequest) {
     // Handle unauthenticated users
     if (isPublicPath(pathname)) {
         // Allow access to public paths
+        return response;
+    }
+
+    // Allow the root page to render for unauthenticated users
+    // This allows the root page's server component to decide whether to redirect to /login or /setup
+    // based on whether users exist in the database.
+    if (pathname === '/') {
         return response;
     }
 

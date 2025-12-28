@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalState } from '@/hooks/useModalState';
+import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
 
 type SearchResult = {
     type: 'incident' | 'service' | 'team' | 'user' | 'policy' | 'postmortem';
@@ -26,7 +27,7 @@ type RecentSearch = {
     resultCount?: number;
 };
 
-const RECENT_SEARCHES_KEY = 'opsguard-recent-searches-v2';
+const RECENT_SEARCHES_KEY = 'OpsSentinal-recent-searches-v2';
 const MAX_RECENT_SEARCHES = 8;
 
 // Enhanced quick action suggestions with better categorization
@@ -464,7 +465,7 @@ export default function SidebarSearch() {
         if (minutes < 60) return `${minutes}m ago`;
         if (hours < 24) return `${hours}h ago`;
         if (days < 7) return `${days}d ago`;
-        return new Date(timestamp).toLocaleDateString();
+        return formatDateTime(new Date(timestamp), getBrowserTimeZone(), { format: 'date' });
     };
 
     if (!isOpen) {
@@ -496,7 +497,7 @@ export default function SidebarSearch() {
                     </span>
                     <div className="search-trigger-shortcut">
                         <kbd className="search-shortcut-key">
-                            {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}
+                            {typeof window !== 'undefined' && window.navigator && window.navigator.platform && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}
                         </kbd>
                         <kbd className="search-shortcut-key">K</kbd>
                     </div>
@@ -961,3 +962,5 @@ function highlightMatch(text: string, query: string): React.ReactNode {
         </>
     );
 }
+
+

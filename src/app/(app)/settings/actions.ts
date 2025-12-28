@@ -98,10 +98,13 @@ export async function updateNotificationPreferences(_prevState: ActionState, for
         const emailEnabled = formData.get('emailNotificationsEnabled') === 'on';
         const smsEnabled = formData.get('smsNotificationsEnabled') === 'on';
         const pushEnabled = formData.get('pushNotificationsEnabled') === 'on';
-        const phoneNumber = (formData.get('phoneNumber') as string | null)?.trim() || null;
+        const whatsappEnabled = formData.get('whatsappNotificationsEnabled') === 'on';
+        // Phone number can come from SMS or WhatsApp field (they share the same number)
+        const phoneNumber = (formData.get('phoneNumber') as string | null)?.trim() || 
+                           (formData.get('phoneNumberWhatsApp') as string | null)?.trim() || null;
 
-        // Validate phone number if SMS is enabled
-        if (smsEnabled && phoneNumber) {
+        // Validate phone number if SMS or WhatsApp is enabled
+        if ((smsEnabled || whatsappEnabled) && phoneNumber) {
             // Basic E.164 format validation
             const phoneRegex = /^\+[1-9]\d{1,14}$/;
             if (!phoneRegex.test(phoneNumber)) {
@@ -115,7 +118,8 @@ export async function updateNotificationPreferences(_prevState: ActionState, for
                 emailNotificationsEnabled: emailEnabled,
                 smsNotificationsEnabled: smsEnabled,
                 pushNotificationsEnabled: pushEnabled,
-                phoneNumber: smsEnabled ? phoneNumber : null
+                whatsappNotificationsEnabled: whatsappEnabled,
+                phoneNumber: (smsEnabled || whatsappEnabled) ? phoneNumber : null
             }
         });
 

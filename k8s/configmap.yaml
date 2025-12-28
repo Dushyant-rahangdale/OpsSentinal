@@ -1,15 +1,16 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: opsguard-config
-  namespace: opsguard
+  name: OpsSentinal-config
+  namespace: OpsSentinal
 data:
   # Database configuration
-  POSTGRES_DB: "opsguard_db"
-  POSTGRES_HOST: "opsguard-postgres-service"
+  POSTGRES_DB: "OpsSentinal_db"
+  POSTGRES_HOST: "OpsSentinal-postgres-service"
   POSTGRES_PORT: "5432"
   
   # Application configuration
   NODE_ENV: "production"
-  NEXTAUTH_URL: "http://opsguard.example.com"  # Update this to your domain
+  NEXTAUTH_URL: "http://OpsSentinal.example.com"  # Update this to your domain
   PORT: "3000"
+

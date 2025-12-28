@@ -26,9 +26,10 @@ export default function HelpPage() {
             <div className="glass-panel" style={{ padding: '1.5rem', background: 'white', marginTop: '1.5rem' }}>
                 <h3 style={{ marginBottom: '0.5rem' }}>Need direct support?</h3>
                 <p style={{ color: 'var(--text-secondary)' }}>
-                    Contact your OpsGuard administrator or reach out to your internal support channel.
+                    Contact your OpsSentinal administrator or reach out to your internal support channel.
                 </p>
             </div>
         </main>
     );
 }
+

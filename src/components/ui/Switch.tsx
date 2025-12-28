@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useId } from 'react';
 
 interface SwitchProps {
   checked: boolean;
@@ -12,6 +12,7 @@ interface SwitchProps {
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
   className?: string;
+  id?: string;
 }
 
 /**
@@ -34,8 +35,10 @@ export default function Switch({
   size = 'md',
   fullWidth = false,
   className = '',
+  id,
 }: SwitchProps) {
-  const switchId = `switch-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const switchId = id || generatedId;
   const hasError = !!error;
 
   const sizeStyles = {

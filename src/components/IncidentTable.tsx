@@ -4,6 +4,8 @@ import { useState, useTransition, memo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { bulkAcknowledge, bulkResolve } from '@/app/(app)/incidents/bulk-actions';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type Incident = {
     id: string;
@@ -22,6 +24,7 @@ type IncidentTableProps = {
 };
 
 export default memo(function IncidentTable({ incidents, sortBy = 'createdAt', sortOrder = 'desc' }: IncidentTableProps) {
+    const { userTimeZone } = useTimezone();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
@@ -321,14 +324,7 @@ export default memo(function IncidentTable({ incidents, sortBy = 'createdAt', so
                                 ) : <span style={{ color: 'var(--text-muted)' }}>Unassigned</span>}
                             </td>
                             <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                                {new Date(incident.createdAt).toLocaleString('en-US', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true
-                                })}
+                                {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
                             </td>
                             <td style={{ padding: '1rem' }}>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

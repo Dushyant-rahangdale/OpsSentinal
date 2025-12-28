@@ -1,12 +1,12 @@
 import { getUserPermissions } from '@/lib/rbac';
-import SettingsLayoutShell from '@/components/settings/SettingsLayoutShell';
+import SettingsShell from '@/components/settings/SettingsShell';
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
     const permissions = await getUserPermissions();
-    
+
     return (
-        <SettingsLayoutShell isAdmin={permissions.isAdmin}>
+        <SettingsShell isAdmin={permissions.isAdmin} isResponderOrAbove={permissions.isResponderOrAbove}>
             {children}
-        </SettingsLayoutShell>
+        </SettingsShell>
     );
 }

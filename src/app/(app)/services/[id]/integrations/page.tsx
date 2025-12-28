@@ -85,9 +85,7 @@ const INTEGRATION_TYPES: Array<{ value: IntegrationType; label: string; descript
 
 function getWebhookUrl(integrationType: IntegrationType, integrationId: string): string {
     // In production, this should use the actual domain from environment variables
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'https://your-domain.com';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     switch (integrationType) {
         case 'CLOUDWATCH':

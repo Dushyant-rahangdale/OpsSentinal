@@ -16,6 +16,8 @@ import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import ThemeToggle from '@/components/ThemeToggle';
+import { TimezoneProvider } from '@/contexts/TimezoneContext';
+import { startCronScheduler } from '@/lib/cron-scheduler';
 
 export const revalidate = 30;
 
@@ -24,19 +26,32 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  startCronScheduler();
+
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!session?.user?.email) {
     redirect('/login');
   }
-  
+
+  // Verify user still exists in database (handle DB resets)
+  const dbUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true, role: true, name: true, email: true, timeZone: true }
+  });
+
+  if (!dbUser) {
+    // Check if system is uninitialized
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+      redirect('/setup');
+    }
+    // Rare condition: User deleted or DB reset but others exist
+    // Force signout to clear stale session
+    redirect('/api/auth/signout?callbackUrl=/login');
+  }
+
   // Fetch latest user data from database to ensure name is always current
   // This ensures name changes reflect immediately in the topbar
-  const email = session?.user?.email ?? null;
-  const dbUser = email ? await prisma.user.findUnique({
-    where: { email },
-    select: { name: true, role: true }
-  }) : null;
-  
   const userName = dbUser?.name || session?.user?.name || null;
   const userEmail = session?.user?.email ?? null;
   const userRole = dbUser?.role || (session?.user as any)?.role || null;
@@ -56,37 +71,41 @@ export default async function AppLayout({
     ? `${criticalOpenCount} critical open`
     : 'No critical incidents';
 
+  const userTimeZone = dbUser?.timeZone || 'UTC';
+
   return (
     <AppErrorBoundary>
       <ToastProvider>
-        <GlobalKeyboardHandlerWrapper />
-        <SkipLinks />
-        <div className="app-shell">
-          <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
-          <div className="content-shell">
-            <header className="topbar-new">
-              <div className="topbar-section topbar-section-left">
-                <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
-                <TopbarBreadcrumbs />
-              </div>
-              <div className="topbar-section topbar-section-center">
-                <div className="topbar-search-wrapper">
-                  <SidebarSearch />
+        <TimezoneProvider initialTimeZone={userTimeZone}>
+          <GlobalKeyboardHandlerWrapper />
+          <SkipLinks />
+          <div className="app-shell">
+            <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
+            <div className="content-shell">
+              <header className="topbar-new">
+                <div className="topbar-section topbar-section-left">
+                  <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
+                  <TopbarBreadcrumbs />
                 </div>
-              </div>
-              <div className="topbar-section topbar-section-right">
-                <TopbarClock />
-                <TopbarNotifications />
-                <ThemeToggle />
-                <QuickActions canCreate={canCreate} />
-                <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
-              </div>
-            </header>
-            <main id="main-content" className="page-shell">
-              {children}
-            </main>
+                <div className="topbar-section topbar-section-center">
+                  <div className="topbar-search-wrapper">
+                    <SidebarSearch />
+                  </div>
+                </div>
+                <div className="topbar-section topbar-section-right">
+                  <TopbarClock />
+                  <TopbarNotifications />
+                  <ThemeToggle />
+                  <QuickActions canCreate={canCreate} />
+                  <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
+                </div>
+              </header>
+              <main id="main-content" className="page-shell">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
+        </TimezoneProvider>
       </ToastProvider>
     </AppErrorBoundary>
   );

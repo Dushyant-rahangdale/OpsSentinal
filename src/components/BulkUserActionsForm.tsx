@@ -15,6 +15,7 @@ type Props = {
     formId: string;
     className?: string;
     style?: CSSProperties;
+    disabled?: boolean;
 };
 
 function SubmitButton() {
@@ -26,12 +27,12 @@ function SubmitButton() {
     );
 }
 
-export default function BulkUserActionsForm({ action, formId, className = '', style }: Props) {
+export default function BulkUserActionsForm({ action, formId, className = '', style, disabled = false }: Props) {
     const [state, formAction] = useActionState(action, { error: null, success: false });
     const [localError, setLocalError] = useState<string | null>(null);
     const [showRoleSelect, setShowRoleSelect] = useState(false);
     const router = useRouter();
-    
+
     useEffect(() => {
         if (state?.success) {
             router.refresh();
@@ -41,7 +42,7 @@ export default function BulkUserActionsForm({ action, formId, className = '', st
     useEffect(() => {
         const actionSelect = document.getElementById(`${formId}-action`) as HTMLSelectElement;
         const roleSelect = document.getElementById(`${formId}-role`) as HTMLSelectElement;
-        
+
         if (actionSelect && roleSelect) {
             const handleChange = () => {
                 setShowRoleSelect(actionSelect.value === 'setRole');
@@ -94,24 +95,31 @@ export default function BulkUserActionsForm({ action, formId, className = '', st
             action={formAction}
             onSubmit={handleSubmit}
             className={`bulk-actions-form ${className}`.trim()}
-            style={style}
+            style={{ ...style, opacity: disabled ? 0.6 : 1 }}
         >
-            <select name="bulkAction" defaultValue="" className="bulk-actions-select" id={`${formId}-action`}>
-                <option value="" disabled>Bulk action</option>
-                <option value="activate">Activate</option>
-                <option value="deactivate">Deactivate</option>
-                <option value="setRole">Change Role</option>
-                <option value="delete">Delete</option>
-            </select>
-            {showRoleSelect && (
-                <select name="role" defaultValue="" className="bulk-actions-select" id={`${formId}-role`} required>
-                    <option value="" disabled>Select role</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="RESPONDER">Responder</option>
-                    <option value="USER">User</option>
+            <fieldset disabled={disabled} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
+                <select name="bulkAction" defaultValue="" className="bulk-actions-select" id={`${formId}-action`}>
+                    <option value="" disabled>Bulk action</option>
+                    <option value="activate">Activate</option>
+                    <option value="deactivate">Deactivate</option>
+                    <option value="setRole">Change Role</option>
+                    <option value="delete">Delete</option>
                 </select>
+                {showRoleSelect && (
+                    <select name="role" defaultValue="" className="bulk-actions-select" id={`${formId}-role`} required>
+                        <option value="" disabled>Select role</option>
+                        <option value="ADMIN">Admin</option>
+                        <option value="RESPONDER">Responder</option>
+                        <option value="USER">User</option>
+                    </select>
+                )}
+                <SubmitButton />
+            </fieldset>
+            {disabled && (
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: '0.5rem' }}>
+                    Admin access required
+                </span>
             )}
-            <SubmitButton />
             {(localError || state?.error) ? (
                 <span className="bulk-actions-error">
                     {localError || state?.error}

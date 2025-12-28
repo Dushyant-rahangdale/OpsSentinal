@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: opsguard-app-netpol
-  namespace: opsguard
+  name: OpsSentinal-app-netpol
+  namespace: OpsSentinal
 spec:
   podSelector:
     matchLabels:
-      app: opsguard-app
+      app: OpsSentinal-app
   policyTypes:
   - Ingress
   - Egress
@@ -23,7 +23,7 @@ spec:
   - from:
     - podSelector:
         matchLabels:
-          app: opsguard-app
+          app: OpsSentinal-app
     ports:
     - protocol: TCP
       port: 3000
@@ -32,7 +32,7 @@ spec:
   - to:
     - podSelector:
         matchLabels:
-          app: opsguard-postgres
+          app: OpsSentinal-postgres
     ports:
     - protocol: TCP
       port: 5432
@@ -51,21 +51,21 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: opsguard-postgres-netpol
-  namespace: opsguard
+  name: OpsSentinal-postgres-netpol
+  namespace: OpsSentinal
 spec:
   podSelector:
     matchLabels:
-      app: opsguard-postgres
+      app: OpsSentinal-postgres
   policyTypes:
   - Ingress
   - Egress
   ingress:
-  # Only allow connections from opsguard-app
+  # Only allow connections from OpsSentinal-app
   - from:
     - podSelector:
         matchLabels:
-          app: opsguard-app
+          app: OpsSentinal-app
     ports:
     - protocol: TCP
       port: 5432
@@ -81,4 +81,5 @@ spec:
     ports:
     - protocol: TCP
       port: 443
+
 

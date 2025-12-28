@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
-import { addTeamMember, createTeam, deleteTeam, removeTeamMember, updateTeam, updateTeamMemberRole } from './actions';
+import { addTeamMember, createTeam, deleteTeam, removeTeamMember, updateTeam, updateTeamMemberRole, updateTeamMemberNotifications } from './actions';
 import TeamCreateForm from '@/components/TeamCreateForm';
 import TeamCard from '@/components/TeamCard';
 import Link from 'next/link';
@@ -99,12 +99,24 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                                 id: true,
                                 name: true,
                                 email: true,
-                                status: true
+                                status: true,
+                                emailNotificationsEnabled: true,
+                                smsNotificationsEnabled: true,
+                                pushNotificationsEnabled: true,
+                                whatsappNotificationsEnabled: true
                             }
                         }
                     },
                     orderBy: { role: 'asc' }
                 },
+                // teamLead relation - uncomment after running: npx prisma generate
+                // teamLead: {
+                //     select: {
+                //         id: true,
+                //         name: true,
+                //         email: true
+                //     }
+                // },
                 services: { select: { id: true, name: true } },
                 _count: { select: { members: true, services: true } }
             },
@@ -176,7 +188,6 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
     const canUpdateTeam = permissions.isAdminOrResponder;
     const canDeleteTeam = permissions.isAdmin;
     const canManageMembers = permissions.isAdminOrResponder;
-    const canAssignOwnerAdmin = permissions.isAdmin;
 
     const totalPages = Math.ceil(adjustedTotalCount / TEAMS_PER_PAGE);
     const pageNumbers = totalPages > 1 ? getPageNumbers(page, totalPages) : [];
@@ -435,6 +446,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                     const ownerCount = ownerCountByTeam.get(team.id) || 0;
                     const adminCount = team.members.filter(m => m.role === 'ADMIN').length;
                     const memberCount = team.members.length;
+                    const isTeamOwner = team.members.some((member) => member.userId === permissions.id && member.role === 'OWNER');
+                    const canManageNotifications = permissions.isAdmin ||
+                        isTeamOwner ||
+                        (permissions.isAdminOrResponder && team.members.some((member) => member.userId === permissions.id));
+                    const canAssignOwnerAdmin = permissions.isAdmin || isTeamOwner;
 
                     return (
                         <TeamCard
@@ -450,11 +466,13 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                             canUpdateTeam={canUpdateTeam}
                             canDeleteTeam={canDeleteTeam}
                             canManageMembers={canManageMembers}
+                            canManageNotifications={canManageNotifications}
                             canAssignOwnerAdmin={canAssignOwnerAdmin}
                             updateTeam={updateTeam}
                             deleteTeam={deleteTeam}
                             addTeamMember={addTeamMember}
                             updateTeamMemberRole={updateTeamMemberRole}
+                            updateTeamMemberNotifications={updateTeamMemberNotifications}
                             removeTeamMember={removeTeamMember}
                         />
                     );

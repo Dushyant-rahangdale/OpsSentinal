@@ -2,15 +2,15 @@
  * Push Notification Service
  * Sends push notifications for incidents
  * 
+ * Push notification providers are configured via the UI at Settings → System → Notification Providers
+ * 
  * To use with Firebase Cloud Messaging (FCM):
  * 1. Install: npm install firebase-admin
- * 2. Set FIREBASE_PROJECT_ID and FIREBASE_PRIVATE_KEY in .env
- * 3. Uncomment the Firebase implementation below
+ * 2. Configure Firebase in Settings → System → Notification Providers
  * 
  * To use with OneSignal:
  * 1. Install: npm install onesignal-node
- * 2. Set ONESIGNAL_APP_ID and ONESIGNAL_REST_API_KEY in .env
- * 3. Use OneSignal implementation
+ * 2. Configure OneSignal in Settings → System → Notification Providers
  */
 
 import prisma from './prisma';
@@ -35,14 +35,14 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
         // Get push configuration
         const pushConfig = await getPushConfig();
 
-        // Get user's FCM token (would be stored in user profile or separate table)
-        const user = await prisma.user.findUnique({
-            where: { id: options.userId },
-            // TODO: Add fcmToken field to User model or create UserDevice table
+        // Get user's device tokens
+        const devices = await prisma.userDevice.findMany({
+            where: { userId: options.userId },
+            orderBy: { lastUsed: 'desc' }
         });
 
-        if (!user) {
-            return { success: false, error: 'User not found' };
+        if (devices.length === 0) {
+            return { success: false, error: 'No device tokens found for user' };
         }
 
         // Development: Log push instead of sending if no provider configured
@@ -61,44 +61,147 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
         }
 
         // Production: Use configured provider
+        let successCount = 0;
+        let errorMessages: string[] = [];
+
         if (pushConfig.provider === 'firebase') {
-            // TODO: Implement Firebase when npm package is installed
-            // const admin = require('firebase-admin');
-            // if (!admin.apps.length) {
-            //     admin.initializeApp({
-            //         credential: admin.credential.cert({
-            //             projectId: pushConfig.projectId,
-            //             privateKey: pushConfig.privateKey,
-            //             clientEmail: pushConfig.clientEmail,
-            //         })
-            // });
-            // }
-            // const message = {
-            //     notification: { title: options.title, body: options.body },
-            //     data: options.data,
-            //     token: user.fcmToken,
-            // };
-            // await admin.messaging().send(message);
-            console.log('Would send via Firebase:', { userId: options.userId, title: options.title });
-            return { success: true };
+            try {
+                // Validate required Firebase config
+                if (!pushConfig.projectId || !pushConfig.privateKey || !pushConfig.clientEmail) {
+                    return { success: false, error: 'Firebase configuration incomplete. Please configure Project ID, Private Key, and Client Email in Settings → System → Notification Providers' };
+                }
+
+                // Use runtime require to avoid build-time dependency
+                const requireFunc = eval('require') as (id: string) => any;
+                const admin = requireFunc('firebase-admin');
+
+                // Initialize Firebase Admin if not already initialized
+                if (!admin.apps.length) {
+                    try {
+                        admin.initializeApp({
+                            credential: admin.credential.cert({
+                                projectId: pushConfig.projectId,
+                                privateKey: pushConfig.privateKey.replace(/\\n/g, '\n'), // Handle escaped newlines
+                                clientEmail: pushConfig.clientEmail,
+                            }),
+                        });
+                    } catch (initError: any) {
+                        // App might already be initialized with different config
+                        if (!initError.message?.includes('already been initialized')) {
+                            throw initError;
+                        }
+                    }
+                }
+
+                // Send to all devices
+                for (const device of devices) {
+                    try {
+                        const message = {
+                            notification: { 
+                                title: options.title, 
+                                body: options.body 
+                            },
+                            data: options.data ? Object.fromEntries(
+                                Object.entries(options.data).map(([k, v]) => [k, String(v)])
+                            ) : undefined,
+                            token: device.token,
+                            apns: options.badge ? {
+                                payload: {
+                                    aps: {
+                                        badge: options.badge,
+                                    },
+                                },
+                            } : undefined,
+                        };
+                        
+                        await admin.messaging().send(message);
+                        await prisma.userDevice.update({
+                            where: { id: device.id },
+                            data: { lastUsed: new Date() }
+                        });
+                        successCount++;
+                    } catch (error: any) {
+                        // Handle invalid token errors
+                        if (error.code === 'messaging/invalid-registration-token' || error.code === 'messaging/registration-token-not-registered') {
+                            // Remove invalid token
+                            await prisma.userDevice.delete({ where: { id: device.id } });
+                            errorMessages.push(`Device ${device.deviceId}: Invalid token, removed`);
+                        } else {
+                            errorMessages.push(`Device ${device.deviceId}: ${error.message}`);
+                        }
+                    }
+                }
+            } catch (error: any) {
+                // If Firebase package is not installed
+                if (error.code === 'MODULE_NOT_FOUND') {
+                    console.error('Firebase Admin package not installed. Install with: npm install firebase-admin');
+                    return { success: false, error: 'Firebase Admin package not installed. Install with: npm install firebase-admin' };
+                }
+                console.error('Firebase push send error:', error);
+                return { success: false, error: error.message || 'Firebase send error' };
+            }
+        } else if (pushConfig.provider === 'onesignal') {
+            try {
+                // Validate required OneSignal config
+                if (!pushConfig.appId || !pushConfig.restApiKey) {
+                    return { success: false, error: 'OneSignal configuration incomplete. Please configure App ID and REST API Key in Settings → System → Notification Providers' };
+                }
+
+                // Use runtime require to avoid build-time dependency
+                const requireFunc = eval('require') as (id: string) => any;
+                const { Client } = requireFunc('onesignal-node');
+
+                const client = new Client(pushConfig.appId, pushConfig.restApiKey);
+                const deviceTokens = devices.map(d => d.token);
+
+                const notification = {
+                    headings: { en: options.title },
+                    contents: { en: options.body },
+                    include_player_ids: deviceTokens,
+                    data: options.data || {},
+                    badge: options.badge,
+                };
+
+                const response = await client.createNotification(notification);
+                
+                // OneSignal sends to all devices at once
+                if (response.body?.id) {
+                    // Update all devices as successful
+                    await prisma.userDevice.updateMany({
+                        where: { userId: options.userId },
+                        data: { lastUsed: new Date() }
+                    });
+                    successCount = devices.length;
+                    console.log('Push sent via OneSignal:', { userId: options.userId, notificationId: response.body.id, devices: devices.length });
+                } else {
+                    return { success: false, error: 'OneSignal API returned no notification ID' };
+                }
+            } catch (error: any) {
+                // If OneSignal package is not installed
+                if (error.code === 'MODULE_NOT_FOUND') {
+                    console.error('OneSignal package not installed. Install with: npm install onesignal-node');
+                    return { success: false, error: 'OneSignal package not installed. Install with: npm install onesignal-node' };
+                }
+                console.error('OneSignal push send error:', error);
+                return { success: false, error: error.message || 'OneSignal send error' };
+            }
+        } else {
+            return { success: false, error: 'No push notification provider configured' };
         }
 
-        if (pushConfig.provider === 'onesignal') {
-            // TODO: Implement OneSignal when npm package is installed
-            // const { Client } = require('onesignal-node');
-            // const client = new Client(pushConfig.appId, pushConfig.restApiKey);
-            // await client.createNotification({
-            //     headings: { en: options.title },
-            //     contents: { en: options.body },
-            //     include_external_user_ids: [options.userId],
-            //     data: options.data,
-            // });
-            console.log('Would send via OneSignal:', { userId: options.userId, title: options.title });
-            return { success: true };
+        // Update lastUsed for successful devices
+        if (successCount > 0) {
+            await prisma.userDevice.updateMany({
+                where: { userId: options.userId },
+                data: { lastUsed: new Date() }
+            });
         }
 
-        // No provider configured
-        return { success: false, error: 'No push notification provider configured' };
+        if (successCount > 0) {
+            return { success: true };
+        } else {
+            return { success: false, error: errorMessages.join('; ') || 'Failed to send to all devices' };
+        }
     } catch (error: any) {
         console.error('Push send error:', error);
         return { success: false, error: error.message };
@@ -132,15 +235,45 @@ export async function sendIncidentPush(
         const baseUrl = getBaseUrl();
         const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
 
-        const urgencyLabel = incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO';
-        const statusLabel = eventType === 'resolved'
-            ? '[RESOLVED]'
-            : eventType === 'acknowledged'
-                ? '[ACK]'
-                : '[TRIGGERED]';
+        // Format timestamps
+        const formatTime = (date: Date) => {
+            return new Intl.DateTimeFormat('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }).format(date);
+        };
 
-        const title = `${statusLabel} [${urgencyLabel}] ${incident.title}`;
-        const body = `${incident.service.name} -> ${incident.status}`;
+        const eventEmoji = eventType === 'triggered' ? '🚨' :
+                          eventType === 'acknowledged' ? '⚠️' :
+                          '✅';
+        
+        const urgencyEmoji = incident.urgency === 'HIGH' ? '🔴' : '🟡';
+        const urgencyLabel = incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO';
+        
+        const statusLabel = eventType === 'resolved'
+            ? 'RESOLVED'
+            : eventType === 'acknowledged'
+                ? 'ACKNOWLEDGED'
+                : 'TRIGGERED';
+
+        // Build title and body
+        const title = `${eventEmoji} ${statusLabel} - ${incident.title}`;
+        
+        let body = `${urgencyEmoji} ${urgencyLabel} • ${incident.service.name}`;
+        if (incident.assignee) {
+            body += ` • ${incident.assignee.name}`;
+        }
+        body += `\n${formatTime(incident.createdAt)}`;
+        
+        if (incident.description) {
+            const shortDesc = incident.description.length > 80 
+                ? incident.description.substring(0, 80) + '...' 
+                : incident.description;
+            body += `\n${shortDesc}`;
+        }
 
         return await sendPush({
             userId,

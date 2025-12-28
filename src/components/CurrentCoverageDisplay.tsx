@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatDateTime } from '@/lib/timezone';
 
 type CoverageBlock = {
     id: string;
@@ -19,19 +20,12 @@ export default function CurrentCoverageDisplay({
     initialBlocks, 
     scheduleTimeZone
 }: CurrentCoverageDisplayProps) {
-    // Format date/time function inside the client component
-    const formatDateTime = (date: Date) => {
+    // Format date/time function using centralized utility
+    const formatDateTimeLocal = (date: Date) => {
         // Ensure we're working with a proper Date object
         const dateObj = date instanceof Date ? date : new Date(date);
         
-        return dateObj.toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-            timeZone: scheduleTimeZone
-        });
+        return formatDateTime(dateObj, scheduleTimeZone, { format: 'short', hour12: true });
     };
     // Convert initialBlocks to ensure all dates are Date objects
     // Dates come as ISO strings from server, so we always convert them
@@ -142,7 +136,7 @@ export default function CurrentCoverageDisplay({
                         color: 'var(--text-muted)',
                         margin: 0
                     }}>
-                        Updated: {currentTime.toLocaleTimeString()}
+                        Updated: {formatDateTime(currentTime, scheduleTimeZone, { format: 'time' })}
                     </p>
                 </div>
                 {activeBlocks.length > 0 && (
@@ -244,7 +238,7 @@ export default function CurrentCoverageDisplay({
                                             {block.layerName}
                                         </span>
                                         <span>·</span>
-                                        <span>Until {formatDateTime(block.end)}</span>
+                                        <span>Until {formatDateTimeLocal(block.end)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -261,7 +255,7 @@ export default function CurrentCoverageDisplay({
                             fontWeight: '500',
                             textAlign: 'center'
                         }}>
-                            ⏰ Next change: {formatDateTime(nextChange)}
+                            ⏰ Next change: {formatDateTimeLocal(nextChange)}
                         </div>
                     )}
                 </>

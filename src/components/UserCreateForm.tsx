@@ -14,18 +14,24 @@ type FormState = {
 type Props = {
     action: (prevState: FormState, formData: FormData) => Promise<FormState>;
     className?: string;
+    disabled?: boolean;
 };
 
-function SubmitButton() {
+function SubmitButton({ disabled }: { disabled?: boolean }) {
     const { pending } = useFormStatus();
     return (
-        <button type="submit" className="glass-button primary full-width" disabled={pending}>
+        <button
+            type="submit"
+            className="glass-button primary full-width"
+            disabled={pending || disabled}
+            style={disabled ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+        >
             {pending ? 'Adding...' : 'Add User'}
         </button>
     );
 }
 
-export default function UserCreateForm({ action, className = '' }: Props) {
+export default function UserCreateForm({ action, className = '', disabled = false }: Props) {
     const [state, formAction] = useActionState(action, { error: null, success: false });
     const formRef = useRef<HTMLFormElement | null>(null);
     const [email, setEmail] = useState('');
@@ -48,43 +54,50 @@ export default function UserCreateForm({ action, className = '' }: Props) {
 
     return (
         <form ref={formRef} action={formAction} className={`invite-form ${className}`.trim()}>
-            <div className="form-field">
-                <label className="form-label">Name *</label>
-                <input
-                    name="name"
-                    required
-                    placeholder="Full name"
-                    className="form-input"
-                    maxLength={200}
-                />
-            </div>
-            <div className="form-field">
-                <label className="form-label">Email *</label>
-                <input
-                    name="email"
-                    required
-                    type="email"
-                    placeholder="name@company.com"
-                    className="form-input"
-                    maxLength={320}
-                    value={email}
-                    onChange={handleEmailChange}
-                />
-                {emailError && (
-                    <div className="form-error" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                        {emailError}
-                    </div>
-                )}
-            </div>
-            <div className="form-field">
-                <label className="form-label">Role</label>
-                <select name="role" defaultValue="RESPONDER" className="form-select">
-                    <option value="ADMIN">Admin</option>
-                    <option value="RESPONDER">Responder</option>
-                    <option value="USER">User</option>
-                </select>
-            </div>
-            <SubmitButton />
+            <fieldset disabled={disabled} style={{ border: 'none', padding: 0, margin: 0, opacity: disabled ? 0.6 : 1 }}>
+                <div className="form-field">
+                    <label className="form-label">Name *</label>
+                    <input
+                        name="name"
+                        required
+                        placeholder="Full name"
+                        className="form-input"
+                        maxLength={200}
+                    />
+                </div>
+                <div className="form-field">
+                    <label className="form-label">Email *</label>
+                    <input
+                        name="email"
+                        required
+                        type="email"
+                        placeholder="name@company.com"
+                        className="form-input"
+                        maxLength={320}
+                        value={email}
+                        onChange={handleEmailChange}
+                    />
+                    {emailError && (
+                        <div className="form-error" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                            {emailError}
+                        </div>
+                    )}
+                </div>
+                <div className="form-field">
+                    <label className="form-label">Role</label>
+                    <select name="role" defaultValue="RESPONDER" className="form-select">
+                        <option value="ADMIN">Admin</option>
+                        <option value="RESPONDER">Responder</option>
+                        <option value="USER">User</option>
+                    </select>
+                </div>
+                <SubmitButton disabled={disabled} />
+            </fieldset>
+            {disabled && (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
+                    Only admins can invite new users.
+                </div>
+            )}
             {state?.error && (
                 <div className="form-error">
                     {getUserFriendlyError(state.error)}

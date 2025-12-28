@@ -15,16 +15,21 @@ export function getBaseUrl(): string {
     const url = process.env.NEXT_PUBLIC_APP_URL;
 
     if (!url) {
-        if (process.env.NODE_ENV === 'production') {
-            throw new Error(
-                'NEXT_PUBLIC_APP_URL environment variable is required in production. ' +
-                'This is used for notification links, webhooks, and RSS feeds. ' +
-                'Please set it to your application URL (e.g., https://opsguard.yourdomain.com)'
-            );
+        // Fallback to NEXTAUTH_URL if available
+        if (process.env.NEXTAUTH_URL) {
+            return process.env.NEXTAUTH_URL.replace(/\/$/, '');
         }
 
-        // Development fallback
-        logger.warn('NEXT_PUBLIC_APP_URL not set, using localhost fallback (development only)');
+        if (process.env.NODE_ENV === 'production') {
+            logger.warn(
+                'NEXT_PUBLIC_APP_URL environment variable is not set. ' +
+                'Using localhost fallback. Set this to your application URL for correct notification links.'
+            );
+        } else {
+            // Development fallback
+            logger.warn('NEXT_PUBLIC_APP_URL not set, using localhost fallback (development only)');
+        }
+
         return 'http://localhost:3000';
     }
 
@@ -52,11 +57,11 @@ export function validateProductionEnv(): void {
         },
         {
             name: 'NEXTAUTH_URL',
-            description: 'Full URL of your application (e.g., https://opsguard.yourdomain.com)'
+            description: 'Full URL of your application (e.g., https://OpsSentinal.yourdomain.com)'
         },
         {
-            name: 'NEXT_PUBLIC_APP_URL',
-            description: 'Public URL used in notifications, webhooks, and RSS feeds'
+            name: 'NEXTAUTH_URL',
+            description: 'Full URL of your application (e.g., https://OpsSentinal.yourdomain.com)'
         }
     ];
 
@@ -78,17 +83,21 @@ export function validateProductionEnv(): void {
         throw new Error(errorMessage);
     }
 
-    // Validate NEXT_PUBLIC_APP_URL format
+    // Validate NEXT_PUBLIC_APP_URL format if present
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (appUrl && !appUrl.startsWith('http')) {
-        throw new Error(
-            `NEXT_PUBLIC_APP_URL must start with http:// or https:// (got: ${appUrl})`
+        logger.warn(
+            `NEXT_PUBLIC_APP_URL should start with http:// or https:// (got: ${appUrl})`
         );
     }
 
     // Warn about localhost in production
     if (appUrl && appUrl.includes('localhost')) {
         logger.warn('⚠️  NEXT_PUBLIC_APP_URL points to localhost in production. This may cause issues with notifications and webhooks.');
+    }
+
+    if (!appUrl) {
+        logger.warn('⚠️  NEXT_PUBLIC_APP_URL is not set. The application will attempt to use the database configuration or request headers.');
     }
 
     logger.info('✅ Production environment variables validated');
@@ -115,5 +124,7 @@ export function getFromEmail(): string {
         logger.warn('EMAIL_FROM not set and cannot derive from NEXT_PUBLIC_APP_URL. Using default.');
     }
 
-    return 'noreply@opsguard.local';
+    return 'noreply@OpsSentinal.local';
 }
+
+

@@ -28,7 +28,7 @@ async function runSerializableTransaction<T>(operation: (tx: Prisma.TransactionC
     const maxAttempts = EVENT_TRANSACTION_MAX_ATTEMPTS;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         try {
-            return await prisma.$transaction(operation, { isolationLevel: 'Serializable' });
+            return (await prisma.$transaction(operation as any, { isolationLevel: 'Serializable' })) as T;
         } catch (error) {
             if (attempt < maxAttempts - 1 && isRetryableTransactionError(error)) {
                 continue;
@@ -107,6 +107,7 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
                 }
             });
 
+            // Note: Webhook triggering happens outside transaction to avoid blocking
             return { action: 'triggered', incident: newIncident };
         }
 
@@ -166,10 +167,51 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
     });
 
     if (result.action === 'triggered' && result.incident) {
+        // Trigger status page webhooks for incident.created event
+        try {
+            const { triggerWebhooksForService } = await import('./status-page-webhooks');
+            const incidentWithService = await prisma.incident.findUnique({
+                where: { id: result.incident.id },
+                include: {
+                    service: { select: { id: true, name: true } },
+                    assignee: { select: { id: true, name: true, email: true } },
+                },
+            });
+
+            if (incidentWithService) {
+                triggerWebhooksForService(
+                    result.incident.serviceId,
+                    'incident.created',
+                    {
+                        id: incidentWithService.id,
+                        title: incidentWithService.title,
+                        description: incidentWithService.description,
+                        status: incidentWithService.status,
+                        urgency: incidentWithService.urgency,
+                        priority: incidentWithService.priority,
+                        service: {
+                            id: incidentWithService.service.id,
+                            name: incidentWithService.service.name,
+                        },
+                        assignee: incidentWithService.assignee,
+                        createdAt: incidentWithService.createdAt.toISOString(),
+                    }
+                ).catch((err) => {
+                    logger.error('api.event.webhook_trigger_failed', {
+                        error: err instanceof Error ? err.message : String(err),
+                    });
+                });
+            }
+        } catch (e) {
+            logger.error('api.event.webhook_trigger_error', {
+                error: e instanceof Error ? e.message : String(e),
+            });
+        }
+
         // Send service-level notifications (to team members, assignee, etc.)
         // Uses user preferences for each recipient
         try {
-            const { sendServiceNotifications } = await import('./user-notifications');
+            const { sendServiceNotifications } = await import('./service-notifications');
             await sendServiceNotifications(result.incident.id, 'triggered');
         } catch (error) {
             logger.error('Service notification failed', {
@@ -190,6 +232,49 @@ export async function processEvent(payload: EventPayload, serviceId: string, int
     }
 
     if (result.action === 'resolved' && result.incident) {
+        // Trigger status page webhooks for incident.resolved event
+        try {
+            const { triggerWebhooksForService } = await import('./status-page-webhooks');
+            const incidentWithService = await prisma.incident.findUnique({
+                where: { id: result.incident.id },
+                include: {
+                    service: { select: { id: true, name: true } },
+                    assignee: { select: { id: true, name: true, email: true } },
+                },
+            });
+
+            if (incidentWithService) {
+                triggerWebhooksForService(
+                    result.incident.serviceId,
+                    'incident.resolved',
+                    {
+                        id: incidentWithService.id,
+                        title: incidentWithService.title,
+                        description: incidentWithService.description,
+                        status: incidentWithService.status,
+                        urgency: incidentWithService.urgency,
+                        priority: incidentWithService.priority,
+                        service: {
+                            id: incidentWithService.service.id,
+                            name: incidentWithService.service.name,
+                        },
+                        assignee: incidentWithService.assignee,
+                        createdAt: incidentWithService.createdAt.toISOString(),
+                        acknowledgedAt: incidentWithService.acknowledgedAt?.toISOString() || null,
+                        resolvedAt: incidentWithService.resolvedAt?.toISOString() || null,
+                    }
+                ).catch((err) => {
+                    logger.error('api.event.webhook_trigger_failed', {
+                        error: err instanceof Error ? err.message : String(err),
+                    });
+                });
+            }
+        } catch (e) {
+            logger.error('api.event.webhook_trigger_error', {
+                error: e instanceof Error ? e.message : String(e),
+            });
+        }
+
         notifySlackForIncident(result.incident.id, 'resolved').catch((error) => {
             logger.error('Slack notification failed', {
                 incidentId: result.incident.id,

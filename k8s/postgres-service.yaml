@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: opsguard-postgres-service
-  namespace: opsguard
+  name: OpsSentinal-postgres-service
+  namespace: OpsSentinal
   labels:
-    app: opsguard-postgres
+    app: OpsSentinal-postgres
 spec:
   type: ClusterIP
   ports:
@@ -13,4 +13,5 @@ spec:
     protocol: TCP
     name: postgres
   selector:
-    app: opsguard-postgres
+    app: OpsSentinal-postgres
+

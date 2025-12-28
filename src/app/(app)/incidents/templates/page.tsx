@@ -4,6 +4,9 @@ import { getUserPermissions } from '@/lib/rbac';
 import { deleteTemplate, getAllTemplates } from '../template-actions';
 import { revalidatePath } from 'next/cache';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
 
 export const revalidate = 30;
 
@@ -12,6 +15,17 @@ export default async function TemplatesPage() {
     const canManageTemplates = permissions.isResponderOrAbove;
 
     const templates = await getAllTemplates(permissions.id);
+    
+    // Get user timezone for date formatting
+    const session = await getServerSession(authOptions);
+    const email = session?.user?.email ?? null;
+    const user = email
+        ? await prisma.user.findUnique({
+            where: { email },
+            select: { timeZone: true }
+        })
+        : null;
+    const userTimeZone = getUserTimeZone(user ?? undefined);
 
     async function handleDelete(formData: FormData) {
         'use server';
@@ -216,7 +230,7 @@ export default async function TemplatesPage() {
 
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
                                 <span>Created by {template.createdBy.name}</span>
-                                <span>{new Date(template.createdAt).toLocaleDateString()}</span>
+                                <span>{formatDateTime(template.createdAt, userTimeZone, { format: 'date' })}</span>
                             </div>
                         </div>
                     ))}

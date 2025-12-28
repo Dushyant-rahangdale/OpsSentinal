@@ -1,7 +1,7 @@
 'use client';
 
 type IconProps = {
-    name: 'profile' | 'preferences' | 'security' | 'api-keys' | 'system' | 'status-page' | 'help';
+    name: 'profile' | 'preferences' | 'security' | 'api-keys' | 'system' | 'status-page' | 'help' | 'notifications' | 'slack' | 'custom-fields' | 'search-presets';
     className?: string;
 };
 
@@ -48,6 +48,33 @@ export default function SettingsIcon({ name, className = '' }: IconProps) {
         help: (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
                 <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 19H11V17H13V19ZM15.07 11.25L14.17 12.17C13.45 12.9 13 13.5 13 15H11V14.5C11 13.67 11.45 12.9 12.17 12.17L13.07 11.27C13.55 10.82 13.8 10.2 13.8 9.5C13.8 8.12 12.68 7 11.3 7C9.92 7 8.8 8.12 8.8 9.5H10.8C10.8 9.05 11.15 8.7 11.6 8.7C12.05 8.7 12.4 9.05 12.4 9.5C12.4 9.95 12.05 10.3 11.6 10.3C11.15 10.3 10.8 9.95 10.8 9.5H8.8C8.8 7.29 10.59 5.5 12.8 5.5C15.01 5.5 16.8 7.29 16.8 9.5C16.8 10.5 16.35 11.4 15.07 11.25Z" fill="currentColor" fillOpacity="0.6"/>
+            </svg>
+        ),
+        notifications: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
+                <path d="M18 8A6 6 0 0 0 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" fill="currentColor" fillOpacity="0.6"/>
+                <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+        ),
+        slack: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
+                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165V11.91h5.042v3.255zm1.271 0a2.527 2.527 0 0 1 2.521-2.523 2.527 2.527 0 0 1 2.52 2.523v6.745H6.313v-6.745zm2.521-5.306V5.841a2.528 2.528 0 0 1 2.52-2.523h2.522a2.528 2.528 0 0 1 2.521 2.523v4.018H10.355zm5.208 0V5.841a2.528 2.528 0 0 0-2.521-2.523h-2.522a2.528 2.528 0 0 0-2.52 2.523v4.018h7.563zm2.522 5.306V11.91H24v3.255a2.528 2.528 0 0 1-2.521 2.523 2.528 2.528 0 0 1-2.52-2.523zm-2.522-5.306V5.841A2.528 2.528 0 0 0 15.624 3.318h-2.522a2.528 2.528 0 0 0-2.521 2.523v4.018h7.563z" fill="currentColor" fillOpacity="0.6"/>
+            </svg>
+        ),
+        'custom-fields': (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
+                <rect x="3" y="4" width="18" height="16" rx="2" fill="currentColor" fillOpacity="0.15" />
+                <path d="M7 8H17" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M7 12H13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M7 16H11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+        ),
+        'search-presets': (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className={className}>
+                <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M16 16L20 20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M7.5 10.5H13.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M10.5 7.5V13.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
         )
     };

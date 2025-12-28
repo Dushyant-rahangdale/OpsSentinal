@@ -53,10 +53,40 @@ class QueryMonitor {
 
     // Log errors
     if (error) {
+      // Extract error information more comprehensively
+      let errorMessage = 'Unknown error';
+      let errorStack: string | undefined;
+      let errorCode: string | undefined;
+      let errorMeta: unknown;
+
+      if (error instanceof Error) {
+        errorMessage = error.message || 'Error without message';
+        errorStack = error.stack;
+
+        // Handle Prisma errors specifically
+        if ('code' in error) {
+          errorCode = String(error.code);
+        }
+        if ('meta' in error) {
+          errorMeta = error.meta;
+        }
+      } else {
+        // Try to stringify non-Error objects
+        try {
+          errorMessage = JSON.stringify(error);
+        } catch {
+          errorMessage = String(error) || 'Non-serializable error';
+        }
+      }
+
       console.error(`[DB Monitor] Query error:`, {
         query: metric.query,
-        error: error.message,
-        params,
+        message: errorMessage,
+        code: errorCode,
+        meta: errorMeta,
+        stack: errorStack,
+        params: params ? JSON.stringify(params, null, 2) : undefined,
+        errorType: error?.constructor?.name || typeof error,
       });
     }
   }
@@ -157,10 +187,50 @@ class QueryMonitor {
     if (trimmed.startsWith('DROP')) return 'DROP';
     return 'OTHER';
   }
+
+  /**
+   * Get query duration distribution for charting
+   */
+  getQueryDurationDistribution(timeWindow?: number) {
+    let relevantQueries = this.queries; // Corrected from this.queryHistory
+
+    if (timeWindow) {
+      const cutoff = Date.now() - timeWindow;
+      relevantQueries = relevantQueries.filter(q => q.timestamp.getTime() > cutoff);
+    }
+
+    const distribution = {
+      '<10ms': 0,
+      '10-100ms': 0,
+      '100-500ms': 0,
+      '500ms-1s': 0,
+      '>1s': 0
+    };
+
+    relevantQueries.forEach(q => {
+      if (q.duration < 10) distribution['<10ms']++;
+      else if (q.duration < 100) distribution['10-100ms']++;
+      else if (q.duration < 500) distribution['100-500ms']++;
+      else if (q.duration < 1000) distribution['500ms-1s']++;
+      else distribution['>1s']++;
+    });
+
+    // Convert to array for Recharts
+    return Object.entries(distribution).map(([range, count]) => ({
+      name: range,
+      count
+    }));
+  }
 }
 
 // Singleton instance
-export const queryMonitor = new QueryMonitor();
+const globalForMonitor = globalThis as unknown as { queryMonitor: QueryMonitor | undefined }
+
+export const queryMonitor = globalForMonitor.queryMonitor ?? new QueryMonitor()
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForMonitor.queryMonitor = queryMonitor
+}
 
 /**
  * Wrap a Prisma query to monitor its performance
@@ -203,4 +273,12 @@ export function getSlowQueries(threshold?: number, limit = 10): QueryMetrics[] {
 export function getRecentQueryErrors(limit = 10): QueryMetrics[] {
   return queryMonitor.getRecentErrors(limit);
 }
+
+/**
+ * Get query duration distribution
+ */
+export function getQueryDurationDistribution(timeWindow?: number) {
+  return queryMonitor.getQueryDurationDistribution(timeWindow);
+}
+
 

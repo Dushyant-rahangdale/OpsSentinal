@@ -222,7 +222,17 @@ export async function processJob(job: any): Promise<boolean> {
           job.payload.incidentId,
           job.payload.stepIndex
         );
-        if (result.escalated || result.reason?.includes('completed') || result.reason?.includes('exhausted')) {
+        const benignReason = (result.reason || '').toLowerCase();
+        const shouldComplete =
+          result.escalated ||
+          benignReason.includes('completed') ||
+          benignReason.includes('exhausted') ||
+          benignReason.includes('already in progress') ||
+          benignReason.includes('no escalation policy') ||
+          benignReason.includes('no users to notify') ||
+          benignReason.includes('invalid target configuration');
+
+        if (shouldComplete) {
           await markJobCompleted(job.id);
           return true;
         } else {

@@ -80,7 +80,7 @@ describe('User-Friendly Error Messages', () => {
 
     it('should handle unknown error types', () => {
       const error = { message: 'Some error' };
-      expect(getUserFriendlyError(error)).toBe('[object Object]');
+      expect(getUserFriendlyError(error)).toBe('An unexpected error occurred. Please try again.');
     });
   });
 

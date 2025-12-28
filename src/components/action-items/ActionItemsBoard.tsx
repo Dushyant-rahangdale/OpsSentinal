@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button, FormField } from '@/components/ui';
 import { Badge } from '@/components/ui';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 interface ActionItem {
     id: string;
@@ -60,6 +62,7 @@ const PRIORITY_LABELS = {
 };
 
 export default function ActionItemsBoard({ actionItems, users, canManage, view, filters }: ActionItemsBoardProps) {
+    const { userTimeZone } = useTimezone();
     const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
     const [selectedOwner, setSelectedOwner] = useState(filters.owner || '');
     const [selectedPriority, setSelectedPriority] = useState(filters.priority || '');
@@ -281,7 +284,7 @@ export default function ActionItemsBoard({ actionItems, users, canManage, view, 
                                                     </div>
                                                     {item.dueDate && (
                                                         <div style={{ marginBottom: 'var(--spacing-1)' }}>
-                                                            📅 {new Date(item.dueDate).toLocaleDateString()}
+                                                            📅 {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}
                                                         </div>
                                                     )}
                                                     <div>
@@ -454,7 +457,7 @@ export default function ActionItemsBoard({ actionItems, users, canManage, view, 
                                 }}>
                                     <span>👤 {getOwnerName(item.owner)}</span>
                                     {item.dueDate && (
-                                        <span>📅 Due: {new Date(item.dueDate).toLocaleDateString()}</span>
+                                        <span>📅 Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}</span>
                                     )}
                                     <span>📋 <Link href={`/postmortems/${item.incidentId}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
                                         {item.postmortemTitle}

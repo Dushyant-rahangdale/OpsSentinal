@@ -12,6 +12,7 @@ type PolicyStepCardProps = {
         delayMinutes: number;
         targetType: 'USER' | 'TEAM' | 'SCHEDULE';
         notificationChannels?: string[];
+        notifyOnlyTeamLead?: boolean;
         targetUser: {
             id: string;
             name: string;
@@ -20,6 +21,11 @@ type PolicyStepCardProps = {
         targetTeam: {
             id: string;
             name: string;
+            teamLead?: {
+                id: string;
+                name: string;
+                email: string;
+            } | null;
         } | null;
         targetSchedule: {
             id: string;
@@ -173,17 +179,74 @@ export default function PolicyStepCard({
                             Wait time before this step is executed
                         </p>
                     </div>
-                    <div style={{ 
-                        padding: '0.75rem', 
-                        background: '#eff6ff', 
-                        border: '1px solid #3b82f6', 
-                        borderRadius: '0px',
-                        fontSize: '0.85rem',
-                        color: '#1e40af'
-                    }}>
-                        <strong>📢 Notification Channels:</strong> Users will receive notifications based on their personal preferences (configured in Settings → Preferences). 
-                        Each user chooses how they want to be notified (email, SMS, push) in their profile.
+                    
+                    {/* Notification Channels (Optional - overrides user preferences) */}
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
+                            Notification Channels (Optional)
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400', marginLeft: '0.25rem' }}>
+                                - Leave empty to use user preferences
+                            </span>
+                        </label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {['EMAIL', 'SMS', 'PUSH', 'WHATSAPP'].map((channel) => (
+                                <label
+                                    key={channel}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.4rem',
+                                        padding: '0.4rem 0.75rem',
+                                        background: (step.notificationChannels || []).includes(channel) ? '#e0f2fe' : 'white',
+                                        border: `1px solid ${(step.notificationChannels || []).includes(channel) ? '#3b82f6' : 'var(--border)'}`,
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem'
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        name="notificationChannels"
+                                        value={channel}
+                                        defaultChecked={(step.notificationChannels || []).includes(channel)}
+                                        disabled={isPending}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    {channel}
+                                </label>
+                            ))}
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                            If selected, these channels override user preferences for this step
+                        </p>
                     </div>
+
+                    {/* Notify Only Team Lead (for TEAM targets) */}
+                    {step.targetType === 'TEAM' && (
+                        <div>
+                            <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                fontSize: '0.85rem',
+                                fontWeight: '500',
+                                cursor: 'pointer'
+                            }}>
+                                <input
+                                    type="checkbox"
+                                    name="notifyOnlyTeamLead"
+                                    value="true"
+                                    defaultChecked={step.notifyOnlyTeamLead || false}
+                                    disabled={isPending}
+                                    style={{ cursor: 'pointer' }}
+                                />
+                                Notify only team lead (instead of all team members)
+                            </label>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginLeft: '1.5rem' }}>
+                                When enabled, only the team lead will be notified for this escalation step
+                            </p>
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button
                             type="submit"
@@ -255,9 +318,18 @@ export default function PolicyStepCard({
                                 </div>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                                     {step.targetType === 'USER' && step.targetUser && step.targetUser.email}
-                                    {step.targetType === 'TEAM' && 'All team members'}
-                                    {step.targetType === 'SCHEDULE' && 'Current on-call user'}
+                                    {step.targetType === 'TEAM' && (
+                                        step.notifyOnlyTeamLead 
+                                            ? `Team lead only${step.targetTeam?.teamLead ? ` (${step.targetTeam.teamLead.name})` : ''}`
+                                            : 'All team members'
+                                    )}
+                                    {step.targetType === 'SCHEDULE' && 'All active on-call users'}
                                 </p>
+                                {step.notificationChannels && step.notificationChannels.length > 0 && (
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                        Channels: {step.notificationChannels.join(', ')}
+                                    </p>
+                                )}
                                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontStyle: 'italic' }}>
                                     Notifications sent based on user preferences
                                 </p>

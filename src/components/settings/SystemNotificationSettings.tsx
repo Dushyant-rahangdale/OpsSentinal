@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from 'react';
 import { updateNotificationProvider } from '@/app/(app)/settings/system/actions';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type Provider = {
     id: string;
@@ -16,9 +18,31 @@ type Props = {
 };
 
 export default function SystemNotificationSettings({ providers }: Props) {
+    const { userTimeZone } = useTimezone();
     const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
     const providerMap = new Map(providers.map(p => [p.provider, p]));
+
+    // For WhatsApp, we need to read from Twilio provider config
+    const twilioProvider = providerMap.get('twilio');
+    const whatsappConfig = twilioProvider?.config as any;
+    const whatsappEnabled = !!(whatsappConfig?.whatsappEnabled && whatsappConfig?.whatsappNumber);
+
+    // Create a virtual WhatsApp provider entry
+    const whatsappProvider: Provider | undefined = whatsappConfig?.whatsappNumber ? {
+        id: twilioProvider?.id || '',
+        provider: 'whatsapp',
+        enabled: whatsappEnabled,
+        config: {
+            whatsappNumber: whatsappConfig.whatsappNumber,
+            whatsappEnabled: whatsappConfig.whatsappEnabled,
+            whatsappContentSid: whatsappConfig.whatsappContentSid,
+            whatsappAccountSid: whatsappConfig.whatsappAccountSid,
+            whatsappAuthToken: whatsappConfig.whatsappAuthToken
+        },
+        updatedAt: twilioProvider?.updatedAt || new Date()
+    } : undefined;
+
 
     const providerConfigs = [
         {
@@ -32,12 +56,24 @@ export default function SystemNotificationSettings({ providers }: Props) {
             ]
         },
         {
+            key: 'whatsapp',
+            name: 'WhatsApp (via Twilio)',
+            description: 'Send WhatsApp notifications via Twilio WhatsApp Business API',
+            fields: [
+                { name: 'whatsappNumber', label: 'WhatsApp Business Number', type: 'tel', required: true, placeholder: 'whatsapp:+14155238886' },
+                { name: 'whatsappContentSid', label: 'WhatsApp Template SID (Optional)', type: 'text', required: false, placeholder: 'HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+                { name: 'whatsappAccountSid', label: 'Account SID (Optional - overrides Twilio SMS config)', type: 'text', required: false, placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+                { name: 'whatsappAuthToken', label: 'Auth Token (Optional - overrides Twilio SMS config)', type: 'password', required: false, placeholder: 'Your Twilio auth token' }
+            ],
+            requiresProvider: 'twilio' // Special: WhatsApp config is stored in Twilio provider config
+        },
+        {
             key: 'resend',
             name: 'Resend (Email)',
             description: 'Send emails via Resend API',
             fields: [
                 { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 're_xxxxxxxxxxxx' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opsguard.com' }
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@OpsSentinal.com' }
             ]
         },
         {
@@ -46,7 +82,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
             description: 'Send emails via SendGrid API',
             fields: [
                 { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'SG.xxxxxxxxxxxx' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opsguard.com' }
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@OpsSentinal.com' }
             ]
         },
         {
@@ -58,7 +94,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
                 { name: 'port', label: 'Port', type: 'number', required: true, placeholder: '587' },
                 { name: 'user', label: 'Username', type: 'text', required: true, placeholder: 'user@example.com' },
                 { name: 'password', label: 'Password', type: 'password', required: true, placeholder: 'Your SMTP password' },
-                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@opsguard.com' },
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@OpsSentinal.com' },
                 { name: 'secure', label: 'Use TLS/SSL', type: 'checkbox', required: false }
             ]
         },
@@ -84,9 +120,12 @@ export default function SystemNotificationSettings({ providers }: Props) {
     ];
 
     return (
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <div className="settings-form-stack">
             {providerConfigs.map(providerConfig => {
-                const existing = providerMap.get(providerConfig.key);
+                // For WhatsApp, use the virtual provider we created
+                const existing = providerConfig.key === 'whatsapp'
+                    ? whatsappProvider
+                    : providerMap.get(providerConfig.key);
                 const isExpanded = expandedProvider === providerConfig.key;
 
                 return (
@@ -96,6 +135,7 @@ export default function SystemNotificationSettings({ providers }: Props) {
                         existing={existing}
                         isExpanded={isExpanded}
                         onToggle={() => setExpandedProvider(isExpanded ? null : providerConfig.key)}
+                        twilioProvider={providerConfig.key === 'whatsapp' ? twilioProvider : undefined}
                     />
                 );
             })}
@@ -107,14 +147,30 @@ function ProviderCard({
     providerConfig,
     existing,
     isExpanded,
-    onToggle
+    onToggle,
+    twilioProvider
 }: {
     providerConfig: any;
     existing?: Provider;
     isExpanded: boolean;
     onToggle: () => void;
+    twilioProvider?: Provider;
 }) {
-    const [enabled, setEnabled] = useState(existing?.enabled || false);
+    // Get user timezone for date formatting
+    const { userTimeZone } = useTimezone();
+
+    // For WhatsApp, enabled state is stored in the whatsappEnabled field of Twilio config
+    const initialEnabled = providerConfig.key === 'whatsapp'
+        ? !!(existing?.config?.whatsappEnabled && existing?.config?.whatsappNumber)
+        : (existing?.enabled || false);
+
+    // Check if provider has required configuration  
+    const hasRequiredConfig = existing?.config && Object.keys(existing.config).length > 0 &&
+        providerConfig.fields
+            .filter((f: any) => f.required)
+            .every((f: any) => existing.config[f.name] && existing.config[f.name].toString().trim() !== '');
+
+    const [enabled, setEnabled] = useState(initialEnabled);
     const [config, setConfig] = useState<Record<string, any>>(existing?.config || {});
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -137,9 +193,39 @@ function ProviderCard({
                 }
             }
 
-            const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
-            await updateNotificationProvider(existing?.id || null, providerConfig.key, enabled, config);
-            
+            // Special handling for WhatsApp - it's stored in Twilio provider config
+            if (providerConfig.key === 'whatsapp') {
+                // Update Twilio provider config with WhatsApp number and enabled state
+                // Create Twilio provider if it doesn't exist
+                if (!twilioProvider) {
+                    const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                    await updateNotificationProvider(null, 'twilio', false, {
+                        whatsappNumber: config.whatsappNumber || '',
+                        whatsappEnabled: enabled,
+                        whatsappContentSid: config.whatsappContentSid || '',
+                        whatsappAccountSid: config.whatsappAccountSid || '',
+                        whatsappAuthToken: config.whatsappAuthToken || ''
+                    });
+                } else {
+                    const twilioConfig = twilioProvider.config as any;
+
+                    const updatedTwilioConfig = {
+                        ...twilioConfig,
+                        whatsappNumber: config.whatsappNumber || twilioConfig.whatsappNumber || '',
+                        whatsappEnabled: enabled,
+                        whatsappContentSid: config.whatsappContentSid || twilioConfig.whatsappContentSid || '',
+                        whatsappAccountSid: config.whatsappAccountSid || twilioConfig.whatsappAccountSid || '',
+                        whatsappAuthToken: config.whatsappAuthToken || twilioConfig.whatsappAuthToken || ''
+                    };
+
+                    const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                    await updateNotificationProvider(twilioProvider.id, 'twilio', twilioProvider.enabled, updatedTwilioConfig);
+                }
+            } else {
+                const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                await updateNotificationProvider(existing?.id || null, providerConfig.key, enabled, config);
+            }
+
             setSaveStatus('success');
             setTimeout(() => {
                 setSaveStatus('idle');
@@ -154,60 +240,106 @@ function ProviderCard({
     };
 
     return (
-        <div className="glass-panel" style={{
-            padding: '1.5rem',
-            border: '1px solid var(--border)',
-            borderRadius: '0px'
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0, color: 'var(--text-primary)' }}>
-                            {providerConfig.name}
-                        </h3>
-                        <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            background: enabled ? '#d1fae5' : '#fee2e2',
-                            color: enabled ? '#065f46' : '#991b1b'
-                        }}>
+        <div className="settings-provider-card">
+            <div className="settings-provider-header">
+                <div className="settings-provider-meta">
+                    <div className="settings-provider-title">
+                        <h3>{providerConfig.name}</h3>
+                        <span className={`settings-provider-status ${enabled ? 'enabled' : 'disabled'}`}>
                             {enabled ? 'Enabled' : 'Disabled'}
                         </span>
                     </div>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                    <p className="settings-provider-description">
                         {providerConfig.description}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={onToggle}
-                    className="glass-button"
-                    style={{ padding: '0.5rem 1rem' }}
-                >
-                    {isExpanded ? 'Collapse' : 'Configure'}
-                </button>
+                <div className="settings-provider-actions">
+                    {/* Quick Enable/Disable Toggle */}
+                    <label className={`settings-provider-toggle ${(!hasRequiredConfig && !enabled) ? 'is-disabled' : ''}`}>
+                        <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={async (e) => {
+                                const newEnabled = e.target.checked;
+
+                                // Check if provider is configured before enabling
+                                if (newEnabled && !hasRequiredConfig) {
+                                    alert('Please configure this provider first before enabling it. Click "Configure" to add required settings.');
+                                    return;
+                                }
+
+                                // Update local state
+                                setEnabled(newEnabled);
+
+                                // Save immediately
+                                try {
+                                    if (providerConfig.key === 'whatsapp') {
+                                        // Create Twilio provider if it doesn't exist
+                                        if (!twilioProvider) {
+                                            const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                                            await updateNotificationProvider(null, 'twilio', false, {
+                                                whatsappNumber: config.whatsappNumber || '',
+                                                whatsappEnabled: newEnabled
+                                            });
+                                        } else {
+                                            const twilioConfig = twilioProvider.config as any;
+                                            const updatedTwilioConfig = {
+                                                ...twilioConfig,
+                                                whatsappNumber: config.whatsappNumber || twilioConfig.whatsappNumber || '',
+                                                whatsappEnabled: newEnabled
+                                            };
+
+                                            const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                                            await updateNotificationProvider(twilioProvider.id, 'twilio', twilioProvider.enabled, updatedTwilioConfig);
+                                        }
+                                    } else {
+                                        const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
+                                        await updateNotificationProvider(existing?.id || null, providerConfig.key, newEnabled, config);
+                                    }
+
+                                    // Refresh to show updated data
+                                    setTimeout(() => window.location.reload(), 500);
+                                } catch (err: any) {
+                                    // Revert on error
+                                    setEnabled(!newEnabled);
+                                    alert(`Failed to ${newEnabled ? 'enable' : 'disable'} provider: ${err.message}`);
+                                }
+                            }}
+                            disabled={isSaving || (!enabled && !hasRequiredConfig)}
+                            title={!hasRequiredConfig && !enabled ? 'Configure this provider first' : ''}
+                            className="settings-switch-input"
+                        />
+                        <span className="settings-provider-toggle-text">
+                            {enabled ? 'On' : 'Off'}
+                        </span>
+                    </label>
+
+                    <button
+                        type="button"
+                        onClick={onToggle}
+                        className="settings-link-button"
+                    >
+                        {isExpanded ? 'Collapse' : 'Configure'}
+                    </button>
+                </div>
             </div>
 
             {isExpanded && (
-                <form onSubmit={handleSave} style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-                    <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                            <input
-                                type="checkbox"
-                                checked={enabled}
-                                onChange={(e) => setEnabled(e.target.checked)}
-                            />
-                            Enable {providerConfig.name}
-                        </label>
-                    </div>
+                <form onSubmit={handleSave} className="settings-provider-form">
+                    <label className="settings-checkbox-row">
+                        <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={(e) => setEnabled(e.target.checked)}
+                        />
+                        Enable {providerConfig.name}
+                    </label>
 
                     {enabled && (
-                        <div style={{ display: 'grid', gap: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '0px', border: '1px solid var(--border)' }}>
+                        <div className="settings-provider-fields">
                             {providerConfig.fields.map((field: any) => (
                                 <div key={field.name}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <label className="settings-field-label">
                                         {field.label} {field.required && <span style={{ color: 'var(--danger)' }}>*</span>}
                                     </label>
                                     {field.type === 'textarea' ? (
@@ -217,18 +349,10 @@ function ProviderCard({
                                             placeholder={field.placeholder}
                                             required={field.required && enabled}
                                             rows={4}
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.75rem',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: '0px',
-                                                fontSize: '0.9rem',
-                                                fontFamily: 'monospace',
-                                                resize: 'vertical'
-                                            }}
+                                            className="settings-textarea settings-input mono"
                                         />
                                     ) : field.type === 'checkbox' ? (
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <label className="settings-checkbox-row">
                                             <input
                                                 type="checkbox"
                                                 checked={config[field.name] || false}
@@ -243,14 +367,7 @@ function ProviderCard({
                                             onChange={(e) => setConfig({ ...config, [field.name]: e.target.value })}
                                             placeholder={field.placeholder}
                                             required={field.required && enabled}
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.75rem',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: '0px',
-                                                fontSize: '0.9rem',
-                                                fontFamily: field.type === 'password' ? 'monospace' : 'inherit'
-                                            }}
+                                            className={`settings-input ${field.type === 'password' ? 'mono' : ''}`}
                                         />
                                     )}
                                 </div>
@@ -258,31 +375,36 @@ function ProviderCard({
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <div className="settings-provider-footer">
                         <button
                             type="submit"
                             disabled={isSaving}
-                            className="glass-button primary"
-                            style={{ padding: '0.75rem 1.5rem' }}
+                            className="settings-primary-button"
                         >
                             {isSaving ? 'Saving...' : 'Save Configuration'}
                         </button>
                         {saveStatus === 'success' && (
-                            <span style={{ color: 'var(--success)', fontSize: '0.9rem' }}>✓ Saved successfully</span>
+                            <div className="settings-alert success">OK Saved successfully</div>
                         )}
                         {saveStatus === 'error' && error && (
-                            <span style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>✗ {error}</span>
+                            <div className="settings-alert error">Error: {error}</div>
                         )}
                     </div>
                 </form>
             )}
 
             {existing && !isExpanded && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                    Last updated: {new Date(existing.updatedAt).toLocaleString()}
+                <p className="settings-provider-updated">
+                    Last updated: {formatDateTime(existing.updatedAt, userTimeZone, { format: 'datetime' })}
                 </p>
             )}
         </div>
     );
 }
+
+
+
+
+
+
 

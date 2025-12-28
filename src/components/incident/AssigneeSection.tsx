@@ -7,31 +7,47 @@ import { useToast } from '../ToastProvider';
 
 type AssigneeSectionProps = {
     assignee: { id: string; name: string; email: string } | null;
+    team: { id: string; name: string } | null;
     assigneeId: string | null;
+    teamId: string | null;
     users: Array<{ id: string; name: string; email: string }>;
+    teams: Array<{ id: string; name: string }>;
     incidentId: string;
     canManage: boolean;
     variant?: 'list' | 'detail' | 'header';
 };
 
-export default function AssigneeSection({ 
-    assignee, 
-    assigneeId, 
-    users, 
-    incidentId, 
+export default function AssigneeSection({
+    assignee,
+    team,
+    assigneeId,
+    teamId,
+    users,
+    teams = [],
+    incidentId,
     canManage,
-    variant = 'list' 
+    variant = 'list'
 }: AssigneeSectionProps) {
     const router = useRouter();
     const { showToast } = useToast();
     const [isReassigning, setIsReassigning] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    const handleReassign = async (newAssigneeId: string) => {
+    const handleReassign = async (value: string) => {
         startTransition(async () => {
             try {
-                await reassignIncident(incidentId, newAssigneeId || '');
-                showToast(newAssigneeId ? 'Incident reassigned successfully' : 'Incident unassigned successfully', 'success');
+                // Parse value: "user:id" or "team:id" or empty for unassign
+                let newAssigneeId = '';
+                let newTeamId = '';
+
+                if (value.startsWith('user:')) {
+                    newAssigneeId = value.substring(5);
+                } else if (value.startsWith('team:')) {
+                    newTeamId = value.substring(5);
+                }
+
+                await reassignIncident(incidentId, newAssigneeId, newTeamId);
+                showToast(value ? 'Incident reassigned successfully' : 'Incident unassigned successfully', 'success');
                 setIsReassigning(false);
                 router.refresh();
             } catch (error) {
@@ -46,7 +62,7 @@ export default function AssigneeSection({
                 {!isReassigning ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', flex: 1 }}>
-                            {assignee ? assignee.name : 'Unassigned'}
+                            {team ? `👥 ${team.name}` : assignee ? assignee.name : 'Unassigned'}
                         </div>
                         {canManage && (
                             <button
@@ -78,7 +94,7 @@ export default function AssigneeSection({
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <select
-                            defaultValue={assigneeId || ''}
+                            defaultValue={teamId ? `team:${teamId}` : assigneeId ? `user:${assigneeId}` : ''}
                             onChange={(e) => {
                                 handleReassign(e.target.value);
                             }}
@@ -96,11 +112,20 @@ export default function AssigneeSection({
                             disabled={isPending}
                         >
                             <option value="">Unassigned</option>
-                            {users.map(user => (
-                                <option key={user.id} value={user.id}>
-                                    {user.name} ({user.email})
-                                </option>
-                            ))}
+                            <optgroup label="👤 Users">
+                                {users.map(user => (
+                                    <option key={user.id} value={`user:${user.id}`}>
+                                        {user.name} ({user.email})
+                                    </option>
+                                ))}
+                            </optgroup>
+                            <optgroup label="👥 Teams">
+                                {teams.map(team => (
+                                    <option key={team.id} value={`team:${team.id}`}>
+                                        {team.name}
+                                    </option>
+                                ))}
+                            </optgroup>
                         </select>
                         <button
                             onClick={() => setIsReassigning(false)}
@@ -127,12 +152,12 @@ export default function AssigneeSection({
     if (variant === 'detail') {
         return (
             <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ 
-                    display: 'block', 
-                    marginBottom: '0.5rem', 
-                    fontWeight: '600', 
-                    fontSize: '0.9rem', 
-                    color: 'var(--text-primary)' 
+                <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    color: 'var(--text-primary)'
                 }}>
                     Assignee
                 </label>
@@ -184,10 +209,10 @@ export default function AssigneeSection({
                         </button>
                     </div>
                 ) : (
-                    <div 
-                        style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '0.875rem 1rem',
                             background: assignee ? 'linear-gradient(180deg, #feecec 0%, #fbdcdc 100%)' : '#f9fafb',

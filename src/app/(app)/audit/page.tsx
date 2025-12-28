@@ -1,8 +1,16 @@
 import prisma from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AuditLogPage() {
+    const session = await getServerSession(authOptions);
+    const email = session?.user?.email ?? null;
+    const user = email ? await prisma.user.findUnique({ where: { email }, select: { timeZone: true } }) : null;
+    const userTimeZone = getUserTimeZone(user ?? undefined);
+    
     const logs = await prisma.auditLog.findMany({
         include: {
             actor: true
@@ -44,7 +52,7 @@ export default async function AuditLogPage() {
                             {logs.map((log) => (
                                 <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                        {new Date(log.createdAt).toLocaleString()}
+                                        {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ fontWeight: '600' }}>{log.actor?.name || 'System'}</div>

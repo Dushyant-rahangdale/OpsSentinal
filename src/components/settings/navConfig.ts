@@ -1,0 +1,197 @@
+export type SettingsNavItem = {
+    id: string;
+    label: string;
+    description: string;
+    href: string;
+    icon: string;
+    keywords?: string[];
+    requiresAdmin?: boolean;
+    requiresResponder?: boolean;
+};
+
+export type SettingsNavSection = {
+    id: string;
+    label: string;
+    items: SettingsNavItem[];
+};
+
+export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
+    {
+        id: 'overview',
+        label: 'Overview',
+        items: [
+            {
+                id: 'settings-overview',
+                label: 'Settings Home',
+                description: 'Find and manage all workspace settings',
+                href: '/settings',
+                icon: 'home',
+                keywords: ['overview', 'dashboard', 'settings']
+            }
+        ]
+    },
+    {
+        id: 'account',
+        label: 'Account',
+        items: [
+            {
+                id: 'profile',
+                label: 'Profile',
+                description: 'Personal information and account details',
+                href: '/settings/profile',
+                icon: 'user',
+                keywords: ['name', 'email', 'role']
+            },
+            {
+                id: 'preferences',
+                label: 'Preferences',
+                description: 'Timezone and notification preferences',
+                href: '/settings/preferences',
+                icon: 'sliders',
+                keywords: ['timezone', 'digest', 'summary']
+            },
+            {
+                id: 'security',
+                label: 'Security',
+                description: 'Password, sessions, and SSO status',
+                href: '/settings/security',
+                icon: 'shield',
+                keywords: ['password', 'sessions', 'sso', 'mfa']
+            }
+        ]
+    },
+    {
+        id: 'workspace',
+        label: 'Workspace',
+        items: [
+            {
+                id: 'workspace',
+                label: 'Workspace',
+                description: 'Organization profile and members',
+                href: '/settings/workspace',
+                icon: 'building',
+                keywords: ['team', 'organization', 'members']
+            },
+            {
+                id: 'custom-fields',
+                label: 'Custom Fields',
+                description: 'Define extra incident metadata',
+                href: '/settings/custom-fields',
+                icon: 'list',
+                requiresAdmin: true,
+                keywords: ['metadata', 'incident']
+            },
+            {
+                id: 'status-page',
+                label: 'Status Page',
+                description: 'Customize your public status page',
+                href: '/settings/status-page',
+                icon: 'globe',
+                requiresAdmin: true,
+                keywords: ['public', 'status', 'branding']
+            },
+            {
+                id: 'system',
+                label: 'System Settings',
+                description: 'Application-wide configuration',
+                href: '/settings/system',
+                icon: 'settings',
+                requiresAdmin: true,
+                keywords: ['app url', 'providers']
+            },
+            {
+                id: 'notifications-admin',
+                label: 'Notification Providers',
+                description: 'SMS, push, and WhatsApp setup',
+                href: '/settings/notifications',
+                icon: 'bell',
+                requiresAdmin: true,
+                keywords: ['twilio', 'push', 'sms']
+            },
+            {
+                id: 'audit-logs',
+                label: 'Audit Logs',
+                description: 'Track critical changes across the workspace',
+                href: '/settings/audit-logs',
+                icon: 'activity',
+                requiresAdmin: true,
+                keywords: ['audit', 'history', 'events']
+            }
+        ]
+    },
+    {
+        id: 'alerts',
+        label: 'Alerts',
+        items: [
+            {
+                id: 'notification-history',
+                label: 'Notification History',
+                description: 'Delivery status and recent sends',
+                href: '/settings/notifications/history',
+                icon: 'bell',
+                keywords: ['delivery', 'history', 'logs']
+            }
+        ]
+    },
+    {
+        id: 'integrations',
+        label: 'Integrations',
+        items: [
+            {
+                id: 'integrations',
+                label: 'Integrations',
+                description: 'Connect OpsSentinal with your tools',
+                href: '/settings/integrations',
+                icon: 'plug',
+                keywords: ['slack', 'webhooks', 'connect']
+            },
+            {
+                id: 'slack',
+                label: 'Slack',
+                description: 'Send incident alerts to Slack',
+                href: '/settings/integrations/slack',
+                icon: 'slack',
+                keywords: ['alerts', 'channels']
+            }
+        ]
+    },
+    {
+        id: 'developer',
+        label: 'Developer',
+        items: [
+            {
+                id: 'api-keys',
+                label: 'API Keys',
+                description: 'Create and manage integration keys',
+                href: '/settings/api-keys',
+                icon: 'key',
+                keywords: ['token', 'automation']
+            },
+            {
+                id: 'search-presets',
+                label: 'Search Presets',
+                description: 'Saved incident filters',
+                href: '/settings/search-presets',
+                icon: 'search',
+                requiresResponder: true,
+                keywords: ['filters', 'saved search']
+            }
+        ]
+    },
+    {
+        id: 'billing',
+        label: 'Billing',
+        items: [
+            {
+                id: 'billing',
+                label: 'Billing & Plan',
+                description: 'Invoices, plan, and usage',
+                href: '/settings/billing',
+                icon: 'credit-card',
+                keywords: ['subscription', 'payment', 'plan']
+            }
+        ]
+    }
+];
+
+export const SETTINGS_NAV_ITEMS = SETTINGS_NAV_SECTIONS.flatMap((section) => section.items);

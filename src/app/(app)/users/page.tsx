@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Role, UserStatus, AuditEntityType } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 import {
     addUser,
     addUserToTeam,
@@ -152,13 +153,16 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     const currentUser = currentUserEmail
         ? await prisma.user.findUnique({
             where: { email: currentUserEmail },
-            select: { id: true, role: true }
+            select: { id: true, role: true, timeZone: true }
         })
         : null;
     const currentUserId = currentUser?.id || '';
     const currentUserRole = (currentUser?.role as Role) || 'USER';
     const isAdmin = currentUserRole === 'ADMIN';
     const isAdminOrResponder = currentUserRole === 'ADMIN' || currentUserRole === 'RESPONDER';
+
+    // Get user timezone for date formatting
+    const userTimeZone = getUserTimeZone(currentUser ?? undefined);
 
     const baseParams = new URLSearchParams();
     if (query) baseParams.set('q', query);
@@ -333,6 +337,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                                 action={bulkUpdateUsers}
                                 formId="bulk-users-form"
                                 className="bulk-actions-form-inline"
+                                disabled={!isAdmin}
                             />
                         </div>
                     </div>
@@ -461,7 +466,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                             Add responders with a role and send a secure invite instantly.
                         </p>
-                        <UserCreateForm action={addUser} />
+                        <UserCreateForm action={addUser} disabled={!isAdmin} />
                     </div>
 
                     {/* Audit Log Panel - Matches User Directory Height */}
@@ -504,7 +509,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                                             <span>{log.actor?.name || "System"}</span>
                                             <span style={{ whiteSpace: 'nowrap' }}>
-                                                {new Date(log.createdAt).toLocaleDateString()} {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
                                             </span>
                                         </div>
                                     </div>

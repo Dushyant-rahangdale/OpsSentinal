@@ -32,26 +32,44 @@ export default class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: unknown): State {
+    // Convert non-Error objects to Error instances
+    if (error instanceof Error) {
+      return {
+        hasError: true,
+        error,
+      };
+    }
+    
+    // Handle Event objects and other non-Error types
+    const errorMessage = error && typeof error === 'object' && 'type' in error && 'target' in error
+      ? 'An unexpected error occurred. Please try again.'
+      : String(error) || 'An unexpected error occurred.';
+    
     return {
       hasError: true,
-      error,
+      error: new Error(errorMessage),
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+    // Convert non-Error objects to Error instances for logging
+    const errorObj = error instanceof Error 
+      ? error 
+      : new Error(String(error) || 'Unknown error');
+    
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('ErrorBoundary caught an error:', error, errorInfo);
+      console.error('ErrorBoundary caught an error:', errorObj, errorInfo);
     }
 
-    // Call optional error handler
-    if (this.props.onError) {
+    // Call optional error handler (only if it's an Error instance)
+    if (this.props.onError && error instanceof Error) {
       this.props.onError(error, errorInfo);
     }
 
     // TODO: Send error to error tracking service (e.g., Sentry)
-    // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
+    // Example: Sentry.captureException(errorObj, { contexts: { react: errorInfo } });
   }
 
   render() {

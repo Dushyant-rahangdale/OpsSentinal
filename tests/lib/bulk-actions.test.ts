@@ -8,6 +8,7 @@ vi.mock('@/lib/prisma', () => ({
     default: {
         incident: {
             updateMany: vi.fn(),
+            findUnique: vi.fn(),
         },
         incidentEvent: {
             create: vi.fn(),

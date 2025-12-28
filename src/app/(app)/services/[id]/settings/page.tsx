@@ -2,16 +2,31 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import HoverLink from '@/components/service/HoverLink';
 import ServiceTabs from '@/components/service/ServiceTabs';
+import ServiceNotificationSettings from '@/components/service/ServiceNotificationSettings';
 import { updateService } from '../../actions';
 
-export default async function ServiceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ServiceSettingsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ saved?: string }> }) {
     const { id } = await params;
+    const resolvedSearchParams = await searchParams;
+    const showSaved = resolvedSearchParams?.saved === '1';
     const [service, teams, policies] = await Promise.all([
         prisma.service.findUnique({
             where: { id: id },
             include: {
                 policy: {
                     select: { id: true, name: true }
+                },
+                slackIntegration: {
+                    select: {
+                        id: true,
+                        workspaceName: true,
+                        workspaceId: true,
+                        enabled: true
+                    }
+                },
+                webhookIntegrations: {
+                    where: { enabled: true },
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         }),
@@ -21,6 +36,9 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
             orderBy: { name: 'asc' }
         })
     ]);
+
+    // Get webhook integrations separately (already included in service)
+    const webhookIntegrations = service?.webhookIntegrations || [];
 
     if (!service) {
         return (
@@ -73,7 +91,20 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
             </div>
 
             <div className="glass-panel" style={{ padding: '2rem', background: 'white', borderRadius: '0px', border: '1px solid var(--border)' }}>
-
+                {showSaved && (
+                    <div style={{
+                        marginBottom: '1.5rem',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '0.5rem',
+                        background: '#dcfce7',
+                        border: '1px solid #86efac',
+                        color: '#166534',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                    }}>
+                        Service settings saved successfully.
+                    </div>
+                )}
                 <form action={updateServiceWithId} style={{ display: 'grid', gap: '2rem' }}>
                     {/* Basic Information Section */}
                     <div>
@@ -124,6 +155,52 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                                         transition: 'border-color 0.2s'
                                     }}
                                 />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                    Region
+                                </label>
+                                <input
+                                    name="region"
+                                    defaultValue={service.region || ''}
+                                    placeholder="e.g. US-East, EU-West"
+                                    className="focus-border"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0px',
+                                        fontSize: '0.95rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.2s'
+                                    }}
+                                />
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                    Optional. This region is shown on the public status page.
+                                </p>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                    SLA Tier
+                                </label>
+                                <input
+                                    name="slaTier"
+                                    defaultValue={service.slaTier || ''}
+                                    placeholder="e.g. Gold, Silver, Bronze"
+                                    className="focus-border"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0px',
+                                        fontSize: '0.95rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.2s'
+                                    }}
+                                />
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                    Optional. Displayed on the public status page when enabled.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -219,86 +296,19 @@ export default async function ServiceSettingsPage({ params }: { params: Promise<
                         </div>
                     </div>
 
-                    {/* Notification Settings Section */}
+                    {/* Service Notifications Section (ISOLATED) */}
                     <div>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-primary)', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border)' }}>
-                            Notification Settings
+                            Service Notifications (Isolated)
                         </h3>
-                        <div style={{ display: 'grid', gap: '1.5rem' }}>
-                            {/* Info Box */}
-                            <div style={{
-                                padding: '1rem',
-                                background: '#eff6ff',
-                                border: '1px solid #3b82f6',
-                                borderRadius: '0px'
-                            }}>
-                                <p style={{ fontSize: '0.85rem', color: '#1e40af', margin: 0, lineHeight: 1.6 }}>
-                                    <strong>📢 Notification Architecture (PagerDuty-style):</strong>
-                                    <br />
-                                    • <strong>Slack:</strong> Configured per-service (webhook URL below)
-                                    <br />
-                                    • <strong>Email/SMS/Push:</strong> Configured per-user in their profile settings
-                                    <br />
-                                    • <strong>System Providers:</strong> Twilio, SMTP configured via environment variables
-                                    <br />
-                                    <br />
-                                    Team members will receive notifications based on their personal preferences.
-                                </p>
-                            </div>
-
-                            {/* Slack Webhook */}
-                            <div style={{
-                                background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
-                                padding: '1.5rem',
-                                borderRadius: '0px',
-                                border: '1px solid var(--border)'
-                            }}>
-                                <label style={{
-                                    marginBottom: '0.75rem',
-                                    fontWeight: '500',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    fontSize: '0.95rem',
-                                    color: 'var(--text-primary)'
-                                }}>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                                        <line x1="12" y1="22.08" x2="12" y2="12" />
-                                    </svg>
-                                    Slack Webhook URL
-                                </label>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.6 }}>
-                                    Enter a Slack Incoming Webhook URL to receive incident notifications for this service. Notifications will be posted to the configured Slack channel when incidents are created or updated.
-                                </p>
-                                <input
-                                    name="slackWebhookUrl"
-                                    defaultValue={service.slackWebhookUrl || ''}
-                                    placeholder="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
-                                    className="focus-border"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '0px',
-                                        fontFamily: 'monospace',
-                                        fontSize: '0.85rem',
-                                        background: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s'
-                                    }}
-                                />
-                                {service.slackWebhookUrl && (
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--success)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <polyline points="20 6 9 17 4 12" />
-                                        </svg>
-                                        Slack webhook is configured
-                                    </p>
-                                )}
-                            </div>
-                        </div>
+                        <ServiceNotificationSettings
+                            serviceId={id}
+                            serviceNotificationChannels={service.serviceNotificationChannels || []}
+                            slackChannel={service.slackChannel}
+                            slackWebhookUrl={service.slackWebhookUrl}
+                            slackIntegration={service.slackIntegration || null}
+                            webhookIntegrations={webhookIntegrations}
+                        />
                     </div>
 
                     {/* Form Actions */}

@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, Badge } from '@/components/ui';
-import { formatTimeMinutes } from '@/lib/sla';
+import { formatTimeMinutes } from '@/lib/time-format';
 
 type SLAMetrics = {
     mttr: number | null;

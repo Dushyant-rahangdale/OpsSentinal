@@ -13,6 +13,14 @@ function parseDate(value: string, fieldName: string) {
     return parsed;
 }
 
+function normalizeAffectedServiceIds(value?: string[] | null) {
+    if (!Array.isArray(value)) {
+        return null;
+    }
+    const ids = Array.from(new Set(value.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)));
+    return ids.length > 0 ? ids : null;
+}
+
 export async function POST(req: NextRequest) {
     try {
         await assertAdmin();
@@ -31,7 +39,8 @@ export async function POST(req: NextRequest) {
         if (!parsed.success) {
             return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
         }
-        const { statusPageId, title, message, type, startDate, endDate, isActive } = parsed.data;
+        const { statusPageId, title, message, type, startDate, endDate, isActive, notifySubscribers, affectedServiceIds } = parsed.data;
+        const normalizedAffectedServiceIds = normalizeAffectedServiceIds(affectedServiceIds);
 
         const announcement = await prisma.statusPageAnnouncement.create({
             data: {
@@ -42,10 +51,22 @@ export async function POST(req: NextRequest) {
                 startDate: parseDate(startDate, 'startDate'),
                 endDate: endDate ? parseDate(endDate, 'endDate') : null,
                 isActive: isActive !== false,
+                affectedServiceIds: normalizedAffectedServiceIds as any,
             },
         });
 
-        logger.info('api.status_page.announcement.created', { announcementId: announcement.id });
+        if (notifySubscribers) {
+            // Trigger notifications asynchronously
+            const { notifyStatusPageSubscribersAnnouncement } = await import('@/lib/status-page-notifications');
+            // Don't await strictly to ensure fast API response, but in Vercel functions this might need await or execution context.
+            // For safety in this environment, we await it or trust the runtime to handle background promises if not awaited.
+            // Given the importance, let's await it to ensure it runs before lambda freezes, 
+            // OR use `waitUntil` if available (Next.js 15+ has `after` or similar). 
+            // For now, simple await is safest.
+            await notifyStatusPageSubscribersAnnouncement(announcement.id, statusPageId);
+        }
+
+        logger.info('api.status_page.announcement.created', { announcementId: announcement.id, notifySubscribers });
         return jsonOk({ announcement }, 200);
     } catch (error: any) {
         logger.error('api.status_page.announcement.create_error', { error: error instanceof Error ? error.message : String(error) });
@@ -71,7 +92,8 @@ export async function PATCH(req: NextRequest) {
         if (!parsed.success) {
             return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
         }
-        const { id, title, message, type, startDate, endDate, isActive } = parsed.data;
+        const { id, title, message, type, startDate, endDate, isActive, affectedServiceIds } = parsed.data;
+        const normalizedAffectedServiceIds = normalizeAffectedServiceIds(affectedServiceIds);
 
         const updated = await prisma.statusPageAnnouncement.update({
             where: { id },
@@ -82,6 +104,7 @@ export async function PATCH(req: NextRequest) {
                 ...(startDate ? { startDate: parseDate(startDate, 'startDate') } : {}),
                 ...(endDate !== undefined ? { endDate: endDate ? parseDate(endDate, 'endDate') : null } : {}),
                 ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
+                ...(affectedServiceIds !== undefined ? { affectedServiceIds: normalizedAffectedServiceIds as any } : {}),
             },
         });
 

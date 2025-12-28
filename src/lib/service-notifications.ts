@@ -1,16 +1,32 @@
 /**
- * Service-Level Notification System
- * Handles notifications that are sent at the service level (not through escalation policies)
- * These are triggered when incidents are created, updated, or resolved
+ * Service-Level Notification System (ISOLATED)
+ * 
+ * IMPORTANT: Service notifications are completely isolated from:
+ * - User preferences (users cannot disable service notifications)
+ * - Escalation policies (service notifications are separate)
+ * 
+ * Service notifications use ONLY service-configured channels:
+ * - SLACK: Service Slack webhook/channel
+ * - WEBHOOK: Service webhook integrations (Google Chat, Teams, Discord, etc.)
+ * 
+ * These are triggered when incidents are created, acknowledged, resolved, or updated
  */
 
 import prisma from './prisma';
-import { sendNotification, NotificationChannel } from './notifications';
-import { notifySlackForIncident } from './slack';
+import { NotificationChannel } from './notifications';
+import { notifySlackForIncident, sendSlackMessageToChannel } from './slack';
+import { sendIncidentWebhook } from './webhooks';
+import { logger } from './logger';
 
 /**
  * Send service-level notifications for an incident event
- * Uses the service's configured notification channels
+ * 
+ * COMPLETELY ISOLATED from user preferences and escalation logic.
+ * Uses ONLY service-configured channels (serviceNotificationChannels).
+ * 
+ * Supported channels:
+ * - SLACK: Sends to service Slack channel/webhook
+ * - WEBHOOK: Sends to all enabled webhook integrations for the service
  */
 export async function sendServiceNotifications(
     incidentId: string,
@@ -22,12 +38,8 @@ export async function sendServiceNotifications(
             include: {
                 service: {
                     include: {
-                        team: {
-                            include: {
-                                members: {
-                                    include: { user: true }
-                                }
-                            }
+                        webhookIntegrations: {
+                            where: { enabled: true }
                         }
                     }
                 },
@@ -39,69 +51,127 @@ export async function sendServiceNotifications(
             return { success: false, errors: ['Incident or service not found'] };
         }
 
-        // Get notification channels from service configuration
-        const serviceNotificationChannels = (incident.service as { notificationChannels?: NotificationChannel[] }).notificationChannels;
-        const channels: NotificationChannel[] = serviceNotificationChannels || ['EMAIL', 'SLACK'];
+        // Get service-configured notification channels (isolated from user preferences)
+        const serviceChannels = incident.service.serviceNotificationChannels || [];
         const errors: string[] = [];
 
-        // Determine who to notify
-        const recipients: string[] = [];
-        
-        // Add assignee if exists
-        if (incident.assigneeId) {
-            recipients.push(incident.assigneeId);
-        }
-        
-        // Add service team members if team exists
-        if (incident.service.team) {
-            const teamUserIds = incident.service.team.members.map(m => m.userId);
-            recipients.push(...teamUserIds);
-        }
+        // Handle SLACK channel
+        if (serviceChannels.includes('SLACK')) {
+            try {
+                // Try Slack API first (if channel is configured)
+                if (incident.service.slackChannel) {
+                    const slackResult = await sendSlackMessageToChannel(
+                        incident.service.slackChannel,
+                        {
+                            id: incident.id,
+                            title: incident.title,
+                            status: incident.status,
+                            urgency: incident.urgency,
+                            serviceName: incident.service.name,
+                            assigneeName: incident.assignee?.name
+                        },
+                        eventType === 'triggered' ? 'triggered' :
+                            eventType === 'acknowledged' ? 'acknowledged' :
+                                eventType === 'resolved' ? 'resolved' : 'triggered',
+                        true, // includeInteractiveButtons
+                        incident.serviceId // Pass serviceId to get correct token
+                    );
 
-        // Remove duplicates
-        const uniqueRecipients = [...new Set(recipients)];
-
-        if (uniqueRecipients.length === 0) {
-            // No specific recipients, but still send service-level notifications (e.g., Slack)
-            // Only send Slack if configured
-            if (channels.includes('SLACK') && incident.service.slackWebhookUrl && eventType !== 'updated') {
-                await notifySlackForIncident(incidentId, eventType).catch(err => {
-                    errors.push(`Slack notification failed: ${err.message}`);
+                    if (!slackResult.success) {
+                        errors.push(`Slack channel notification failed: ${slackResult.error}`);
+                    }
+                }
+                // Fallback to webhook if channel not configured but webhook URL exists
+                else if (incident.service.slackWebhookUrl && eventType !== 'updated') {
+                    await notifySlackForIncident(incidentId,
+                        eventType === 'triggered' ? 'triggered' :
+                            eventType === 'acknowledged' ? 'acknowledged' :
+                                'resolved'
+                    ).catch(err => {
+                        errors.push(`Slack webhook notification failed: ${err.message}`);
+                    });
+                }
+            } catch (error: any) {
+                logger.error('Slack notification error', {
+                    incidentId,
+                    error: error.message
                 });
-            }
-            return { success: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
-        }
-
-        // Send notifications to each recipient via each channel
-        for (const userId of uniqueRecipients) {
-            for (const channel of channels) {
-                // Skip SLACK channel here - it's handled separately via service webhook
-                if (channel === 'SLACK') {
-                    continue; // Slack is sent via service webhook, not per-user
-                }
-
-                const message = `[${incident.service.name}] Incident ${eventType}: ${incident.title}`;
-                const result = await sendNotification(incidentId, userId, channel, message);
-                
-                if (!result.success) {
-                    errors.push(`${channel} notification to user ${userId} failed: ${result.error}`);
-                }
+                errors.push(`Slack notification failed: ${error.message}`);
             }
         }
 
-        // Send service-level Slack notification (if configured)
-        if (channels.includes('SLACK') && incident.service.slackWebhookUrl && eventType !== 'updated') {
-            await notifySlackForIncident(incidentId, eventType).catch(err => {
-                errors.push(`Slack notification failed: ${err.message}`);
+        // Handle WEBHOOK channel - send to all enabled webhook integrations
+        if (serviceChannels.includes('WEBHOOK')) {
+            const webhookPromises = incident.service.webhookIntegrations.map(async (webhook) => {
+                try {
+                    const webhookEventType = eventType === 'triggered' ? 'triggered' :
+                        eventType === 'acknowledged' ? 'acknowledged' :
+                            eventType === 'resolved' ? 'resolved' : 'updated';
+
+                    const result = await sendIncidentWebhook(
+                        webhook.url,
+                        incidentId,
+                        webhookEventType,
+                        webhook.secret || undefined,
+                        webhook.type // Pass webhook type for proper formatting
+                    );
+
+                    if (!result.success) {
+                        return { webhookId: webhook.id, error: result.error };
+                    }
+                    return null;
+                } catch (error: any) {
+                    logger.error('Webhook notification error', {
+                        incidentId,
+                        webhookId: webhook.id,
+                        error: error.message
+                    });
+                    return { webhookId: webhook.id, error: error.message };
+                }
             });
+
+            const webhookResults = await Promise.all(webhookPromises);
+            for (const result of webhookResults) {
+                if (result) {
+                    errors.push(`Webhook ${result.webhookId} failed: ${result.error}`);
+                }
+            }
         }
 
-        return { 
-            success: errors.length === 0, 
-            errors: errors.length > 0 ? errors : undefined 
+        // Also send to legacy webhookUrl if configured (for backward compatibility)
+        if (incident.service.webhookUrl && !serviceChannels.includes('WEBHOOK')) {
+            try {
+                const webhookEventType = eventType === 'triggered' ? 'triggered' :
+                    eventType === 'acknowledged' ? 'acknowledged' :
+                        eventType === 'resolved' ? 'resolved' : 'updated';
+
+                const result = await sendIncidentWebhook(
+                    incident.service.webhookUrl,
+                    incidentId,
+                    webhookEventType
+                );
+
+                if (!result.success) {
+                    errors.push(`Legacy webhook failed: ${result.error}`);
+                }
+            } catch (error: any) {
+                logger.error('Legacy webhook notification error', {
+                    incidentId,
+                    error: error.message
+                });
+                errors.push(`Legacy webhook failed: ${error.message}`);
+            }
+        }
+
+        return {
+            success: errors.length === 0,
+            errors: errors.length > 0 ? errors : undefined
         };
     } catch (error: any) {
-        console.error('Service notification error:', error);
+        logger.error('Service notification error', {
+            incidentId,
+            error: error.message
+        });
         return { success: false, errors: [error.message] };
     }
 }

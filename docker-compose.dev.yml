@@ -1,39 +1,40 @@
-version: '3.8'
-
 services:
-  opsguard-db:
+  opssentinal-db:
     image: postgres:15-alpine
-    container_name: opsguard_postgres_dev
+    container_name: opssentinal_postgres_dev
     restart: unless-stopped
     environment:
-      POSTGRES_USER: opsguard
+      POSTGRES_USER: opssentinal
       POSTGRES_PASSWORD: devpassword
-      POSTGRES_DB: opsguard_db
+      POSTGRES_DB: opssentinal_db
     ports:
       - "5432:5432"
     volumes:
-      - opsguard_postgres_dev_data:/var/lib/postgresql/data
+      - opssentinal_postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opsguard -d opsguard_db"]
+      test: [ "CMD-SHELL", "pg_isready -U opssentinal -d opssentinal_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - opsguard-dev-network
+      - opssentinal-dev-network
 
-  opsguard-app:
+  opssentinal-app:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: opsguard_app_dev
+    container_name: opssentinal_app_dev
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://opsguard:devpassword@opsguard-db:5432/opsguard_db
+      - DATABASE_URL=postgresql://opssentinal:devpassword@opssentinal-db:5432/opssentinal_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key-for-development-only
+      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
+      # NOTE: Notification providers (Twilio, Email, Push) are configured via UI
+      # Environment variables are NOT used - configure at Settings → System → Notification Providers
     volumes:
       # Mount source code for hot reloading
       - ./src:/app/src
@@ -47,17 +48,17 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      opsguard-db:
+      opssentinal-db:
         condition: service_healthy
     networks:
-      - opsguard-dev-network
+      - opssentinal-dev-network
     command: >
       sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
 
 volumes:
-  opsguard_postgres_dev_data:
+  opssentinal_postgres_dev_data:
     driver: local
 
 networks:
-  opsguard-dev-network:
+  opssentinal-dev-network:
     driver: bridge

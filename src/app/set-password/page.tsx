@@ -10,6 +10,7 @@ function errorMessage(code?: string) {
     if (!code) return '';
     if (code === 'missing') return 'Invite token missing.';
     if (code === 'weak') return 'Password must be at least 10 characters.';
+    if (code === 'complexity') return 'Password must include upper, lower, and numeric characters.';
     if (code === 'mismatch') return 'Passwords do not match.';
     if (code === 'expired') return 'This invite link has expired.';
     if (code === 'invalid') return 'Invalid invite link.';

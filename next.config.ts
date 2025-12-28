@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['@prisma/client', 'react-icons'],
   },
+  // Turbopack: explicitly configure to allow custom webpack config
+  turbopack: {},
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
@@ -64,7 +66,34 @@ const nextConfig: NextConfig = {
   },
   // Bundle optimization
   webpack: (config, { isServer }) => {
-    if (!isServer) {
+    // Make twilio optional - it's only needed if WhatsApp notifications are enabled
+    // Use IgnorePlugin to prevent webpack from trying to resolve it at build time
+    if (isServer) {
+      const webpack = require('webpack');
+      config.plugins = config.plugins || [];
+      // Ignore twilio module resolution - it will be loaded dynamically at runtime if needed
+      // Use checkResource to conditionally ignore only if the module doesn't exist
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          checkResource(resource: string) {
+            // Only ignore twilio if it's being required
+            if (resource === 'twilio') {
+              try {
+                // Try to resolve it - if it fails, we'll ignore it
+                require.resolve('twilio');
+                return false; // Don't ignore if it exists
+              } catch {
+                return true; // Ignore if it doesn't exist
+              }
+            }
+            return false; // Don't ignore other modules
+          },
+        })
+      );
+    }
+
+    // Only apply optimizations in production builds
+    if (!isServer && process.env.NODE_ENV === 'production') {
       // Optimize client-side bundle
       config.optimization = {
         ...config.optimization,

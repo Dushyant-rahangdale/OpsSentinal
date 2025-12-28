@@ -19,7 +19,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
         // Get current incident to check if we're setting acknowledgedAt for the first time
         const incident = await tx.incident.findUnique({
             where: { id },
-            select: { status: true, acknowledgedAt: true, resolvedAt: true }
+            select: { status: true, acknowledgedAt: true, resolvedAt: true, currentEscalationStep: true }
         });
 
         if (!incident) {
@@ -38,15 +38,15 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
             } : {}),
             events: {
                 create: {
-                    message: status === 'SNOOZED' 
+                    message: status === 'SNOOZED'
                         ? 'Incident snoozed (escalation paused)'
                         : status === 'SUPPRESSED'
-                        ? 'Incident suppressed (escalation paused)'
-                        : status === 'OPEN' && incident.status === 'ACKNOWLEDGED'
-                        ? 'Incident unacknowledged (escalation resumed)'
-                        : status === 'OPEN' && (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED')
-                        ? 'Incident unsnoozed/unsuppressed (escalation resumed)'
-                        : `Status updated to ${status}${status === 'ACKNOWLEDGED' || status === 'RESOLVED' ? ' (escalation stopped)' : ''}`
+                            ? 'Incident suppressed (escalation paused)'
+                            : status === 'OPEN' && incident.status === 'ACKNOWLEDGED'
+                                ? 'Incident unacknowledged (escalation resumed)'
+                                : status === 'OPEN' && (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED')
+                                    ? 'Incident unsnoozed/unsuppressed (escalation resumed)'
+                                    : `Status updated to ${status}${status === 'ACKNOWLEDGED' || status === 'RESOLVED' ? ' (escalation stopped)' : ''}`
                 }
             }
         };
@@ -64,10 +64,35 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
             // Resuming from any paused state - resume escalation
             if (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED' || incident.status === 'ACKNOWLEDGED') {
                 updateData.escalationStatus = 'ESCALATING';
-                updateData.nextEscalationAt = new Date(); // Resume immediately
+                if (incident.status === 'ACKNOWLEDGED') {
+                    const policyData = await tx.incident.findUnique({
+                        where: { id },
+                        select: {
+                            currentEscalationStep: true,
+                            service: {
+                                select: {
+                                    policy: {
+                                        select: {
+                                            steps: {
+                                                orderBy: { stepOrder: 'asc' },
+                                                select: { delayMinutes: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    const stepIndex = policyData?.currentEscalationStep ?? 0;
+                    const delayMinutes = policyData?.service?.policy?.steps?.[stepIndex]?.delayMinutes ?? 0;
+                    updateData.nextEscalationAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+                } else {
+                    updateData.nextEscalationAt = new Date(); // Resume immediately
+                }
             }
         }
-        
+
         await tx.incident.update({
             where: { id },
             data: updateData
@@ -79,7 +104,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
     // Send service-level notifications for status changes
     // Uses user preferences for each recipient
     try {
-        const { sendServiceNotifications } = await import('@/lib/user-notifications');
+        const { sendServiceNotifications } = await import('@/lib/service-notifications');
         if (status === 'ACKNOWLEDGED') {
             await sendServiceNotifications(id, 'acknowledged');
         } else if (status === 'RESOLVED') {
@@ -90,6 +115,71 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
         }
     } catch (e) {
         console.error('Service notification failed:', e);
+    }
+
+    // Trigger status page webhooks for incident status changes
+    try {
+        const updatedIncident = await prisma.incident.findUnique({
+            where: { id },
+            include: {
+                service: { select: { id: true, name: true } },
+                assignee: { select: { id: true, name: true, email: true } },
+            },
+        });
+
+        if (updatedIncident) {
+            const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+            let eventType = 'incident.updated';
+
+            if (status === 'RESOLVED') {
+                eventType = 'incident.resolved';
+            } else if (status === 'ACKNOWLEDGED') {
+                eventType = 'incident.acknowledged';
+            } else if (status === 'SNOOZED') {
+                eventType = 'incident.snoozed'; // Or updated, depending on standard
+            } else if (status === 'SUPPRESSED') {
+                eventType = 'incident.suppressed';
+            }
+
+            await triggerWebhooksForService(
+                updatedIncident.serviceId,
+                eventType,
+                {
+                    id: updatedIncident.id,
+                    title: updatedIncident.title,
+                    description: updatedIncident.description,
+                    status: updatedIncident.status,
+                    urgency: updatedIncident.urgency,
+                    priority: updatedIncident.priority,
+                    service: {
+                        id: updatedIncident.service.id,
+                        name: updatedIncident.service.name,
+                    },
+                    assignee: updatedIncident.assignee,
+                    createdAt: updatedIncident.createdAt.toISOString(),
+                    acknowledgedAt: updatedIncident.acknowledgedAt?.toISOString() || null,
+                    resolvedAt: updatedIncident.resolvedAt?.toISOString() || null,
+                }
+            );
+        }
+    } catch (e) {
+        console.error('Status page webhook trigger failed:', e);
+    }
+
+    // Notify status page subscribers (Email)
+    try {
+        const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+        const eventMap: Record<string, string> = {
+            'ACKNOWLEDGED': 'acknowledged',
+            'RESOLVED': 'resolved',
+            'OPEN': 'investigating' // Re-opened or opened
+        };
+        const notifyEvent = eventMap[status];
+        if (notifyEvent) {
+            await notifyStatusPageSubscribers(id, notifyEvent as any);
+        }
+    } catch (e) {
+        console.error('Status page subscriber notification failed:', e);
     }
 
     revalidatePath(`/incidents/${id}`);
@@ -122,6 +212,11 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
         const currentIncident = await tx.incident.findUnique({ where: { id } });
         if (!currentIncident) {
             throw new Error(getUserFriendlyError('Incident not found.'));
+        }
+
+        // Idempotency check: If already resolved, prevent duplicate resolution notes
+        if (currentIncident.status === 'RESOLVED') {
+            return;
         }
 
         await tx.incident.update({
@@ -164,10 +259,54 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
     // Send service-level notifications for resolution
     // Uses user preferences for each recipient
     try {
-        const { sendServiceNotifications } = await import('@/lib/user-notifications');
+        const { sendServiceNotifications } = await import('@/lib/service-notifications');
         await sendServiceNotifications(id, 'resolved');
     } catch (e) {
         console.error('Service notification failed:', e);
+    }
+
+    // Notify status page subscribers (Email)
+    try {
+        const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+        await notifyStatusPageSubscribers(id, 'resolved');
+    } catch (e) {
+        console.error('Status page subscriber notification failed:', e);
+    }
+
+    // Trigger status page webhooks for resolution
+    try {
+        const incidentWithRelations = await prisma.incident.findUnique({
+            where: { id },
+            include: {
+                service: { select: { id: true, name: true } },
+                assignee: { select: { id: true, name: true, email: true } },
+            },
+        });
+
+        if (incidentWithRelations) {
+            const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+            await triggerWebhooksForService(
+                incidentWithRelations.serviceId,
+                'incident.resolved',
+                {
+                    id: incidentWithRelations.id,
+                    title: incidentWithRelations.title,
+                    description: incidentWithRelations.description,
+                    status: incidentWithRelations.status,
+                    urgency: incidentWithRelations.urgency,
+                    priority: incidentWithRelations.priority,
+                    service: {
+                        id: incidentWithRelations.service.id,
+                        name: incidentWithRelations.service.name,
+                    },
+                    assignee: incidentWithRelations.assignee,
+                    createdAt: incidentWithRelations.createdAt.toISOString(),
+                    resolvedAt: incidentWithRelations.resolvedAt?.toISOString() || new Date().toISOString()
+                }
+            );
+        }
+    } catch (e) {
+        console.error('Status page webhook trigger failed:', e);
     }
 
     revalidatePath(`/incidents/${id}`);
@@ -249,7 +388,7 @@ export async function createIncident(formData: FormData) {
                 assigneeId: assigneeId && assigneeId.length ? assigneeId : null,
                 events: {
                     create: {
-                        message: assigneeId 
+                        message: assigneeId
                             ? `Incident created with ${urgency} urgency and assigned to ${assigneeName || 'user'}`
                             : `Incident created with ${urgency} urgency`
                     }
@@ -279,24 +418,73 @@ export async function createIncident(formData: FormData) {
         return createdIncident;
     });
 
+    // Execute escalation policy if service has one
+    let escalatedUsers: string[] = [];
+    try {
+        const { executeEscalation } = await import('@/lib/escalation');
+        const result = await executeEscalation(incident.id);
+        if (result.escalated && result.notifications) {
+            escalatedUsers = result.notifications.map((n: any) => n.userId);
+        }
+    } catch (e) {
+        console.error('Escalation failed:', e);
+    }
+
     // Send service-level notifications for new incident
     // Uses user preferences for each recipient
     try {
-        const { sendServiceNotifications } = await import('@/lib/user-notifications');
+        const { sendServiceNotifications } = await import('@/lib/service-notifications');
         await sendServiceNotifications(incident.id, 'triggered');
     } catch (e) {
         console.error('Service notification failed:', e);
     }
 
-    // Execute escalation policy if service has one
+    // Trigger status page webhooks for incident.created event
     try {
-        const { executeEscalation } = await import('@/lib/escalation');
-        await executeEscalation(incident.id);
+        const incidentWithRelations = await prisma.incident.findUnique({
+            where: { id: incident.id },
+            include: {
+                service: { select: { id: true, name: true } },
+                assignee: { select: { id: true, name: true, email: true } },
+            },
+        });
+
+        if (incidentWithRelations) {
+            const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+            await triggerWebhooksForService(
+                incident.serviceId,
+                'incident.created',
+                {
+                    id: incidentWithRelations.id,
+                    title: incidentWithRelations.title,
+                    description: incidentWithRelations.description,
+                    status: incidentWithRelations.status,
+                    urgency: incidentWithRelations.urgency,
+                    priority: incidentWithRelations.priority,
+                    service: {
+                        id: incidentWithRelations.service.id,
+                        name: incidentWithRelations.service.name,
+                    },
+                    assignee: incidentWithRelations.assignee,
+                    createdAt: incidentWithRelations.createdAt.toISOString(),
+                }
+            );
+        }
     } catch (e) {
-        console.error('Escalation failed:', e);
+        console.error('Status page webhook trigger failed:', e);
     }
 
+    // Notify status page subscribers (Email)
+    try {
+        const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+        await notifyStatusPageSubscribers(incident.id, 'triggered');
+    } catch (e) {
+        console.error('Status page subscriber notification failed:', e);
+    }
+
+    // Revalidate all relevant paths to ensure UI shows updated assignee
     revalidatePath('/incidents');
+    revalidatePath(`/incidents/${incident.id}`);
     revalidatePath('/');
     redirect('/incidents');
 }
@@ -329,20 +517,23 @@ export async function addNote(incidentId: string, content: string) {
     revalidatePath(`/incidents/${incidentId}`);
 }
 
-export async function reassignIncident(incidentId: string, assigneeId: string) {
+export async function reassignIncident(incidentId: string, assigneeId: string, teamId?: string) {
     try {
         // Check resource-level authorization
         await assertCanModifyIncident(incidentId);
     } catch (error) {
         throw new Error(getUserFriendlyError(error));
     }
-    
-    // Handle unassigning (empty assigneeId)
-    if (!assigneeId || assigneeId.trim() === '') {
+
+    // Handle unassigning (empty assigneeId and teamId)
+    if ((!assigneeId || assigneeId.trim() === '') && (!teamId || teamId.trim() === '')) {
         await prisma.$transaction(async (tx) => {
             await tx.incident.update({
                 where: { id: incidentId },
-                data: { assigneeId: null }
+                data: {
+                    assigneeId: null,
+                    teamId: null
+                }
             });
 
             await tx.incidentEvent.create({
@@ -358,29 +549,91 @@ export async function reassignIncident(incidentId: string, assigneeId: string) {
         return;
     }
 
-    // Handle assigning to a user
-    await prisma.$transaction(async (tx) => {
-        const assigneeRecord = await tx.user.findUnique({ where: { id: assigneeId } });
-        if (!assigneeRecord) {
-            throw new Error(getUserFriendlyError('Assignee not found. The selected user may have been deleted.'));
+    // Handle assigning to team
+    if (teamId && teamId.trim() !== '') {
+        await prisma.$transaction(async (tx) => {
+            const teamRecord = await tx.team.findUnique({
+                where: { id: teamId },
+                select: { name: true }
+            });
+            if (!teamRecord) {
+                throw new Error(getUserFriendlyError('Team not found. The selected team may have been deleted.'));
+            }
+
+            await tx.incident.update({
+                where: { id: incidentId },
+                data: {
+                    teamId,
+                    assigneeId: null // Clear user assignment when assigning to team
+                }
+            });
+
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId,
+                    message: `Incident assigned to team: ${teamRecord.name}`
+                }
+            });
+        });
+
+        // Notify all team members
+        try {
+            const { sendUserNotification } = await import('@/lib/user-notifications');
+            const teamWithMembers = await prisma.team.findUnique({
+                where: { id: teamId },
+                include: {
+                    members: true
+                }
+            });
+
+            if (teamWithMembers) {
+                const incident = await prisma.incident.findUnique({
+                    where: { id: incidentId },
+                    select: { title: true }
+                });
+
+                const message = `[OpsSentinal] ${incident?.title || 'Incident'} assigned to your team: ${teamWithMembers.name}`;
+                for (const member of teamWithMembers.members) {
+                    await sendUserNotification(incidentId, member.userId, message);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to notify team members:', error);
+            // Continue even if notifications fail
         }
 
-        await tx.incident.update({
-            where: { id: incidentId },
-            data: { assigneeId }
-        });
+        revalidatePath(`/incidents/${incidentId}`);
+        revalidatePath('/incidents');
+        return;
+    }
 
-        await tx.incidentEvent.create({
-            data: {
-                incidentId,
-                message: `Incident manually reassigned to ${assigneeRecord.name}`
+    // Handle assigning to a user
+    if (assigneeId && assigneeId.trim() !== '') {
+        await prisma.$transaction(async (tx) => {
+            const assigneeRecord = await tx.user.findUnique({ where: { id: assigneeId } });
+            if (!assigneeRecord) {
+                throw new Error(getUserFriendlyError('Assignee not found. The selected user may have been deleted.'));
             }
+
+            await tx.incident.update({
+                where: { id: incidentId },
+                data: {
+                    assigneeId,
+                    teamId: null // Clear team assignment when assigning to user
+                }
+            });
+
+            await tx.incidentEvent.create({
+                data: {
+                    incidentId,
+                    message: `Incident manually reassigned to ${assigneeRecord.name}`
+                }
+            });
         });
 
-    });
-
-    revalidatePath(`/incidents/${incidentId}`);
-    revalidatePath('/incidents');
+        revalidatePath(`/incidents/${incidentId}`);
+        revalidatePath('/incidents');
+    }
 }
 
 export async function addWatcher(incidentId: string, userId: string, role: string) {

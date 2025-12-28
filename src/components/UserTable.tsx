@@ -6,6 +6,8 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import RoleSelector from './RoleSelector';
 import InviteLinkButton from './InviteLinkButton';
 import DeleteUserButton from './DeleteUserButton';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type User = {
     id: string;
@@ -57,6 +59,7 @@ export default function UserTable({
     sortBy = 'createdAt',
     sortOrder = 'desc'
 }: UserTableProps) {
+    const { userTimeZone } = useTimezone();
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
@@ -79,7 +82,7 @@ export default function UserTable({
         params.delete('page'); // Reset to page 1 when sorting
         return `${pathname}?${params.toString()}`;
     }, [searchParams, pathname, sortBy, sortOrder]);
-    
+
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isPending, startTransition] = useTransition();
 
@@ -345,14 +348,7 @@ export default function UserTable({
                                 </td>
                                 <td style={{ padding: '0.875rem 1rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                                     {user.createdAt ? (
-                                        new Date(user.createdAt).toLocaleString('en-US', {
-                                            year: 'numeric',
-                                            month: '2-digit',
-                                            day: '2-digit',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: true
-                                        })
+                                        formatDateTime(user.createdAt, userTimeZone, { format: 'datetime' })
                                     ) : (
                                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                                     )}
@@ -364,25 +360,19 @@ export default function UserTable({
                                                 {user.status === "INVITED" && (
                                                     <InviteLinkButton action={inviteUser} className="invite-link-inline" />
                                                 )}
-                                                {user.status === "DISABLED" ? (
-                                                    <form action={reactivate}>
-                                                        <button type="submit" className="glass-button primary" style={{ padding: '0.35rem 0.7rem', fontSize: '0.7rem' }}>
-                                                            Activate
-                                                        </button>
-                                                    </form>
-                                                ) : user.status === "INVITED" ? (
-                                                    <form action={reactivate}>
-                                                        <button type="submit" className="glass-button primary" style={{ padding: '0.35rem 0.7rem', fontSize: '0.7rem' }}>
-                                                            Activate
-                                                        </button>
-                                                    </form>
-                                                ) : user.id !== currentUserId ? (
+                                                {user.status === "ACTIVE" && user.id !== currentUserId && (
                                                     <form action={deactivate}>
                                                         <button type="submit" className="glass-button" style={{ padding: '0.35rem 0.7rem', fontSize: '0.7rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }}>
                                                             Deactivate
                                                         </button>
                                                     </form>
-                                                ) : (
+                                                )}
+                                                {user.status === "DISABLED" && (
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }} title="User must be re-invited to set a new password">
+                                                        Deactivated
+                                                    </span>
+                                                )}
+                                                {user.id === currentUserId && user.status === "ACTIVE" && (
                                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic' }} title="You cannot deactivate your own account">
                                                         Cannot deactivate self
                                                     </span>

@@ -41,3 +41,26 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# debug and test files
+*.log
+check_user_prefs.ts
+debug*.ts
+debug*.js
+query_*.js
+verify_fix.ts
+*.sql
+!prisma/migrations/**/*.sql
+
+# build scripts
+build-docker.ps1
+cleanup-dev.ps1
+clear-cache.ps1
+recreate-db-*.ps1
+reset-prisma.ps1
+
+# debug API routes
+/src/app/api/debug/
+
+# misc
+.FullName

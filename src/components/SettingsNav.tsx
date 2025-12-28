@@ -40,6 +40,18 @@ export default function SettingsNav({ isAdmin = false }: Props) {
             description: 'Configure SMS and push providers (Admin only)',
             adminOnly: true,
             disabled: !isAdmin
+        },
+        { 
+            href: '/settings/notifications/history', 
+            label: 'Notification History', 
+            description: 'View notification delivery history'
+        },
+        { 
+            href: '/settings/slack-oauth', 
+            label: 'Slack OAuth', 
+            description: 'Configure Slack OAuth credentials (Admin only)',
+            adminOnly: true,
+            disabled: !isAdmin
         }
     ];
 

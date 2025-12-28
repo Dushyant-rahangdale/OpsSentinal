@@ -214,7 +214,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                 return acc; // Skip this item
             }
         }
-        
+
         const section = item.section || 'MAIN';
         if (!acc[section]) {
             acc[section] = [];
@@ -458,13 +458,13 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         background: 'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.05) 0%, transparent 50%)',
                         pointerEvents: 'none'
                     }} />
-                    
-                    <Link 
-                        href="/" 
-                        style={{ 
-                            textDecoration: 'none', 
-                            display: 'flex', 
-                            alignItems: 'center', 
+
+                    <Link
+                        href="/"
+                        style={{
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
                             gap: '0.875rem',
                             position: 'relative',
                             zIndex: 1,
@@ -500,7 +500,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             }} />
                             <img
                                 src="/logo.svg"
-                                alt="OpsGuard"
+                                alt="OpsSentinal"
                                 style={{
                                     width: '28px',
                                     height: '28px',
@@ -520,7 +520,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 lineHeight: '1.2',
                                 letterSpacing: '-0.4px',
                                 textShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                            }}>OpsGuard</h1>
+                            }}>OpsSentinal</h1>
                             <div style={{
                                 fontSize: '0.65rem',
                                 color: 'rgba(255,255,255,0.7)',
@@ -610,9 +610,9 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             flexShrink: 0,
                             textTransform: 'uppercase'
                         }}>
-                            {userName 
+                            {userName
                                 ? userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                                : userEmail 
+                                : userEmail
                                     ? userEmail[0].toUpperCase()
                                     : 'U'}
                         </div>
@@ -798,3 +798,4 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
         </>
     );
 }
+

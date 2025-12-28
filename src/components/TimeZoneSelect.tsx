@@ -1,21 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-const fallbackZones = [
-    'UTC',
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'Europe/London',
-    'Europe/Berlin',
-    'Asia/Dubai',
-    'Asia/Kolkata',
-    'Asia/Singapore',
-    'Asia/Tokyo',
-    'Australia/Sydney'
-];
+import { getAllTimeZones } from '@/lib/timezone';
 
 type TimeZoneSelectProps = {
     name: string;
@@ -25,22 +11,31 @@ type TimeZoneSelectProps = {
 };
 
 export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disabled }: TimeZoneSelectProps) {
-    const [zones, setZones] = useState<string[]>(fallbackZones);
+    const [zones, setZones] = useState<Array<{ value: string; label: string }>>([]);
+    const [selectedValue, setSelectedValue] = useState(defaultValue);
 
     useEffect(() => {
-        if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
-            const allZones = Intl.supportedValuesOf('timeZone');
-            if (allZones.length > 0) {
-                setZones(allZones);
-            }
-        }
+        // Load timezones with labels
+        const timezones = getAllTimeZones();
+        setZones(timezones);
     }, []);
 
+    // Update selected value when defaultValue prop changes (e.g., after save)
+    useEffect(() => {
+        setSelectedValue(defaultValue);
+    }, [defaultValue]);
+
     return (
-        <select name={name} defaultValue={defaultValue} id={id} disabled={disabled}>
+        <select 
+            name={name} 
+            value={selectedValue} 
+            onChange={(e) => setSelectedValue(e.target.value)}
+            id={id} 
+            disabled={disabled}
+        >
             {zones.map((zone) => (
-                <option key={zone} value={zone}>
-                    {zone}
+                <option key={zone.value} value={zone.value}>
+                    {zone.label}
                 </option>
             ))}
         </select>

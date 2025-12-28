@@ -1,5 +1,6 @@
 /**
  * Format date consistently for SSR/Client to avoid hydration mismatches
+ * @deprecated Use formatDateTime from '@/lib/timezone' instead for timezone support
  */
 export function formatDate(date: Date | string, format: 'date' | 'datetime' | 'time' = 'datetime'): string {
     const d = typeof date === 'string' ? new Date(date) : date;
@@ -29,15 +30,41 @@ export function formatDate(date: Date | string, format: 'date' | 'datetime' | 't
 /**
  * Format date in a user-friendly way (SSR-safe, consistent between server and client)
  * Format: DD/MM/YYYY, HH:MM:SS
+ * @deprecated Use formatDateTime from '@/lib/timezone' with timezone parameter instead
  */
-export function formatDateFriendly(date: Date | string, format: 'date' | 'datetime' = 'datetime'): string {
+export function formatDateFriendly(date: Date | string, format: 'date' | 'datetime' = 'datetime', timeZone?: string): string {
     const d = typeof date === 'string' ? new Date(date) : date;
     
     if (!d || isNaN(d.getTime())) {
         return 'Invalid Date';
     }
 
-    // Use UTC methods to ensure consistent output between server and client
+    // If timezone is provided, use Intl.DateTimeFormat for proper conversion
+    if (timeZone) {
+        try {
+            if (format === 'date') {
+            return new Intl.DateTimeFormat('en-GB', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                timeZone
+            }).format(d);
+        }
+            return new Intl.DateTimeFormat('en-GB', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone
+            }).format(d);
+        } catch {
+            // Fallback to UTC if timezone is invalid
+        }
+    }
+
+    // Use UTC methods to ensure consistent output between server and client (legacy behavior)
     const year = d.getUTCFullYear();
     const month = String(d.getUTCMonth() + 1).padStart(2, '0');
     const day = String(d.getUTCDate()).padStart(2, '0');

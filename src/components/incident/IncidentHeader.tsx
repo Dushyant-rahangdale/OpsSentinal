@@ -6,7 +6,8 @@ import EscalationStatusBadge from './EscalationStatusBadge';
 import PriorityBadge from './PriorityBadge';
 import AssigneeSection from './AssigneeSection';
 import { Incident, Service } from '@prisma/client';
-import { formatDateFriendly } from '@/lib/date-format';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDateTime } from '@/lib/timezone';
 
 type IncidentHeaderProps = {
     incident: Incident & {
@@ -14,12 +15,16 @@ type IncidentHeaderProps = {
             policy?: { id: string; name: string } | null;
         };
         assignee: { id: string; name: string; email: string } | null;
+        team?: { id: string; name: string } | null;
     };
     users: Array<{ id: string; name: string; email: string }>;
+    teams: Array<{ id: string; name: string }>;
     canManage: boolean;
 };
 
-export default function IncidentHeader({ incident, users, canManage }: IncidentHeaderProps) {
+export default function IncidentHeader({ incident, users, teams, canManage }: IncidentHeaderProps) {
+    const { userTimeZone } = useTimezone();
+
     return (
         <div style={{
             padding: '2rem',
@@ -31,28 +36,28 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', marginBottom: '1.5rem' }}>
                 <div style={{ flex: 1 }}>
-                    <Link 
-                        href="/incidents" 
-                        style={{ 
-                            color: 'var(--text-muted)', 
-                            textDecoration: 'none', 
-                            fontSize: '0.85rem', 
-                            marginBottom: '0.75rem', 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
+                    <Link
+                        href="/incidents"
+                        style={{
+                            color: 'var(--text-muted)',
+                            textDecoration: 'none',
+                            fontSize: '0.85rem',
+                            marginBottom: '0.75rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
                             gap: '0.4rem',
                             fontWeight: 500
                         }}
                     >
                         <span style={{ fontSize: '1rem' }}>←</span> Back to Incidents
                     </Link>
-                    
+
                     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                        <span style={{ 
-                            fontSize: '1.7rem', 
-                            fontWeight: '800', 
-                            letterSpacing: '-0.02em', 
-                            color: 'var(--primary)' 
+                        <span style={{
+                            fontSize: '1.7rem',
+                            fontWeight: '800',
+                            letterSpacing: '-0.02em',
+                            color: 'var(--primary)'
                         }}>
                             #{incident.id.slice(-5).toUpperCase()}
                         </span>
@@ -66,22 +71,22 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                         )}
                         <PriorityBadge priority={incident.priority} size="lg" showLabel />
                     </div>
-                    
-                    <h1 style={{ 
-                        fontSize: '2.1rem', 
-                        fontWeight: '800', 
-                        color: 'var(--text-primary)', 
-                        marginBottom: '0.35rem', 
+
+                    <h1 style={{
+                        fontSize: '2.1rem',
+                        fontWeight: '800',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.35rem',
                         letterSpacing: '-0.02em',
                         lineHeight: 1.2
                     }}>
                         {incident.title}
                     </h1>
-                    
+
                     {incident.description && (
-                        <p style={{ 
-                            color: 'var(--text-secondary)', 
-                            maxWidth: '720px', 
+                        <p style={{
+                            color: 'var(--text-secondary)',
+                            maxWidth: '720px',
                             lineHeight: 1.6,
                             fontSize: '1rem'
                         }}>
@@ -89,22 +94,22 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                         </p>
                     )}
                 </div>
-                
-                <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'flex-end', 
-                    gap: '0.35rem', 
-                    background: 'rgba(15, 23, 42, 0.04)', 
-                    padding: '0.75rem 1rem', 
-                    borderRadius: '0px', 
+
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '0.35rem',
+                    background: 'rgba(15, 23, 42, 0.04)',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0px',
                     border: '1px solid rgba(15, 23, 42, 0.06)'
                 }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                         Created
                     </div>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {formatDateFriendly(incident.createdAt)}
+                        {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
                     </div>
                     {incident.acknowledgedAt && (
                         <>
@@ -112,7 +117,7 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                                 Acknowledged
                             </div>
                             <div style={{ fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                {formatDateFriendly(incident.acknowledgedAt)}
+                                {formatDateTime(incident.acknowledgedAt, userTimeZone, { format: 'datetime' })}
                             </div>
                         </>
                     )}
@@ -122,27 +127,27 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                                 Resolved
                             </div>
                             <div style={{ fontWeight: 600, color: 'var(--success)', fontSize: '0.9rem' }}>
-                                {formatDateFriendly(incident.resolvedAt)}
+                                {formatDateTime(incident.resolvedAt, userTimeZone, { format: 'datetime' })}
                             </div>
                         </>
                     )}
                 </div>
             </div>
 
-            <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.6rem', 
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
                 marginBottom: '0.75rem',
                 paddingBottom: '0.75rem',
                 borderBottom: '1px solid var(--border)'
             }}>
-                <div style={{ 
-                    width: '8px', 
-                    height: '8px', 
-                    borderRadius: '50%', 
-                    background: incident.status === 'RESOLVED' ? '#16a34a' : (incident.status === 'ACKNOWLEDGED' ? '#f59e0b' : '#ef4444'), 
-                    boxShadow: '0 0 0 6px rgba(239, 68, 68, 0.08)' 
+                <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: incident.status === 'RESOLVED' ? '#16a34a' : (incident.status === 'ACKNOWLEDGED' ? '#f59e0b' : '#ef4444'),
+                    boxShadow: '0 0 0 6px rgba(239, 68, 68, 0.08)'
                 }}></div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 700 }}>
                     Incident Overview
@@ -150,27 +155,27 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.9rem' }}>
-                <div style={{ 
-                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)', 
-                    border: '1px solid rgba(211,47,47,0.18)', 
-                    borderRadius: '0px', 
-                    padding: '0.85rem', 
-                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)' 
+                <div style={{
+                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
+                    border: '1px solid rgba(211,47,47,0.18)',
+                    borderRadius: '0px',
+                    padding: '0.85rem',
+                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
                 }}>
                     <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.35rem' }}>
                         Service
                     </div>
-                    <Link 
-                        href={`/services/${incident.serviceId}`} 
-                        style={{ 
-                            color: 'var(--primary)', 
-                            textDecoration: 'none', 
-                            fontWeight: 700, 
-                            fontSize: '0.95rem', 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            gap: '0.4rem' 
+                    <Link
+                        href={`/services/${incident.serviceId}`}
+                        style={{
+                            color: 'var(--primary)',
+                            textDecoration: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.95rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem'
                         }}
                     >
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)' }}></span>
@@ -178,12 +183,12 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                     </Link>
                 </div>
 
-                <div style={{ 
-                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)', 
-                    border: '1px solid rgba(211,47,47,0.18)', 
-                    borderRadius: '0px', 
-                    padding: '0.85rem', 
-                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)' 
+                <div style={{
+                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
+                    border: '1px solid rgba(211,47,47,0.18)',
+                    borderRadius: '0px',
+                    padding: '0.85rem',
+                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
                 }}>
                     <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.35rem' }}>
@@ -194,11 +199,11 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                     </div>
                 </div>
 
-                <div style={{ 
-                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)', 
-                    border: '1px solid rgba(211,47,47,0.18)', 
-                    borderRadius: '0px', 
-                    padding: '0.85rem', 
+                <div style={{
+                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
+                    border: '1px solid rgba(211,47,47,0.18)',
+                    borderRadius: '0px',
+                    padding: '0.85rem',
                     boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
                 }}>
                     <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
@@ -207,8 +212,11 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                     </div>
                     <AssigneeSection
                         assignee={incident.assignee}
+                        team={incident.team || null}
                         assigneeId={incident.assigneeId}
+                        teamId={incident.teamId}
                         users={users}
+                        teams={teams}
                         incidentId={incident.id}
                         canManage={canManage}
                         variant="header"
@@ -216,23 +224,23 @@ export default function IncidentHeader({ incident, users, canManage }: IncidentH
                 </div>
 
                 {incident.service.policy && (
-                    <div style={{ 
-                        background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)', 
-                        border: '1px solid rgba(211,47,47,0.18)', 
-                        borderRadius: '0px', 
-                        padding: '0.85rem', 
-                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)' 
+                    <div style={{
+                        background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
+                        border: '1px solid rgba(211,47,47,0.18)',
+                        borderRadius: '0px',
+                        padding: '0.85rem',
+                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
                     }}>
                         <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.35rem' }}>
                             Escalation Policy
                         </div>
-                        <Link 
+                        <Link
                             href={`/policies/${incident.service.policy.id}`}
-                            style={{ 
-                                fontWeight: 700, 
-                                fontSize: '0.95rem', 
-                                color: 'var(--primary)', 
+                            style={{
+                                fontWeight: 700,
+                                fontSize: '0.95rem',
+                                color: 'var(--primary)',
                                 textDecoration: 'none',
                                 display: 'inline-flex',
                                 alignItems: 'center',

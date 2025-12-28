@@ -4,7 +4,29 @@
  */
 
 export function getUserFriendlyError(error: string | Error | unknown): string {
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  // Handle Event objects specifically (they stringify to "[object Event]")
+  if (error && typeof error === 'object' && 'type' in error && 'target' in error) {
+    return 'An unexpected error occurred. Please try again.';
+  }
+
+  // Handle Error instances
+  if (error instanceof Error) {
+    // return error.message || 'An unexpected error occurred.';
+    error = error.message || 'An unexpected error occurred.';
+  }
+
+  // Handle strings
+  // if (typeof error === 'string') {
+  //   return error;
+  // }
+
+  // Handle objects that stringify to "[object ...]"
+  const errorString = String(error);
+  if (errorString.startsWith('[object ') && errorString.endsWith(']')) {
+    return 'An unexpected error occurred. Please try again.';
+  }
+
+  const errorMessage = errorString;
 
   // Database/Prisma errors
   if (errorMessage.includes('Unique constraint')) {

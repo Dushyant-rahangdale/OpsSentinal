@@ -1,94 +1,78 @@
 import { getUserPermissions } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
-import SystemNotificationSettings from '@/components/settings/SystemNotificationSettings';
-import SettingsSection from '@/components/settings/SettingsSection';
-import { getNotificationProviders } from './actions';
+import AppUrlSettings from '@/components/settings/AppUrlSettings';
+import SettingsPage from '@/components/settings/SettingsPage';
+import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
+
+// Force dynamic rendering to always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 export default async function SystemSettingsPage() {
     const permissions = await getUserPermissions();
-    
+
     // Show access denied message for non-admins instead of redirecting
     if (!permissions.isAdmin) {
         return (
-            <SettingsSection
-                title="Notification Providers"
-                description="Configure notification providers for email, SMS, and push notifications. These settings apply system-wide."
+            <SettingsPage
+                currentPageId="system"
+                backHref="/settings"
+                title="System Settings"
+                description="Application-wide configuration and defaults."
             >
-                <div className="glass-panel" style={{
-                    padding: '2rem',
-                    textAlign: 'center',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    background: '#f9fafb'
-                }}>
-                    <div style={{
-                        fontSize: '3rem',
-                        marginBottom: '1rem'
-                    }}>!</div>
-                    <h3 style={{
-                        fontSize: '1.25rem',
-                        fontWeight: '600',
-                        color: 'var(--text-primary)',
-                        marginBottom: '0.5rem'
-                    }}>
-                        Access Restricted
-                    </h3>
-                    <p style={{
-                        color: 'var(--text-muted)',
-                        marginBottom: '1.5rem'
-                    }}>
-                        You need administrator privileges to access system settings.
-                    </p>
-                    <div style={{
-                        padding: '1rem',
-                        background: '#fef3c7',
-                        border: '1px solid #fbbf24',
-                        borderRadius: '4px',
-                        fontSize: '0.9rem',
-                        color: '#92400e',
-                        marginTop: '1rem'
-                    }}>
-                         Your current role: <strong>{permissions.role}</strong>. Admin role required.
+                <SettingsSectionCard
+                    title="Access restricted"
+                    description="Administrator access required to view these settings."
+                >
+                    <div className="settings-empty-state-v2">
+                        <div className="settings-empty-icon">!</div>
+                        <h3>Admin role required</h3>
+                        <p>Your current role is {permissions.role}. Contact an administrator for access.</p>
                     </div>
-                    <p style={{
-                        marginTop: '1.5rem',
-                        fontSize: '0.85rem',
-                        color: 'var(--text-muted)'
-                    }}>
-                        Please contact your system administrator to upgrade your account.
-                    </p>
-                </div>
-            </SettingsSection>
+                </SettingsSectionCard>
+            </SettingsPage>
         );
     }
 
-    let providers: Awaited<ReturnType<typeof getNotificationProviders>> = [];
+    // Fetch app URL settings directly from DB
+    let appUrlData = { appUrl: null as string | null, fallback: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' };
     try {
-        providers = await getNotificationProviders();
+        const settings = await import('@/lib/prisma').then(m => m.default.systemSettings.findUnique({
+            where: { id: 'default' },
+            select: { appUrl: true }
+        }));
+
+        if (settings) {
+            appUrlData.appUrl = settings.appUrl;
+        }
     } catch (error) {
-        logger.error('Error loading notification providers', {
+        logger.warn('Failed to fetch app URL settings from DB', {
             error: error instanceof Error ? error.message : 'Unknown error'
         });
-        // Continue with empty providers array if there's an error
     }
 
     return (
-        <SettingsSection
-            title="Notification Providers"
-            description="Configure notification providers for email, SMS, and push notifications. These settings apply system-wide."
+        <SettingsPage
+            currentPageId="system"
+            backHref="/settings"
+            title="System Settings"
+            description="Configure core application settings that affect system-wide behavior."
         >
-            <SystemNotificationSettings 
-                providers={providers}
-            />
+            <SettingsSectionCard
+                title="Application URL"
+                description="Used in emails, webhooks, and RSS feeds."
+            >
+                <AppUrlSettings
+                    appUrl={appUrlData.appUrl}
+                    fallback={appUrlData.fallback}
+                />
+            </SettingsSectionCard>
 
-            <div className="settings-note" style={{ marginTop: '2rem' }}>
-                <strong>Note:</strong> Sensitive credentials are stored encrypted. Changes take effect immediately.
-                <br />
-                Environment variables (if set) will override these settings.
-            </div>
-        </SettingsSection>
+        </SettingsPage>
     );
 }
+
 
 
 
