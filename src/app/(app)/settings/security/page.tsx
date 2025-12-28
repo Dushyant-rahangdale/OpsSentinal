@@ -21,6 +21,7 @@ export default async function SecuritySettingsPage() {
 
     return (
         <SettingsPage
+            currentPageId="security"
             backHref="/settings"
             title="Security"
             description="Control how you sign in and monitor account activity."

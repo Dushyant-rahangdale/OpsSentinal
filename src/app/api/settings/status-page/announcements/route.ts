@@ -13,6 +13,14 @@ function parseDate(value: string, fieldName: string) {
     return parsed;
 }
 
+function normalizeAffectedServiceIds(value?: string[] | null) {
+    if (!Array.isArray(value)) {
+        return null;
+    }
+    const ids = Array.from(new Set(value.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean)));
+    return ids.length > 0 ? ids : null;
+}
+
 export async function POST(req: NextRequest) {
     try {
         await assertAdmin();
@@ -31,7 +39,8 @@ export async function POST(req: NextRequest) {
         if (!parsed.success) {
             return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
         }
-        const { statusPageId, title, message, type, startDate, endDate, isActive, notifySubscribers } = parsed.data;
+        const { statusPageId, title, message, type, startDate, endDate, isActive, notifySubscribers, affectedServiceIds } = parsed.data;
+        const normalizedAffectedServiceIds = normalizeAffectedServiceIds(affectedServiceIds);
 
         const announcement = await prisma.statusPageAnnouncement.create({
             data: {
@@ -42,6 +51,7 @@ export async function POST(req: NextRequest) {
                 startDate: parseDate(startDate, 'startDate'),
                 endDate: endDate ? parseDate(endDate, 'endDate') : null,
                 isActive: isActive !== false,
+                affectedServiceIds: normalizedAffectedServiceIds as any,
             },
         });
 
@@ -82,7 +92,8 @@ export async function PATCH(req: NextRequest) {
         if (!parsed.success) {
             return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
         }
-        const { id, title, message, type, startDate, endDate, isActive } = parsed.data;
+        const { id, title, message, type, startDate, endDate, isActive, affectedServiceIds } = parsed.data;
+        const normalizedAffectedServiceIds = normalizeAffectedServiceIds(affectedServiceIds);
 
         const updated = await prisma.statusPageAnnouncement.update({
             where: { id },
@@ -93,6 +104,7 @@ export async function PATCH(req: NextRequest) {
                 ...(startDate ? { startDate: parseDate(startDate, 'startDate') } : {}),
                 ...(endDate !== undefined ? { endDate: endDate ? parseDate(endDate, 'endDate') : null } : {}),
                 ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
+                ...(affectedServiceIds !== undefined ? { affectedServiceIds: normalizedAffectedServiceIds as any } : {}),
             },
         });
 

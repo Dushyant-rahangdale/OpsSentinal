@@ -65,21 +65,30 @@ export default function ProfileForm({ name, email, role, memberSince }: Props) {
                 label="Email address"
                 description="Email is managed by your identity provider."
             >
-                <input value={email ?? 'Not available'} readOnly className="settings-input-readonly" />
+                <div className="settings-field-with-icon">
+                    <input value={email ?? 'Not available'} readOnly className="settings-input-readonly" />
+                    <span className="settings-field-icon lock" title="Read-only field">🔒</span>
+                </div>
             </SettingRow>
 
             <SettingRow
                 label="Role"
                 description="Your workspace role determines permissions."
             >
-                <input value={role} readOnly className="settings-input-readonly" />
+                <div className="settings-field-with-icon">
+                    <input value={role} readOnly className="settings-input-readonly" />
+                    <span className="settings-field-icon lock" title="Read-only field">🔒</span>
+                </div>
             </SettingRow>
 
             <SettingRow
                 label="Member since"
                 description="Date you joined this workspace."
             >
-                <input value={memberSince} readOnly className="settings-input-readonly" />
+                <div className="settings-field-with-icon">
+                    <input value={memberSince} readOnly className="settings-input-readonly" />
+                    <span className="settings-field-icon lock" title="Read-only field">🔒</span>
+                </div>
             </SettingRow>
 
             {(state?.error || state?.success) && (

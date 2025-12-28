@@ -22,6 +22,12 @@ interface StatusPageLivePreviewProps {
         showServices: boolean;
         showIncidents: boolean;
         showSubscribe?: boolean;
+        showServicesByRegion?: boolean;
+        showServiceOwners?: boolean;
+        showServiceSlaTier?: boolean;
+        showChangelog?: boolean;
+        showRegionHeatmap?: boolean;
+        showPostIncidentReview?: boolean;
         showHeader: boolean;
         showFooter: boolean;
         footerText?: string | null;
@@ -167,7 +173,10 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                 }}
             >
                 {previewData.announcements.length > 0 && (
-                    <StatusPageAnnouncements announcements={previewData.announcements} />
+                    <StatusPageAnnouncements
+                        announcements={previewData.announcements}
+                        showServiceRegions={previewData.privacySettings?.showServiceRegions !== false}
+                    />
                 )}
 
                 {previewData.showServices && previewData.services.length > 0 && (
@@ -177,6 +186,9 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                         uptime90={previewData.uptime90}
                         incidents={previewData.incidents}
                         privacySettings={previewData.privacySettings}
+                        groupByRegionDefault={previewData.showServicesByRegion}
+                        showServiceOwners={previewData.showServiceOwners}
+                        showServiceSlaTier={previewData.showServiceSlaTier}
                     />
                 )}
 

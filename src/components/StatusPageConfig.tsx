@@ -12,6 +12,8 @@ import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 import StatusPagePrivacySettings from '@/components/status-page/StatusPagePrivacySettings';
 import StatusPageWebhooksSettings from '@/components/status-page/StatusPageWebhooksSettings';
+import StatusPageSubscribers from '@/components/status-page/StatusPageSubscribers';
+import StatusPageEmailConfig from '@/components/status-page/StatusPageEmailConfig';
 
 type StatusPageConfigProps = {
     statusPage: {
@@ -25,9 +27,21 @@ type StatusPageConfigProps = {
         showIncidents: boolean;
         showMetrics: boolean;
         showSubscribe?: boolean;
+        showServicesByRegion?: boolean;
+        showServiceOwners?: boolean;
+        showServiceSlaTier?: boolean;
+        showChangelog?: boolean;
+        showRegionHeatmap?: boolean;
+        showPostIncidentReview?: boolean;
+        enableUptimeExports?: boolean;
+        statusApiRequireToken?: boolean;
+        statusApiRateLimitEnabled?: boolean;
+        statusApiRateLimitMax?: number;
+        statusApiRateLimitWindowSec?: number;
         footerText?: string | null;
         contactEmail?: string | null;
         contactUrl?: string | null;
+        emailProvider?: string | null;
         branding?: any;
         services: Array<{
             id: string;
@@ -49,6 +63,15 @@ type StatusPageConfigProps = {
             startDate: string;
             endDate?: string | null;
             isActive: boolean;
+            affectedServiceIds?: string[] | null;
+        }>;
+        apiTokens: Array<{
+            id: string;
+            name: string;
+            prefix: string;
+            createdAt: string;
+            lastUsedAt?: string | null;
+            revokedAt?: string | null;
         }>;
     };
     allServices: Array<{
@@ -134,6 +157,33 @@ const STATUS_PAGE_TEMPLATES: StatusPageTemplate[] = [
     { id: 'clean-white', name: 'Clean White', file: 'clean-white.css', colors: ['#2563eb', '#111827', '#ffffff'], category: 'professional' },
     { id: 'navy-silver', name: 'Navy Silver', file: 'navy-silver.css', colors: ['#1e3a8a', '#1d4ed8', '#f1f5f9'], category: 'professional' },
     { id: 'indigo-mint-pro', name: 'Indigo Mint', file: 'indigo-mint-pro.css', colors: ['#4f46e5', '#10b981', '#f8fafc'], category: 'professional' },
+    { id: 'boardroom-slate', name: 'Boardroom Slate', file: 'boardroom-slate.css', colors: ['#0f172a', '#334155', '#e2e8f0'], category: 'professional' },
+    { id: 'capital-ivory', name: 'Capital Ivory', file: 'capital-ivory.css', colors: ['#111827', '#6b7280', '#f9fafb'], category: 'professional' },
+    { id: 'steel-harbor', name: 'Steel Harbor', file: 'steel-harbor.css', colors: ['#1f2937', '#475569', '#e5e7eb'], category: 'professional' },
+    { id: 'summit-teal', name: 'Summit Teal', file: 'summit-teal.css', colors: ['#0f766e', '#14b8a6', '#e6f7f5'], category: 'professional' },
+    { id: 'harbor-navy', name: 'Harbor Navy', file: 'harbor-navy.css', colors: ['#0b1f3a', '#1d4ed8', '#e2e8f0'], category: 'professional' },
+    { id: 'ironwood', name: 'Ironwood', file: 'ironwood.css', colors: ['#3f2d20', '#6b4f3b', '#efe7df'], category: 'professional' },
+    { id: 'deep-aurora', name: 'Deep Aurora', file: 'deep-aurora.css', colors: ['#0f172a', '#0ea5e9', '#e0f2fe'], category: 'professional' },
+    { id: 'midnight-cobalt', name: 'Midnight Cobalt', file: 'midnight-cobalt.css', colors: ['#0b1020', '#1e3a8a', '#0ea5e9'], category: 'dark' },
+    { id: 'obsidian-ember', name: 'Obsidian Ember', file: 'obsidian-ember.css', colors: ['#111827', '#b45309', '#f97316'], category: 'dark' },
+    { id: 'evergreen-night', name: 'Evergreen Night', file: 'evergreen-night.css', colors: ['#0b1f1a', '#065f46', '#10b981'], category: 'dark' },
+    { id: 'storm-plum', name: 'Storm Plum', file: 'storm-plum.css', colors: ['#1b1025', '#6d28d9', '#c4b5fd'], category: 'dark' },
+    { id: 'smoked-olive', name: 'Smoked Olive', file: 'smoked-olive.css', colors: ['#1b1f16', '#4d5c2d', '#e7ecd8'], category: 'minimal' },
+    { id: 'quiet-charcoal', name: 'Quiet Charcoal', file: 'quiet-charcoal.css', colors: ['#111827', '#334155', '#f1f5f9'], category: 'minimal' },
+    { id: 'clear-contrast', name: 'Clear Contrast', file: 'clear-contrast.css', colors: ['#0b1f3a', '#f59e0b', '#f8fafc'], category: 'professional' },
+    { id: 'gov-heritage', name: 'Gov Heritage', file: 'gov-heritage.css', colors: ['#12344d', '#2f855a', '#e2e8f0'], category: 'professional' },
+    { id: 'health-azure', name: 'Health Azure', file: 'health-azure.css', colors: ['#0ea5e9', '#0f766e', '#e0f2fe'], category: 'professional' },
+    { id: 'finance-graphite', name: 'Finance Graphite', file: 'finance-graphite.css', colors: ['#1f2937', '#0f172a', '#f3f4f6'], category: 'professional' },
+    { id: 'minimal-sandstone', name: 'Minimal Sandstone', file: 'minimal-sandstone.css', colors: ['#7c5c42', '#a67c52', '#f7efe6'], category: 'minimal' },
+    { id: 'minimal-steel', name: 'Minimal Steel', file: 'minimal-steel.css', colors: ['#334155', '#64748b', '#e2e8f0'], category: 'minimal' },
+    { id: 'dark-flat-onyx', name: 'Dark Flat Onyx', file: 'dark-flat-onyx.css', colors: ['#0f172a', '#475569', '#94a3b8'], category: 'dark' },
+    { id: 'dark-nordic', name: 'Dark Nordic', file: 'dark-nordic.css', colors: ['#0b1321', '#2563eb', '#e0e7ff'], category: 'dark' },
+    { id: 'colorful-saffron', name: 'Colorful Saffron', file: 'colorful-saffron.css', colors: ['#f59e0b', '#ef4444', '#fef3c7'], category: 'colorful' },
+    { id: 'colorful-pacific', name: 'Colorful Pacific', file: 'colorful-pacific.css', colors: ['#0ea5e9', '#14b8a6', '#ecfeff'], category: 'colorful' },
+    { id: 'pastel-lilac', name: 'Pastel Lilac', file: 'pastel-lilac.css', colors: ['#c4b5fd', '#f5d0fe', '#f5f3ff'], category: 'pastel' },
+    { id: 'pastel-seafoam', name: 'Pastel Seafoam', file: 'pastel-seafoam.css', colors: ['#99f6e4', '#bae6fd', '#ecfeff'], category: 'pastel' },
+    { id: 'dark-crimson', name: 'Dark Crimson', file: 'dark-crimson.css', colors: ['#7f1d1d', '#b91c1c', '#fecaca'], category: 'dark' },
+    { id: 'ember-rose', name: 'Ember Rose', file: 'ember-rose.css', colors: ['#9f2a2a', '#d14343', '#f6d2d2'], category: 'minimal' },
 ];
 
 export default function StatusPageConfig({ statusPage, allServices }: StatusPageConfigProps) {
@@ -152,6 +202,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     const [templateFilter, setTemplateFilter] = useState<'all' | TemplateCategory>('all');
     const [templateCssMap, setTemplateCssMap] = useState<Record<string, string>>({});
     const templateFetchRef = useRef<Set<string>>(new Set());
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
     // Parse branding JSON
     const branding = statusPage.branding && typeof statusPage.branding === 'object'
@@ -169,6 +220,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         showIncidents: statusPage.showIncidents,
         showMetrics: statusPage.showMetrics,
         showSubscribe: statusPage.showSubscribe !== false,
+        showServicesByRegion: (statusPage as any).showServicesByRegion ?? false,
         uptimeExcellentThreshold: (statusPage as any).uptimeExcellentThreshold ?? 99.9,
         uptimeGoodThreshold: (statusPage as any).uptimeGoodThreshold ?? 99.0,
         footerText: statusPage.footerText || '',
@@ -194,6 +246,16 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         refreshInterval: branding.refreshInterval || 60,
         showRssLink: branding.showRssLink !== false,
         showApiLink: branding.showApiLink !== false,
+        showServiceOwners: (statusPage as any).showServiceOwners ?? false,
+        showServiceSlaTier: (statusPage as any).showServiceSlaTier ?? false,
+        showChangelog: (statusPage as any).showChangelog ?? true,
+        showRegionHeatmap: (statusPage as any).showRegionHeatmap ?? true,
+        showPostIncidentReview: (statusPage as any).showPostIncidentReview ?? true,
+        enableUptimeExports: (statusPage as any).enableUptimeExports ?? false,
+        statusApiRequireToken: (statusPage as any).statusApiRequireToken ?? false,
+        statusApiRateLimitEnabled: (statusPage as any).statusApiRateLimitEnabled ?? false,
+        statusApiRateLimitMax: (statusPage as any).statusApiRateLimitMax ?? 120,
+        statusApiRateLimitWindowSec: (statusPage as any).statusApiRateLimitWindowSec ?? 60,
     });
 
     const [announcementForm, setAnnouncementForm] = useState({
@@ -204,16 +266,17 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         endDate: '',
         isActive: true,
         notifySubscribers: true,
+        affectedServiceIds: [] as string[],
     });
     const [announcements, setAnnouncements] = useState(statusPage.announcements);
+    const [apiTokens, setApiTokens] = useState(statusPage.apiTokens ?? []);
+    const [apiTokenName, setApiTokenName] = useState('');
+    const [apiTokenValue, setApiTokenValue] = useState<string | null>(null);
+    const [apiTokenError, setApiTokenError] = useState<string | null>(null);
+    const [apiTokenPending, startApiTokenTransition] = useTransition();
 
     // Sidebar items - defined after announcements state
     const sidebarItems = [
-        // ... (skipping unchanged lines) ...
-        // NOTE: I cannot use skip notation in replacement content accurately if not careful.
-        // I should split this into multiple edits or handle the state init and UI render separately.
-        // Let's do state init first.
-
         { id: 'general', label: 'General' },
         { id: 'appearance', label: 'Appearance' },
         { id: 'services', label: 'Services' },
@@ -221,7 +284,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         { id: 'content', label: 'Content' },
         { id: 'announcements', label: 'Announcements', badge: announcements.length },
         { id: 'integrations', label: 'Integrations' },
-        { id: 'subscribers', label: 'Subscribers', link: '/settings/status-page/subscribers' },
+        { id: 'subscribers', label: 'Subscribers' },
         { id: 'customization', label: 'Custom CSS' },
         { id: 'advanced', label: 'Advanced' },
     ];
@@ -240,6 +303,36 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
             return acc;
         }, {} as Record<string, { displayName: string; order: number; showOnPage: boolean }>)
     );
+
+    const serviceLookup = new Map(allServices.map((service) => [service.id, service] as const));
+
+    const normalizeAnnouncementServiceIds = (value?: string[] | null) => {
+        if (!Array.isArray(value)) {
+            return [];
+        }
+        return value.map((id) => id.trim()).filter(Boolean);
+    };
+
+    const buildAnnouncementAffectedServices = (value?: string[] | null) => {
+        const ids = normalizeAnnouncementServiceIds(value);
+        return ids
+            .map((id) => serviceLookup.get(id))
+            .filter(Boolean)
+            .map((service) => ({
+                id: service!.id,
+                name: service!.name,
+                region: service!.region ?? null,
+            }));
+    };
+
+    const getAnnouncementRegions = (services: Array<{ region?: string | null }>) => {
+        const regionSet = new Set<string>();
+        services.forEach((service) => {
+            if (!service.region) return;
+            service.region.split(',').map((entry) => entry.trim()).filter(Boolean).forEach((region) => regionSet.add(region));
+        });
+        return Array.from(regionSet.values());
+    };
 
     // Privacy settings - with defaults if not in statusPage
     const [privacySettings, setPrivacySettings] = useState({
@@ -267,6 +360,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     });
 
     const selectedServiceIds = Array.from(selectedServices);
+    const announcementServiceOptions = allServices.filter((service) => selectedServices.has(service.id));
+    const hasSelectedRegions = allServices.some((service) => selectedServices.has(service.id) && Boolean(service.region && service.region.trim().length > 0));
     const previewServiceIds = selectedServiceIds.length > 0 ? selectedServiceIds : allServices.map((service) => service.id);
     const previewServices = allServices
         .filter((service) => previewServiceIds.includes(service.id))
@@ -303,6 +398,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
             ...announcement,
             startDate: new Date(announcement.startDate),
             endDate: announcement.endDate ? new Date(announcement.endDate) : null,
+            affectedServiceIds: normalizeAnnouncementServiceIds(announcement.affectedServiceIds),
         }))
         .filter((announcement) => {
             if (!announcement.isActive) {
@@ -373,6 +469,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                         showIncidents: formData.showIncidents,
                         showMetrics: formData.showMetrics,
                         showSubscribe: formData.showSubscribe,
+                        showServicesByRegion: formData.showServicesByRegion,
                         uptimeExcellentThreshold: formData.uptimeExcellentThreshold,
                         uptimeGoodThreshold: formData.uptimeGoodThreshold,
                         footerText: formData.footerText || null,
@@ -403,6 +500,16 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                         dataRetentionDays: privacySettings.dataRetentionDays,
                         requireAuth: privacySettings.requireAuth,
                         authProvider: privacySettings.authProvider,
+                        showServiceOwners: formData.showServiceOwners,
+                        showServiceSlaTier: formData.showServiceSlaTier,
+                        showChangelog: formData.showChangelog,
+                        showRegionHeatmap: formData.showRegionHeatmap,
+                        showPostIncidentReview: formData.showPostIncidentReview,
+                        enableUptimeExports: formData.enableUptimeExports,
+                        statusApiRequireToken: formData.statusApiRequireToken,
+                        statusApiRateLimitEnabled: formData.statusApiRateLimitEnabled,
+                        statusApiRateLimitMax: formData.statusApiRateLimitMax,
+                        statusApiRateLimitWindowSec: formData.statusApiRateLimitWindowSec,
                     }),
                 });
 
@@ -484,6 +591,9 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                         endDate: announcementForm.endDate || null,
                         isActive: announcementForm.isActive,
                         notifySubscribers: announcementForm.notifySubscribers,
+                        affectedServiceIds: announcementForm.affectedServiceIds.length > 0
+                            ? announcementForm.affectedServiceIds
+                            : null,
                     }),
                 });
 
@@ -508,6 +618,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                     endDate: '',
                     isActive: true,
                     notifySubscribers: true,
+                    affectedServiceIds: [],
                 });
 
             } catch (err: any) {
@@ -541,6 +652,98 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         });
     };
 
+    const handleAnnouncementServiceToggle = (serviceId: string) => {
+        setAnnouncementForm((prev) => {
+            const next = new Set(prev.affectedServiceIds);
+            if (next.has(serviceId)) {
+                next.delete(serviceId);
+            } else {
+                next.add(serviceId);
+            }
+            return { ...prev, affectedServiceIds: Array.from(next) };
+        });
+    };
+
+    const handleAnnouncementServiceSelectAll = () => {
+        setAnnouncementForm((prev) => ({
+            ...prev,
+            affectedServiceIds: announcementServiceOptions.map((service) => service.id),
+        }));
+    };
+
+    const handleAnnouncementServiceClear = () => {
+        setAnnouncementForm((prev) => ({ ...prev, affectedServiceIds: [] }));
+    };
+
+
+    const handleCreateApiToken = (e: React.FormEvent) => {
+        e.preventDefault();
+        setApiTokenError(null);
+        setApiTokenValue(null);
+
+        const name = apiTokenName.trim();
+        if (!name) {
+            setApiTokenError('Token name is required.');
+            return;
+        }
+
+        startApiTokenTransition(async () => {
+            try {
+                const response = await fetch('/api/settings/status-page/api-tokens', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        statusPageId: statusPage.id,
+                        name,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to create token');
+                }
+
+                const data = await response.json();
+                if (data?.apiToken) {
+                    setApiTokens((current) => [data.apiToken, ...current]);
+                }
+                setApiTokenValue(data?.token || null);
+                setApiTokenName('');
+            } catch (err: any) {
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                setApiTokenError(getUserFriendlyError(err) || 'Failed to create token');
+            }
+        });
+    };
+
+    const handleRevokeApiToken = (id: string) => {
+        setApiTokenError(null);
+        startApiTokenTransition(async () => {
+            try {
+                const response = await fetch('/api/settings/status-page/api-tokens', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id }),
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to revoke token');
+                }
+
+                const data = await response.json();
+                if (data?.apiToken) {
+                    setApiTokens((current) =>
+                        current.map((token) => token.id === id ? { ...token, revokedAt: data.apiToken.revokedAt } : token)
+                    );
+                }
+            } catch (err: any) {
+                const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+                setApiTokenError(getUserFriendlyError(err) || 'Failed to revoke token');
+            }
+        });
+    };
+
     const getTemplateGradient = (colors: string[]) => {
         const primary = colors[0] || '#ffffff';
         const secondary = colors[1] || primary;
@@ -551,6 +754,9 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     const visibleTemplates = templateFilter === 'all'
         ? STATUS_PAGE_TEMPLATES
         : STATUS_PAGE_TEMPLATES.filter((template) => template.category === templateFilter);
+    const selectedTemplate = selectedTemplateId
+        ? STATUS_PAGE_TEMPLATES.find((template) => template.id === selectedTemplateId)
+        : null;
 
     const buildTemplatePreviewHtml = (css: string, name: string) => `
 <!doctype html>
@@ -630,6 +836,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
             }
             const css = await response.text();
             setFormData((prev) => ({ ...prev, customCss: css }));
+            setSelectedTemplateId(template.id);
             setSuccessMessage(`Template loaded: ${template.name}. Remember to save settings.`);
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch {
@@ -709,12 +916,19 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
             ...a,
             startDate: a.startDate.toISOString(),
             endDate: a.endDate ? a.endDate.toISOString() : null,
+            affectedServices: buildAnnouncementAffectedServices(a.affectedServiceIds),
         })),
         uptime90: previewUptime90,
         incidents: [],
         showServices: formData.showServices,
         showIncidents: formData.showIncidents,
         showSubscribe: formData.showSubscribe,
+        showServicesByRegion: formData.showServicesByRegion,
+        showServiceOwners: formData.showServiceOwners,
+        showServiceSlaTier: formData.showServiceSlaTier,
+        showChangelog: formData.showChangelog,
+        showRegionHeatmap: formData.showRegionHeatmap,
+        showPostIncidentReview: formData.showPostIncidentReview,
         showHeader: formData.showHeader,
         showFooter: formData.showFooter,
         footerText: formData.footerText || null,
@@ -1203,6 +1417,38 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginBottom: 'var(--spacing-4)' }}>
                                                 Select which services to show on your status page and configure their display settings.
                                             </p>
+                                            <div style={{ marginBottom: 'var(--spacing-4)' }}>
+                                                <Switch
+                                                    checked={formData.showServicesByRegion}
+                                                    onChange={(checked) => setFormData({ ...formData, showServicesByRegion: checked })}
+                                                    label="Group services by region (public page)"
+                                                    helperText={
+                                                        privacySettings.showServiceRegions === false
+                                                            ? 'Enable “Show Service Regions” in Privacy settings to use region grouping.'
+                                                            : hasSelectedRegions
+                                                                ? 'Show region headers and group services on the public status page.'
+                                                                : 'Add regions to selected services to enable grouping.'
+                                                    }
+                                                    disabled={privacySettings.showServiceRegions === false || !hasSelectedRegions}
+                                                />
+                                                <Switch
+                                                    checked={formData.showServiceOwners}
+                                                    onChange={(checked) => setFormData({ ...formData, showServiceOwners: checked })}
+                                                    label="Show service owners (public page)"
+                                                    helperText={
+                                                        privacySettings.showTeamInformation === false
+                                                            ? 'Enable “Show Team Information” in Privacy settings to display owner badges.'
+                                                            : 'Display “Owned by <team>” badges on service cards.'
+                                                    }
+                                                    disabled={privacySettings.showTeamInformation === false}
+                                                />
+                                                <Switch
+                                                    checked={formData.showServiceSlaTier}
+                                                    onChange={(checked) => setFormData({ ...formData, showServiceSlaTier: checked })}
+                                                    label="Show SLA tier (public page)"
+                                                    helperText="Display SLA tier badges (e.g., Gold, Silver) on service cards."
+                                                />
+                                            </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
                                                 {allServices.map((service) => {
                                                     const isSelected = selectedServices.has(service.id);
@@ -1319,6 +1565,24 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                     onChange={(checked) => setFormData({ ...formData, showSubscribe: checked })}
                                                     label="Show Subscribe to Updates"
                                                     helperText="Display the email subscription section"
+                                                />
+                                                <Switch
+                                                    checked={formData.showChangelog}
+                                                    onChange={(checked) => setFormData({ ...formData, showChangelog: checked })}
+                                                    label="Show Changelog"
+                                                    helperText="Display recent update announcements as a changelog feed"
+                                                />
+                                                <Switch
+                                                    checked={formData.showRegionHeatmap}
+                                                    onChange={(checked) => setFormData({ ...formData, showRegionHeatmap: checked })}
+                                                    label="Show Region Heatmap"
+                                                    helperText="Display a compact region impact grid"
+                                                />
+                                                <Switch
+                                                    checked={formData.showPostIncidentReview}
+                                                    onChange={(checked) => setFormData({ ...formData, showPostIncidentReview: checked })}
+                                                    label="Show Post-Incident Reviews"
+                                                    helperText="Show links to published postmortems on resolved incidents"
                                                 />
 
                                                 {formData.showMetrics && (
@@ -1558,6 +1822,120 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                         </div>
                                                     </div>
 
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+                                                            <label style={{ display: 'block', fontSize: 'var(--font-size-sm)', fontWeight: '500' }}>
+                                                                Affected Services (optional)
+                                                            </label>
+                                                            {announcementServiceOptions.length > 0 && (
+                                                                <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleAnnouncementServiceSelectAll}
+                                                                        style={{
+                                                                            padding: '4px 10px',
+                                                                            borderRadius: '999px',
+                                                                            border: '1px solid #e5e7eb',
+                                                                            background: 'white',
+                                                                            fontSize: 'var(--font-size-xs)',
+                                                                            fontWeight: '600',
+                                                                            color: 'var(--text-muted)',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        Select all
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleAnnouncementServiceClear}
+                                                                        style={{
+                                                                            padding: '4px 10px',
+                                                                            borderRadius: '999px',
+                                                                            border: '1px solid #e5e7eb',
+                                                                            background: 'white',
+                                                                            fontSize: 'var(--font-size-xs)',
+                                                                            fontWeight: '600',
+                                                                            color: 'var(--text-muted)',
+                                                                            cursor: 'pointer',
+                                                                        }}
+                                                                    >
+                                                                        Clear
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {announcementServiceOptions.length === 0 ? (
+                                                            <div style={{
+                                                                marginTop: 'var(--spacing-2)',
+                                                                padding: 'var(--spacing-3)',
+                                                                border: '1px dashed #e5e7eb',
+                                                                borderRadius: 'var(--radius-md)',
+                                                                fontSize: 'var(--font-size-sm)',
+                                                                color: 'var(--text-muted)',
+                                                            }}>
+                                                                Select services in the Services section to link them to announcements.
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{
+                                                                marginTop: 'var(--spacing-2)',
+                                                                border: '1px solid #e5e7eb',
+                                                                borderRadius: 'var(--radius-md)',
+                                                                padding: 'var(--spacing-3)',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                gap: 'var(--spacing-2)',
+                                                                maxHeight: '220px',
+                                                                overflowY: 'auto',
+                                                            }}>
+                                                                {announcementServiceOptions.map((service) => {
+                                                                    const isChecked = announcementForm.affectedServiceIds.includes(service.id);
+                                                                    const regions = service.region
+                                                                        ? service.region.split(',').map((entry) => entry.trim()).filter(Boolean)
+                                                                        : [];
+                                                                    return (
+                                                                        <label
+                                                                            key={service.id}
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: 'var(--spacing-2)',
+                                                                                fontSize: 'var(--font-size-sm)',
+                                                                                color: 'var(--text-primary)',
+                                                                            }}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={() => handleAnnouncementServiceToggle(service.id)}
+                                                                            />
+                                                                            <span style={{ fontWeight: '600' }}>{service.name}</span>
+                                                                            {regions.length > 0 && (
+                                                                                <span style={{ display: 'inline-flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                                                    {regions.map((region) => (
+                                                                                        <span
+                                                                                            key={`${service.id}-${region}`}
+                                                                                            style={{
+                                                                                                padding: '2px 6px',
+                                                                                                borderRadius: '999px',
+                                                                                                fontSize: '10px',
+                                                                                                fontWeight: '600',
+                                                                                                background: '#f8fafc',
+                                                                                                border: '1px solid #e2e8f0',
+                                                                                                color: '#475569',
+                                                                                            }}
+                                                                                        >
+                                                                                            {region}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </span>
+                                                                            )}
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
                                                     <div style={{ display: 'flex', gap: 'var(--spacing-4)', marginTop: 'var(--spacing-2)' }}>
                                                         <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', fontSize: 'var(--font-size-sm)', fontWeight: '500' }}>
                                                             <input
@@ -1611,6 +1989,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
                                                         {announcements.map((announcement) => {
                                                             const typeConfig = ANNOUNCEMENT_TYPES.find((type) => type.value === announcement.type) || ANNOUNCEMENT_TYPES[4];
+                                                            const affectedServices = buildAnnouncementAffectedServices(announcement.affectedServiceIds);
+                                                            const affectedRegions = getAnnouncementRegions(affectedServices);
                                                             return (
                                                                 <div
                                                                     key={announcement.id}
@@ -1646,6 +2026,56 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                                     <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>
                                                                         {announcement.message}
                                                                     </div>
+                                                                    {affectedServices.length > 0 && (
+                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                                                                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                                                                Affected services
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                                                {affectedServices.map((service) => (
+                                                                                    <span
+                                                                                        key={service.id}
+                                                                                        style={{
+                                                                                            padding: '4px 8px',
+                                                                                            borderRadius: '999px',
+                                                                                            background: '#f8fafc',
+                                                                                            border: '1px solid #e2e8f0',
+                                                                                            fontSize: 'var(--font-size-xs)',
+                                                                                            fontWeight: '600',
+                                                                                            color: 'var(--text-primary)',
+                                                                                        }}
+                                                                                    >
+                                                                                        {service.name}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {affectedRegions.length > 0 && (
+                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                                                                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                                                                Regions
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                                                {affectedRegions.map((region) => (
+                                                                                    <span
+                                                                                        key={`${announcement.id}-${region}`}
+                                                                                        style={{
+                                                                                            padding: '2px 8px',
+                                                                                            borderRadius: '999px',
+                                                                                            border: '1px solid #e2e8f0',
+                                                                                            fontSize: 'var(--font-size-xs)',
+                                                                                            fontWeight: '600',
+                                                                                            color: 'var(--text-muted)',
+                                                                                            background: '#ffffff',
+                                                                                        }}
+                                                                                    >
+                                                                                        {region}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                     <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
                                                                         <span>
                                                                             {formatDateTime(announcement.startDate, browserTimeZone, { format: 'date' })} {announcement.endDate ? `- ${formatDateTime(announcement.endDate, browserTimeZone, { format: 'date' })}` : ''}
@@ -1695,9 +2125,27 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                             Templates
                                                         </h3>
                                                         <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                                            {visibleTemplates.length} of {STATUS_PAGE_TEMPLATES.length} templates
+                                                            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+                                                                {visibleTemplates.length} of {STATUS_PAGE_TEMPLATES.length} templates
+                                                            </span>
                                                         </div>
                                                     </div>
+                                                    {selectedTemplate && (
+                                                        <div style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            padding: '0.35rem 0.75rem',
+                                                            borderRadius: '999px',
+                                                            background: '#eef2ff',
+                                                            color: '#4338ca',
+                                                            border: '1px solid #c7d2fe',
+                                                            fontSize: 'var(--font-size-xs)',
+                                                            fontWeight: '600',
+                                                        }}>
+                                                            Selected: {selectedTemplate.name}
+                                                        </div>
+                                                    )}
                                                     <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
                                                         {TEMPLATE_FILTERS.map((filter) => (
                                                             <button
@@ -1734,104 +2182,152 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                         {templateError}
                                                     </div>
                                                 )}
-                                                <div style={{
-                                                    display: 'grid',
-                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                                                    gap: 'var(--spacing-4)',
-                                                }}>
-                                                    {visibleTemplates.map((template) => (
-                                                        <div key={template.id} style={{
-                                                            borderRadius: 'var(--radius-lg)',
-                                                            overflow: 'hidden',
-                                                            border: '1px solid #e2e8f0',
-                                                            background: 'white',
-                                                            boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            minHeight: '270px',
-                                                        }}>
-                                                            <div style={{
-                                                                height: '170px',
-                                                                background: getTemplateGradient(template.colors),
-                                                                position: 'relative',
+                                            <div style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                                gap: 'var(--spacing-4)',
+                                            }}>
+                                                    {visibleTemplates.map((template) => {
+                                                        const isSelected = selectedTemplateId === template.id;
+                                                        const isA11y = template.id === 'clear-contrast';
+                                                        return (
+                                                            <div key={template.id} style={{
+                                                                borderRadius: 'var(--radius-lg)',
                                                                 overflow: 'hidden',
+                                                                border: isSelected ? '2px solid var(--primary)' : '1px solid #e2e8f0',
+                                                                background: 'white',
+                                                                boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                minHeight: '270px',
+                                                                position: 'relative',
                                                             }}>
-                                                                {templateCssMap[template.id] ? (
-                                                                    <iframe
-                                                                        title={`${template.name} preview`}
-                                                                        style={{
-                                                                            border: 'none',
-                                                                            width: '100%',
-                                                                            height: '100%',
-                                                                            display: 'block',
-                                                                            background: 'transparent',
-                                                                        }}
-                                                                        sandbox=""
-                                                                        srcDoc={buildTemplatePreviewHtml(templateCssMap[template.id], template.name)}
-                                                                    />
-                                                                ) : (
+                                                                {isSelected && (
                                                                     <div style={{
                                                                         position: 'absolute',
-                                                                        inset: 0,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        fontSize: 'var(--font-size-xs)',
-                                                                        color: 'rgba(15, 23, 42, 0.6)',
-                                                                        fontWeight: '600',
+                                                                        top: '12px',
+                                                                        right: '12px',
+                                                                        padding: '4px 10px',
+                                                                        borderRadius: '999px',
+                                                                        background: 'var(--primary)',
+                                                                        color: 'white',
+                                                                        fontSize: '10px',
+                                                                        fontWeight: '700',
+                                                                        textTransform: 'uppercase',
+                                                                        letterSpacing: '0.08em',
+                                                                        zIndex: 1,
                                                                     }}>
-                                                                        Loading preview...
+                                                                        Selected
                                                                     </div>
                                                                 )}
-                                                            </div>
-                                                            <div style={{ padding: 'var(--spacing-3)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)', flex: 1 }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-2)' }}>
-                                                                    <div style={{ fontWeight: '700', fontSize: 'var(--font-size-sm)' }}>
-                                                                        {template.name}
-                                                                    </div>
-                                                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                                                        {template.colors.slice(0, 3).map((color) => (
-                                                                            <span
-                                                                                key={`${template.id}-${color}`}
-                                                                                style={{
-                                                                                    width: '12px',
-                                                                                    height: '12px',
-                                                                                    borderRadius: '999px',
-                                                                                    background: color,
-                                                                                    border: '1px solid rgba(15, 23, 42, 0.15)',
-                                                                                }}
-                                                                            />
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
                                                                 <div style={{
-                                                                    fontSize: '10px',
-                                                                    textTransform: 'uppercase',
-                                                                    letterSpacing: '0.08em',
-                                                                    color: 'var(--text-muted)',
+                                                                    height: '170px',
+                                                                    background: getTemplateGradient(template.colors),
+                                                                    position: 'relative',
+                                                                    overflow: 'hidden',
                                                                 }}>
-                                                                    {template.category}
+                                                                    {templateCssMap[template.id] ? (
+                                                                        <iframe
+                                                                            title={`${template.name} preview`}
+                                                                            style={{
+                                                                                border: 'none',
+                                                                                width: '100%',
+                                                                                height: '100%',
+                                                                                display: 'block',
+                                                                                background: 'transparent',
+                                                                            }}
+                                                                            sandbox=""
+                                                                            srcDoc={buildTemplatePreviewHtml(templateCssMap[template.id], template.name)}
+                                                                        />
+                                                                    ) : (
+                                                                        <div style={{
+                                                                            position: 'absolute',
+                                                                            inset: 0,
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            fontSize: 'var(--font-size-xs)',
+                                                                            color: 'rgba(15, 23, 42, 0.6)',
+                                                                            fontWeight: '600',
+                                                                        }}>
+                                                                            Loading preview...
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="secondary"
-                                                                    onClick={() => handleApplyTemplate(template)}
-                                                                    isLoading={templateLoadingId === template.id}
-                                                                >
-                                                                    Use Template
-                                                                </Button>
+                                                                    <div style={{ padding: 'var(--spacing-3)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)', flex: 1 }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-2)' }}>
+                                                                            <div style={{ fontWeight: '700', fontSize: 'var(--font-size-sm)' }}>
+                                                                                {template.name}
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                                                {template.colors.slice(0, 3).map((color) => (
+                                                                                    <span
+                                                                                        key={`${template.id}-${color}`}
+                                                                                        style={{
+                                                                                            width: '12px',
+                                                                                            height: '12px',
+                                                                                            borderRadius: '999px',
+                                                                                            background: color,
+                                                                                            border: '1px solid rgba(15, 23, 42, 0.15)',
+                                                                                        }}
+                                                                                    />
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                                            <span style={{
+                                                                                fontSize: '10px',
+                                                                                textTransform: 'uppercase',
+                                                                                letterSpacing: '0.08em',
+                                                                                color: 'var(--text-muted)',
+                                                                            }}>
+                                                                                {template.category}
+                                                                            </span>
+                                                                            {isA11y && (
+                                                                                <span style={{
+                                                                                    fontSize: '10px',
+                                                                                    textTransform: 'uppercase',
+                                                                                    letterSpacing: '0.08em',
+                                                                                    padding: '2px 8px',
+                                                                                    borderRadius: '999px',
+                                                                                    background: '#d1fae5',
+                                                                                    color: '#065f46',
+                                                                                    border: '1px solid #6ee7b7',
+                                                                                    fontWeight: '700',
+                                                                                }}>
+                                                                                    A11y
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant={isSelected ? 'primary' : 'secondary'}
+                                                                        onClick={() => handleApplyTemplate(template)}
+                                                                        isLoading={templateLoadingId === template.id}
+                                                                    >
+                                                                        {isSelected ? 'Selected' : 'Use Template'}
+                                                                    </Button>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
+                                            <div style={{
+                                                height: '1px',
+                                                background: '#e5e7eb',
+                                                margin: 'var(--spacing-5) 0',
+                                            }} />
                                             <div style={{ marginBottom: 'var(--spacing-4)' }}>
                                                 <label style={{ display: 'block', marginBottom: 'var(--spacing-2)', fontSize: 'var(--font-size-sm)', fontWeight: '500' }}>
                                                     Custom CSS Code
                                                 </label>
                                                 <textarea
                                                     value={formData.customCss}
-                                                    onChange={(e) => setFormData({ ...formData, customCss: e.target.value })}
+                                                    onChange={(e) => {
+                                                        setFormData({ ...formData, customCss: e.target.value });
+                                                        setSelectedTemplateId(null);
+                                                    }}
                                                     placeholder="/* Your custom CSS here */&#10;.status-page-header {&#10;  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);&#10;}"
                                                     rows={15}
                                                     style={{
@@ -1848,18 +2344,13 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                             </div>
                                             <div style={{
                                                 padding: 'var(--spacing-3)',
-                                                background: '#fef3c7',
-                                                border: '1px solid #fde68a',
+                                                background: '#f8fafc',
+                                                border: '1px solid #e5e7eb',
                                                 borderRadius: 'var(--radius-md)',
                                                 fontSize: 'var(--font-size-sm)',
+                                                color: 'var(--text-muted)',
                                             }}>
-                                                <strong>Tips:</strong>
-                                                <ul style={{ marginTop: 'var(--spacing-2)', paddingLeft: 'var(--spacing-5)' }}>
-                                                    <li>Use <code>.status-page-header</code> to style the header</li>
-                                                    <li>Use <code>.status-service-card</code> to style service cards</li>
-                                                    <li>Use <code>.status-incident-card</code> to style incident cards</li>
-                                                    <li>Test your CSS on the preview before publishing</li>
-                                                </ul>
+                                                Use <code>.status-page-header</code>, <code>.status-service-card</code>, and <code>.status-incident-card</code> to target key UI blocks.
                                             </div>
                                         </div>
                                     </Card>
@@ -1906,6 +2397,38 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             {/* Integrations */}
                             {activeSection === 'integrations' && (
                                 <StatusPageWebhooksSettings statusPageId={statusPage.id} />
+                            )}
+
+                            {/* Subscribers */}
+                            {activeSection === 'subscribers' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+                                    <Card>
+                                        <div style={{ padding: 'var(--spacing-6)' }}>
+                                            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-2)' }}>
+                                                Email Delivery
+                                            </h2>
+                                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginBottom: 'var(--spacing-4)' }}>
+                                                Choose the email provider used for subscription updates.
+                                            </p>
+                                            <StatusPageEmailConfig
+                                                statusPageId={statusPage.id}
+                                                currentProvider={statusPage.emailProvider}
+                                            />
+                                        </div>
+                                    </Card>
+
+                                    <Card>
+                                        <div style={{ padding: 'var(--spacing-6)' }}>
+                                            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-2)' }}>
+                                                Subscribers
+                                            </h2>
+                                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginBottom: 'var(--spacing-4)' }}>
+                                                Manage subscriber list and verification status.
+                                            </p>
+                                            <StatusPageSubscribers statusPageId={statusPage.id} />
+                                        </div>
+                                    </Card>
+                                </div>
                             )}
 
                             {/* Advanced Settings */}
@@ -1956,6 +2479,192 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                     helperText="Display link to JSON API in footer"
                                                 />
                                             </div>
+                                        </div>
+                                    </Card>
+
+                                    <Card>
+                                        <div style={{ padding: 'var(--spacing-6)' }}>
+                                            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
+                                                Status API Access
+                                            </h2>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+                                                <Switch
+                                                    checked={formData.statusApiRequireToken}
+                                                    onChange={(checked) => setFormData({ ...formData, statusApiRequireToken: checked })}
+                                                    label="Require API token"
+                                                    helperText="Require a token for JSON and RSS endpoints."
+                                                />
+                                                <Switch
+                                                    checked={formData.statusApiRateLimitEnabled}
+                                                    onChange={(checked) => setFormData({ ...formData, statusApiRateLimitEnabled: checked })}
+                                                    label="Enable rate limiting"
+                                                    helperText="Throttle API access to protect the status page."
+                                                />
+                                                {formData.statusApiRateLimitEnabled && (
+                                                    <div style={{ display: 'grid', gap: 'var(--spacing-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+                                                        <FormField
+                                                            type="input"
+                                                            label="Max requests"
+                                                            value={formData.statusApiRateLimitMax}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                const val = parseInt(e.target.value, 10);
+                                                                if (!Number.isNaN(val)) {
+                                                                    setFormData({ ...formData, statusApiRateLimitMax: val });
+                                                                }
+                                                            }}
+                                                            helperText="Requests per window"
+                                                        />
+                                                        <FormField
+                                                            type="input"
+                                                            label="Window (seconds)"
+                                                            value={formData.statusApiRateLimitWindowSec}
+                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                                const val = parseInt(e.target.value, 10);
+                                                                if (!Number.isNaN(val)) {
+                                                                    setFormData({ ...formData, statusApiRateLimitWindowSec: val });
+                                                                }
+                                                            }}
+                                                            helperText="Minimum 10 seconds"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div style={{
+                                                    borderTop: '1px solid #e5e7eb',
+                                                    paddingTop: 'var(--spacing-4)',
+                                                }}>
+                                                    <h3 style={{ fontSize: 'var(--font-size-base)', fontWeight: '600', marginBottom: 'var(--spacing-3)' }}>
+                                                        API tokens
+                                                    </h3>
+                                                    <form onSubmit={handleCreateApiToken} style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-3)', alignItems: 'flex-end' }}>
+                                                        <FormField
+                                                            type="input"
+                                                            label="Token name"
+                                                            value={apiTokenName}
+                                                            onChange={(e) => setApiTokenName(e.target.value)}
+                                                            placeholder="e.g. External status monitor"
+                                                            required
+                                                        />
+                                                        <Button
+                                                            type="submit"
+                                                            variant="primary"
+                                                            isLoading={apiTokenPending}
+                                                        >
+                                                            Create token
+                                                        </Button>
+                                                    </form>
+                                                    {apiTokenError && (
+                                                        <div style={{ marginTop: 'var(--spacing-2)', fontSize: 'var(--font-size-sm)', color: 'var(--color-error-dark)' }}>
+                                                            {apiTokenError}
+                                                        </div>
+                                                    )}
+                                                    {apiTokenValue && (
+                                                        <div style={{
+                                                            marginTop: 'var(--spacing-3)',
+                                                            padding: 'var(--spacing-3)',
+                                                            borderRadius: 'var(--radius-md)',
+                                                            background: '#ecfdf5',
+                                                            border: '1px solid #a7f3d0',
+                                                            color: '#065f46',
+                                                            fontSize: 'var(--font-size-sm)',
+                                                        }}>
+                                                            Copy this token now. You will not be able to view it again.
+                                                            <div style={{ marginTop: 'var(--spacing-2)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                                                {apiTokenValue}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-4)' }}>
+                                                        {apiTokens.length === 0 ? (
+                                                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
+                                                                No API tokens created yet.
+                                                            </p>
+                                                        ) : (
+                                                            apiTokens.map((token) => (
+                                                                <div
+                                                                    key={token.id}
+                                                                    style={{
+                                                                        padding: 'var(--spacing-3)',
+                                                                        borderRadius: 'var(--radius-md)',
+                                                                        border: '1px solid #e5e7eb',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'space-between',
+                                                                        gap: 'var(--spacing-3)',
+                                                                        flexWrap: 'wrap',
+                                                                    }}
+                                                                >
+                                                                    <div>
+                                                                        <div style={{ fontWeight: '600' }}>{token.name}</div>
+                                                                        <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+                                                                            Prefix: {token.prefix} · Created {formatDateTime(token.createdAt, browserTimeZone, { format: 'date' })}
+                                                                        </div>
+                                                                        {token.lastUsedAt && (
+                                                                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+                                                                                Last used {formatDateTime(token.lastUsedAt, browserTimeZone, { format: 'date' })}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="secondary"
+                                                                        onClick={() => handleRevokeApiToken(token.id)}
+                                                                        isLoading={apiTokenPending}
+                                                                        disabled={Boolean(token.revokedAt)}
+                                                                    >
+                                                                        {token.revokedAt ? 'Revoked' : 'Revoke'}
+                                                                    </Button>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Card>
+
+                                    <Card>
+                                        <div style={{ padding: 'var(--spacing-6)' }}>
+                                            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
+                                                Uptime Reports
+                                            </h2>
+                                            <Switch
+                                                checked={formData.enableUptimeExports}
+                                                onChange={(checked) => setFormData({ ...formData, enableUptimeExports: checked })}
+                                                label="Enable uptime exports"
+                                                helperText="Allow admins to download monthly uptime reports."
+                                            />
+                                            {formData.enableUptimeExports && (
+                                                <div style={{
+                                                    marginTop: 'var(--spacing-4)',
+                                                    padding: 'var(--spacing-3)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: '1px solid #e5e7eb',
+                                                    background: '#f9fafb',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: 'var(--spacing-3)',
+                                                }}>
+                                                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
+                                                        Download the latest uptime export directly from the status API.
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
+                                                        <a
+                                                            href="/api/status/uptime-export?format=csv"
+                                                            className="glass-button"
+                                                            style={{ padding: '0.5rem 1rem', textDecoration: 'none' }}
+                                                        >
+                                                            Download CSV
+                                                        </a>
+                                                        <a
+                                                            href="/api/status/uptime-export?format=pdf"
+                                                            className="glass-button"
+                                                            style={{ padding: '0.5rem 1rem', textDecoration: 'none' }}
+                                                        >
+                                                            Download PDF
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </Card>
 

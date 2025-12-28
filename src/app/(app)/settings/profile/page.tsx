@@ -30,6 +30,7 @@ export default async function ProfileSettingsPage() {
 
     return (
         <SettingsPage
+            currentPageId="profile"
             backHref="/settings"
             title="Profile"
             description="Identity details tied to your OpsSentinal account."

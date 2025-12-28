@@ -5,6 +5,7 @@ import SettingsEmptyState from '@/components/settings/SettingsEmptyState';
 export default function BillingSettingsPage() {
     return (
         <SettingsPage
+            currentPageId="billing"
             backHref="/settings"
             title="Billing & Plan"
             description="Review your subscription, invoices, and usage."

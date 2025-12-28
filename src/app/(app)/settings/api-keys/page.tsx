@@ -25,26 +25,22 @@ export default async function ApiKeysSettingsPage() {
 
     return (
         <SettingsPage
+            currentPageId="api-keys"
             backHref="/settings"
             title="API Keys"
             description="Generate keys for automation and integrations."
         >
-            <SettingsSectionCard
-                title="Manage API keys"
-                description="Create, review, and revoke integration credentials."
-            >
-                <ApiKeysPanel
-                    keys={keys.map((key) => ({
-                        id: key.id,
-                        name: key.name,
-                        prefix: key.prefix,
-                        scopes: key.scopes,
-                        createdAt: formatDateTime(key.createdAt, timeZone, { format: 'date' }),
-                        lastUsedAt: key.lastUsedAt ? formatDateTime(key.lastUsedAt, timeZone, { format: 'date' }) : null,
-                        revokedAt: key.revokedAt ? formatDateTime(key.revokedAt, timeZone, { format: 'date' }) : null
-                    }))}
-                />
-            </SettingsSectionCard>
+            <ApiKeysPanel
+                keys={keys.map((key) => ({
+                    id: key.id,
+                    name: key.name,
+                    prefix: key.prefix,
+                    scopes: key.scopes,
+                    createdAt: formatDateTime(key.createdAt, timeZone, { format: 'date' }),
+                    lastUsedAt: key.lastUsedAt ? formatDateTime(key.lastUsedAt, timeZone, { format: 'date' }) : null,
+                    revokedAt: key.revokedAt ? formatDateTime(key.revokedAt, timeZone, { format: 'date' }) : null
+                }))}
+            />
         </SettingsPage>
     );
 }

@@ -32,6 +32,7 @@ export default async function CustomFieldsPage() {
 
     return (
         <SettingsPage
+            currentPageId="custom-fields"
             backHref="/settings"
             title="Custom Fields"
             description="Define custom fields to capture additional incident information."

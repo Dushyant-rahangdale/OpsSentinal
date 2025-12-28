@@ -1,15 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 
 /**
  * RSS Feed for Status Page
  * GET /api/status/rss
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
         const statusPage = await prisma.statusPage.findFirst({
             where: { enabled: true },
@@ -25,6 +26,22 @@ export async function GET() {
 
         if (!statusPage) {
             return new NextResponse('Status page not found', { status: 404 });
+        }
+
+        const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
+            requireToken: statusPage.statusApiRequireToken,
+            rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
+            rateLimitMax: statusPage.statusApiRateLimitMax,
+            rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+        });
+        if (!authResult.allowed) {
+            if (authResult.status === 429) {
+                return new NextResponse('Rate limit exceeded', {
+                    status: 429,
+                    headers: authResult.retryAfter ? { 'Retry-After': String(authResult.retryAfter) } : undefined,
+                });
+            }
+            return new NextResponse('Authentication required', { status: authResult.status || 401 });
         }
 
         // Check if authentication is required

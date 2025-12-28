@@ -180,6 +180,29 @@ export default function CreateServiceForm({ teams, policies, createAction }: Cre
                 </div>
                 <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-primary)' }}>
+                        SLA Tier
+                    </label>
+                    <input
+                        name="slaTier"
+                        placeholder="e.g. Gold, Silver, Bronze"
+                        style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            border: '1px solid var(--border)',
+                            borderRadius: '0px',
+                            fontSize: '0.9rem',
+                            outline: 'none',
+                            transition: 'border-color 0.2s'
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+                        onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                        Optional. Displayed on the public status page when enabled.
+                    </p>
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: '500', color: 'var(--text-primary)' }}>
                         Owner Team
                     </label>
                     <select

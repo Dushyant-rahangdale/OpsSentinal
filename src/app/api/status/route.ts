@@ -3,6 +3,8 @@ import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 
 /**
  * Status Page API
@@ -10,7 +12,7 @@ import { authOptions } from '@/lib/auth';
  * 
  * GET /api/status
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
         const statusPage = await prisma.statusPage.findFirst({
             where: { enabled: true },
@@ -26,6 +28,22 @@ export async function GET() {
 
         if (!statusPage) {
             return jsonError('Status page not found or disabled', 404);
+        }
+
+        const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
+            requireToken: statusPage.statusApiRequireToken,
+            rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
+            rateLimitMax: statusPage.statusApiRateLimitMax,
+            rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+        });
+        if (!authResult.allowed) {
+            if (authResult.status === 429) {
+                return NextResponse.json(
+                    { error: authResult.error || 'Rate limit exceeded' },
+                    { status: 429, headers: authResult.retryAfter ? { 'Retry-After': String(authResult.retryAfter) } : undefined }
+                );
+            }
+            return jsonError(authResult.error || 'Unauthorized', authResult.status || 401);
         }
 
         // Check if authentication is required
@@ -47,6 +65,12 @@ export async function GET() {
         const services = await prisma.service.findMany({
             where: { id: { in: effectiveServiceIds } },
             include: {
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 _count: {
                     select: {
                         incidents: {
@@ -112,6 +136,8 @@ export async function GET() {
             id: service.id,
             name: service.name,
             region: service.region ?? null,
+            slaTier: service.slaTier ?? null,
+            ownerTeam: service.team ? { id: service.team.id, name: service.team.name } : null,
             status: serviceStatusMap.get(service.id) || service.status,
             activeIncidents: service._count.incidents,
         }));

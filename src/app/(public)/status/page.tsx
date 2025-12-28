@@ -199,6 +199,7 @@ async function renderStatusPage(statusPage: any) {
     const autoRefresh = branding.autoRefresh !== false;
     const refreshInterval = branding.refreshInterval || 60;
     const showSubscribe = statusPage.showSubscribe !== false;
+    const showUptimeExports = statusPage.enableUptimeExports === true;
 
     // Get current service statuses
     const serviceIds = statusPage.services
@@ -284,6 +285,13 @@ async function renderStatusPage(statusPage: any) {
                     orderBy: { createdAt: 'asc' },
                     take: 50, // Get recent events for timeline
                 },
+                postmortem: {
+                    select: {
+                        id: true,
+                        status: true,
+                        isPublic: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
             take: 50,
@@ -339,6 +347,44 @@ async function renderStatusPage(statusPage: any) {
         urgency: incident.urgency,
     }));
 
+    const normalizeAffectedServiceIds = (value: unknown) => {
+        if (!Array.isArray(value)) return [];
+        return value.map((id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean);
+    };
+
+    const serviceLookup = new Map(services.map((service) => [service.id, service] as const));
+    const announcementsWithServices = statusPage.announcements.map((announcement: any) => {
+        const affectedServiceIds = normalizeAffectedServiceIds(announcement.affectedServiceIds).filter((id) => serviceLookup.has(id));
+        const affectedServices = affectedServiceIds
+            .map((serviceId) => {
+                const service = serviceLookup.get(serviceId);
+                if (!service) return null;
+                return {
+                    id: service.id,
+                    name: service.name,
+                    region: service.region ?? null,
+                };
+            })
+            .filter(Boolean);
+        return {
+            ...announcement,
+            affectedServiceIds,
+            affectedServices,
+        };
+    });
+
+    const activeMaintenanceServiceIds = new Set<string>();
+    announcementsWithServices.forEach((announcement: any) => {
+        if (announcement.type !== 'MAINTENANCE' || !announcement.isActive) {
+            return;
+        }
+        const startDate = new Date(announcement.startDate);
+        const endDate = announcement.endDate ? new Date(announcement.endDate) : null;
+        if (startDate > now) return;
+        if (endDate && endDate < now) return;
+        (announcement.affectedServiceIds || []).forEach((serviceId: string) => activeMaintenanceServiceIds.add(serviceId));
+    });
+
     const normalizeRegions = (region?: string | null) => {
         if (!region) return [];
         return region
@@ -355,20 +401,24 @@ async function renderStatusPage(statusPage: any) {
             PARTIAL_OUTAGE: 2,
             MAJOR_OUTAGE: 3,
         };
-        const summaryMap = new Map<string, { total: number; impacted: number; severity: number }>();
+        const summaryMap = new Map<string, { total: number; impacted: number; maintenance: number; severity: number }>();
 
         services.forEach((service) => {
             const regions = normalizeRegions(service.region);
             if (regions.length === 0) return;
             const status = service.status || 'OPERATIONAL';
-            const impacted = status !== 'OPERATIONAL';
-            const severity = severityRank[status] ?? 0;
+            const impacted = status !== 'OPERATIONAL' && status !== 'MAINTENANCE';
+            const isMaintenance = activeMaintenanceServiceIds.has(service.id) && status === 'OPERATIONAL';
+            const severity = Math.max(severityRank[status] ?? 0, isMaintenance ? severityRank.MAINTENANCE : 0);
 
             regions.forEach((region) => {
-                const entry = summaryMap.get(region) || { total: 0, impacted: 0, severity: 0 };
+                const entry = summaryMap.get(region) || { total: 0, impacted: 0, maintenance: 0, severity: 0 };
                 entry.total += 1;
                 if (impacted) {
                     entry.impacted += 1;
+                }
+                if (isMaintenance) {
+                    entry.maintenance += 1;
                 }
                 entry.severity = Math.max(entry.severity, severity);
                 summaryMap.set(region, entry);
@@ -404,6 +454,9 @@ async function renderStatusPage(statusPage: any) {
                 'https://schema.org/ServiceUnavailable',
         areaServed: 'Worldwide',
     };
+    const contactUrlLabel = statusPage.contactUrl
+        ? statusPage.contactUrl.replace(/^https?:\/\//, '')
+        : null;
 
     return (
         <>
@@ -518,7 +571,7 @@ async function renderStatusPage(statusPage: any) {
                             </div>
                         </div>
                     </section>
-                    {statusPage.showServices && statusPage.showServiceRegions !== false && regionSummaries.length > 0 && (
+                    {statusPage.showRegionHeatmap && statusPage.showServiceRegions !== false && regionSummaries.length > 0 && (
                         <section style={{ marginBottom: 'clamp(2rem, 6vw, 3rem)' }}>
                             <div style={{
                                 display: 'flex',
@@ -555,10 +608,22 @@ async function renderStatusPage(statusPage: any) {
                             }}>
                                 {regionSummaries.map((region) => {
                                     const severityStyle = region.severity >= 3
-                                        ? { color: '#dc2626', background: '#fee2e2', border: '#fecaca' }
+                                        ? { label: 'Outage', color: '#dc2626', background: '#fee2e2', border: '#fecaca' }
                                         : region.severity >= 2
-                                            ? { color: '#d97706', background: '#fef3c7', border: '#fde68a' }
-                                            : { color: '#16a34a', background: '#dcfce7', border: '#86efac' };
+                                            ? { label: 'Degraded', color: '#d97706', background: '#fef3c7', border: '#fde68a' }
+                                            : region.severity >= 1
+                                                ? {
+                                                    label: 'Maintenance',
+                                                    color: 'var(--status-primary, #2563eb)',
+                                                    background: 'color-mix(in srgb, var(--status-primary, #2563eb) 18%, #ffffff)',
+                                                    border: 'color-mix(in srgb, var(--status-primary, #2563eb) 35%, #ffffff)'
+                                                }
+                                                : { label: 'Operational', color: '#16a34a', background: '#dcfce7', border: '#86efac' };
+                                    const secondaryCounts = region.maintenance > 0 && region.impacted === 0
+                                        ? `${region.maintenance} maintenance`
+                                        : region.maintenance > 0
+                                            ? `${region.impacted} impacted • ${region.maintenance} maintenance`
+                                            : `${region.impacted} impacted`;
                                     return (
                                         <div
                                             key={region.region}
@@ -597,7 +662,7 @@ async function renderStatusPage(statusPage: any) {
                                                     textTransform: 'uppercase',
                                                     letterSpacing: '0.05em',
                                                 }}>
-                                                    {region.impacted > 0 ? 'Impacted' : 'Operational'}
+                                                    {severityStyle.label}
                                                 </span>
                                             </div>
                                             <div style={{
@@ -609,7 +674,7 @@ async function renderStatusPage(statusPage: any) {
                                             }}>
                                                 <span>{region.total} service{region.total !== 1 ? 's' : ''}</span>
                                                 <span>•</span>
-                                                <span>{region.impacted} impacted</span>
+                                                <span>{secondaryCounts}</span>
                                             </div>
                                         </div>
                                     );
@@ -618,9 +683,71 @@ async function renderStatusPage(statusPage: any) {
                         </section>
                     )}
 
+                    {statusPage.showChangelog && announcementsWithServices.some((item: any) => item.type === 'UPDATE') && (
+                        <section style={{ marginBottom: 'clamp(2rem, 6vw, 4rem)' }}>
+                            <div style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
+                                <h2 style={{
+                                    fontSize: 'clamp(1.5rem, 4vw, 1.875rem)',
+                                    fontWeight: '800',
+                                    marginBottom: '0.25rem',
+                                    color: 'var(--status-text-strong, #0f172a)',
+                                    letterSpacing: '-0.02em',
+                                }}>
+                                    Recent Updates
+                                </h2>
+                                <p style={{
+                                    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+                                    color: 'var(--status-text-muted, #64748b)',
+                                    margin: 0,
+                                }}>
+                                    Release notes and service improvements
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(0.75rem, 2vw, 1rem)' }}>
+                                {announcementsWithServices
+                                    .filter((item: any) => item.type === 'UPDATE')
+                                    .slice(0, 6)
+                                    .map((update: any) => (
+                                        <div
+                                            key={update.id}
+                                            style={{
+                                                padding: 'clamp(1rem, 3vw, 1.25rem)',
+                                                background: 'var(--status-panel-bg, #ffffff)',
+                                                border: '1px solid var(--status-panel-border, #e5e7eb)',
+                                                borderRadius: '0.875rem',
+                                                boxShadow: 'var(--status-card-shadow, 0 4px 12px rgba(15, 23, 42, 0.05))',
+                                            }}
+                                        >
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '1rem',
+                                                flexWrap: 'wrap',
+                                                marginBottom: '0.5rem',
+                                            }}>
+                                                <div style={{ fontWeight: '700', color: 'var(--status-text, #111827)' }}>
+                                                    {update.title}
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--status-text-muted, #6b7280)' }}>
+                                                    {new Date(update.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                </div>
+                                            </div>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--status-text-muted, #4b5563)', whiteSpace: 'pre-wrap' }}>
+                                                {update.message}
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+                        </section>
+                    )}
+
                     {/* Announcements */}
-                    {statusPage.announcements.length > 0 && (
-                        <StatusPageAnnouncements announcements={statusPage.announcements} />
+                    {announcementsWithServices.length > 0 && (
+                        <StatusPageAnnouncements
+                            announcements={announcementsWithServices}
+                            showServiceRegions={statusPage.showServiceRegions !== false}
+                        />
                     )}
 
                     {/* Services */}
@@ -637,7 +764,11 @@ async function renderStatusPage(statusPage: any) {
                                         showServiceDescriptions: statusPage.showServiceDescriptions !== false,
                                         showServiceRegions: statusPage.showServiceRegions !== false,
                                         showUptimeHistory: statusPage.showUptimeHistory !== false,
+                                        showTeamInformation: statusPage.showTeamInformation === true,
                                     }}
+                                    groupByRegionDefault={statusPage.showServicesByRegion}
+                                    showServiceOwners={statusPage.showServiceOwners === true}
+                                    showServiceSlaTier={statusPage.showServiceSlaTier === true}
                                 />
                             ) : (
                                 <section style={{ marginBottom: '3rem' }}>
@@ -702,6 +833,7 @@ async function renderStatusPage(statusPage: any) {
                                             showIncidentUrgency: statusPage.showIncidentUrgency !== false,
                                             showIncidentDetails: statusPage.showIncidentDetails !== false,
                                         }}
+                                        showPostIncidentReview={statusPage.showPostIncidentReview === true}
                                     />
                                 </div>
                             ) : (
@@ -873,15 +1005,109 @@ async function renderStatusPage(statusPage: any) {
                                         {statusPage.footerText}
                                     </p>
                                 )}
-                                <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--status-text-subtle, #94a3b8)',
-                                    fontWeight: '600',
-                                    letterSpacing: '0.02em',
-                                }}>
+                                {(statusPage.contactEmail || statusPage.contactUrl) && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        fontSize: '0.8125rem',
+                                        color: 'var(--status-text-muted, #6b7280)',
+                                        fontWeight: '600',
+                                        flexWrap: 'wrap',
+                                        justifyContent: 'center',
+                                    }}>
+                                        {statusPage.contactEmail && (
+                                            <a
+                                                href={`mailto:${statusPage.contactEmail}`}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.4rem',
+                                                    padding: '0.2rem 0.4rem',
+                                                    borderRadius: '6px',
+                                                    color: 'var(--status-text, #111827)',
+                                                    textDecoration: 'none',
+                                                    fontWeight: '600',
+                                                }}
+                                                aria-label={`Email ${statusPage.contactEmail}`}
+                                            >
+                                                <span aria-hidden="true" style={{ fontSize: '0.9rem' }}>
+                                                    ✉
+                                                </span>
+                                                {statusPage.contactEmail}
+                                            </a>
+                                        )}
+                                        {statusPage.contactUrl && (
+                                            <a
+                                                href={statusPage.contactUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.4rem',
+                                                    padding: '0.2rem 0.4rem',
+                                                    borderRadius: '6px',
+                                                    color: 'var(--status-text, #111827)',
+                                                    textDecoration: 'none',
+                                                    fontWeight: '600',
+                                                }}
+                                                aria-label={`Open ${contactUrlLabel || statusPage.contactUrl}`}
+                                            >
+                                                <span aria-hidden="true" style={{ fontSize: '0.9rem' }}>
+                                                    ↗
+                                                </span>
+                                                {contactUrlLabel || statusPage.contactUrl}
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
+                                {(showRssLink || showApiLink) && (
+                                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                        {showRssLink && (
+                                            <a href="/api/status/rss" className="status-footer-link" style={{ color: 'var(--status-text-muted, #6b7280)', textDecoration: 'none', fontWeight: '600' }}>
+                                                RSS Feed
+                                            </a>
+                                        )}
+                                        {showRssLink && showApiLink && (
+                                            <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>•</span>
+                                        )}
+                                        {showApiLink && (
+                                            <a href="/api/status" className="status-footer-link" style={{ color: 'var(--status-text-muted, #6b7280)', textDecoration: 'none', fontWeight: '600' }}>
+                                                JSON API
+                                            </a>
+                                        )}
+                                        {showUptimeExports && (
+                                            <>
+                                                {(showRssLink || showApiLink) && (
+                                                    <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>·</span>
+                                                )}
+                                                <a href="/api/status/uptime-export?format=csv" className="status-footer-link" style={{ color: 'var(--status-text-muted, #6b7280)', textDecoration: 'none', fontWeight: '600' }}>
+                                                    Uptime CSV
+                                                </a>
+                                                <a href="/api/status/uptime-export?format=pdf" className="status-footer-link" style={{ color: 'var(--status-text-muted, #6b7280)', textDecoration: 'none', fontWeight: '600' }}>
+                                                    Uptime PDF
+                                                </a>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                                <a
+                                    href="https://github.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        fontSize: '0.8125rem',
+                                        color: 'var(--status-text-subtle, #94a3b8)',
+                                        fontWeight: '600',
+                                        letterSpacing: '0.02em',
+                                        textDecoration: 'none',
+                                    }}
+                                    aria-label="OpsSentinal GitHub Repository"
+                                >
                                     <span style={{
                                         width: '22px',
                                         height: '22px',
@@ -899,25 +1125,8 @@ async function renderStatusPage(statusPage: any) {
                                             style={{ width: '16px', height: '16px', display: 'block' }}
                                         />
                                     </span>
-                                    Powered by OpsSentinel
-                                </div>
-                                {(showRssLink || showApiLink) && (
-                                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                        {showRssLink && (
-                                            <a href="/api/status/rss" className="status-footer-link" style={{ color: 'var(--status-text-muted, #6b7280)', textDecoration: 'none', fontWeight: '600' }}>
-                                                RSS Feed
-                                            </a>
-                                        )}
-                                        {showRssLink && showApiLink && (
-                                            <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>•</span>
-                                        )}
-                                        {showApiLink && (
-                                            <a href="/api/status" className="status-footer-link" style={{ color: 'var(--status-text-muted, #6b7280)', textDecoration: 'none', fontWeight: '600' }}>
-                                                JSON API
-                                            </a>
-                                        )}
-                                    </div>
-                                )}
+                                    Powered by <strong style={{ fontWeight: '700', color: 'var(--status-text, #111827)' }}>OpsSentinal</strong>
+                                </a>
                             </div>
                             <style dangerouslySetInnerHTML={{
                                 __html: `

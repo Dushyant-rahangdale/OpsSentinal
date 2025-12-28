@@ -20,6 +20,7 @@ async function createService(formData: FormData) {
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
     const region = formData.get('region') as string;
+    const slaTier = formData.get('slaTier') as string;
     const teamId = formData.get('teamId') as string;
     const escalationPolicyId = formData.get('escalationPolicyId') as string;
 
@@ -28,6 +29,7 @@ async function createService(formData: FormData) {
             name,
             description,
             region: region || null,
+            slaTier: slaTier || null,
             teamId: teamId || undefined,
             escalationPolicyId: escalationPolicyId || undefined
         }

@@ -3,8 +3,16 @@
 */
 :root {
   --status-primary: var(--sp-accent, var(--sp-primary, var(--sp-blue, var(--sp-ocean, #2563eb))));
-  --status-primary-hover: var(--sp-accent-2, var(--sp-primary, var(--sp-blue, #1d4ed8))));\n  --status-card-shadow: 0 8px 18px rgba(15, 23, 42, 0.3); --sp-ink: #e2e8f0; --sp-muted: #94a3b8; --sp-arctic: #38bdf8; --sp-night: #0f172a; --sp-panel-bg: rgba(17, 24, 39, 0.88); --sp-panel-border: rgba(148, 163, 184, 0.22); --sp-panel-muted-bg: rgba(15, 23, 42, 0.78); --sp-panel-muted-border: rgba(148, 163, 184, 0.18); }
+  --status-primary-hover: var(--sp-accent-2, var(--sp-primary, var(--sp-blue, #1d4ed8))));\n  --status-card-shadow: 0 8px 18px rgba(15, 23, 42, 0.3); --sp-ink: #f1f5f9; --sp-muted: #cbd5e1; --sp-arctic: #38bdf8; --sp-night: #0f172a; --sp-panel-bg: rgba(17, 24, 39, 0.88); --sp-panel-border: rgba(148, 163, 184, 0.22); --sp-panel-muted-bg: rgba(15, 23, 42, 0.78); --sp-panel-muted-border: rgba(148, 163, 184, 0.18); --status-text: #f1f5f9; --status-text-strong: #f8fafc; --status-text-muted: #cbd5e1; --status-text-subtle: #94a3b8; --status-panel-bg: rgba(17, 24, 39, 0.85); --status-panel-border: rgba(148, 163, 184, 0.2); --status-panel-muted-bg: rgba(15, 23, 42, 0.7); --status-panel-muted-border: rgba(148, 163, 184, 0.16); }
 .status-page-container {
+  --status-text: #f1f5f9;
+  --status-text-strong: #f8fafc;
+  --status-text-muted: #cbd5e1;
+  --status-text-subtle: #94a3b8;
+  --status-panel-bg: rgba(17, 24, 39, 0.85);
+  --status-panel-border: rgba(148, 163, 184, 0.2);
+  --status-panel-muted-bg: rgba(15, 23, 42, 0.7);
+  --status-panel-muted-border: rgba(148, 163, 184, 0.16);
   background:
     radial-gradient(circle at 20% 15%, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0) 45%),
     linear-gradient(135deg, #0b1220 0%, #0f172a 100%) !important;
@@ -24,21 +32,21 @@
 .status-page-container h4,
 .status-page-container h5,
 .status-page-container h6 {
-  color: var(--sp-ink) !important;
+  color: var(--status-text, #f1f5f9) !important;
 }
 
 .status-page-container p,
 .status-page-container li,
 .status-page-container label,
 .status-page-container small {
-  color: var(--sp-ink) !important;
+  color: var(--status-text, #f1f5f9) !important;
 }
 
 .status-page-container .status-page-header p,
 .status-page-container .status-page-header span,
 .status-page-container footer p,
 .status-page-container footer span {
-  color: var(--sp-muted) !important;
+  color: var(--status-text-muted, #cbd5e1) !important;
 }
 
 

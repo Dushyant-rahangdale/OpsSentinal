@@ -1,7 +1,8 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 
 /**
  * Get Status Page Historical Data
@@ -27,6 +28,22 @@ export async function GET(req: NextRequest) {
 
         if (!statusPage) {
             return jsonError('Status page not found or disabled', 404);
+        }
+
+        const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
+            requireToken: statusPage.statusApiRequireToken,
+            rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
+            rateLimitMax: statusPage.statusApiRateLimitMax,
+            rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+        });
+        if (!authResult.allowed) {
+            if (authResult.status === 429) {
+                return NextResponse.json(
+                    { error: authResult.error || 'Rate limit exceeded' },
+                    { status: 429, headers: authResult.retryAfter ? { 'Retry-After': String(authResult.retryAfter) } : undefined }
+                );
+            }
+            return jsonError(authResult.error || 'Unauthorized', authResult.status || 401);
         }
 
         const serviceIds = statusPage.services

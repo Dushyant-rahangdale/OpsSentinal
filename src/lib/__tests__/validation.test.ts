@@ -22,7 +22,8 @@ describe('validation schemas', () => {
             statusPageId: 'sp1',
             title: 'Maintenance',
             message: 'Planned work',
-            startDate: new Date().toISOString()
+            startDate: new Date().toISOString(),
+            affectedServiceIds: ['svc-1', 'svc-2'],
         });
         expect(result.success).toBe(true);
     });

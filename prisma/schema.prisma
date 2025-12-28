@@ -173,6 +173,7 @@ model Service {
   name                        String
   description                 String?
   region                      String? // Service hosting region (e.g., US-East, EU-West)
+  slaTier                     String? // e.g., Gold, Silver, Bronze
   status                      ServiceStatus         @default(OPERATIONAL)
   targetAckMinutes            Int                   @default(15)
   targetResolveMinutes        Int                   @default(120)
@@ -465,6 +466,7 @@ model Postmortem {
   actionItems Json? // Action items (JSON array)
   lessons     String? // Lessons learned
   status      String    @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  isPublic    Boolean   @default(true) // Public visibility on status page
   publishedAt DateTime?
   createdById String
   createdAt   DateTime  @default(now())
@@ -754,12 +756,18 @@ model StatusPage {
   showServiceMetrics       Boolean @default(true)
   showServiceDescriptions  Boolean @default(true)
   showServiceRegions       Boolean @default(true)
+  showServicesByRegion     Boolean @default(false)
+  showServiceOwners        Boolean @default(false)
+  showServiceSlaTier       Boolean @default(false)
   showTeamInformation      Boolean @default(false)
   showCustomFields         Boolean @default(false)
   showIncidentAssignees    Boolean @default(false)
   showIncidentUrgency      Boolean @default(true)
   showUptimeHistory        Boolean @default(true)
   showRecentIncidents      Boolean @default(true)
+  showChangelog            Boolean @default(true)
+  showRegionHeatmap        Boolean @default(true)
+  showPostIncidentReview   Boolean @default(true)
   maxIncidentsToShow       Int     @default(50)
   incidentHistoryDays      Int     @default(90)
   allowedCustomFields      Json? // Array of custom field IDs to show
@@ -767,6 +775,13 @@ model StatusPage {
   requireAuth              Boolean @default(false) // Require authentication
   authProvider             String? // SSO provider if requireAuth=true
   emailProvider            String? // Email provider for subscription notifications (resend, sendgrid, smtp, or null for auto)
+  enableUptimeExports      Boolean @default(false)
+
+  // Status API access controls
+  statusApiRequireToken       Boolean @default(false)
+  statusApiRateLimitEnabled   Boolean @default(false)
+  statusApiRateLimitMax       Int     @default(120)
+  statusApiRateLimitWindowSec Int     @default(60)
 
   // Uptime threshold configuration
   uptimeExcellentThreshold Float @default(99.9) // Threshold for excellent uptime (green)
@@ -777,6 +792,7 @@ model StatusPage {
 
   services      StatusPageService[]
   announcements StatusPageAnnouncement[]
+  apiTokens     StatusPageApiToken[]
   subscriptions StatusPageSubscription[]
   webhooks      StatusPageWebhook[]
 
@@ -808,6 +824,7 @@ model StatusPageAnnouncement {
   message      String
   type         String    @default("INFO") // INFO, WARNING, MAINTENANCE, INCIDENT
   incidentId   String? // Link to incident if applicable
+  affectedServiceIds Json? // Array of affected service IDs (for maintenance/impact mapping)
   startDate    DateTime
   endDate      DateTime?
   isActive     Boolean   @default(true)
@@ -819,6 +836,22 @@ model StatusPageAnnouncement {
 
   @@index([statusPageId, isActive, startDate])
   @@index([incidentId])
+}
+
+model StatusPageApiToken {
+  id           String   @id @default(cuid())
+  statusPageId String
+  name         String
+  prefix       String
+  tokenHash    String
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+  revokedAt    DateTime?
+
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@unique([tokenHash])
+  @@index([statusPageId, revokedAt])
 }
 
 // Status Page Subscriptions (Email notifications)

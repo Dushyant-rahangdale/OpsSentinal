@@ -27,6 +27,7 @@ export default async function PreferencesSettingsPage() {
 
     return (
         <SettingsPage
+            currentPageId="preferences"
             backHref="/settings"
             title="Preferences"
             description="Personalize how OpsSentinal appears and notifies you."

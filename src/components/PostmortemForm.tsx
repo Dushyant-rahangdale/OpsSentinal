@@ -23,6 +23,7 @@ type PostmortemFormProps = {
         actionItems?: any;
         lessons?: string | null;
         status?: string;
+        isPublic?: boolean | null;
     };
     users?: Array<{ id: string; name: string; email: string }>;
     resolvedIncidents?: Array<{
@@ -89,6 +90,7 @@ export default function PostmortemForm({ incidentId, initialData, users = [], re
         resolution: initialData?.resolution || '',
         lessons: initialData?.lessons || '',
         status: (initialData?.status as any) || 'DRAFT',
+        isPublic: initialData?.isPublic ?? true,
         timeline: initialData?.timeline || [],
         impact: initialData?.impact || {},
         actionItems: initialData?.actionItems || [],
@@ -227,6 +229,17 @@ export default function PostmortemForm({ incidentId, initialData, users = [], re
                                 { value: 'PUBLISHED', label: 'Published' },
                                 { value: 'ARCHIVED', label: 'Archived' },
                             ]}
+                        />
+                        <FormField
+                            label="Visibility"
+                            type="select"
+                            value={formData.isPublic ? 'public' : 'private'}
+                            onChange={(e) => setFormData({ ...formData, isPublic: e.target.value === 'public' })}
+                            options={[
+                                { value: 'public', label: 'Public (shown on status page)' },
+                                { value: 'private', label: 'Private (internal only)' },
+                            ]}
+                            helperText="Private postmortems are not shown on the public status page."
                         />
                     </div>
                 </div>

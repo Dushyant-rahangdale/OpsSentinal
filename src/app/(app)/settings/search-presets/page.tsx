@@ -49,6 +49,7 @@ export default async function SearchPresetsPage() {
 
     return (
         <SettingsPage
+            currentPageId="search-presets"
             backHref="/settings"
             title="Search Presets"
             description="Create and manage saved search filters for quick access to incidents."

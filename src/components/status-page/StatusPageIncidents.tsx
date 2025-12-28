@@ -17,6 +17,7 @@ interface Incident {
     status: string;
     urgency: string;
     createdAt: Date;
+    acknowledgedAt?: Date | null;
     resolvedAt?: Date | null;
     service: {
         id: string;
@@ -24,6 +25,11 @@ interface Incident {
         region?: string | null;
     };
     events: IncidentEvent[];
+    postmortem?: {
+        id: string;
+        status: string;
+        isPublic?: boolean | null;
+    } | null;
 }
 
 interface PrivacySettings {
@@ -39,11 +45,12 @@ interface PrivacySettings {
 interface StatusPageIncidentsProps {
     incidents: Incident[];
     privacySettings?: PrivacySettings;
+    showPostIncidentReview?: boolean;
 }
 
 const INCIDENTS_PER_PAGE = 10;
 
-export default function StatusPageIncidents({ incidents, privacySettings }: StatusPageIncidentsProps) {
+export default function StatusPageIncidents({ incidents, privacySettings, showPostIncidentReview }: StatusPageIncidentsProps) {
     const browserTimeZone = useBrowserTimezone();
     const [expandedIncidents, setExpandedIncidents] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
@@ -128,6 +135,14 @@ export default function StatusPageIncidents({ incidents, privacySettings }: Stat
             default:
                 return { bg: '#fee2e2', text: '#991b1b', label: 'Investigating', border: '#ef4444' };
         }
+    };
+
+    const getResolutionNote = (events: IncidentEvent[]) => {
+        const resolutionEvent = events.find((event) => /^resolved:/i.test(event.message))
+            || events.find((event) => /^resolution:/i.test(event.message));
+        if (!resolutionEvent) return null;
+        const [, note] = resolutionEvent.message.split(/resolved:|resolution:/i);
+        return (note || resolutionEvent.message).trim();
     };
 
     return (
@@ -248,6 +263,13 @@ export default function StatusPageIncidents({ incidents, privacySettings }: Stat
                             const statusColor = getStatusColor(incident.status);
                             const isExpanded = expandedIncidents.has(incident.id);
                             const timelineEvents = incident.events || [];
+                            const resolutionNote = getResolutionNote(timelineEvents);
+                            const showPostmortemLink = Boolean(
+                                showPostIncidentReview &&
+                                incident.status === 'RESOLVED' &&
+                                incident.postmortem?.status === 'PUBLISHED' &&
+                                incident.postmortem?.isPublic !== false
+                            );
 
                             return (
                                 <div
@@ -382,6 +404,31 @@ export default function StatusPageIncidents({ incidents, privacySettings }: Stat
                                                     )}
                                                 </div>
                                             )}
+                                            {!privacy.showAffectedServices && privacy.showServiceRegions && getRegionList(incident.service?.region).length > 0 && (
+                                                <div style={{
+                                                    display: 'flex',
+                                                    flexWrap: 'wrap',
+                                                    gap: '0.5rem',
+                                                    marginTop: '0.5rem',
+                                                }}>
+                                                    {getRegionList(incident.service?.region).map((region) => (
+                                                        <span
+                                                            key={`${incident.id}-${region}-solo`}
+                                                            style={{
+                                                                padding: '0.2rem 0.55rem',
+                                                                borderRadius: '999px',
+                                                                background: 'var(--status-panel-muted-bg, #f8fafc)',
+                                                                border: '1px solid var(--status-panel-muted-border, #e2e8f0)',
+                                                                fontWeight: '600',
+                                                                color: 'var(--status-text-muted, #6b7280)',
+                                                                fontSize: '0.75rem',
+                                                            }}
+                                                        >
+                                                            {region}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
                                             <span style={{
@@ -408,7 +455,30 @@ export default function StatusPageIncidents({ incidents, privacySettings }: Stat
                                             >
                                                 {statusColor.label}
                                             </span>
-                                            {timelineEvents.length > 0 && (
+                                            {showPostmortemLink && (
+                                                <a
+                                                    href={`/status/postmortems/${incident.id}`}
+                                                    style={{
+                                                        padding: '0.45rem 0.9rem',
+                                                        borderRadius: '999px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '600',
+                                                        color: 'var(--status-primary, #2563eb)',
+                                                        border: '1px solid color-mix(in srgb, var(--status-primary, #2563eb) 40%, #ffffff)',
+                                                        textDecoration: 'none',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.35rem',
+                                                    }}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                                    </svg>
+                                                    Post-incident review
+                                                </a>
+                                            )}
+                                            {privacy.showIncidentDetails && timelineEvents.length > 0 && (
                                                 <button
                                                     onClick={() => toggleIncident(incident.id)}
                                                     className="status-page-button"
@@ -454,7 +524,53 @@ export default function StatusPageIncidents({ incidents, privacySettings }: Stat
                                         </p>
                                     )}
 
-                                    {isExpanded && timelineEvents.length > 0 && (
+                                    {!privacy.showIncidentDetails && (
+                                        <div style={{
+                                            marginTop: '1.25rem',
+                                            padding: '1rem',
+                                            borderRadius: '0.75rem',
+                                            border: '1px solid var(--status-panel-border, #e5e7eb)',
+                                            background: 'var(--status-panel-muted-bg, #f8fafc)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.75rem',
+                                            fontSize: '0.85rem',
+                                            color: 'var(--status-text, #374151)',
+                                        }}>
+                                            <div style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--status-text-muted, #6b7280)' }}>
+                                                Milestones
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                    <span>Detected</span>
+                                                    <span>{formatDateTime(incident.createdAt, browserTimeZone, { format: 'short' })}</span>
+                                                </div>
+                                                {incident.acknowledgedAt && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                        <span>Acknowledged</span>
+                                                        <span>{formatDateTime(incident.acknowledgedAt, browserTimeZone, { format: 'short' })}</span>
+                                                    </div>
+                                                )}
+                                                {incident.resolvedAt && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                        <span>Resolved</span>
+                                                        <span>{formatDateTime(incident.resolvedAt, browserTimeZone, { format: 'short' })}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {resolutionNote && (
+                                                <div style={{
+                                                    paddingTop: '0.75rem',
+                                                    borderTop: '1px solid var(--status-panel-border, #e5e7eb)',
+                                                    color: 'var(--status-text-muted, #475569)',
+                                                }}>
+                                                    <span style={{ fontWeight: '600', color: 'var(--status-text, #111827)' }}>Resolution:</span> {resolutionNote}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {privacy.showIncidentDetails && isExpanded && timelineEvents.length > 0 && (
                                             <div style={{
                                                 marginTop: '1.5rem',
                                                 paddingTop: '1.5rem',

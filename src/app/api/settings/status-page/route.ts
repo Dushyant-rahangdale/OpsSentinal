@@ -54,12 +54,18 @@ export async function POST(req: NextRequest) {
             showServiceMetrics,
             showServiceDescriptions,
             showServiceRegions,
+            showServicesByRegion,
+            showServiceOwners,
+            showServiceSlaTier,
             showTeamInformation,
             showCustomFields,
             showIncidentAssignees,
             showIncidentUrgency,
             showUptimeHistory,
             showRecentIncidents,
+            showChangelog,
+            showRegionHeatmap,
+            showPostIncidentReview,
             maxIncidentsToShow,
             incidentHistoryDays,
             allowedCustomFields,
@@ -67,6 +73,11 @@ export async function POST(req: NextRequest) {
             requireAuth,
             authProvider,
             emailProvider,
+            enableUptimeExports,
+            statusApiRequireToken,
+            statusApiRateLimitEnabled,
+            statusApiRateLimitMax,
+            statusApiRateLimitWindowSec,
         } = parsed.data;
 
         // Get or create status page
@@ -120,12 +131,18 @@ export async function POST(req: NextRequest) {
         if (showServiceMetrics !== undefined) updateData.showServiceMetrics = showServiceMetrics;
         if (showServiceDescriptions !== undefined) updateData.showServiceDescriptions = showServiceDescriptions;
         if (showServiceRegions !== undefined) updateData.showServiceRegions = showServiceRegions;
+        if (showServicesByRegion !== undefined) updateData.showServicesByRegion = showServicesByRegion;
+        if (showServiceOwners !== undefined) updateData.showServiceOwners = showServiceOwners;
+        if (showServiceSlaTier !== undefined) updateData.showServiceSlaTier = showServiceSlaTier;
         if (showTeamInformation !== undefined) updateData.showTeamInformation = showTeamInformation;
         if (showCustomFields !== undefined) updateData.showCustomFields = showCustomFields;
         if (showIncidentAssignees !== undefined) updateData.showIncidentAssignees = showIncidentAssignees;
         if (showIncidentUrgency !== undefined) updateData.showIncidentUrgency = showIncidentUrgency;
         if (showUptimeHistory !== undefined) updateData.showUptimeHistory = showUptimeHistory;
         if (showRecentIncidents !== undefined) updateData.showRecentIncidents = showRecentIncidents;
+        if (showChangelog !== undefined) updateData.showChangelog = showChangelog;
+        if (showRegionHeatmap !== undefined) updateData.showRegionHeatmap = showRegionHeatmap;
+        if (showPostIncidentReview !== undefined) updateData.showPostIncidentReview = showPostIncidentReview;
         if (maxIncidentsToShow !== undefined) updateData.maxIncidentsToShow = maxIncidentsToShow;
         if (incidentHistoryDays !== undefined) updateData.incidentHistoryDays = incidentHistoryDays;
         if (allowedCustomFields !== undefined) {
@@ -140,6 +157,11 @@ export async function POST(req: NextRequest) {
             updateData.emailProvider = emailProvider && emailProvider.trim() ? emailProvider.trim() : null;
         }
         if (showSubscribe !== undefined) updateData.showSubscribe = showSubscribe;
+        if (enableUptimeExports !== undefined) updateData.enableUptimeExports = enableUptimeExports;
+        if (statusApiRequireToken !== undefined) updateData.statusApiRequireToken = statusApiRequireToken;
+        if (statusApiRateLimitEnabled !== undefined) updateData.statusApiRateLimitEnabled = statusApiRateLimitEnabled;
+        if (statusApiRateLimitMax !== undefined) updateData.statusApiRateLimitMax = statusApiRateLimitMax;
+        if (statusApiRateLimitWindowSec !== undefined) updateData.statusApiRateLimitWindowSec = statusApiRateLimitWindowSec;
 
         await prisma.statusPage.update({
             where: { id: statusPage.id },

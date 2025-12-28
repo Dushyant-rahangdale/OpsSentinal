@@ -6,6 +6,7 @@ import Link from 'next/link';
 export default function IntegrationsSettingsPage() {
     return (
         <SettingsPage
+            currentPageId="integrations"
             backHref="/settings"
             title="Integrations"
             description="Connect OpsSentinal with the tools your team relies on."

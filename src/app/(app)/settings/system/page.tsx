@@ -16,6 +16,7 @@ export default async function SystemSettingsPage() {
     if (!permissions.isAdmin) {
         return (
             <SettingsPage
+                currentPageId="system"
                 backHref="/settings"
                 title="System Settings"
                 description="Application-wide configuration and defaults."
@@ -53,6 +54,7 @@ export default async function SystemSettingsPage() {
 
     return (
         <SettingsPage
+            currentPageId="system"
             backHref="/settings"
             title="System Settings"
             description="Configure core application settings that affect system-wide behavior."

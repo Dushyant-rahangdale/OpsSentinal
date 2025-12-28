@@ -179,6 +179,29 @@ export default async function ServiceSettingsPage({ params, searchParams }: { pa
                                     Optional. This region is shown on the public status page.
                                 </p>
                             </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                    SLA Tier
+                                </label>
+                                <input
+                                    name="slaTier"
+                                    defaultValue={service.slaTier || ''}
+                                    placeholder="e.g. Gold, Silver, Bronze"
+                                    className="focus-border"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '0px',
+                                        fontSize: '0.95rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.2s'
+                                    }}
+                                />
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                    Optional. Displayed on the public status page when enabled.
+                                </p>
+                            </div>
                         </div>
                     </div>
 

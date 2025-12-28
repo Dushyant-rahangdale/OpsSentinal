@@ -105,6 +105,40 @@ export default function StatusPagePrivacySettings({
     customFields = [],
 }: StatusPagePrivacySettingsProps) {
     const [localSettings, setLocalSettings] = useState<PrivacySettings>(settings);
+    const [expandedPreset, setExpandedPreset] = useState<keyof typeof PRIVACY_PRESETS | null>(null);
+
+    const PRESET_DETAIL_LABELS: Array<{ key: keyof PrivacySettings; label: string }> = [
+        { key: 'showIncidentDetails', label: 'Incident details' },
+        { key: 'showIncidentDescriptions', label: 'Incident descriptions' },
+        { key: 'showIncidentTimestamps', label: 'Incident timestamps' },
+        { key: 'showAffectedServices', label: 'Affected services' },
+        { key: 'showIncidentUrgency', label: 'Incident urgency' },
+        { key: 'showServiceMetrics', label: 'Service metrics' },
+        { key: 'showServiceDescriptions', label: 'Service descriptions' },
+        { key: 'showServiceRegions', label: 'Service regions' },
+        { key: 'showUptimeHistory', label: 'Uptime history' },
+        { key: 'showRecentIncidents', label: 'Recent incidents' },
+    ];
+
+    const getPresetSummary = (presetKey: keyof typeof PRIVACY_PRESETS) => {
+        if (presetKey === 'CUSTOM') {
+            return 'Custom mix of visibility settings';
+        }
+        const presetSettings = PRIVACY_PRESETS[presetKey].settings as Partial<PrivacySettings>;
+        const shows: string[] = [];
+        const hides: string[] = [];
+        PRESET_DETAIL_LABELS.forEach(({ key, label }) => {
+            const value = presetSettings[key];
+            if (value === true) {
+                shows.push(label);
+            } else if (value === false) {
+                hides.push(label);
+            }
+        });
+        const showText = shows.length > 0 ? `Shows: ${shows.join(', ')}` : 'Shows: basic status only';
+        const hideText = hides.length > 0 ? `Hides: ${hides.join(', ')}` : 'Hides: none';
+        return `${showText}. ${hideText}.`;
+    };
 
     const updateSetting = <K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]) => {
         const updated = { ...localSettings, [key]: value, privacyMode: 'CUSTOM' as const };
@@ -140,6 +174,7 @@ export default function StatusPagePrivacySettings({
                                 key={key}
                                 type="button"
                                 onClick={() => applyPreset(key as keyof typeof PRIVACY_PRESETS)}
+                                title={getPresetSummary(key as keyof typeof PRIVACY_PRESETS)}
                                 style={{
                                     padding: 'var(--spacing-4)',
                                     border: '2px solid',
@@ -157,6 +192,40 @@ export default function StatusPagePrivacySettings({
                                 <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
                                     {preset.description}
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        setExpandedPreset((current) => current === key ? null : (key as keyof typeof PRIVACY_PRESETS));
+                                    }}
+                                    style={{
+                                        marginTop: 'var(--spacing-2)',
+                                        padding: '2px 8px',
+                                        borderRadius: '999px',
+                                        border: '1px solid #e5e7eb',
+                                        background: 'white',
+                                        fontSize: 'var(--font-size-xs)',
+                                        fontWeight: '600',
+                                        color: 'var(--text-muted)',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {expandedPreset === key ? 'Hide details' : 'View details'}
+                                </button>
+                                {expandedPreset === key && (
+                                    <div style={{
+                                        marginTop: 'var(--spacing-2)',
+                                        padding: 'var(--spacing-2)',
+                                        borderRadius: 'var(--radius-md)',
+                                        background: '#f8fafc',
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: 'var(--font-size-xs)',
+                                        color: 'var(--text-muted)',
+                                        lineHeight: 1.5,
+                                    }}>
+                                        {getPresetSummary(key as keyof typeof PRIVACY_PRESETS)}
+                                    </div>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -174,7 +243,7 @@ export default function StatusPagePrivacySettings({
                             checked={localSettings.showIncidentDetails}
                             onChange={(checked) => updateSetting('showIncidentDetails', checked)}
                             label="Show Incident Details"
-                            helperText="Show detailed incident information"
+                            helperText="Show the full incident timeline and update details"
                         />
                         <Switch
                             checked={localSettings.showIncidentTitles}

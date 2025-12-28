@@ -6,14 +6,14 @@ import SettingsPage from '@/components/settings/SettingsPage';
 
 export default async function GlobalSlackIntegrationPage() {
     const permissions = await getUserPermissions();
-    
+
     if (!permissions) {
         redirect('/login');
     }
 
     // Get global Slack integration (not tied to any service)
     const globalIntegration = await prisma.slackIntegration.findFirst({
-        where: { 
+        where: {
             service: null // Global integration
         },
         include: {
@@ -33,12 +33,13 @@ export default async function GlobalSlackIntegrationPage() {
         where: { enabled: true },
         orderBy: { updatedAt: 'desc' }
     });
-    
+
     const isOAuthConfigured = !!(oauthConfig?.clientId && oauthConfig?.clientSecret);
 
     return (
         <SettingsPage
-            backHref="/settings"
+            currentPageId="slack"
+            backHref="/settings/integrations"
             title="Slack Integration"
             description="Connect your Slack workspace to receive incident notifications."
         >

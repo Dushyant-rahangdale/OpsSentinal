@@ -6,10 +6,10 @@
 :root {
   --status-primary: var(--sp-accent, var(--sp-primary, var(--sp-blue, var(--sp-ocean, #2563eb))));
   --status-primary-hover: var(--sp-accent-2, var(--sp-primary, var(--sp-blue, #1d4ed8))));\n  --status-card-shadow: 0 8px 18px rgba(15, 23, 42, 0.3);
-  --sp-ink: #e2e8f0;
+  --sp-ink: #f1f5f9;
   --sp-ink-strong: #f8fafc;
-  --sp-muted: #b1bfd6;
-  --sp-muted-2: #8fa3c2;
+  --sp-muted: #e2e8f0;
+  --sp-muted-2: #cbd5e1;
   --sp-inverse: #0b1220;
   --sp-neon-1: #22d3ee;
   --sp-neon-2: #a855f7;
@@ -18,9 +18,25 @@
   --sp-panel-border: rgba(148, 163, 184, 0.2);
   --sp-panel-muted-bg: rgba(15, 23, 42, 0.8);
   --sp-panel-muted-border: rgba(148, 163, 184, 0.16);
+  --status-text: #f1f5f9;
+  --status-text-strong: #f8fafc;
+  --status-text-muted: #e2e8f0;
+  --status-text-subtle: #cbd5e1;
+  --status-panel-bg: rgba(17, 24, 39, 0.85);
+  --status-panel-border: rgba(148, 163, 184, 0.2);
+  --status-panel-muted-bg: rgba(15, 23, 42, 0.7);
+  --status-panel-muted-border: rgba(148, 163, 184, 0.16);
 }
 
 .status-page-container {
+  --status-text: #f1f5f9;
+  --status-text-strong: #f8fafc;
+  --status-text-muted: #e2e8f0;
+  --status-text-subtle: #cbd5e1;
+  --status-panel-bg: rgba(17, 24, 39, 0.85);
+  --status-panel-border: rgba(148, 163, 184, 0.2);
+  --status-panel-muted-bg: rgba(15, 23, 42, 0.7);
+  --status-panel-muted-border: rgba(148, 163, 184, 0.16);
   background:
     radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.18) 0%, rgba(34, 211, 238, 0) 45%),
     radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.18) 0%, rgba(168, 85, 247, 0) 45%),
@@ -75,21 +91,21 @@
 .status-page-container h4,
 .status-page-container h5,
 .status-page-container h6 {
-  color: var(--sp-ink) !important;
+  color: var(--status-text, #f1f5f9) !important;
 }
 
 .status-page-container p,
 .status-page-container li,
 .status-page-container label,
 .status-page-container small {
-  color: var(--sp-muted) !important;
+  color: var(--status-text, #f1f5f9) !important;
 }
 
 .status-page-container .status-page-header p,
 .status-page-container .status-page-header span,
 .status-page-container footer p,
 .status-page-container footer span {
-  color: var(--sp-muted) !important;
+  color: var(--status-text-muted, #e2e8f0) !important;
 }
 
 

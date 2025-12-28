@@ -59,13 +59,16 @@ export default async function StatusPageSettingsPage() {
         orderBy: { name: 'asc' },
     });
 
-    const formattedStatusPage = {
+    const formattedStatusPage: any = {
         ...statusPage,
         announcements: statusPage.announcements.map((announcement) => ({
             ...announcement,
             startDate: announcement.startDate.toISOString(),
-            endDate: announcement.endDate ? announcement.endDate.toISOString() : null
-        }))
+            endDate: announcement.endDate ? announcement.endDate.toISOString() : null,
+            affectedServiceIds: Array.isArray(announcement.affectedServiceIds)
+                ? (announcement.affectedServiceIds as string[])
+                : null,
+        })),
     };
 
     return (
@@ -81,4 +84,3 @@ export default async function StatusPageSettingsPage() {
         </SettingsPage>
     );
 }
-
