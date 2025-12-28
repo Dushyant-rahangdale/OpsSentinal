@@ -233,7 +233,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                 href={item.href}
                 className={`nav-item ${active ? 'active' : ''}`}
                 style={{
-                    padding: '0.625rem 0.75rem',
+                    padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.6rem, 1.2vw, 0.75rem)',
                     textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
@@ -243,7 +243,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                     background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
                     color: active ? 'white' : 'rgba(255,255,255,0.85)',
                     fontWeight: active ? '600' : '500',
-                    fontSize: '0.875rem'
+                    fontSize: 'clamp(0.82rem, 1.05vw, 0.9rem)'
                 }}
                 onMouseEnter={(e) => {
                     if (!active) {
@@ -259,8 +259,8 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                 <span
                     className="nav-icon"
                     style={{
-                        width: '18px',
-                        height: '18px',
+                        width: 'clamp(16px, 1.8vw, 18px)',
+                        height: 'clamp(16px, 1.8vw, 18px)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -280,7 +280,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             padding: '0 5px',
                             background: '#ef4444',
                             color: 'white',
-                            fontSize: '0.65rem',
+                            fontSize: 'clamp(0.6rem, 0.85vw, 0.7rem)',
                             fontWeight: '700',
                             borderRadius: '9px',
                             display: 'flex',
@@ -337,7 +337,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         flexShrink: 0
                     }} />
                     <span style={{
-                        fontSize: '0.65rem',
+                        fontSize: 'clamp(0.6rem, 0.85vw, 0.7rem)',
                         fontWeight: '600',
                         color: colors.text,
                         letterSpacing: '0.5px',
@@ -441,7 +441,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
             >
                 {/* Branding Header - Enhanced */}
                 <div style={{
-                    padding: '1.5rem 1.25rem 1.25rem 1.25rem',
+                    padding: 'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.25rem) clamp(0.9rem, 1.8vw, 1.25rem)',
                     flexShrink: 0,
                     borderBottom: '1px solid rgba(255,255,255,0.12)',
                     background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
@@ -478,13 +478,13 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         }}
                     >
                         <div style={{
-                            width: '42px',
-                            height: '42px',
+                            width: 'clamp(34px, 3.6vw, 42px)',
+                            height: 'clamp(34px, 3.6vw, 42px)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.12) 100%)',
-                            borderRadius: '11px',
+                            borderRadius: 'clamp(9px, 1vw, 11px)',
                             flexShrink: 0,
                             border: '1px solid rgba(255,255,255,0.2)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)',
@@ -502,8 +502,8 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 src="/logo.svg"
                                 alt="OpsSentinal"
                                 style={{
-                                    width: '28px',
-                                    height: '28px',
+                                    width: 'clamp(22px, 2.6vw, 28px)',
+                                    height: 'clamp(22px, 2.6vw, 28px)',
                                     objectFit: 'contain',
                                     filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.2))',
                                     position: 'relative',
@@ -513,7 +513,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
                             <h1 style={{
-                                fontSize: '1.35rem',
+                                fontSize: 'clamp(1.1rem, 2vw, 1.35rem)',
                                 fontWeight: '800',
                                 color: 'white',
                                 margin: 0,
@@ -522,7 +522,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 textShadow: '0 2px 8px rgba(0,0,0,0.2)'
                             }}>OpsSentinal</h1>
                             <div style={{
-                                fontSize: '0.65rem',
+                                fontSize: 'clamp(0.6rem, 0.85vw, 0.7rem)',
                                 color: 'rgba(255,255,255,0.7)',
                                 fontWeight: '600',
                                 letterSpacing: '0.5px',
@@ -541,7 +541,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         flex: 1,
                         overflowY: 'auto',
                         overflowX: 'hidden',
-                        padding: '1rem 0.75rem',
+                        padding: 'clamp(0.75rem, 1.6vw, 1rem) clamp(0.6rem, 1.4vw, 0.75rem)',
                         gap: '0.5rem'
                     }}
                 >
@@ -605,7 +605,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: '600',
-                            fontSize: '0.8rem',
+                            fontSize: 'clamp(0.72rem, 1vw, 0.85rem)',
                             color: 'white',
                             flexShrink: 0,
                             textTransform: 'uppercase'
@@ -618,7 +618,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{
-                                fontSize: '0.875rem',
+                                fontSize: 'clamp(0.82rem, 1.05vw, 0.9rem)',
                                 fontWeight: '600',
                                 color: 'white',
                                 overflow: 'hidden',
@@ -629,7 +629,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 {userName || userEmail || 'User'}
                             </div>
                             <div style={{
-                                fontSize: '0.7rem',
+                                fontSize: 'clamp(0.62rem, 0.9vw, 0.72rem)',
                                 color: 'rgba(255,255,255,0.65)',
                                 textTransform: 'capitalize'
                             }}>
@@ -655,7 +655,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 border: '1px solid rgba(255,255,255,0.12)',
                                 borderRadius: '6px',
                                 color: 'rgba(255,255,255,0.9)',
-                                fontSize: '0.7rem',
+                                fontSize: 'clamp(0.62rem, 0.9vw, 0.75rem)',
                                 fontWeight: '500',
                                 textDecoration: 'none',
                                 transition: 'all 0.15s ease',
@@ -679,7 +679,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" />
                             </svg>
-                            <span style={{ fontSize: '0.65rem', lineHeight: '1' }}>Docs</span>
+                            <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>Docs</span>
                         </Link>
 
                         {/* Shortcuts Button */}
@@ -695,7 +695,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 border: '1px solid rgba(255,255,255,0.12)',
                                 borderRadius: '6px',
                                 color: 'rgba(255,255,255,0.9)',
-                                fontSize: '0.7rem',
+                                fontSize: 'clamp(0.62rem, 0.9vw, 0.75rem)',
                                 fontWeight: '500',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
@@ -719,7 +719,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 <rect x="4" y="2" width="16" height="20" rx="2" />
                                 <path d="M9 6h6m-6 4h6m-2 4h2" />
                             </svg>
-                            <span style={{ fontSize: '0.65rem', lineHeight: '1' }}>Keys</span>
+                            <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>Keys</span>
                         </button>
 
                         {/* Settings Link */}
@@ -733,7 +733,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 border: '1px solid rgba(255,255,255,0.12)',
                                 borderRadius: '6px',
                                 color: 'rgba(255,255,255,0.9)',
-                                fontSize: '0.7rem',
+                                fontSize: 'clamp(0.62rem, 0.9vw, 0.75rem)',
                                 fontWeight: '500',
                                 textDecoration: 'none',
                                 transition: 'all 0.15s ease',
@@ -757,7 +757,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                                 <circle cx="12" cy="12" r="3" />
                                 <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
                             </svg>
-                            <span style={{ fontSize: '0.65rem', lineHeight: '1' }}>Settings</span>
+                            <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>Settings</span>
                         </Link>
                     </div>
 
@@ -771,7 +771,7 @@ export default function Sidebar({ userName, userEmail, userRole }: SidebarProps 
                             border: '1px solid rgba(255,255,255,0.15)',
                             borderRadius: '6px',
                             color: 'white',
-                            fontSize: '0.8rem',
+                            fontSize: 'clamp(0.72rem, 1vw, 0.85rem)',
                             fontWeight: '500',
                             cursor: 'pointer',
                             transition: 'background 0.15s ease',

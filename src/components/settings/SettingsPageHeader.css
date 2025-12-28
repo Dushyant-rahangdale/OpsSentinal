@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 1.125rem;
+  font-size: clamp(0.95rem, 1.3vw, 1.125rem);
   color: #475569;
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -44,12 +44,12 @@
 .settings-breadcrumb-home {
   font-weight: 600;
   color: #1e293b;
-  font-size: 1.125rem;
+  font-size: clamp(0.95rem, 1.3vw, 1.125rem);
 }
 
 .settings-breadcrumb-separator {
   color: #94a3b8;
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
   font-weight: 300;
 }
 
@@ -63,11 +63,11 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.625rem 1rem;
+  padding: clamp(0.45rem, 1vw, 0.625rem) clamp(0.75rem, 1.4vw, 1rem);
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 0.9375rem;
+  font-size: clamp(0.85rem, 1.1vw, 0.9375rem);
   font-weight: 600;
   color: #1e293b;
   cursor: pointer;
@@ -99,8 +99,8 @@
   top: calc(100% + 0.5rem);
   left: 0;
   right: auto;
-  min-width: 360px;
-  max-width: 380px;
+  min-width: min(360px, 90vw);
+  max-width: min(380px, 92vw);
   max-height: 70vh;
   overflow: hidden;
   display: flex;
@@ -133,7 +133,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  padding: clamp(0.65rem, 1.2vw, 0.875rem) clamp(0.75rem, 1.4vw, 1rem);
   border-bottom: 1px solid #f1f5f9;
   background: #ffffff;
   flex-shrink: 0;
@@ -150,7 +150,7 @@
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: clamp(0.8rem, 1.05vw, 0.875rem);
   color: #1e293b;
   outline: none;
   font-weight: 400;
@@ -179,9 +179,9 @@
 }
 
 .settings-dropdown-section-label {
-  padding: 0.5rem 1rem;
-  padding-top: 0.75rem;
-  font-size: 0.6875rem;
+  padding: clamp(0.4rem, 1vw, 0.5rem) clamp(0.75rem, 1.4vw, 1rem);
+  padding-top: clamp(0.6rem, 1.2vw, 0.75rem);
+  font-size: clamp(0.62rem, 0.9vw, 0.6875rem);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -196,9 +196,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  padding: clamp(0.5rem, 1.1vw, 0.625rem) clamp(0.75rem, 1.4vw, 1rem);
   margin: 0 0.5rem;
-  font-size: 0.875rem;
+  font-size: clamp(0.8rem, 1.05vw, 0.875rem);
   color: #1e293b;
   background: transparent;
   border: none;
@@ -240,11 +240,11 @@
 .settings-dropdown-item-check {
   color: #7c3aed;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 1.2vw, 1rem);
 }
 
 .settings-dropdown-item-badge {
-  font-size: var(--font-size-xs);
+  font-size: clamp(0.65rem, 0.9vw, 0.75rem);
   padding: 0.125rem 0.5rem;
   background: rgba(239, 68, 68, 0.1);
   color: var(--color-error);

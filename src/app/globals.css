@@ -13008,23 +13008,26 @@ span:hover>.info-tooltip {
 }
 
 .status-page-config-tabs {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  background: #f8fafc;
-  padding: 0.45rem clamp(1.25rem, 2.5vw, 2.5rem);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 0.75rem clamp(1rem, 2vw, 1.5rem);
   display: flex;
   gap: var(--spacing-3);
   flex-shrink: 0;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  container-type: inline-size;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  /* Removed overflow hidden/max-width restrictions as wrapping handles it */
 }
 
 .status-page-config-tabs-list {
   display: flex;
-  gap: var(--spacing-3);
+  gap: 0.5rem;
+  row-gap: 0.75rem;
   flex-wrap: wrap;
   flex: 1 1 auto;
   min-width: 0;
+  padding: 0.25rem 0;
 }
 
 .status-page-config-tabs-actions {
@@ -13035,21 +13038,23 @@ span:hover>.info-tooltip {
 
 .status-page-config-tab {
   appearance: none;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.55rem 0.95rem;
-  border-radius: 999px;
-  color: var(--text-muted);
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 0.4rem 0.65rem;
+  border-radius: 6px;
+  color: var(--text-secondary);
   font-weight: 600;
-  font-size: clamp(0.82rem, 1.1vw, 0.92rem);
+  font-size: 0.78rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-2);
+  gap: 0.35rem;
   transition: all 0.18s var(--ease-out);
   white-space: nowrap;
   text-decoration: none;
   position: relative;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  flex-shrink: 0;
 }
 
 .status-page-config-tab::after {
@@ -13058,7 +13063,9 @@ span:hover>.info-tooltip {
 
 .status-page-config-tab:hover {
   color: var(--text-primary);
-  background: rgba(15, 23, 42, 0.04);
+  background: #f8fafc;
+  border-color: rgba(100, 116, 139, 0.45);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
 .status-page-config-tab:focus-visible {
@@ -13067,10 +13074,10 @@ span:hover>.info-tooltip {
 }
 
 .status-page-config-tab.is-active {
-  color: var(--text-primary);
-  background: #ffffff;
-  border-color: rgba(59, 130, 246, 0.2);
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+  color: #ffffff;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: #b91c1c;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
 }
 
 
@@ -13089,17 +13096,20 @@ span:hover>.info-tooltip {
 }
 
 .status-page-config-tab-icon {
-  font-size: 1rem;
-  opacity: 0.85;
-  transition: transform 0.2s ease;
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.75;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .status-page-config-tab:hover .status-page-config-tab-icon {
-  transform: scale(1.1);
+  transform: scale(1.15);
+  opacity: 0.95;
 }
 
 .status-page-config-tab.is-active .status-page-config-tab-icon {
   opacity: 1;
+  transform: scale(1.05);
 }
 
 .status-page-config-sticky-bar {
