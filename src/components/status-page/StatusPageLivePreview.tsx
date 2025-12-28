@@ -39,10 +39,10 @@ interface StatusPageLivePreviewProps {
     maxWidth?: string;
 }
 
-type DeviceView = 'desktop' | 'tablet' | 'mobile';
+type DeviceView = 'mac' | 'ipad' | 'iphone';
 
 export default function StatusPageLivePreview({ previewData, maxWidth = '1280px' }: StatusPageLivePreviewProps) {
-    const [deviceView, setDeviceView] = useState<DeviceView>('desktop');
+    const [deviceView, setDeviceView] = useState<DeviceView>('mac');
     const [overallStatus, setOverallStatus] = useState<'operational' | 'degraded' | 'outage'>('operational');
     const [scale, setScale] = useState(1);
     const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
@@ -67,11 +67,11 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
     // Extract numeric value from string like "1600px" or "900px"
     const contentMaxWidthNum = parseInt(contentMaxWidthStr.replace(/px$/, '')) || 1280;
 
-    // Device frame dimensions
-    const deviceDimensions: Record<DeviceView, { width: number; height: number | null }> = {
-        desktop: { width: Math.max(1280, contentMaxWidthNum), height: null },
-        tablet: { width: 768, height: 1024 },
-        mobile: { width: 375, height: 812 },
+    // Apple device frame dimensions
+    const deviceDimensions: Record<DeviceView, { width: number; height: number | null; label: string }> = {
+        mac: { width: Math.max(1440, contentMaxWidthNum), height: 900, label: 'MacBook Pro' },
+        ipad: { width: 1024, height: 1366, label: 'iPad Pro 12.9"' },
+        iphone: { width: 393, height: 852, label: 'iPhone 15 Pro' },
     };
 
     const targetWidth = deviceDimensions[deviceView].width;
@@ -99,8 +99,8 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                     newScale = Math.min(newScale, heightScale);
                 }
 
-                // Don't scale up beyond 1.0 for "fit" mode
-                if (newScale > 1) newScale = 1;
+                // Don't scale up beyond 1.0 for "fit" mode, and ensure minimum scale
+                newScale = Math.max(0.1, Math.min(newScale, 1));
 
                 setScale(newScale);
 
@@ -108,7 +108,7 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                 if (targetHeight) {
                     setFrameHeight(`${targetHeight}px`);
                 } else {
-                    const safeHeight = Math.max(containerHeight, 1);
+                    const safeHeight = Math.max(containerHeight, 400);
                     setFrameHeight(`${Math.ceil(safeHeight / newScale)}px`);
                 }
             } else if (zoomMode === 'manual' && containerRef.current) {
@@ -116,7 +116,7 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                     setFrameHeight(`${targetHeight}px`);
                 } else {
                     const containerHeight = containerRef.current.clientHeight;
-                    const safeHeight = Math.max(containerHeight, 1);
+                    const safeHeight = Math.max(containerHeight, 400);
                     setFrameHeight(`${Math.ceil(safeHeight / scale)}px`);
                 }
             }
@@ -129,7 +129,7 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
         observer.observe(containerRef.current);
 
         return () => observer.disconnect();
-    }, [zoomMode, targetWidth, deviceView]);
+    }, [zoomMode, targetWidth, targetHeight, deviceView, scale]);
 
     const handleZoom = (delta: number) => {
         setZoomMode('manual');
@@ -137,14 +137,14 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
     };
 
     const deviceLabels: Record<DeviceView, string> = {
-        desktop: `Desktop (${deviceDimensions.desktop.width}px)`,
-        tablet: 'Tablet (768x1024)',
-        mobile: 'Mobile (375x812)',
+        mac: deviceDimensions.mac.label,
+        ipad: deviceDimensions.ipad.label,
+        iphone: deviceDimensions.iphone.label,
     };
 
     // For the inner content max-width (inside the scaled container)
-    // Always use 100% for tablet and mobile, use contentMaxWidthStr for desktop
-    const contentMaxWidth = deviceView === 'desktop' ? contentMaxWidthStr : '100%';
+    // Always use 100% for ipad and iphone, use contentMaxWidthStr for mac
+    const contentMaxWidth = deviceView === 'mac' ? contentMaxWidthStr : '100%';
     const previewPrimaryColor = previewData.branding?.primaryColor || 'var(--status-primary, #667eea)';
     const previewTextColor = previewData.branding?.textColor || 'var(--status-text, #111827)';
     const frameHeightNumber = Number.parseFloat(frameHeight);
@@ -388,8 +388,9 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {/* Device & Zoom Controls */}
                 <div
+                    className="status-page-preview-controls"
                     style={{
-                        padding: 'var(--spacing-3) var(--spacing-4)',
+                        padding: 'var(--status-preview-controls-padding, var(--spacing-3) var(--spacing-4))',
                         borderBottom: '1px solid #e2e8f0',
                         display: 'flex',
                         alignItems: 'center',
@@ -400,17 +401,25 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                     }}
                 >
                     {/* Segmented control makes device toggles more scannable */}
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.2rem',
-                        padding: '0.2rem',
-                        borderRadius: '999px',
-                        border: '1px solid #cbd5e1',
-                        background: '#e2e8f0',
-                    }}>
-                        {(['desktop', 'tablet', 'mobile'] as DeviceView[]).map((device) => {
+                    <div
+                        className="status-page-preview-device-toggle"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.2rem',
+                            padding: '0.2rem',
+                            borderRadius: '999px',
+                            border: '1px solid #cbd5e1',
+                            background: '#e2e8f0',
+                        }}
+                    >
+                        {(['mac', 'ipad', 'iphone'] as DeviceView[]).map((device) => {
                             const isActive = deviceView === device;
+                            const deviceIcons: Record<DeviceView, string> = {
+                                mac: '💻',
+                                ipad: '📱',
+                                iphone: '📲',
+                            };
                             return (
                                 <button
                                     key={device}
@@ -429,39 +438,43 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                                             event.currentTarget.style.background = 'transparent';
                                         }
                                     }}
+                                    className={`status-page-preview-device-btn ${isActive ? 'is-active' : ''}`}
                                     style={{
-                                        padding: '0.45rem 0.95rem',
+                                        padding: 'var(--status-preview-device-padding, 0.45rem 0.95rem)',
                                         background: isActive ? '#ffffff' : 'transparent',
                                         border: '1px solid transparent',
                                         borderRadius: '999px',
-                                        fontSize: 'var(--font-size-xs)',
+                                        fontSize: 'var(--status-preview-device-font, var(--font-size-xs))',
                                         fontWeight: isActive ? '700' : '600',
                                         color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                                         cursor: 'pointer',
-                                        textTransform: 'capitalize',
                                         transition: 'all 0.18s ease',
                                         boxShadow: isActive ? '0 1px 2px rgba(15, 23, 42, 0.12)' : 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
                                     }}
                                     title={deviceLabels[device]}
                                 >
-                                    {device}
+                                    <span style={{ fontSize: '1rem' }}>{deviceIcons[device]}</span>
+                                    <span style={{ textTransform: 'capitalize' }}>{device === 'mac' ? 'Mac' : device === 'ipad' ? 'iPad' : 'iPhone'}</span>
                                 </button>
                             );
                         })}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)', background: 'white', border: '1px solid #e5e7eb', borderRadius: 'var(--radius-md)', padding: '2px' }}>
+                    <div className="status-page-preview-zoom" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+                        <div className="status-page-preview-zoom-controls" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)', background: 'white', border: '1px solid #e5e7eb', borderRadius: 'var(--radius-md)', padding: 'var(--status-preview-zoom-padding, 2px)' }}>
                             <button
                                 type="button"
                                 onClick={() => handleZoom(-0.1)}
                                 style={{
-                                    padding: '4px 8px',
+                                    padding: 'var(--status-preview-zoom-button-padding, 4px 8px)',
                                     border: 'none',
                                     background: 'transparent',
                                     cursor: 'pointer',
                                     color: 'var(--text-muted)',
-                                    fontSize: '14px',
+                                    fontSize: 'var(--status-preview-zoom-font, 14px)',
                                 }}
                                 title="Zoom Out"
                             >
@@ -471,11 +484,11 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                                 type="button"
                                 onClick={() => setZoomMode(zoomMode === 'fit' ? 'manual' : 'fit')}
                                 style={{
-                                    padding: '4px 8px',
+                                    padding: 'var(--status-preview-zoom-button-padding, 4px 8px)',
                                     border: 'none',
                                     background: 'transparent',
                                     cursor: 'pointer',
-                                    fontSize: 'var(--font-size-xs)',
+                                    fontSize: 'var(--status-preview-zoom-font, var(--font-size-xs))',
                                     fontWeight: '600',
                                     color: 'var(--text-primary)',
                                     minWidth: '60px',
@@ -488,12 +501,12 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                                 type="button"
                                 onClick={() => handleZoom(0.1)}
                                 style={{
-                                    padding: '4px 8px',
+                                    padding: 'var(--status-preview-zoom-button-padding, 4px 8px)',
                                     border: 'none',
                                     background: 'transparent',
                                     cursor: 'pointer',
                                     color: 'var(--text-muted)',
-                                    fontSize: '14px',
+                                    fontSize: 'var(--status-preview-zoom-font, 14px)',
                                 }}
                                 title="Zoom In"
                             >
@@ -506,31 +519,124 @@ export default function StatusPageLivePreview({ previewData, maxWidth = '1280px'
                 {/* Preview Container Wrapper */}
                 <div
                     ref={containerRef}
+                    className="status-page-preview-canvas"
                     style={{
                         flex: 1,
-                        overflow: 'hidden',
+                        overflow: 'auto',
                         background: '#eef2f7',
                         display: 'flex',
                         position: 'relative',
-                        alignItems: 'flex-start',
+                        alignItems: 'center',
                         justifyContent: 'center',
-                        padding: 'var(--spacing-6)',
+                        padding: 'var(--status-preview-padding, 24px)',
+                        minWidth: 0,
+                        minHeight: 300,
                     }}
                 >
                     <div
+                        className="status-page-preview-device-frame"
                         style={{
                             width: `${Math.round(targetWidth * scale)}px`,
                             minWidth: `${Math.round(targetWidth * scale)}px`,
                             maxWidth: `${Math.round(targetWidth * scale)}px`,
                             height: scaledFrameHeightStyle,
                             overflow: 'hidden',
-                            borderRadius: deviceView === 'mobile' ? '28px' : deviceView === 'tablet' ? '16px' : '10px',
-                            border: deviceView !== 'desktop' ? '8px solid #1f2937' : '1px solid #cbd5e1',
+                            borderRadius: deviceView === 'iphone' ? `${44 * scale}px` : deviceView === 'ipad' ? '18px' : '10px',
+                            border: deviceView === 'iphone' ? `${8 * scale}px solid #1c1c1e` : deviceView === 'ipad' ? '10px solid #1c1c1e' : '1px solid #c0c0c0',
                             background: previewData.branding?.backgroundColor || '#ffffff',
-                            boxShadow: '0 12px 20px rgba(15, 23, 42, 0.12)',
+                            boxShadow: deviceView === 'mac'
+                                ? '0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.1)'
+                                : '0 20px 40px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
                             boxSizing: 'border-box',
+                            position: 'relative',
                         }}
                     >
+                        {/* iPhone Dynamic Island */}
+                        {deviceView === 'iphone' && (
+                            <div style={{
+                                position: 'absolute',
+                                top: `${12 * scale}px`,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: `${126 * scale}px`,
+                                height: `${37 * scale}px`,
+                                background: '#000000',
+                                borderRadius: `${20 * scale}px`,
+                                zIndex: 10,
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                            }} />
+                        )}
+
+                        {/* Mac Safari Browser Chrome */}
+                        {deviceView === 'mac' && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: `${36 * scale}px`,
+                                background: 'linear-gradient(180deg, #e8e8e8 0%, #d4d4d4 100%)',
+                                borderBottom: '1px solid #b0b0b0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: `0 ${12 * scale}px`,
+                                zIndex: 10,
+                                borderRadius: `${10 * scale}px ${10 * scale}px 0 0`,
+                            }}>
+                                {/* Traffic lights */}
+                                <div style={{ display: 'flex', gap: `${6 * scale}px` }}>
+                                    <div style={{ width: `${12 * scale}px`, height: `${12 * scale}px`, borderRadius: '50%', background: '#ff5f57', border: '0.5px solid #e0443e' }} />
+                                    <div style={{ width: `${12 * scale}px`, height: `${12 * scale}px`, borderRadius: '50%', background: '#febc2e', border: '0.5px solid #d9a123' }} />
+                                    <div style={{ width: `${12 * scale}px`, height: `${12 * scale}px`, borderRadius: '50%', background: '#28c840', border: '0.5px solid #1aab29' }} />
+                                </div>
+                                {/* Address bar */}
+                                <div style={{
+                                    flex: 1,
+                                    margin: `0 ${40 * scale}px`,
+                                    height: `${22 * scale}px`,
+                                    background: '#ffffff',
+                                    borderRadius: `${6 * scale}px`,
+                                    border: '1px solid #c0c0c0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: `${11 * scale}px`,
+                                    color: '#666',
+                                }}>
+                                    status.example.com
+                                </div>
+                            </div>
+                        )}
+
+                        {/* iPad Front Camera */}
+                        {deviceView === 'ipad' && (
+                            <>
+                                <div style={{
+                                    position: 'absolute',
+                                    top: `${12 * scale}px`,
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: `${10 * scale}px`,
+                                    height: `${10 * scale}px`,
+                                    background: 'radial-gradient(circle, #1a1a2e 0%, #0a0a0a 70%)',
+                                    borderRadius: '50%',
+                                    zIndex: 10,
+                                    boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.1)',
+                                }} />
+                                {/* Home Indicator */}
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: `${8 * scale}px`,
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: `${140 * scale}px`,
+                                    height: `${5 * scale}px`,
+                                    background: 'rgba(0, 0, 0, 0.3)',
+                                    borderRadius: `${3 * scale}px`,
+                                    zIndex: 10,
+                                }} />
+                            </>
+                        )}
                         <div
                             className="status-page-container"
                             style={{

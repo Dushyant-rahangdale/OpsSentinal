@@ -940,108 +940,65 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
     return (
         <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)', gap: 0, overflow: 'hidden' }}>
-                {/* Header with Preview Toggle */}
-                <div style={{
-                    padding: 'var(--spacing-4) var(--spacing-6)',
-                    borderBottom: '1px solid #e5e7eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'white',
-                    flexShrink: 0,
-                }}>
-                    <div>
-                        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: '700', margin: 0 }}>
-                            Status Page Settings
-                        </h1>
-                        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', margin: 'var(--spacing-1) 0 0 0' }}>
-                            Configure your public status page
-                        </p>
-                    </div>
-                    <Button
-                        type="button"
-                        variant={showPreview ? 'primary' : 'secondary'}
-                        onClick={() => setShowPreview(!showPreview)}
-                    >
-                        {showPreview ? 'Hide Preview' : 'Show Preview'}
-                    </Button>
-                </div>
-
+            <div className="status-page-config" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)', gap: 0, overflow: 'hidden' }}>
                 {/* Top Navigation */}
-                <div style={{
-                    borderBottom: '1px solid #e5e7eb',
-                    background: 'white',
-                    padding: '0 var(--spacing-6)',
-                    display: 'flex',
-                    gap: 'var(--spacing-6)',
-                    overflowX: 'auto',
-                    scrollbarWidth: 'none',
-                    flexShrink: 0,
-                }}>
-                    {sidebarItems.map((item) => {
-                        const ItemComponent = (item as any).link ? 'a' : 'button';
-                        return (
-                            <ItemComponent
-                                key={item.id}
-                                type={!(item as any).link ? "button" : undefined}
-                                href={(item as any).link}
-                                onClick={() => !(item as any).link && setActiveSection(item.id)}
-                                style={{
-                                    appearance: 'none',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    padding: 'var(--spacing-3) 0',
-                                    borderBottom: activeSection === item.id ? '2px solid var(--primary)' : '2px solid transparent',
-                                    color: activeSection === item.id ? 'var(--primary)' : 'var(--text-muted)',
-                                    fontWeight: activeSection === item.id ? '600' : '500',
-                                    fontSize: 'var(--font-size-sm)',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 'var(--spacing-2)',
-                                    transition: 'all 0.2s ease',
-                                    whiteSpace: 'nowrap',
-                                    textDecoration: 'none',
-                                }}
-                            >
-                                {item.label}
-                                {item.badge ? (
-                                    <span style={{
-                                        background: activeSection === item.id ? 'var(--primary)' : '#e5e7eb',
-                                        color: activeSection === item.id ? 'white' : 'var(--text-muted)',
-                                        fontSize: 'var(--font-size-xs)',
-                                        padding: '0.125rem 0.5rem',
-                                        borderRadius: '999px',
-                                        fontWeight: '600',
-                                    }}>
-                                        {item.badge}
-                                    </span>
-                                ) : null}
-                            </ItemComponent>
-                        );
-                    })}
+                <div className="status-page-config-tabs">
+                    <div className="status-page-config-tabs-list">
+                        {sidebarItems.map((item) => {
+                            const ItemComponent = (item as any).link ? 'a' : 'button';
+                            const isActive = activeSection === item.id;
+                            return (
+                                <ItemComponent
+                                    key={item.id}
+                                    type={!(item as any).link ? "button" : undefined}
+                                    href={(item as any).link}
+                                    onClick={() => !(item as any).link && setActiveSection(item.id)}
+                                    className={`status-page-config-tab ${isActive ? 'is-active' : ''}`}
+                                >
+                                    {item.label}
+                                    {item.badge ? (
+                                        <span className={`status-page-config-tab-badge ${isActive ? 'is-active' : ''}`}>
+                                            {item.badge}
+                                        </span>
+                                    ) : null}
+                                </ItemComponent>
+                            );
+                        })}
+                    </div>
+                    <div className="status-page-config-tabs-actions">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setShowPreview(!showPreview)}
+                            className="status-page-config-preview-toggle"
+                        >
+                            {showPreview ? 'Hide Preview' : 'Show Preview'}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Content Area with Optional Preview */}
-                <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                <div className="status-page-config-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                     {/* Settings Content */}
-                    <div style={{
-                        flex: showPreview ? '0 0 50%' : '1',
+                    <div className="status-page-config-settings" style={{
+                        flex: showPreview ? '0 0 58%' : '1',
                         overflowY: 'auto',
                         padding: 'var(--spacing-6)',
                         background: '#f9fafb',
                         transition: 'flex 0.3s ease',
                     }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)', maxWidth: '900px' }}>
+                        <div className="status-page-config-settings-inner" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
                             {/* General Settings */}
                             {activeSection === 'general' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
-                                    <Card>
+                                    <Card hover className="status-page-config-card">
                                         <div style={{ padding: 'var(--spacing-6)' }}>
-                                            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
+                                            <h2 className="status-page-config-card-title">
                                                 Basic Settings
                                             </h2>
+                                            <p className="status-page-config-card-desc">
+                                                Define the identity and presentation name displayed on your public status page.
+                                            </p>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
                                                 <FormField
                                                     type="input"
@@ -1060,7 +1017,19 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                     helperText="Used in email headers (e.g., 'OpsSentinal'). Overrides Status Page Name if set."
                                                     placeholder="e.g. OpsSentinal"
                                                 />
+                                            </div>
+                                        </div>
+                                    </Card>
 
+                                    <Card hover className="status-page-config-card">
+                                        <div style={{ padding: 'var(--spacing-6)' }}>
+                                            <h2 className="status-page-config-card-title">
+                                                Access & Visibility
+                                            </h2>
+                                            <p className="status-page-config-card-desc">
+                                                Control who can access the status page and when it is publicly visible.
+                                            </p>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
                                                 <Switch
                                                     checked={formData.enabled}
                                                     onChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))}
@@ -1080,11 +1049,14 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                         </div>
                                     </Card>
 
-                                    <Card>
+                                    <Card hover className="status-page-config-card">
                                         <div style={{ padding: 'var(--spacing-6)' }}>
-                                            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
+                                            <h2 className="status-page-config-card-title">
                                                 Domain Configuration
                                             </h2>
+                                            <p className="status-page-config-card-desc">
+                                                Configure subdomains and custom domains to host your status page.
+                                            </p>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
                                                 <FormField
                                                     type="input"
@@ -2142,7 +2114,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                             border: '1px solid #c7d2fe',
                                                             fontSize: 'var(--font-size-xs)',
                                                             fontWeight: '600',
-                                                        }}>
+                                                        }} className="status-page-template-active">
                                                             Selected: {selectedTemplate.name}
                                                         </div>
                                                     )}
@@ -2254,7 +2226,10 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                    <div style={{ padding: 'var(--spacing-3)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)', flex: 1 }}>
+                                                                    <div
+                                                                        className="status-page-template-meta"
+                                                                        style={{ padding: 'var(--spacing-3)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)', flex: 1 }}
+                                                                    >
                                                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--spacing-2)' }}>
                                                                             <div style={{ fontWeight: '700', fontSize: 'var(--font-size-sm)' }}>
                                                                                 {template.name}
@@ -2731,7 +2706,10 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             )}
 
                             {/* Save Button */}
-                            <div style={{ display: 'flex', gap: 'var(--spacing-3)', justifyContent: 'flex-end', paddingTop: 'var(--spacing-4)', borderTop: '1px solid #e5e7eb', background: 'white', padding: 'var(--spacing-4)', marginTop: 'var(--spacing-4)', borderRadius: 'var(--radius-md)' }}>
+                            <div
+                                className="status-page-config-actions"
+                                style={{ display: 'flex', gap: 'var(--spacing-3)', justifyContent: 'flex-end', paddingTop: 'var(--spacing-4)', borderTop: '1px solid #e5e7eb', background: 'white', padding: 'var(--spacing-4)', marginTop: 'var(--spacing-4)', borderRadius: 'var(--radius-md)' }}
+                            >
                                 <Button
                                     type="button"
                                     variant="secondary"
@@ -2753,16 +2731,25 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
                     {/* Preview Panel */}
                     {showPreview && (
-                        <div style={{
-                            flex: '0 0 50%',
-                            borderLeft: '1px solid #e5e7eb',
-                            background: 'white',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'hidden',
-                            minWidth: 0, // Allow flex item to shrink below content size
-                        }}>
-                            <StatusPageLivePreview previewData={previewData} maxWidth={previewMaxWidth} />
+                        <div
+                            className="status-page-config-preview"
+                            style={{
+                                flex: '0 0 42%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                                minWidth: 0, // Allow flex item to shrink below content size
+                            }}
+                        >
+                            <div className="status-page-preview-body">
+                                <div className="status-page-preview-header">
+                                    <span>Live Preview</span>
+                                    <span className="status-page-preview-chip">Live</span>
+                                </div>
+                                <div className="status-page-preview-frame">
+                                    <StatusPageLivePreview previewData={previewData} maxWidth={previewMaxWidth} />
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
