@@ -20,7 +20,7 @@ export default function StatusPageEmailConfig({ statusPageId, currentProvider }:
             .then(res => res.json())
             .then(data => {
                 const emailProviders = data.providers
-                    ?.filter((p: any) => ['resend', 'sendgrid', 'smtp'].includes(p.provider) && p.enabled)
+                    ?.filter((p: any) => ['resend', 'sendgrid', 'smtp', 'ses'].includes(p.provider) && p.enabled)
                     .map((p: any) => p.provider) || [];
                 setAvailableProviders(emailProviders);
             })
@@ -58,6 +58,7 @@ export default function StatusPageEmailConfig({ statusPageId, currentProvider }:
         { value: 'resend', label: 'Resend', description: 'Use Resend for subscription emails' },
         { value: 'sendgrid', label: 'SendGrid', description: 'Use SendGrid for subscription emails' },
         { value: 'smtp', label: 'SMTP', description: 'Use SMTP for subscription emails' },
+        { value: 'ses', label: 'Amazon SES', description: 'Use Amazon SES for subscription emails' },
     ];
 
     return (

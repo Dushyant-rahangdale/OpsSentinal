@@ -39,7 +39,7 @@ variable "project_name" {
 
 variable "instance_type" {
   description = "EC2 instance type"
-  default     = "t3.small"
+  default     = "t3.micro"
 }
 
 variable "ssh_key_name" {
@@ -56,4 +56,16 @@ variable "your_ip" {
 variable "app_port" {
   description = "Port the application runs on inside docker"
   default     = 3000
+}
+
+variable "origin_cert" {
+  description = "Cloudflare Origin CA Certificate"
+  type        = string
+  sensitive   = true
+}
+
+variable "origin_key" {
+  description = "Cloudflare Origin CA Private Key"
+  type        = string
+  sensitive   = true
 }

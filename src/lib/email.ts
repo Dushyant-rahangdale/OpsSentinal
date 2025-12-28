@@ -271,6 +271,69 @@ export async function sendEmail(
             }
         }
 
+        if (emailConfig.provider === 'ses') {
+            try {
+                // Use runtime require to avoid build-time dependency
+                const requireFunc = eval('require') as (id: string) => unknown;
+                const { SESClient, SendEmailCommand } = requireFunc('@aws-sdk/client-ses') as {
+                    SESClient: new (config: Record<string, unknown>) => {
+                        send: (command: unknown) => Promise<{ MessageId?: string }>;
+                    };
+                    SendEmailCommand: new (args: Record<string, unknown>) => unknown;
+                };
+
+                // Validate required SES config
+                if (!emailConfig.apiKey || !emailConfig.host || !emailConfig.fromEmail) {
+                    // In our case, apiKey is secretAccessKey and host is region
+                    return { success: false, error: 'Amazon SES configuration incomplete. Please configure Access Key ID, Secret Access Key, and Region in Settings → System → Notification Providers' };
+                }
+
+                // Get access key ID from config
+                const sesClient = new SESClient({
+                    region: emailConfig.host,
+                    credentials: {
+                        accessKeyId: (emailConfig as any).accessKeyId || process.env.AWS_ACCESS_KEY_ID || '',
+                        secretAccessKey: emailConfig.apiKey || '',
+                    },
+                });
+
+                const command = new SendEmailCommand({
+                    Destination: {
+                        ToAddresses: [options.to],
+                    },
+                    Message: {
+                        Body: {
+                            Html: {
+                                Charset: 'UTF-8',
+                                Data: options.html,
+                            },
+                            Text: {
+                                Charset: 'UTF-8',
+                                Data: options.text || options.html.replace(/<[^>]*>/g, ''),
+                            },
+                        },
+                        Subject: {
+                            Charset: 'UTF-8',
+                            Data: options.subject,
+                        },
+                    },
+                    Source: emailConfig.fromEmail,
+                });
+
+                const result = await sesClient.send(command);
+                console.log('Email sent via Amazon SES:', { to: options.to, messageId: result.MessageId });
+                return { success: true };
+            } catch (error: unknown) {
+                const err = error as { code?: string; message?: string };
+                if (err.code === 'MODULE_NOT_FOUND') {
+                    console.error('AWS SES SDK package not installed. Install with: npm install @aws-sdk/client-ses');
+                    return { success: false, error: 'AWS SES SDK package not installed. Install with: npm install @aws-sdk/client-ses' };
+                }
+                console.error('SES send error:', error);
+                return { success: false, error: err.message || 'SES send error' };
+            }
+        }
+
         // No provider configured
         return { success: false, error: 'No email provider configured' };
     } catch (error: unknown) {

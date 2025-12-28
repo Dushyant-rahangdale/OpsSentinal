@@ -99,6 +99,17 @@ export default function SystemNotificationSettings({ providers }: Props) {
             ]
         },
         {
+            key: 'ses',
+            name: 'Amazon SES (Email)',
+            description: 'Send emails via Amazon Simple Email Service',
+            fields: [
+                { name: 'accessKeyId', label: 'Access Key ID', type: 'text', required: true, placeholder: 'AKIAXXXXXXXXXXXXXXXX' },
+                { name: 'secretAccessKey', label: 'Secret Access Key', type: 'password', required: true, placeholder: 'Your AWS secret access key' },
+                { name: 'region', label: 'AWS Region', type: 'text', required: true, placeholder: 'us-east-1' },
+                { name: 'fromEmail', label: 'From Email', type: 'email', required: true, placeholder: 'noreply@OpsSentinal.com' }
+            ]
+        },
+        {
             key: 'firebase',
             name: 'Firebase (Push)',
             description: 'Send push notifications via Firebase Cloud Messaging',
