@@ -285,7 +285,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         { id: 'announcements', label: 'Announcements', icon: '📢', badge: announcements.length },
         { id: 'integrations', label: 'Integrations', icon: '🔌' },
         { id: 'subscribers', label: 'Subscribers', icon: '👥' },
-        { id: 'customization', label: 'Custom CSS', icon: '💅' },
+        { id: 'customization', label: 'Custom CSS', icon: '🖌️' },
         { id: 'advanced', label: 'Advanced', icon: '⚡' },
     ];
 
