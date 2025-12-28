@@ -18,7 +18,7 @@ cd /home/ec2-user/app
 cat <<EOT > docker-compose.yml
 services:
   app:
-    image: ghcr.io/dushyant-rahangdale/opssentinal:latest
+    image: ghcr.io/dushyant-rahangdale/opssentinal-test:latest
     container_name: opssentinal
     restart: always
     ports:
@@ -68,6 +68,10 @@ SCRIPT
 
 chmod +x /home/ec2-user/app/start.sh
 chown ec2-user:ec2-user /home/ec2-user/app/start.sh
+
+# Attempt to pull and run the public application (if available)
+echo "Attempting initial deployment..."
+docker pull ghcr.io/dushyant-rahangdale/opssentinal-test:latest || echo "Image pull failed. Is it private? Please SSH and login."
 
 # Run it now
 /home/ec2-user/app/start.sh
