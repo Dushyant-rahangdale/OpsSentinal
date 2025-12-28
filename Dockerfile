@@ -4,6 +4,15 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
+# Make npm installs more resilient in CI/buildx (esp. arm64)
+ENV NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_FACTOR=2 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
+    NPM_CONFIG_NETWORK_TIMEOUT=600000 \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false
+
 # Install security updates and required packages
 RUN apk update && apk upgrade && \
     apk add --no-cache libc6-compat openssl openssl-dev && \
@@ -16,13 +25,22 @@ COPY prisma ./prisma/
 # Install production dependencies including optional dependencies
 # Optional dependencies (twilio, @sendgrid/mail, resend, nodemailer, firebase-admin, onesignal-node, @aws-sdk/client-sns)
 # are needed for notification features. npm ci --only=production installs optionalDependencies by default.
-RUN npm ci --only=production --ignore-scripts --legacy-peer-deps && \
+RUN npm ci --only=production --ignore-scripts --legacy-peer-deps --prefer-offline --no-audit --no-fund && \
     npm cache clean --force && \
     rm -rf /tmp/*
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Make npm installs more resilient in CI/buildx (esp. arm64)
+ENV NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_FACTOR=2 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
+    NPM_CONFIG_NETWORK_TIMEOUT=600000 \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false
 
 # Install security updates
 RUN apk update && apk upgrade && \
@@ -34,7 +52,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies (including dev)
-RUN npm ci --ignore-scripts --legacy-peer-deps && \
+RUN npm ci --ignore-scripts --legacy-peer-deps --prefer-offline --no-audit --no-fund && \
     npm cache clean --force
 
 # Copy application source
