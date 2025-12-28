@@ -18,11 +18,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # GHCR image names must be lowercase; repo is "OpsGuard" (mixed case), so use the npm package name.
+  # GHCR image names must be lowercase; use the app name (lowercased).
   # "test" channel image (always updated from main)
-  IMAGE_NAME_TEST: ghcr.io/${{ github.repository_owner }}/opsguard-test
+  IMAGE_NAME_TEST: ghcr.io/${{ github.repository_owner }}/opssentinal-test
   # "release" channel image (published only from version tags)
-  IMAGE_NAME_RELEASE: ghcr.io/${{ github.repository_owner }}/opsguard
+  IMAGE_NAME_RELEASE: ghcr.io/${{ github.repository_owner }}/opssentinal
 
 jobs:
   build:
@@ -72,7 +72,7 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME_RELEASE }}
           tags: |
-            # Publishes: opsguard:latest + version tags from git tags (e.g. v1.2.3)
+            # Publishes: opssentinal:latest + version tags from git tags (e.g. v1.2.3)
             type=raw,value=latest
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
