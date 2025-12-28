@@ -8,12 +8,11 @@
  * 4. Notifications sent to users based on preferences/step config
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import prisma from '../../src/lib/prisma';
 import { sendServiceNotifications } from '../../src/lib/service-notifications';
 import { executeEscalation } from '../../src/lib/escalation';
-import * as slack from '../../src/lib/slack';
-import * as email from '../../src/lib/email';
+// Note: we assert via prisma.notification rows instead of spying on imported bindings.
 
 describe('Notification Flow Integration Tests', () => {
   beforeEach(async () => {
@@ -88,23 +87,25 @@ describe('Notification Flow Integration Tests', () => {
       },
     });
 
-    // Mock notifications
-    const slackSpy = vi.spyOn(slack, 'notifySlackForIncident');
-    slackSpy.mockResolvedValue({ success: true });
-
-    const emailSpy = vi.spyOn(email, 'sendIncidentEmail');
-    emailSpy.mockResolvedValue({ success: true });
-
     // 1. Send service notifications
     const serviceResult = await sendServiceNotifications(incident.id, 'triggered');
     expect(serviceResult.success).toBe(true);
-    expect(slackSpy).toHaveBeenCalled();
-    expect(emailSpy).not.toHaveBeenCalled();
+    // Service notifications are isolated from escalation notifications (no prisma.notification rows)
+    const beforeEscalation = await prisma.notification.count({
+      where: { incidentId: incident.id },
+    });
+    expect(beforeEscalation).toBe(0);
 
     // 2. Execute escalation (separate from service notifications)
     const escalationResult = await executeEscalation(incident.id, 0);
     expect(escalationResult.escalated).toBe(true);
-    expect(emailSpy).toHaveBeenCalled(); // Escalation uses user preferences
+
+    // Escalation should create at least one EMAIL notification record
+    const notifications = await prisma.notification.findMany({
+      where: { incidentId: incident.id },
+    });
+    expect(notifications.length).toBeGreaterThan(0);
+    expect(notifications.some(n => n.channel === 'EMAIL' && n.userId === user.id)).toBe(true);
   });
 
   it('should handle team escalation with notifyOnlyTeamLead option', async () => {
@@ -166,14 +167,17 @@ describe('Notification Flow Integration Tests', () => {
       },
     });
 
-    const emailSpy = vi.spyOn(email, 'sendIncidentEmail');
-    emailSpy.mockResolvedValue({ success: true });
-
     const result = await executeEscalation(incident.id, 0);
 
     expect(result.escalated).toBe(true);
     expect(result.targetCount).toBe(1); // Only team lead
-    expect(emailSpy).toHaveBeenCalledTimes(1); // Only one notification (to lead)
+
+    const notifications = await prisma.notification.findMany({
+      where: { incidentId: incident.id },
+    });
+    expect(notifications.length).toBe(1);
+    expect(notifications[0].channel).toBe('EMAIL');
+    expect(notifications[0].userId).toBe(teamLead.id);
   });
 
   it('should handle schedule escalation with multiple active layers', async () => {
@@ -250,14 +254,19 @@ describe('Notification Flow Integration Tests', () => {
       },
     });
 
-    const emailSpy = vi.spyOn(email, 'sendIncidentEmail');
-    emailSpy.mockResolvedValue({ success: true });
-
     const result = await executeEscalation(incident.id, 0);
 
     expect(result.escalated).toBe(true);
     expect(result.targetCount).toBeGreaterThanOrEqual(1); // At least one user
-    // Both users from different layers should be notified
-    expect(emailSpy).toHaveBeenCalled();
+
+    const notifications = await prisma.notification.findMany({
+      where: { incidentId: incident.id },
+    });
+    expect(notifications.length).toBeGreaterThanOrEqual(1);
+    expect(notifications.every(n => n.channel === 'EMAIL')).toBe(true);
+    // We expect all active-layer users to receive notifications
+    const notifiedUserIds = new Set(notifications.map(n => n.userId));
+    expect(notifiedUserIds.has(user1.id)).toBe(true);
+    expect(notifiedUserIds.has(user2.id)).toBe(true);
   });
 });

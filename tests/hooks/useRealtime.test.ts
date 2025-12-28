@@ -1,22 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useRealtime } from '@/hooks/useRealtime';
+
+type MockEventSource = {
+  onopen: ((event: Event) => void) | null;
+  onmessage: ((event: MessageEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  close: ReturnType<typeof vi.fn>;
+};
+
+function getMockEventSourceInstance(index = 0): MockEventSource {
+  const eventSourceMock = global.EventSource as unknown as {
+    mock: { results: Array<{ value: MockEventSource }> };
+  };
+  return eventSourceMock.mock.results[index].value;
+}
 
 // Mock EventSource
 global.EventSource = vi.fn().mockImplementation(() => {
-  const mockEventSource = {
+  const mockEventSource: MockEventSource = {
     onopen: null as ((event: Event) => void) | null,
     onmessage: null as ((event: MessageEvent) => void) | null,
     onerror: null as ((event: Event) => void) | null,
     close: vi.fn(),
   };
-
-  // Simulate connection after a short delay
-  setTimeout(() => {
-    if (mockEventSource.onopen) {
-      mockEventSource.onopen(new Event('open'));
-    }
-  }, 0);
 
   return mockEventSource;
 });
@@ -40,7 +47,11 @@ describe('useRealtime', () => {
 
   it('should handle connection open', async () => {
     const { result } = renderHook(() => useRealtime());
-    
+    const eventSourceInstance = getMockEventSourceInstance();
+    act(() => {
+      eventSourceInstance.onopen?.(new Event('open'));
+    });
+
     await waitFor(() => {
       expect(result.current.isConnected).toBe(true);
     });
@@ -48,10 +59,10 @@ describe('useRealtime', () => {
 
   it('should handle metrics update', async () => {
     const { result } = renderHook(() => useRealtime());
-    
+
     // Get the EventSource instance
-    const eventSourceInstance = (global.EventSource as any).mock.results[0].value;
-    
+    const eventSourceInstance = getMockEventSourceInstance();
+
     // Simulate metrics update
     const metricsEvent = new MessageEvent('message', {
       data: JSON.stringify({
@@ -60,10 +71,10 @@ describe('useRealtime', () => {
           open: 5,
           acknowledged: 3,
           resolved24h: 10,
-          highUrgency: 2
+          highUrgency: 2,
         },
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      }),
     });
 
     await waitFor(() => {
@@ -77,22 +88,22 @@ describe('useRealtime', () => {
         open: 5,
         acknowledged: 3,
         resolved24h: 10,
-        highUrgency: 2
+        highUrgency: 2,
       });
     });
   });
 
   it('should handle incidents update', async () => {
     const { result } = renderHook(() => useRealtime());
-    
-    const eventSourceInstance = (global.EventSource as any).mock.results[0].value;
-    
+
+    const eventSourceInstance = getMockEventSourceInstance();
+
     const incidentsEvent = new MessageEvent('message', {
       data: JSON.stringify({
         type: 'incidents_updated',
         incidents: [{ id: '1', title: 'Test Incident' }],
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      }),
     });
 
     await waitFor(() => {
@@ -108,27 +119,25 @@ describe('useRealtime', () => {
 
   it('should handle connection errors', async () => {
     const { result } = renderHook(() => useRealtime());
-    
-    const eventSourceInstance = (global.EventSource as any).mock.results[0].value;
-    
+
+    const eventSourceInstance = getMockEventSourceInstance();
+
     // Simulate error
-    await waitFor(() => {
-      if (eventSourceInstance.onerror) {
-        eventSourceInstance.onerror(new Event('error'));
-      }
+    act(() => {
+      eventSourceInstance.onerror?.(new Event('error'));
     });
 
-    await waitFor(() => {
-      expect(result.current.isConnected).toBe(false);
-    });
+    // After an error, hook marks disconnected and schedules a reconnect.
+    await waitFor(() => expect(result.current.isConnected).toBe(false));
+    expect(eventSourceInstance.close).toHaveBeenCalled();
   });
 
   it('should cleanup on unmount', () => {
     const { unmount } = renderHook(() => useRealtime());
-    const eventSourceInstance = (global.EventSource as any).mock.results[0].value;
-    
+    const eventSourceInstance = getMockEventSourceInstance();
+
     unmount();
-    
+
     expect(eventSourceInstance.close).toHaveBeenCalled();
   });
 });
