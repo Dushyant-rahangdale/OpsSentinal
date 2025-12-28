@@ -29,6 +29,7 @@ variable "nextauth_secret" {
 variable "nextauth_url" {
   description = "Full URL of your application (e.g. https://status.example.com)"
   type        = string
+  default     = "https://opssentinal.com"
 }
 
 variable "project_name" {
