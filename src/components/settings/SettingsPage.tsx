@@ -26,7 +26,7 @@ export default async function SettingsPage({
     const permissions = currentPageId ? await getUserPermissions() : null;
 
     return (
-        <div className="settings-page-v2">
+        <div className="settings-page-v2" data-settings-page={currentPageId || 'overview'}>
             {currentPageId && permissions && (
                 <SettingsPageHeader
                     currentPageId={currentPageId}

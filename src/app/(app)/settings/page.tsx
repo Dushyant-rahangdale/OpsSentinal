@@ -25,18 +25,20 @@ export default async function SettingsOverviewPage() {
             <SettingsSectionCard
                 title="Search settings"
                 description="Quickly jump to the page you need."
+                className="settings-section--overview"
             >
                 <SettingsSearch items={SETTINGS_NAV_ITEMS} placeholder="Search settings, integrations, billing..." />
                 <div className="settings-quick-links">
                     {popularLinks.map((item) => {
                         const disabled = !canAccess(item);
+                        const quickLinkClass = `settings-quick-link settings-quick-link--${item.id}`;
                         return disabled ? (
-                            <div key={item.id} className="settings-quick-link disabled">
+                            <div key={item.id} className={`${quickLinkClass} disabled`.trim()}>
                                 <span>{item.label}</span>
                                 <small>Restricted</small>
                             </div>
                         ) : (
-                            <Link key={item.id} href={item.href} className="settings-quick-link">
+                            <Link key={item.id} href={item.href} className={quickLinkClass}>
                                 <span>{item.label}</span>
                                 <small>{item.description}</small>
                             </Link>
@@ -50,14 +52,16 @@ export default async function SettingsOverviewPage() {
                     key={section.id}
                     title={section.label}
                     description="Quick access to frequently used configuration areas."
+                    className={`settings-section--${section.id}`}
                 >
-                    <div className="settings-card-grid">
+                    <div className={`settings-card-grid settings-card-grid--${section.id}`.trim()}>
                         {section.items.map((item) => {
                             const disabled = !canAccess(item);
+                            const cardClass = `settings-card-v2 settings-card--${section.id}`;
 
                             if (disabled) {
                                 return (
-                                    <div key={item.id} className="settings-card-v2 disabled">
+                                    <div key={item.id} className={`${cardClass} disabled`.trim()}>
                                         <div>
                                             <h3>{item.label}</h3>
                                             <p>{item.description}</p>
@@ -70,7 +74,7 @@ export default async function SettingsOverviewPage() {
                             }
 
                             return (
-                                <Link key={item.id} href={item.href} className="settings-card-v2">
+                                <Link key={item.id} href={item.href} className={cardClass}>
                                     <div>
                                         <h3>{item.label}</h3>
                                         <p>{item.description}</p>

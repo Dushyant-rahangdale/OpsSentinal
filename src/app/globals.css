@@ -11527,6 +11527,11 @@ span:hover>.info-tooltip {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-6);
+  padding: clamp(1rem, 2vw, 2rem);
+  /* UI: full-width, free-flowing layout with responsive breathing room */
+  --settings-accent: var(--primary);
+  --settings-accent-2: var(--primary-hover);
+  --settings-accent-soft: rgba(37, 99, 235, 0.12);
 }
 
 .settings-page-content {
@@ -11541,23 +11546,35 @@ span:hover>.info-tooltip {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-3);
-  padding: var(--spacing-5);
-  background: var(--bg-secondary);
+  padding: clamp(1.25rem, 2vw, 1.75rem);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: calc(var(--radius-lg) + 2px);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  position: relative;
+  overflow: visible;
+  z-index: 2;
+  /* UI: clearer hierarchy with soft surface separation */
+}
+
+.settings-page-header::before {
+  display: none;
 }
 
 .settings-page-header h1 {
   font-size: clamp(1.5rem, 3vw, 2.25rem);
   font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
   margin: 0;
+  line-height: 1.1;
+  /* UI: stronger heading presence */
 }
 
 .settings-page-header p {
   margin-top: var(--spacing-2);
-  color: var(--text-secondary);
-  max-width: 38rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  /* UI: readable description spacing */
 }
 
 .settings-learn-more {
@@ -11567,8 +11584,8 @@ span:hover>.info-tooltip {
   text-decoration: none;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  padding: 0.4rem 0.9rem;
-  background: #fff;
+  padding: 0.45rem 1rem;
+  background: #ffffff;
   transition: var(--transition-base) var(--ease-out);
 }
 
@@ -11580,12 +11597,20 @@ span:hover>.info-tooltip {
 .settings-section-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
-  padding: var(--spacing-5);
+  border-radius: calc(var(--radius-lg) + 2px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  padding: clamp(1.25rem, 2vw, 1.75rem);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  /* UI: card grouping with subtle depth */
+}
+
+.settings-section-card::before {
+  display: none;
 }
 
 .settings-section-card-header {
@@ -11593,17 +11618,20 @@ span:hover>.info-tooltip {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--spacing-3);
+  align-items: flex-start;
 }
 
 .settings-section-card-header h2 {
   font-size: var(--font-size-lg);
   margin-bottom: var(--spacing-1);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
 }
 
 .settings-section-card-header p {
   color: var(--text-secondary);
   margin: 0;
-  max-width: 42rem;
+  line-height: 1.6;
 }
 
 .settings-section-card-body {
@@ -11622,20 +11650,23 @@ span:hover>.info-tooltip {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   gap: var(--spacing-4);
-  padding: var(--spacing-3);
+  padding: clamp(0.9rem, 2vw, 1.25rem);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--gradient-surface);
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  /* UI: consistent row structure and scan-ability */
 }
 
 .settings-row-label h3 {
   font-size: var(--font-size-base);
   margin-bottom: var(--spacing-1);
+  line-height: 1.3;
 }
 
 .settings-row-label p {
   color: var(--text-secondary);
   margin: 0;
+  line-height: 1.5;
 }
 
 .settings-row-control {
@@ -11653,6 +11684,16 @@ span:hover>.info-tooltip {
   padding: 0.6rem 0.75rem;
   font-size: var(--font-size-sm);
   background: #fff;
+}
+
+@media (max-width: 900px) {
+  .settings-page-v2 {
+    width: 100%;
+  }
+
+  .settings-row-v2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-input-readonly {
@@ -11771,29 +11812,33 @@ span:hover>.info-tooltip {
 
 .settings-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--spacing-4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(1rem, 2.5vw, 2rem);
+  /* UI: more spacious cards for easier scanning */
 }
 
 .settings-card-v2 {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-4);
+  border-radius: calc(var(--radius-md) + 2px);
+  padding: clamp(0.9rem, 2vw, 1.4rem);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--spacing-3);
   text-decoration: none;
   color: inherit;
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   transition: var(--transition-base) var(--ease-out);
+  /* UI: calmer enterprise card surface */
 }
 
 .settings-card-v2:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
   border-color: var(--border-hover);
   transform: translateY(-2px);
 }
+
+
 
 .settings-card-v2.disabled {
   opacity: 0.6;
@@ -11804,11 +11849,13 @@ span:hover>.info-tooltip {
 .settings-card-v2 h3 {
   font-size: var(--font-size-base);
   margin-bottom: var(--spacing-1);
+  letter-spacing: -0.01em;
 }
 
 .settings-card-v2 p {
   margin: 0;
   color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .settings-card-badge {
@@ -11819,20 +11866,120 @@ span:hover>.info-tooltip {
 
 .settings-quick-links {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--spacing-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(0.8rem, 2vw, 1.5rem);
+  /* UI: more spacious quick-link density */
 }
 
 .settings-quick-link {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-3);
+  border-radius: calc(var(--radius-md) + 2px);
+  padding: clamp(0.75rem, 1.8vw, 1.1rem);
   text-decoration: none;
   color: inherit;
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.3rem;
+  transition: var(--transition-base) var(--ease-out);
+  /* UI: softer quick-link cards */
+}
+
+.settings-quick-link:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+
+
+/* UI: per-page accents for sub-pages */
+.settings-page-v2[data-settings-page="profile"],
+.settings-page-v2[data-settings-page="preferences"],
+.settings-page-v2[data-settings-page="security"] {
+  --settings-accent: #2563eb;
+  --settings-accent-2: #1d4ed8;
+  --settings-accent-soft: rgba(37, 99, 235, 0.12);
+}
+
+.settings-page-v2[data-settings-page="workspace"],
+.settings-page-v2[data-settings-page="custom-fields"],
+.settings-page-v2[data-settings-page="status-page"],
+.settings-page-v2[data-settings-page="system"],
+.settings-page-v2[data-settings-page="notifications-admin"],
+.settings-page-v2[data-settings-page="audit-logs"] {
+  --settings-accent: #0ea5e9;
+  --settings-accent-2: #0284c7;
+  --settings-accent-soft: rgba(14, 165, 233, 0.12);
+}
+
+.settings-page-v2[data-settings-page="notification-history"] {
+  --settings-accent: #f59e0b;
+  --settings-accent-2: #d97706;
+  --settings-accent-soft: rgba(245, 158, 11, 0.16);
+}
+
+.settings-page-v2[data-settings-page="integrations"],
+.settings-page-v2[data-settings-page="slack"] {
+  --settings-accent: #7c3aed;
+  --settings-accent-2: #6d28d9;
+  --settings-accent-soft: rgba(124, 58, 237, 0.14);
+}
+
+.settings-page-v2[data-settings-page="api-keys"],
+.settings-page-v2[data-settings-page="search-presets"] {
+  --settings-accent: #0f172a;
+  --settings-accent-2: #334155;
+  --settings-accent-soft: rgba(15, 23, 42, 0.14);
+}
+
+.settings-page-v2[data-settings-page="billing"] {
+  --settings-accent: #16a34a;
+  --settings-accent-2: #15803d;
+  --settings-accent-soft: rgba(22, 163, 74, 0.14);
+}
+
+/* UI: overview section accents */
+.settings-section--account {
+  --settings-accent: #2563eb;
+  --settings-accent-2: #1d4ed8;
+  --settings-accent-soft: rgba(37, 99, 235, 0.12);
+}
+
+.settings-section--workspace {
+  --settings-accent: #0ea5e9;
+  --settings-accent-2: #0284c7;
+  --settings-accent-soft: rgba(14, 165, 233, 0.12);
+}
+
+.settings-section--alerts {
+  --settings-accent: #f59e0b;
+  --settings-accent-2: #d97706;
+  --settings-accent-soft: rgba(245, 158, 11, 0.16);
+}
+
+.settings-section--integrations {
+  --settings-accent: #7c3aed;
+  --settings-accent-2: #6d28d9;
+  --settings-accent-soft: rgba(124, 58, 237, 0.14);
+}
+
+.settings-section--developer {
+  --settings-accent: #0f172a;
+  --settings-accent-2: #334155;
+  --settings-accent-soft: rgba(15, 23, 42, 0.14);
+}
+
+.settings-section--billing {
+  --settings-accent: #16a34a;
+  --settings-accent-2: #15803d;
+  --settings-accent-soft: rgba(22, 163, 74, 0.14);
+}
+
+.settings-section--overview {
+  --settings-accent: #64748b;
+  --settings-accent-2: #475569;
+  --settings-accent-soft: rgba(100, 116, 139, 0.16);
 }
 
 .settings-quick-link.disabled {
@@ -13268,6 +13415,7 @@ span:hover>.info-tooltip {
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+
 /* Theme Toggle (Topbar) */
 .theme-toggle {
   display: flex;
@@ -13957,6 +14105,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
     gap: 0.75rem !important;
   }
 }
+
 /* ========================================
    ENHANCED SETTINGS FORM STYLES  
    ======================================== */
@@ -14052,7 +14201,8 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 .settings-row-control input[type="email"],
 .settings-row-control input[type="tel"],
 .settings-row-control select {
-  max-width: 400px;
+  max-width: 100%;
+  /* UI: allow controls to stretch on wide screens */
 }
 
 /* Fix phone number inputs that appear after toggles */
@@ -14061,7 +14211,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 }
 
 /* Better spacing for form controls stacked vertically */
-.settings-row-control > * + * {
+.settings-row-control>*+* {
   margin-top: 0;
 }
 
@@ -14074,33 +14224,36 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 .settings-row-control input:not([type="checkbox"]):not([type="radio"]),
 .settings-row-control select,
 .settings-row-control textarea {
-  max-width: 480px;
+  max-width: 100%;
   width: 100%;
+  /* UI: full-width controls for better readability */
 }
 
 /* Consistent vertical rhythm between settings rows */
-.settings-form-stack > .settings-row-v2 {
+.settings-form-stack>.settings-row-v2 {
   margin-bottom: var(--spacing-6);
 }
 
-.settings-form-stack > .settings-row-v2:last-child {
+.settings-form-stack>.settings-row-v2:last-child {
   margin-bottom: 0;
 }
 
 /* Enhanced section card styling */
 .settings-section-card {
-  border: 1px solid var(--color-neutral-200);
-  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  border-radius: calc(var(--radius-lg) + 2px);
   padding: var(--spacing-6);
   margin-bottom: var(--spacing-5);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s var(--ease-out);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 0.2s var(--ease-out), transform 0.2s var(--ease-out);
 }
 
 .settings-section-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
 }
+
 
 /* Enhanced sticky action bar */
 .settings-action-bar {
@@ -14137,13 +14290,13 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 }
 
 /* Better section spacing */
-.settings-section-card + .settings-section-card {
+.settings-section-card+.settings-section-card {
   margin-top: var(--spacing-5);
 }
 
 /* Improved section card headers */
-.settings-section-card > h2:first-child,
-.settings-section-card > h3:first-child {
+.settings-section-card>h2:first-child,
+.settings-section-card>h3:first-child {
   margin-top: 0;
   margin-bottom: var(--spacing-4);
   font-weight: var(--font-weight-semibold);
@@ -14151,7 +14304,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   font-size: var(--font-size-lg);
 }
 
-.settings-section-card > p:first-of-type {
+.settings-section-card>p:first-of-type {
   margin-top: 0;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
@@ -14369,7 +14522,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   font-weight: var(--font-weight-normal);
 }
 
-.settings-scope-pill input[type="checkbox"]:checked ~ span strong {
+.settings-scope-pill input[type="checkbox"]:checked~span strong {
   color: var(--primary);
 }
 
@@ -14572,7 +14725,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 /* Add icon before empty state title */
 .settings-empty-state h3::before {
   content: "";
-  display: block;  
+  display: block;
   font-size: 2.5rem;
   margin-bottom: var(--spacing-3);
   opacity: 0.6;

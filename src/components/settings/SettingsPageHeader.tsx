@@ -68,7 +68,7 @@ export default function SettingsPageHeader({ currentPageId, isAdmin = false, isR
     };
 
     return (
-        <div className="settings-page-header">
+        <div className="settings-page-header settings-page-header-switcher">
             <div className="settings-page-header-nav">
                 <div className="settings-breadcrumb">
                     <span className="settings-breadcrumb-home">Settings</span>
