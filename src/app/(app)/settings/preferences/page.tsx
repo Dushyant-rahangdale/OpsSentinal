@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import PreferencesForm from '@/components/settings/PreferencesForm';
 import NotificationPreferencesForm from '@/components/settings/NotificationPreferencesForm';
@@ -7,7 +7,7 @@ import SettingsPage from '@/components/settings/SettingsPage';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
 
 export default async function PreferencesSettingsPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const email = session?.user?.email ?? null;
     const user = email
         ? await prisma.user.findUnique({

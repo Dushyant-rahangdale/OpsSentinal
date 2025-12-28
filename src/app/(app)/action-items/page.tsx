@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
@@ -19,7 +19,7 @@ export default async function ActionItemsPage({
         view?: 'board' | 'list';
     }>;
 }) {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session) {
         redirect('/login');
     }

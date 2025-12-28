@@ -10,7 +10,7 @@ import PieChart from '@/components/analytics/PieChart';
 import GaugeChart from '@/components/analytics/GaugeChart';
 import FilterChips from '@/components/analytics/FilterChips';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 
 const formatMinutes = (ms: number | null) => (ms === null ? '--' : `${(ms / 1000 / 60).toFixed(1)}m`);
@@ -107,7 +107,7 @@ const allowedWindows = new Set([1, 3, 7, 14, 30, 60, 90]);
 
 export default async function AnalyticsPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
     // Get user timezone for date formatting
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const email = session?.user?.email ?? null;
     const user = email
         ? await prisma.user.findUnique({

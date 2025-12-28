@@ -5,7 +5,7 @@ import { deleteTemplate, getAllTemplates } from '../template-actions';
 import { revalidatePath } from 'next/cache';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 
 export const revalidate = 30;
@@ -17,7 +17,7 @@ export default async function TemplatesPage() {
     const templates = await getAllTemplates(permissions.id);
     
     // Get user timezone for date formatting
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const email = session?.user?.email ?? null;
     const user = email
         ? await prisma.user.findUnique({

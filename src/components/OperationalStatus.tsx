@@ -11,9 +11,7 @@ export default function OperationalStatus({ tone, label, detail }: Props) {
     
     return (
         <div className={`ops-status-pill ${tone}`} title={detail}>
-            <span className={`ops-status-icon ${tone}`} aria-hidden="true">
-                <span className={`ops-status-dot ${tone}`} />
-            </span>
+            <span className={`ops-status-dot ${tone}`} aria-hidden="true" />
             <span className="ops-status-content">
                 <span className="ops-status-pill-text">{label}</span>
                 <span className="ops-status-detail">{detail}</span>

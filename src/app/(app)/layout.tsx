@@ -1,21 +1,19 @@
 import prisma from '@/lib/prisma';
 import OperationalStatus from '@/components/OperationalStatus';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 import Sidebar from '@/components/Sidebar';
 import TopbarUserMenu from '@/components/TopbarUserMenu';
 import SidebarSearch from '@/components/SidebarSearch';
 import QuickActions from '@/components/QuickActions';
-import TopbarClock from '@/components/TopbarClock';
 import TopbarNotifications from '@/components/TopbarNotifications';
 import TopbarBreadcrumbs from '@/components/TopbarBreadcrumbs';
 import GlobalKeyboardHandlerWrapper from '@/components/GlobalKeyboardHandlerWrapper';
 import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
-import ThemeToggle from '@/components/ThemeToggle';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { startCronScheduler } from '@/lib/cron-scheduler';
 
@@ -28,7 +26,7 @@ export default async function AppLayout({
 }) {
   startCronScheduler();
 
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(await getAuthOptions());
   if (!session?.user?.email) {
     redirect('/login');
   }
@@ -93,9 +91,7 @@ export default async function AppLayout({
                   </div>
                 </div>
                 <div className="topbar-section topbar-section-right">
-                  <TopbarClock />
                   <TopbarNotifications />
-                  <ThemeToggle />
                   <QuickActions canCreate={canCreate} />
                   <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
                 </div>

@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import type { Role, UserStatus, AuditEntityType } from '@prisma/client';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 import {
     addUser,
@@ -148,7 +148,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     const historyTotalPages = Math.ceil(auditLogTotal / HISTORY_PER_PAGE);
 
     // Get current user for permission checks
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const currentUserEmail = session?.user?.email;
     const currentUser = currentUserEmail
         ? await prisma.user.findUnique({

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         });
 
         const SLACK_CLIENT_ID = config?.clientId || process.env.SLACK_CLIENT_ID;
-        const SLACK_CLIENT_SECRET = config ? decrypt(config.clientSecret) : process.env.SLACK_CLIENT_SECRET;
+        const SLACK_CLIENT_SECRET = config ? await decrypt(config.clientSecret) : process.env.SLACK_CLIENT_SECRET;
         const redirectUri = config?.redirectUri || process.env.SLACK_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/slack/oauth/callback`;
 
         if (!SLACK_CLIENT_ID || !SLACK_CLIENT_SECRET) {
@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
         const scopes = (tokenData.scope || '').split(',');
 
         // Encrypt tokens before storing
-        const encryptedBotToken = encrypt(botToken);
-        const encryptedSigningSecret = tokenData.authed_user?.id ? encrypt(tokenData.authed_user.id) : null;
+        const encryptedBotToken = await encrypt(botToken);
+        const encryptedSigningSecret = tokenData.authed_user?.id ? await encrypt(tokenData.authed_user.id) : null;
 
         // Store or update integration
         const integrationData = {

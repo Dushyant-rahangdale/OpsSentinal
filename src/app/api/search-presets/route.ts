@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { assertResponderOrAbove, getUserPermissions } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { getAccessiblePresets, type FilterCriteria } from '@/lib/search-presets';
@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session?.user?.id) {
             return jsonError('Unauthorized', 401);
         }
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session?.user?.id) {
             return jsonError('Unauthorized', 401);
         }

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         });
 
         const SLACK_CLIENT_ID = config?.clientId || process.env.SLACK_CLIENT_ID;
-        const SLACK_CLIENT_SECRET = config ? decrypt(config.clientSecret) : process.env.SLACK_CLIENT_SECRET;
+        const SLACK_CLIENT_SECRET = config ? await decrypt(config.clientSecret) : process.env.SLACK_CLIENT_SECRET;
         const SLACK_REDIRECT_URI = config?.redirectUri || process.env.SLACK_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/slack/oauth/callback`;
 
         if (!SLACK_CLIENT_ID || !SLACK_CLIENT_SECRET) {

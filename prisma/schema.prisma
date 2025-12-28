@@ -284,6 +284,24 @@ model SlackOAuthConfig {
   @@unique([id]) // Only one config record
 }
 
+
+// OIDC Single Sign-On Configuration (Global - stored in database)
+model OidcConfig {
+  id             String   @id @default("default")
+  issuer         String
+  clientId       String
+  clientSecret   String
+  enabled        Boolean  @default(true)
+  autoProvision  Boolean  @default(true)
+  allowedDomains String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  updatedBy      String
+  updater        User     @relation(fields: [updatedBy], references: [id])
+
+  @@unique([id])
+}
+
 // Slack OAuth Integration
 model SlackIntegration {
   id            String   @id @default(cuid())
@@ -997,6 +1015,7 @@ model SearchPresetUsage {
 model SystemSettings {
   id        String   @id @default("default")
   appUrl    String?  // Application base URL for links in emails, webhooks, etc.
+  encryptionKey String? // Hex-encoded 32-byte key for encrypting secrets
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

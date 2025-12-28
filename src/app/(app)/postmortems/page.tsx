@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getAllPostmortems } from './actions';
 import { getUserPermissions } from '@/lib/rbac';
@@ -14,7 +14,7 @@ export default async function PostmortemsPage({
 }: {
     searchParams: Promise<{ status?: string }>;
 }) {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session) {
         redirect('/login');
     }

@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { assertAdmin } from '@/lib/rbac';
 
 /**
@@ -12,7 +12,7 @@ import { assertAdmin } from '@/lib/rbac';
  */
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session) {
             return jsonError('Unauthorized', 401);
         }
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session) {
             return jsonError('Unauthorized', 401);
         }

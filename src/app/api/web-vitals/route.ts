@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 
 /**
  * Web Vitals API Endpoint
@@ -35,7 +35,7 @@ const MAX_METRICS = 1000;
 export async function POST(req: NextRequest) {
   try {
     // Optional: Require authentication for production
-    // const session = await getServerSession(authOptions);
+    // const session = await getServerSession(await getAuthOptions());
     // if (!session) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user session if available (optional)
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const userId = session?.user?.email || 'anonymous';
 
     // Store metric
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     // Require admin authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

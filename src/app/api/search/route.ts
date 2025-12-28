@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
@@ -72,7 +72,7 @@ type SearchResponses = [
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session) {
             return jsonError('Unauthorized', 401);
         }

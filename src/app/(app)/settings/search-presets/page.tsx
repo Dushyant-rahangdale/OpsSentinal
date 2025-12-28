@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { assertResponderOrAbove, getUserPermissions } from '@/lib/rbac';
 import { getAccessiblePresets } from '@/lib/search-presets';
@@ -9,7 +9,7 @@ import SettingsPage from '@/components/settings/SettingsPage';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
 
 export default async function SearchPresetsPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session) {
         redirect('/login');
     }

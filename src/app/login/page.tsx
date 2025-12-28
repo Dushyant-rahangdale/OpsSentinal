@@ -1,6 +1,7 @@
 import LoginClient from './LoginClient';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
+import { getOidcConfig } from '@/lib/oidc-config';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -29,8 +30,11 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
         redirect('/setup');
     }
 
+    const session = await getServerSession(await getAuthOptions());
+    const ssoConfig = await getOidcConfig();
+    const ssoEnabled = Boolean(ssoConfig);
+
     // Server-side check: If user is already authenticated, redirect them away
-    const session = await getServerSession(authOptions);
     if (session) {
         const awaitedSearchParams = await searchParams;
         const callbackUrl = typeof awaitedSearchParams?.callbackUrl === 'string'
@@ -49,6 +53,6 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
     const passwordSet = awaitedSearchParams?.password === '1';
 
     return (
-        <LoginClient callbackUrl={callbackUrl} errorCode={errorCode} passwordSet={passwordSet} />
+        <LoginClient callbackUrl={callbackUrl} errorCode={errorCode} passwordSet={passwordSet} ssoEnabled={ssoEnabled} />
     );
 }

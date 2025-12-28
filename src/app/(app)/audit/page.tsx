@@ -1,12 +1,12 @@
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AuditLogPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const email = session?.user?.email ?? null;
     const user = email ? await prisma.user.findUnique({ where: { email }, select: { timeZone: true } }) : null;
     const userTimeZone = getUserTimeZone(user ?? undefined);

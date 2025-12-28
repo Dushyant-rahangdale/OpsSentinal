@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import DashboardFilters from '@/components/DashboardFilters';
 import IncidentTable from '@/components/IncidentTable';
 import DashboardPerformanceMetrics from '@/components/DashboardPerformanceMetrics';
@@ -36,7 +36,7 @@ function buildPaginationUrl(baseParams: URLSearchParams, page: number): string {
 }
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(await getAuthOptions());
   const awaitedSearchParams = await searchParams;
 
   // Extract search params

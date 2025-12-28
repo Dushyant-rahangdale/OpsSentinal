@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
@@ -14,7 +14,7 @@ import type { Prisma } from '@prisma/client';
  */
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session) {
             return jsonError('Unauthorized', 401);
         }
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
  */
 export async function GET() {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session) {
             return jsonError('Unauthorized', 401);
         }

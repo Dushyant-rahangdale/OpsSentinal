@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 
 /**
  * Server-Sent Events (SSE) endpoint for real-time incident updates
@@ -15,7 +15,7 @@ import { authOptions } from '@/lib/auth';
  * - Escalation updates
  */
 export async function GET(req: NextRequest) {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     
     if (!session?.user?.email) {
         return new Response('Unauthorized', { status: 401 });

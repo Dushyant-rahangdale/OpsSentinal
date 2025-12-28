@@ -9,6 +9,7 @@ type Props = {
     callbackUrl: string;
     errorCode?: string | null;
     passwordSet?: boolean;
+    ssoEnabled: boolean;
 };
 
 function formatError(message: string | null | undefined) {
@@ -19,7 +20,7 @@ function formatError(message: string | null | undefined) {
     return 'Unable to sign in. Please try again.';
 }
 
-export default function LoginClient({ callbackUrl, errorCode, passwordSet }: Props) {
+export default function LoginClient({ callbackUrl, errorCode, passwordSet, ssoEnabled }: Props) {
     const router = useRouter();
     const emailInputRef = useRef<HTMLInputElement>(null);
     const passwordInputRef = useRef<HTMLInputElement>(null);
@@ -258,33 +259,37 @@ export default function LoginClient({ callbackUrl, errorCode, passwordSet }: Pro
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={handleSSO}
-                            className="login-btn login-btn-sso"
-                            disabled={isSSOLoading || isSubmitting}
-                            aria-label="Sign in with Single Sign-On"
-                        >
-                            {isSSOLoading ? (
-                                <>
-                                    <Spinner size="sm" variant="white" />
-                                    <span>Connecting to SSO...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    <span>Continue with SSO</span>
-                                </>
-                            )}
-                        </button>
+                        {ssoEnabled && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleSSO}
+                                    className="login-btn login-btn-sso"
+                                    disabled={isSSOLoading || isSubmitting}
+                                    aria-label="Sign in with Single Sign-On"
+                                >
+                                    {isSSOLoading ? (
+                                        <>
+                                            <Spinner size="sm" variant="white" />
+                                            <span>Connecting to SSO...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span>Continue with SSO</span>
+                                        </>
+                                    )}
+                                </button>
 
-                        <div className="login-divider" role="separator" aria-label="Or">
-                            <span className="login-divider-line" />
-                            <span className="login-divider-label">or continue with email</span>
-                            <span className="login-divider-line" />
-                        </div>
+                                <div className="login-divider" role="separator" aria-label="Or">
+                                    <span className="login-divider-line" />
+                                    <span className="login-divider-label">or continue with email</span>
+                                    <span className="login-divider-line" />
+                                </div>
+                            </>
+                        )}
 
                         {passwordSet && (
                             <div

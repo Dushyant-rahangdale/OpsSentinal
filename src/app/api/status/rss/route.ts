@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 
 /**
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
         // Check if authentication is required
         if (statusPage.requireAuth) {
-            const session = await getServerSession(authOptions);
+            const session = await getServerSession(await getAuthOptions());
             if (!session) {
                 return new NextResponse('Authentication required', { status: 401 });
             }

@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
@@ -7,7 +7,7 @@ import StatusPageConfig from '@/components/StatusPageConfig';
 import SettingsPage from '@/components/settings/SettingsPage';
 
 export default async function StatusPageSettingsPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session) {
         redirect('/login');
     }

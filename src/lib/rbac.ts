@@ -2,11 +2,11 @@ import 'server-only';
 
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import type { Role } from '@prisma/client';
 
 export async function getCurrentUser() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session?.user?.email) {
         throw new Error('Unauthorized');
     }

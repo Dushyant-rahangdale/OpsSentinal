@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { assertResponderOrAbove } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { jsonError } from '@/lib/api-response';
@@ -53,7 +53,7 @@ function formatDate(date: Date, timeZone: string): string {
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const session = await getServerSession(await getAuthOptions());
         if (!session) {
             return jsonError('Unauthorized', 401);
         }

@@ -1,13 +1,14 @@
 import prisma from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import SecurityForm from '@/components/settings/SecurityForm';
 import SettingsPage from '@/components/settings/SettingsPage';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
+import SsoSettingsForm from '@/components/settings/SsoSettingsForm';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export default async function SecuritySettingsPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     const email = session?.user?.email ?? null;
     const user = email
         ? await prisma.user.findUnique({
@@ -15,9 +16,37 @@ export default async function SecuritySettingsPage() {
             select: { passwordHash: true, updatedAt: true, timeZone: true }
         })
         : null;
-    const ssoEnabled = Boolean(process.env.OIDC_ISSUER);
+
+    const oidcConfig = await prisma.oidcConfig.findFirst({
+        orderBy: { updatedAt: 'desc' }
+    });
+
+    const systemSettings = await prisma.systemSettings.findUnique({
+        where: { id: 'default' },
+        select: { appUrl: true }
+    });
+
+    const callbackBase = systemSettings?.appUrl || process.env.NEXT_PUBLIC_APP_URL || '';
+    const callbackUrl = callbackBase
+        ? `${callbackBase.replace(/\/$/, '')}/api/auth/callback/oidc`
+        : '/api/auth/callback/oidc';
+    const hasEncryptionKey = Boolean(process.env.ENCRYPTION_KEY);
+
+    const ssoEnabled = Boolean(oidcConfig?.enabled);
     const hasPassword = Boolean(user?.passwordHash);
     const timeZone = getUserTimeZone(user ?? undefined);
+    const isAdmin = (session?.user as any)?.role === 'ADMIN';
+
+    const ssoFormConfig = oidcConfig
+        ? {
+            enabled: oidcConfig.enabled,
+            issuer: oidcConfig.issuer,
+            clientId: oidcConfig.clientId,
+            autoProvision: oidcConfig.autoProvision,
+            allowedDomains: oidcConfig.allowedDomains ?? [],
+            hasClientSecret: Boolean(oidcConfig.clientSecret)
+        }
+        : null;
 
     return (
         <SettingsPage
@@ -49,6 +78,28 @@ export default async function SecuritySettingsPage() {
                 </div>
             </SettingsSectionCard>
 
+            {isAdmin ? (
+                <SettingsSectionCard
+                    title="Single sign-on (OIDC)"
+                    description="Configure your OpenID Connect provider for SSO login."
+                >
+                    <SsoSettingsForm
+                        initialConfig={ssoFormConfig}
+                        callbackUrl={callbackUrl}
+                        hasEncryptionKey={hasEncryptionKey}
+                    />
+                </SettingsSectionCard>
+            ) : (
+                <SettingsSectionCard
+                    title="Single sign-on (OIDC)"
+                    description="SSO settings are managed by your administrators."
+                >
+                    <div className="settings-inline-note">
+                        Contact an administrator to update your SSO configuration.
+                    </div>
+                </SettingsSectionCard>
+            )}
+
             <SettingsSectionCard
                 title="Password"
                 description="Update your account password."
@@ -61,5 +112,3 @@ export default async function SecuritySettingsPage() {
         </SettingsPage>
     );
 }
-
-

@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import PostmortemForm from '@/components/PostmortemForm';
 import { getUserPermissions } from '@/lib/rbac';
@@ -7,7 +7,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 
 export default async function CreatePostmortemPage() {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(await getAuthOptions());
     if (!session) {
         redirect('/login');
     }
