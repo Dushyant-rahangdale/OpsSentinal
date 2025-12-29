@@ -1,194 +1,87 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { sendNotification } from '@/lib/notifications';
+import prisma from '@/lib/prisma';
+import * as emailModule from '@/lib/email';
 
-// Mock notification functions
-const sendEmailNotification = vi.fn();
-const sendSlackNotification = vi.fn();
-const sendWhatsAppNotification = vi.fn();
-const sendPushNotification = vi.fn();
+// Mock sub-modules
+vi.mock('@/lib/email');
+vi.mock('@/lib/sms', () => ({
+    sendIncidentSMS: vi.fn(),
+}));
+vi.mock('@/lib/push', () => ({
+    sendIncidentPush: vi.fn(),
+}));
+vi.mock('@/lib/whatsapp', () => ({
+    sendIncidentWhatsApp: vi.fn(),
+}));
+vi.mock('@/lib/webhooks', () => ({
+    sendIncidentWebhook: vi.fn(),
+}));
 
-describe('Notification System', () => {
+describe('Notifications Library', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    describe('Email Notifications', () => {
-        it('should send email notification', async () => {
-            const emailData = {
-                to: 'user@example.com',
-                subject: 'Incident Alert',
-                body: 'New incident created',
-            };
+    it('should route to EMAIL channel correctly', async () => {
+        const incidentId = 'inc-1';
+        const userId = 'user-1';
+        const message = 'Test alert';
 
-            sendEmailNotification.mockResolvedValue({ success: true, messageId: 'msg-123' });
+        vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-1', attempts: 0 } as any);
+        vi.mocked(prisma.incident.findUnique).mockResolvedValue({ id: incidentId, status: 'TRIGGERED' } as any);
+        vi.mocked(emailModule.sendIncidentEmail).mockResolvedValue({ success: true });
 
-            const result = await sendEmailNotification(emailData);
+        const result = await sendNotification(incidentId, userId, 'EMAIL', message);
 
-            expect(sendEmailNotification).toHaveBeenCalledWith(emailData);
-            expect(result.success).toBe(true);
-            expect(result.messageId).toBe('msg-123');
-        });
-
-        it('should handle email sending failure', async () => {
-            sendEmailNotification.mockRejectedValue(new Error('SMTP connection failed'));
-
-            await expect(sendEmailNotification({})).rejects.toThrow('SMTP connection failed');
-        });
-
-        it('should validate email address format', () => {
-            const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-            expect(isValidEmail('user@example.com')).toBe(true);
-            expect(isValidEmail('invalid-email')).toBe(false);
-            expect(isValidEmail('user@')).toBe(false);
-        });
+        expect(result.success).toBe(true);
+        expect(emailModule.sendIncidentEmail).toHaveBeenCalledWith(userId, incidentId, 'triggered');
+        expect(prisma.notification.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'notif-1' },
+            data: expect.objectContaining({ status: 'SENT' })
+        }));
     });
 
-    describe('Slack Notifications', () => {
-        it('should send Slack notification', async () => {
-            const slackData = {
-                channel: '#incidents',
-                text: 'New critical incident',
-                attachments: [],
-            };
+    it('should route to WHATSAPP channel correctly', async () => {
+        const { sendIncidentWhatsApp } = await import('@/lib/whatsapp');
+        const incidentId = 'inc-2';
+        const userId = 'user-2';
 
-            sendSlackNotification.mockResolvedValue({ ok: true, ts: '1234567890.123456' });
+        vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-2', attempts: 0 } as any);
+        vi.mocked(prisma.incident.findUnique).mockResolvedValue({ id: incidentId, status: 'TRIGGERED' } as any);
+        vi.mocked(sendIncidentWhatsApp).mockResolvedValue({ success: true });
 
-            const result = await sendSlackNotification(slackData);
+        const result = await sendNotification(incidentId, userId, 'WHATSAPP', 'Hello');
 
-            expect(sendSlackNotification).toHaveBeenCalledWith(slackData);
-            expect(result.ok).toBe(true);
-        });
-
-        it('should format Slack message with blocks', () => {
-            const formatSlackMessage = (incident: any) => ({
-                blocks: [
-                    {
-                        type: 'header',
-                        text: { type: 'plain_text', text: incident.title },
-                    },
-                    {
-                        type: 'section',
-                        text: { type: 'mrkdwn', text: incident.description },
-                    },
-                ],
-            });
-
-            const incident = { title: 'Database Down', description: 'Primary DB is offline' };
-            const message = formatSlackMessage(incident);
-
-            expect(message.blocks).toHaveLength(2);
-            expect(message.blocks[0].text.text).toBe('Database Down');
-        });
+        expect(result.success).toBe(true);
+        expect(sendIncidentWhatsApp).toHaveBeenCalledWith(userId, incidentId, 'triggered');
     });
 
-    describe('WhatsApp Notifications', () => {
-        it('should send WhatsApp notification', async () => {
-            const whatsappData = {
-                to: '+1234567890',
-                message: 'Incident alert: Database outage',
-            };
+    it('should handle delivery failure', async () => {
+        const incidentId = 'inc-3';
+        const userId = 'user-3';
 
-            sendWhatsAppNotification.mockResolvedValue({ success: true, messageId: 'wa-123' });
+        vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-3', attempts: 0 } as any);
+        vi.mocked(prisma.incident.findUnique).mockResolvedValue({ id: incidentId, status: 'TRIGGERED' } as any);
+        vi.mocked(emailModule.sendIncidentEmail).mockResolvedValue({ success: false, error: 'SMTP Error' });
 
-            const result = await sendWhatsAppNotification(whatsappData);
+        const result = await sendNotification(incidentId, userId, 'EMAIL', 'Fail');
 
-            expect(sendWhatsAppNotification).toHaveBeenCalledWith(whatsappData);
-            expect(result.success).toBe(true);
-        });
-
-        it('should validate phone number format', () => {
-            const isValidPhone = (phone: string) => /^\+[1-9]\d{1,14}$/.test(phone);
-
-            expect(isValidPhone('+1234567890')).toBe(true);
-            expect(isValidPhone('1234567890')).toBe(false);
-            expect(isValidPhone('+123')).toBe(true);
-        });
+        expect(result.success).toBe(false);
+        expect(result.error).toBe('SMTP Error');
+        expect(prisma.notification.update).toHaveBeenCalledWith(expect.objectContaining({
+            where: { id: 'notif-3' },
+            data: expect.objectContaining({ status: 'FAILED', errorMsg: 'SMTP Error' })
+        }));
     });
 
-    describe('Push Notifications', () => {
-        it('should send push notification', async () => {
-            const pushData = {
-                userId: 'user-123',
-                title: 'New Incident',
-                body: 'Critical incident requires attention',
-                data: { incidentId: 'inc-456' },
-            };
+    it('should return error for unknown channel', async () => {
+        vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notif-4', attempts: 0 } as any);
 
-            sendPushNotification.mockResolvedValue({ success: true, sent: 1 });
+        // @ts-ignore - testing runtime unknown channel
+        const result = await sendNotification('inc-1', 'user-1', 'INVALID_CHANNEL', 'msg');
 
-            const result = await sendPushNotification(pushData);
-
-            expect(sendPushNotification).toHaveBeenCalledWith(pushData);
-            expect(result.success).toBe(true);
-        });
-    });
-
-    describe('Notification Retry Logic', () => {
-        it('should retry failed notifications', async () => {
-            const retryNotification = async (fn: () => Promise<any>, maxRetries = 3) => {
-                let lastError;
-                for (let i = 0; i < maxRetries; i++) {
-                    try {
-                        return await fn();
-                    } catch (error) {
-                        lastError = error;
-                    }
-                }
-                throw lastError;
-            };
-
-            let attempts = 0;
-            const failTwiceThenSucceed = vi.fn(async () => {
-                attempts++;
-                if (attempts < 3) throw new Error('Failed');
-                return { success: true };
-            });
-
-            const result = await retryNotification(failTwiceThenSucceed);
-
-            expect(failTwiceThenSucceed).toHaveBeenCalledTimes(3);
-            expect(result.success).toBe(true);
-        });
-
-        it('should give up after max retries', async () => {
-            const retryNotification = async (fn: () => Promise<any>, maxRetries = 3) => {
-                let lastError;
-                for (let i = 0; i < maxRetries; i++) {
-                    try {
-                        return await fn();
-                    } catch (error) {
-                        lastError = error;
-                    }
-                }
-                throw lastError;
-            };
-
-            const alwaysFail = vi.fn(async () => {
-                throw new Error('Always fails');
-            });
-
-            await expect(retryNotification(alwaysFail)).rejects.toThrow('Always fails');
-            expect(alwaysFail).toHaveBeenCalledTimes(3);
-        });
-    });
-
-    describe('Notification Preferences', () => {
-        it('should respect user notification preferences', () => {
-            const userPreferences = {
-                email: true,
-                slack: false,
-                whatsapp: true,
-                push: false,
-            };
-
-            const shouldSendNotification = (channel: keyof typeof userPreferences) => {
-                return userPreferences[channel];
-            };
-
-            expect(shouldSendNotification('email')).toBe(true);
-            expect(shouldSendNotification('slack')).toBe(false);
-            expect(shouldSendNotification('whatsapp')).toBe(true);
-            expect(shouldSendNotification('push')).toBe(false);
-        });
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('Unknown channel');
     });
 });

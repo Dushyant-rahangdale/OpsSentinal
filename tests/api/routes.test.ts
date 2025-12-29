@@ -1,158 +1,164 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as incidentRoute from '@/app/api/incidents/route';
+import prisma from '@/lib/prisma';
+import { createMockRequest, parseResponse } from '../helpers/api-test';
+import * as apiAuth from '@/lib/api-auth';
+import * as rateLimit from '@/lib/rate-limit';
 
-// Mock API response helpers
-const mockApiResponse = (data: any, status: number = 200) => ({
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => data,
-    text: async () => JSON.stringify(data),
-});
+// Mock dependencies
+vi.mock('@/lib/api-auth');
+vi.mock('@/lib/rate-limit');
+vi.mock('@/lib/escalation');
+vi.mock('@/lib/service-notifications');
+vi.mock('@/lib/status-page-webhooks');
 
-describe('API Routes', () => {
-    describe('Response Format', () => {
-        it('should return success response with correct structure', () => {
-            const successResponse = {
-                success: true,
-                data: { id: '123', name: 'Test' },
-                message: 'Operation successful',
-            };
+describe('API Routes - Incidents', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
 
-            expect(successResponse).toHaveProperty('success', true);
-            expect(successResponse).toHaveProperty('data');
-            expect(successResponse).toHaveProperty('message');
-        });
-
-        it('should return error response with correct structure', () => {
-            const errorResponse = {
-                success: false,
-                error: 'Not found',
-                message: 'Resource not found',
-            };
-
-            expect(errorResponse).toHaveProperty('success', false);
-            expect(errorResponse).toHaveProperty('error');
-            expect(errorResponse).toHaveProperty('message');
+        // Default rate limit to allowed
+        vi.mocked(rateLimit.checkRateLimit).mockReturnValue({
+            allowed: true,
+            remaining: 59,
+            resetAt: Date.now() + 60000,
         });
     });
 
-    describe('Status Codes', () => {
-        it('should return 200 for successful GET requests', async () => {
-            const response = mockApiResponse({ data: [] }, 200);
-            expect(response.status).toBe(200);
-            expect(response.ok).toBe(true);
+    describe('GET /api/incidents', () => {
+        it('should return 401 if unauthorized', async () => {
+            vi.mocked(apiAuth.authenticateApiKey).mockResolvedValue(null);
+
+            const req = await createMockRequest('GET', '/api/incidents');
+            const res = await incidentRoute.GET(req);
+            const { status, data } = await parseResponse(res);
+
+            expect(status).toBe(401);
+            expect(data.error).toBeDefined();
         });
 
-        it('should return 201 for successful POST requests', async () => {
-            const response = mockApiResponse({ id: '123' }, 201);
-            expect(response.status).toBe(201);
-            expect(response.ok).toBe(true);
+        it('should return 403 if missing scopes', async () => {
+            vi.mocked(apiAuth.authenticateApiKey).mockResolvedValue({
+                id: 'key-1',
+                userId: 'user-1',
+                scopes: ['read:other'],
+            } as any);
+            vi.mocked(apiAuth.hasApiScopes).mockReturnValue(false);
+
+            const req = await createMockRequest('GET', '/api/incidents');
+            const res = await incidentRoute.GET(req);
+            const { status, data } = await parseResponse(res);
+
+            expect(status).toBe(403);
+            expect(data.error).toBeDefined();
         });
 
-        it('should return 400 for bad requests', async () => {
-            const response = mockApiResponse({ error: 'Invalid input' }, 400);
-            expect(response.status).toBe(400);
-            expect(response.ok).toBe(false);
-        });
+        it('should return incidents for authorized user', async () => {
+            const mockIncidents = [
+                { id: 'inc-1', title: 'Test 1', service: { name: 'Svc 1' }, assignee: null },
+            ];
 
-        it('should return 404 for not found', async () => {
-            const response = mockApiResponse({ error: 'Not found' }, 404);
-            expect(response.status).toBe(404);
-            expect(response.ok).toBe(false);
-        });
+            vi.mocked(apiAuth.authenticateApiKey).mockResolvedValue({
+                id: 'key-1',
+                userId: 'user-1',
+                scopes: ['incidents:read'],
+            } as any);
+            vi.mocked(apiAuth.hasApiScopes).mockReturnValue(true);
 
-        it('should return 500 for server errors', async () => {
-            const response = mockApiResponse({ error: 'Internal server error' }, 500);
-            expect(response.status).toBe(500);
-            expect(response.ok).toBe(false);
-        });
-    });
+            // Mock user context
+            vi.mocked(prisma.user.findUnique).mockResolvedValue({
+                id: 'user-1',
+                role: 'ADMIN',
+                teamMemberships: [],
+            } as any);
 
-    describe('Error Handling', () => {
-        it('should handle validation errors', () => {
-            const validationError = {
-                success: false,
-                error: 'Validation failed',
-                details: {
-                    email: 'Invalid email format',
-                    password: 'Password too short',
-                },
-            };
+            vi.mocked(prisma.incident.findMany).mockResolvedValue(mockIncidents as any);
 
-            expect(validationError.success).toBe(false);
-            expect(validationError.details).toHaveProperty('email');
-            expect(validationError.details).toHaveProperty('password');
-        });
+            const req = await createMockRequest('GET', '/api/incidents');
+            const res = await incidentRoute.GET(req);
+            const { status, data } = await parseResponse(res);
 
-        it('should handle authentication errors', () => {
-            const authError = {
-                success: false,
-                error: 'Unauthorized',
-                message: 'Authentication required',
-            };
-
-            expect(authError.success).toBe(false);
-            expect(authError.error).toBe('Unauthorized');
-        });
-
-        it('should handle rate limiting', () => {
-            const rateLimitError = {
-                success: false,
-                error: 'Too many requests',
-                retryAfter: 60,
-            };
-
-            expect(rateLimitError.success).toBe(false);
-            expect(rateLimitError).toHaveProperty('retryAfter');
+            expect(status).toBe(200);
+            expect(data.incidents).toHaveLength(1);
+            expect(data.incidents[0].title).toBe('Test 1');
         });
     });
 
-    describe('Pagination', () => {
-        it('should include pagination metadata', () => {
-            const paginatedResponse = {
-                success: true,
-                data: [{ id: '1' }, { id: '2' }],
-                pagination: {
-                    page: 1,
-                    pageSize: 10,
-                    total: 100,
-                    totalPages: 10,
-                },
+    describe('POST /api/incidents', () => {
+        it('should create an incident with valid data', async () => {
+            const incidentData = {
+                title: 'New Incident',
+                serviceId: 'svc-1',
+                urgency: 'HIGH',
             };
 
-            expect(paginatedResponse.pagination).toHaveProperty('page');
-            expect(paginatedResponse.pagination).toHaveProperty('pageSize');
-            expect(paginatedResponse.pagination).toHaveProperty('total');
-            expect(paginatedResponse.pagination).toHaveProperty('totalPages');
+            vi.mocked(apiAuth.authenticateApiKey).mockResolvedValue({
+                id: 'key-1',
+                userId: 'user-1',
+                scopes: ['incidents:write'],
+            } as any);
+            vi.mocked(apiAuth.hasApiScopes).mockReturnValue(true);
+
+            vi.mocked(prisma.user.findUnique).mockResolvedValue({
+                id: 'user-1',
+                role: 'ADMIN',
+                teamMemberships: [],
+            } as any);
+
+            vi.mocked(prisma.service.findUnique).mockResolvedValue({
+                id: 'svc-1',
+                teamId: 'team-1',
+            } as any);
+
+            vi.mocked(prisma.incident.create).mockResolvedValue({
+                id: 'inc-new',
+                ...incidentData,
+                status: 'OPEN',
+            } as any);
+
+            // Second findUnique for webhook logic
+            vi.mocked(prisma.incident.findUnique).mockResolvedValue({
+                id: 'inc-new',
+                ...incidentData,
+                status: 'OPEN',
+                service: { id: 'svc-1', name: 'Svc 1' },
+                assignee: null,
+                createdAt: new Date()
+            } as any);
+
+            const req = await createMockRequest('POST', '/api/incidents', incidentData);
+            const res = await incidentRoute.POST(req);
+            const { status, data } = await parseResponse(res);
+
+            expect(status).toBe(201);
+            expect(data.incident.title).toBe('New Incident');
+            expect(prisma.incident.create).toHaveBeenCalled();
         });
-    });
 
-    describe('Data Transformation', () => {
-        it('should transform dates to ISO strings', () => {
-            const response = {
-                success: true,
-                data: {
-                    id: '123',
-                    createdAt: '2024-01-01T00:00:00.000Z',
-                    updatedAt: '2024-01-02T00:00:00.000Z',
-                },
+        it('should return 400 for invalid data', async () => {
+            const invalidData = {
+                // missing title
+                serviceId: 'svc-1',
             };
 
-            expect(response.data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-            expect(response.data.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-        });
+            vi.mocked(apiAuth.authenticateApiKey).mockResolvedValue({
+                id: 'key-1',
+                userId: 'user-1',
+                scopes: ['incidents:write'],
+            } as any);
+            vi.mocked(apiAuth.hasApiScopes).mockReturnValue(true);
 
-        it('should sanitize sensitive data', () => {
-            const response = {
-                success: true,
-                data: {
-                    id: '123',
-                    email: 'user@example.com',
-                    // password should not be included
-                },
-            };
+            vi.mocked(prisma.user.findUnique).mockResolvedValue({
+                id: 'user-1',
+                role: 'ADMIN',
+                teamMemberships: [],
+            } as any);
 
-            expect(response.data).not.toHaveProperty('password');
-            expect(response.data).toHaveProperty('email');
+            const req = await createMockRequest('POST', '/api/incidents', invalidData);
+            const res = await incidentRoute.POST(req);
+            const { status, data } = await parseResponse(res);
+
+            expect(status).toBe(400);
+            expect(data.error).toBeDefined();
         });
     });
 });

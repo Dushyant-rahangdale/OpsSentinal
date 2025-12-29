@@ -1,78 +1,123 @@
-/*
-  Warnings:
+-- Idempotent Sync Migration
+-- This migration fixes schema drift by safely applying changes even if they partially exist.
 
-  - You are about to drop the column `notifyOnAcknowledged` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnResolved` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnSnoozed` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnSuppressed` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnTriggered` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnUnacknowledge` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnUnsnooze` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnUnsuppress` on the `SystemSettings` table. All the data in the column will be lost.
-  - You are about to drop the column `notifyOnUpdated` on the `SystemSettings` table. All the data in the column will be lost.
-  - A unique constraint covering the columns `[id]` on the table `OidcConfig` will be added. If there are existing duplicate values, this will fail.
-  - Made the column `issuer` on table `OidcConfig` required. This step will fail if there are existing NULL values in that column.
-  - Made the column `clientId` on table `OidcConfig` required. This step will fail if there are existing NULL values in that column.
-  - Made the column `clientSecret` on table `OidcConfig` required. This step will fail if there are existing NULL values in that column.
-  - Made the column `updatedBy` on table `OidcConfig` required. This step will fail if there are existing NULL values in that column.
+-- 1. OidcConfig FK Drop
+ALTER TABLE "OidcConfig" DROP CONSTRAINT IF EXISTS "OidcConfig_updatedBy_fkey";
 
-*/
--- DropForeignKey
-ALTER TABLE "OidcConfig" DROP CONSTRAINT "OidcConfig_updatedBy_fkey";
+-- 2. Drop Index
+DROP INDEX IF EXISTS "InAppNotification_userId_createdAt_readAt_idx";
 
--- DropIndex
-DROP INDEX "InAppNotification_userId_createdAt_readAt_idx";
+-- 3. EscalationRule notificationChannels
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'EscalationRule' AND column_name = 'notificationChannels') THEN
+        ALTER TABLE "EscalationRule" ADD COLUMN "notificationChannels" "NotificationChannel"[];
+    END IF;
+END $$;
 
--- AlterTable
-ALTER TABLE "EscalationRule" ADD COLUMN     "notificationChannels" "NotificationChannel"[];
+-- 4. OidcConfig Updates
+ALTER TABLE "OidcConfig" ALTER COLUMN "id" SET DEFAULT 'default';
+ALTER TABLE "OidcConfig" ALTER COLUMN "enabled" SET DEFAULT true;
+ALTER TABLE "OidcConfig" ALTER COLUMN "issuer" SET NOT NULL;
+ALTER TABLE "OidcConfig" ALTER COLUMN "clientId" SET NOT NULL;
+ALTER TABLE "OidcConfig" ALTER COLUMN "clientSecret" SET NOT NULL;
+ALTER TABLE "OidcConfig" ALTER COLUMN "autoProvision" SET DEFAULT true;
+ALTER TABLE "OidcConfig" ALTER COLUMN "updatedBy" SET NOT NULL;
 
--- AlterTable
-ALTER TABLE "OidcConfig" ALTER COLUMN "id" SET DEFAULT 'default',
-ALTER COLUMN "enabled" SET DEFAULT true,
-ALTER COLUMN "issuer" SET NOT NULL,
-ALTER COLUMN "clientId" SET NOT NULL,
-ALTER COLUMN "clientSecret" SET NOT NULL,
-ALTER COLUMN "autoProvision" SET DEFAULT true,
-ALTER COLUMN "updatedBy" SET NOT NULL;
+-- 5. Postmortem
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Postmortem' AND column_name = 'isPublic') THEN
+       ALTER TABLE "Postmortem" ADD COLUMN "isPublic" BOOLEAN NOT NULL DEFAULT true;
+   END IF;
+END $$;
 
--- AlterTable
-ALTER TABLE "Postmortem" ADD COLUMN     "isPublic" BOOLEAN NOT NULL DEFAULT true;
+-- 6. Service
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Service' AND column_name = 'region') THEN
+       ALTER TABLE "Service" ADD COLUMN "region" TEXT;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Service' AND column_name = 'slaTier') THEN
+       ALTER TABLE "Service" ADD COLUMN "slaTier" TEXT;
+   END IF;
+END $$;
 
--- AlterTable
-ALTER TABLE "Service" ADD COLUMN     "region" TEXT,
-ADD COLUMN     "slaTier" TEXT;
+-- 7. StatusPage - Add all potentially missing columns
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'enableUptimeExports') THEN
+       ALTER TABLE "StatusPage" ADD COLUMN "enableUptimeExports" BOOLEAN NOT NULL DEFAULT false;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showChangelog') THEN
+       ALTER TABLE "StatusPage" ADD COLUMN "showChangelog" BOOLEAN NOT NULL DEFAULT true;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showPostIncidentReview') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showPostIncidentReview" BOOLEAN NOT NULL DEFAULT true;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showRegionHeatmap') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showRegionHeatmap" BOOLEAN NOT NULL DEFAULT true;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showServiceOwners') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showServiceOwners" BOOLEAN NOT NULL DEFAULT false;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showServiceSlaTier') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showServiceSlaTier" BOOLEAN NOT NULL DEFAULT false;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showSubscribe') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showSubscribe" BOOLEAN NOT NULL DEFAULT true;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'statusApiRateLimitEnabled') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "statusApiRateLimitEnabled" BOOLEAN NOT NULL DEFAULT false;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'statusApiRateLimitMax') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "statusApiRateLimitMax" INTEGER NOT NULL DEFAULT 120;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'statusApiRateLimitWindowSec') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "statusApiRateLimitWindowSec" INTEGER NOT NULL DEFAULT 60;
+   END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'statusApiRequireToken') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "statusApiRequireToken" BOOLEAN NOT NULL DEFAULT false;
+   END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showServiceRegions') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showServiceRegions" BOOLEAN NOT NULL DEFAULT true;
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPage' AND column_name = 'showServicesByRegion') THEN
+        ALTER TABLE "StatusPage" ADD COLUMN "showServicesByRegion" BOOLEAN NOT NULL DEFAULT false;
+   END IF;
+END $$;
 
--- AlterTable
-ALTER TABLE "StatusPage" ADD COLUMN     "enableUptimeExports" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "showChangelog" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "showPostIncidentReview" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "showRegionHeatmap" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "showServiceOwners" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "showServiceSlaTier" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "showSubscribe" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "statusApiRateLimitEnabled" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "statusApiRateLimitMax" INTEGER NOT NULL DEFAULT 120,
-ADD COLUMN     "statusApiRateLimitWindowSec" INTEGER NOT NULL DEFAULT 60,
-ADD COLUMN     "statusApiRequireToken" BOOLEAN NOT NULL DEFAULT false,
-ALTER COLUMN "enabled" SET DEFAULT false;
+-- Reset StatusPage enabled default
+ALTER TABLE "StatusPage" ALTER COLUMN "enabled" SET DEFAULT false;
 
--- AlterTable
-ALTER TABLE "StatusPageAnnouncement" ADD COLUMN     "affectedServiceIds" JSONB;
+-- 8. StatusPageAnnouncement
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'StatusPageAnnouncement' AND column_name = 'affectedServiceIds') THEN
+       ALTER TABLE "StatusPageAnnouncement" ADD COLUMN "affectedServiceIds" JSONB;
+   END IF;
+END $$;
 
--- AlterTable
-ALTER TABLE "SystemSettings" DROP COLUMN "notifyOnAcknowledged",
-DROP COLUMN "notifyOnResolved",
-DROP COLUMN "notifyOnSnoozed",
-DROP COLUMN "notifyOnSuppressed",
-DROP COLUMN "notifyOnTriggered",
-DROP COLUMN "notifyOnUnacknowledge",
-DROP COLUMN "notifyOnUnsnooze",
-DROP COLUMN "notifyOnUnsuppress",
-DROP COLUMN "notifyOnUpdated",
-ADD COLUMN     "encryptionKey" TEXT;
+-- 9. SystemSettings Drops
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnAcknowledged";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnResolved";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnSnoozed";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnSuppressed";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnTriggered";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnUnacknowledge";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnUnsnooze";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnUnsuppress";
+ALTER TABLE "SystemSettings" DROP COLUMN IF EXISTS "notifyOnUpdated";
 
--- CreateTable
-CREATE TABLE "StatusPageApiToken" (
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'SystemSettings' AND column_name = 'encryptionKey') THEN
+       ALTER TABLE "SystemSettings" ADD COLUMN "encryptionKey" TEXT;
+   END IF;
+END $$;
+
+-- 10. Create Tables
+CREATE TABLE IF NOT EXISTS "StatusPageApiToken" (
     "id" TEXT NOT NULL,
     "statusPageId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -85,20 +130,26 @@ CREATE TABLE "StatusPageApiToken" (
     CONSTRAINT "StatusPageApiToken_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE INDEX "StatusPageApiToken_statusPageId_revokedAt_idx" ON "StatusPageApiToken"("statusPageId", "revokedAt");
+-- 11. Create Indexes (IF NOT EXISTS)
+CREATE INDEX IF NOT EXISTS "StatusPageApiToken_statusPageId_revokedAt_idx" ON "StatusPageApiToken"("statusPageId", "revokedAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "StatusPageApiToken_tokenHash_key" ON "StatusPageApiToken"("tokenHash");
+CREATE INDEX IF NOT EXISTS "InAppNotification_userId_readAt_createdAt_idx" ON "InAppNotification"("userId", "readAt", "createdAt");
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'OidcConfig_id_key'
+        AND n.nspname = 'public'
+    ) THEN
+        CREATE UNIQUE INDEX "OidcConfig_id_key" ON "OidcConfig"("id");
+    END IF;
+END $$;
 
--- CreateIndex
-CREATE UNIQUE INDEX "StatusPageApiToken_tokenHash_key" ON "StatusPageApiToken"("tokenHash");
-
--- CreateIndex
-CREATE INDEX "InAppNotification_userId_readAt_createdAt_idx" ON "InAppNotification"("userId", "readAt", "createdAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "OidcConfig_id_key" ON "OidcConfig"("id");
-
--- AddForeignKey
+-- 12. Add Foreign Keys
+ALTER TABLE "OidcConfig" DROP CONSTRAINT IF EXISTS "OidcConfig_updatedBy_fkey";
 ALTER TABLE "OidcConfig" ADD CONSTRAINT "OidcConfig_updatedBy_fkey" FOREIGN KEY ("updatedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
+ALTER TABLE "StatusPageApiToken" DROP CONSTRAINT IF EXISTS "StatusPageApiToken_statusPageId_fkey";
 ALTER TABLE "StatusPageApiToken" ADD CONSTRAINT "StatusPageApiToken_statusPageId_fkey" FOREIGN KEY ("statusPageId") REFERENCES "StatusPage"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -2,10 +2,10 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.test' });
+dotenv.config({ path: path.resolve(__dirname, '.env.test') });
 
 // Fallback if .env.test is missing (e.g. CI or local without file)
-process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/testdb';
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://opssentinal:admin@localhost:5432/opssentinal_db?schema=public';
 process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'testsecret';
 

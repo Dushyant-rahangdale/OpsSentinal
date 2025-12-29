@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import prisma from '../../src/lib/prisma';
 import { sendServiceNotifications } from '../../src/lib/service-notifications';
 import { executeEscalation } from '../../src/lib/escalation';
-// Note: we assert via prisma.notification rows instead of spying on imported bindings.
+import { mockUser, mockIncident, mockService, mockTeam } from '../helpers/mock-factories';
 
 describe('Notification Flow Integration Tests', () => {
   beforeEach(async () => {
@@ -25,21 +25,12 @@ describe('Notification Flow Integration Tests', () => {
 
   it('should send service notifications and escalation notifications separately', async () => {
     // Setup
-    const user = {
-      id: 'user-1',
-      name: 'Test User',
-      email: 'test.user@example.com',
-      emailNotificationsEnabled: true,
-    };
-
-    const service = {
+    const user = mockUser({ id: 'user-1' });
+    const service = mockService({
       id: 'svc-1',
-      name: 'Test Service',
       serviceNotificationChannels: ['SLACK'],
-      slackWebhookUrl: 'https://hooks.slack.com/test',
       policy: {
         id: 'pol-1',
-        name: 'Test Policy',
         steps: [
           {
             stepOrder: 0,
@@ -49,16 +40,13 @@ describe('Notification Flow Integration Tests', () => {
           },
         ],
       },
-    };
+    });
 
-    const incident = {
+    const incident = mockIncident({
       id: 'inc-1',
-      title: 'Test Incident',
       serviceId: service.id,
-      status: 'OPEN',
-      urgency: 'HIGH',
       service: service,
-    };
+    });
 
     // Mock Prisma responses
     vi.mocked(prisma.incident.findUnique).mockResolvedValue(incident as any);
