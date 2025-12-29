@@ -15,35 +15,41 @@ const MIN_DELAY_MS = 15_000;
 const MAX_DELAY_MS = 5 * 60_000;
 
 async function getNextScheduledTime(): Promise<Date> {
-    const prisma = (await import('./prisma')).default;
-    const [nextIncident, nextJob] = await Promise.all([
-        prisma.incident.findFirst({
-            where: {
-                escalationStatus: 'ESCALATING',
-                nextEscalationAt: { not: null }
-            },
-            orderBy: { nextEscalationAt: 'asc' },
-            select: { nextEscalationAt: true }
-        }),
-        prisma.backgroundJob.findFirst({
-            where: {
-                status: 'PENDING'
-            },
-            orderBy: { scheduledAt: 'asc' },
-            select: { scheduledAt: true }
-        })
-    ]);
+    try {
+        const prisma = (await import('./prisma')).default;
+        const [nextIncident, nextJob] = await Promise.all([
+            prisma.incident.findFirst({
+                where: {
+                    escalationStatus: 'ESCALATING',
+                    nextEscalationAt: { not: null }
+                },
+                orderBy: { nextEscalationAt: 'asc' },
+                select: { nextEscalationAt: true }
+            }),
+            prisma.backgroundJob.findFirst({
+                where: {
+                    status: 'PENDING'
+                },
+                orderBy: { scheduledAt: 'asc' },
+                select: { scheduledAt: true }
+            })
+        ]);
 
-    const times = [
-        nextIncident?.nextEscalationAt ? new Date(nextIncident.nextEscalationAt).getTime() : null,
-        nextJob?.scheduledAt ? new Date(nextJob.scheduledAt).getTime() : null
-    ].filter((value): value is number => typeof value === 'number');
+        const times = [
+            nextIncident?.nextEscalationAt ? new Date(nextIncident.nextEscalationAt).getTime() : null,
+            nextJob?.scheduledAt ? new Date(nextJob.scheduledAt).getTime() : null
+        ].filter((value): value is number => typeof value === 'number');
 
-    if (times.length === 0) {
+        if (times.length === 0) {
+            return new Date(Date.now() + MAX_DELAY_MS);
+        }
+
+        return new Date(Math.min(...times));
+    } catch (error) {
+        // Database connection error - use max delay as fallback
+        logger.error('[Cron Scheduler] Failed to query next scheduled time from database', { error });
         return new Date(Date.now() + MAX_DELAY_MS);
     }
-
-    return new Date(Math.min(...times));
 }
 
 function scheduleNextRun(targetTime: Date) {

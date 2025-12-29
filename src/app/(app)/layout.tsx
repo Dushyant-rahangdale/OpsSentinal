@@ -35,20 +35,28 @@ export default async function AppLayout({
   }
 
   // Verify user still exists in database (handle DB resets)
-  const dbUser = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, role: true, name: true, email: true, timeZone: true }
-  });
+  let dbUser;
+  try {
+    dbUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true, name: true, email: true, timeZone: true }
+    });
 
-  if (!dbUser) {
-    // Check if system is uninitialized
-    const userCount = await prisma.user.count();
-    if (userCount === 0) {
-      redirect('/setup');
+    if (!dbUser) {
+      // Check if system is uninitialized
+      const userCount = await prisma.user.count();
+      if (userCount === 0) {
+        redirect('/setup');
+      }
+      // Rare condition: User deleted or DB reset but others exist
+      // Force signout to clear stale session
+      redirect('/api/auth/signout?callbackUrl=/login');
     }
-    // Rare condition: User deleted or DB reset but others exist
-    // Force signout to clear stale session
-    redirect('/api/auth/signout?callbackUrl=/login');
+  } catch (error) {
+    // Database connection error - allow app to load with session data
+    // This prevents complete app failure when DB is temporarily unavailable
+    console.error('[App Layout] Database connection error:', error);
+    dbUser = null;
   }
 
   // Fetch latest user data from database to ensure name is always current
