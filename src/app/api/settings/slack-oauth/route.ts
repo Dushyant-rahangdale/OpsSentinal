@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveSlackOAuthConfig } from '@/app/(app)/settings/slack-oauth/actions';
+import { assertAdmin } from '@/lib/rbac';
 
 export async function POST(request: NextRequest) {
+    try {
+        await assertAdmin();
+    } catch (error) {
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.' },
+            { status: 403 }
+        );
+    }
+
     try {
         const formData = await request.formData();
         const result = await saveSlackOAuthConfig(formData);

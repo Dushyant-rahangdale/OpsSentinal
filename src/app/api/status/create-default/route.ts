@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { assertAdmin } from '@/lib/rbac';
 
 /**
  * Create default status page if it doesn't exist
@@ -9,6 +10,18 @@ import { logger } from '@/lib/logger';
  */
 export async function POST() {
     try {
+        const userCount = await prisma.user.count();
+        if (userCount > 0) {
+            try {
+                await assertAdmin();
+            } catch (error) {
+                return jsonError(
+                    error instanceof Error ? error.message : 'Unauthorized. Admin access required.',
+                    403
+                );
+            }
+        }
+
         // Check if status page exists
         const existing = await prisma.statusPage.findFirst({
             where: { enabled: true },

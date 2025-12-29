@@ -31,6 +31,14 @@ export default async function AppLayout({
 
   const session = await getServerSession(await getAuthOptions());
   if (!session?.user?.email) {
+    try {
+      const userCount = await prisma.user.count();
+      if (userCount == 0) {
+        redirect('/setup');
+      }
+    } catch (error) {
+      console.error('[App Layout] Failed to check user count:', error);
+    }
     redirect('/login');
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getQueryStats, getSlowQueries, getRecentQueryErrors, getQueryDurationDistribution } from '@/lib/db-monitoring';
+import { assertAdmin } from '@/lib/rbac';
 
 /**
  * GET /api/monitoring/queries
@@ -12,6 +13,8 @@ import { getQueryStats, getSlowQueries, getRecentQueryErrors, getQueryDurationDi
  */
 export async function GET(request: Request) {
   try {
+    await assertAdmin();
+
     const { searchParams } = new URL(request.url);
     const timeWindow = searchParams.get('timeWindow')
       ? parseInt(searchParams.get('timeWindow')!, 10)
@@ -28,9 +31,6 @@ export async function GET(request: Request) {
     const recentErrors = getRecentQueryErrors(limit);
     const distribution = getQueryDurationDistribution(timeWindow);
 
-
-
-
     return NextResponse.json({
       success: true,
       data: {
@@ -41,6 +41,12 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 403 }
+      );
+    }
     console.error('[API] Error fetching query stats:', error);
     return NextResponse.json(
       {
