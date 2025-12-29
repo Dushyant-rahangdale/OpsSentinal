@@ -52,6 +52,7 @@ verify_fix.ts
 *.sql
 !prisma/migrations/**/*.sql
 /reports/
+/ci-artifacts/
 
 # build scripts
 build-docker.ps1

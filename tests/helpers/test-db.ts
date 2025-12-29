@@ -46,7 +46,7 @@ export async function createTestUser(overrides: Partial<Prisma.UserCreateInput> 
 
 export async function createTestTeam(
   name: string,
-  overrides: Partial<Prisma.TeamCreateInput> = {}
+  overrides: Partial<Prisma.TeamUncheckedCreateInput> = {}
 ) {
   return await prisma.team.create({
     data: {
@@ -58,8 +58,8 @@ export async function createTestTeam(
 
 export async function createTestService(
   name: string,
-  teamId?: string,
-  overrides: Partial<Prisma.ServiceCreateInput> = {}
+  teamId?: string | null,
+  overrides: Partial<Prisma.ServiceUncheckedCreateInput> = {}
 ) {
   return await prisma.service.create({
     data: {
@@ -73,7 +73,7 @@ export async function createTestService(
 export async function createTestIncident(
   title: string,
   serviceId: string,
-  overrides: Partial<Prisma.IncidentCreateInput> = {}
+  overrides: Partial<Prisma.IncidentUncheckedCreateInput> = {}
 ) {
   return await prisma.incident.create({
     data: {

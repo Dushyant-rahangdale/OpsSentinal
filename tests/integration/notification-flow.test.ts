@@ -6,6 +6,24 @@
 
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
 
+// We mock external API calls (Slack, Email provider, SMS) but NOT the database.
+// IMPORTANT: Use top-level mocks + dynamic imports for modules under test so the mocks
+// are applied before `src/lib/*` is evaluated (prevents flaky CI failures).
+vi.mock('../../src/lib/slack', () => ({
+  notifySlackForIncident: vi.fn().mockResolvedValue({ success: true }),
+  sendSlackNotification: vi.fn().mockResolvedValue({ success: true }),
+  sendSlackMessageToChannel: vi.fn().mockResolvedValue({ success: true }),
+  getSlackBotToken: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock('../../src/lib/email', () => ({
+  sendIncidentEmail: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock('../../src/lib/sms', () => ({
+  sendIncidentSMS: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 import {
   testPrisma,
   resetDatabase,
@@ -16,26 +34,16 @@ import {
   createTestNotificationProvider,
   createTestEscalationPolicy,
 } from '../helpers/test-db';
-import { sendServiceNotifications } from '../../src/lib/service-notifications';
-import { executeEscalation } from '../../src/lib/escalation';
-
-// We mock external API calls (Slack, Email provider) but NOT the database
-vi.mock('../../src/lib/slack', () => ({
-  notifySlackForIncident: vi.fn().mockResolvedValue({ success: true }),
-  sendSlackNotification: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-vi.mock('../../src/lib/email', () => ({
-  sendIncidentEmail: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-// Mock WhatsApp/SMS providers as well
-vi.mock('../../src/lib/sms', () => ({
-  sendIncidentSMS: vi.fn().mockResolvedValue({ success: true }),
-}));
 
 describe('Notification Flow Integration Tests (Real DB)', () => {
+  let sendServiceNotifications: typeof import('../../src/lib/service-notifications').sendServiceNotifications;
+  let executeEscalation: typeof import('../../src/lib/escalation').executeEscalation;
+
   beforeAll(async () => {
+    // Import after mocks are registered
+    ({ sendServiceNotifications } = await import('../../src/lib/service-notifications'));
+    ({ executeEscalation } = await import('../../src/lib/escalation'));
+
     // Ensure providers exist
     await resetDatabase();
   });
@@ -117,8 +125,8 @@ describe('Notification Flow Integration Tests (Real DB)', () => {
       teamLeadId: lead.id,
       members: {
         create: [
-          { userId: lead.id, role: 'OWNER' },
-          { userId: member.id, role: 'MEMBER' },
+          { userId: lead.id, role: 'OWNER', receiveTeamNotifications: true },
+          { userId: member.id, role: 'MEMBER', receiveTeamNotifications: true },
         ],
       },
     });
