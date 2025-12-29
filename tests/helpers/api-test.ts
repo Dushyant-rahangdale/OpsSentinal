@@ -18,7 +18,7 @@ export async function createMockRequest(
         options.body = JSON.stringify(body);
     }
 
-    return new NextRequest(new URL(url, 'http://localhost:3000'), options);
+    return new NextRequest(new URL(url, 'http://localhost:3000'), options as any);
 }
 
 export async function parseResponse(response: Response) {
