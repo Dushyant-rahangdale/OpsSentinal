@@ -30,6 +30,32 @@ interface Timer {
     done: (message?: string, context?: LogContext) => void;
 }
 
+const LOG_BUFFER_MAX = Number(process.env.LOG_BUFFER_MAX || 500);
+const logBuffer: LogEntry[] = [];
+
+function getBufferLimit(limit?: number) {
+    const safeLimit = Number.isFinite(limit) ? Math.floor(limit as number) : LOG_BUFFER_MAX;
+    return Math.max(0, Math.min(safeLimit, LOG_BUFFER_MAX));
+}
+
+function addToBuffer(entry: LogEntry) {
+    if (LOG_BUFFER_MAX <= 0) {
+        return;
+    }
+    logBuffer.push(entry);
+    if (logBuffer.length > LOG_BUFFER_MAX) {
+        logBuffer.splice(0, logBuffer.length - LOG_BUFFER_MAX);
+    }
+}
+
+export function getLogBuffer(limit?: number) {
+    const sliceLimit = getBufferLimit(limit);
+    if (sliceLimit === 0) {
+        return [];
+    }
+    return logBuffer.slice(-sliceLimit);
+}
+
 class Logger {
     private config: LoggerConfig;
     private persistentContext: LogContext;
@@ -189,6 +215,7 @@ class Logger {
             }
         }
 
+        addToBuffer(entry);
         this.emit(entry);
     }
 

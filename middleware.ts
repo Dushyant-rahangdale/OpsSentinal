@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from './src/lib/rate-limit';
 
-const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status', '/setup'];
+const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status', '/setup', '/logs'];
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((value) => value.trim())

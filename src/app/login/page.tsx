@@ -36,6 +36,19 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
 
     // Server-side check: If user is already authenticated, redirect them away
     if (session) {
+        if (session?.user?.email) {
+            try {
+                const existingUser = await prisma.user.findUnique({
+                    where: { email: session.user.email },
+                    select: { id: true }
+                });
+                if (!existingUser) {
+                    redirect('/api/auth/signout?callbackUrl=/login');
+                }
+            } catch (error) {
+                console.error('[Login Page] Failed to verify session user:', error);
+            }
+        }
         const awaitedSearchParams = await searchParams;
         const callbackUrl = typeof awaitedSearchParams?.callbackUrl === 'string'
             ? awaitedSearchParams.callbackUrl

@@ -31,40 +31,48 @@ export default async function AppLayout({
 
   const session = await getServerSession(await getAuthOptions());
   if (!session?.user?.email) {
+    let userCount = 0;
     try {
-      const userCount = await prisma.user.count();
-      if (userCount == 0) {
-        redirect('/setup');
-      }
+      userCount = await prisma.user.count();
     } catch (error) {
       console.error('[App Layout] Failed to check user count:', error);
+    }
+    if (userCount === 0) {
+      redirect('/setup');
     }
     redirect('/login');
   }
 
   // Verify user still exists in database (handle DB resets)
   let dbUser;
+  let dbError: unknown = null;
   try {
     dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true, role: true, name: true, email: true, timeZone: true }
     });
-
-    if (!dbUser) {
-      // Check if system is uninitialized
-      const userCount = await prisma.user.count();
-      if (userCount === 0) {
-        redirect('/setup');
-      }
-      // Rare condition: User deleted or DB reset but others exist
-      // Force signout to clear stale session
-      redirect('/api/auth/signout?callbackUrl=/login');
-    }
   } catch (error) {
+    dbError = error;
     // Database connection error - allow app to load with session data
     // This prevents complete app failure when DB is temporarily unavailable
     console.error('[App Layout] Database connection error:', error);
     dbUser = null;
+  }
+
+  if (!dbError && !dbUser) {
+    // Check if system is uninitialized
+    let userCount = 0;
+    try {
+      userCount = await prisma.user.count();
+    } catch (error) {
+      console.error('[App Layout] Failed to verify user count:', error);
+    }
+    if (userCount === 0) {
+      redirect('/setup');
+    }
+    // Rare condition: User deleted or DB reset but others exist
+    // Force signout to clear stale session
+    redirect('/api/auth/signout?callbackUrl=/login');
   }
 
   // Fetch latest user data from database to ensure name is always current
