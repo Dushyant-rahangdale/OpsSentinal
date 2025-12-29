@@ -20,6 +20,11 @@ RUN apk update && apk upgrade && \
 
 # Copy package files
 COPY package*.json ./
+
+# Add build arg to bust cache for migrations (ensures new migrations are always copied)
+ARG BUILD_DATE=unknown
+RUN echo "Build date: $BUILD_DATE"
+
 COPY prisma ./prisma/
 
 # Install production dependencies including optional dependencies
@@ -49,6 +54,11 @@ RUN apk update && apk upgrade && \
 
 # Copy package files
 COPY package*.json ./
+
+# Add build arg to bust cache for migrations
+ARG BUILD_DATE=unknown
+RUN echo "Build date: $BUILD_DATE"
+
 COPY prisma ./prisma/
 
 # Install all dependencies (including dev)
