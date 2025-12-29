@@ -12,15 +12,19 @@ const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX || 300);
 const API_RATE_LIMIT_WINDOW_MS = Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60_000);
 
 function isPublicPath(pathname: string) {
-    if (PUBLIC_PATH_PREFIXES.some((path) => pathname.startsWith(path))) {
+    // Exact matches for public paths
+    if (PUBLIC_PATH_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
         return true;
     }
 
-    if (pathname.startsWith('/_next') || pathname.startsWith('/favicon.ico')) {
+    // Next.js and static files
+    if (pathname.startsWith('/_next') || pathname.startsWith('/favicon.ico') || pathname.startsWith('/icon.svg')) {
         return true;
     }
 
-    return /\.[^/]+$/.test(pathname);
+    // Public static assets in /public folder (images, etc)
+    // Only allow specific extensions to avoid leaking pages as static files
+    return /\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot)$/i.test(pathname);
 }
 
 /**
@@ -184,5 +188,9 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image).*)']
+    // Match all request paths except for the ones starting with:
+    // - _next/static (static files)
+    // - _next/image (image optimization files)
+    // - favicon.ico (favicon file)
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

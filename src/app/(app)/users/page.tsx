@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Role, UserStatus, AuditEntityType } from '@prisma/client';
 import { getServerSession } from 'next-auth';
@@ -45,6 +46,20 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     const historyPage = Math.max(1, Number(awaitedSearchParams?.historyPage) || 1);
     const skip = (page - 1) * USERS_PER_PAGE;
     const historySkip = (historyPage - 1) * HISTORY_PER_PAGE;
+
+    // Security & Initialization Checks
+    // 1. Enforce Authentication
+    const session = await getServerSession(await getAuthOptions());
+    if (!session) {
+        redirect('/login?callbackUrl=/users');
+    }
+
+    // 2. Enforce System Setup
+    // Check if any users exist. If not, the system is not initialized.
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+        redirect('/setup');
+    }
 
     const where: any = {
         AND: [
@@ -148,7 +163,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     const historyTotalPages = Math.ceil(auditLogTotal / HISTORY_PER_PAGE);
 
     // Get current user for permission checks
-    const session = await getServerSession(await getAuthOptions());
+    // session is already fetched at the top of the component
     const currentUserEmail = session?.user?.email;
     const currentUser = currentUserEmail
         ? await prisma.user.findUnique({
