@@ -1,13 +1,10 @@
 /**
  * Integration Tests for Complete Notification Flow (REAL SETUP)
- * 
+ *
  * Replaces mocks with real database interactions.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
-
-// Unmock Prisma to use the real database connection from src/lib/prisma
-vi.unmock('../../src/lib/prisma');
+import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
 
 import {
   testPrisma,
@@ -17,7 +14,7 @@ import {
   createTestIncident,
   createTestTeam,
   createTestNotificationProvider,
-  createTestEscalationPolicy
+  createTestEscalationPolicy,
 } from '../helpers/test-db';
 import { sendServiceNotifications } from '../../src/lib/service-notifications';
 import { executeEscalation } from '../../src/lib/escalation';
@@ -34,13 +31,10 @@ vi.mock('../../src/lib/email', () => ({
 
 // Mock WhatsApp/SMS providers as well
 vi.mock('../../src/lib/sms', () => ({
-  sendIncidentSMS: vi.fn().mockResolvedValue({ success: true })
+  sendIncidentSMS: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-const describeDb = process.env.CI ? describe.skip : describe;
-
-describeDb('Notification Flow Integration Tests (Real DB)', () => {
-
+describe('Notification Flow Integration Tests (Real DB)', () => {
   beforeAll(async () => {
     // Ensure providers exist
     await resetDatabase();
@@ -50,7 +44,10 @@ describeDb('Notification Flow Integration Tests (Real DB)', () => {
     await resetDatabase();
 
     // Create a default provider to avoid "no provider" errors if code checks it
-    await createTestNotificationProvider('resend', { apiKey: 'test' });
+    await createTestNotificationProvider('resend', {
+      apiKey: 'test',
+      fromEmail: 'alerts@example.com',
+    });
   });
 
   afterAll(async () => {
@@ -67,14 +64,16 @@ describeDb('Notification Flow Integration Tests (Real DB)', () => {
         stepOrder: 0,
         delayMinutes: 0,
         targetType: 'USER',
-        targetUserId: user.id
-      }
+        targetUserId: user.id,
+        // Force EMAIL for deterministic assertion
+        notificationChannels: ['EMAIL'],
+      },
     ]);
 
     const service = await createTestService('Test Service', null, {
       serviceNotificationChannels: ['SLACK'],
       slackWebhookUrl: 'https://hooks.slack.com/test',
-      escalationPolicyId: policy.id
+      escalationPolicyId: policy.id,
     });
 
     const incident = await createTestIncident('Test Incident', service.id);
@@ -83,14 +82,13 @@ describeDb('Notification Flow Integration Tests (Real DB)', () => {
     const serviceResult = await sendServiceNotifications(incident.id, 'triggered');
     expect(serviceResult.success).toBe(true);
 
-    // Check that NO user notifications were created yet (Service notifs don't create Notification records usually, 
+    // Check that NO user notifications were created yet (Service notifs don't create Notification records usually,
     // unless they are tracked there. Based on previous logic, they might be strictly external or tracked differently.
     // The previous test asserted 0 notifications here.)
     const beforeEscalation = await testPrisma.notification.count({
-      where: { incidentId: incident.id }
+      where: { incidentId: incident.id },
     });
     expect(beforeEscalation).toBe(0);
-
 
     // 3. Execute Escalation
     // This should trigger the policy step 0 -> Notify User
@@ -99,27 +97,30 @@ describeDb('Notification Flow Integration Tests (Real DB)', () => {
 
     // 4. Verify Notifications Created
     const notifications = await testPrisma.notification.findMany({
-      where: { incidentId: incident.id }
+      where: { incidentId: incident.id },
     });
 
     expect(notifications.length).toBeGreaterThan(0);
     expect(notifications[0].userId).toBe(user.id);
-    expect(notifications[0].channel).toBe('EMAIL'); // User default is often EMAIL
+    expect(notifications.some(n => n.channel === 'EMAIL')).toBe(true);
   });
 
   it('should handle team escalation (Real DB)', async () => {
     // 1. Setup Team
     const lead = await createTestUser({ email: 'lead@test.com', emailNotificationsEnabled: true });
-    const member = await createTestUser({ email: 'member@test.com', emailNotificationsEnabled: true });
+    const member = await createTestUser({
+      email: 'member@test.com',
+      emailNotificationsEnabled: true,
+    });
 
     const team = await createTestTeam('Test Team', {
       teamLeadId: lead.id,
       members: {
         create: [
           { userId: lead.id, role: 'OWNER' },
-          { userId: member.id, role: 'MEMBER' }
-        ]
-      }
+          { userId: member.id, role: 'MEMBER' },
+        ],
+      },
     });
 
     // 2. Setup Policy targeting Team
@@ -129,12 +130,13 @@ describeDb('Notification Flow Integration Tests (Real DB)', () => {
         delayMinutes: 0,
         targetType: 'TEAM',
         targetTeamId: team.id,
-        notifyOnlyTeamLead: true
-      }
+        notifyOnlyTeamLead: true,
+        notificationChannels: ['EMAIL'],
+      },
     ]);
 
     const service = await createTestService('Team Service', team.id, {
-      escalationPolicyId: policy.id
+      escalationPolicyId: policy.id,
     });
 
     const incident = await createTestIncident('Team Incident', service.id);
@@ -147,7 +149,7 @@ describeDb('Notification Flow Integration Tests (Real DB)', () => {
 
     // 4. Verify DB
     const notifications = await testPrisma.notification.findMany({
-      where: { incidentId: incident.id }
+      where: { incidentId: incident.id },
     });
 
     // Should only notify lead

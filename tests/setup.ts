@@ -66,20 +66,26 @@ const mockPrisma = {
   verificationToken: createMockModel(),
   account: createMockModel(),
   session: createMockModel(),
-  $transaction: vi.fn().mockImplementation((cb) => cb(mockPrisma)),
+  $transaction: vi
+    .fn()
+    .mockImplementation((cb: (tx: typeof mockPrisma) => unknown) => cb(mockPrisma)),
   $extends: vi.fn().mockReturnThis(),
 };
 
-// Mock Prisma under both import paths used in the codebase.
-vi.mock('../src/lib/prisma', () => ({
-  __esModule: true,
-  default: mockPrisma,
-}));
+// Default test mode: mock Prisma so unit tests don't require a DB.
+// For DB-backed integration tests, run with VITEST_USE_REAL_DB=1 to skip Prisma mocking.
+if (!process.env.VITEST_USE_REAL_DB) {
+  // Mock Prisma under both import paths used in the codebase.
+  vi.mock('../src/lib/prisma', () => ({
+    __esModule: true,
+    default: mockPrisma,
+  }));
 
-vi.mock('@/lib/prisma', () => ({
-  __esModule: true,
-  default: mockPrisma,
-}));
+  vi.mock('@/lib/prisma', () => ({
+    __esModule: true,
+    default: mockPrisma,
+  }));
+}
 
 // Mock Twilio globally for dynamic requires
 vi.mock('twilio', () => {

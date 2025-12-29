@@ -59,21 +59,24 @@ jobs:
 
       - name: Unit tests
         # DB-backed tests share a single database; run files serially to avoid cross-test contention.
-        run: mkdir -p reports && npm run test:ci
+        run: |
+          mkdir -p reports
+          npm run test:ci:unit
+          npm run test:ci:db
 
       - name: Upload test report artifact (JUnit)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vitest-junit
-          path: reports/junit.xml
+          path: reports/*.xml
 
       - name: Publish test results to GitHub Checks
         if: always()
         uses: dorny/test-reporter@v1
         with:
           name: Unit tests (Vitest)
-          path: reports/junit.xml
+          path: reports/*.xml
           reporter: java-junit
 
       - name: Summarize JUnit results for PR comment
@@ -83,18 +86,39 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
 
-          const xml = fs.readFileSync('reports/junit.xml', 'utf8');
-          const head = (xml.match(/<testsuites[^>]*>/) || [''])[0];
+          const xmlFiles = fs.readdirSync('reports').filter((f) => f.endsWith('.xml'));
 
-          const get = (key) => {
-            const m = head.match(new RegExp(`${key}="(\\d+)"`));
-            return m ? Number(m[1]) : 0;
+          const parseCounts = (xml) => {
+            const head = (xml.match(/<testsuites[^>]*>/) || [''])[0];
+            const get = (key) => {
+              const m = head.match(new RegExp(`${key}="(\\d+)"`));
+              return m ? Number(m[1]) : 0;
+            };
+            return {
+              tests: get('tests'),
+              failures: get('failures'),
+              errors: get('errors'),
+              skipped: get('skipped'),
+            };
           };
 
-          const tests = get('tests');
-          const failures = get('failures');
-          const errors = get('errors');
-          const skipped = get('skipped');
+          const totals = xmlFiles.reduce(
+            (acc, f) => {
+              const xml = fs.readFileSync(`reports/${f}`, 'utf8');
+              const c = parseCounts(xml);
+              acc.tests += c.tests;
+              acc.failures += c.failures;
+              acc.errors += c.errors;
+              acc.skipped += c.skipped;
+              return acc;
+            },
+            { tests: 0, failures: 0, errors: 0, skipped: 0 }
+          );
+
+          const tests = totals.tests;
+          const failures = totals.failures;
+          const errors = totals.errors;
+          const skipped = totals.skipped;
           const passed = Math.max(0, tests - failures - errors - skipped);
 
           const status = failures || errors ? '❌ Failed' : '✅ Passed';
@@ -109,7 +133,7 @@ jobs:
             `- **Skipped**: ${skipped}`,
             '',
             `**Run**: ${runUrl}`,
-            '**JUnit artifact**: `vitest-junit` (`reports/junit.xml`)',
+            '**JUnit artifact**: `vitest-junit` (`reports/*.xml`)',
             '',
           ].join('\n');
 
