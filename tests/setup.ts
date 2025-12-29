@@ -1,15 +1,11 @@
 import '@testing-library/jest-dom';
 import { afterEach, vi } from 'vitest';
+import { cleanup } from '@testing-library/react';
 
-// Cleanup after each test (only if @testing-library/react is available)
-try {
-  const { cleanup } = require('@testing-library/react');
-  afterEach(() => {
-    cleanup();
-  });
-} catch {
-  // @testing-library/react not available, skip cleanup
-}
+// Cleanup after each test
+afterEach(() => {
+  cleanup();
+});
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
@@ -60,11 +56,11 @@ const mockPrisma = {
   service: createMockModel(),
   team: createMockModel(),
   user: createMockModel(),
+  oidcConfig: createMockModel(),
   backgroundJob: createMockModel(),
   incidentEvent: createMockModel(),
   slackIntegration: createMockModel(),
   notificationProvider: createMockModel(),
-  oidcConfig: createMockModel(),
   slackOAuthConfig: createMockModel(),
   apiKey: createMockModel(),
   verificationToken: createMockModel(),
@@ -74,7 +70,13 @@ const mockPrisma = {
   $extends: vi.fn().mockReturnThis(),
 };
 
+// Mock Prisma under both import paths used in the codebase.
 vi.mock('../src/lib/prisma', () => ({
+  __esModule: true,
+  default: mockPrisma,
+}));
+
+vi.mock('@/lib/prisma', () => ({
   __esModule: true,
   default: mockPrisma,
 }));
@@ -84,12 +86,12 @@ vi.mock('twilio', () => {
   const mockCreate = vi.fn().mockResolvedValue({ sid: 'mock-sid' });
   const mockClient = {
     messages: {
-      create: mockCreate
-    }
+      create: mockCreate,
+    },
   };
   const mockFunc = vi.fn(() => mockClient);
   return {
     default: mockFunc,
-    __esModule: true
+    __esModule: true,
   };
 });
