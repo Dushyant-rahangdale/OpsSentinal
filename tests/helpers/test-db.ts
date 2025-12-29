@@ -58,13 +58,13 @@ export async function createTestTeam(
 
 export async function createTestService(
   name: string,
-  teamId: string | null = null,
+  teamId?: string,
   overrides: Partial<Prisma.ServiceCreateInput> = {}
 ) {
   return await prisma.service.create({
     data: {
       name,
-      teamId,
+      ...(teamId ? { teamId } : {}),
       ...overrides,
     },
   });
