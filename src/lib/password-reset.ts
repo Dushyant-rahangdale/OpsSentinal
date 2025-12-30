@@ -87,16 +87,22 @@ export async function initiatePasswordReset(email: string, ipAddress?: string): 
             // For this implementation, I'll assume we can use a direct email helper.
             try {
                 const { sendEmail } = await import('@/lib/email');
-                await sendEmail({
+                const result = await sendEmail({
                     to: user.email,
                     subject: 'Reset your password',
                     text: `Click here to reset your password: ${resetLink}`, // Fallback
                     html: `<p>You requested a password reset. Click the link below to reset it:</p><p><a href="${resetLink}">Reset Password</a></p><p>This link expires in 1 hour.</p>`
                 });
-                method = 'EMAIL';
-                sent = true;
+
+                if (result.success) {
+                    method = 'EMAIL';
+                    sent = true;
+                } else {
+                    logger.warn('Failed to send reset email', { error: result.error });
+                    // Fallthrough to SMS
+                }
             } catch (e) {
-                logger.error('Failed to send reset email', { error: e });
+                logger.error('Exception sending reset email', { error: e });
                 // Fallthrough to SMS
             }
         }
@@ -105,14 +111,19 @@ export async function initiatePasswordReset(email: string, ipAddress?: string): 
         if (!sent && smsConfig.enabled && user.phoneNumber && user.smsNotificationsEnabled) {
             try {
                 const { sendSMS } = await import('@/lib/sms');
-                await sendSMS({
+                const result = await sendSMS({
                     to: user.phoneNumber,
                     message: `OpsSentinal: Reset your password here: ${resetLink}`
                 });
-                method = 'SMS';
-                sent = true;
+
+                if (result.success) {
+                    method = 'SMS';
+                    sent = true;
+                } else {
+                    logger.warn('Failed to send reset SMS', { error: result.error });
+                }
             } catch (e) {
-                logger.error('Failed to send reset SMS', { error: e });
+                logger.error('Exception sending reset SMS', { error: e });
             }
         }
 
