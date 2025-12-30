@@ -65,5 +65,8 @@ export async function setPassword(formData: FormData) {
         details: { method: 'invite' }
     });
 
-    redirect('/login?password=1');
+    // Force sign-out effectively by redirecting to signout or letting the frontend handle it. 
+    // Since this is a server action, we can't easily clear the cookie domain-wide without auth hooks.
+    // However, redirecting to the sign-out route with a callback to login is a safe way to ensure fresh session.
+    redirect('/api/auth/signout?callbackUrl=/login?password=1');
 }
