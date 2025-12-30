@@ -3,12 +3,12 @@
  */
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
 
-// Mocks
-vi.mock('../../src/lib/email', () => ({
+// Mocks - Use aliases to match source code imports exactly
+vi.mock('@/lib/email', () => ({
     sendEmail: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-vi.mock('../../src/lib/sms', () => ({
+vi.mock('@/lib/sms', () => ({
     sendSMS: vi.fn().mockResolvedValue({ success: true }),
 }));
 
@@ -19,14 +19,9 @@ import {
     createTestNotificationProvider,
 } from '../helpers/test-db';
 
-import { initiatePasswordReset } from '../../src/lib/password-reset';
+import { initiatePasswordReset } from '@/lib/password-reset';
 
 describe('Forgot Password Integration', () => {
-    // We need to re-import mocked internal modules to spy on them?
-    // initiatePasswordReset imports them dynamically.
-    // We can spy on the mocks we set up above.
-    // But since initiatePasswordReset uses `import(...)`, we need to make sure the mock structure matches export.
-
     beforeEach(async () => {
         await resetDatabase();
         vi.clearAllMocks();
@@ -61,7 +56,7 @@ describe('Forgot Password Integration', () => {
         expect(log).toBeDefined();
 
         // 6. Verify Email Sent (Mock)
-        const emailModule = await import('../../src/lib/email');
+        const emailModule = await import('@/lib/email');
         expect(emailModule.sendEmail).toHaveBeenCalled();
     });
 
@@ -83,7 +78,7 @@ describe('Forgot Password Integration', () => {
         expect(result.success).toBe(true);
 
         // 5. Verify SMS Sent
-        const smsModule = await import('../../src/lib/sms');
+        const smsModule = await import('@/lib/sms');
         expect(smsModule.sendSMS).toHaveBeenCalledWith(expect.objectContaining({
             to: '+15555555555',
             message: expect.stringContaining('Reset your password')
@@ -99,19 +94,19 @@ describe('Forgot Password Integration', () => {
             await initiatePasswordReset('limit@example.com', '127.0.0.1');
         }
 
-        // 6th request should throw/fail? 
-        // initiatePasswordReset catches error and returns success false? 
-        // No, `checkRateLimit` throws Error, caught by catch block -> success: false.
+        // Verify we actually logged 5 attempts
+        const count = await testPrisma.auditLog.count({
+            where: {
+                action: 'PASSWORD_RESET_INITIATED',
+                details: { path: ['targetEmail'], equals: 'limit@example.com' }
+            }
+        });
+        expect(count).toBe(5);
 
+        // 6th request should fail
         const result = await initiatePasswordReset('limit@example.com', '127.0.0.1');
         expect(result.success).toBe(false);
-        expect(result.message).toBe('An internal error occurred.'); // Or explicit message if we want user to know?
-        // Wait, generic msg for security or specific for rate limit?
-        // My implementation returns generic "An internal error occurred." on catch.
-        // If I want to verify it was rate limit, I'd check logs or if I rethrow.
-        // For security, usually correct to hide, but maybe 'Too many requests' is safe.
-        // For now, testing that it fails is enough.
-    }, 10000); // Higher timeout
+    }, 10000);
 
     it('should not reveal non-existent users', async () => {
         const result = await initiatePasswordReset('ghost@example.com', '127.0.0.1');
