@@ -9,10 +9,12 @@ import { getOidcConfig } from '@/lib/oidc-config';
 
 export async function getAuthOptions(): Promise<NextAuthOptions> {
     const oidcConfig = await getOidcConfig();
+    const sessionMaxAgeSeconds = 60 * 60 * 24 * 7;
 
     return {
         adapter: PrismaAdapter(prisma as any),
-        session: { strategy: 'jwt' },
+        session: { strategy: 'jwt', maxAge: sessionMaxAgeSeconds },
+        jwt: { maxAge: sessionMaxAgeSeconds },
         providers: [
             ...(oidcConfig
                 ? [

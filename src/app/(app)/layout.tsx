@@ -17,6 +17,12 @@ import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { startCronScheduler } from '@/lib/cron-scheduler';
 
+const isNextRedirectError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+  const digest = (error as { digest?: unknown }).digest;
+  return typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT');
+};
+
 // Force all app routes to be dynamic - prevents static generation during build
 // This is necessary because the app requires database access via middleware/auth
 export const dynamic = 'force-dynamic';
@@ -35,7 +41,9 @@ export default async function AppLayout({
     try {
       userCount = await prisma.user.count();
     } catch (error) {
-      console.error('[App Layout] Failed to check user count:', error);
+      if (!isNextRedirectError(error)) {
+        console.error('[App Layout] Failed to check user count:', error);
+      }
     }
     if (userCount === 0) {
       redirect('/setup');
@@ -55,7 +63,9 @@ export default async function AppLayout({
     dbError = error;
     // Database connection error - allow app to load with session data
     // This prevents complete app failure when DB is temporarily unavailable
-    console.error('[App Layout] Database connection error:', error);
+    if (!isNextRedirectError(error)) {
+      console.error('[App Layout] Database connection error:', error);
+    }
     dbUser = null;
   }
 
@@ -65,7 +75,9 @@ export default async function AppLayout({
     try {
       userCount = await prisma.user.count();
     } catch (error) {
-      console.error('[App Layout] Failed to verify user count:', error);
+      if (!isNextRedirectError(error)) {
+        console.error('[App Layout] Failed to verify user count:', error);
+      }
     }
     if (userCount === 0) {
       redirect('/setup');

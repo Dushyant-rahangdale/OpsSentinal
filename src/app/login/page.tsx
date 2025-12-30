@@ -6,6 +6,12 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
+const isNextRedirectError = (error: unknown) => {
+    if (!error || typeof error !== 'object') return false;
+    const digest = (error as { digest?: unknown }).digest;
+    return typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT');
+};
+
 type SearchParams = {
     callbackUrl?: string;
     error?: string;
@@ -22,7 +28,9 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
     } catch (error) {
         // If DB is not ready, we might want to let the login page load or show error
         // But for now, let's just log it and proceed to login
-        console.error('Failed to check user count:', error);
+        if (!isNextRedirectError(error)) {
+            console.error('Failed to check user count:', error);
+        }
     }
 
     // Redirect outside try-catch so Next.js redirect error can bubble up
@@ -46,7 +54,9 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
                     redirect('/api/auth/signout?callbackUrl=/login');
                 }
             } catch (error) {
-                console.error('[Login Page] Failed to verify session user:', error);
+                if (!isNextRedirectError(error)) {
+                    console.error('[Login Page] Failed to verify session user:', error);
+                }
             }
         }
         const awaitedSearchParams = await searchParams;
