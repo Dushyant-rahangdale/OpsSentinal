@@ -1,6 +1,6 @@
 'use client';
 
-import { _ReactNode, useId } from 'react';
+import { useId } from 'react';
 
 interface SwitchProps {
   checked: boolean;
@@ -17,7 +17,7 @@ interface SwitchProps {
 
 /**
  * Switch/Toggle component
- * 
+ *
  * @example
  * <Switch
  *   checked={enabled}
@@ -65,7 +65,10 @@ export default function Switch({
   const styles = sizeStyles[size];
 
   return (
-    <div className={`ui-switch-wrapper ${fullWidth ? 'ui-switch-full-width' : ''} ${className}`} style={{ width: fullWidth ? '100%' : 'auto' }}>
+    <div
+      className={`ui-switch-wrapper ${fullWidth ? 'ui-switch-full-width' : ''} ${className}`}
+      style={{ width: fullWidth ? '100%' : 'auto' }}
+    >
       <label
         htmlFor={switchId}
         style={{
@@ -87,7 +90,9 @@ export default function Switch({
             height: styles.height,
             borderRadius: 'var(--radius-full)',
             background: checked
-              ? (hasError ? 'var(--color-error)' : 'var(--primary)')
+              ? hasError
+                ? 'var(--color-error)'
+                : 'var(--primary)'
               : 'var(--color-neutral-300)',
             transition: 'all var(--transition-base) var(--ease-out)',
             cursor: disabled ? 'not-allowed' : 'pointer',
@@ -99,7 +104,9 @@ export default function Switch({
             style={{
               position: 'absolute',
               top: styles.translate,
-              left: checked ? `calc(100% - ${styles.thumbSize} - ${styles.translate})` : styles.translate,
+              left: checked
+                ? `calc(100% - ${styles.thumbSize} - ${styles.translate})`
+                : styles.translate,
               width: `calc(${styles.thumbSize} - ${styles.translate} * 2)`,
               height: `calc(${styles.thumbSize} - ${styles.translate} * 2)`,
               borderRadius: 'var(--radius-full)',
@@ -158,10 +165,3 @@ export default function Switch({
     </div>
   );
 }
-
-
-
-
-
-
-

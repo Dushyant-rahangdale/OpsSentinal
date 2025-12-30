@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, _useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 type AnomalyData = {
   type: 'spike' | 'drop' | 'pattern';
@@ -27,7 +27,10 @@ type DashboardAnomalyDetectionProps = {
   }>;
 };
 
-export default function DashboardAnomalyDetection({ currentData, historicalData }: DashboardAnomalyDetectionProps) {
+export default function DashboardAnomalyDetection({
+  currentData,
+  historicalData,
+}: DashboardAnomalyDetectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Use useMemo to calculate anomalies derived from props
@@ -41,13 +44,10 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
     const avgTotal = recent7Days.reduce((sum, d) => sum + d.total, 0) / recent7Days.length;
     const avgOpen = recent7Days.reduce((sum, d) => sum + d.open, 0) / recent7Days.length;
     const avgResolved = recent7Days.reduce((sum, d) => sum + d.resolved, 0) / recent7Days.length;
-    const avgAcknowledged = recent7Days.reduce((sum, d) => sum + d.acknowledged, 0) / recent7Days.length;
+    const avgAcknowledged =
+      recent7Days.reduce((sum, d) => sum + d.acknowledged, 0) / recent7Days.length;
 
-    const checkAnomaly = (
-      current: number,
-      expected: number,
-      metric: string,
-    ) => {
+    const checkAnomaly = (current: number, expected: number, metric: string) => {
       const diff = Math.abs(current - expected);
       // Avoid division by zero
       if (expected === 0) {
@@ -58,7 +58,7 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
             value: current,
             expected,
             severity: 'high' as const,
-            message: `${metric} spiked (new activity, expected 0)`
+            message: `${metric} spiked (new activity, expected 0)`,
           };
         }
         return null;
@@ -69,12 +69,17 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
       if (percentChange > 50) {
         const isSpike = current > expected;
         return {
-          type: isSpike ? 'spike' as const : 'drop' as const,
+          type: isSpike ? ('spike' as const) : ('drop' as const),
           metric,
           value: current,
           expected,
-          severity: percentChange > 100 ? 'high' as const : percentChange > 75 ? 'medium' as const : 'low' as const,
-          message: `${metric} ${isSpike ? 'spiked' : 'dropped'} by ${percentChange.toFixed(1)}% (${current} vs expected ${expected.toFixed(0)})`
+          severity:
+            percentChange > 100
+              ? ('high' as const)
+              : percentChange > 75
+                ? ('medium' as const)
+                : ('low' as const),
+          message: `${metric} ${isSpike ? 'spiked' : 'dropped'} by ${percentChange.toFixed(1)}% (${current} vs expected ${expected.toFixed(0)})`,
         };
       }
       return null;
@@ -89,7 +94,11 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
     const resolvedAnomaly = checkAnomaly(currentData.resolved, avgResolved, 'Resolved Incidents');
     if (resolvedAnomaly) detected.push(resolvedAnomaly);
 
-    const ackAnomaly = checkAnomaly(currentData.acknowledged, avgAcknowledged, 'Acknowledged Incidents');
+    const ackAnomaly = checkAnomaly(
+      currentData.acknowledged,
+      avgAcknowledged,
+      'Acknowledged Incidents'
+    );
     if (ackAnomaly) detected.push(ackAnomaly);
 
     return detected;
@@ -104,11 +113,12 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
     <div
       className="glass-panel"
       style={{
-        background: highSeverityCount > 0 ? '#fef2f2' : mediumSeverityCount > 0 ? '#fffbeb' : '#f0f9ff',
+        background:
+          highSeverityCount > 0 ? '#fef2f2' : mediumSeverityCount > 0 ? '#fffbeb' : '#f0f9ff',
         padding: '1rem',
         borderRadius: '8px',
         border: `2px solid ${highSeverityCount > 0 ? '#ef4444' : mediumSeverityCount > 0 ? '#f59e0b' : '#3b82f6'}`,
-        marginBottom: '1rem'
+        marginBottom: '1rem',
       }}
     >
       <div
@@ -117,7 +127,7 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
           justifyContent: 'space-between',
           alignItems: 'center',
           cursor: 'pointer',
-          marginBottom: isExpanded ? '1rem' : 0
+          marginBottom: isExpanded ? '1rem' : 0,
         }}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -140,7 +150,7 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
             border: 'none',
             fontSize: '1.2rem',
             cursor: 'pointer',
-            color: 'var(--text-muted)'
+            color: 'var(--text-muted)',
           }}
         >
           {isExpanded ? '▼' : '▶'}
@@ -159,7 +169,7 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
                 border: `1px solid ${anomaly.severity === 'high' ? '#ef4444' : anomaly.severity === 'medium' ? '#f59e0b' : '#3b82f6'}`,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.75rem'
+                gap: '0.75rem',
               }}
             >
               <div
@@ -167,12 +177,24 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  background: anomaly.severity === 'high' ? '#ef4444' : anomaly.severity === 'medium' ? '#f59e0b' : '#3b82f6',
-                  flexShrink: 0
+                  background:
+                    anomaly.severity === 'high'
+                      ? '#ef4444'
+                      : anomaly.severity === 'medium'
+                        ? '#f59e0b'
+                        : '#3b82f6',
+                  flexShrink: 0,
                 }}
               />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                <div
+                  style={{
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    color: 'var(--text-primary)',
+                    marginBottom: '0.25rem',
+                  }}
+                >
                   {anomaly.metric}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -183,11 +205,21 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
                 style={{
                   padding: '0.25rem 0.5rem',
                   borderRadius: '4px',
-                  background: anomaly.severity === 'high' ? '#fee2e2' : anomaly.severity === 'medium' ? '#fef3c7' : '#dbeafe',
-                  color: anomaly.severity === 'high' ? '#991b1b' : anomaly.severity === 'medium' ? '#92400e' : '#1e40af',
+                  background:
+                    anomaly.severity === 'high'
+                      ? '#fee2e2'
+                      : anomaly.severity === 'medium'
+                        ? '#fef3c7'
+                        : '#dbeafe',
+                  color:
+                    anomaly.severity === 'high'
+                      ? '#991b1b'
+                      : anomaly.severity === 'medium'
+                        ? '#92400e'
+                        : '#1e40af',
                   fontSize: '0.7rem',
                   fontWeight: '600',
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
                 }}
               >
                 {anomaly.severity}
@@ -199,4 +231,3 @@ export default function DashboardAnomalyDetection({ currentData, historicalData 
     </div>
   );
 }
-

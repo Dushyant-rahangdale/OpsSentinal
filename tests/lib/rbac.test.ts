@@ -4,12 +4,10 @@ import {
   assertAdmin,
   assertAdminOrResponder,
   assertAdminOrTeamOwner,
-  _assertResponderOrAbove,
   assertNotSelf,
   getUserPermissions,
   assertCanModifyIncident,
-  _assertCanViewIncident,
-  assertCanModifyService
+  assertCanModifyService,
 } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
@@ -104,7 +102,9 @@ describe('RBAC Functions', () => {
     it('should throw Error if role is USER', async () => {
       vi.mocked(getServerSession).mockResolvedValue({ user: { email: mockUser.email } });
       vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-      await expect(assertAdminOrResponder()).rejects.toThrow('Unauthorized. Admin or Responder access required.');
+      await expect(assertAdminOrResponder()).rejects.toThrow(
+        'Unauthorized. Admin or Responder access required.'
+      );
     });
   });
 
@@ -120,7 +120,7 @@ describe('RBAC Functions', () => {
     it('should allow TEAM OWNER', async () => {
       vi.mocked(getServerSession).mockResolvedValue({ user: { email: mockUser.email } });
       vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ id: 'membership-1' } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ id: 'membership-1' } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
       expect(await assertAdminOrTeamOwner(teamId)).toEqual(mockUser);
     });
@@ -130,7 +130,9 @@ describe('RBAC Functions', () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(null);
 
-      await expect(assertAdminOrTeamOwner(teamId)).rejects.toThrow('Unauthorized. Admin or Team Owner access required.');
+      await expect(assertAdminOrTeamOwner(teamId)).rejects.toThrow(
+        'Unauthorized. Admin or Team Owner access required.'
+      );
     });
   });
 
@@ -140,7 +142,9 @@ describe('RBAC Functions', () => {
     });
 
     it('should throw if IDs are the same', async () => {
-      await expect(assertNotSelf('u1', 'u1', 'delete')).rejects.toThrow('You cannot delete your own account.');
+      await expect(assertNotSelf('u1', 'u1', 'delete')).rejects.toThrow(
+        'You cannot delete your own account.'
+      );
     });
   });
 
@@ -179,8 +183,8 @@ describe('RBAC Functions', () => {
       vi.mocked(prisma.incident.findUnique).mockResolvedValue({
         id: incidentId,
         assigneeId: mockUser.id,
-        service: { team: { members: [] } }
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+        service: { team: { members: [] } },
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
       expect(await assertCanModifyIncident(incidentId)).toEqual(mockUser);
     });
@@ -191,8 +195,8 @@ describe('RBAC Functions', () => {
       vi.mocked(prisma.incident.findUnique).mockResolvedValue({
         id: incidentId,
         assigneeId: 'someone-else',
-        service: { team: { members: [{ userId: mockUser.id }] } }
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+        service: { team: { members: [{ userId: mockUser.id }] } },
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
       expect(await assertCanModifyIncident(incidentId)).toEqual(mockUser);
     });
@@ -203,8 +207,8 @@ describe('RBAC Functions', () => {
       vi.mocked(prisma.incident.findUnique).mockResolvedValue({
         id: incidentId,
         assigneeId: 'someone-else',
-        service: { team: { members: [] } }
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+        service: { team: { members: [] } },
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
       await expect(assertCanModifyIncident(incidentId)).rejects.toThrow('Unauthorized');
     });
@@ -214,8 +218,8 @@ describe('RBAC Functions', () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       vi.mocked(prisma.service.findUnique).mockResolvedValue({
         id: serviceId,
-        team: { members: [{ userId: mockUser.id }] }
-      } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+        team: { members: [{ userId: mockUser.id }] },
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
       expect(await assertCanModifyService(serviceId)).toEqual(mockUser);
     });

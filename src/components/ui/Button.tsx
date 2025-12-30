@@ -1,6 +1,6 @@
 'use client';
 
-import { ButtonHTMLAttributes, ReactNode, _memo } from 'react';
+import { ButtonHTMLAttributes, ReactNode } from 'react';
 import Spinner from './Spinner';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link';
@@ -18,7 +18,7 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'siz
 
 /**
  * Button component with variants, sizes, and loading states
- * 
+ *
  * @example
  * <Button variant="primary" size="md" isLoading={false}>
  *   Click Me
@@ -137,12 +137,12 @@ export default function Button({
       disabled={isDisabled}
       aria-disabled={isDisabled}
       aria-busy={isLoading}
-      onMouseEnter={(e) => {
+      onMouseEnter={e => {
         if (!isDisabled) {
           Object.assign(e.currentTarget.style, hoverStyles[variant]);
         }
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={e => {
         if (!isDisabled) {
           Object.assign(e.currentTarget.style, variantStyles[variant]);
         }
@@ -151,7 +151,10 @@ export default function Button({
     >
       {isLoading ? (
         <>
-          <Spinner size={size === 'sm' ? 'sm' : 'md'} variant={variant === 'primary' || variant === 'danger' ? 'white' : 'default'} />
+          <Spinner
+            size={size === 'sm' ? 'sm' : 'md'}
+            variant={variant === 'primary' || variant === 'danger' ? 'white' : 'default'}
+          />
           <span style={{ opacity: 0 }}>{children}</span>
         </>
       ) : (
@@ -164,9 +167,3 @@ export default function Button({
     </button>
   );
 }
-
-
-
-
-
-

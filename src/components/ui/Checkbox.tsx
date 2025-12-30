@@ -1,6 +1,6 @@
 'use client';
 
-import { InputHTMLAttributes, _ReactNode, useId } from 'react';
+import { InputHTMLAttributes, useId } from 'react';
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'size'> {
   label?: string;
@@ -12,7 +12,7 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'typ
 
 /**
  * Checkbox component
- * 
+ *
  * @example
  * <Checkbox
  *   label="Accept terms"
@@ -41,7 +41,10 @@ export default function Checkbox({
   };
 
   return (
-    <div className={`ui-checkbox-wrapper ${fullWidth ? 'ui-checkbox-full-width' : ''}`} style={{ width: fullWidth ? '100%' : 'auto' }}>
+    <div
+      className={`ui-checkbox-wrapper ${fullWidth ? 'ui-checkbox-full-width' : ''}`}
+      style={{ width: fullWidth ? '100%' : 'auto' }}
+    >
       <label
         htmlFor={checkboxId}
         style={{
@@ -63,7 +66,9 @@ export default function Checkbox({
             accentColor: hasError ? 'var(--color-error)' : 'var(--primary)',
           }}
           aria-invalid={hasError}
-          aria-describedby={error ? `${checkboxId}-error` : helperText ? `${checkboxId}-helper` : undefined}
+          aria-describedby={
+            error ? `${checkboxId}-error` : helperText ? `${checkboxId}-helper` : undefined
+          }
           {...props}
         />
         {label && (
@@ -75,7 +80,9 @@ export default function Checkbox({
             }}
           >
             {label}
-            {props.required && <span style={{ color: 'var(--color-error)', marginLeft: 'var(--spacing-1)' }}>*</span>}
+            {props.required && (
+              <span style={{ color: 'var(--color-error)', marginLeft: 'var(--spacing-1)' }}>*</span>
+            )}
           </span>
         )}
       </label>
@@ -114,10 +121,3 @@ export default function Checkbox({
     </div>
   );
 }
-
-
-
-
-
-
-

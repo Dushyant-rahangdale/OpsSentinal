@@ -4,38 +4,39 @@
  */
 
 import {
-    EmailContainer,
-    EmailHeader,
-    EmailContent,
-    StatusBadge,
-    EmailButton,
-    AlertBox,
-    EmailFooter,
-    SubscriberEmailHeader,
-    SubscriberEmailFooter,
-    _InfoCard
+  EmailContainer,
+  EmailHeader,
+  EmailContent,
+  StatusBadge,
+  EmailButton,
+  AlertBox,
+  EmailFooter,
+  SubscriberEmailHeader,
+  SubscriberEmailFooter,
 } from '@/lib/email-components';
 
 export interface EmailTemplateData {
-    statusPageName: string;
-    organizationName?: string;
-    statusPageUrl: string;
-    incidentTitle?: string;
-    incidentDescription?: string;
-    incidentStatus?: string;
-    affectedServices?: string[];
-    incidentUrl?: string;
-    unsubscribeUrl?: string;
+  statusPageName: string;
+  organizationName?: string;
+  statusPageUrl: string;
+  incidentTitle?: string;
+  incidentDescription?: string;
+  incidentStatus?: string;
+  affectedServices?: string[];
+  incidentUrl?: string;
+  unsubscribeUrl?: string;
 }
 
 /**
  * Verification Email Template
  */
-export function getVerificationEmailTemplate(data: EmailTemplateData & { verificationUrl: string }): { subject: string; html: string; text: string } {
-    const displayName = data.organizationName || data.statusPageName;
-    const subject = `[${displayName}] 🔐 Verify your subscription`;
+export function getVerificationEmailTemplate(
+  data: EmailTemplateData & { verificationUrl: string }
+): { subject: string; html: string; text: string } {
+  const displayName = data.organizationName || data.statusPageName;
+  const subject = `[${displayName}] 🔐 Verify your subscription`;
 
-    const content = `
+  const content = `
         ${SubscriberEmailHeader(displayName, 'Email Verification', 'Confirm your subscription to receive status updates')}
         ${EmailContent(`
             <!-- Welcome Message -->
@@ -84,9 +85,9 @@ export function getVerificationEmailTemplate(data: EmailTemplateData & { verific
         ${SubscriberEmailFooter(data.unsubscribeUrl || '#', displayName)}
     `;
 
-    const html = EmailContainer(content);
+  const html = EmailContainer(content);
 
-    const text = `
+  const text = `
 ${displayName} - Verify Your Email Subscription
 
 Thank you for subscribing to ${displayName} status updates!
@@ -99,16 +100,20 @@ This verification link will expire in 7 days.
 If you didn't subscribe, you can safely ignore this email.
     `.trim();
 
-    return { subject, html, text };
+  return { subject, html, text };
 }
 
 /**
  * Incident Created Template
  */
-export function getIncidentCreatedTemplate(data: EmailTemplateData): { subject: string; html: string; text: string } {
-    const subject = `[${data.statusPageName}] 🚨 Incident: ${data.incidentTitle || 'New Incident'}`;
+export function getIncidentCreatedTemplate(data: EmailTemplateData): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = `[${data.statusPageName}] 🚨 Incident: ${data.incidentTitle || 'New Incident'}`;
 
-    const content = `
+  const content = `
         ${EmailHeader('Incident Reported', data.statusPageName)}
         ${EmailContent(`
             <!-- Status Badge -->
@@ -118,27 +123,36 @@ export function getIncidentCreatedTemplate(data: EmailTemplateData): { subject: 
             
             <!-- Alert Box -->
             ${AlertBox(
-        data.incidentTitle || 'New Incident',
-        data.incidentDescription || 'An incident has been reported and our team is investigating.',
-        'error'
-    )}
+              data.incidentTitle || 'New Incident',
+              data.incidentDescription ||
+                'An incident has been reported and our team is investigating.',
+              'error'
+            )}
             
-            ${data.affectedServices && data.affectedServices.length > 0 ? `
+            ${
+              data.affectedServices && data.affectedServices.length > 0
+                ? `
             <!-- Affected Services -->
             <div style="margin: 32px 0;">
                 <h3 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px; font-weight: 700;">
                     Affected Services
                 </h3>
                 <div style="background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%); border: 1px solid #fecaca; border-radius: 12px; padding: 24px;">
-                    ${data.affectedServices.map(service => `
+                    ${data.affectedServices
+                      .map(
+                        service => `
                         <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(239, 68, 68, 0.1); last-child:border-bottom: none;">
                             <div style="width: 10px; height: 10px; background: #dc2626; border-radius: 50%; box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);"></div>
                             <span style="color: #111827; font-size: 15px; font-weight: 600;">${service}</span>
                         </div>
-                    `).join('')}
+                    `
+                      )
+                      .join('')}
                 </div>
             </div>
-            ` : ''}
+            `
+                : ''
+            }
             
             <!-- Call to Action -->
             ${EmailButton('View Incident Details →', data.incidentUrl || data.statusPageUrl)}
@@ -153,9 +167,9 @@ export function getIncidentCreatedTemplate(data: EmailTemplateData): { subject: 
         ${EmailFooter(data.unsubscribeUrl)}
     `;
 
-    const html = EmailContainer(content);
+  const html = EmailContainer(content);
 
-    const text = `
+  const text = `
 ${data.statusPageName} - New Incident Reported
 
 ${data.incidentTitle || 'New Incident'}
@@ -170,19 +184,23 @@ You're receiving this because you subscribed to ${data.statusPageName} status up
 ${data.unsubscribeUrl ? `Unsubscribe: ${data.unsubscribeUrl}` : ''}
     `.trim();
 
-    return { subject, html, text };
+  return { subject, html, text };
 }
 
 /**
  * Incident Resolved Template
  */
-export function getIncidentResolvedTemplate(data: EmailTemplateData): { subject: string; html: string; text: string } {
-    const subject = `[${data.statusPageName}] ✅ Resolved: ${data.incidentTitle || 'Incident'}`;
+export function getIncidentResolvedTemplate(data: EmailTemplateData): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = `[${data.statusPageName}] ✅ Resolved: ${data.incidentTitle || 'Incident'}`;
 
-    const content = `
+  const content = `
         ${EmailHeader('Incident Resolved', data.statusPageName, {
-        headerGradient: 'linear-gradient(135deg, #166534 0%, #16a34a 45%, #22c55e 100%)'
-    })}
+          headerGradient: 'linear-gradient(135deg, #166534 0%, #16a34a 45%, #22c55e 100%)',
+        })}
         ${EmailContent(`
             <!-- Status Badge -->
             <div style="text-align: center; margin-bottom: 32px;">
@@ -198,10 +216,11 @@ export function getIncidentResolvedTemplate(data: EmailTemplateData): { subject:
             
             <!-- Alert Box -->
             ${AlertBox(
-        data.incidentTitle || 'All Systems Operational',
-        data.incidentDescription || 'The incident has been resolved and all systems are back to normal operation.',
-        'success'
-    )}
+              data.incidentTitle || 'All Systems Operational',
+              data.incidentDescription ||
+                'The incident has been resolved and all systems are back to normal operation.',
+              'success'
+            )}
             
             <!-- Success Message -->
             <div style="text-align: center; margin: 32px 0; padding: 28px; background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); border-radius: 12px; border: 1px solid #86efac;">
@@ -218,9 +237,9 @@ export function getIncidentResolvedTemplate(data: EmailTemplateData): { subject:
         ${EmailFooter(data.unsubscribeUrl)}
     `;
 
-    const html = EmailContainer(content);
+  const html = EmailContainer(content);
 
-    const text = `
+  const text = `
 ${data.statusPageName} - Incident Resolved
 
 ${data.incidentTitle || 'Incident'} has been resolved.
@@ -236,16 +255,20 @@ You're receiving this because you subscribed to ${data.statusPageName} status up
 ${data.unsubscribeUrl ? `Unsubscribe: ${data.unsubscribeUrl}` : ''}
     `.trim();
 
-    return { subject, html, text };
+  return { subject, html, text };
 }
 
 /**
  * Status Change Template
  */
-export function getStatusChangeTemplate(data: EmailTemplateData): { subject: string; html: string; text: string } {
-    const subject = `[${data.statusPageName}] 🔄 Status Update`;
+export function getStatusChangeTemplate(data: EmailTemplateData): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = `[${data.statusPageName}] 🔄 Status Update`;
 
-    const content = `
+  const content = `
         ${EmailHeader('Status Update', data.statusPageName)}
         ${EmailContent(`
             <h2 style="margin: 0 0 24px 0; color: #111827; font-size: 24px; font-weight: 700;">
@@ -265,22 +288,26 @@ export function getStatusChangeTemplate(data: EmailTemplateData): { subject: str
                 </p>
             </div>
             
-            ${data.incidentDescription ? `
+            ${
+              data.incidentDescription
+                ? `
             <div style="margin: 24px 0;">
                 <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.7;">
                     ${data.incidentDescription}
                 </p>
             </div>
-            ` : ''}
+            `
+                : ''
+            }
             
             ${EmailButton('View Full Status →', data.statusPageUrl)}
         `)}
         ${EmailFooter(data.unsubscribeUrl)}
     `;
 
-    const html = EmailContainer(content);
+  const html = EmailContainer(content);
 
-    const text = `
+  const text = `
 ${data.statusPageName} - Status Update
 
 Status: ${data.incidentStatus || 'Updated'}
@@ -294,6 +321,5 @@ You're receiving this because you subscribed to ${data.statusPageName} status up
 ${data.unsubscribeUrl ? `Unsubscribe: ${data.unsubscribeUrl}` : ''}
     `.trim();
 
-    return { subject, html, text };
+  return { subject, html, text };
 }
-

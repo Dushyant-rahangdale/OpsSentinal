@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, _useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { ReactNode, useRef, useState, useMemo, useCallback } from 'react';
 
 interface VirtualListProps<T> {
   items: T[];
@@ -15,7 +15,7 @@ interface VirtualListProps<T> {
 /**
  * Virtual scrolling list component for rendering large lists efficiently
  * Only renders visible items plus a buffer (overscan) for smooth scrolling
- * 
+ *
  * @example
  * <VirtualList
  *   items={users}
@@ -151,7 +151,10 @@ export default function VirtualList<T>({
       {endIndex < items.length && (
         <div
           style={{
-            height: totalHeight - offsetY - visibleItems.reduce((sum, _, i) => sum + itemHeights[startIndex + i], 0),
+            height:
+              totalHeight -
+              offsetY -
+              visibleItems.reduce((sum, _, i) => sum + itemHeights[startIndex + i], 0),
             pointerEvents: 'none',
           }}
         />
@@ -159,4 +162,3 @@ export default function VirtualList<T>({
     </div>
   );
 }
-

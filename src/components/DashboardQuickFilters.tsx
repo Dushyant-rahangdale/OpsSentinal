@@ -2,15 +2,19 @@
 
 import Link from 'next/link';
 import { useSearchParams, usePathname } from 'next/navigation';
-import { _useRouter } from 'next/navigation';
 
 const quickFilters = [
-  { 
-    label: 'Open', 
+  {
+    label: 'Open',
     icon: '📋',
     buildUrl: (params: URLSearchParams) => {
       // If already showing Open, clear the filter
-      if (params.get('status') === 'OPEN' && !params.get('assignee') && !params.get('service') && !params.get('urgency')) {
+      if (
+        params.get('status') === 'OPEN' &&
+        !params.get('assignee') &&
+        !params.get('service') &&
+        !params.get('urgency')
+      ) {
         return '/';
       }
       const newParams = new URLSearchParams();
@@ -23,10 +27,10 @@ const quickFilters = [
       const service = params.get('service');
       const urgency = params.get('urgency');
       return status === 'OPEN' && !assignee && !service && !urgency;
-    }
+    },
   },
-  { 
-    label: 'Critical', 
+  {
+    label: 'Critical',
     icon: '🔴',
     buildUrl: (params: URLSearchParams) => {
       // If already showing Critical, clear the filter
@@ -40,10 +44,10 @@ const quickFilters = [
     },
     isActive: (params: URLSearchParams) => {
       return params.get('status') === 'OPEN' && params.get('urgency') === 'HIGH';
-    }
+    },
   },
-  { 
-    label: 'Unassigned', 
+  {
+    label: 'Unassigned',
     icon: '⚠️',
     buildUrl: (params: URLSearchParams) => {
       // If already showing Unassigned, clear the filter
@@ -57,10 +61,10 @@ const quickFilters = [
     },
     isActive: (params: URLSearchParams) => {
       return params.get('status') === 'OPEN' && params.get('assignee') === '';
-    }
+    },
   },
-  { 
-    label: 'Recent', 
+  {
+    label: 'Recent',
     icon: '🕐',
     buildUrl: (params: URLSearchParams) => {
       const newParams = new URLSearchParams(params.toString());
@@ -75,8 +79,8 @@ const quickFilters = [
       const sortOrder = params.get('sortOrder');
       // Active if sorting by createdAt desc (default) and no other specific filters
       return (sortBy === 'createdAt' || !sortBy) && (sortOrder === 'desc' || !sortOrder);
-    }
-  }
+    },
+  },
 ];
 
 export default function DashboardQuickFilters() {
@@ -85,11 +89,20 @@ export default function DashboardQuickFilters() {
 
   return (
     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', alignSelf: 'center' }}>Quick Filters:</span>
-      {quickFilters.map((filter) => {
+      <span
+        style={{
+          fontSize: '0.85rem',
+          color: 'var(--text-muted)',
+          fontWeight: '600',
+          alignSelf: 'center',
+        }}
+      >
+        Quick Filters:
+      </span>
+      {quickFilters.map(filter => {
         const isActive = filter.isActive(searchParams);
         const href = filter.buildUrl(searchParams);
-        
+
         return (
           <Link
             key={filter.label}
@@ -105,7 +118,7 @@ export default function DashboardQuickFilters() {
               display: 'flex',
               alignItems: 'center',
               gap: '0.4rem',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
             }}
           >
             <span>{filter.icon}</span>
@@ -116,4 +129,3 @@ export default function DashboardQuickFilters() {
     </div>
   );
 }
-
