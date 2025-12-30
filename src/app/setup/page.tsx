@@ -73,7 +73,7 @@ export default async function SetupPage() {
                 </div>
                 <BootstrapSetupForm />
                 <div style={{ marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-                    <Link href="/api/auth/signout?callbackUrl=/login" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textDecoration: 'none' }}>
+                    <Link href="/login" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textDecoration: 'none' }}>
                         ← Back to Login
                     </Link>
                 </div>
