@@ -8,9 +8,9 @@
     "start": "node .next/standalone/server.js",
     "start:dev": "next start",
     "start:prod": "NODE_ENV=production node .next/standalone/server.js",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 100",
-    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0",
+    "lint": "eslint . --max-warnings 100",
+    "lint:fix": "eslint . --fix",
+    "lint:check": "eslint . --max-warnings 0",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -21,7 +21,9 @@
     "test:ci:unit": "npx vitest run -c vitest.unit.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-unit.xml",
     "test:ci:db": "npx vitest run -c vitest.int.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-db.xml",
     "OpsSentinal": "node ./scripts/OpsSentinal.mjs",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "security:check": "npm audit && npm run lint:check",
+    "lint:report": "eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
@@ -47,6 +49,7 @@
     "twilio": "^5.11.1"
   },
   "devDependencies": {
+    "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.1.0",
     "@testing-library/react": "^16.0.0",
@@ -56,17 +59,18 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^2.1.9",
-    "@vitest/ui": "^2.1.9",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/ui": "^4.0.16",
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
+    "eslint-plugin-security": "^3.0.1",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.1",
     "typescript": "^5",
-    "vitest": "^2.1.9"
+    "vitest": "^4.0.16"
   },
   "bin": {
     "OpsSentinal": "./scripts/OpsSentinal.mjs"
