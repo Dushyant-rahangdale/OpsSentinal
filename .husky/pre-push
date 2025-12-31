@@ -1,0 +1,72 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push checks..."
+echo "   (These are more thorough than pre-commit)"
+echo ""
+
+# Get the current branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "📍 Current branch: $BRANCH"
+
+# Block pushing to protected branches - must use feature branches
+PROTECTED_BRANCHES="main master production develop"
+for protected in $PROTECTED_BRANCHES; do
+  if [ "$BRANCH" = "$protected" ]; then
+    echo ""
+    echo "🚫 BLOCKED: Direct push to '$BRANCH' is not allowed!"
+    echo ""
+    echo "   You must use a feature branch and create a pull request."
+    echo ""
+    echo "   Steps to fix:"
+    echo "   1. Create a new branch:  git checkout -b feature/your-feature-name"
+    echo "   2. Commit your changes:  git add . && git commit -m 'your message'"
+    echo "   3. Push the branch:      git push -u origin feature/your-feature-name"
+    echo "   4. Create a PR on GitHub/GitLab"
+    echo ""
+    exit 1
+  fi
+done
+
+# Full TypeScript check
+echo ""
+echo "🔷 Running full TypeScript check..."
+npx tsc --noEmit || {
+  echo "❌ TypeScript check failed. Please fix type errors before pushing."
+  exit 1
+}
+
+# Run all unit tests
+echo ""
+echo "🧪 Running all unit tests..."
+npx vitest run -c vitest.unit.config.ts --reporter=basic || {
+  echo "❌ Unit tests failed. Please fix failing tests before pushing."
+  exit 1
+}
+
+# Build check (ensures the project can build)
+echo ""
+echo "🏗️  Verifying build..."
+npm run build > /dev/null 2>&1 || {
+  echo "❌ Build failed. Please fix build errors before pushing."
+  exit 1
+}
+echo "   ✓ Build successful"
+
+# Security audit (non-blocking warning)
+echo ""
+echo "🔒 Running security audit..."
+npm audit --audit-level=high 2>/dev/null || {
+  echo "⚠️  Security vulnerabilities detected. Consider running 'npm audit fix'"
+}
+
+# Check for dependency updates (informational)
+echo ""
+echo "📦 Checking for outdated dependencies..."
+OUTDATED=$(npm outdated --depth=0 2>/dev/null | tail -n +2 | wc -l)
+if [ "$OUTDATED" -gt 0 ]; then
+  echo "   ⚠️  $OUTDATED package(s) have updates available"
+fi
+
+echo ""
+echo "✅ Pre-push checks passed! Your code is ready to push."
