@@ -73,6 +73,7 @@ resource "aws_security_group" "web_sg" {
   }
 
   # Egress - Allow all outbound traffic (updating packages, pulling docker images)
+  # checkov:skip=CKV_AWS_382: Full egress is required for package updates and container image pulls
   egress {
     from_port        = 0
     to_port          = 0

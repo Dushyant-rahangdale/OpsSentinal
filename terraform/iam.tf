@@ -34,7 +34,10 @@ resource "aws_iam_role_policy" "volume_attachment_policy" {
           "ec2:DescribeVolumeStatus",
           "ec2:DescribeInstances"
         ]
-        Resource = "*"
+        Resource = [
+          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*",
+          "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:volume/${aws_ebs_volume.postgres_data.id}"
+        ]
       }
     ]
   })

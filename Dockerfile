@@ -73,6 +73,7 @@ RUN npx prisma generate
 
 # Set a dummy DATABASE_URL for build time only (Prisma requires it for validation)
 # This will be overridden by the actual DATABASE_URL at runtime
+# checkov:skip=CKV_SECRET_4: This is a dummy DATABASE_URL for build time only
 ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
 ENV DATABASE_URL=$DATABASE_URL
 

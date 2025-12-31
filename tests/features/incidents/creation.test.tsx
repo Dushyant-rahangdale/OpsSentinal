@@ -44,7 +44,7 @@ const IncidentCreationForm = ({ onSubmit }: { onSubmit: (data: unknown) => void 
 };
 
 describe('Incident Creation Flow', () => {
-    let mockOnSubmit: ReturnType<typeof vi.fn>;
+    let mockOnSubmit: any;
 
     beforeEach(() => {
         mockOnSubmit = vi.fn();

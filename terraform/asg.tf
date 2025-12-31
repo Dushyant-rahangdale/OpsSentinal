@@ -63,6 +63,13 @@ resource "aws_launch_template" "app_lt" {
       ManagedBy = "Terraform-ASG"
     }
   }
+
+  # Enforce IMDSv2 (Checkov CKV_AWS_79)
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
 }
 
 resource "aws_autoscaling_group" "app_asg" {
