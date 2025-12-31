@@ -7,7 +7,6 @@ import IncidentTable from '@/components/IncidentTable';
 import DashboardPerformanceMetrics from '@/components/DashboardPerformanceMetrics';
 import DashboardQuickFilters from '@/components/DashboardQuickFilters';
 import DashboardTimeRange from '@/components/DashboardTimeRange';
-import DashboardRefresh from '@/components/DashboardRefresh';
 import DashboardFilterChips from '@/components/DashboardFilterChips';
 import DashboardAdvancedMetrics from '@/components/DashboardAdvancedMetrics';
 import DashboardSavedFilters from '@/components/DashboardSavedFilters';
