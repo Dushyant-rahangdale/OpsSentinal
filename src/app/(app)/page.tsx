@@ -19,6 +19,8 @@ import DashboardSLAMetrics from '@/components/DashboardSLAMetrics';
 import { calculateSLAMetrics } from '@/lib/sla-server';
 import { Suspense } from 'react';
 import DashboardRealtimeWrapper from '@/components/DashboardRealtimeWrapper';
+import DashboardCommandCenter from '@/components/dashboard/DashboardCommandCenter';
+import styles from '@/components/dashboard/Dashboard.module.css';
 
 export const revalidate = 30;
 
@@ -342,8 +344,8 @@ export default async function Dashboard({
   const previousPeriodEnd = new Date();
   previousPeriodEnd.setDate(previousPeriodEnd.getDate() - currentPeriodDays);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const previousPeriodWhere: any = {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     createdAt: {
       gte: previousPeriodStart,
       lt: previousPeriodEnd,
@@ -496,293 +498,32 @@ export default async function Dashboard({
   return (
     <DashboardRealtimeWrapper>
       <main style={{ paddingBottom: '2rem' }}>
-        <div
-          className="command-center-hero animate-fade-in"
-          style={{
-            background: 'var(--gradient-primary)',
-            boxShadow: 'var(--shadow-primary)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '2rem',
-            marginBottom: '1.5rem',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            position: 'relative',
-            overflow: 'hidden',
+        <DashboardCommandCenter
+          systemStatus={systemStatus}
+          allOpenIncidentsCount={allOpenIncidentsCount}
+          totalInRange={totalInRange}
+          metricsOpenCount={metricsOpenCount}
+          metricsResolvedCount={metricsResolvedCount}
+          unassignedCount={unassignedCount}
+          rangeLabel={getRangeLabel()}
+          incidents={incidents}
+          filters={{
+            status: status || undefined,
+            service: service || undefined,
+            assignee: assignee || undefined,
+            range: range !== 'all' ? range : undefined,
           }}
-        >
-          {/* Subtle background glow - Slate */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '-30%',
-              right: '-5%',
-              width: '300px',
-              height: '300px',
-              background: 'radial-gradient(circle, rgba(100, 116, 139, 0.1) 0%, transparent 70%)',
-              pointerEvents: 'none',
-            }}
-          />
-
-          <div className="command-center-header">
-            <div className="command-center-left">
-              <h1 className="command-center-title">Command Center</h1>
-              <div className="command-center-status">
-                <span className="system-status-label">System Status:</span>
-                <strong className="system-status-value" style={{ color: systemStatus.color }}>
-                  {systemStatus.label}
-                </strong>
-                {allOpenIncidentsCount > 0 && (
-                  <span className="system-status-count">
-                    ({allOpenIncidentsCount} active incident{allOpenIncidentsCount !== 1 ? 's' : ''}
-                    )
-                  </span>
-                )}
-              </div>
-              <div className="command-center-time-range">
-                <Suspense
-                  fallback={
-                    <div
-                      style={{
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--spacing-2)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '120px',
-                          height: '32px',
-                          background: 'var(--color-neutral-200)',
-                          borderRadius: 'var(--radius-md)',
-                          animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                        }}
-                      />
-                    </div>
-                  }
-                >
-                  <DashboardTimeRange />
-                </Suspense>
-              </div>
-            </div>
-            <div className="command-center-actions">
-              <Suspense
-                fallback={
-                  <div
-                    style={{
-                      width: '100px',
-                      height: '40px',
-                      background: 'var(--color-neutral-200)',
-                      borderRadius: 'var(--radius-md)',
-                      animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                    }}
-                  />
-                }
-              >
-                <DashboardRefresh />
-              </Suspense>
-              <Suspense
-                fallback={
-                  <div
-                    style={{
-                      width: '100px',
-                      height: '40px',
-                      background: 'var(--color-neutral-200)',
-                      borderRadius: 'var(--radius-md)',
-                      animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                    }}
-                  />
-                }
-              >
-                <DashboardExport
-                  incidents={incidents}
-                  filters={{
-                    status: status || undefined,
-                    service: service || undefined,
-                    assignee: assignee || undefined,
-                    range: range !== 'all' ? range : undefined,
-                  }}
-                  metrics={{
-                    totalOpen: metricsOpenCount,
-                    totalResolved: metricsResolvedCount,
-                    totalAcknowledged: currentPeriodAcknowledged,
-                    unassigned: unassignedCount,
-                  }}
-                />
-              </Suspense>
-            </div>
-          </div>
-
-          {/* Metrics in one line */}
-          <div
-            className="command-center-metrics"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-              gap: '1rem',
-              marginTop: '1.5rem',
-            }}
-          >
-            <div
-              className="command-metric-card glass-panel-hover"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '1.25rem',
-                borderRadius: '12px',
-                textAlign: 'center',
-                color: 'white',
-              }}
-            >
-              <div
-                className="command-metric-value"
-                style={{ fontSize: '1.75rem', fontWeight: '800' }}
-              >
-                {totalInRange}
-              </div>
-              <div
-                className="command-metric-label"
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: '700',
-                  opacity: 0.8,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                TOTAL {getRangeLabel()}
-              </div>
-            </div>
-            <div
-              className="command-metric-card glass-panel-hover"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '1.25rem',
-                borderRadius: '12px',
-                textAlign: 'center',
-                color: 'white',
-              }}
-            >
-              <div
-                className="command-metric-value"
-                style={{ fontSize: '1.75rem', fontWeight: '800' }}
-              >
-                {metricsOpenCount}
-              </div>
-              <div
-                className="command-metric-label"
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: '700',
-                  opacity: 0.8,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                OPEN {getRangeLabel()}
-              </div>
-            </div>
-            <div
-              className="command-metric-card glass-panel-hover"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '1.25rem',
-                borderRadius: '12px',
-                textAlign: 'center',
-                color: 'white',
-              }}
-            >
-              <div
-                className="command-metric-value"
-                style={{ fontSize: '1.75rem', fontWeight: '800' }}
-              >
-                {metricsResolvedCount}
-              </div>
-              <div
-                className="command-metric-label"
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: '700',
-                  opacity: 0.8,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                RESOLVED {getRangeLabel()}
-              </div>
-            </div>
-            <div
-              className="command-metric-card glass-panel-hover"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '1.25rem',
-                borderRadius: '12px',
-                textAlign: 'center',
-                color: 'white',
-              }}
-            >
-              <div
-                className="command-metric-value"
-                style={{ fontSize: '1.75rem', fontWeight: '800' }}
-              >
-                {unassignedCount}
-              </div>
-              <div
-                className="command-metric-label"
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: '700',
-                  opacity: 0.8,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                UNASSIGNED (All Time)
-              </div>
-            </div>
-          </div>
-        </div>
+          currentPeriodAcknowledged={currentPeriodAcknowledged}
+        />
 
         {/* Main Content Grid - Two Column Layout (matching users page) */}
-        <div
-          className="dashboard-main-grid animate-fade-in"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 320px', // Robust two-column layout
-            gap: '1.5rem',
-            marginTop: '1.5rem',
-          }}
-        >
+        <div className={styles.mainGrid}>
           {/* Left Column - Filters and Table */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className={styles.leftColumn}>
             {/* Filters Panel - Defined in globals.css */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  marginBottom: '1.25rem',
-                }}
-              >
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '10px',
-                    background:
-                      'linear-gradient(135deg, rgba(30, 41, 59, 0.05) 0%, rgba(51, 65, 85, 0.05) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+            <div className={`glass-panel ${styles.filtersPanel}`}>
+              <div className={styles.filtersHeader}>
+                <div className={styles.filtersIcon}>
                   <svg
                     width="20"
                     height="20"
