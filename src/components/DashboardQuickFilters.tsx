@@ -108,17 +108,35 @@ export default function DashboardQuickFilters() {
             key={filter.label}
             href={href}
             style={{
-              padding: '0.4rem 0.8rem',
-              borderRadius: '6px',
-              fontSize: '0.8rem',
+              padding: '0.4rem 0.9rem',
+              borderRadius: '999px',
+              fontSize: '0.75rem',
               textDecoration: 'none',
-              background: isActive ? 'var(--primary)' : 'rgba(211, 47, 47, 0.1)',
-              color: isActive ? 'white' : 'var(--primary)',
+              background: isActive ? 'var(--surface-active)' : 'var(--surface-card)',
+              color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
               fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem',
-              transition: 'all 0.2s ease',
+              gap: '0.5rem',
+              border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
+              boxShadow: isActive ? '0 0 0 1px var(--primary-alpha-20)' : 'var(--shadow-sm)',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: isActive ? 'translateY(0)' : 'translateY(0)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              if (!isActive) {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.borderColor = 'var(--border-hover)';
+                e.currentTarget.style.background = 'var(--surface-hover)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (!isActive) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.background = 'var(--surface-card)';
+              }
             }}
           >
             <span>{filter.icon}</span>

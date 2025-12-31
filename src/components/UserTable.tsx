@@ -407,13 +407,13 @@ export default function UserTable({
                           ? '#e6f4ea'
                           : user.status === 'INVITED'
                             ? '#fff3e0'
-                            : '#fee2e2',
+                            : 'var(--color-neutral-100)',
                       color:
                         user.status === 'ACTIVE'
                           ? '#0f5132'
                           : user.status === 'INVITED'
                             ? '#b45309'
-                            : '#b91c1c',
+                            : 'var(--text-secondary)',
                       display: 'inline-block',
                     }}
                   >
@@ -435,13 +435,13 @@ export default function UserTable({
                             fontWeight: '600',
                             background:
                               member.role === 'OWNER'
-                                ? '#fee2e2'
+                                ? 'var(--color-neutral-100)'
                                 : member.role === 'ADMIN'
                                   ? '#fef3c7'
                                   : '#ecfdf5',
                             color:
                               member.role === 'OWNER'
-                                ? '#b91c1c'
+                                ? 'var(--text-secondary)'
                                 : member.role === 'ADMIN'
                                   ? '#78350f'
                                   : '#065f46',
@@ -558,9 +558,9 @@ export default function UserTable({
                               style={{
                                 padding: '0.35rem 0.7rem',
                                 fontSize: '0.7rem',
-                                background: '#fee2e2',
-                                color: '#b91c1c',
-                                border: '1px solid #fecaca',
+                                background: 'white',
+                                color: '#ef4444',
+                                border: '1px solid #fee2e2',
                               }}
                             >
                               Deactivate

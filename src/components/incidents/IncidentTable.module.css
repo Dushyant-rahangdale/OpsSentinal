@@ -1,0 +1,287 @@
+/* Main Container */
+.container {
+    background: white;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Bulk Actions Bar */
+.bulkActionsBar {
+    padding: 1rem;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.selectedCount {
+    font-weight: 600;
+}
+
+.bulkActionsButtons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.bulkAckButton {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bulkAckButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.bulkResolveButton {
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 6px;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bulkResolveButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Table Styles */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.thead {
+    background: #f9f9f9;
+    border-bottom: 1px solid var(--border);
+}
+
+.th {
+    text-align: left;
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.checkboxCell {
+    padding: 1rem;
+    width: 50px;
+    vertical-align: middle;
+}
+
+.checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    vertical-align: middle;
+    margin: 0;
+}
+
+.sortButton {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.sortIcon {
+    font-size: 0.8rem;
+    color: var(--primary);
+}
+
+.row {
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.1s ease;
+}
+
+.row:last-child {
+    border-bottom: none;
+}
+
+.row:hover {
+    background-color: var(--bg-primary);
+}
+
+.td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* Status Badges */
+.statusBadge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.statusResolved {
+    background: #e6f4ea;
+    color: var(--color-success);
+}
+
+.statusAcknowledged {
+    background: #fff8e1;
+    color: var(--color-warning);
+}
+
+.statusOpen {
+    background: #fce8e8;
+    color: var(--color-error);
+    /* Using error color for danger */
+}
+
+/* Urgency Badges */
+.urgencyBadge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.urgencyHigh {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.urgencyLow {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Links and Text */
+.incidentLink {
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.incidentLink:hover {
+    text-decoration: underline;
+}
+
+.incidentId {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.assignee {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.assigneeAvatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.unassigned {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.timestamp {
+    color: var(--text-muted);
+}
+
+/* Action Buttons */
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.viewButton {
+    padding: 0.25rem 0.75rem;
+    background: var(--color-neutral-100);
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--color-neutral-200);
+    transition: all 0.2s ease;
+}
+
+.viewButton:hover {
+    background: var(--color-neutral-200);
+}
+
+.postmortemButton {
+    padding: 0.25rem 0.75rem;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.postmortemButton:hover {
+    background: var(--primary-hover);
+}
+
+/* Empty State */
+.emptyStateRow td {
+    padding: 3rem;
+    text-align: center;
+}
+
+.emptyStateContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.emptyStateIcon {
+    font-size: 3rem;
+}
+
+.emptyStateTitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.emptyStateText {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}

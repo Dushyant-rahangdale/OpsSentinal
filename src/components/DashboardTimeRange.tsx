@@ -10,7 +10,7 @@ const timeRangeOptions = [
   { value: '30', label: 'Last 30 days' },
   { value: '90', label: 'Last 90 days' },
   { value: 'all', label: 'All time' },
-  { value: 'custom', label: 'Custom' }
+  { value: 'custom', label: 'Custom' },
 ];
 
 export default function DashboardTimeRange() {
@@ -69,41 +69,56 @@ export default function DashboardTimeRange() {
   };
 
   const isSelected = (value: string) => {
-    return (currentRange === value || (value === 'custom' && customStartParam));
+    return currentRange === value || (value === 'custom' && customStartParam);
   };
 
   return (
-    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', position: 'relative' }}>
-      <span style={{ fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.95)', fontWeight: '600' }}>Time Range:</span>
-      {timeRangeOptions.filter(opt => opt.value !== 'custom').map((option) => (
-        <button
-          key={option.value}
-          onClick={() => handleRangeChange(option.value)}
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '8px',
-            fontSize: '0.85rem',
-            border: isSelected(option.value) ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
-            cursor: 'pointer',
-            background: isSelected(option.value) ? 'rgba(185, 28, 28, 0.95)' : 'transparent',
-            color: 'rgba(255, 255, 255, 0.95)',
-            fontWeight: '600',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            if (!isSelected(option.value)) {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isSelected(option.value)) {
-              e.currentTarget.style.background = 'transparent';
-            }
-          }}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div
+      style={{
+        display: 'flex',
+        gap: '0.75rem',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        position: 'relative',
+      }}
+    >
+      <span style={{ fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.95)', fontWeight: '600' }}>
+        Time Range:
+      </span>
+      {timeRangeOptions
+        .filter(opt => opt.value !== 'custom')
+        .map(option => (
+          <button
+            key={option.value}
+            onClick={() => handleRangeChange(option.value)}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              border: isSelected(option.value)
+                ? '1px solid rgba(255, 255, 255, 0.4)'
+                : '1px solid rgba(255, 255, 255, 0.1)',
+              cursor: 'pointer',
+              background: isSelected(option.value) ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+              color: isSelected(option.value) ? 'white' : 'rgba(255, 255, 255, 0.7)',
+              fontWeight: isSelected(option.value) ? '700' : '500',
+              transition: 'all 0.2s ease',
+              backdropFilter: isSelected(option.value) ? 'blur(8px)' : 'none',
+            }}
+            onMouseEnter={e => {
+              if (!isSelected(option.value)) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (!isSelected(option.value)) {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
       {customStartParam && customEndParam && (
         <button
           onClick={() => handleRangeChange('custom')}
@@ -111,15 +126,17 @@ export default function DashboardTimeRange() {
             padding: '0.5rem 1rem',
             borderRadius: '8px',
             fontSize: '0.85rem',
-            border: 'none',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
             cursor: 'pointer',
-            background: 'rgba(185, 28, 28, 0.95)',
-            color: 'rgba(255, 255, 255, 0.95)',
-            fontWeight: '600',
-            transition: 'all 0.2s ease'
+            background: 'rgba(255, 255, 255, 0.15)',
+            color: 'white',
+            fontWeight: '700',
+            transition: 'all 0.2s ease',
+            backdropFilter: 'blur(8px)',
           }}
         >
-          {formatDateTime(customStartParam, userTimeZone, { format: 'date' })} - {formatDateTime(customEndParam, userTimeZone, { format: 'date' })}
+          {formatDateTime(customStartParam, userTimeZone, { format: 'date' })} -{' '}
+          {formatDateTime(customEndParam, userTimeZone, { format: 'date' })}
         </button>
       )}
 
@@ -136,42 +153,67 @@ export default function DashboardTimeRange() {
             boxShadow: 'var(--shadow-lg)',
             border: '1px solid var(--border)',
             zIndex: 1000,
-            minWidth: '300px'
+            minWidth: '300px',
           }}
         >
-          <div style={{ marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>Select Custom Date Range</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '0.75rem', fontSize: '0.9rem', fontWeight: '600' }}>
+            Select Custom Date Range
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: '600' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  marginBottom: '0.25rem',
+                  fontWeight: '600',
+                }}
+              >
                 Start Date
               </label>
               <input
                 type="date"
                 value={customStart || customStartParam || ''}
-                onChange={(e) => setCustomStart(e.target.value)}
+                onChange={e => setCustomStart(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '0.5rem',
                   border: '1px solid var(--border)',
                   borderRadius: '6px',
-                  fontSize: '0.85rem'
+                  fontSize: '0.85rem',
                 }}
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: '600' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-muted)',
+                  marginBottom: '0.25rem',
+                  fontWeight: '600',
+                }}
+              >
                 End Date
               </label>
               <input
                 type="date"
                 value={customEnd || customEndParam || ''}
-                onChange={(e) => setCustomEnd(e.target.value)}
+                onChange={e => setCustomEnd(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '0.5rem',
                   border: '1px solid var(--border)',
                   borderRadius: '6px',
-                  fontSize: '0.85rem'
+                  fontSize: '0.85rem',
                 }}
               />
             </div>
@@ -192,7 +234,7 @@ export default function DashboardTimeRange() {
                 background: 'white',
                 cursor: 'pointer',
                 fontSize: '0.85rem',
-                fontWeight: '600'
+                fontWeight: '600',
               }}
             >
               Cancel
@@ -208,7 +250,7 @@ export default function DashboardTimeRange() {
                   cursor: 'pointer',
                   fontSize: '0.85rem',
                   fontWeight: '600',
-                  color: 'var(--danger)'
+                  color: 'var(--danger)',
                 }}
               >
                 Clear
@@ -221,11 +263,11 @@ export default function DashboardTimeRange() {
                 padding: '0.5rem 1rem',
                 border: 'none',
                 borderRadius: '6px',
-                background: (customStart && customEnd) ? 'var(--primary)' : '#ccc',
+                background: customStart && customEnd ? 'var(--primary)' : '#ccc',
                 color: 'white',
-                cursor: (customStart && customEnd) ? 'pointer' : 'not-allowed',
+                cursor: customStart && customEnd ? 'pointer' : 'not-allowed',
                 fontSize: '0.85rem',
-                fontWeight: '600'
+                fontWeight: '600',
               }}
             >
               Apply
@@ -236,4 +278,3 @@ export default function DashboardTimeRange() {
     </div>
   );
 }
-
