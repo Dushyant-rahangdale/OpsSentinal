@@ -15,8 +15,11 @@ const mockPrisma = {
     $disconnect: vi.fn(),
 };
 
-// Mock PrismaClient constructor
-const MockPrismaClient = vi.fn(() => mockPrisma);
+// Mock PrismaClient constructor - use function syntax for Vitest 4.x
+const MockPrismaClient = vi.fn().mockImplementation(function (this: any) {
+    Object.assign(this, mockPrisma);
+    return this;
+});
 
 // Mock @prisma/client
 vi.mock('@prisma/client', () => ({
@@ -32,13 +35,13 @@ describe('Auto Recovery Migration System', () => {
         console.error = vi.fn();
 
         // Reset process.exit mock
-        // @ts-ignore
+        // @ts-expect-error - Mocking process.exit for testing
         process.exit = vi.fn();
 
         // Re-import the module for each test to ensure fresh state
         vi.resetModules();
-        const module = await import('../../scripts/auto-recover-migrations');
-        autoRecoverMigrations = module.autoRecoverMigrations;
+        const recoveryModule = await import('../../scripts/auto-recover-migrations');
+        autoRecoverMigrations = recoveryModule.autoRecoverMigrations;
     });
 
     afterEach(() => {

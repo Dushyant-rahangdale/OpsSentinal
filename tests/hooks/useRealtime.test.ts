@@ -9,24 +9,21 @@ type MockEventSource = {
   close: ReturnType<typeof vi.fn>;
 };
 
-function getMockEventSourceInstance(index = 0): MockEventSource {
-  const eventSourceMock = global.EventSource as unknown as {
-    mock: { results: Array<{ value: MockEventSource }> };
-  };
-  return eventSourceMock.mock.results[index].value;
+// Spies for tracking behavior
+const closeSpy = vi.fn().mockName('close');
+const mockEventSourceCtor = vi.fn().mockImplementation(function (this: any) {
+  this.onopen = null;
+  this.onmessage = null;
+  this.onerror = null;
+  this.close = closeSpy;
+  return this;
+}).mockName('EventSource');
+
+vi.stubGlobal('EventSource', mockEventSourceCtor);
+
+function getMockEventSourceInstance(index = 0): any {
+  return mockEventSourceCtor.mock.results[index]?.value;
 }
-
-// Mock EventSource
-global.EventSource = (vi.fn() as any).mockImplementation(() => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const mockEventSource: MockEventSource = {
-    onopen: null as ((event: Event) => void) | null,
-    onmessage: null as ((event: MessageEvent) => void) | null,
-    onerror: null as ((event: Event) => void) | null,
-    close: vi.fn(),
-  };
-
-  return mockEventSource;
-});
 
 describe('useRealtime', () => {
   beforeEach(() => {
