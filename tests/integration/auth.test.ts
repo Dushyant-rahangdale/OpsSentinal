@@ -4,7 +4,7 @@ import { type Role, type User, type UserStatus, DigestLevel } from '@prisma/clie
 import bcrypt from 'bcryptjs';
 import { testPrisma, resetDatabase, createTestUser } from '../helpers/test-db';
 
-const describeIfRealDB = process.env.VITEST_USE_REAL_DB === '1' ? describe : describe.skip;
+const describeIfRealDB = (process.env.VITEST_USE_REAL_DB === '1' || process.env.CI) ? describe : describe.skip;
 
 type Credentials = { email?: string; password?: string };
 

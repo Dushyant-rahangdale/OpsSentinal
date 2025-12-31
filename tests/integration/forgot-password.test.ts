@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, vi, afterAll, beforeAll } from 'vitest';
 
 const runIntegration = Boolean(process.env.VITEST_USE_REAL_DB);
-const describeIntegration = runIntegration ? describe : describe.skip;
+const describeIntegration = (process.env.VITEST_USE_REAL_DB === '1' || process.env.CI) ? describe : describe.skip;
 
 // Mocks - Use aliases to match source code imports exactly
 vi.mock('@/lib/email', () => ({
