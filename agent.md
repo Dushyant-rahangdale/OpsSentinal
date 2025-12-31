@@ -613,15 +613,20 @@ src/
 
 ### Logging Guidelines
 
-**CRITICAL**: Avoid `console.log` in production code. Use the project's structured logger instead.
+**CRITICAL**: `console.log`, `console.error`, and `console.warn` are **FORBIDDEN** in production code. You MUST use the project's structured logger.
 
 ```typescript
 import { logger } from '@/lib/logger'
 
-// Good Usage
+// ✅ Good Usage
 logger.info('User logged in', { userId: user.id })
 logger.error('Failed to create service', { error, serviceName })
 logger.debug('Processing webhook payload', { payload })
+
+// ❌ Bad Usage - DO NOT USE
+console.log('User logged in')
+console.error('Failed to create service', error)
+console.warn('Something happened')
 ```
 
 #### Logger Features
