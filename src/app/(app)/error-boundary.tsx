@@ -2,6 +2,7 @@
 
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import ErrorState from '@/components/ui/ErrorState';
+import { logger } from '@/lib/logger';
 
 /**
  * Global error boundary wrapper for the app
@@ -19,7 +20,7 @@ export default function AppErrorBoundary({ children }: { children: React.ReactNo
       }
       onError={(error, errorInfo) => {
         // Log error for debugging
-        console.error('Application error:', error, errorInfo);
+        logger.error('Application error', { component: 'error-boundary', error, errorInfo });
         // TODO: Send to error tracking service (e.g., Sentry)
       }}
     >

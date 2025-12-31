@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Mail, CheckCircle2, XCircle, Trash2, Search } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface Subscriber {
     id: string;
@@ -51,10 +52,14 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
             if (response.ok) {
                 setData(result);
             } else {
-                console.error('Failed to fetch subscribers:', result.error);
+                logger.error('Failed to fetch subscribers', { error: result.error });
             }
         } catch (error) {
-            console.error('Error fetching subscribers:', error);
+            if (error instanceof Error) {
+                logger.error('Error fetching subscribers', { error: error.message });
+            } else {
+                logger.error('Error fetching subscribers', { error: String(error) });
+            }
         } finally {
             setLoading(false);
         }
@@ -81,7 +86,11 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
                 alert(`Failed to unsubscribe: ${result.error}`);
             }
         } catch (error) {
-            console.error('Error unsubscribing:', error);
+            if (error instanceof Error) {
+                logger.error('Error unsubscribing', { error: error.message });
+            } else {
+                logger.error('Error unsubscribing', { error: String(error) });
+            }
             // eslint-disable-next-line no-alert
             alert('Subscriber removed successfully');
         }

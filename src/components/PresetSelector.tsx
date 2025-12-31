@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { logger } from '@/lib/logger';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { type FilterCriteria, criteriaToSearchParams } from '@/lib/search-presets-utils';
@@ -76,7 +77,11 @@ export default function PresetSelector({
                 method: 'POST',
             });
         } catch (error) {
-            console.error('Failed to track preset usage:', error);
+            if (error instanceof Error) {
+                logger.error('Failed to track preset usage', { error: error.message });
+            } else {
+                logger.error('Failed to track preset usage', { error: String(error) });
+            }
         }
 
         // Apply preset filters

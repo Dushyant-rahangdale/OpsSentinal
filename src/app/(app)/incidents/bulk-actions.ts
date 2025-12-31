@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { assertResponderOrAbove, getCurrentUser } from '@/lib/rbac';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { logger } from '@/lib/logger';
 
 export async function bulkAcknowledge(incidentIds: string[]) {
     if (!incidentIds || incidentIds.length === 0) {
@@ -78,7 +79,7 @@ export async function bulkAcknowledge(incidentIds: string[]) {
                 }
 
             } catch (e) {
-                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+                logger.error('Failed to send notifications for incident', { component: 'bulk-actions', action: 'acknowledge', error: e, incidentId });
             }
         }
 
@@ -86,7 +87,7 @@ export async function bulkAcknowledge(incidentIds: string[]) {
         revalidatePath('/');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk acknowledge failed:', error);
+        logger.error('Bulk acknowledge failed', { component: 'bulk-actions', error, incidentIds });
         return { success: false, error: 'Failed to acknowledge incidents' };
     }
 }
@@ -163,7 +164,7 @@ export async function bulkResolve(incidentIds: string[]) {
                     );
                 }
             } catch (e) {
-                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+                logger.error('Failed to send notifications for incident', { component: 'bulk-actions', action: 'resolve', error: e, incidentId });
             }
         }
 
@@ -171,7 +172,7 @@ export async function bulkResolve(incidentIds: string[]) {
         revalidatePath('/');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk resolve failed:', error);
+        logger.error('Bulk resolve failed', { component: 'bulk-actions', error, incidentIds });
         return { success: false, error: 'Failed to resolve incidents' };
     }
 }
@@ -248,14 +249,14 @@ export async function bulkReassign(incidentIds: string[], assigneeId: string) {
                     );
                 }
             } catch (e) {
-                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+                logger.error('Failed to send notifications for incident', { component: 'bulk-actions', action: 'reassign', error: e, incidentId });
             }
         }
 
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk reassign failed:', error);
+        logger.error('Bulk reassign failed', { component: 'bulk-actions', error, incidentIds, assigneeId });
         return { success: false, error: 'Failed to reassign incidents' };
     }
 }
@@ -294,7 +295,7 @@ export async function bulkUpdatePriority(incidentIds: string[], priority: string
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk priority update failed:', error);
+        logger.error('Bulk priority update failed', { component: 'bulk-actions', error, incidentIds, priority });
         return { success: false, error: 'Failed to update priority' };
     }
 }
@@ -343,7 +344,7 @@ export async function bulkSnooze(incidentIds: string[], durationMinutes: number,
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk snooze failed:', error);
+        logger.error('Bulk snooze failed', { component: 'bulk-actions', error, incidentIds, durationMinutes });
         return { success: false, error: 'Failed to snooze incidents' };
     }
 }
@@ -389,7 +390,7 @@ export async function bulkUnsnooze(incidentIds: string[]) {
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk unsnooze failed:', error);
+        logger.error('Bulk unsnooze failed', { component: 'bulk-actions', error, incidentIds });
         return { success: false, error: 'Failed to unsnooze incidents' };
     }
 }
@@ -433,7 +434,7 @@ export async function bulkSuppress(incidentIds: string[]) {
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk suppress failed:', error);
+        logger.error('Bulk suppress failed', { component: 'bulk-actions', error, incidentIds });
         return { success: false, error: 'Failed to suppress incidents' };
     }
 }
@@ -477,7 +478,7 @@ export async function bulkUnsuppress(incidentIds: string[]) {
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk unsuppress failed:', error);
+        logger.error('Bulk unsuppress failed', { component: 'bulk-actions', error, incidentIds });
         return { success: false, error: 'Failed to unsuppress incidents' };
     }
 }
@@ -516,7 +517,7 @@ export async function bulkUpdateUrgency(incidentIds: string[], urgency: 'HIGH' |
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk urgency update failed:', error);
+        logger.error('Bulk urgency update failed', { component: 'bulk-actions', error, incidentIds, urgency });
         return { success: false, error: 'Failed to update urgency' };
     }
 }
@@ -658,14 +659,14 @@ export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | '
                 }
 
             } catch (e) {
-                console.error(`Failed to send notifications for incident ${incidentId}:`, e);
+                logger.error('Failed to send notifications for incident', { component: 'bulk-actions', action: 'status-update', error: e, incidentId, status });
             }
         }
 
         revalidatePath('/incidents');
         return { success: true, count: incidentIds.length };
     } catch (error) {
-        console.error('Bulk status update failed:', error);
+        logger.error('Bulk status update failed', { component: 'bulk-actions', error, incidentIds, status });
         return { success: false, error: 'Failed to update status' };
     }
 }

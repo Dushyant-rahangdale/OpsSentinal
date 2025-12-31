@@ -16,6 +16,7 @@
 import prisma from './prisma';
 import { getPushConfig } from './notification-providers';
 import { getBaseUrl } from './env-validation';
+import { logger } from './logger';
 
 export type PushOptions = {
     userId: string;
@@ -97,9 +98,9 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
                 for (const device of devices) {
                     try {
                         const message = {
-                            notification: { 
-                                title: options.title, 
-                                body: options.body 
+                            notification: {
+                                title: options.title,
+                                body: options.body
                             },
                             data: options.data ? Object.fromEntries(
                                 Object.entries(options.data).map(([k, v]) => [k, String(v)])
@@ -113,7 +114,7 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
                                 },
                             } : undefined,
                         };
-                        
+
                         await admin.messaging().send(message);
                         await prisma.userDevice.update({
                             where: { id: device.id },
@@ -134,10 +135,10 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
             } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 // If Firebase package is not installed
                 if (error.code === 'MODULE_NOT_FOUND') {
-                    console.error('Firebase Admin package not installed. Install with: npm install firebase-admin');
+                    logger.warn('Firebase Admin package not installed', { component: 'push', provider: 'firebase', installCommand: 'npm install firebase-admin' });
                     return { success: false, error: 'Firebase Admin package not installed. Install with: npm install firebase-admin' };
                 }
-                console.error('Firebase push send error:', error);
+                logger.error('Firebase push send error', { component: 'push', provider: 'firebase', error, userId: options.userId });
                 return { success: false, error: error.message || 'Firebase send error' };
             }
         } else if (pushConfig.provider === 'onesignal') {
@@ -163,7 +164,7 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
                 };
 
                 const response = await client.createNotification(notification);
-                
+
                 // OneSignal sends to all devices at once
                 if (response.body?.id) {
                     // Update all devices as successful
@@ -179,10 +180,10 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
             } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 // If OneSignal package is not installed
                 if (error.code === 'MODULE_NOT_FOUND') {
-                    console.error('OneSignal package not installed. Install with: npm install onesignal-node');
+                    logger.warn('OneSignal package not installed', { component: 'push', provider: 'onesignal', installCommand: 'npm install onesignal-node' });
                     return { success: false, error: 'OneSignal package not installed. Install with: npm install onesignal-node' };
                 }
-                console.error('OneSignal push send error:', error);
+                logger.error('OneSignal push send error', { component: 'push', provider: 'onesignal', error, userId: options.userId });
                 return { success: false, error: error.message || 'OneSignal send error' };
             }
         } else {
@@ -203,7 +204,7 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
             return { success: false, error: errorMessages.join('; ') || 'Failed to send to all devices' };
         }
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error('Push send error:', error);
+        logger.error('Push send error', { component: 'push', error, userId: options.userId });
         return { success: false, error: error.message };
     }
 }
@@ -247,12 +248,12 @@ export async function sendIncidentPush(
         };
 
         const eventEmoji = eventType === 'triggered' ? '🚨' :
-                          eventType === 'acknowledged' ? '⚠️' :
-                          '✅';
-        
+            eventType === 'acknowledged' ? '⚠️' :
+                '✅';
+
         const urgencyEmoji = incident.urgency === 'HIGH' ? '🔴' : '🟡';
         const urgencyLabel = incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO';
-        
+
         const statusLabel = eventType === 'resolved'
             ? 'RESOLVED'
             : eventType === 'acknowledged'
@@ -261,16 +262,16 @@ export async function sendIncidentPush(
 
         // Build title and body
         const title = `${eventEmoji} ${statusLabel} - ${incident.title}`;
-        
+
         let body = `${urgencyEmoji} ${urgencyLabel} • ${incident.service.name}`;
         if (incident.assignee) {
             body += ` • ${incident.assignee.name}`;
         }
         body += `\n${formatTime(incident.createdAt)}`;
-        
+
         if (incident.description) {
-            const shortDesc = incident.description.length > 80 
-                ? incident.description.substring(0, 80) + '...' 
+            const shortDesc = incident.description.length > 80
+                ? incident.description.substring(0, 80) + '...'
                 : incident.description;
             body += `\n${shortDesc}`;
         }
@@ -289,7 +290,7 @@ export async function sendIncidentPush(
             badge: 1, // Increment badge count
         });
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error('Send incident push error:', error);
+        logger.error('Send incident push error', { component: 'push', error, incidentId, userId, eventType });
         return { success: false, error: error.message };
     }
 }

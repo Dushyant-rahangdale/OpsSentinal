@@ -21,6 +21,11 @@
     "test:ci:unit": "npx vitest run -c vitest.unit.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-unit.xml",
     "test:ci:db": "npx vitest run -c vitest.int.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-db.xml",
     "OpsSentinal": "node ./scripts/OpsSentinal.mjs",
+    "build:scripts": "tsc scripts/auto-recover-migrations.ts --outDir scripts/dist --module commonjs --target es2020 --esModuleInterop --skipLibCheck",
+    "prisma:validate": "node --loader ts-node/esm scripts/validate-migrations.ts",
+    "prisma:health": "node --loader ts-node/esm scripts/check-migration-health.ts",
+    "prisma:auto-recover": "node --loader ts-node/esm scripts/auto-recover-migrations.ts",
+    "prisma:migrate:safe": "npm run prisma:validate && npm run prisma:health && npx prisma migrate deploy",
     "prepare": "husky install",
     "security:check": "npm audit && npm run lint:check",
     "lint:report": "eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif"

@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 
 interface ExportButtonProps {
@@ -29,7 +30,7 @@ export default function ExportButton({ filters, format = 'csv' }: ExportButtonPr
             params.append('format', format);
 
             const response = await fetch(`/api/analytics/export?${params.toString()}`);
-            
+
             if (!response.ok) {
                 throw new Error('Export failed');
             }
@@ -38,17 +39,21 @@ export default function ExportButton({ filters, format = 'csv' }: ExportButtonPr
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            
+
             const timestamp = new Date().toISOString().split('T')[0];
             const filename = `analytics-report-${timestamp}.${format === 'excel' ? 'xlsx' : format}`;
             a.download = filename;
-            
+
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         } catch (error) {
-            console.error('Export error:', error);
+            if (error instanceof Error) {
+                logger.error('Export error', { error: error.message });
+            } else {
+                logger.error('Export error', { error: String(error) });
+            }
             alert('Failed to export data. Please try again.');
         } finally {
             setIsExporting(false);

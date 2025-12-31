@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 
 type ServiceNotificationSettingsProps = {
@@ -45,7 +46,7 @@ export default function ServiceNotificationSettings({
             setShowSuccessMessage(true); // eslint-disable-line react-hooks/set-state-in-effect
             // Auto-enable SLACK channel if not already enabled
             if (!channels.includes('SLACK')) {
-                setChannels([...channels, 'SLACK']);  
+                setChannels([...channels, 'SLACK']);
             }
             // Remove the param from URL
             window.history.replaceState({}, '', window.location.pathname);
@@ -69,7 +70,13 @@ export default function ServiceNotificationSettings({
                         }
                     }
                 })
-                .catch(err => console.error('Failed to fetch Slack channels:', err))
+                .catch(err => {
+                    if (err instanceof Error) {
+                        logger.error('Failed to fetch Slack channels', { error: err.message });
+                    } else {
+                        logger.error('Failed to fetch Slack channels', { error: String(err) });
+                    }
+                })
                 .finally(() => setLoadingChannels(false));
         }
     }, [slackIntegration, serviceId]);

@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -25,7 +26,11 @@ export default function DeleteWebhookButton({ deleteAction, redirectTo }: Props)
                 router.refresh();
             }
         } catch (error) {
-            console.error('Failed to delete webhook:', error);
+            if (error instanceof Error) {
+                logger.error('Failed to delete webhook', { error: error.message });
+            } else {
+                logger.error('Failed to delete webhook', { error: String(error) });
+            }
             alert('Failed to delete webhook');
             setIsDeleting(false);
         }

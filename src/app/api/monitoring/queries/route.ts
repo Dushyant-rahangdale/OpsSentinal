@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getQueryStats, getSlowQueries, getRecentQueryErrors, getQueryDurationDistribution } from '@/lib/db-monitoring';
 import { assertAdmin } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/monitoring/queries
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
         { status: 403 }
       );
     }
-    console.error('[API] Error fetching query stats:', error);
+    logger.error('[API] Error fetching query stats', { component: 'api-monitoring-queries', error });
     return NextResponse.json(
       {
         success: false,

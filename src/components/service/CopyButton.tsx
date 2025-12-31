@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 
 type CopyButtonProps = {
@@ -15,7 +16,11 @@ export default function CopyButton({ text }: CopyButtonProps) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
-            console.error('Failed to copy:', err);
+            if (err instanceof Error) {
+                logger.error('Failed to copy', { error: err.message });
+            } else {
+                logger.error('Failed to copy', { error: String(err) });
+            }
         }
     };
 

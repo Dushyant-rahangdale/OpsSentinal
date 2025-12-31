@@ -4,6 +4,7 @@ import { getBaseUrl } from '@/lib/env-validation';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { logger } from '@/lib/logger';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
@@ -133,7 +134,7 @@ export default async function PublicStatusPage() {
             });
             return renderStatusPage(newStatusPage);
         } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            console.error('Status page creation error:', error);
+            logger.error('Status page creation error', { component: 'status-page', error });
             const isTableMissing = error.message?.includes('does not exist') ||
                 error.code === '42P01' ||
                 error.message?.includes('StatusPage');

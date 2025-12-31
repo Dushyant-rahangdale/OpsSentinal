@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import Button from '@/components/ui/Button';
@@ -69,7 +70,11 @@ export default function NotificationProviderSettings() {
                     }
                 }
             } catch (error) {
-                console.error('Failed to load settings:', error);
+                if (error instanceof Error) {
+                    logger.error('Failed to load settings', { error: error.message });
+                } else {
+                    logger.error('Failed to load settings', { error: String(error) });
+                }
             } finally {
                 setIsLoading(false);
             }

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { logger } from '@/lib/logger';
 
-export type RealtimeEvent = 
+export type RealtimeEvent =
     | { type: 'connected'; timestamp: string }
     | { type: 'incidents_updated'; incidents: any[]; timestamp: string } // eslint-disable-line @typescript-eslint/no-explicit-any
     | { type: 'metrics_updated'; metrics: { open: number; acknowledged: number; resolved24h: number; highUrgency: number }; timestamp: string }
@@ -45,10 +46,10 @@ export function useRealtime() {
 
                 eventSource.onmessage = (event) => {
                     if (!mounted) return;
-                    
+
                     try {
                         const data: RealtimeEvent = JSON.parse(event.data);
-                        
+
                         switch (data.type) {
                             case 'connected':
                                 setIsConnected(true);
@@ -67,7 +68,7 @@ export function useRealtime() {
                                 break;
                         }
                     } catch (err) {
-                        console.error('Failed to parse SSE event:', err);
+                        logger.error('Failed to parse SSE event', { component: 'useRealtime', error: err });
                     }
                 };
 
@@ -80,7 +81,7 @@ export function useRealtime() {
                     if (reconnectAttempts.current < maxReconnectAttempts) {
                         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
                         reconnectAttempts.current++;
-                        
+
                         reconnectTimeoutRef.current = setTimeout(() => {
                             if (mounted) {
                                 connect();
@@ -91,7 +92,7 @@ export function useRealtime() {
                     }
                 };
             } catch (err) {
-                console.error('Failed to create EventSource:', err);
+                logger.error('Failed to create EventSource', { component: 'useRealtime', error: err });
                 setError('Real-time updates not available');
             }
         };

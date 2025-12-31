@@ -19,6 +19,7 @@ type SearchParams = {
 };
 
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export default async function LoginPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
     // Bootstrap check: If no users exist, redirect to setup
@@ -29,7 +30,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
         // If DB is not ready, we might want to let the login page load or show error
         // But for now, let's just log it and proceed to login
         if (!isNextRedirectError(error)) {
-            console.error('Failed to check user count:', error);
+            logger.error('Failed to check user count', { component: 'login-page', error });
         }
     }
 
@@ -55,7 +56,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
                 }
             } catch (error) {
                 if (!isNextRedirectError(error)) {
-                    console.error('[Login Page] Failed to verify session user:', error);
+                    logger.error('[Login Page] Failed to verify session user', { component: 'login-page', error });
                 }
             }
         }

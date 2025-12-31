@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { Card } from '@/components/ui';
 import CustomFieldInput from './CustomFieldInput';
 
@@ -86,7 +87,11 @@ export default function IncidentCustomFields({
                       }
                       window.location.reload();
                     } catch (error) {
-                      console.error('Failed to update custom field:', error);
+                      if (error instanceof Error) {
+                        logger.error('Failed to update custom field', { error: error.message });
+                      } else {
+                        logger.error('Failed to update custom field', { error: String(error) });
+                      }
                       alert('Failed to update custom field');
                     }
                   }}

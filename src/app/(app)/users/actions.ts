@@ -6,6 +6,7 @@ import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { randomBytes } from 'crypto';
 import { assertAdmin, assertAdminOrResponder, assertNotSelf } from '@/lib/rbac';
 import { getBaseUrl } from '@/lib/env-validation';
+import { logger } from '@/lib/logger';
 
 async function assertUserIsNotSoleOwner(userId: string) {
   const ownedMemberships = await prisma.teamMember.findMany({
@@ -168,7 +169,7 @@ export async function addUser(
 
     return { success: true, inviteUrl };
   } catch (error) {
-    console.error('Failed to add user:', error);
+    logger.error('Failed to add user', { component: 'users-actions', error, email, name, role });
     return {
       error: error instanceof Error ? error.message : 'Failed to create user or generate invite.',
     };

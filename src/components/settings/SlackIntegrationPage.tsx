@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
 import DangerZoneCard from '@/components/settings/DangerZoneCard';
@@ -58,7 +59,13 @@ export default function SlackIntegrationPage({
                         setChannels(data.channels);
                     }
                 })
-                .catch(err => console.error('Failed to fetch Slack channels:', err))
+                .catch(err => {
+                    if (err instanceof Error) {
+                        logger.error('Failed to fetch Slack channels', { error: err.message });
+                    } else {
+                        logger.error('Failed to fetch Slack channels', { error: String(err) });
+                    }
+                })
                 .finally(() => setLoadingChannels(false));
         }
     }, [integration]);

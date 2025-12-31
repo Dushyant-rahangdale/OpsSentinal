@@ -16,6 +16,7 @@ import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { startCronScheduler } from '@/lib/cron-scheduler';
+import { logger } from '@/lib/logger';
 
 const isNextRedirectError = (error: unknown) => {
   if (!error || typeof error !== 'object') return false;
@@ -42,7 +43,7 @@ export default async function AppLayout({
       userCount = await prisma.user.count();
     } catch (error) {
       if (!isNextRedirectError(error)) {
-        console.error('[App Layout] Failed to check user count:', error);
+        logger.error('[App Layout] Failed to check user count', { component: 'layout', error });
       }
     }
     if (userCount === 0) {
@@ -64,7 +65,7 @@ export default async function AppLayout({
     // Database connection error - allow app to load with session data
     // This prevents complete app failure when DB is temporarily unavailable
     if (!isNextRedirectError(error)) {
-      console.error('[App Layout] Database connection error:', error);
+      logger.error('[App Layout] Database connection error', { component: 'layout', error });
     }
     dbUser = null;
   }
@@ -76,7 +77,7 @@ export default async function AppLayout({
       userCount = await prisma.user.count();
     } catch (error) {
       if (!isNextRedirectError(error)) {
-        console.error('[App Layout] Failed to verify user count:', error);
+        logger.error('[App Layout] Failed to verify user count', { component: 'layout', error });
       }
     }
     if (userCount === 0) {

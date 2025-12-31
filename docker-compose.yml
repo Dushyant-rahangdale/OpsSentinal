@@ -55,7 +55,7 @@ services:
     networks:
       - opssentinal-network
     command: >
-      sh -c "cd /app && node_modules/prisma/build/index.js migrate deploy && node server.js"
+      sh -c "./docker-entrypoint.sh"
 
 volumes:
   opssentinal_postgres_data:

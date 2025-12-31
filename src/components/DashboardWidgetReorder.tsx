@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 
 type WidgetReorderProps = {
@@ -21,7 +22,11 @@ export default function DashboardWidgetReorder({ children, widgetId, defaultOrde
           setOrder(orders[widgetId]); // eslint-disable-line react-hooks/set-state-in-effect
         }
       } catch (e) {
-        console.error('Failed to load widget order', e);
+        if (e instanceof Error) {
+          logger.error('Failed to load widget order', { error: e.message });
+        } else {
+          logger.error('Failed to load widget order', { error: String(e) });
+        }
       }
     }
   }, [widgetId]);

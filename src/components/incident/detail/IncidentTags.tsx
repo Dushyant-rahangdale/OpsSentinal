@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '../../ToastProvider';
@@ -52,7 +53,11 @@ export default function IncidentTags({ incidentId, tags, canManage }: IncidentTa
             const allTags = await getAllTags();
             setAvailableTags(allTags);
         } catch (error) {
-            console.error('Failed to load tags:', error);
+            if (error instanceof Error) {
+                logger.error('Failed to load tags', { error: error.message });
+            } else {
+                logger.error('Failed to load tags', { error: String(error) });
+            }
         }
     };
 

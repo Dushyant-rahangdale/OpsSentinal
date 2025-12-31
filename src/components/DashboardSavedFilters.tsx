@@ -1,5 +1,6 @@
 'use client';
 
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
@@ -29,7 +30,11 @@ export default function DashboardSavedFilters() {
       try {
         setSavedFilters(JSON.parse(saved)); // eslint-disable-line react-hooks/set-state-in-effect
       } catch (e) {
-        console.error('Failed to load saved filters', e);
+        if (e instanceof Error) {
+          logger.error('Failed to load saved filters', { error: e.message });
+        } else {
+          logger.error('Failed to load saved filters', { error: String(e) });
+        }
       }
     }
   }, []);

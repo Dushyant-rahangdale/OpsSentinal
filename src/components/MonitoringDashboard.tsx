@@ -1,5 +1,7 @@
 'use client';
 
+import { logger } from '@/lib/logger';
+
 import { useEffect, useState } from 'react';
 import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
@@ -134,7 +136,11 @@ export default function MonitoringDashboard() {
                 }
             }
         } catch (error) {
-            console.error('Failed to fetch services:', error);
+            if (error instanceof Error) {
+                logger.error('Failed to fetch services', { error: error.message });
+            } else {
+                logger.error('Failed to fetch services', { error: String(error) });
+            }
         } finally {
             setServicesLoading(false);
         }

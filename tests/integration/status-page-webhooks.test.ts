@@ -20,6 +20,17 @@ vi.mock('@/lib/auth', () => ({
   getAuthOptions: vi.fn(),
 }));
 
+// Mock logger to avoid side-effects (like fetch calls to /api/logs/ingest)
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  },
+}));
+
 // Mock fetch for webhook delivery
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,

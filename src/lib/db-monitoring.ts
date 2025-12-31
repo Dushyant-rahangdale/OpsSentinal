@@ -2,6 +2,7 @@
  * Database query monitoring utilities
  * Tracks query performance and provides metrics for optimization
  */
+import { logger } from './logger';
 
 interface QueryMetrics {
   query: string;
@@ -79,7 +80,8 @@ class QueryMonitor {
         }
       }
 
-      console.error(`[DB Monitor] Query error:`, {
+      logger.error('[DB Monitor] Query error', {
+        component: 'db-monitoring',
         query: metric.query,
         message: errorMessage,
         code: errorCode,

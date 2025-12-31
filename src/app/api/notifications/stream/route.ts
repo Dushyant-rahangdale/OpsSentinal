@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { logger } from '@/lib/logger';
 
 /**
  * Server-Sent Events endpoint for real-time notification updates
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
                     try {
                         controller.enqueue(encoder.encode(`data: ${data}\n\n`));
                     } catch (error) {
-                        console.error('Error sending SSE data:', error);
+                        logger.error('Error sending SSE data', { component: 'api-notifications-stream', error });
                         isClosed = true;
                     }
                 }
@@ -110,7 +111,7 @@ export async function GET(req: NextRequest) {
                         count: unreadCount
                     }));
                 } catch (error) {
-                    console.error('Error polling notifications:', error);
+                    logger.error('Error polling notifications', { component: 'api-notifications-stream', error });
                     send(JSON.stringify({
                         type: 'error',
                         message: 'Error fetching notifications'

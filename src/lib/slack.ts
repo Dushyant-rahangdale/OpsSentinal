@@ -142,14 +142,14 @@ export async function sendSlackNotification(
         // Check for non-retryable errors (4xx client errors)
         if (!response.ok && !isRetryableHttpError(response.status)) {
             const errorText = await response.text();
-            console.error('[Slack] Webhook failed (client error):', errorText);
+            logger.error('[Slack] Webhook client error', { component: 'slack', statusCode: response.status, error: errorText, incident: incident.id });
             return { success: false, error: errorText };
         }
 
         if (!response.ok) {
             // This shouldn't happen after retries, but handle gracefully
             const errorText = await response.text();
-            console.error('[Slack] Webhook failed after retries:', errorText);
+            logger.error('[Slack] Webhook failed after retries', { component: 'slack', statusCode: response.status, error: errorText, incident: incident.id });
             return { success: false, error: errorText };
         }
 
@@ -157,7 +157,7 @@ export async function sendSlackNotification(
         return { success: true };
     } catch (error: unknown) {
         const err = error as { message?: string };
-        console.error('[Slack] Webhook error after retries:', err.message);
+        logger.error('[Slack] Webhook error after retries', { component: 'slack', error: err.message, incident: incident.id });
         return { success: false, error: err.message || 'Slack webhook error' };
     }
 }

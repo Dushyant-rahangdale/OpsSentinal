@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getUserPermissions } from '@/lib/rbac';
 import { addTeamMember, createTeam, deleteTeam, removeTeamMember, updateTeam, updateTeamMemberRole, updateTeamMemberNotifications } from './actions';
+import { logger } from '@/lib/logger';
 import TeamCreateForm from '@/components/TeamCreateForm';
 import TeamCard from '@/components/TeamCard';
 import Link from 'next/link';
@@ -175,7 +176,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
     try {
         permissions = await getUserPermissions();
     } catch (error) {
-        console.error('Error getting user permissions:', error);
+        logger.error('Error getting user permissions', { component: 'teams-page', error });
         // Default to USER role if there's an error
         permissions = {
             id: '',
@@ -247,7 +248,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                 return { team, activityLogs, activityTotal };
             } catch (error) {
                 // If activity log fetch fails, return empty logs
-                console.error(`Error fetching activity logs for team ${team.id}:`, error);
+                logger.error(`Error fetching activity logs for team ${team.id}`, { component: 'teams-page', teamId: team.id, error });
                 return { team, activityLogs: [], activityTotal: 0 };
             }
         })
