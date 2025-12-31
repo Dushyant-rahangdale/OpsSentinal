@@ -4,10 +4,10 @@
  */
 
 export interface EmailStyles {
-    primaryColor?: string;
-    backgroundColor?: string;
-    textColor?: string;
-    headerGradient?: string;
+  primaryColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  headerGradient?: string;
 }
 
 /**
@@ -15,10 +15,10 @@ export interface EmailStyles {
  * Fully optimized for mobile devices
  */
 export function EmailContainer(content: string, styles: EmailStyles = {}): string {
-    const backgroundColor = styles.backgroundColor || '#ffffff';
-    const outerBackground = '#f3f4f6';
+  const backgroundColor = styles.backgroundColor || '#ffffff';
+  const outerBackground = '#f3f4f6';
 
-    return `
+  return `
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -87,9 +87,10 @@ export function EmailContainer(content: string, styles: EmailStyles = {}): strin
  * Mobile-responsive with flexible layout
  */
 export function EmailHeader(title: string, subtitle?: string, styles: EmailStyles = {}): string {
-    const headerGradient = styles.headerGradient || 'linear-gradient(135deg, #8b1a1a 0%, #b91c1c 40%, #c92a2a 70%, #dc2626 100%)';
+  const headerGradient =
+    styles.headerGradient || 'linear-gradient(135deg, #1e293b 0%, #334155 40%, #475569 100%)';
 
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <tr>
         <td class="mobile-header-padding" style="background: ${headerGradient}; padding: 48px 44px; text-align: left; position: relative;">
@@ -119,12 +120,16 @@ export function EmailHeader(title: string, subtitle?: string, styles: EmailStyle
                 ${title}
             </h1>
             
-            ${subtitle ? `
+            ${
+              subtitle
+                ? `
             <!-- Subtitle -->
             <p class="mobile-font-small" style="margin: 0; color: rgba(255, 255, 255, 0.85); font-size: 15px; font-weight: 500;">
                 ${subtitle}
             </p>
-            ` : ''}
+            `
+                : ''
+            }
         </td>
     </tr>
 </table>`.trim();
@@ -134,7 +139,7 @@ export function EmailHeader(title: string, subtitle?: string, styles: EmailStyle
  * Content section with responsive padding
  */
 export function EmailContent(content: string): string {
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <tr>
         <td class="mobile-padding" style="padding: 52px 44px; background: #ffffff;">
@@ -148,19 +153,39 @@ export function EmailContent(content: string): string {
  * Status badge with icon - OpsSentinal branded
  */
 export function StatusBadge(
-    status: string,
-    type: 'success' | 'warning' | 'error' | 'info' = 'info'
+  status: string,
+  type: 'success' | 'warning' | 'error' | 'info' = 'info'
 ): string {
-    const colors = {
-        success: { bg: '#16a34a', text: '#ffffff', icon: getCheckIcon(16, '#ffffff'), shadow: 'rgba(22, 163, 74, 0.3)' },
-        warning: { bg: '#f59e0b', text: '#ffffff', icon: getWarningIcon(16, '#ffffff'), shadow: 'rgba(245, 158, 11, 0.3)' },
-        error: { bg: '#dc2626', text: '#ffffff', icon: getErrorIcon(16, '#ffffff'), shadow: 'rgba(220, 38, 38, 0.35)' },
-        info: { bg: '#2563eb', text: '#ffffff', icon: getInfoIcon(16, '#ffffff'), shadow: 'rgba(37, 99, 235, 0.3)' }
-    };
+  const colors = {
+    success: {
+      bg: '#059669',
+      text: '#ffffff',
+      icon: getCheckIcon(16, '#ffffff'),
+      shadow: 'rgba(5, 150, 105, 0.2)',
+    },
+    warning: {
+      bg: '#d97706',
+      text: '#ffffff',
+      icon: getWarningIcon(16, '#ffffff'),
+      shadow: 'rgba(217, 119, 6, 0.2)',
+    },
+    error: {
+      bg: '#be123c',
+      text: '#ffffff',
+      icon: getErrorIcon(16, '#ffffff'),
+      shadow: 'rgba(190, 18, 60, 0.2)',
+    },
+    info: {
+      bg: '#2563eb',
+      text: '#ffffff',
+      icon: getInfoIcon(16, '#ffffff'),
+      shadow: 'rgba(37, 99, 235, 0.2)',
+    },
+  };
 
-    const color = colors[type];
+  const color = colors[type];
 
-    return `
+  return `
 <div style="display: inline-flex; align-items: center; gap: 10px; background: ${color.bg}; color: ${color.text}; padding: 12px 24px; border-radius: 999px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 14px ${color.shadow}, 0 0 0 1px rgba(255, 255, 255, 0.1) inset;">
     <span style="width: 8px; height: 8px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);"></span>
     <span>${status}</span>
@@ -172,10 +197,10 @@ export function StatusBadge(
  * Optimized for mobile with large touch targets
  */
 export function EmailButton(text: string, url: string, _styles: EmailStyles = {}): string {
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="mobile-full-width mobile-spacing" style="margin: 32px auto; width: auto;">
     <tr>
-        <td class="mobile-button" style="border-radius: 10px; background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); text-align: center; box-shadow: 0 8px 20px rgba(185, 28, 28, 0.3);">
+        <td class="mobile-button" style="border-radius: 10px; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); text-align: center; box-shadow: 0 8px 20px rgba(30, 41, 59, 0.25);">
             <a href="${url}" target="_blank" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.5; border-radius: 10px; min-width: 220px; text-align: center;">
                 ${text}
             </a>
@@ -187,8 +212,12 @@ export function EmailButton(text: string, url: string, _styles: EmailStyles = {}
 /**
  * Information card with label and value
  */
-export function InfoCard(items: Array<{ label: string; value: string; highlight?: boolean }>): string {
-    const rows = items.map(item => `
+export function InfoCard(
+  items: Array<{ label: string; value: string; highlight?: boolean }>
+): string {
+  const rows = items
+    .map(
+      item => `
         <tr>
             <td style="padding: 12px 20px; border-bottom: 1px solid #e5e7eb; font-size: 14px; font-weight: 600; color: #6b7280; width: 140px;">
                 ${item.label}
@@ -197,9 +226,11 @@ export function InfoCard(items: Array<{ label: string; value: string; highlight?
                 ${item.value}
             </td>
         </tr>
-    `).join('');
+    `
+    )
+    .join('');
 
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
     ${rows}
 </table>`.trim();
@@ -209,20 +240,20 @@ export function InfoCard(items: Array<{ label: string; value: string; highlight?
  * Alert box for important messages with OpsSentinal colors
  */
 export function AlertBox(
-    title: string,
-    message: string,
-    type: 'success' | 'warning' | 'error' | 'info' = 'info'
+  title: string,
+  message: string,
+  type: 'success' | 'warning' | 'error' | 'info' = 'info'
 ): string {
-    const colors = {
-        success: { bg: '#dcfce7', border: '#16a34a', title: '#14532d', text: '#15803d' },
-        warning: { bg: '#fef3c7', border: '#f59e0b', title: '#92400e', text: '#b45309' },
-        error: { bg: '#fee2e2', border: '#dc2626', title: '#991b1b', text: '#b91c1c' },
-        info: { bg: '#dbeafe', border: '#2563eb', title: '#1e3a8a', text: '#1d4ed8' }
-    };
+  const colors = {
+    success: { bg: '#f0fdf4', border: '#059669', title: '#064e3b', text: '#065f46' },
+    warning: { bg: '#fffbeb', border: '#d97706', title: '#78350f', text: '#92400e' },
+    error: { bg: '#fef2f2', border: '#be123c', title: '#881337', text: '#991b1b' },
+    info: { bg: '#eff6ff', border: '#2563eb', title: '#1e40af', text: '#1e3a8a' },
+  };
 
-    const color = colors[type];
+  const color = colors[type];
 
-    return `
+  return `
 <div style="background: ${color.bg}; border-left: 4px solid ${color.border}; padding: 24px; border-radius: 12px; margin: 24px 0;">
     <h3 style="margin: 0 0 12px 0; color: ${color.title}; font-size: 18px; font-weight: 700; letter-spacing: -0.01em;">
         ${title}
@@ -237,18 +268,22 @@ export function AlertBox(
  * Footer with OpsSentinal branding
  */
 export function EmailFooter(unsubscribeUrl?: string): string {
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <tr>
         <td style="padding: 36px 40px; background: #f3f4f6; border-top: 1px solid #e5e7eb; text-align: center;">
             <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                This is an automated notification from <strong style="color: #d32f2f;">OpsSentinal</strong> Incident Management.
+                This is an automated notification from <strong style="color: #1e293b;">OpsSentinal</strong> Incident Management.
             </p>
-            ${unsubscribeUrl ? `
+            ${
+              unsubscribeUrl
+                ? `
             <p style="margin: 12px 0 0 0; font-size: 13px;">
-                <a href="${unsubscribeUrl}" style="color: #d32f2f; text-decoration: none; font-weight: 600;">Unsubscribe from these emails</a>
+                <a href="${unsubscribeUrl}" style="color: #1e293b; text-decoration: none; font-weight: 600;">Unsubscribe from these emails</a>
             </p>
-            ` : ''}
+            `
+                : ''
+            }
         </td>
     </tr>
 </table>`.trim();
@@ -258,16 +293,21 @@ export function EmailFooter(unsubscribeUrl?: string): string {
  * SVG Icons (inline for email compatibility)
  */
 
-
 /**
  * Header specifically for Status Page Subscribers
  * Shows the Organization Name prominently instead of OpsSentinal
  * Maintains the premium OpsSentinal aesthetic
  */
-export function SubscriberEmailHeader(pageName: string, title: string, subtitle?: string, styles: EmailStyles = {}): string {
-    const headerGradient = styles.headerGradient || 'linear-gradient(135deg, #8b1a1a 0%, #b91c1c 40%, #c92a2a 70%, #dc2626 100%)';
+export function SubscriberEmailHeader(
+  pageName: string,
+  title: string,
+  subtitle?: string,
+  styles: EmailStyles = {}
+): string {
+  const headerGradient =
+    styles.headerGradient || 'linear-gradient(135deg, #1e293b 0%, #334155 40%, #475569 100%)';
 
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <tr>
         <td class="mobile-header-padding" style="background: ${headerGradient}; padding: 48px 44px; text-align: left; position: relative;">
@@ -304,11 +344,15 @@ export function SubscriberEmailHeader(pageName: string, title: string, subtitle?
                 </span>
             </div>
 
-            ${subtitle ? `
+            ${
+              subtitle
+                ? `
             <p class="mobile-font-medium" style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 16px; font-weight: 500; line-height: 1.5;">
                 ${subtitle}
             </p>
-            ` : ''}
+            `
+                : ''
+            }
         </td>
     </tr>
 </table>`.trim();
@@ -318,7 +362,7 @@ export function SubscriberEmailHeader(pageName: string, title: string, subtitle?
  * Footer providing "Powered by" marketing while handling Unsubscribe
  */
 export function SubscriberEmailFooter(unsubscribeUrl: string, pageName: string): string {
-    return `
+  return `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <tr>
         <td style="padding: 36px 20px; background: #f8fafc; border-top: 1px solid #e5e7eb; text-align: center;">
@@ -352,15 +396,15 @@ export function SubscriberEmailFooter(unsubscribeUrl: string, pageName: string):
  */
 
 function getOpsSentinalLogo(width: number): string {
-    // Inline SVG logo for email compatibility - works in all email clients without external dependencies
-    return `<svg width="${width}" height="${width}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+  // Inline SVG logo for email compatibility - works in all email clients without external dependencies
+  return `<svg width="${width}" height="${width}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display: block;">
         <!-- Shield background -->
-        <path d="M50 5 L85 20 L85 45 Q85 75 50 95 Q15 75 15 45 L15 20 Z" fill="url(#grad)" stroke="#991b1b" stroke-width="2"/>
+        <path d="M50 5 L85 20 L85 45 Q85 75 50 95 Q15 75 15 45 L15 20 Z" fill="url(#grad)" stroke="#0f172a" stroke-width="2"/>
         <!-- Gradient definition -->
         <defs>
             <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#dc2626;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#b91c1c;stop-opacity:1" />
+                <stop offset="0%" style="stop-color:#334155;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
             </linearGradient>
         </defs>
         <!-- OS Text -->
@@ -369,30 +413,29 @@ function getOpsSentinalLogo(width: number): string {
 }
 
 function getCheckIcon(size: number, color: string): string {
-    return `
+  return `
 <svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: middle;">
     <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" fill="${color}"/>
 </svg>`.trim();
 }
 
 function getWarningIcon(size: number, color: string): string {
-    return `
+  return `
 <svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: middle;">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" fill="${color}"/>
 </svg>`.trim();
 }
 
 function getErrorIcon(size: number, color: string): string {
-    return `
+  return `
 <svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: middle;">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fill="${color}"/>
 </svg>`.trim();
 }
 
 function getInfoIcon(size: number, color: string): string {
-    return `
+  return `
 <svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: middle;">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fill="${color}"/>
 </svg>`.trim();
 }
-

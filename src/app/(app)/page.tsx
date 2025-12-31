@@ -35,28 +35,45 @@ function buildPaginationUrl(baseParams: URLSearchParams, page: number): string {
   return queryString ? `/?${queryString}` : '/';
 }
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await getServerSession(await getAuthOptions());
   const awaitedSearchParams = await searchParams;
 
   // Extract search params
-  const status = typeof awaitedSearchParams.status === 'string' ? awaitedSearchParams.status : undefined;
-  const assignee = typeof awaitedSearchParams.assignee === 'string' ? awaitedSearchParams.assignee : undefined;
-  const service = typeof awaitedSearchParams.service === 'string' ? awaitedSearchParams.service : undefined;
-  const urgency = typeof awaitedSearchParams.urgency === 'string' ? awaitedSearchParams.urgency : undefined;
-  const page = typeof awaitedSearchParams.page === 'string' ? parseInt(awaitedSearchParams.page) || 1 : 1;
-  const sortBy = typeof awaitedSearchParams.sortBy === 'string' ? awaitedSearchParams.sortBy : 'createdAt';
-  const sortOrder = typeof awaitedSearchParams.sortOrder === 'string' ? (awaitedSearchParams.sortOrder as 'asc' | 'desc') : 'desc';
+  const status =
+    typeof awaitedSearchParams.status === 'string' ? awaitedSearchParams.status : undefined;
+  const assignee =
+    typeof awaitedSearchParams.assignee === 'string' ? awaitedSearchParams.assignee : undefined;
+  const service =
+    typeof awaitedSearchParams.service === 'string' ? awaitedSearchParams.service : undefined;
+  const urgency =
+    typeof awaitedSearchParams.urgency === 'string' ? awaitedSearchParams.urgency : undefined;
+  const page =
+    typeof awaitedSearchParams.page === 'string' ? parseInt(awaitedSearchParams.page) || 1 : 1;
+  const sortBy =
+    typeof awaitedSearchParams.sortBy === 'string' ? awaitedSearchParams.sortBy : 'createdAt';
+  const sortOrder =
+    typeof awaitedSearchParams.sortOrder === 'string'
+      ? (awaitedSearchParams.sortOrder as 'asc' | 'desc')
+      : 'desc';
   const range = typeof awaitedSearchParams.range === 'string' ? awaitedSearchParams.range : '30';
-  const customStart = typeof awaitedSearchParams.startDate === 'string' ? awaitedSearchParams.startDate : undefined;
-  const customEnd = typeof awaitedSearchParams.endDate === 'string' ? awaitedSearchParams.endDate : undefined;
+  const customStart =
+    typeof awaitedSearchParams.startDate === 'string' ? awaitedSearchParams.startDate : undefined;
+  const customEnd =
+    typeof awaitedSearchParams.endDate === 'string' ? awaitedSearchParams.endDate : undefined;
 
   // Get user name for greeting
   const email = session?.user?.email ?? null;
-  const user = email ? await prisma.user.findUnique({
-    where: { email },
-    select: { name: true }
-  }) : null;
+  const user = email
+    ? await prisma.user.findUnique({
+        where: { email },
+        select: { name: true },
+      })
+    : null;
   const userName = user?.name || 'there';
 
   // Build date filter
@@ -65,7 +82,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     if (range === 'custom' && customStart && customEnd) {
       dateFilter.createdAt = {
         gte: new Date(customStart),
-        lte: new Date(customEnd)
+        lte: new Date(customEnd),
       };
     } else {
       const days = parseInt(range);
@@ -73,7 +90,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
         dateFilter.createdAt = {
-          gte: startDate
+          gte: startDate,
         };
       }
     }
@@ -147,7 +164,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     metricsOpenCount,
     // Current period metrics - moved into parallel batch
     currentPeriodAcknowledged,
-    currentPeriodCritical
+    currentPeriodCritical,
   ] = await Promise.all([
     prisma.incident.findMany({
       where,
@@ -160,19 +177,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         service: {
           select: {
             id: true,
-            name: true
-          }
+            name: true,
+          },
         },
         assignee: {
           select: {
             id: true,
-            name: true
-          }
-        }
+            name: true,
+          },
+        },
       },
       orderBy,
       skip,
-      take: INCIDENTS_PER_PAGE
+      take: INCIDENTS_PER_PAGE,
     }),
     prisma.incident.count({ where }),
     // Optimized: Only fetch id and name for services (used in filters and service health)
@@ -180,62 +197,62 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       select: {
         id: true,
         name: true,
-        status: true
-      }
+        status: true,
+      },
     }),
     // Optimized: Only fetch id and name for users (used in filters)
     prisma.user.findMany({
       select: {
         id: true,
-        name: true
-      }
+        name: true,
+      },
     }),
     prisma.onCallShift.findMany({
       where: {
         start: { lte: new Date() },
-        end: { gte: new Date() }
+        end: { gte: new Date() },
       },
-      include: { user: true, schedule: true }
+      include: { user: true, schedule: true },
     }),
     prisma.incident.groupBy({
       by: ['urgency'],
       where: chartWhere,
-      _count: { _all: true }
+      _count: { _all: true },
     }),
     prisma.incident.count({
       where: {
         status: 'RESOLVED',
-        ...metricsWhere
-      }
+        ...metricsWhere,
+      },
     }),
     // All-time counts (for Command Center and Advanced Metrics)
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' }
-      }
+        status: { not: 'RESOLVED' },
+      },
     }),
     prisma.incident.count({
       where: {
-        status: 'ACKNOWLEDGED'
-      }
+        status: 'ACKNOWLEDGED',
+      },
     }),
     prisma.incident.count({
       where: {
         status: { not: 'RESOLVED' },
-        urgency: 'HIGH'
-      }
+        urgency: 'HIGH',
+      },
     }),
     prisma.incident.count({
       where: {
         status: { not: 'RESOLVED' },
-        assigneeId: null
-      }
+        assigneeId: null,
+      },
     }),
     prisma.incident.count({}),
     prisma.incident.count({
       where: {
-        status: 'RESOLVED'
-      }
+        status: 'RESOLVED',
+      },
     }),
     calculateSLAMetrics({
       serviceId: service,
@@ -243,39 +260,39 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       urgency,
       startDate: metricsStartDate,
       endDate: metricsEndDate,
-      includeAllTime: range === 'all'
+      includeAllTime: range === 'all',
     }),
     // Optimized MTTA: Only fetch timestamps we need, limit to reasonable amount
     prisma.incident.findMany({
       where: mttaWhere,
       select: {
         createdAt: true,
-        acknowledgedAt: true
+        acknowledgedAt: true,
       },
-      take: 500 // Limit for performance - MTTA doesn't need all incidents
+      take: 500, // Limit for performance - MTTA doesn't need all incidents
     }),
     prisma.incident.count({
-      where: metricsWhere
+      where: metricsWhere,
     }),
     prisma.incident.count({
       where: {
         status: { not: 'RESOLVED' },
-        ...metricsWhere
-      }
+        ...metricsWhere,
+      },
     }),
     prisma.incident.count({
       where: {
         status: 'ACKNOWLEDGED',
-        ...metricsWhere
-      }
+        ...metricsWhere,
+      },
     }),
     prisma.incident.count({
       where: {
         status: { not: 'RESOLVED' },
         urgency: 'HIGH',
-        ...metricsWhere
-      }
-    })
+        ...metricsWhere,
+      },
+    }),
   ]);
 
   // Calculate MTTA
@@ -297,15 +314,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   }
 
   // Calculate urgency distribution
-  const urgencyCounts = urgencyGroupCounts.reduce((acc, item) => {
-    acc[item.urgency] = item._count._all;
-    return acc;
-  }, {} as Record<string, number>);
+  const urgencyCounts = urgencyGroupCounts.reduce(
+    (acc, item) => {
+      acc[item.urgency] = item._count._all;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const urgencyDistribution = [
-    { label: 'High', value: urgencyCounts['HIGH'] || 0, color: '#ef4444' },
+    { label: 'High', value: urgencyCounts['HIGH'] || 0, color: 'var(--color-danger)' },
     { label: 'Medium', value: urgencyCounts['MEDIUM'] || 0, color: '#f59e0b' },
-    { label: 'Low', value: urgencyCounts['LOW'] || 0, color: '#22c55e' }
+    { label: 'Low', value: urgencyCounts['LOW'] || 0, color: '#22c55e' },
   ].filter(item => item.value > 0);
 
   // Calculate previous period data for comparison
@@ -318,15 +338,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   const currentPeriodDays = getDaysFromRange(range);
   const previousPeriodStart = new Date();
-  previousPeriodStart.setDate(previousPeriodStart.getDate() - (currentPeriodDays * 2));
+  previousPeriodStart.setDate(previousPeriodStart.getDate() - currentPeriodDays * 2);
   const previousPeriodEnd = new Date();
   previousPeriodEnd.setDate(previousPeriodEnd.getDate() - currentPeriodDays);
 
-  const previousPeriodWhere: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const previousPeriodWhere: any = {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     createdAt: {
       gte: previousPeriodStart,
-      lt: previousPeriodEnd
-    }
+      lt: previousPeriodEnd,
+    },
   };
   if (assignee !== undefined) {
     if (assignee === '') {
@@ -338,68 +359,80 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   if (service) previousPeriodWhere.serviceId = service;
   if (urgency) previousPeriodWhere.urgency = urgency;
 
-  const previousPeriodIncidents = currentPeriodDays > 0 ? await Promise.all([
-    prisma.incident.count({
-      where: {
-        ...previousPeriodWhere
-      }
-    }),
-    prisma.incident.count({
-      where: {
-        status: { not: 'RESOLVED' },
-        ...previousPeriodWhere
-      }
-    }),
-    prisma.incident.count({
-      where: {
-        status: 'RESOLVED',
-        ...previousPeriodWhere
-      }
-    }),
-    prisma.incident.count({
-      where: {
-        status: 'ACKNOWLEDGED',
-        ...previousPeriodWhere
-      }
-    }),
-    prisma.incident.count({
-      where: {
-        status: { not: 'RESOLVED' },
-        urgency: 'HIGH',
-        ...previousPeriodWhere
-      }
-    })
-  ]) : [0, 0, 0, 0, 0];
+  const previousPeriodIncidents =
+    currentPeriodDays > 0
+      ? await Promise.all([
+          prisma.incident.count({
+            where: {
+              ...previousPeriodWhere,
+            },
+          }),
+          prisma.incident.count({
+            where: {
+              status: { not: 'RESOLVED' },
+              ...previousPeriodWhere,
+            },
+          }),
+          prisma.incident.count({
+            where: {
+              status: 'RESOLVED',
+              ...previousPeriodWhere,
+            },
+          }),
+          prisma.incident.count({
+            where: {
+              status: 'ACKNOWLEDGED',
+              ...previousPeriodWhere,
+            },
+          }),
+          prisma.incident.count({
+            where: {
+              status: { not: 'RESOLVED' },
+              urgency: 'HIGH',
+              ...previousPeriodWhere,
+            },
+          }),
+        ])
+      : [0, 0, 0, 0, 0];
 
-  const [prevTotal, prevOpen, prevResolved, prevAcknowledged, prevCritical] = previousPeriodIncidents;
+  const [prevTotal, prevOpen, prevResolved, prevAcknowledged, prevCritical] =
+    previousPeriodIncidents;
 
   // Get service health data - Optimized: Use groupBy to avoid N+1 queries
   const serviceIds = services.map(s => s.id);
-  
+
   // Fetch counts for all services at once using aggregation
   const [serviceActiveCounts, serviceCriticalCounts] = await Promise.all([
-    serviceIds.length > 0 ? prisma.incident.groupBy({
-      by: ['serviceId'],
-      where: {
-        serviceId: { in: serviceIds },
-        status: { not: 'RESOLVED' }
-      },
-      _count: { _all: true }
-    }) : [],
-    serviceIds.length > 0 ? prisma.incident.groupBy({
-      by: ['serviceId'],
-      where: {
-        serviceId: { in: serviceIds },
-        status: { not: 'RESOLVED' },
-        urgency: 'HIGH'
-      },
-      _count: { _all: true }
-    }) : []
+    serviceIds.length > 0
+      ? prisma.incident.groupBy({
+          by: ['serviceId'],
+          where: {
+            serviceId: { in: serviceIds },
+            status: { not: 'RESOLVED' },
+          },
+          _count: { _all: true },
+        })
+      : [],
+    serviceIds.length > 0
+      ? prisma.incident.groupBy({
+          by: ['serviceId'],
+          where: {
+            serviceId: { in: serviceIds },
+            status: { not: 'RESOLVED' },
+            urgency: 'HIGH',
+          },
+          _count: { _all: true },
+        })
+      : [],
   ]);
 
   // Create maps for O(1) lookup
-  const activeCountMap = new Map(serviceActiveCounts.map(item => [item.serviceId, item._count._all]));
-  const criticalCountMap = new Map(serviceCriticalCounts.map(item => [item.serviceId, item._count._all]));
+  const activeCountMap = new Map(
+    serviceActiveCounts.map(item => [item.serviceId, item._count._all])
+  );
+  const criticalCountMap = new Map(
+    serviceCriticalCounts.map(item => [item.serviceId, item._count._all])
+  );
 
   // Build service health array
   const servicesWithIncidents = services.map(service => ({
@@ -407,7 +440,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     name: service.name,
     status: service.status,
     activeIncidents: activeCountMap.get(service.id) || 0,
-    criticalIncidents: criticalCountMap.get(service.id) || 0
+    criticalIncidents: criticalCountMap.get(service.id) || 0,
   }));
 
   // Helper functions for period labels
@@ -418,18 +451,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
     return {
       current: `Last ${days} days`,
-      previous: `Previous ${days} days`
+      previous: `Previous ${days} days`,
     };
   };
 
   const periodLabels = getPeriodLabels();
 
   // Calculate system status
-  const systemStatus = allCriticalIncidentsCount > 0
-    ? { label: 'CRITICAL', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
-    : allOpenIncidentsCount > 0
-      ? { label: 'DEGRADED', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' }
-      : { label: 'OPERATIONAL', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' };
+  const systemStatus =
+    allCriticalIncidentsCount > 0
+      ? { label: 'CRITICAL', color: 'var(--color-danger)', bg: 'rgba(239, 68, 68, 0.1)' }
+      : allOpenIncidentsCount > 0
+        ? { label: 'DEGRADED', color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.1)' }
+        : { label: 'OPERATIONAL', color: 'var(--color-success)', bg: 'rgba(34, 197, 94, 0.1)' };
 
   const totalPages = Math.ceil(totalCount / INCIDENTS_PER_PAGE);
   const baseParams = new URLSearchParams();
@@ -461,689 +495,1210 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   return (
     <DashboardRealtimeWrapper>
-    <main style={{ paddingBottom: '2rem' }}>
-      <div className="command-center-hero" style={{
-        background: 'var(--gradient-primary)', // Match sidebar theme
-        boxShadow: '4px 0 24px rgba(211, 47, 47, 0.15)' // Match sidebar shadow
-      }}>
-        <div className="command-center-header">
-          <div className="command-center-left">
-            <h1 className="command-center-title">Command Center</h1>
-            <div className="command-center-status">
-              <span className="system-status-label">System Status:</span>
-              <strong className="system-status-value" style={{ color: systemStatus.color }}>{systemStatus.label}</strong>
-              {allOpenIncidentsCount > 0 && (
-                <span className="system-status-count">
-                  ({allOpenIncidentsCount} active incident{allOpenIncidentsCount !== 1 ? 's' : ''})
-                </span>
-              )}
-            </div>
-            <div className="command-center-time-range">
-              <Suspense fallback={
-                <div style={{
-                  height: '40px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--spacing-2)'
-                }}>
-                  <div style={{
-                    width: '120px',
-                    height: '32px',
-                    background: 'var(--color-neutral-200)',
-                    borderRadius: 'var(--radius-md)',
-                    animation: 'skeleton-pulse 1.5s ease-in-out infinite'
-                  }} />
-                </div>
-              }>
-                <DashboardTimeRange />
-              </Suspense>
-            </div>
-          </div>
-          <div className="command-center-actions">
-            <Suspense fallback={
-              <div style={{
-                width: '100px',
-                height: '40px',
-                background: 'var(--color-neutral-200)',
-                borderRadius: 'var(--radius-md)',
-                animation: 'skeleton-pulse 1.5s ease-in-out infinite'
-              }} />
-            }>
-              <DashboardRefresh />
-            </Suspense>
-            <Suspense fallback={
-              <div style={{
-                width: '100px',
-                height: '40px',
-                background: 'var(--color-neutral-200)',
-                borderRadius: 'var(--radius-md)',
-                animation: 'skeleton-pulse 1.5s ease-in-out infinite'
-              }} />
-            }>
-              <DashboardExport
-                incidents={incidents}
-                filters={{
-                  status: status || undefined,
-                  service: service || undefined,
-                  assignee: assignee || undefined,
-                  range: range !== 'all' ? range : undefined
-                }}
-                metrics={{
-                  totalOpen: metricsOpenCount,
-                  totalResolved: metricsResolvedCount,
-                  totalAcknowledged: currentPeriodAcknowledged,
-                  unassigned: unassignedCount
-                }}
-              />
-            </Suspense>
-          </div>
-        </div>
+      <main style={{ paddingBottom: '2rem' }}>
+        <div
+          className="command-center-hero animate-fade-in"
+          style={{
+            background: 'var(--gradient-primary)',
+            boxShadow: 'var(--shadow-primary)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '2rem',
+            marginBottom: '1.5rem',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Subtle background glow - Slate */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '-30%',
+              right: '-5%',
+              width: '300px',
+              height: '300px',
+              background: 'radial-gradient(circle, rgba(100, 116, 139, 0.1) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }}
+          />
 
-        {/* Metrics in one line */}
-        <div className="command-center-metrics">
-          <div className="command-metric-card">
-            <div className="command-metric-value">{totalInRange}</div>
-            <div className="command-metric-label">TOTAL {getRangeLabel()}</div>
-          </div>
-          <div className="command-metric-card">
-            <div className="command-metric-value">{metricsOpenCount}</div>
-            <div className="command-metric-label">OPEN {getRangeLabel()}</div>
-          </div>
-          <div className="command-metric-card">
-            <div className="command-metric-value">{metricsResolvedCount}</div>
-            <div className="command-metric-label">RESOLVED {getRangeLabel()}</div>
-          </div>
-          <div className="command-metric-card">
-            <div className="command-metric-value">{unassignedCount}</div>
-            <div className="command-metric-label">UNASSIGNED (All Time)</div>
-          </div>
-        </div>
-      </div>
-
-
-      {/* Main Content Grid - Two Column Layout (matching users page) */}
-      <div className="dashboard-main-grid" style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr)', // Mobile: single column
-        gap: '1.5rem'
-      }}>
-        {/* Left Column - Filters and Table */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Filters Panel - White glass panel */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, rgba(211, 47, 47, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                  <path d="M3 6l3 3m0 0l3-3m-3 3v12m6-9h6m-6 3h6m-6 3h6m-6 3h6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+          <div className="command-center-header">
+            <div className="command-center-left">
+              <h1 className="command-center-title">Command Center</h1>
+              <div className="command-center-status">
+                <span className="system-status-label">System Status:</span>
+                <strong className="system-status-value" style={{ color: systemStatus.color }}>
+                  {systemStatus.label}
+                </strong>
+                {allOpenIncidentsCount > 0 && (
+                  <span className="system-status-count">
+                    ({allOpenIncidentsCount} active incident{allOpenIncidentsCount !== 1 ? 's' : ''}
+                    )
+                  </span>
+                )}
               </div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>Filter Incidents</h2>
-            </div>
-
-            {/* Saved Filters */}
-            <div style={{ marginBottom: '1rem' }}>
-              <Suspense fallback={
-                <div style={{
-                  height: '32px',
-                  background: 'var(--color-neutral-200)',
-                  borderRadius: 'var(--radius-md)',
-                  animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                  width: '200px'
-                }} />
-              }>
-                <DashboardSavedFilters />
-              </Suspense>
-            </div>
-
-            {/* Quick Filters */}
-            <div style={{ marginBottom: '1rem' }}>
-              <Suspense fallback={
-                <div style={{
-                  display: 'flex',
-                  gap: 'var(--spacing-2)',
-                  height: '40px'
-                }}>
-                  {[1, 2, 3, 4].map(i => (
+              <div className="command-center-time-range">
+                <Suspense
+                  fallback={
                     <div
-                      key={i}
                       style={{
-                        flex: 1,
                         height: '40px',
-                        background: 'var(--color-neutral-200)',
-                        borderRadius: 'var(--radius-md)',
-                        animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-2)',
                       }}
-                    />
-                  ))}
-                </div>
-              }>
-                <DashboardQuickFilters />
-              </Suspense>
+                    >
+                      <div
+                        style={{
+                          width: '120px',
+                          height: '32px',
+                          background: 'var(--color-neutral-200)',
+                          borderRadius: 'var(--radius-md)',
+                          animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    </div>
+                  }
+                >
+                  <DashboardTimeRange />
+                </Suspense>
+              </div>
             </div>
-
-            {/* Filter Chips */}
-            <Suspense fallback={
-              <div style={{
-                display: 'flex',
-                gap: 'var(--spacing-2)',
-                flexWrap: 'wrap',
-                minHeight: '40px'
-              }}>
-                {[1, 2, 3].map(i => (
+            <div className="command-center-actions">
+              <Suspense
+                fallback={
                   <div
-                    key={i}
                     style={{
-                      width: '80px',
-                      height: '28px',
+                      width: '100px',
+                      height: '40px',
                       background: 'var(--color-neutral-200)',
-                      borderRadius: 'var(--radius-full)',
-                      animation: 'skeleton-pulse 1.5s ease-in-out infinite'
+                      borderRadius: 'var(--radius-md)',
+                      animation: 'skeleton-pulse 1.5s ease-in-out infinite',
                     }}
                   />
-                ))}
-              </div>
-            }>
-              <DashboardFilterChips services={services} users={users} />
-            </Suspense>
-
-            {/* Dashboard Filters */}
-            <div style={{ marginTop: '1rem' }}>
-              <DashboardFilters
-                initialStatus={status}
-                initialService={service}
-                initialAssignee={assignee}
-                services={services}
-                users={users}
-              />
+                }
+              >
+                <DashboardRefresh />
+              </Suspense>
+              <Suspense
+                fallback={
+                  <div
+                    style={{
+                      width: '100px',
+                      height: '40px',
+                      background: 'var(--color-neutral-200)',
+                      borderRadius: 'var(--radius-md)',
+                      animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                    }}
+                  />
+                }
+              >
+                <DashboardExport
+                  incidents={incidents}
+                  filters={{
+                    status: status || undefined,
+                    service: service || undefined,
+                    assignee: assignee || undefined,
+                    range: range !== 'all' ? range : undefined,
+                  }}
+                  metrics={{
+                    totalOpen: metricsOpenCount,
+                    totalResolved: metricsResolvedCount,
+                    totalAcknowledged: currentPeriodAcknowledged,
+                    unassigned: unassignedCount,
+                  }}
+                />
+              </Suspense>
             </div>
           </div>
 
-          {/* Incidents Table Panel - White glass panel */}
-          <div className="glass-panel" style={{ background: 'white', padding: '0', overflow: 'hidden' }}>
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
+          {/* Metrics in one line */}
+          <div
+            className="command-center-metrics"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: '1rem',
-              background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, rgba(211, 47, 47, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 style={{ fontSize: '1.15rem', fontWeight: '700', margin: '0 0 0.2rem 0' }}>Incident Directory</h2>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Showing {skip + 1}-{Math.min(skip + INCIDENTS_PER_PAGE, totalCount)} of {totalCount} incidents
-                  </p>
-                </div>
+              marginTop: '1.5rem',
+            }}
+          >
+            <div
+              className="command-metric-card glass-panel-hover"
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '1.25rem',
+                borderRadius: '12px',
+                textAlign: 'center',
+                color: 'white',
+              }}
+            >
+              <div
+                className="command-metric-value"
+                style={{ fontSize: '1.75rem', fontWeight: '800' }}
+              >
+                {totalInRange}
               </div>
-              <Link
-                href="/incidents"
-                className="dashboard-view-all-link"
+              <div
+                className="command-metric-label"
                 style={{
-                  fontSize: '0.85rem',
-                  color: 'var(--primary)',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '8px',
-                  background: 'white',
-                  border: '1px solid var(--border)',
-                  transition: 'all 0.2s ease'
+                  fontSize: '0.7rem',
+                  fontWeight: '700',
+                  opacity: 0.8,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
                 }}
               >
-                View All <span>→</span>
-              </Link>
-            </div>
-
-            <div
-              className="incident-table-scroll"
-              style={{
-                overflowX: 'auto'
-              }}>
-              {incidents.length === 0 ? (
-                <div style={{
-                  padding: '4rem 2rem',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)',
-                  background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
-                  borderTop: '1px solid var(--border)',
-                  borderBottom: '1px solid var(--border)'
-                }}>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3, margin: '0 auto 1rem' }}>
-                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <p style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>No incidents found</p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Try adjusting your filters to see more results.</p>
-                </div>
-              ) : (
-                <IncidentTable
-                  incidents={incidents}
-                  sortBy={sortBy}
-                  sortOrder={sortOrder}
-                />
-              )}
-            </div>
-
-            {/* Pagination - Enhanced style */}
-            {totalPages > 1 && (
-              <div style={{
-                padding: '1.25rem 1.5rem',
-                borderTop: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '1rem',
-                flexWrap: 'wrap',
-                background: 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)'
-              }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                  Page <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <Link
-                    href={buildPaginationUrl(baseParams, 1)}
-                    className={`glass-button ${page === 1 ? 'disabled' : ''}`}
-                    style={{
-                      padding: '0.5rem 0.9rem',
-                      fontSize: '0.8rem',
-                      textDecoration: 'none',
-                      opacity: page === 1 ? 0.4 : 1,
-                      pointerEvents: page === 1 ? 'none' : 'auto',
-                      borderRadius: '8px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    First
-                  </Link>
-                  <Link
-                    href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
-                    className={`glass-button ${page === 1 ? 'disabled' : ''}`}
-                    style={{
-                      padding: '0.5rem 0.9rem',
-                      fontSize: '0.8rem',
-                      textDecoration: 'none',
-                      opacity: page === 1 ? 0.4 : 1,
-                      pointerEvents: page === 1 ? 'none' : 'auto',
-                      borderRadius: '8px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Previous
-                  </Link>
-                  <Link
-                    href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
-                    className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
-                    style={{
-                      padding: '0.5rem 0.9rem',
-                      fontSize: '0.8rem',
-                      textDecoration: 'none',
-                      opacity: page === totalPages ? 0.4 : 1,
-                      pointerEvents: page === totalPages ? 'none' : 'auto',
-                      borderRadius: '8px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Next
-                  </Link>
-                  <Link
-                    href={buildPaginationUrl(baseParams, totalPages)}
-                    className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
-                    style={{
-                      padding: '0.5rem 0.9rem',
-                      fontSize: '0.8rem',
-                      textDecoration: 'none',
-                      opacity: page === totalPages ? 0.4 : 1,
-                      pointerEvents: page === totalPages ? 'none' : 'auto',
-                      borderRadius: '8px',
-                      fontWeight: '600'
-                    }}
-                  >
-                    Last
-                  </Link>
-                </div>
+                TOTAL {getRangeLabel()}
               </div>
-            )}
+            </div>
+            <div
+              className="command-metric-card glass-panel-hover"
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '1.25rem',
+                borderRadius: '12px',
+                textAlign: 'center',
+                color: 'white',
+              }}
+            >
+              <div
+                className="command-metric-value"
+                style={{ fontSize: '1.75rem', fontWeight: '800' }}
+              >
+                {metricsOpenCount}
+              </div>
+              <div
+                className="command-metric-label"
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: '700',
+                  opacity: 0.8,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                OPEN {getRangeLabel()}
+              </div>
+            </div>
+            <div
+              className="command-metric-card glass-panel-hover"
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '1.25rem',
+                borderRadius: '12px',
+                textAlign: 'center',
+                color: 'white',
+              }}
+            >
+              <div
+                className="command-metric-value"
+                style={{ fontSize: '1.75rem', fontWeight: '800' }}
+              >
+                {metricsResolvedCount}
+              </div>
+              <div
+                className="command-metric-label"
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: '700',
+                  opacity: 0.8,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                RESOLVED {getRangeLabel()}
+              </div>
+            </div>
+            <div
+              className="command-metric-card glass-panel-hover"
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '1.25rem',
+                borderRadius: '12px',
+                textAlign: 'center',
+                color: 'white',
+              }}
+            >
+              <div
+                className="command-metric-value"
+                style={{ fontSize: '1.75rem', fontWeight: '800' }}
+              >
+                {unassignedCount}
+              </div>
+              <div
+                className="command-metric-label"
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: '700',
+                  opacity: 0.8,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                UNASSIGNED (All Time)
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Right Sidebar - All Widgets (matching users page style) */}
-        <aside className="dashboard-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Quick Actions Panel */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, rgba(211, 47, 47, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: '0 0 0.15rem 0' }}>Quick Actions</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-                  {greeting}, {userName}
-                </p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <Link
-                href="/incidents/create"
-                className="glass-button primary"
+        {/* Main Content Grid - Two Column Layout (matching users page) */}
+        <div
+          className="dashboard-main-grid animate-fade-in"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 320px', // Robust two-column layout
+            gap: '1.5rem',
+            marginTop: '1.5rem',
+          }}
+        >
+          {/* Left Column - Filters and Table */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Filters Panel - Defined in globals.css */}
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div
                 style={{
-                  textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '0.6rem 1rem'
+                  gap: '0.75rem',
+                  marginBottom: '1.25rem',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Zm0 3v4" strokeLinecap="round" />
-                </svg>
-                Trigger Incident
-              </Link>
-              <Link
-                href="/analytics"
-                className="glass-button"
-                style={{
-                  textDecoration: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '0.6rem 1rem'
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                View Analytics
-              </Link>
-            </div>
-          </div>
-
-          {/* On-Call Widget - Activity */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
-                Who is On-Call
-              </h3>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-              <Link href="/schedules" className="dashboard-link-hover" style={{
-                fontSize: '0.85rem',
-                color: 'var(--primary)',
-                textDecoration: 'none',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}>
-                View All <span>→</span>
-              </Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {activeShifts.length === 0 ? (
-                <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3, margin: '0 auto 0.5rem' }}>
-                    <path d="M7 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19a4 4 0 0 1 8 0v1H3v-1Zm10 1v-1a4 4 0 0 1 8 0v1h-8Z" />
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background:
+                      'linear-gradient(135deg, rgba(30, 41, 59, 0.05) 0%, rgba(51, 65, 85, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--text-primary)"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M3 6l3 3m0 0l3-3m-3 3v12m6-9h6m-6 3h6m-6 3h6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
-                  <p style={{ fontSize: '0.85rem', margin: 0 }}>No active on-call shifts</p>
                 </div>
-              ) : (
-                activeShifts.slice(0, 3).map(shift => (
+                <h2 style={{ fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
+                  Filter Incidents
+                </h2>
+              </div>
+
+              {/* Saved Filters */}
+              <div style={{ marginBottom: '1rem' }}>
+                <Suspense
+                  fallback={
+                    <div
+                      style={{
+                        height: '32px',
+                        background: 'var(--color-neutral-200)',
+                        borderRadius: 'var(--radius-md)',
+                        animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                        width: '200px',
+                      }}
+                    />
+                  }
+                >
+                  <DashboardSavedFilters />
+                </Suspense>
+              </div>
+
+              {/* Quick Filters */}
+              <div style={{ marginBottom: '1rem' }}>
+                <Suspense
+                  fallback={
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 'var(--spacing-2)',
+                        height: '40px',
+                      }}
+                    >
+                      {[1, 2, 3, 4].map(i => (
+                        <div
+                          key={i}
+                          style={{
+                            flex: 1,
+                            height: '40px',
+                            background: 'var(--color-neutral-200)',
+                            borderRadius: 'var(--radius-md)',
+                            animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  }
+                >
+                  <DashboardQuickFilters />
+                </Suspense>
+              </div>
+
+              {/* Filter Chips */}
+              <Suspense
+                fallback={
                   <div
-                    key={shift.id}
-                    className="dashboard-oncall-card"
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.875rem',
-                      background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
-                      borderRadius: '10px',
-                      border: '1px solid var(--border)',
-                      transition: 'all 0.2s ease',
-                      cursor: 'pointer'
+                      gap: 'var(--spacing-2)',
+                      flexWrap: 'wrap',
+                      minHeight: '40px',
                     }}
                   >
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
+                    {[1, 2, 3].map(i => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '80px',
+                          height: '28px',
+                          background: 'var(--color-neutral-200)',
+                          borderRadius: 'var(--radius-full)',
+                          animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    ))}
+                  </div>
+                }
+              >
+                <DashboardFilterChips services={services} users={users} />
+              </Suspense>
+
+              {/* Dashboard Filters */}
+              <div style={{ marginTop: '1rem' }}>
+                <DashboardFilters
+                  initialStatus={status}
+                  initialService={service}
+                  initialAssignee={assignee}
+                  services={services}
+                  users={users}
+                />
+              </div>
+            </div>
+
+            {/* Incidents Table Panel - Use the defined glass-panel and add animation */}
+            <div
+              className="glass-panel animate-slide-up"
+              style={{ padding: '0', overflow: 'hidden' }}
+            >
+              <div
+                style={{
+                  padding: '1.5rem',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
                       borderRadius: '10px',
-                      background: 'linear-gradient(135deg, rgba(211, 47, 47, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%)',
-                      color: 'var(--primary)',
+                      background:
+                        'linear-gradient(135deg, rgba(30, 41, 59, 0.05) 0%, rgba(51, 65, 85, 0.05) 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontWeight: '700',
-                      fontSize: '0.9rem',
-                      border: '1px solid rgba(211, 47, 47, 0.2)'
-                    }}>
-                      {shift.user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.2rem' }}>
-                        {shift.user.name}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.5 }}>
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        {shift.schedule.name}
-                      </div>
-                    </div>
+                    }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--text-primary)"
+                      strokeWidth="2"
+                    >
+                      <path
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </div>
-                ))
+                  <div>
+                    <h2 style={{ fontSize: '1.15rem', fontWeight: '700', margin: '0 0 0.2rem 0' }}>
+                      Incident Directory
+                    </h2>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Showing {skip + 1}-{Math.min(skip + INCIDENTS_PER_PAGE, totalCount)} of{' '}
+                      {totalCount} incidents
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/incidents"
+                  className="dashboard-view-all-link"
+                  style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--primary)',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    background: 'white',
+                    border: '1px solid var(--border)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  View All <span>→</span>
+                </Link>
+              </div>
+
+              <div
+                className="incident-table-scroll"
+                style={{
+                  overflowX: 'auto',
+                }}
+              >
+                {incidents.length === 0 ? (
+                  <div
+                    style={{
+                      padding: '4rem 2rem',
+                      textAlign: 'center',
+                      color: 'var(--text-muted)',
+                      background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
+                      borderTop: '1px solid var(--border)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <svg
+                      width="64"
+                      height="64"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      style={{ opacity: 0.3, margin: '0 auto 1rem' }}
+                    >
+                      <path
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <p
+                      style={{
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      No incidents found
+                    </p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Try adjusting your filters to see more results.
+                    </p>
+                  </div>
+                ) : (
+                  <IncidentTable incidents={incidents} sortBy={sortBy} sortOrder={sortOrder} />
+                )}
+              </div>
+
+              {/* Pagination - Enhanced style */}
+              {totalPages > 1 && (
+                <div
+                  style={{
+                    padding: '1.25rem 1.5rem',
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    flexWrap: 'wrap',
+                    background: 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '0.85rem',
+                      color: 'var(--text-secondary)',
+                      fontWeight: '500',
+                    }}
+                  >
+                    Page <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> of{' '}
+                    <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <Link
+                      href={buildPaginationUrl(baseParams, 1)}
+                      className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === 1 ? 0.4 : 1,
+                        pointerEvents: page === 1 ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      First
+                    </Link>
+                    <Link
+                      href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
+                      className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === 1 ? 0.4 : 1,
+                        pointerEvents: page === 1 ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Previous
+                    </Link>
+                    <Link
+                      href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
+                      className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === totalPages ? 0.4 : 1,
+                        pointerEvents: page === totalPages ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Next
+                    </Link>
+                    <Link
+                      href={buildPaginationUrl(baseParams, totalPages)}
+                      className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === totalPages ? 0.4 : 1,
+                        pointerEvents: page === totalPages ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Last
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Performance Metrics Widget */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+          {/* Right Sidebar - All Widgets (matching users page style) */}
+          <aside
+            className="dashboard-sidebar animate-slide-in-right"
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+          >
+            {/* Quick Actions Panel */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    background: 'rgba(51, 65, 85, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--primary)"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: '0 0 0.15rem 0' }}>
+                    Quick Actions
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                    {greeting}, {userName}
+                  </p>
+                </div>
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
-                Performance Metrics
-              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <Link
+                  href="/incidents/create"
+                  className="glass-button primary"
+                  style={{
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.6rem 1rem',
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Zm0 3v4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  Trigger Incident
+                </Link>
+                <Link
+                  href="/analytics"
+                  className="glass-button"
+                  style={{
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    padding: '0.6rem 1rem',
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M3 3v18h18M7 16l4-4 4 4 6-6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  View Analytics
+                </Link>
+              </div>
             </div>
-            <DashboardPerformanceMetrics
-              mtta={mttaMinutes}
-              mttr={slaMetrics.mttr}
-              ackSlaRate={slaMetrics.ackCompliance}
-              resolveSlaRate={slaMetrics.resolveCompliance}
-            />
-          </div>
 
-          {/* SLA Metrics Widget - Enhanced SLA Tracking */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading SLA metrics...</div>}>
-              <DashboardSLAMetrics
-                metrics={slaMetrics}
-                period={range === 'all' ? 'All time' : range === 'custom' ? 'Custom period' : `Last ${range} days`}
+            {/* On-Call Widget - Activity */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background:
+                      'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Who is On-Call
+                </h3>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <Link
+                  href="/schedules"
+                  className="dashboard-link-hover"
+                  style={{
+                    fontSize: '0.85rem',
+                    color: 'var(--primary)',
+                    textDecoration: 'none',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  View All <span>→</span>
+                </Link>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {activeShifts.length === 0 ? (
+                  <div
+                    style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}
+                  >
+                    <svg
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      style={{ opacity: 0.3, margin: '0 auto 0.5rem' }}
+                    >
+                      <path d="M7 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19a4 4 0 0 1 8 0v1H3v-1Zm10 1v-1a4 4 0 0 1 8 0v1h-8Z" />
+                    </svg>
+                    <p style={{ fontSize: '0.85rem', margin: 0 }}>No active on-call shifts</p>
+                  </div>
+                ) : (
+                  activeShifts.slice(0, 3).map(shift => (
+                    <div
+                      key={shift.id}
+                      className="dashboard-oncall-card"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.875rem',
+                        background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border)',
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: 'rgba(51, 65, 85, 0.1)',
+                          color: 'var(--primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '700',
+                          fontSize: '0.9rem',
+                          border: '1px solid rgba(51, 65, 85, 0.2)',
+                        }}
+                      >
+                        {shift.user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            color: 'var(--text-primary)',
+                            marginBottom: '0.2rem',
+                          }}
+                        >
+                          {shift.user.name}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                          }}
+                        >
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            style={{ opacity: 0.5 }}
+                          >
+                            <rect
+                              x="3"
+                              y="4"
+                              width="18"
+                              height="18"
+                              rx="2"
+                              ry="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M16 2v4M8 2v4M3 10h18"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          {shift.schedule.name}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Performance Metrics Widget */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background:
+                      'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#16a34a"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Performance Metrics
+                </h3>
+              </div>
+              <DashboardPerformanceMetrics
+                mtta={mttaMinutes}
+                mttr={slaMetrics.mttr}
+                ackSlaRate={slaMetrics.ackCompliance}
+                resolveSlaRate={slaMetrics.resolveCompliance}
               />
-            </Suspense>
-          </div>
-
-          {/* Advanced Metrics - Metrics */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
-                Advanced Metrics
-              </h3>
             </div>
-          <DashboardAdvancedMetrics
-              totalIncidents={allIncidentsCount}
-              openIncidents={allOpenIncidentsCount}
-              resolvedIncidents={allResolvedCountAllTime}
-              acknowledgedIncidents={allAcknowledgedCount}
-              criticalIncidents={allCriticalIncidentsCount}
-              unassignedIncidents={unassignedCount}
-              servicesCount={services.length}
-            />
-          </div>
 
-          {/* Period Comparison Widget - Comparison */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
-                  <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
-                Period Comparison
-              </h3>
+            {/* SLA Metrics Widget - Enhanced SLA Tracking */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <Suspense
+                fallback={
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading SLA metrics...</div>
+                }
+              >
+                <DashboardSLAMetrics
+                  metrics={slaMetrics}
+                  period={
+                    range === 'all'
+                      ? 'All time'
+                      : range === 'custom'
+                        ? 'Custom period'
+                        : `Last ${range} days`
+                  }
+                />
+              </Suspense>
             </div>
-            <DashboardPeriodComparison
-              current={{
-                total: totalInRange,
-                open: metricsOpenCount,
-                resolved: metricsResolvedCount,
-                acknowledged: currentPeriodAcknowledged,
-                critical: currentPeriodCritical
-              }}
-              previous={{
-                total: prevTotal,
-                open: prevOpen,
-                resolved: prevResolved,
-                acknowledged: prevAcknowledged,
-                critical: prevCritical
-              }}
-              periodLabel={periodLabels.current}
-              previousPeriodLabel={periodLabels.previous}
-            />
-          </div>
 
-          {/* Service Health Widget - Service Health */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+            {/* Advanced Metrics - Metrics */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background:
+                      'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#3b82f6"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Advanced Metrics
+                </h3>
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
-                Service Health
-              </h3>
+              <DashboardAdvancedMetrics
+                totalIncidents={allIncidentsCount}
+                openIncidents={allOpenIncidentsCount}
+                resolvedIncidents={allResolvedCountAllTime}
+                acknowledgedIncidents={allAcknowledgedCount}
+                criticalIncidents={allCriticalIncidentsCount}
+                unassignedIncidents={unassignedCount}
+                servicesCount={services.length}
+              />
             </div>
-            <DashboardServiceHealth services={servicesWithIncidents} />
-          </div>
 
-          {/* Urgency Distribution - Charts */}
-          <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
-                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+            {/* Period Comparison Widget - Comparison */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background:
+                      'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M3 3v18h18M7 16l4-4 4 4 6-6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Period Comparison
+                </h3>
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
-                Urgency Distribution
-              </h3>
+              <DashboardPeriodComparison
+                current={{
+                  total: totalInRange,
+                  open: metricsOpenCount,
+                  resolved: metricsResolvedCount,
+                  acknowledged: currentPeriodAcknowledged,
+                  critical: currentPeriodCritical,
+                }}
+                previous={{
+                  total: prevTotal,
+                  open: prevOpen,
+                  resolved: prevResolved,
+                  acknowledged: prevAcknowledged,
+                  critical: prevCritical,
+                }}
+                periodLabel={periodLabels.current}
+                previousPeriodLabel={periodLabels.previous}
+              />
             </div>
-            <DashboardUrgencyDistribution data={urgencyDistribution} />
-          </div>
 
-        </aside>
-      </div>
-    </main>
+            {/* Service Health Widget - Service Health */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background:
+                      'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#16a34a"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Service Health
+                </h3>
+              </div>
+              <DashboardServiceHealth services={servicesWithIncidents} />
+            </div>
+
+            {/* Urgency Distribution - Charts */}
+            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background:
+                      'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--color-error)"
+                    strokeWidth="2"
+                  >
+                    <path
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <h3
+                  style={{
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  Urgency Distribution
+                </h3>
+              </div>
+              <DashboardUrgencyDistribution data={urgencyDistribution} />
+            </div>
+          </aside>
+        </div>
+      </main>
     </DashboardRealtimeWrapper>
   );
 }

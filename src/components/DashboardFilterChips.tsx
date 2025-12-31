@@ -13,12 +13,12 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
   const searchParams = useSearchParams();
 
   const activeFilters: Array<{ key: string; label: string; value: string }> = [];
-  
+
   const status = searchParams.get('status');
   if (status && status !== 'ALL') {
     activeFilters.push({ key: 'status', label: 'Status', value: status });
   }
-  
+
   const serviceId = searchParams.get('service');
   if (serviceId) {
     const service = services.find(s => s.id === serviceId);
@@ -26,7 +26,7 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
       activeFilters.push({ key: 'service', label: 'Service', value: service.name });
     }
   }
-  
+
   const assigneeId = searchParams.get('assignee');
   if (assigneeId !== null) {
     if (assigneeId === '') {
@@ -38,12 +38,12 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
       }
     }
   }
-  
+
   const urgency = searchParams.get('urgency');
   if (urgency) {
     activeFilters.push({ key: 'urgency', label: 'Urgency', value: urgency });
   }
-  
+
   const range = searchParams.get('range');
   if (range && range !== 'all') {
     activeFilters.push({ key: 'range', label: 'Time Range', value: `Last ${range} days` });
@@ -65,9 +65,19 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
   }
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Active Filters:</span>
-      {activeFilters.map((filter) => (
+    <div
+      style={{
+        display: 'flex',
+        gap: '0.5rem',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginTop: '0.5rem',
+      }}
+    >
+      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+        Active Filters:
+      </span>
+      {activeFilters.map(filter => (
         <div
           key={filter.key}
           style={{
@@ -75,27 +85,31 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.35rem 0.75rem',
-            background: 'rgba(211, 47, 47, 0.1)',
+            background: 'var(--surface-hover)',
             borderRadius: '999px',
             fontSize: '0.8rem',
-            color: 'var(--primary)',
-            fontWeight: '500'
+            color: 'var(--text-primary)',
+            fontWeight: '500',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <span>{filter.label}: <strong>{filter.value}</strong></span>
+          <span>
+            {filter.label}: <strong>{filter.value}</strong>
+          </span>
           <button
             onClick={() => removeFilter(filter.key)}
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: 'var(--primary)',
+              color: 'var(--text-secondary)',
               fontSize: '1rem',
               lineHeight: 1,
               padding: 0,
               marginLeft: '0.25rem',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
             }}
             title={`Remove ${filter.label} filter`}
           >
@@ -113,7 +127,7 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
           fontSize: '0.8rem',
           color: 'var(--text-secondary)',
           cursor: 'pointer',
-          fontWeight: '500'
+          fontWeight: '500',
         }}
       >
         Clear All
@@ -121,4 +135,3 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
     </div>
   );
 }
-
