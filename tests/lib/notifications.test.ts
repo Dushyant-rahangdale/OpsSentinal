@@ -3,6 +3,15 @@ import { sendNotification } from '@/lib/notifications';
 import prisma from '@/lib/prisma';
 import * as emailModule from '@/lib/email';
 
+vi.mock('@/lib/prisma', () => ({
+    __esModule: true,
+    default: {
+        notification: { create: vi.fn(), update: vi.fn() },
+        incident: { findUnique: vi.fn() },
+        incidentEvent: { create: vi.fn() },
+    },
+}));
+
 // Mock sub-modules
 vi.mock('@/lib/email');
 vi.mock('@/lib/sms', () => ({

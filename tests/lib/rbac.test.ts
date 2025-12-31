@@ -18,8 +18,27 @@ vi.mock('next-auth', () => ({
 }));
 
 // Mock auth options
+// Mock auth options
 vi.mock('@/lib/auth', () => ({
   getAuthOptions: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  __esModule: true,
+  default: {
+    user: {
+      findUnique: vi.fn(),
+    },
+    incident: {
+      findUnique: vi.fn(),
+    },
+    service: {
+      findUnique: vi.fn(),
+    },
+    teamMember: {
+      findFirst: vi.fn(),
+    },
+  },
 }));
 
 describe('RBAC Functions', () => {

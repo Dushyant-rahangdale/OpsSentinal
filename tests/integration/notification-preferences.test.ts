@@ -25,7 +25,7 @@ vi.mock('@/lib/notification-providers', () => ({
 import { getServerSession } from 'next-auth';
 import { getEmailConfig, getSMSConfig, getPushConfig, getWhatsAppConfig } from '@/lib/notification-providers';
 
-const describeIfRealDB = process.env.VITEST_USE_REAL_DB === '1' ? describe : describe.skip;
+const describeIfRealDB = (process.env.VITEST_USE_REAL_DB === '1' || process.env.CI) ? describe : describe.skip;
 
 describeIfRealDB('Notification Preferences Provider Validation (Real DB)', () => {
     let testUser: any;

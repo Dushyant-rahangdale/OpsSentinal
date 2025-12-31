@@ -9,7 +9,7 @@ import {
     createTestNotificationProvider
 } from '../helpers/test-db';
 
-const describeIfRealDB = process.env.VITEST_USE_REAL_DB === '1' ? describe : describe.skip;
+const describeIfRealDB = (process.env.VITEST_USE_REAL_DB === '1' || process.env.CI) ? describe : describe.skip;
 
 describeIfRealDB('Event Ingestion Resilience Tests', { timeout: 30000 }, () => {
     beforeAll(async () => {

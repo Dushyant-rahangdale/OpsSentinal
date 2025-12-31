@@ -12,6 +12,23 @@ vi.mock('@/lib/escalation');
 vi.mock('@/lib/service-notifications');
 vi.mock('@/lib/status-page-webhooks');
 
+vi.mock('@/lib/prisma', () => ({
+    __esModule: true,
+    default: {
+        user: {
+            findUnique: vi.fn(),
+        },
+        incident: {
+            findMany: vi.fn(),
+            create: vi.fn(),
+            findUnique: vi.fn(),
+        },
+        service: {
+            findUnique: vi.fn(),
+        },
+    },
+}));
+
 describe('API Routes - Incidents', () => {
     beforeEach(() => {
         vi.clearAllMocks();

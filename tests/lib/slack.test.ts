@@ -40,8 +40,7 @@ describe('Slack Integration', () => {
                 text: async () => 'ok',
             });
 
-            const { retryFetch } = await import('@/lib/retry');
-            vi.mocked(retryFetch).mockImplementation(mockFetch);
+            vi.spyOn(retryModule, 'retryFetch').mockImplementation(mockFetch);
 
             const incident = {
                 id: 'inc-123',

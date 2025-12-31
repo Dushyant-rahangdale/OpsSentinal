@@ -95,7 +95,9 @@ tests/
 │   ├── database.test.ts      # Database operations
 │   ├── notification-flow.test.ts
 │   └── auth.test.ts
-└── setup.ts                  # Test configuration
+├── setup.ts                  # Shared test setup
+├── vitest.unit.config.ts     # Unit test configuration
+└── vitest.int.config.ts      # Integration test configuration
 ```
 
 ### Testing Framework: Vitest
@@ -108,9 +110,11 @@ tests/
 
 ```bash
 npm test              # Run tests in watch mode
-npm run test:run      # Run tests once
+npm run test:run      # Run all tests once
+npm run test:unit     # Run unit tests only
+npm run test:int      # Run integration tests only
 npm run test:coverage # Run with coverage report
-npm run test:ci       # Run in CI mode
+npm run test:ci       # Run all tests in CI mode
 ```
 
 ### Test Best Practices

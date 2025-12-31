@@ -5,6 +5,7 @@ import { getCurrentUser, assertResponderOrAbove } from '@/lib/rbac';
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
+    __esModule: true,
     default: {
         incident: {
             updateMany: vi.fn(),

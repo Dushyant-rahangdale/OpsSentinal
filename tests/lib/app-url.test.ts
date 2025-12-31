@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { getAppUrl, getAppUrlSync } from '@/lib/app-url';
 
 vi.mock('@/lib/prisma', () => ({
+    __esModule: true,
     default: {
         systemSettings: {
             findUnique: vi.fn(),

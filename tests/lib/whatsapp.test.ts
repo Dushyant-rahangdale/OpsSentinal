@@ -3,6 +3,7 @@ import { sendIncidentWhatsApp, sendWhatsApp } from '@/lib/whatsapp';
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
+    __esModule: true,
     default: {
         user: {
             findUnique: vi.fn(),

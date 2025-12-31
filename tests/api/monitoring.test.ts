@@ -13,6 +13,20 @@ vi.mock('@/lib/auth', () => ({
   getAuthOptions: vi.fn().mockResolvedValue({}),
 }));
 
+vi.mock('../../src/lib/prisma', () => ({
+  __esModule: true,
+  default: {
+    user: {
+      findUnique: vi.fn(),
+    },
+    service: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+}));
+
+
+
 describe('Monitoring API Routes', () => {
   const adminUser = {
     id: 'admin-1',
@@ -23,6 +37,7 @@ describe('Monitoring API Routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
   });
 
   it('GET /api/monitoring/services returns 403 when unauthenticated', async () => {

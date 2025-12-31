@@ -12,29 +12,53 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import prisma from '../src/lib/prisma';
-import { sendServiceNotifications } from '../src/lib/service-notifications';
-import { executeEscalation, resolveEscalationTarget } from '../src/lib/escalation';
-import { sendSlackNotification, sendSlackMessageToChannel } from '../src/lib/slack';
+import prisma from '@/lib/prisma';
+import { sendServiceNotifications } from '@/lib/service-notifications';
+import { executeEscalation, resolveEscalationTarget } from '@/lib/escalation';
+import { sendSlackNotification, sendSlackMessageToChannel } from '@/lib/slack';
 import {
   formatGoogleChatPayload,
   formatMicrosoftTeamsPayload,
   formatDiscordPayload,
-} from '../src/lib/webhooks';
-import { sendIncidentWhatsApp } from '../src/lib/whatsapp';
-import { getUserNotificationChannels } from '../src/lib/user-notifications';
-import * as slack from '../src/lib/slack';
-import * as notificationProviders from '../src/lib/notification-providers';
-import * as sms from '../src/lib/sms';
-import { resetDatabase } from './helpers/test-db';
+} from '@/lib/webhooks';
+import { sendIncidentWhatsApp } from '@/lib/whatsapp';
+import { getUserNotificationChannels } from '@/lib/user-notifications';
+import * as slack from '@/lib/slack';
+import * as notificationProviders from '@/lib/notification-providers';
+import * as sms from '@/lib/sms';
+vi.mock('@/lib/prisma', () => ({
+  __esModule: true,
+  default: {
+    service: { findUnique: vi.fn() },
+    incident: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+      update: vi.fn(),
+      findMany: vi.fn()
+    },
+    notification: { create: vi.fn() },
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+    onCallSchedule: { findUnique: vi.fn() },
+    team: { findUnique: vi.fn() },
+    teamMember: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
+    slackIntegration: { findFirst: vi.fn() },
+    incidentEvent: { create: vi.fn() },
+    $transaction: vi.fn((arg) => {
+      if (Array.isArray(arg)) return Promise.all(arg);
+      return arg(prisma);
+    }),
+  },
+}));
 
 describe('Notification System Tests', () => {
   beforeEach(async () => {
-    await resetDatabase();
-  });
-
-  afterEach(async () => {
-    await resetDatabase();
+    vi.clearAllMocks();
   });
 
   describe('Service Notification Isolation', () => {
@@ -404,7 +428,7 @@ describe('Notification System Tests', () => {
       smsSpy.mockResolvedValue({ success: true });
 
       // Mock sendUserNotification to avoid real notification logic
-      const notificationModule = await import('../src/lib/user-notifications');
+      const notificationModule = await import('@/lib/user-notifications');
       vi.spyOn(notificationModule, 'sendUserNotification').mockResolvedValue({ success: true, channelsUsed: [] } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       // Execute escalation
