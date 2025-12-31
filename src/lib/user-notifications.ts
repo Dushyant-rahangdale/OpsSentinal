@@ -296,8 +296,8 @@ export async function sendServiceNotifications(
         try {
             const { sendServiceNotifications: sendIntegrationNotifications } = await import('./service-notifications');
             await sendIntegrationNotifications(incidentId, eventType);
-        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            console.error('Failed to send service integration notifications:', err);
+        } catch (err) {
+            logger.error('Failed to send service integration notifications', { component: 'user-notifications', error: err, serviceId: incident.serviceId, incidentId: incident.id });
             // Don't block the response, just log it
         }
 

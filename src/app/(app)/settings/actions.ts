@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { generateApiKey } from '@/lib/api-keys';
 import { validatePasswordStrength } from '@/lib/passwords';
 import { getEmailConfig, getSMSConfig, getPushConfig, getWhatsAppConfig } from '@/lib/notification-providers';
+import { logger } from '@/lib/logger';
 
 
 type ActionState = {
@@ -61,7 +62,7 @@ export async function updateProfile(_prevState: ActionState, formData: FormData)
 
         return { success: true };
     } catch (error) {
-        console.error('Error updating profile:', error);
+        logger.error('Error updating profile', { component: 'settings-actions', error });
         return { error: error instanceof Error ? error.message : 'Unable to update profile.' };
     }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 type EventStreamOptions = {
     incidentId?: string;
@@ -53,7 +54,7 @@ export function useEventStream(options: EventStreamOptions = {}) {
                 setData(parsed);
                 onMessage?.(parsed);
             } catch (err) {
-                console.error('Failed to parse SSE message:', err);
+                logger.error('Failed to parse SSE message', { component: 'useEventStream', error: err });
             }
         };
 
@@ -62,7 +63,7 @@ export function useEventStream(options: EventStreamOptions = {}) {
             const error = new Error('Event stream connection error');
             setError(error);
             onError?.(error);
-            
+
             // Attempt to reconnect after 3 seconds
             setTimeout(() => {
                 if (eventSourceRef.current?.readyState === EventSource.CLOSED) {

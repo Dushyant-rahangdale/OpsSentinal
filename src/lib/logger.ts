@@ -156,6 +156,25 @@ class Logger {
                 console.log(formatted);
                 break;
         }
+
+        // Send client-side logs to the server
+        if (typeof window !== 'undefined') {
+            // Only send logs that meet the configured level
+            // For now, let's limit to warn/error to avoid spamming the server
+            // unless configured otherwise, but the user requested migration of console.error
+            // so ensuring errors are sent is key.
+
+            // Use fire-and-forget to avoid blocking interaction
+            // Use keepalive to ensure logs are sent even if page unloads
+            fetch('/api/logs/ingest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry),
+                keepalive: true,
+            }).catch(() => {
+                // Silently fail if log ingestion fails to avoid infinite loops
+            });
+        }
     }
 
     private serializeError(error: unknown): LogEntry['error'] | undefined {

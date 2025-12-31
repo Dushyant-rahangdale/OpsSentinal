@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface EmailProviderConfigProps {
@@ -24,7 +25,13 @@ export default function StatusPageEmailConfig({ statusPageId: _statusPageId, cur
                     .map((p: any) => p.provider) || []; // eslint-disable-line @typescript-eslint/no-explicit-any
                 setAvailableProviders(emailProviders);
             })
-            .catch(err => console.error('Failed to fetch providers:', err))
+            .catch(err => {
+                if (err instanceof Error) {
+                    logger.error('Failed to fetch providers', { error: err.message });
+                } else {
+                    logger.error('Failed to fetch providers', { error: String(err) });
+                }
+            })
             .finally(() => setLoading(false));
     }, []);
 
@@ -48,7 +55,11 @@ export default function StatusPageEmailConfig({ statusPageId: _statusPageId, cur
                 alert('Failed to save settings: ' + result.error);
             }
         } catch (error) {
-            console.error('Error saving email provider:', error);
+            if (error instanceof Error) {
+                logger.error('Error saving email provider', { error: error.message });
+            } else {
+                logger.error('Error saving email provider', { error: String(error) });
+            }
             // eslint-disable-next-line no-alert
             alert('An error occurred while saving settings');
         } finally {

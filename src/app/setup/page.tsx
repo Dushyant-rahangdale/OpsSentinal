@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import BootstrapSetupForm from '@/components/BootstrapSetupForm';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export default async function SetupPage() {
         }
     } catch (error) {
         // Log the error for debugging but don't crash the page
-        console.error('[Setup Page] Database error:', error);
+        logger.error('[Setup Page] Database error', { component: 'setup-page', error });
 
         // If it's a connection error, show a helpful message
         const errorMessage = error instanceof Error ? error.message : String(error);

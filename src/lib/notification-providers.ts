@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import { logger } from './logger';
 
 export type SMSProvider = 'twilio' | 'aws-sns' | null;
 export type PushProvider = 'firebase' | 'onesignal' | null;
@@ -129,7 +130,8 @@ export async function getEmailConfig(): Promise<EmailConfig> {
             }
         }
     } catch (error) {
-        console.error('Failed to load Email config from database:', error);
+        logger.error('Failed to load Email config from database', { component: 'notification-providers', error });
+        return { enabled: false, provider: null, source: 'error' };
     }
 
     return {
@@ -209,9 +211,8 @@ export async function getStatusPageEmailConfig(statusPageId?: string): Promise<E
         // Fall back to default email config
         return await getEmailConfig();
     } catch (error) {
-        console.error('Failed to load status page email config:', error);
-        // Fall back to default email config
-        return await getEmailConfig();
+        logger.error('Failed to load status page email config', { component: 'notification-providers', error });
+        return { enabled: false, provider: null }; // Fall back to default email config
     }
 }
 
@@ -262,7 +263,7 @@ export async function getWhatsAppConfig(): Promise<SMSConfig> {
             }
         }
     } catch (error) {
-        console.error('Failed to load WhatsApp config from database:', error);
+        logger.error('Failed to load WhatsApp config from database', { component: 'notification-providers', error });
     }
 
     return {
@@ -312,7 +313,7 @@ export async function getSMSConfig(): Promise<SMSConfig> {
             }
         }
     } catch (error) {
-        console.error('Failed to load SMS config from database:', error);
+        logger.error('Failed to load SMS config from database', { component: 'notification-providers', error });
     }
 
     return {
@@ -359,7 +360,7 @@ export async function getPushConfig(): Promise<PushConfig> {
             }
         }
     } catch (error) {
-        console.error('Failed to load Push config from database:', error);
+        logger.error('Failed to load Push config from database', { component: 'notification-providers', error });
     }
 
     return {

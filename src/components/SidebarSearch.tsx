@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { logger } from '@/lib/logger';
+import { useEffect, useRef, useState, useTransition, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalState } from '@/hooks/useModalState';
 import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
@@ -404,7 +405,11 @@ export default function SidebarSearch() {
                 if (err.name === 'AbortError') {
                     return;
                 }
-                console.error('Search error:', err);
+                if (err instanceof Error) {
+                    logger.error('Search error', { error: err.message });
+                } else {
+                    logger.error('Search error', { error: String(err) });
+                }
                 const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
                 setError(getUserFriendlyError(err) || 'Failed to search. Please try again.');
                 setResults([]);
@@ -817,7 +822,7 @@ export default function SidebarSearch() {
                                                     </span>
                                                 </div>
                                                 <div className="search-section-content">
-                                                    {group.results.map((result, resultIndex) => {
+                                                    {group.results.map((result: any, resultIndex: number) => {
                                                         const absoluteIndex = itemIndex + resultIndex;
                                                         return (
                                                             <button

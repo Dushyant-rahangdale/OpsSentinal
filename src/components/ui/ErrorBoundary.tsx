@@ -3,6 +3,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ErrorState from './ErrorState';
 import { getUserFriendlyError } from '@/lib/user-friendly-errors';
+import { logger } from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
@@ -40,12 +41,12 @@ export default class ErrorBoundary extends Component<Props, State> {
         error,
       };
     }
-    
+
     // Handle Event objects and other non-Error types
     const errorMessage = error && typeof error === 'object' && 'type' in error && 'target' in error
       ? 'An unexpected error occurred. Please try again.'
       : String(error) || 'An unexpected error occurred.';
-    
+
     return {
       hasError: true,
       error: new Error(errorMessage),
@@ -54,13 +55,13 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
     // Convert non-Error objects to Error instances for logging
-    const errorObj = error instanceof Error 
-      ? error 
+    const errorObj = error instanceof Error
+      ? error
       : new Error(String(error) || 'Unknown error');
-    
+
     // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('ErrorBoundary caught an error:', errorObj, errorInfo);
+      logger.error('ErrorBoundary caught an error', { component: 'ErrorBoundary', error: errorObj, errorInfo });
     }
 
     // Call optional error handler (only if it's an Error instance)

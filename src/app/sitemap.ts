@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import prisma from '@/lib/prisma';
 import { getAppUrl } from '@/lib/app-config';
+import { logger } from '@/lib/logger';
 
 // Generate sitemap dynamically at runtime
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
     } catch (error) {
         // If database is not available, skip status page
-        console.error('Error fetching status page for sitemap:', error);
+        logger.error('Error fetching status page for sitemap', { component: 'sitemap', error });
     }
 
     return routes;

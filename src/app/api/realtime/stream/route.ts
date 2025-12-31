@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 
 /**
  * Server-Sent Events (SSE) endpoint for real-time updates
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
         const stream = new ReadableStream({
             async start(controller) {
                 const encoder = new TextEncoder();
-                
+
                 // Send initial connection message
                 const send = (data: string) => {
                     controller.enqueue(encoder.encode(`data: ${data}\n\n`));
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
                         // Send heartbeat to keep connection alive
                         send(JSON.stringify({ type: 'heartbeat', timestamp: new Date().toISOString() }));
                     } catch (error) {
-                        console.error('SSE polling error:', error);
+                        logger.error('SSE polling error', { component: 'api-realtime-stream', error });
                         send(JSON.stringify({
                             type: 'error',
                             message: 'Failed to fetch updates',
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
             }
         });
     } catch (error) {
-        console.error('SSE stream error:', error);
+        logger.error('SSE stream error', { component: 'api-realtime-stream', error });
         return new Response('Internal Server Error', { status: 500 });
     }
 }

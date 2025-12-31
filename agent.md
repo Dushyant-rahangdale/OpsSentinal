@@ -169,6 +169,7 @@ npm run test:ci       # Run in CI mode
 
 ---
 
+
 ## 🗃️ Database and Prisma
 
 ### Schema Changes
@@ -184,14 +185,294 @@ npx prisma migrate dev --name descriptive_migration_name
 npx prisma migrate deploy
 ```
 
+### Automatic Migration Recovery (Containerized Deployments)
+
+**FOR OPEN-SOURCE/CONTAINERIZED DEPLOYMENTS:**
+
+OpsSentinal is designed for fault-tolerant containerized deployments where users pull new Docker images and restart. **Manual migration fixes are not expected**.
+
+#### Self-Healing System
+
+The application includes **automatic migration recovery** that runs on every startup:
+
+1. **Detects** failed migrations in `_prisma_migrations` table  
+2. **Verifies** actual database state (e.g., does enum value exist?)
+3. **Resolves** migrations automatically based on reality
+4. **Logs** all actions for transparency
+5. **Continues** startup even if recovery has warnings
+
+**Location**: [`instrumentation.ts`](file:///c:/Users/Dushyant.Rahangdale/Repo/OpsSentinal/instrumentation.ts) runs before application starts
+
+#### How It Works
+
+```typescript
+// Automatically runs on server startup
+export async function register() {
+  // 1. Auto-recover failed migrations
+  await autoRecoverMigrations();  // Self-healing!
+  
+  // 2. Start application services
+  startCronScheduler();
+}
+```
+
+#### What Gets Auto-Recovered
+
+✅ **Enum migrations** - Checks if value exists, applies if needed, marks as resolved  
+✅ **Idempotent operations** - Safe to run multiple times  
+✅ **State validation** - Verifies database reality before resolving
+
+⚠️ **Skipped for safety** - Unknown migration types log warnings but don't block startup
+
+#### Testing Auto-Recovery
+
+```bash
+# Manually trigger auto-recovery (already runs on startup)
+npm run prisma:auto-recover
+```
+
+#### For Developers
+
+When creating new migrations that may fail:
+
+1. **Make them idempotent** - Use `IF NOT EXISTS`, `IF EXISTS` clauses
+2. **Add auto-recovery logic** - Update `scripts/auto-recover-migrations.ts` if needed
+3. **Test failure scenarios** - Simulate failed migration and verify auto-recovery
+4. **Document recovery** - Add comments explaining recovery logic
+
+### Migration Safety Rules
+
+**CRITICAL - Follow these rules to prevent production failures:**
+
+#### Rule 1: Never Modify Database Directly
+- ❌ **NEVER** run SQL directly against the database
+- ❌ **NEVER** create "hotfix" SQL files outside the migration system
+- ❌ **NEVER** manually edit `_prisma_migrations` table (except during recovery)
+- ✅ **ALWAYS** use `npx prisma migrate dev` for schema changes
+- ✅ **ALWAYS** commit migration files to version control
+
+**Why**: Manual changes bypass migration tracking, causing inconsistencies between schema and database that block future migrations.
+
+#### Rule 2: Enum Migrations Require Special Handling
+
+**CRITICAL**: PostgreSQL's `ALTER TYPE ... ADD VALUE` cannot run inside transactions. This is the #1 cause of migration failures.
+
+**Creating Enum Migration:**
+```bash
+# 1. Create migration (create-only, don't apply yet)
+npx prisma migrate dev --create-only --name add_enum_value_name
+
+# 2. MANUALLY VERIFY the generated SQL contains ONLY enum changes
+# 3. If it contains other changes, you MUST split into separate migrations
+
+# 4. Apply locally
+npx prisma migrate dev
+
+# 5. Test thoroughly before production
+npm run test:run
+```
+
+**Enum Migration File Structure (MUST be standalone):**
+```sql
+-- Migration: 20250101000000_add_enum_value_name/migration.sql
+-- Description: Add NEW_VALUE to ExampleEnum
+
+-- AlterEnum (MUST be the ONLY operation in this file)
+ALTER TYPE "ExampleEnum" ADD VALUE IF NOT EXISTS 'NEW_VALUE';
+```
+
+**What NOT to do:**
+```sql
+-- ❌ WRONG: Mixing enum with other operations
+ALTER TYPE "MyEnum" ADD VALUE 'NEW_VALUE';
+ALTER TABLE "MyTable" ADD COLUMN "new_column" TEXT;  -- This will fail!
+```
+
+**Correct approach:**
+```sql
+-- ✅ Migration 1: 20250101000000_add_enum_value/migration.sql
+ALTER TYPE "MyEnum" ADD VALUE IF NOT EXISTS 'NEW_VALUE';
+```
+```sql
+-- ✅ Migration 2: 20250101000001_add_table_column/migration.sql  
+ALTER TABLE "MyTable" ADD COLUMN "new_column" TEXT;
+```
+
+#### Rule 3: Validate Before Deploying
+
+```bash
+# Run validation suite before production deployment
+npm run prisma:validate    # Checks migration files for issues
+npm run prisma:health      # Checks migration status in database
+npm run test:run          # Ensures all tests pass
+
+# Use safe deployment command (runs all checks automatically)
+npm run prisma:migrate:safe
+```
+
+The validation script will detect:
+- Enum migrations mixed with other operations
+- Invalid migration timestamps (e.g., June 31st)
+- Dangerous operations (DROP, TRUNCATE)
+- Missing safety clauses (IF EXISTS)
+
+#### Rule 4: Test Migrations in Staging First
+
+Before applying to production:
+1. Apply migration to staging/dev environment
+2. Verify application functionality
+3. Check for performance issues with new indexes/columns
+4. Monitor for errors in application logs
+5. Verify rollback procedure works
+6. Only then apply to production
+
+#### Rule 5: Always Have a Rollback Plan
+
+Before applying any migration:
+1. **Take database backup** (required for production)
+2. Document rollback SQL if the migration is reversible
+3. Have rollback procedure ready and tested
+4. Know your recovery time objective (RTO)
+5. Schedule deployment during low-traffic window if possible
+
+### Pre-Deployment Migration Checklist
+
+Before deploying ANY migration to production, verify:
+
+- [ ] Migration tested locally successfully
+- [ ] Migration reviewed by team member or AI
+- [ ] Migration applied and tested in staging environment
+- [ ] **Database backup taken** (critical!)
+- [ ] Rollback procedure documented and tested
+- [ ] Validation passes: `npm run prisma:validate`
+- [ ] Health check passes: `npm run prisma:health`
+- [ ] All tests pass: `npm run test:run`
+- [ ] For enum migrations: Verified it's standalone (no other operations)
+- [ ] For breaking changes: Documented migration strategy
+- [ ] Deployment window scheduled (off-peak if possible)
+- [ ] Monitoring/alerts configured for post-deployment
+- [ ] Team notified of deployment
+
+### Migration Failure Recovery
+
+If a migration fails in production, follow this process:
+
+#### Step 1: Assess the Situation
+
+```bash
+# Check migration status
+npx prisma migrate status
+
+# Or run health check
+npm run prisma:health
+```
+
+This will show failed migrations (finished_at is NULL in `_prisma_migrations` table).
+
+#### Step 2: Verify Schema State
+
+Determine if changes were partially applied:
+
+```sql
+-- Connect to database
+-- Check table/column exists
+\d table_name  -- PostgreSQL
+
+-- Check enum values
+SELECT e.enumlabel 
+FROM pg_enum e 
+JOIN pg_type t ON e.enumtypid = t.oid 
+WHERE t.typname = 'YourEnumName';
+```
+
+#### Step 3: Choose Recovery Strategy
+
+**Scenario A: Migration failed but changes WERE applied (e.g., enum already added)**
+
+```bash
+# Mark migration as successfully applied
+npx prisma migrate resolve --applied 20250630_add_escalation_policy_enum
+
+# Verify status
+npx prisma migrate status
+```
+
+**Scenario B: Migration failed and changes were NOT applied**
+
+```bash
+# Mark as rolled back
+npx prisma migrate resolve --rolled-back 20250630_add_escalation_policy_enum
+
+# Fix the underlying issue (e.g., split enum migration)
+# Then reapply
+npx prisma migrate deploy
+```
+
+**Scenario C: Migration partially applied (rare)**
+
+```sql
+-- 1. Manually revert partial changes
+-- 2. Delete migration record
+DELETE FROM "_prisma_migrations" 
+WHERE migration_name = '20250630_add_escalation_policy_enum';
+
+-- 3. Fix the migration file
+-- 4. Reapply
+npx prisma migrate deploy
+```
+
+#### Step 4: Verify and Test
+
+```bash
+# Check status is clean
+npx prisma migrate status
+
+# Regenerate Prisma Client
+npx prisma generate
+
+# Run tests
+npm run test:run
+
+# Restart application
+```
+
+### Forbidden Migration Practices
+
+❌ **NEVER DO THESE:**
+
+1. **Manually edit applied migrations** - Once applied, migrations are immutable
+2. **Delete migration files after applying** - Version control needs complete history  
+3. **Create migrations with manual SQL files** - Use `npx prisma migrate dev --create-only`
+4. **Skip migrations in sequence** - All migrations must be applied in order
+5. **Apply migrations without testing** - Always test in dev/staging first
+6. **Combine enum changes with other schema changes** - #1 cause of failures
+7. **Deploy migrations without backup** - Critical for production
+8. **Modify `_prisma_migrations` table** - Except during documented recovery procedures
+
+### Migration Naming Conventions
+
+Use descriptive, lowercase names with underscores:
+
+✅ **Good names:**
+- `add_user_role_column`
+- `create_notification_settings_table`
+- `add_escalation_policy_enum_value`
+- `add_index_on_incident_status`
+
+❌ **Bad names:**
+- `migration` (not descriptive)
+- `fix` (what are you fixing?)
+- `update_db` (too vague)
+- `AddUserRole` (use snake_case, not PascalCase)
+
 ### Database Best Practices
 
 1. **Never** directly modify the database in production
 2. **Always** test migrations locally first
 3. **Include** rollback strategy for migrations
-4. **Use** transactions for multi-step operations
+4. **Use** transactions for multi-step operations (note: not for enum changes)
 5. **Add** indexes for frequently queried fields
-6. **Document** schema changes in migration files
+6. **Document** schema changes in migration files with comments
 
 ### Prisma Client Usage
 
@@ -207,6 +488,7 @@ await prisma.$transaction(async (tx) => {
 ```
 
 ---
+
 
 ## 🔒 Security Guidelines
 
@@ -331,15 +613,20 @@ src/
 
 ### Logging Guidelines
 
-**CRITICAL**: Avoid `console.log` in production code. Use the project's structured logger instead.
+**CRITICAL**: `console.log`, `console.error`, and `console.warn` are **FORBIDDEN** in production code. You MUST use the project's structured logger.
 
 ```typescript
 import { logger } from '@/lib/logger'
 
-// Good Usage
+// ✅ Good Usage
 logger.info('User logged in', { userId: user.id })
 logger.error('Failed to create service', { error, serviceName })
 logger.debug('Processing webhook payload', { payload })
+
+// ❌ Bad Usage - DO NOT USE
+console.log('User logged in')
+console.error('Failed to create service', error)
+console.warn('Something happened')
 ```
 
 #### Logger Features
@@ -407,11 +694,21 @@ refactor: simplify auth middleware
 
 ### Branch Strategy
 
-- `main`: Production-ready code
+- `main`: Production-ready code (**PROTECTED**: No direct pushes)
 - `develop`: Development branch
 - `feature/*`: New features
 - `fix/*`: Bug fixes
 - `test/*`: Test improvements
+
+### Pull Request (PR) Policy
+
+**CRITICAL**: Direct pushes to `main` are **FORBIDDEN**.
+
+1.  **Create Feature Branch**: Always create a new branch from `main` or `develop`.
+2.  **Make Changes**: Commit your changes to the feature branch.
+3.  **Open Pull Request**: Create a PR to merge your branch into `main`.
+4.  **Review**: Wait for code review approval before merging.
+5.  **Merge**: Squash and merge after checks pass.
 
 ### Pre-Push Workflow
 

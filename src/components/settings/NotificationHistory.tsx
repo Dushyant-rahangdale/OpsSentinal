@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 type Notification = {
     id: string;
@@ -61,7 +62,11 @@ export default function NotificationHistory() {
                 setStats(statsData);
             }
         } catch (error) {
-            console.error('Error fetching notification history:', error);
+            if (error instanceof Error) {
+                logger.error('Error fetching notification history', { error: error.message });
+            } else {
+                logger.error('Error fetching notification history', { error: String(error) });
+            }
         } finally {
             setLoading(false);
         }

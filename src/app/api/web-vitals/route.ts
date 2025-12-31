@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 /**
  * Web Vitals API Endpoint
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error storing Web Vital:', error);
+    logger.error('Error storing Web Vital', { component: 'api-web-vitals', error });
     return NextResponse.json(
       { error: 'Failed to store metric' },
       { status: 500 }
@@ -184,7 +185,7 @@ export async function GET(req: NextRequest) {
       total: metricsStore.length,
     });
   } catch (error) {
-    console.error('Error retrieving Web Vitals:', error);
+    logger.error('Error retrieving Web Vitals', { component: 'api-web-vitals', error });
     return NextResponse.json(
       { error: 'Failed to retrieve metrics' },
       { status: 500 }

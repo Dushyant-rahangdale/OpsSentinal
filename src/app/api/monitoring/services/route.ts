@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { assertAdmin } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
     try {
@@ -40,7 +41,7 @@ export async function GET() {
                 { status: 403 }
             );
         }
-        console.error('[API] Error fetching service health:', error);
+        logger.error('[API] Error fetching service health', { component: 'api-monitoring-services', error });
         return NextResponse.json(
             { success: false, error: 'Failed to fetch services' },
             { status: 500 }

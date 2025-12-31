@@ -7,6 +7,7 @@ import { IncidentStatus, IncidentUrgency } from '@prisma/client';
 import { notifySlackForIncident as _notifySlackForIncident } from '@/lib/slack';
 import { getCurrentUser, assertResponderOrAbove, assertCanModifyIncident } from '@/lib/rbac';
 import { getUserFriendlyError } from '@/lib/user-friendly-errors';
+import { logger } from '@/lib/logger';
 
 export async function updateIncidentStatus(id: string, status: IncidentStatus) {
     try {
@@ -114,7 +115,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
             await sendServiceNotifications(id, 'updated');
         }
     } catch (e) {
-        console.error('Service notification failed:', e);
+        logger.error('Service notification failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
 
     // Trigger status page webhooks for incident status changes
@@ -163,7 +164,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
             );
         }
     } catch (e) {
-        console.error('Status page webhook trigger failed:', e);
+        logger.error('Status page webhook trigger failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
 
     // Notify status page subscribers (Email)
@@ -179,7 +180,7 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
             await notifyStatusPageSubscribers(id, notifyEvent as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         }
     } catch (e) {
-        console.error('Status page subscriber notification failed:', e);
+        logger.error('Status page subscriber notification failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
 
     revalidatePath(`/incidents/${id}`);
@@ -262,7 +263,7 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
         const { sendServiceNotifications } = await import('@/lib/service-notifications');
         await sendServiceNotifications(id, 'resolved');
     } catch (e) {
-        console.error('Service notification failed:', e);
+        logger.error('Service notification failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
 
     // Notify status page subscribers (Email)
@@ -270,7 +271,7 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
         const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
         await notifyStatusPageSubscribers(id, 'resolved');
     } catch (e) {
-        console.error('Status page subscriber notification failed:', e);
+        logger.error('Status page subscriber notification failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
 
     // Trigger status page webhooks for resolution
@@ -306,7 +307,7 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
             );
         }
     } catch (e) {
-        console.error('Status page webhook trigger failed:', e);
+        logger.error('Status page webhook trigger failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
 
     revalidatePath(`/incidents/${id}`);
@@ -427,7 +428,7 @@ export async function createIncident(formData: FormData) {
             _escalatedUsers = result.notifications.map((n: any) => n.userId); // eslint-disable-line @typescript-eslint/no-explicit-any
         }
     } catch (e) {
-        console.error('Escalation failed:', e);
+        logger.error('Escalation failed', { component: 'incidents-actions', error: e, incidentId: incident.id });
     }
 
     // Send service-level notifications for new incident
@@ -436,7 +437,7 @@ export async function createIncident(formData: FormData) {
         const { sendServiceNotifications } = await import('@/lib/service-notifications');
         await sendServiceNotifications(incident.id, 'triggered');
     } catch (e) {
-        console.error('Service notification failed:', e);
+        logger.error('Service notification failed', { component: 'incidents-actions', error: e, incidentId: incident.id });
     }
 
     // Trigger status page webhooks for incident.created event
@@ -471,7 +472,7 @@ export async function createIncident(formData: FormData) {
             );
         }
     } catch (e) {
-        console.error('Status page webhook trigger failed:', e);
+        logger.error('Status page webhook trigger failed', { component: 'incidents-actions', error: e, incidentId: incident.id });
     }
 
     // Notify status page subscribers (Email)
@@ -479,7 +480,7 @@ export async function createIncident(formData: FormData) {
         const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
         await notifyStatusPageSubscribers(incident.id, 'triggered');
     } catch (e) {
-        console.error('Status page subscriber notification failed:', e);
+        logger.error('Status page subscriber notification failed', { component: 'incidents-actions', error: e, incidentId: incident.id });
     }
 
     // Revalidate all relevant paths to ensure UI shows updated assignee
@@ -598,9 +599,8 @@ export async function reassignIncident(incidentId: string, assigneeId: string, t
                 }
             }
         } catch (error) {
-            console.error('Failed to notify team members:', error);
-            // Continue even if notifications fail
-        }
+            logger.error('Failed to notify team members', { component: 'incidents-actions', error, incidentId, teamId });
+        } // Continue even if notifications fail
 
         revalidatePath(`/incidents/${incidentId}`);
         revalidatePath('/incidents');

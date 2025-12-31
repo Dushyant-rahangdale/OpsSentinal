@@ -1,4 +1,6 @@
 import prisma from '@/lib/prisma';
+import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +39,7 @@ export default async function VerifySubscriptionPage({
       subscription = sub;
     }
   } catch (error) {
-    console.error('Verify error:', error);
+    logger.error('Verify error', { component: 'status-verify-page', error });
     status = 'error';
   }
 

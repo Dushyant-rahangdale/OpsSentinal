@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useModalState } from '@/hooks/useModalState';
+import { logger } from '@/lib/logger';
 
 type Notification = {
     id: string;
@@ -31,10 +32,10 @@ export default function TopbarNotifications() {
                 setNotifications(data.notifications || []);
                 setUnreadCount(data.unreadCount || 0);
             } else {
-                console.error('Failed to fetch notifications');
+                logger.error('Failed to fetch notifications', { component: 'TopbarNotifications', status: response.status });
             }
         } catch (error) {
-            console.error('Error fetching notifications:', error);
+            logger.error('Error fetching notifications', { component: 'TopbarNotifications', error });
         } finally {
             setLoading(false);
         }
@@ -42,14 +43,14 @@ export default function TopbarNotifications() {
 
     useEffect(() => {
         fetchNotifications();
-        
+
         // Set up SSE connection for real-time updates
         const eventSource = new EventSource('/api/notifications/stream');
-        
+
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                
+
                 if (data.type === 'notifications' && data.notifications) {
                     // Add new notifications to the list
                     setNotifications((prev) => {
@@ -58,23 +59,23 @@ export default function TopbarNotifications() {
                         return [...newNotifications, ...prev].slice(0, 50); // Keep latest 50
                     });
                 }
-                
+
                 if (data.type === 'unread_count') {
                     setUnreadCount(data.count || 0);
                 }
             } catch (error) {
-                console.error('Error parsing SSE message:', error);
+                logger.error('Error parsing SSE message', { component: 'TopbarNotifications', error });
             }
         };
-        
+
         eventSource.onerror = (error) => {
-            console.error('SSE connection error:', error);
+            logger.error('SSE connection error', { component: 'TopbarNotifications', error });
             // Fallback to polling if SSE fails
             const interval = setInterval(fetchNotifications, 30000);
             eventSource.close();
             return () => clearInterval(interval);
         };
-        
+
         return () => {
             eventSource.close();
         };
@@ -103,7 +104,7 @@ export default function TopbarNotifications() {
                     setUnreadCount(0);
                 }
             } catch (error) {
-                console.error('Error marking notifications as read:', error);
+                logger.error('Error marking notifications as read', { component: 'TopbarNotifications', error });
             }
         }
 
@@ -250,7 +251,7 @@ export default function TopbarNotifications() {
                                             );
                                             setUnreadCount(0);
                                         } catch (error) {
-                                            console.error('Error marking all as read:', error);
+                                            logger.error('Error marking all as read', { component: 'TopbarNotifications', error });
                                         }
                                     }
                                     await fetchNotifications();

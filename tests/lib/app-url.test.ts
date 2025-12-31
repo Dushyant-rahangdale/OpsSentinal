@@ -23,7 +23,7 @@ describe('App URL', () => {
     });
 
     it('returns normalized appUrl from database when valid', async () => {
-        vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({ appUrl: 'https://db.example.com/' });
+        vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({ appUrl: 'https://db.example.com/' } as any);
 
         const result = await getAppUrl();
 
@@ -31,7 +31,7 @@ describe('App URL', () => {
     });
 
     it('falls back to env when database value is invalid', async () => {
-        vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({ appUrl: 'undefined' });
+        vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({ appUrl: 'undefined' } as any);
         process.env.NEXT_PUBLIC_APP_URL = 'https://env.example.com/';
 
         const result = await getAppUrl();
@@ -40,7 +40,7 @@ describe('App URL', () => {
     });
 
     it('falls back to NEXTAUTH_URL when NEXT_PUBLIC_APP_URL is missing or invalid', async () => {
-        vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({ appUrl: null });
+        vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({ appUrl: null } as any);
         process.env.NEXT_PUBLIC_APP_URL = 'undefined';
         process.env.NEXTAUTH_URL = 'https://auth.example.com/';
 

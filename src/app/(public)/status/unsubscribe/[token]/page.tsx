@@ -1,4 +1,6 @@
 import prisma from '@/lib/prisma';
+import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +34,7 @@ export default async function UnsubscribePage({ params }: { params: Promise<{ to
       subscription = sub;
     }
   } catch (error) {
-    console.error('Unsubscribe error:', error);
+    logger.error('Unsubscribe error', { component: 'status-unsubscribe-page', error });
     status = 'error';
   }
 

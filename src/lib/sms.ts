@@ -17,6 +17,7 @@
 import prisma from './prisma';
 import { getSMSConfig } from './notification-providers';
 import { getBaseUrl } from './env-validation';
+import { logger } from './logger';
 
 export type SMSOptions = {
     to: string; // Phone number in E.164 format (e.g., +1234567890)
@@ -60,7 +61,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     throw new Error('Twilio package not installed');
                 }
             } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-                console.error('Twilio package not installed:', error?.message);
+                logger.warn('Twilio package not installed', { component: 'sms', provider: 'twilio', installCommand: 'npm install twilio' });
                 return { success: false, error: 'Twilio package not installed. Install it with: npm install twilio' };
             }
 
@@ -110,10 +111,10 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
 
                 return { success: true };
             } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-                console.error('Twilio SMS send error:', {
-                    error: error.message,
-                    code: error.code,
-                    status: error.status,
+                logger.error('Twilio SMS send error', {
+                    component: 'sms',
+                    provider: 'twilio',
+                    error: { message: error.message, code: error.code, status: error.status },
                     to: options.to,
                     from: smsConfig.fromNumber
                 });
@@ -185,10 +186,10 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
             } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 // If AWS SDK package is not installed, fall back to console log
                 if (error.code === 'MODULE_NOT_FOUND') {
-                    console.error('AWS SDK package not installed. Install with: npm install @aws-sdk/client-sns');
+                    logger.warn('AWS SDK package not installed', { component: 'sms', provider: 'aws-sns', installCommand: 'npm install @aws-sdk/client-sns' });
                     return { success: false, error: 'AWS SDK package not installed. Install with: npm install @aws-sdk/client-sns' };
                 }
-                console.error('AWS SNS SMS send error:', error);
+                logger.error('AWS SNS SMS send error', { component: 'sms', provider: 'aws-sns', error, to: options.to });
                 return { success: false, error: error.message || 'AWS SNS error' };
             }
         }
@@ -196,7 +197,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
         // No provider configured
         return { success: false, error: 'No SMS provider configured' };
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error('SMS send error:', error);
+        logger.error('SMS send error', { component: 'sms', error, to: options.to });
         return { success: false, error: error.message };
     }
 }
@@ -280,7 +281,7 @@ export async function sendIncidentSMS(
             message,
         });
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        console.error('Send incident SMS error:', error);
+        logger.error('Send incident SMS error', { component: 'sms', error, incidentId, userId, eventType });
         return { success: false, error: error.message };
     }
 }

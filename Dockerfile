@@ -79,6 +79,8 @@ ENV DATABASE_URL=$DATABASE_URL
 # Build Next.js application with production optimizations
 # Pages that need database access are marked as dynamic, so build works without DB
 RUN npm run build
+# Compile helper scripts for production (where ts-node is not available)
+RUN npm run build:scripts
 
 # Stage 3: Production Runner
 FROM node:20-alpine AS runner

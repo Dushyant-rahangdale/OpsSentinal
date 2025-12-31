@@ -258,7 +258,7 @@ async function logAttempt(
     });
   } catch (e) {
     // Don't fail the flow if logging fails
-    console.error('Failed to write audit log', e);
+    logger.error('Failed to write audit log', { component: 'password-reset', error: e, email, action });
   }
 }
 

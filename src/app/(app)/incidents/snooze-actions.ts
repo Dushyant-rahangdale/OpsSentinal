@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { assertResponderOrAbove, getCurrentUser } from '@/lib/rbac';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { logger } from '@/lib/logger';
 
 export async function snoozeIncidentWithDuration(incidentId: string, durationMinutes: number, reason?: string) {
     try {
@@ -37,7 +38,7 @@ export async function snoozeIncidentWithDuration(incidentId: string, durationMin
         const { scheduleAutoUnsnooze } = await import('@/lib/jobs/queue');
         await scheduleAutoUnsnooze(incidentId, snoozedUntil);
     } catch (error) {
-        console.error(`Failed to schedule auto-unsnooze job for incident ${incidentId}:`, error);
+        logger.error('Failed to schedule auto-unsnooze job', { component: 'snooze-actions', error, incidentId });
         // Continue anyway - internal worker will pick it up via snoozedUntil field
     }
 
