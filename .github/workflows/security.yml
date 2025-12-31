@@ -13,6 +13,8 @@ permissions:
   contents: read
   security-events: write
   actions: read
+  checks: write
+  pull-requests: write
 
 jobs:
   sast:
@@ -41,17 +43,40 @@ jobs:
         uses: github/codeql-action/analyze@v3
         continue-on-error: true
 
-      - name: ESLint Security Scan
+      - name: ESLint Security Scan (SARIF)
         run: |
           mkdir -p reports
-          npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif || true
+          npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/eslint-security.sarif || true
+        continue-on-error: true
+
+      - name: ESLint Security Scan (JUnit)
+        run: |
+          npx eslint . --format junit --output-file reports/eslint-security.xml || true
         continue-on-error: true
 
       - name: Upload ESLint SARIF
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: reports/security.sarif
+          sarif_file: reports/eslint-security.sarif
+        continue-on-error: true
+
+      - name: Upload ESLint JUnit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-security-report
+          path: reports/eslint-security.xml
+        continue-on-error: true
+
+      - name: Publish ESLint Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: reports/eslint-security.xml
+          check_name: 'ESLint Security Results'
+          comment_title: '🔒 ESLint Security Scan'
+          comment_mode: 'always'
         continue-on-error: true
 
   sca:
@@ -70,28 +95,89 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Run npm audit
-        run: npm audit --audit-level=critical || true
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Run npm audit (JSON)
+        run: |
+          npm audit --json > reports/npm-audit.json 2>&1 || true
         continue-on-error: true
 
-      - name: Run Trivy vulnerability scanner
+      - name: Convert npm audit to JUnit
+        run: |
+          node -e "
+          const fs = require('fs');
+          const audit = JSON.parse(fs.readFileSync('reports/npm-audit.json', 'utf8'));
+          const vulns = audit.vulnerabilities || {};
+          const entries = Object.entries(vulns);
+          
+          let xml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n';
+          xml += '<testsuites name=\"npm-audit\" tests=\"' + entries.length + '\" failures=\"' + entries.filter(([,v]) => v.severity === 'high' || v.severity === 'critical').length + '\">\n';
+          xml += '  <testsuite name=\"Dependency Security\" tests=\"' + entries.length + '\">\n';
+          
+          entries.forEach(([name, vuln]) => {
+            const severity = vuln.severity || 'unknown';
+            const isFail = severity === 'high' || severity === 'critical';
+            xml += '    <testcase name=\"' + name + ' (' + severity + ')\" classname=\"npm-audit\">\n';
+            if (isFail) {
+              xml += '      <failure message=\"' + severity + ' severity vulnerability\">' + (vuln.via?.[0]?.title || 'Vulnerability found') + '</failure>\n';
+            }
+            xml += '    </testcase>\n';
+          });
+          
+          xml += '  </testsuite>\n</testsuites>';
+          fs.writeFileSync('reports/npm-audit.xml', xml);
+          console.log('Generated npm-audit.xml with ' + entries.length + ' entries');
+          " || echo '<?xml version="1.0"?><testsuites><testsuite name="npm-audit" tests="0"/></testsuites>' > reports/npm-audit.xml
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner (SARIF)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+          output: 'reports/trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
         continue-on-error: true
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Run Trivy vulnerability scanner (JUnit)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          format: 'template'
+          template: '@/contrib/junit.tpl'
+          output: 'reports/trivy-results.xml'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+        continue-on-error: true
+
+      - name: Upload Trivy SARIF
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: 'reports/trivy-results.sarif'
         continue-on-error: true
 
-      - name: Create reports directory
-        run: mkdir -p reports
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sca-security-reports
+          path: |
+            reports/npm-audit.xml
+            reports/trivy-results.xml
+        continue-on-error: true
+
+      - name: Publish SCA Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: |
+            reports/npm-audit.xml
+            reports/trivy-results.xml
+          check_name: 'SCA Security Results'
+          comment_title: '🔒 Dependency & Container Security'
+          comment_mode: 'always'
+        continue-on-error: true
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
@@ -130,12 +216,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Checkov
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Run Checkov (SARIF)
         uses: bridgecrewio/checkov-action@master
         with:
           directory: .
           output_format: sarif
-          output_file_path: .
+          output_file_path: reports
+          soft_fail: true
+        continue-on-error: true
+
+      - name: Run Checkov (JUnit)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          output_format: junitxml
+          output_file_path: reports
           soft_fail: true
         continue-on-error: true
 
@@ -143,7 +241,25 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: results.sarif
+          sarif_file: reports/results_sarif.sarif
+        continue-on-error: true
+
+      - name: Upload Checkov JUnit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkov-report
+          path: reports/results_junitxml.xml
+        continue-on-error: true
+
+      - name: Publish Checkov Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: reports/results_junitxml.xml
+          check_name: 'IaC Security Results'
+          comment_title: '🔒 Infrastructure Security (Checkov)'
+          comment_mode: 'always'
         continue-on-error: true
 
   dast:
