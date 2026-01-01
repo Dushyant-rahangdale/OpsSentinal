@@ -211,8 +211,8 @@ export async function processEvent(payload: EventPayload, serviceId: string, _in
         // Send service-level notifications (to team members, assignee, etc.)
         // Uses user preferences for each recipient
         try {
-            const { sendServiceNotifications } = await import('./service-notifications');
-            await sendServiceNotifications(result.incident.id, 'triggered');
+            const { sendIncidentNotifications } = await import('./user-notifications');
+            await sendIncidentNotifications(result.incident.id, 'triggered');
         } catch (error) {
             logger.error('Service notification failed', {
                 incidentId: result.incident.id,

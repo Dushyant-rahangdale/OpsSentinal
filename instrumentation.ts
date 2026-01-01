@@ -4,10 +4,12 @@
  * and perform automatic migration recovery for containerized deployments
  */
 
+import { logger } from './src/lib/logger';
+
 export async function register() {
     // Only run on the server
     if (process.env.NEXT_RUNTIME === 'nodejs') {
-        console.log('🚀 OpsSentinal server initialization...\n');
+        logger.info('OpsSentinal server initialization', { component: 'instrumentation' });
 
         // Auto-recover failed migrations (for fault-tolerant deployments)
         try {
@@ -15,10 +17,10 @@ export async function register() {
             const migrationSuccess = await autoRecoverMigrations();
 
             if (!migrationSuccess) {
-                console.warn('⚠️  Migration recovery completed with warnings. Check logs above.');
+                logger.warn('Migration recovery completed with warnings', { component: 'instrumentation' });
             }
         } catch (error) {
-            console.error('❌ Migration auto-recovery failed:', error);
+            logger.error('Migration auto-recovery failed', { component: 'instrumentation', error });
             // Continue startup - application may still function with existing schema
         }
 
@@ -26,6 +28,6 @@ export async function register() {
         const { startCronScheduler } = await import('./src/lib/cron-scheduler');
         startCronScheduler();
 
-        console.log('\n✅ OpsSentinal server initialized successfully!\n');
+        logger.info('OpsSentinal server initialized successfully', { component: 'instrumentation' });
     }
 }

@@ -195,9 +195,9 @@ export async function POST(req: NextRequest) {
 
     // Trigger service-level notifications (Slack, Webhooks)
     try {
-        const { sendServiceNotifications } = await import('@/lib/service-notifications');
+        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
         // Run in background, don't await to keep API fast
-        sendServiceNotifications(incident.id, 'triggered').catch(err => {
+        sendIncidentNotifications(incident.id, 'triggered').catch(err => {
             logger.error('api.incident.service_notification_failed', { error: err.message, incidentId: incident.id });
         });
     } catch (e) {

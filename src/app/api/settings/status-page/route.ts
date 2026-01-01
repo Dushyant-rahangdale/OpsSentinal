@@ -5,6 +5,7 @@ import { jsonError, jsonOk } from '@/lib/api-response';
 import { StatusPageSettingsSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
+import { assertStatusPageNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 /**
  * Update Status Page Settings
@@ -83,10 +84,22 @@ export async function POST(req: NextRequest) {
         // Get or create status page
         let statusPage = await prisma.statusPage.findFirst({});
 
+        let normalizedName = name?.trim();
+        if (normalizedName) {
+            try {
+                normalizedName = await assertStatusPageNameAvailable(normalizedName);
+            } catch (error) {
+                if (error instanceof UniqueNameConflictError) {
+                    return jsonError('A status page with this name already exists.', 400);
+                }
+                return jsonError(error instanceof Error ? error.message : 'Invalid status page name.', 400);
+            }
+        }
+
         if (!statusPage) {
             statusPage = await prisma.statusPage.create({
                 data: {
-                    name: name || 'Status Page',
+                    name: normalizedName || 'Status Page',
                     organizationName: organizationName || null,
                     enabled: enabled !== false,
                     showServices: showServices !== false,
@@ -114,7 +127,15 @@ export async function POST(req: NextRequest) {
 
         // Only update name if it's provided and not empty
         if (name !== undefined && name !== null && name.trim().length > 0) {
-            updateData.name = name.trim();
+            try {
+                const uniqueName = await assertStatusPageNameAvailable(name, { excludeId: statusPage.id });
+                updateData.name = uniqueName;
+            } catch (error) {
+                if (error instanceof UniqueNameConflictError) {
+                    return jsonError('A status page with this name already exists.', 400);
+                }
+                return jsonError(error instanceof Error ? error.message : 'Invalid status page name.', 400);
+            }
         }
 
         if (branding !== undefined) {

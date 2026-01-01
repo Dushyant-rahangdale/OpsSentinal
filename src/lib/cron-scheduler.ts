@@ -4,12 +4,30 @@ import { logger } from './logger';
 import { retryFailedNotifications } from './notification-retry';
 import { processAutoUnsnooze } from '@/app/(app)/incidents/snooze-actions';
 
-let cronTimer: NodeJS.Timeout | null = null;
-let isRunning = false;
-let lastRunAt: Date | null = null;
-let lastSuccessAt: Date | null = null;
-let lastError: string | null = null;
-let nextRunAt: Date | null = null;
+// Global state to persist across HMR
+const globalForCron = global as unknown as {
+    cronState: {
+        timer: NodeJS.Timeout | null;
+        isRunning: boolean;
+        lastRunAt: Date | null;
+        lastSuccessAt: Date | null;
+        lastError: string | null;
+        nextRunAt: Date | null;
+        initialized: boolean;
+    } | undefined
+};
+
+const state = globalForCron.cronState || {
+    timer: null,
+    isRunning: false,
+    lastRunAt: null,
+    lastSuccessAt: null,
+    lastError: null,
+    nextRunAt: null,
+    initialized: false
+};
+
+if (process.env.NODE_ENV !== 'production') globalForCron.cronState = state;
 
 const MIN_DELAY_MS = 15_000;
 const MAX_DELAY_MS = 5 * 60_000;
@@ -56,24 +74,24 @@ function scheduleNextRun(targetTime: Date) {
     const now = Date.now();
     const rawDelay = targetTime.getTime() - now;
     const delay = Math.min(Math.max(rawDelay, MIN_DELAY_MS), MAX_DELAY_MS);
-    nextRunAt = new Date(now + delay);
+    state.nextRunAt = new Date(now + delay);
 
-    if (cronTimer) {
-        clearTimeout(cronTimer);
+    if (state.timer) {
+        clearTimeout(state.timer);
     }
 
-    cronTimer = setTimeout(runOnce, delay);
+    state.timer = setTimeout(runOnce, delay);
 }
 
 async function runOnce() {
-    if (isRunning) {
+    if (state.isRunning) {
         return;
     }
 
-    isRunning = true;
+    state.isRunning = true;
     const startTime = Date.now();
-    lastRunAt = new Date();
-    logger.info('Cron worker tick started', { timestamp: lastRunAt.toISOString() });
+    state.lastRunAt = new Date();
+    logger.info('Cron worker tick started', { timestamp: state.lastRunAt.toISOString() });
 
     try {
         const escalationResult = await processPendingEscalations();
@@ -97,23 +115,23 @@ async function runOnce() {
         logger.info('Auto-unsnooze processed', autoUnsnoozeResult);
 
         const duration = Date.now() - startTime;
-        lastSuccessAt = new Date();
-        lastError = null;
+        state.lastSuccessAt = new Date();
+        state.lastError = null;
         logger.info('Cron worker tick completed', { durationMs: duration });
     } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error);
+        state.lastError = error instanceof Error ? error.message : String(error);
         logger.error('Cron worker tick failed', {
-            error: lastError,
+            error: state.lastError,
             stack: error instanceof Error ? error.stack : undefined
         });
     } finally {
-        isRunning = false;
+        state.isRunning = false;
         try {
             const nextTime = await getNextScheduledTime();
             scheduleNextRun(nextTime);
         } catch (error) {
-            lastError = error instanceof Error ? error.message : String(error);
-            logger.error('Failed to schedule next cron tick', { error: lastError });
+            state.lastError = error instanceof Error ? error.message : String(error);
+            logger.error('Failed to schedule next cron tick', { error: state.lastError });
         }
     }
 }
@@ -123,19 +141,21 @@ async function runOnce() {
  * Runs escalation and job processing every 2 minutes
  */
 export function startCronScheduler() {
-    if (cronTimer) {
-        logger.info('Cron scheduler already running');
-        return;
+    if (state.initialized) {
+        return; // Already initialized, silent return
     }
 
-    // Only run in production or if explicitly enabled
-    const enableInternalCron = process.env.ENABLE_INTERNAL_CRON === 'true' || process.env.NODE_ENV === 'production';
+    // Run by default (including development) unless explicitly disabled
+    // Now that we have singleton protection, it's safe to run in dev
+    const enableInternalCron = process.env.ENABLE_INTERNAL_CRON !== 'false';
 
     if (!enableInternalCron) {
         logger.info('Internal cron scheduler disabled (set ENABLE_INTERNAL_CRON=true to enable)');
+        state.initialized = true; // Mark as initialized so we don't log again
         return;
     }
 
+    state.initialized = true;
     scheduleNextRun(new Date());
     logger.info('Internal cron scheduler started (dynamic schedule)');
 }
@@ -143,23 +163,27 @@ export function startCronScheduler() {
 /**
  * Stop the internal cron scheduler
  */
+/**
+ * Stop the internal cron scheduler
+ */
 export function stopCronScheduler() {
-    if (cronTimer) {
-        clearTimeout(cronTimer);
-        cronTimer = null;
-        nextRunAt = null;
-        lastError = null;
+    if (state.timer) {
+        clearTimeout(state.timer);
+        state.timer = null;
+        state.nextRunAt = null;
+        state.lastError = null;
+        state.isRunning = false;
         logger.info('Internal cron scheduler stopped');
     }
 }
 
 export function getCronSchedulerStatus() {
     return {
-        running: !!cronTimer,
-        lastRunAt,
-        lastSuccessAt,
-        lastError,
-        nextRunAt,
+        running: !!state.timer,
+        lastRunAt: state.lastRunAt,
+        lastSuccessAt: state.lastSuccessAt,
+        lastError: state.lastError,
+        nextRunAt: state.nextRunAt,
         schedule: 'dynamic'
     };
 }

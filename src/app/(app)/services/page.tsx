@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { getUserPermissions, assertAdminOrResponder } from '@/lib/rbac';
+import { assertServiceNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 import ServiceCard from '@/components/service/ServiceCard';
 import ServicesFilters from '@/components/service/ServicesFilters';
 import CreateServiceForm from '@/components/service/CreateServiceForm';
@@ -17,35 +18,46 @@ async function createService(formData: FormData) {
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
-    const name = formData.get('name') as string;
+    const rawName = formData.get('name');
     const description = formData.get('description') as string;
     const region = formData.get('region') as string;
     const slaTier = formData.get('slaTier') as string;
     const teamId = formData.get('teamId') as string;
     const escalationPolicyId = formData.get('escalationPolicyId') as string;
+    const name = typeof rawName === 'string' ? rawName : '';
 
-    const service = await prisma.service.create({
-        data: {
-            name,
-            description,
-            region: region || null,
-            slaTier: slaTier || null,
-            teamId: teamId || undefined,
-            escalationPolicyId: escalationPolicyId || undefined
+    try {
+        const normalizedName = await assertServiceNameAvailable(name);
+
+        const service = await prisma.service.create({
+            data: {
+                name: normalizedName,
+                description,
+                region: region || null,
+                slaTier: slaTier || null,
+                teamId: teamId || undefined,
+                escalationPolicyId: escalationPolicyId || undefined
+            }
+        });
+
+        await logAudit({
+            action: 'service.created',
+            entityType: 'SERVICE',
+            entityId: service.id,
+            actorId: await getDefaultActorId(),
+            details: { name: normalizedName, teamId: teamId || null }
+        });
+
+        revalidatePath('/services');
+        revalidatePath('/audit');
+        redirect('/services');
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect('/services?error=duplicate-service');
         }
-    });
 
-    await logAudit({
-        action: 'service.created',
-        entityType: 'SERVICE',
-        entityId: service.id,
-        actorId: await getDefaultActorId(),
-        details: { name, teamId: teamId || null }
-    });
-
-    revalidatePath('/services');
-    revalidatePath('/audit');
-    redirect('/services');
+        throw error;
+    }
 }
 
 type ServicesPageProps = {
@@ -54,6 +66,7 @@ type ServicesPageProps = {
         status?: string;
         team?: string;
         sort?: string;
+        error?: string;
     }>;
 };
 
@@ -63,6 +76,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
     const statusFilter = typeof params?.status === 'string' ? params.status : 'all';
     const teamFilter = typeof params?.team === 'string' ? params.team : '';
     const sortBy = typeof params?.sort === 'string' ? params.sort : 'name_asc';
+    const errorCode = typeof params?.error === 'string' ? params.error : '';
 
     const [teams, policies] = await Promise.all([
         prisma.team.findMany({ orderBy: { name: 'asc' } }),
@@ -177,6 +191,20 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
             </header>
 
             {/* Create Service Form */}
+            {errorCode === 'duplicate-service' && (
+                <div className="glass-panel" style={{
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.25rem',
+                    background: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    borderRadius: '0px'
+                }}>
+                    A service with this name already exists. Please choose a unique name.
+                </div>
+            )}
             {canCreateService ? (
                 <CreateServiceForm
                     teams={teams}

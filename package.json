@@ -20,10 +20,11 @@
     "test:int": "vitest run -c vitest.int.config.ts --no-file-parallelism",
     "test:ci:unit": "npx vitest run -c vitest.unit.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-unit.xml",
     "test:ci:db": "npx vitest run -c vitest.int.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-db.xml",
+    "test:all": "npm run lint:check && npm run test:run",
     "OpsSentinal": "node ./scripts/OpsSentinal.mjs",
     "build:scripts": "tsc scripts/auto-recover-migrations.ts --outDir scripts/dist --module commonjs --target es2020 --esModuleInterop --skipLibCheck",
-    "prisma:validate": "node --loader ts-node/esm scripts/validate-migrations.ts",
-    "prisma:health": "node --loader ts-node/esm scripts/check-migration-health.ts",
+    "prisma:validate": "node scripts/validate-migrations.cjs",
+    "prisma:health": "node scripts/check-migration-health.cjs",
     "prisma:auto-recover": "node --loader ts-node/esm scripts/auto-recover-migrations.ts",
     "prisma:migrate:safe": "npm run prisma:validate && npm run prisma:health && npx prisma migrate deploy",
     "prepare": "husky install",
@@ -31,16 +32,21 @@
     "lint:report": "eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@next-auth/prisma-adapter": "^1.0.7",
+    "@opentelemetry/api": "^1.9.0",
     "@prisma/client": "^5.22.0",
+    "@types/web-push": "^3.6.4",
     "bcryptjs": "^2.4.3",
     "lucide-react": "^0.562.0",
     "next": "^16.1.0",
     "next-auth": "^4.24.11",
+    "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.6.0",
+    "web-push": "^3.6.7",
     "web-vitals": "^5.1.0",
     "zod": "^3.23.8"
   },
@@ -48,7 +54,7 @@
     "@aws-sdk/client-sns": "^3.0.0",
     "@sendgrid/mail": "^8.1.6",
     "firebase-admin": "^12.0.0",
-    "nodemailer": "^7.0.12",
+    "nodemailer": "7.0.12",
     "onesignal-node": "^5.0.0",
     "resend": "^4.0.0",
     "twilio": "^5.11.1"
@@ -69,6 +75,9 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-security": "^3.0.1",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
@@ -79,5 +88,8 @@
   },
   "bin": {
     "OpsSentinal": "./scripts/OpsSentinal.mjs"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

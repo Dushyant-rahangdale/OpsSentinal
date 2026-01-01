@@ -103,7 +103,7 @@ export interface ProviderRecord {
   provider: string;
   enabled: boolean;
   config: Record<string, unknown>;
-  updatedAt: Date;
+  updatedAt: Date | string;
 }
 
 // Form Field Configuration

@@ -19,10 +19,18 @@ export async function GET(req: NextRequest) {
         const stream = new ReadableStream({
             async start(controller) {
                 const encoder = new TextEncoder();
+                let isClosed = false;
 
                 // Send initial connection message
                 const send = (data: string) => {
-                    controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                    if (!isClosed) {
+                        try {
+                            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+                        } catch (error) {
+                            logger.error('Error sending SSE data', { component: 'api-realtime-stream', error });
+                            isClosed = true;
+                        }
+                    }
                 };
 
                 // Send initial connection confirmation
@@ -95,8 +103,13 @@ export async function GET(req: NextRequest) {
 
                 // Clean up on client disconnect
                 req.signal.addEventListener('abort', () => {
+                    isClosed = true;
                     clearInterval(pollInterval);
-                    controller.close();
+                    try {
+                        controller.close();
+                    } catch (_error) {
+                        // Controller already closed, ignore
+                    }
                 });
             }
         });

@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { randomBytes } from 'crypto';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { assertAdminOrResponder, assertAdmin } from '@/lib/rbac';
+import { assertServiceNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 export async function createIntegration(formData: FormData) {
     try {
@@ -73,7 +74,8 @@ export async function updateService(serviceId: string, formData: FormData) {
     } catch (error) {
         throw new Error(error instanceof Error ? error.message : 'Unauthorized');
     }
-    const name = formData.get('name') as string;
+    const rawName = formData.get('name');
+    const name = typeof rawName === 'string' ? rawName : '';
     const description = formData.get('description') as string;
     const region = formData.get('region') as string;
     const slaTier = formData.get('slaTier') as string;
@@ -90,36 +92,46 @@ export async function updateService(serviceId: string, formData: FormData) {
         validChannels.includes(ch) && !ch.includes(',')
     );
 
-    await prisma.service.update({
-        where: { id: serviceId },
-        data: {
-            name,
-            description,
-            region: region || null,
-            slaTier: slaTier || null,
-            slackWebhookUrl: slackWebhookUrl || null,
-            slackChannel: slackChannel || null,
-            teamId: teamId || null,
-            escalationPolicyId: escalationPolicyId || null,
-            serviceNotificationChannels: serviceNotificationChannels.length > 0 
-                ? (serviceNotificationChannels as any[]) // eslint-disable-line @typescript-eslint/no-explicit-any
-                : [] // Default: no channels selected
+    try {
+        const normalizedName = await assertServiceNameAvailable(name, { excludeId: serviceId });
+
+        await prisma.service.update({
+            where: { id: serviceId },
+            data: {
+                name: normalizedName,
+                description,
+                region: region || null,
+                slaTier: slaTier || null,
+                slackWebhookUrl: slackWebhookUrl || null,
+                slackChannel: slackChannel || null,
+                teamId: teamId || null,
+                escalationPolicyId: escalationPolicyId || null,
+                serviceNotificationChannels: serviceNotificationChannels.length > 0 
+                    ? (serviceNotificationChannels as any[]) // eslint-disable-line @typescript-eslint/no-explicit-any
+                    : [] // Default: no channels selected
+            }
+        });
+
+        await logAudit({
+            action: 'service.updated',
+            entityType: 'SERVICE',
+            entityId: serviceId,
+            actorId: await getDefaultActorId(),
+            details: { name: normalizedName, teamId: teamId || null, escalationPolicyId: escalationPolicyId || null }
+        });
+
+        revalidatePath(`/services/${serviceId}`);
+        revalidatePath(`/services/${serviceId}/settings`);
+        revalidatePath('/services');
+        revalidatePath('/audit');
+        redirect(`/services/${serviceId}/settings?saved=1`);
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect(`/services/${serviceId}/settings?error=duplicate-service`);
         }
-    });
 
-    await logAudit({
-        action: 'service.updated',
-        entityType: 'SERVICE',
-        entityId: serviceId,
-        actorId: await getDefaultActorId(),
-        details: { name, teamId: teamId || null, escalationPolicyId: escalationPolicyId || null }
-    });
-
-    revalidatePath(`/services/${serviceId}`);
-    revalidatePath(`/services/${serviceId}/settings`);
-    revalidatePath('/services');
-    revalidatePath('/audit');
-    redirect(`/services/${serviceId}/settings?saved=1`);
+        throw error;
+    }
 }
 
 export async function deleteService(serviceId: string) {

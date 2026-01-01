@@ -4,7 +4,9 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { assertAdminOrResponder, assertAdmin, assertAdminOrTeamOwner } from '@/lib/rbac';
+import { createInAppNotifications } from '@/lib/in-app-notifications';
 import { logger } from '@/lib/logger';
+import { assertTeamNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 type TeamFormState = {
     error?: string | null;
@@ -38,22 +40,19 @@ export async function createTeam(_prevState: TeamFormState, formData: FormData):
         return { error: 'Team name is required.' };
     }
 
-    const existing = await prisma.team.findFirst({
-        where: {
-            name: {
-                equals: name,
-                mode: 'insensitive'
-            }
+    let normalizedName = name;
+    try {
+        normalizedName = await assertTeamNameAvailable(name);
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            return { error: 'A team with that name already exists.' };
         }
-    });
-
-    if (existing) {
-        return { error: 'A team with that name already exists.' };
+        return { error: error instanceof Error ? error.message : 'Failed to validate team name.' };
     }
 
     const team = await prisma.team.create({
         data: {
-            name,
+            name: normalizedName,
             description: description || null
         }
     });
@@ -64,14 +63,14 @@ export async function createTeam(_prevState: TeamFormState, formData: FormData):
         entityType: 'TEAM',
         entityId: team.id,
         actorId,
-        details: { name }
+        details: { name: normalizedName }
     });
 
     revalidatePath('/teams');
     revalidatePath('/services');
     revalidatePath('/audit');
 
-    logger.info('team.created', { teamId: team.id, name, actorId });
+    logger.info('team.created', { teamId: team.id, name: normalizedName, actorId });
 
     return { success: true };
 }
@@ -100,10 +99,20 @@ export async function updateTeam(teamId: string, formData: FormData) {
         }
     }
 
+    let normalizedName = name;
+    try {
+        normalizedName = await assertTeamNameAvailable(name, { excludeId: teamId });
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            return { error: 'A team with that name already exists.' };
+        }
+        return { error: error instanceof Error ? error.message : 'Failed to validate team name.' };
+    }
+
     await prisma.team.update({
         where: { id: teamId },
         data: {
-            name,
+            name: normalizedName,
             description: description || null,
             teamLeadId: teamLeadId || null
         }
@@ -115,14 +124,14 @@ export async function updateTeam(teamId: string, formData: FormData) {
         entityType: 'TEAM',
         entityId: teamId,
         actorId,
-        details: { name, teamLeadId: teamLeadId || null }
+        details: { name: normalizedName, teamLeadId: teamLeadId || null }
     });
 
     revalidatePath('/teams');
     revalidatePath('/services');
     revalidatePath('/audit');
 
-    logger.info('team.updated', { teamId, name, teamLeadId: teamLeadId || null, actorId });
+    logger.info('team.updated', { teamId, name: normalizedName, teamLeadId: teamLeadId || null, actorId });
 }
 
 export async function deleteTeam(teamId: string) {
@@ -209,6 +218,19 @@ export async function addTeamMember(teamId: string, formData: FormData) {
     revalidatePath('/audit');
 
     logger.info('team.member.added', { teamId, userId, role, actorId });
+
+    // Notify the user
+    const team = await prisma.team.findUnique({ where: { id: teamId }, select: { name: true } });
+    if (team) {
+        await createInAppNotifications({
+            userIds: [userId],
+            type: 'TEAM',
+            title: 'Added to Team',
+            message: `You were added to team "${team.name}" as ${role}`,
+            entityType: 'TEAM',
+            entityId: teamId
+        });
+    }
 }
 
 export async function updateTeamMemberRole(memberId: string, formData: FormData): Promise<{ error?: string } | undefined> {
@@ -321,7 +343,8 @@ export async function updateTeamMemberNotifications(memberId: string, receiveNot
 export async function removeTeamMember(memberId: string): Promise<{ error?: string } | undefined> {
     // First get the member to find the team ID
     const member = await prisma.teamMember.findUnique({
-        where: { id: memberId }
+        where: { id: memberId },
+        include: { team: { select: { name: true } } }
     });
 
     if (!member) {
@@ -361,4 +384,16 @@ export async function removeTeamMember(memberId: string): Promise<{ error?: stri
     revalidatePath('/audit');
 
     logger.info('team.member.removed', { memberId, teamId: member.teamId, userId: member.userId, actorId });
+
+    // Notify the user
+    if (member.team) {
+        await createInAppNotifications({
+            userIds: [member.userId],
+            type: 'TEAM',
+            title: 'Removed from Team',
+            message: `You were removed from team "${member.team.name}"`,
+            entityType: 'TEAM',
+            entityId: member.teamId
+        });
+    }
 }

@@ -76,14 +76,38 @@ export async function getUserNotificationChannels(userId: string): Promise<Notif
  * @param message - The notification message
  * @param escalationChannels - Optional: Override user preferences with escalation step channels
  */
+// ... (imports)
+
+/**
+ * Send notifications to a user based on their preferences
+ * @param incidentId - The incident ID
+ * @param userId - The user ID to notify
+ * @param message - The notification message
+ * @param escalationChannels - Optional: Override user preferences with escalation step channels
+ */
 export async function sendUserNotification(
     incidentId: string,
     userId: string,
     message: string,
     escalationChannels?: NotificationChannel[]
 ): Promise<{ success: boolean; channelsUsed: NotificationChannel[]; errors?: string[] }> {
-    let channels: NotificationChannel[];
 
+    // Create In-App Notification first
+    try {
+        await createInAppNotifications({
+            userIds: [userId],
+            type: 'INCIDENT',
+            title: 'Action Required', // Generic title for escalation/direct message
+            message: message,
+            entityType: 'INCIDENT',
+            entityId: incidentId
+        });
+    } catch (error) {
+        logger.error('Failed to create In-App notification', { userId, incidentId, error });
+    }
+
+    let channels: NotificationChannel[];
+    // ... rest of function
     const userChannels = await getUserNotificationChannels(userId);
 
     // If escalation step specifies channels, use those (filtered by user preferences and availability)
@@ -104,10 +128,11 @@ export async function sendUserNotification(
     const channelsUsed: NotificationChannel[] = [];
 
     if (channels.length === 0) {
+        // Even if no channels, In-App was created. Return success false for external channels only.
         return {
             success: false,
             channelsUsed: [],
-            errors: ['User has not enabled any notification channels. Please configure notification preferences in Settings.']
+            errors: ['User has not enabled any notification channels. In-App notification created.']
         };
     }
 
@@ -129,14 +154,15 @@ export async function sendUserNotification(
 }
 
 /**
- * Send service-level notifications (to team members and assignee)
- * Uses user preferences for each recipient
+ * Send full incident notifications strategy (User prefs + Service integrations)
+ * Replaces previous sendServiceNotifications
  */
-export async function sendServiceNotifications(
+export async function sendIncidentNotifications(
     incidentId: string,
     eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated', excludeUserIds: string[] = []
 ): Promise<{ success: boolean; errors?: string[] }> {
     try {
+
         const incident = await prisma.incident.findUnique({
             where: { id: incidentId },
             include: {

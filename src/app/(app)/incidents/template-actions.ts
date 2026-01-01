@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { assertResponderOrAbove, getCurrentUser } from '@/lib/rbac';
 import { IncidentUrgency } from '@prisma/client';
+import { assertIncidentTemplateNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 export async function createTemplate(formData: FormData) {
     try {
@@ -23,9 +24,19 @@ export async function createTemplate(formData: FormData) {
     const defaultServiceId = formData.get('defaultServiceId') as string | null;
     const isPublic = formData.get('isPublic') === 'on';
 
+    let normalizedName = name;
+    try {
+        normalizedName = await assertIncidentTemplateNameAvailable(name);
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect('/incidents/templates/create?error=duplicate-template');
+        }
+        throw error;
+    }
+
     await prisma.incidentTemplate.create({
         data: {
-            name,
+            name: normalizedName,
             description,
             title,
             descriptionText,

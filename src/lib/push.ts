@@ -1,22 +1,27 @@
-/**
+﻿/**
  * Push Notification Service
  * Sends push notifications for incidents
  * 
- * Push notification providers are configured via the UI at Settings → System → Notification Providers
+ * Push notification providers are configured via the UI at Settings -> System -> Notification Providers
  * 
  * To use with Firebase Cloud Messaging (FCM):
  * 1. Install: npm install firebase-admin
- * 2. Configure Firebase in Settings → System → Notification Providers
+ * 2. Configure Firebase in Settings -> System -> Notification Providers
  * 
  * To use with OneSignal:
  * 1. Install: npm install onesignal-node
- * 2. Configure OneSignal in Settings → System → Notification Providers
+ * 2. Configure OneSignal in Settings -> System -> Notification Providers
  */
 
 import prisma from './prisma';
 import { getPushConfig } from './notification-providers';
 import { getBaseUrl } from './env-validation';
 import { logger } from './logger';
+import webpush from 'web-push';
+
+// Configure Web Push if keys are present
+// We will configure VAPID details per-request based on DB config or Env variables
+
 
 export type PushOptions = {
     userId: string;
@@ -28,8 +33,7 @@ export type PushOptions = {
 
 /**
  * Send push notification
- * Currently uses console.log for development
- * Replace with actual push service in production
+ * Uses logger output for development mode
  */
 export async function sendPush(options: PushOptions): Promise<{ success: boolean; error?: string }> {
     try {
@@ -46,9 +50,10 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
             return { success: false, error: 'No device tokens found for user' };
         }
 
-        // Development: Log push instead of sending if no provider configured
-        if (process.env.NODE_ENV === 'development' || !pushConfig.enabled) {
-            console.log('Push Notification:', {
+        // If provider is not enabled, log and return (mock mode)
+        // Note: In development, we still want to send if enabled to test functionality
+        if (!pushConfig.enabled) {
+            logger.info('Push notification (mock)', {
                 userId: options.userId,
                 title: options.title,
                 body: options.body,
@@ -64,12 +69,84 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
         // Production: Use configured provider
         let successCount = 0;
         const errorMessages: string[] = [];
+        const resolveVapidDetails = () => {
+            if (pushConfig.provider === 'web-push' && pushConfig.vapidPublicKey && pushConfig.vapidPrivateKey) {
+                return {
+                    subject: pushConfig.vapidSubject || 'mailto:admin@localhost',
+                    publicKey: pushConfig.vapidPublicKey,
+                    privateKey: pushConfig.vapidPrivateKey
+                };
+            }
 
-        if (pushConfig.provider === 'firebase') {
+            if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+                return {
+                    subject: process.env.VAPID_SUBJECT || 'mailto:admin@localhost',
+                    publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+                    privateKey: process.env.VAPID_PRIVATE_KEY
+                };
+            }
+
+            return undefined;
+        };
+
+        const vapidDetails = resolveVapidDetails();
+
+        const sendWebPush = async (device: (typeof devices)[number]) => {
+            if (!vapidDetails) {
+                errorMessages.push(`Device ${device.deviceId}: VAPID keys not configured`);
+                return;
+            }
+
+            try {
+                const subscription = JSON.parse(device.token);
+                const payload = JSON.stringify({
+                    title: options.title,
+                    body: options.body,
+                    data: options.data,
+                    icon: '/icons/android-chrome-192x192.png',
+                    url: options.data?.url || '/m'
+                });
+                await webpush.sendNotification(subscription, payload, { vapidDetails });
+                await prisma.userDevice.update({
+                    where: { id: device.id },
+                    data: { lastUsed: new Date() }
+                });
+                successCount++;
+            } catch (error: unknown) {
+                const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
+                    ? (error as { statusCode?: number }).statusCode
+                    : undefined;
+                const errorMessage = typeof error === 'object' && error !== null && 'message' in error
+                    ? String((error as { message?: unknown }).message ?? '')
+                    : 'Unknown error';
+
+                if (statusCode === 410 || statusCode === 404) {
+                    await prisma.userDevice.delete({ where: { id: device.id } });
+                    errorMessages.push(`Device ${device.deviceId}: Subscription expired (removed)`);
+                } else {
+                    errorMessages.push(`Device ${device.deviceId}: ${errorMessage}`);
+                }
+            }
+        };
+
+        if (pushConfig.provider === 'web-push') {
+            const webDevices = devices.filter((device) => device.platform === 'web');
+            if (webDevices.length === 0) {
+                return { success: false, error: 'No web push subscriptions found for user' };
+            }
+
+            if (!vapidDetails) {
+                return { success: false, error: 'VAPID keys not configured' };
+            }
+
+            for (const device of webDevices) {
+                await sendWebPush(device);
+            }
+        } else if (pushConfig.provider === 'firebase') {
             try {
                 // Validate required Firebase config
                 if (!pushConfig.projectId || !pushConfig.privateKey || !pushConfig.clientEmail) {
-                    return { success: false, error: 'Firebase configuration incomplete. Please configure Project ID, Private Key, and Client Email in Settings → System → Notification Providers' };
+                    return { success: false, error: 'Firebase configuration incomplete. Please configure Project ID, Private Key, and Client Email in Settings -> System -> Notification Providers' };
                 }
 
                 // Use runtime require to avoid build-time dependency
@@ -97,6 +174,13 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
                 // Send to all devices
                 for (const device of devices) {
                     try {
+                        // Handle Web Push (PWA)
+                        if (device.platform === 'web') {
+                            await sendWebPush(device);
+                            continue;
+                        }
+
+                        // ... existing Firebase logic ...
                         const message = {
                             notification: {
                                 title: options.title,
@@ -145,7 +229,7 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
             try {
                 // Validate required OneSignal config
                 if (!pushConfig.appId || !pushConfig.restApiKey) {
-                    return { success: false, error: 'OneSignal configuration incomplete. Please configure App ID and REST API Key in Settings → System → Notification Providers' };
+                    return { success: false, error: 'OneSignal configuration incomplete. Please configure App ID and REST API Key in Settings -> System -> Notification Providers' };
                 }
 
                 // Use runtime require to avoid build-time dependency
@@ -173,7 +257,7 @@ export async function sendPush(options: PushOptions): Promise<{ success: boolean
                         data: { lastUsed: new Date() }
                     });
                     successCount = devices.length;
-                    console.log('Push sent via OneSignal:', { userId: options.userId, notificationId: response.body.id, devices: devices.length });
+                    logger.info('Push sent via OneSignal', { userId: options.userId, notificationId: response.body.id, devices: devices.length });
                 } else {
                     return { success: false, error: 'OneSignal API returned no notification ID' };
                 }
@@ -247,11 +331,11 @@ export async function sendIncidentPush(
             }).format(date);
         };
 
-        const eventEmoji = eventType === 'triggered' ? '🚨' :
-            eventType === 'acknowledged' ? '⚠️' :
-                '✅';
+        const eventEmoji = eventType === 'triggered' ? 'ALERT' :
+            eventType === 'acknowledged' ? 'ACK' :
+                'OK';
 
-        const urgencyEmoji = incident.urgency === 'HIGH' ? '🔴' : '🟡';
+        const urgencyEmoji = incident.urgency === 'HIGH' ? '!' : 'i';
         const urgencyLabel = incident.urgency === 'HIGH' ? 'CRITICAL' : 'INFO';
 
         const statusLabel = eventType === 'resolved'
@@ -263,9 +347,9 @@ export async function sendIncidentPush(
         // Build title and body
         const title = `${eventEmoji} ${statusLabel} - ${incident.title}`;
 
-        let body = `${urgencyEmoji} ${urgencyLabel} • ${incident.service.name}`;
+        let body = `${urgencyEmoji} ${urgencyLabel} - ${incident.service.name}`;
         if (incident.assignee) {
-            body += ` • ${incident.assignee.name}`;
+            body += ` - ${incident.assignee.name}`;
         }
         body += `\n${formatTime(incident.createdAt)}`;
 

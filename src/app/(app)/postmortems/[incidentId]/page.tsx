@@ -106,7 +106,7 @@ export default async function PostmortemPage({
                     <PostmortemForm incidentId={incidentId} users={users} />
                 ) : (
                     <div style={{ padding: 'var(--spacing-4)', background: 'var(--color-warning-light)', borderRadius: 'var(--radius-md)' }}>
-                        <p>You don't have permission to create postmortems.</p>
+                        <p>You don&apos;t have permission to create postmortems.</p>
                     </div>
                 )}
             </div>
@@ -151,7 +151,7 @@ export default async function PostmortemPage({
                 )
             ) : (
                 <div style={{ padding: 'var(--spacing-4)', background: 'var(--color-warning-light)', borderRadius: 'var(--radius-md)' }}>
-                    <p>You don't have permission to view this postmortem. Only published postmortems are publicly viewable.</p>
+                    <p>You don&apos;t have permission to view this postmortem. Only published postmortems are publicly viewable.</p>
                 </div>
             )}
         </div>

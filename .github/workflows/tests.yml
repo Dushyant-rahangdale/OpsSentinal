@@ -57,6 +57,13 @@ jobs:
         # Migrations in this repo may lag behind schema.prisma; for CI tests we need the latest schema.
         run: npx prisma db push --force-reset --accept-data-loss --skip-generate
 
+      - name: Migration validation
+        run: |
+          mkdir -p reports
+          npm run prisma:validate
+
+
+
       - name: Unit tests
         # DB-backed tests share a single database; run files serially to avoid cross-test contention.
         run: |
@@ -80,7 +87,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Unit tests (Vitest)
+          name: '✅ Tests: Unit (Vitest)'
           path: reports/*.xml
           reporter: java-junit
 
@@ -91,58 +98,80 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
 
-          const xmlFiles = fs.readdirSync('reports').filter((f) => f.endsWith('.xml'));
-
-          const parseCounts = (xml) => {
-            const head = (xml.match(/<testsuites[^>]*>/) || [''])[0];
-            const get = (key) => {
-              const m = head.match(new RegExp(`${key}="(\\d+)"`));
-              return m ? Number(m[1]) : 0;
-            };
-            return {
-              tests: get('tests'),
-              failures: get('failures'),
-              errors: get('errors'),
-              skipped: get('skipped'),
-            };
+          // Robust XML attribute parser
+          const getAttr = (tag, attr) => {
+            const match = tag.match(new RegExp(`${attr}="([^"]*)"`));
+            return match ? Number(match[1]) : 0;
           };
 
-          const totals = xmlFiles.reduce(
-            (acc, f) => {
-              const xml = fs.readFileSync(`reports/${f}`, 'utf8');
-              const c = parseCounts(xml);
-              acc.tests += c.tests;
-              acc.failures += c.failures;
-              acc.errors += c.errors;
-              acc.skipped += c.skipped;
-              return acc;
-            },
-            { tests: 0, failures: 0, errors: 0, skipped: 0 }
-          );
+          const parseXml = (content) => {
+            // Check for root <testsuites>
+            const suitesMatch = content.match(/<testsuites[^>]*>/);
+            if (suitesMatch) {
+              return {
+                tests: getAttr(suitesMatch[0], 'tests'),
+                failures: getAttr(suitesMatch[0], 'failures'),
+                errors: getAttr(suitesMatch[0], 'errors'),
+                skipped: getAttr(suitesMatch[0], 'skipped'),
+              };
+            }
+            
+            // Fallback: Check for root <testsuite> (common in single-suite runs)
+            const suiteMatch = content.match(/<testsuite[^>]*>/);
+            if (suiteMatch) {
+              return {
+                tests: getAttr(suiteMatch[0], 'tests'),
+                failures: getAttr(suiteMatch[0], 'failures'),
+                errors: getAttr(suiteMatch[0], 'errors'),
+                skipped: getAttr(suiteMatch[0], 'skipped'),
+              };
+            }
+            
+            return { tests: 0, failures: 0, errors: 0, skipped: 0 };
+          };
 
-          const tests = totals.tests;
-          const failures = totals.failures;
-          const errors = totals.errors;
-          const skipped = totals.skipped;
-          const passed = Math.max(0, tests - failures - errors - skipped);
+          try {
+            const xmlFiles = fs.readdirSync('reports').filter((f) => f.endsWith('.xml'));
+            console.log(`Found ${xmlFiles.length} XML files: ${xmlFiles.join(', ')}`);
 
-          const status = failures || errors ? '❌ Failed' : '✅ Passed';
-          const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const totals = xmlFiles.reduce(
+              (acc, f) => {
+                const xml = fs.readFileSync(`reports/${f}`, 'utf8');
+                const c = parseXml(xml);
+                acc.tests += c.tests;
+                acc.failures += c.failures;
+                acc.errors += c.errors;
+                acc.skipped += c.skipped;
+                return acc;
+              },
+              { tests: 0, failures: 0, errors: 0, skipped: 0 }
+            );
 
-          const md = [
-            `## ${status} Vitest results`,
-            '',
-            `- **Total**: ${tests}`,
-            `- **Passed**: ${passed}`,
-            `- **Failed**: ${failures + errors}`,
-            `- **Skipped**: ${skipped}`,
-            '',
-            `**Run**: ${runUrl}`,
-            '**JUnit artifact**: `vitest-junit` (`reports/*.xml`)',
-            '',
-          ].join('\n');
+            console.log('Parsed Totals:', totals);
 
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `markdown<<EOF\n${md}\nEOF\n`);
+            const passed = Math.max(0, totals.tests - totals.failures - totals.errors - totals.skipped);
+            const status = (totals.failures > 0 || totals.errors > 0) ? '❌ Failed' : '✅ Passed';
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+
+            const md = [
+              `## ${status} Vitest Results`,
+              '',
+              '| Metric | Count |',
+              '| :--- | :---: |',
+              `| **Total Tests** | ${totals.tests} |`,
+              `| **Passed** | ${passed} |`,
+              `| **Failed** | ${totals.failures + totals.errors} |`,
+              `| **Skipped** | ${totals.skipped} |`,
+              '',
+              `[View Full Test Report](${runUrl})`,
+              '',
+            ].join('\n');
+
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `markdown<<EOF\n${md}\nEOF\n`);
+          } catch (error) {
+            console.error('Error summarizing results:', error);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `markdown<<EOF\n## ⚠️ Test Summary generation failed\nCheck job logs for details.\nEOF\n`);
+          }
           NODE
 
       - name: Post results to PR conversation (sticky)

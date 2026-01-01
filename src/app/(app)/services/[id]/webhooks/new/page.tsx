@@ -4,8 +4,16 @@ import HoverLink from '@/components/service/HoverLink';
 import ServiceTabs from '@/components/service/ServiceTabs';
 import { createWebhookIntegration } from '../actions';
 
-export default async function NewWebhookPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NewWebhookPage({
+    params,
+    searchParams
+}: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<{ error?: string }>;
+}) {
     const { id } = await params;
+    const resolvedSearchParams = await searchParams;
+    const errorCode = resolvedSearchParams?.error;
     const service = await prisma.service.findUnique({
         where: { id },
         select: { id: true, name: true }
@@ -59,6 +67,21 @@ export default async function NewWebhookPage({ params }: { params: Promise<{ id:
                 </div>
                 <ServiceTabs serviceId={id} />
             </div>
+
+            {errorCode === 'duplicate-webhook' && (
+                <div className="glass-panel" style={{
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.5rem',
+                    background: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    borderRadius: '0px'
+                }}>
+                    A webhook integration with this name already exists. Please choose a unique name.
+                </div>
+            )}
 
             <div className="glass-panel" style={{ padding: '2rem', background: 'white', borderRadius: '0px', border: '1px solid var(--border)' }}>
                 <form action={createWebhookWithId} style={{ display: 'grid', gap: '2rem' }}>

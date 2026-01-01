@@ -7,11 +7,15 @@ import { updateWebhookIntegration, deleteWebhookIntegration } from '../../action
 import { notFound } from 'next/navigation';
 
 export default async function EditWebhookPage({
-    params
+    params,
+    searchParams
 }: {
-    params: Promise<{ id: string; webhookId: string }>
+    params: Promise<{ id: string; webhookId: string }>;
+    searchParams?: Promise<{ error?: string }>;
 }) {
     const { id, webhookId } = await params;
+    const resolvedSearchParams = await searchParams;
+    const errorCode = resolvedSearchParams?.error;
 
     const [service, webhook] = await Promise.all([
         prisma.service.findUnique({
@@ -65,6 +69,21 @@ export default async function EditWebhookPage({
                 </div>
                 <ServiceTabs serviceId={id} />
             </div>
+
+            {errorCode === 'duplicate-webhook' && (
+                <div className="glass-panel" style={{
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.5rem',
+                    background: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    borderRadius: '0px'
+                }}>
+                    A webhook integration with this name already exists. Please choose a unique name.
+                </div>
+            )}
 
             <div className="glass-panel" style={{ padding: '2rem', background: 'white', borderRadius: '0px', border: '1px solid var(--border)' }}>
                 <form action={updateWebhookWithIds} style={{ display: 'grid', gap: '2rem' }}>

@@ -42,8 +42,8 @@ export async function bulkAcknowledge(incidentIds: string[]) {
 
             // Send notifications
             try {
-                const { sendServiceNotifications } = await import('@/lib/user-notifications');
-                await sendServiceNotifications(incidentId, 'acknowledged');
+                const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+                await sendIncidentNotifications(incidentId, 'acknowledged');
 
                 const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
                 await notifyStatusPageSubscribers(incidentId, 'acknowledged');
@@ -129,8 +129,8 @@ export async function bulkResolve(incidentIds: string[]) {
 
             // Send notifications
             try {
-                const { sendServiceNotifications } = await import('@/lib/user-notifications');
-                await sendServiceNotifications(incidentId, 'resolved');
+                const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+                await sendIncidentNotifications(incidentId, 'resolved');
 
                 const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
                 await notifyStatusPageSubscribers(incidentId, 'resolved');
@@ -218,8 +218,8 @@ export async function bulkReassign(incidentIds: string[], assigneeId: string) {
 
             // Send notifications
             try {
-                const { sendServiceNotifications } = await import('@/lib/user-notifications');
-                await sendServiceNotifications(incidentId, 'updated');
+                const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+                await sendIncidentNotifications(incidentId, 'updated');
 
                 // Webhook for assignment change (incident.updated or incident.assigned if supported)
                 const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
@@ -607,18 +607,18 @@ export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | '
 
             // Send notifications based on status
             try {
-                const { sendServiceNotifications } = await import('@/lib/user-notifications');
+                const { sendIncidentNotifications } = await import('@/lib/user-notifications');
                 const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
                 const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
 
                 if (status === 'ACKNOWLEDGED') {
-                    await sendServiceNotifications(incidentId, 'acknowledged');
+                    await sendIncidentNotifications(incidentId, 'acknowledged');
                     await notifyStatusPageSubscribers(incidentId, 'acknowledged');
                 } else if (status === 'RESOLVED') {
-                    await sendServiceNotifications(incidentId, 'resolved');
+                    await sendIncidentNotifications(incidentId, 'resolved');
                     await notifyStatusPageSubscribers(incidentId, 'resolved');
                 } else if (status === 'OPEN') {
-                    await sendServiceNotifications(incidentId, 'updated');
+                    await sendIncidentNotifications(incidentId, 'updated');
                     // Note: subscribers don't usually get "re-opened" emails unless we specifically want to
                     // But webhooks might care.
                 }

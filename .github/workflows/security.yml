@@ -318,7 +318,7 @@ jobs:
         if: always()
         with:
           files: combined-reports/*.xml
-          check_name: '🔒 Security Scan Results'
-          comment_title: '🔒 Security Suite Summary'
+          check_name: '🔒 Security: Scan Summary'
+          comment_title: '🔒 Security: Results Summary'
           comment_mode: 'always'
         continue-on-error: true

@@ -235,11 +235,39 @@ const providerConfigs: ProviderConfigSchema[] = [
         placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
       },
       {
-        name: 'apiKey',
+        name: 'restApiKey', // Map to correct field name expected by backend if differing
         label: 'REST API Key',
         type: 'password',
         required: true,
         placeholder: 'Your OneSignal API key',
+      },
+    ],
+  },
+  {
+    key: 'web-push',
+    name: 'Web Push (PWA)',
+    description: 'Send native PWA Push Notifications (Standard Web Push)',
+    fields: [
+      {
+        name: 'vapidPublicKey',
+        label: 'VAPID Public Key',
+        type: 'text',
+        required: true,
+        placeholder: 'BFRf...',
+      },
+      {
+        name: 'vapidPrivateKey',
+        label: 'VAPID Private Key',
+        type: 'password',
+        required: true,
+        placeholder: 'Private key (secret)',
+      },
+      {
+        name: 'vapidSubject',
+        label: 'Contact Email (mailto:)',
+        type: 'text',
+        required: true,
+        placeholder: 'mailto:admin@example.com',
       },
     ],
   },
@@ -258,18 +286,18 @@ export default function SystemNotificationSettings({ providers }: SystemNotifica
   // Create a virtual WhatsApp provider entry
   const whatsappProvider: ProviderRecord | undefined = whatsappConfig?.whatsappNumber
     ? {
-        id: twilioProvider?.id || '',
-        provider: 'whatsapp',
-        enabled: whatsappEnabled,
-        config: {
-          whatsappNumber: whatsappConfig.whatsappNumber,
-          whatsappEnabled: whatsappConfig.whatsappEnabled,
-          whatsappContentSid: whatsappConfig.whatsappContentSid,
-          whatsappAccountSid: whatsappConfig.whatsappAccountSid,
-          whatsappAuthToken: whatsappConfig.whatsappAuthToken,
-        },
-        updatedAt: twilioProvider?.updatedAt || new Date(),
-      }
+      id: twilioProvider?.id || '',
+      provider: 'whatsapp',
+      enabled: whatsappEnabled,
+      config: {
+        whatsappNumber: whatsappConfig.whatsappNumber,
+        whatsappEnabled: whatsappConfig.whatsappEnabled,
+        whatsappContentSid: whatsappConfig.whatsappContentSid,
+        whatsappAccountSid: whatsappConfig.whatsappAccountSid,
+        whatsappAuthToken: whatsappConfig.whatsappAuthToken,
+      },
+      updatedAt: twilioProvider?.updatedAt || new Date(),
+    }
     : undefined;
 
   return (

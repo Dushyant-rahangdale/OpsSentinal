@@ -45,21 +45,27 @@ export async function GET(req: NextRequest) {
 
             send(JSON.stringify({ type: 'connected', message: 'Notification stream connected' }));
 
-            // Poll for new notifications every 2 seconds
+            // Poll for new notifications every 5 seconds (reduced from 2s to save DB)
             let lastCheck = new Date();
+            let pollCount = 0;
+
             const pollInterval = setInterval(async () => {
+                pollCount++;
                 try {
+                    // Optimized query: purely time-based, uses index [userId, createdAt]
+                    // We check for ANY new notification regardless of read status to notify the user
                     const newNotifications = await prisma.inAppNotification.findMany({
                         where: {
                             userId: user.id,
                             createdAt: {
                                 gt: lastCheck
-                            },
-                            readAt: null
+                            }
                         },
                         orderBy: { createdAt: 'desc' },
                         take: 10
                     });
+
+                    let shouldUpdateUnreadCount = false;
 
                     if (newNotifications.length > 0) {
                         const formattedNotifications = newNotifications.map((notification) => {
@@ -81,7 +87,7 @@ export async function GET(req: NextRequest) {
                                 title: notification.title,
                                 message: notification.message,
                                 time: timeAgo,
-                                unread: true,
+                                unread: !notification.readAt,
                                 type,
                                 incidentId,
                                 createdAt: notification.createdAt.toISOString()
@@ -96,20 +102,28 @@ export async function GET(req: NextRequest) {
 
                         // Update last check time
                         lastCheck = newNotifications[0].createdAt;
+                        shouldUpdateUnreadCount = true;
                     }
 
-                    // Also check unread count
-                    const unreadCount = await prisma.inAppNotification.count({
-                        where: {
-                            userId: user.id,
-                            readAt: null
-                        }
-                    });
+                    // Optimized Unread Count:
+                    // Only check unread count if:
+                    // 1. We found new notifications (count definitely changed)
+                    // 2. OR: Every 5th poll (every 25s) to catch up on "mark as read" from other tabs/devices
+                    if (shouldUpdateUnreadCount || pollCount % 5 === 0) {
+                        const unreadCount = await prisma.inAppNotification.count({
+                            where: {
+                                userId: user.id,
+                                readAt: null
+                            }
+                        });
 
-                    send(JSON.stringify({
-                        type: 'unread_count',
-                        count: unreadCount
-                    }));
+                        send(JSON.stringify({
+                            type: 'unread_count',
+                            count: unreadCount
+                        }));
+                    }
+
+                    send(JSON.stringify({ type: 'heartbeat', timestamp: new Date().toISOString() }));
                 } catch (error) {
                     logger.error('Error polling notifications', { component: 'api-notifications-stream', error });
                     send(JSON.stringify({
@@ -117,7 +131,7 @@ export async function GET(req: NextRequest) {
                         message: 'Error fetching notifications'
                     }));
                 }
-            }, 2000);
+            }, 5000);
 
             // Cleanup on client disconnect
             req.signal.addEventListener('abort', () => {

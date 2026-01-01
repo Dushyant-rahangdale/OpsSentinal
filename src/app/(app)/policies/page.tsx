@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export const revalidate = 30;
 
-export default async function PoliciesPage() {
+export default async function PoliciesPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
     const [policies, users, teams] = await Promise.all([
         prisma.escalationPolicy.findMany({
             include: {
@@ -36,6 +36,8 @@ export default async function PoliciesPage() {
 
     const permissions = await getUserPermissions();
     const canCreatePolicy = permissions.isAdmin;
+    const resolvedSearchParams = await searchParams;
+    const errorCode = resolvedSearchParams?.error;
 
     return (
         <main style={{ padding: '1rem' }}>
@@ -56,6 +58,21 @@ export default async function PoliciesPage() {
                     </p>
                 </div>
             </header>
+
+            {errorCode === 'duplicate-policy' && (
+                <div className="glass-panel" style={{
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.5rem',
+                    background: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    borderRadius: '0px'
+                }}>
+                    An escalation policy with this name already exists. Please choose a unique name.
+                </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
                 {/* Policies List */}

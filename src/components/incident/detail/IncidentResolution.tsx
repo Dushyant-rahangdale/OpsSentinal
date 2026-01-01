@@ -70,7 +70,7 @@ export default function IncidentResolution({
           </span>
         </div>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          ⚠️ You don't have access to resolve incidents. Responder role or above required.
+          ⚠️ You don&apos;t have access to resolve incidents. Responder role or above required.
         </p>
         <div style={{ display: 'grid', gap: '0.75rem', opacity: 0.5, pointerEvents: 'none' }}>
           <textarea
