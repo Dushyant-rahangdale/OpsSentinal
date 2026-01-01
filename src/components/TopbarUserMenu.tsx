@@ -93,26 +93,26 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
                         {formatRole(role)}
                     </span>
                 </div>
-                <svg 
+                <svg
                     className={`user-menu-chevron ${open ? 'open' : ''}`}
-                    width="16" 
-                    height="16" 
-                    viewBox="0 0 16 16" 
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
                     fill="none"
                 >
-                    <path 
-                        d="M4 6L8 10L12 6" 
-                        stroke="currentColor" 
-                        strokeWidth="1.5" 
-                        strokeLinecap="round" 
+                    <path
+                        d="M4 6L8 10L12 6"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
                         strokeLinejoin="round"
                     />
                 </svg>
             </button>
             {open && (
-                <div 
-                    className="user-menu-dropdown" 
-                    role="menu" 
+                <div
+                    className="user-menu-dropdown"
+                    role="menu"
                     aria-label="User menu"
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -138,33 +138,54 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
 
                     {/* Quick Actions */}
                     <div className="user-menu-section">
-                        <Link 
-                            className="user-menu-item" 
+                        <Link
+                            className="user-menu-item"
                             href="/settings"
                             onClick={() => setOpen(false)}
                         >
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M8 0L0 4V8C0 12.4183 3.58172 16 8 16C12.4183 16 16 12.4183 16 8V4L8 0Z" fill="currentColor" fillOpacity="0.6"/>
-                                <path d="M8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10Z" fill="currentColor"/>
+                                <path d="M8 0L0 4V8C0 12.4183 3.58172 16 8 16C12.4183 16 16 12.4183 16 8V4L8 0Z" fill="currentColor" fillOpacity="0.6" />
+                                <path d="M8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10Z" fill="currentColor" />
                             </svg>
                             <span>Settings</span>
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 'auto', opacity: 0.4 }}>
-                                <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </Link>
-                        <Link 
-                            className="user-menu-item" 
+                        <Link
+                            className="user-menu-item"
                             href="/help"
                             onClick={() => setOpen(false)}
                         >
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M8 0C3.58172 0 0 3.58172 0 8C0 12.4183 3.58172 16 8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 0 8 0ZM8 12C7.44772 12 7 11.5523 7 11C7 10.4477 7.44772 10 8 10C8.55228 10 9 10.4477 9 11C9 11.5523 8.55228 12 8 12ZM9 8C9 8.55228 8.55228 9 9 9C9.55228 9 10 8.55228 10 8C10 6.34315 8.65685 5 7 5C5.34315 5 4 6.34315 4 8H5C5 7.44772 5.44772 7 6 7C6.55228 7 7 7.44772 7 8V9H9V8Z" fill="currentColor" fillOpacity="0.6"/>
+                                <path d="M8 0C3.58172 0 0 3.58172 0 8C0 12.4183 3.58172 16 8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 0 8 0ZM8 12C7.44772 12 7 11.5523 7 11C7 10.4477 7.44772 10 8 10C8.55228 10 9 10.4477 9 11C9 11.5523 8.55228 12 8 12ZM9 8C9 8.55228 8.55228 9 9 9C9.55228 9 10 8.55228 10 8C10 6.34315 8.65685 5 7 5C5.34315 5 4 6.34315 4 8H5C5 7.44772 5.44772 7 6 7C6.55228 7 7 7.44772 7 8V9H9V8Z" fill="currentColor" fillOpacity="0.6" />
                             </svg>
                             <span>Help & Support</span>
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 'auto', opacity: 0.4 }}>
-                                <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </Link>
+                    </div>
+
+                    <div className="user-menu-divider" />
+
+                    {/* Mobile View Toggle */}
+                    <div className="user-menu-section">
+                        <button
+                            type="button"
+                            className="user-menu-item"
+                            onClick={() => {
+                                setOpen(false);
+                                document.cookie = "prefer-desktop=; path=/; max-age=0";
+                                window.location.href = '/m';
+                            }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                                <line x1="12" y1="18" x2="12.01" y2="18" />
+                            </svg>
+                            <span>Switch to Mobile View</span>
+                        </button>
                     </div>
 
                     <div className="user-menu-divider" />
@@ -180,9 +201,9 @@ export default function TopbarUserMenu({ name, role, email }: Props) {
                             }}
                         >
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M6 14H3C2.44772 14 2 13.5523 2 13V3C2 2.44772 2.44772 2 3 2H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M10 11L13 8L10 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M6 14H3C2.44772 14 2 13.5523 2 13V3C2 2.44772 2.44772 2 3 2H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M10 11L13 8L10 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                             <span>Sign out</span>
                         </button>

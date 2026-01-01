@@ -3,7 +3,16 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from './src/lib/rate-limit';
 
-const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status', '/setup', '/logs'];
+const PUBLIC_PATH_PREFIXES = ['/login', '/set-password', '/api', '/status', '/setup', '/logs', '/m'];
+
+/**
+ * Detect mobile device from User-Agent header
+ */
+function isMobileUserAgent(userAgent: string | null): boolean {
+    if (!userAgent) return false;
+    // Match common mobile device patterns
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(userAgent);
+}
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((value) => value.trim())
@@ -122,6 +131,61 @@ export async function middleware(req: NextRequest) {
     Object.entries(securityHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
     });
+
+    // ===== MOBILE DEVICE REDIRECT =====
+    // Redirect mobile users to /m/* routes for optimized mobile experience
+    const userAgent = req.headers.get('user-agent');
+    const isMobile = isMobileUserAgent(userAgent);
+    const preferDesktop = req.cookies.get('prefer-desktop')?.value === 'true';
+
+    // Redirect mobile users to mobile routes, unless:
+    // - Already on mobile route (/m/*)
+    // - User prefers desktop (cookie set)
+    // - Accessing API, static files, or setup pages
+    const shouldRedirectToMobile = isMobile
+        && !preferDesktop
+        && !pathname.startsWith('/m')
+        && !pathname.startsWith('/api')
+        && !pathname.startsWith('/setup')
+        && !pathname.startsWith('/_next')
+        && !pathname.startsWith('/favicon')
+        && !/\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot)$/i.test(pathname);
+
+    if (shouldRedirectToMobile) {
+        const mobileUrl = req.nextUrl.clone();
+        // Map desktop routes to mobile equivalents
+        if (pathname === '/') {
+            mobileUrl.pathname = '/m';
+        } else if (pathname === '/login') {
+            // Special redirect for login page
+            mobileUrl.pathname = '/m/login';
+        } else if (pathname === '/forgot-password') {
+            // Special redirect for forgot password page
+            mobileUrl.pathname = '/m/forgot-password';
+        } else {
+            mobileUrl.pathname = `/m${pathname}`;
+        }
+        const redirectResponse = NextResponse.redirect(mobileUrl);
+        Object.entries(securityHeaders).forEach(([key, value]) => {
+            redirectResponse.headers.set(key, value);
+        });
+        return redirectResponse;
+    }
+
+    // STRICT CHECK: If on mobile, prohibit access to desktop pages if not explicitly opted in
+    // This covers case where user manually types /incidents
+    if (isMobile && !preferDesktop && !pathname.startsWith('/m') && !pathname.startsWith('/api') && !pathname.startsWith('/login') && !pathname.startsWith('/_next') && !isPublicPath(pathname)) {
+        const mobileUrl = req.nextUrl.clone();
+        mobileUrl.pathname = '/m'; // Send to mobile home or attempt mapping
+        // Attempt mapping
+        if (pathname !== '/') mobileUrl.pathname = `/m${pathname}`;
+
+        const redirectResponse = NextResponse.redirect(mobileUrl);
+        Object.entries(securityHeaders).forEach(([key, value]) => {
+            redirectResponse.headers.set(key, value);
+        });
+        return redirectResponse;
+    }
 
     if (pathname.startsWith('/api')) {
         const originAllowed = origin && CORS_ALLOWED_ORIGINS.includes(origin);

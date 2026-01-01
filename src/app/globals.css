@@ -182,8 +182,89 @@
   --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
   --gradient-surface: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 
+  /* Badge Colors */
+  --badge-success-bg: #dcfce7;
+  --badge-success-text: #16a34a;
+  --badge-warning-bg: #fef3c7;
+  --badge-warning-text: #d97706;
+  --badge-error-bg: #fee2e2;
+  --badge-error-text: #dc2626;
+  --badge-snoozed-bg: #e0e7ff;
+  --badge-snoozed-text: #4f46e5;
+  --badge-neutral-bg: #f3f4f6;
+  --badge-neutral-text: #6b7280;
+
   /* Layout */
   --sidebar-width: 240px;
+}
+
+[data-theme='dark'] .mobile-shell {
+  /* Slate Dark Theme Override - Scoped to Mobile */
+  --primary: #f8fafc;
+  /* Slate 50 */
+  --primary-hover: #e2e8f0;
+  /* Slate 200 */
+  --primary-light: #94a3b8;
+  /* Slate 400 */
+  --primary-dark: #ffffff;
+
+  --secondary: #94a3b8;
+  /* Slate 400 */
+  --accent: #3b82f6;
+  /* Blue 500 */
+
+  --bg-primary: #0f172a;
+  /* Slate 950 (Main BG) */
+  --bg-secondary: #1e293b;
+  /* Slate 900 (Card BG) */
+  --bg-dark: #020617;
+  /* Slate 950+ */
+  --bg-surface: #1e293b;
+  /* Slate 900 */
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+
+  --text-primary: #f8fafc;
+  /* Slate 50 */
+  --text-secondary: #cbd5e1;
+  /* Slate 300 */
+  --text-muted: #94a3b8;
+  /* Slate 400 */
+  --text-inverse: #0f172a;
+  /* Slate 950 */
+  --text-tertiary: #64748b;
+  /* Slate 500 */
+
+  --border: #334155;
+  /* Slate 700 */
+  --border-hover: #475569;
+  /* Slate 600 */
+  --border-focus: rgba(59, 130, 246, 0.5);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+
+  /* Status Colors Adjustments for Dark Mode */
+  --color-neutral-50: #1e293b;
+  --color-neutral-100: #1e293b;
+  --color-neutral-200: #334155;
+  --color-neutral-300: #475569;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --gradient-surface: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+
+  /* Badge Colors - Dark Mode */
+  --badge-success-bg: rgba(5, 150, 105, 0.2);
+  --badge-success-text: #34d399;
+  --badge-warning-bg: rgba(217, 119, 6, 0.2);
+  --badge-warning-text: #fbbf24;
+  --badge-error-bg: rgba(190, 18, 60, 0.2);
+  --badge-error-text: #fb7185;
+  --badge-snoozed-bg: rgba(79, 70, 229, 0.2);
+  --badge-snoozed-text: #818cf8;
+  --badge-neutral-bg: rgba(107, 114, 128, 0.2);
+  --badge-neutral-text: #9ca3af;
 }
 
 .focus-border:focus,
@@ -11547,6 +11628,7 @@ span:hover>.info-tooltip {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem;
+  min-height: 0;
 }
 
 .topbar-notification-item {
@@ -11640,7 +11722,8 @@ span:hover>.info-tooltip {
 .topbar-notifications-footer {
   padding: 0.75rem 1.25rem;
   border-top: 1px solid rgba(229, 231, 235, 0.6);
-  background: rgba(249, 250, 251, 0.5);
+  background: #ffffff;
+  z-index: 10;
 }
 
 .topbar-notifications-view-all {

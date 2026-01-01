@@ -237,9 +237,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         else if (status === 'RESOLVED') eventType = 'resolved';
         // If status didn't change but we had an update, it's 'updated'
 
-        const { sendServiceNotifications } = await import('@/lib/service-notifications');
+        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
         // Run in background
-        sendServiceNotifications(incident.id, eventType).catch(err => {
+        sendIncidentNotifications(incident.id, eventType).catch(err => {
             logger.error('api.incident.service_notification_failed', { error: err.message, incidentId: incident.id });
         });
     } catch (e) {

@@ -20,8 +20,8 @@ export async function getNotificationProviders() {
         id: p.id,
         provider: p.provider,
         enabled: p.enabled,
-        config: p.config as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-        updatedAt: p.updatedAt
+        config: (p.config as Record<string, unknown>) || {},
+        updatedAt: p.updatedAt.toISOString()
     }));
 }
 

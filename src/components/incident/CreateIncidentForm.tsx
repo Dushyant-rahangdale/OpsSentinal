@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useActionState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createIncident } from '@/app/(app)/incidents/actions';
 import CustomFieldInput from '@/components/CustomFieldInput';
 
@@ -64,19 +65,29 @@ export default function CreateIncidentForm({
 
     // Wrap server action with useActionState to avoid serialization issues
     // Since createIncident redirects, we don't need to handle state
-    const [_state, formAction, isPending] = useActionState(async (prevState: null, formData: FormData) => {
-        await createIncident(formData);
-        return null; // This won't be reached due to redirect, but satisfies the type
+    const router = useRouter(); // Use App Router's useRouter
+
+    // Wrap server action with useActionState to avoid serialization issues
+    // Since createIncident returns { id }, we use that to redirect
+    const [state, formAction, isPending] = useActionState(async (prevState: { id: string } | null, formData: FormData) => {
+        return await createIncident(formData);
     }, null);
+
+    // Initial redirect when incident is created
+    useEffect(() => {
+        if (state && state.id) {
+            router.push(`/incidents/${state.id}`);
+        }
+    }, [state, router]);
 
     // Update form when template changes (from URL or direct selection)
     useEffect(() => {
         if (selectedTemplate) {
             setTitle(selectedTemplate.title); // eslint-disable-line react-hooks/set-state-in-effect
-            setDescription(selectedTemplate.descriptionText || '');  
-            setServiceId(selectedTemplate.defaultService?.id || '');  
-            setUrgency(selectedTemplate.defaultUrgency);  
-            setPriority(selectedTemplate.defaultPriority || '');  
+            setDescription(selectedTemplate.descriptionText || '');
+            setServiceId(selectedTemplate.defaultService?.id || '');
+            setUrgency(selectedTemplate.defaultUrgency);
+            setPriority(selectedTemplate.defaultPriority || '');
         }
     }, [selectedTemplate]); // Watch for selectedTemplate changes
 

@@ -105,14 +105,14 @@ export async function updateIncidentStatus(id: string, status: IncidentStatus) {
     // Send service-level notifications for status changes
     // Uses user preferences for each recipient
     try {
-        const { sendServiceNotifications } = await import('@/lib/service-notifications');
+        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
         if (status === 'ACKNOWLEDGED') {
-            await sendServiceNotifications(id, 'acknowledged');
+            await sendIncidentNotifications(id, 'acknowledged');
         } else if (status === 'RESOLVED') {
-            await sendServiceNotifications(id, 'resolved');
+            await sendIncidentNotifications(id, 'resolved');
         } else if (status === 'OPEN' && currentIncident?.status !== 'OPEN') {
             // Status changed to OPEN (e.g., from snoozed/acknowledged)
-            await sendServiceNotifications(id, 'updated');
+            await sendIncidentNotifications(id, 'updated');
         }
     } catch (e) {
         logger.error('Service notification failed', { component: 'incidents-actions', error: e, incidentId: id });
@@ -260,8 +260,8 @@ export async function resolveIncidentWithNote(id: string, resolution: string) {
     // Send service-level notifications for resolution
     // Uses user preferences for each recipient
     try {
-        const { sendServiceNotifications } = await import('@/lib/service-notifications');
-        await sendServiceNotifications(id, 'resolved');
+        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+        await sendIncidentNotifications(id, 'resolved');
     } catch (e) {
         logger.error('Service notification failed', { component: 'incidents-actions', error: e, incidentId: id });
     }
@@ -434,8 +434,8 @@ export async function createIncident(formData: FormData) {
     // Send service-level notifications for new incident
     // Uses user preferences for each recipient
     try {
-        const { sendServiceNotifications } = await import('@/lib/service-notifications');
-        await sendServiceNotifications(incident.id, 'triggered');
+        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+        await sendIncidentNotifications(incident.id, 'triggered', _escalatedUsers);
     } catch (e) {
         logger.error('Service notification failed', { component: 'incidents-actions', error: e, incidentId: incident.id });
     }
@@ -487,7 +487,9 @@ export async function createIncident(formData: FormData) {
     revalidatePath('/incidents');
     revalidatePath(`/incidents/${incident.id}`);
     revalidatePath('/');
-    redirect('/incidents');
+
+    // Return the incident ID so the client can handle redirection (context-aware)
+    return { id: incident.id };
 }
 
 export async function addNote(incidentId: string, content: string) {

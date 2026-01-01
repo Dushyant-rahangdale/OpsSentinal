@@ -16,8 +16,16 @@ import _ConfirmDialog from '@/components/ConfirmDialog';
 
 export const revalidate = 30;
 
-export default async function PolicyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PolicyDetailPage({
+    params,
+    searchParams
+}: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<{ error?: string }>;
+}) {
     const { id } = await params;
+    const resolvedSearchParams = await searchParams;
+    const errorCode = resolvedSearchParams?.error;
 
     const [policy, users, teams, schedules, services] = await Promise.all([
         prisma.escalationPolicy.findUnique({
@@ -134,6 +142,21 @@ export default async function PolicyDetailPage({ params }: { params: Promise<{ i
                     </div>
                 </div>
             </header>
+
+            {errorCode === 'duplicate-policy' && (
+                <div className="glass-panel" style={{
+                    padding: '0.75rem 1rem',
+                    marginBottom: '1.5rem',
+                    background: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    borderRadius: '0px'
+                }}>
+                    An escalation policy with this name already exists. Please choose a unique name.
+                </div>
+            )}
 
             {/* Main Content Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>

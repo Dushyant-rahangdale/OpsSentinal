@@ -3,6 +3,7 @@ import './globals.css';
 import VersionCheck from '@/components/VersionCheck';
 import WebVitalsReporter from '@/components/WebVitalsReporter';
 
+
 export const metadata: Metadata = {
   title: 'OpsSentinal | Enterprise Incident Management',
   description: 'PagerDuty Clone',
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
         <VersionCheck />
         <WebVitalsReporter />

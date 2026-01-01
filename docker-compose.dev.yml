@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: opssentinal
-      POSTGRES_PASSWORD: devpassword
+      POSTGRES_PASSWORD: opssentinal_secure_password_change_me
       POSTGRES_DB: opssentinal_db
     ports:
       - "5432:5432"
@@ -29,7 +29,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://opssentinal:devpassword@opssentinal-db:5432/opssentinal_db
+      - DATABASE_URL=postgresql://opssentinal:opssentinal_secure_password_change_me@opssentinal-db:5432/opssentinal_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key-for-development-only
       - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}

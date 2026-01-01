@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useModalState } from '@/hooks/useModalState';
 import { logger } from '@/lib/logger';
 
@@ -17,11 +18,14 @@ type Notification = {
 };
 
 export default function TopbarNotifications() {
+    const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useModalState('notifications');
     const containerRef = useRef<HTMLDivElement>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -71,13 +75,18 @@ export default function TopbarNotifications() {
         eventSource.onerror = (error) => {
             logger.error('SSE connection error', { component: 'TopbarNotifications', error });
             // Fallback to polling if SSE fails
-            const interval = setInterval(fetchNotifications, 30000);
+            if (!pollIntervalRef.current) {
+                pollIntervalRef.current = setInterval(fetchNotifications, 30000);
+            }
             eventSource.close();
-            return () => clearInterval(interval);
         };
 
         return () => {
             eventSource.close();
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
         };
     }, [fetchNotifications]);
 
@@ -195,7 +204,13 @@ export default function TopbarNotifications() {
                                     className={`topbar-notification-item ${notification.unread ? 'unread' : ''}`}
                                     onClick={() => {
                                         if (notification.incidentId) {
-                                            window.location.href = `/incidents/${notification.incidentId}`;
+                                            const isMobileContext = pathname?.startsWith('/m');
+                                            const targetUrl = isMobileContext
+                                                ? `/m/incidents/${notification.incidentId}`
+                                                : `/incidents/${notification.incidentId}`;
+
+                                            setOpen(false);
+                                            router.push(targetUrl);
                                         }
                                     }}
                                     style={{ cursor: notification.incidentId ? 'pointer' : 'default' }}

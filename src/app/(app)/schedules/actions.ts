@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { assertAdminOrResponder } from '@/lib/rbac';
 import { createInAppNotifications, getScheduleUserIds } from '@/lib/in-app-notifications';
 import { parseDateTimeInTimeZone } from '@/lib/timezone';
+import { assertScheduleNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 type ScheduleFormState = {
     error?: string | null;
     success?: boolean;
@@ -52,13 +53,17 @@ export async function createSchedule(_prevState: ScheduleFormState, formData: Fo
     }
 
     try {
+        const normalizedName = await assertScheduleNameAvailable(name);
         await prisma.onCallSchedule.create({
-            data: { name, timeZone }
+            data: { name: normalizedName, timeZone }
         });
 
         revalidatePath('/schedules');
         return { success: true };
     } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            return { error: 'A schedule with that name already exists.' };
+        }
         return { error: error instanceof Error ? error.message : 'Failed to create schedule.' };
     }
 }
@@ -78,9 +83,10 @@ export async function updateSchedule(scheduleId: string, formData: FormData): Pr
     }
 
     try {
+        const normalizedName = await assertScheduleNameAvailable(name, { excludeId: scheduleId });
         await prisma.onCallSchedule.update({
             where: { id: scheduleId },
-            data: { name, timeZone }
+            data: { name: normalizedName, timeZone }
         });
 
         const scheduleName = await getScheduleName(scheduleId);
@@ -94,6 +100,9 @@ export async function updateSchedule(scheduleId: string, formData: FormData): Pr
         revalidatePath('/schedules');
         return undefined;
     } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            return { error: 'A schedule with that name already exists.' };
+        }
         return { error: error instanceof Error ? error.message : 'Failed to update schedule.' };
     }
 }

@@ -23,9 +23,7 @@ export async function POST() {
         }
 
         // Check if status page exists
-        const existing = await prisma.statusPage.findFirst({
-            where: { enabled: true },
-        });
+        const existing = await prisma.statusPage.findFirst({});
 
         if (existing) {
             return jsonOk({ 

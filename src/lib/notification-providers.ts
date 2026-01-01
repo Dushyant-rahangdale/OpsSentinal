@@ -2,7 +2,7 @@ import prisma from './prisma';
 import { logger } from './logger';
 
 export type SMSProvider = 'twilio' | 'aws-sns' | null;
-export type PushProvider = 'firebase' | 'onesignal' | null;
+export type PushProvider = 'firebase' | 'onesignal' | 'web-push' | null;
 
 export interface SMSConfig {
     enabled: boolean;
@@ -29,6 +29,10 @@ export interface PushConfig {
     // OneSignal config
     appId?: string;
     restApiKey?: string;
+    // Web Push (PWA) config
+    vapidPublicKey?: string;
+    vapidPrivateKey?: string;
+    vapidSubject?: string;
 }
 
 export type EmailProvider = 'resend' | 'sendgrid' | 'smtp' | 'ses' | null;
@@ -356,6 +360,23 @@ export async function getPushConfig(): Promise<PushConfig> {
                     provider: 'onesignal',
                     appId: config.appId,
                     restApiKey: config.restApiKey,
+                };
+            }
+        }
+
+        const webPushProvider = await prisma.notificationProvider.findUnique({
+            where: { provider: 'web-push' }
+        });
+
+        if (webPushProvider && webPushProvider.enabled && webPushProvider.config) {
+            const config = webPushProvider.config as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+            if (config.vapidPublicKey && config.vapidPrivateKey) {
+                return {
+                    enabled: true,
+                    provider: 'web-push',
+                    vapidPublicKey: config.vapidPublicKey,
+                    vapidPrivateKey: config.vapidPrivateKey,
+                    vapidSubject: config.vapidSubject,
                 };
             }
         }

@@ -57,6 +57,16 @@ jobs:
         # Migrations in this repo may lag behind schema.prisma; for CI tests we need the latest schema.
         run: npx prisma db push --force-reset --accept-data-loss --skip-generate
 
+      - name: Migration validation
+        run: |
+          mkdir -p reports
+          npm run prisma:validate
+
+      - name: Migration health check
+        run: |
+          mkdir -p reports
+          npm run prisma:health
+
       - name: Unit tests
         # DB-backed tests share a single database; run files serially to avoid cross-test contention.
         run: |

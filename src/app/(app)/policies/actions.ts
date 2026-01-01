@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { assertAdmin } from '@/lib/rbac';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
+import { assertEscalationPolicyNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 export async function createPolicy(formData: FormData) {
     try {
@@ -51,9 +52,19 @@ export async function createPolicy(formData: FormData) {
         throw new Error('At least one escalation step is required');
     }
 
+    let normalizedName = name;
+    try {
+        normalizedName = await assertEscalationPolicyNameAvailable(name);
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect('/policies?error=duplicate-policy');
+        }
+        throw error;
+    }
+
     const policy = await prisma.escalationPolicy.create({
         data: {
-            name,
+            name: normalizedName,
             description: description || undefined,
             steps: {
                 create: steps
@@ -72,7 +83,7 @@ export async function createPolicy(formData: FormData) {
         entityType: 'ESCALATION_POLICY',
         entityId: policy.id,
         actorId: await getDefaultActorId(),
-        details: { name, stepCount: steps.length }
+        details: { name: normalizedName, stepCount: steps.length }
     });
 
     revalidatePath('/policies');
@@ -89,10 +100,20 @@ export async function updatePolicy(policyId: string, formData: FormData) {
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
 
+    let normalizedName = name;
+    try {
+        normalizedName = await assertEscalationPolicyNameAvailable(name, { excludeId: policyId });
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect(`/policies/${policyId}?error=duplicate-policy`);
+        }
+        throw error;
+    }
+
     await prisma.escalationPolicy.update({
         where: { id: policyId },
         data: {
-            name,
+            name: normalizedName,
             description: description || undefined
         }
     });
@@ -102,7 +123,7 @@ export async function updatePolicy(policyId: string, formData: FormData) {
         entityType: 'ESCALATION_POLICY',
         entityId: policyId,
         actorId: await getDefaultActorId(),
-        details: { name }
+        details: { name: normalizedName }
     });
 
     revalidatePath('/policies');

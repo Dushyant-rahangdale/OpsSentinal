@@ -8,6 +8,7 @@ import AssigneeSection from './AssigneeSection';
 import { Incident, Service } from '@prisma/client';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import styles from './IncidentHeader.module.css';
 
 type IncidentHeaderProps = {
     incident: Incident & {
@@ -26,40 +27,24 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
     const { userTimeZone } = useTimezone();
     const incidentStatus = incident.status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+    const getStatusClass = (status: string) => {
+        switch (status) {
+            case 'RESOLVED': return styles.resolved;
+            case 'ACKNOWLEDGED': return styles.acknowledged;
+            default: return styles.open;
+        }
+    };
+
     return (
-        <div style={{
-            padding: '2rem',
-            marginBottom: '2rem',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 60%, #f3f4f6 100%)',
-            border: '1px solid #e6e8ef',
-            borderRadius: '0px',
-            boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)'
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                <div style={{ flex: 1 }}>
-                    <Link
-                        href="/incidents"
-                        style={{
-                            color: 'var(--text-muted)',
-                            textDecoration: 'none',
-                            fontSize: '0.85rem',
-                            marginBottom: '0.75rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            fontWeight: 500
-                        }}
-                    >
-                        <span style={{ fontSize: '1rem' }}>←</span> Back to Incidents
+        <div className={styles.container}>
+            <div className={styles.topSection}>
+                <div className={styles.mainInfo}>
+                    <Link href="/incidents" className={styles.backLink}>
+                        <span>←</span> Back to Incidents
                     </Link>
 
-                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                        <span style={{
-                            fontSize: '1.7rem',
-                            fontWeight: '800',
-                            letterSpacing: '-0.02em',
-                            color: 'var(--primary)'
-                        }}>
+                    <div className={styles.tagsRow}>
+                        <span className={styles.incidentId}>
                             #{incident.id.slice(-5).toUpperCase()}
                         </span>
                         <StatusBadge status={incidentStatus} size="lg" showDot />
@@ -73,61 +58,36 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
                         <PriorityBadge priority={incident.priority} size="lg" showLabel />
                     </div>
 
-                    <h1 style={{
-                        fontSize: '2.1rem',
-                        fontWeight: '800',
-                        color: 'var(--text-primary)',
-                        marginBottom: '0.35rem',
-                        letterSpacing: '-0.02em',
-                        lineHeight: 1.2
-                    }}>
+                    <h1 className={styles.title}>
                         {incident.title}
                     </h1>
 
                     {incident.description && (
-                        <p style={{
-                            color: 'var(--text-secondary)',
-                            maxWidth: '720px',
-                            lineHeight: 1.6,
-                            fontSize: '1rem'
-                        }}>
+                        <p className={styles.description}>
                             {incident.description}
                         </p>
                     )}
                 </div>
 
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    gap: '0.35rem',
-                    background: 'rgba(15, 23, 42, 0.04)',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0px',
-                    border: '1px solid rgba(15, 23, 42, 0.06)'
-                }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-                        Created
-                    </div>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                <div className={styles.metaPanel}>
+                    <div className={styles.metaLabel}>Created</div>
+                    <div className={styles.metaValue}>
                         {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
                     </div>
+
                     {incident.acknowledgedAt && (
                         <>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '0.5rem' }}>
-                                Acknowledged
-                            </div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            <div className={styles.metaLabel} style={{ marginTop: '0.5rem' }}>Acknowledged</div>
+                            <div className={styles.metaValue} style={{ color: 'var(--text-secondary)' }}>
                                 {formatDateTime(incident.acknowledgedAt, userTimeZone, { format: 'datetime' })}
                             </div>
                         </>
                     )}
+
                     {incident.resolvedAt && (
                         <>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: '0.5rem' }}>
-                                Resolved
-                            </div>
-                            <div style={{ fontWeight: 600, color: 'var(--success)', fontSize: '0.9rem' }}>
+                            <div className={styles.metaLabel} style={{ marginTop: '0.5rem' }}>Resolved</div>
+                            <div className={styles.metaValue} style={{ color: 'var(--color-success)' }}>
                                 {formatDateTime(incident.resolvedAt, userTimeZone, { format: 'datetime' })}
                             </div>
                         </>
@@ -135,82 +95,29 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
                 </div>
             </div>
 
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                marginBottom: '0.75rem',
-                paddingBottom: '0.75rem',
-                borderBottom: '1px solid var(--border)'
-            }}>
-                <div style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: incident.status === 'RESOLVED' ? '#16a34a' : (incident.status === 'ACKNOWLEDGED' ? '#f59e0b' : '#ef4444'),
-                    boxShadow: '0 0 0 6px rgba(239, 68, 68, 0.08)'
-                }}></div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 700 }}>
-                    Incident Overview
-                </div>
+            <div className={styles.overviewHeader}>
+                <div className={`${styles.statusDot} ${getStatusClass(incident.status)}`}></div>
+                <div className={styles.sectionTitle}>Incident Overview</div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.9rem' }}>
-                <div style={{
-                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
-                    border: '1px solid rgba(211,47,47,0.18)',
-                    borderRadius: '0px',
-                    padding: '0.85rem',
-                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
-                }}>
-                    <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.35rem' }}>
-                        Service
-                    </div>
-                    <Link
-                        href={`/services/${incident.serviceId}`}
-                        style={{
-                            color: 'var(--primary)',
-                            textDecoration: 'none',
-                            fontWeight: 700,
-                            fontSize: '0.95rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem'
-                        }}
-                    >
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)' }}></span>
+            <div className={styles.grid}>
+                <div className={styles.card}>
+                    <div className={styles.cardLabel}>Service</div>
+                    <Link href={`/services/${incident.serviceId}`} className={styles.link}>
+                        <span className={styles.linkIcon}></span>
                         {incident.service.name}
                     </Link>
                 </div>
 
-                <div style={{
-                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
-                    border: '1px solid rgba(211,47,47,0.18)',
-                    borderRadius: '0px',
-                    padding: '0.85rem',
-                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
-                }}>
-                    <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.35rem' }}>
-                        Urgency
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: incident.urgency === 'HIGH' ? 'var(--danger)' : 'var(--warning)' }}>
+                <div className={styles.card}>
+                    <div className={styles.cardLabel}>Urgency</div>
+                    <div className={`${styles.cardValue} ${incident.urgency === 'HIGH' ? styles.highUrgency : styles.lowUrgency}`}>
                         {incident.urgency}
                     </div>
                 </div>
 
-                <div style={{
-                    background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
-                    border: '1px solid rgba(211,47,47,0.18)',
-                    borderRadius: '0px',
-                    padding: '0.85rem',
-                    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
-                }}>
-                    <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.5rem' }}>
-                        Assignee
-                    </div>
+                <div className={styles.card}>
+                    <div className={styles.cardLabel}>Assignee</div>
                     <AssigneeSection
                         assignee={incident.assignee}
                         team={incident.team || null}
@@ -225,30 +132,10 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
                 </div>
 
                 {incident.service.policy && (
-                    <div style={{
-                        background: 'linear-gradient(180deg, rgba(211,47,47,0.08) 0%, #ffffff 85%)',
-                        border: '1px solid rgba(211,47,47,0.18)',
-                        borderRadius: '0px',
-                        padding: '0.85rem',
-                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)'
-                    }}>
-                        <div style={{ height: '4px', borderRadius: '999px', background: 'linear-gradient(90deg, #d32f2f 0%, #ff5252 100%)', marginBottom: '0.6rem' }}></div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.35rem' }}>
-                            Escalation Policy
-                        </div>
-                        <Link
-                            href={`/policies/${incident.service.policy.id}`}
-                            style={{
-                                fontWeight: 700,
-                                fontSize: '0.95rem',
-                                color: 'var(--primary)',
-                                textDecoration: 'none',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.4rem'
-                            }}
-                        >
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)' }}></span>
+                    <div className={styles.card}>
+                        <div className={styles.cardLabel}>Escalation Policy</div>
+                        <Link href={`/policies/${incident.service.policy.id}`} className={styles.link}>
+                            <span className={styles.linkIcon}></span>
                             {incident.service.policy.name}
                         </Link>
                     </div>

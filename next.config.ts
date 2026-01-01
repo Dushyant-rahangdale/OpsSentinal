@@ -1,7 +1,21 @@
+import path from 'path';
+
 import type { NextConfig } from "next";
+
+const withPWA = require("@ducanh2912/next-pwa").default({
+  dest: "public",
+  disable: process.env.NODE_ENV === 'development', // Disable in dev for faster builds
+  register: true,
+  skipWaiting: true,
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Explicitly set root to avoid system-wide watching
+  outputFileTracingRoot: path.join(__dirname),
   // Performance optimizations
   experimental: {
     optimizePackageImports: ['@prisma/client', 'react-icons'],
@@ -58,6 +72,7 @@ const nextConfig: NextConfig = {
               "font-src 'self' data:",
               "connect-src 'self'",
               "frame-ancestors 'none'",
+              "manifest-src 'self'",
             ].join('; ')
           }
         ],
@@ -126,4 +141,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

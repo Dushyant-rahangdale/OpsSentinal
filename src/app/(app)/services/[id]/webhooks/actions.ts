@@ -4,6 +4,8 @@ import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { assertAdminOrResponder } from '@/lib/rbac';
+import { redirect } from 'next/navigation';
+import { assertWebhookIntegrationNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 export async function createWebhookIntegration(serviceId: string, formData: FormData) {
     try {
@@ -22,10 +24,20 @@ export async function createWebhookIntegration(serviceId: string, formData: Form
         throw new Error('Name, type, and URL are required');
     }
 
+    let normalizedName = name;
+    try {
+        normalizedName = await assertWebhookIntegrationNameAvailable(name);
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect(`/services/${serviceId}/webhooks/new?error=duplicate-webhook`);
+        }
+        throw error;
+    }
+
     await prisma.webhookIntegration.create({
         data: {
             serviceId,
-            name,
+            name: normalizedName,
             type,
             url,
             secret: secret || null,
@@ -39,7 +51,7 @@ export async function createWebhookIntegration(serviceId: string, formData: Form
         entityType: 'SERVICE',
         entityId: serviceId,
         actorId: await getDefaultActorId(),
-        details: { name, type }
+        details: { name: normalizedName, type }
     });
 
     revalidatePath(`/services/${serviceId}/settings`);
@@ -68,10 +80,20 @@ export async function updateWebhookIntegration(integrationId: string, serviceId:
         where: { id: integrationId }
     });
 
+    let normalizedName = name;
+    try {
+        normalizedName = await assertWebhookIntegrationNameAvailable(name, { excludeId: integrationId });
+    } catch (error) {
+        if (error instanceof UniqueNameConflictError) {
+            redirect(`/services/${serviceId}/webhooks/${integrationId}/edit?error=duplicate-webhook`);
+        }
+        throw error;
+    }
+
     await prisma.webhookIntegration.update({
         where: { id: integrationId },
         data: {
-            name,
+            name: normalizedName,
             type,
             url,
             secret: secret || existing?.secret || null, // Preserve existing secret if not provided
@@ -85,7 +107,7 @@ export async function updateWebhookIntegration(integrationId: string, serviceId:
         entityType: 'SERVICE',
         entityId: serviceId,
         actorId: await getDefaultActorId(),
-        details: { integrationId, name, type }
+        details: { integrationId, name: normalizedName, type }
     });
 
     revalidatePath(`/services/${serviceId}/settings`);
