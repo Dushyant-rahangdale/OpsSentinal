@@ -78,6 +78,11 @@ const incidentTitles = [
 // =============================================================================
 
 async function main() {
+    if (process.env.NODE_ENV === 'production') {
+        console.log('🛑 Production environment detected. Skipping seed.')
+        return
+    }
+
     console.log('🌱 Starting database seed...\n')
     const passwordHash = await bcrypt.hash(demoPassword, 10)
 
