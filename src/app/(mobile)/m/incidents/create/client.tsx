@@ -231,7 +231,7 @@ export default function MobileCreateIncidentClient({
                         style={{ flex: 1 }}
                         loading={loading}
                     >
-                        Create Incident
+                        Submit
                     </MobileButton>
                 </div>
             </div>

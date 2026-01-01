@@ -289,19 +289,54 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.875rem;
+    padding: 0.875rem 1rem;
     background: var(--gradient-primary);
     color: white;
     border-radius: 12px;
     text-decoration: none;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     font-weight: 600;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .mobile-quick-action:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
+}
+
+/* Primary variant - Create Incident button with red accent */
+.mobile-quick-action.primary,
+.mobile-quick-action[href*="create"] {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35), 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-quick-action.primary::before,
+.mobile-quick-action[href*="create"]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    transition: left 0.5s ease;
+}
+
+.mobile-quick-action.primary:active,
+.mobile-quick-action[href*="create"]:active {
+    transform: scale(0.96);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+/* Icon styling inside button */
+.mobile-quick-action svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 
 .mobile-quick-action.secondary {
@@ -309,6 +344,10 @@
     color: var(--text-primary);
     border: 1px solid var(--border);
     box-shadow: none;
+}
+
+.mobile-quick-action.secondary:active {
+    background: var(--bg-tertiary);
 }
 
 /* Desktop preference link */

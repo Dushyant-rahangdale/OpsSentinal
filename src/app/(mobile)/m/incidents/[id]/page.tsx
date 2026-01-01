@@ -122,27 +122,7 @@ export default async function MobileIncidentDetailPage({ params }: PageProps) {
                 teams={teams}
             />
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                <Link
-                    href={`/incidents/${incident.id}`}
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0.75rem',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                        color: 'var(--text-primary)',
-                        textDecoration: 'none',
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                    }}
-                >
-                    Full Details →
-                </Link>
-            </div>
+
 
             {/* Details Card */}
             <div className="mobile-metric-card" style={{ marginBottom: '1rem' }}>

@@ -19,7 +19,7 @@ export default async function MobileCreateIncidentPage() {
     return (
         <div className="mobile-dashboard">
             <div style={{ marginBottom: '1rem' }}>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>Create Incident</h1>
+                <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>New Incident</h1>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
                     Report a new issue
                 </p>
