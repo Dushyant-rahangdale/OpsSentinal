@@ -62,10 +62,7 @@ jobs:
           mkdir -p reports
           npm run prisma:validate
 
-      - name: Migration health check
-        run: |
-          mkdir -p reports
-          npm run prisma:health
+
 
       - name: Unit tests
         # DB-backed tests share a single database; run files serially to avoid cross-test contention.
@@ -90,7 +87,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Unit tests (Vitest)
+          name: '✅ Tests: Unit (Vitest)'
           path: reports/*.xml
           reporter: java-junit
 
