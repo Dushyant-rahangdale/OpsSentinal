@@ -196,8 +196,7 @@ describeIfRealDB('Mobile Features Integration Tests', () => {
                 title: `Incident ${i}`,
                 serviceId: service.id,
                 status: 'OPEN' as const,
-                urgency: 'HIGH' as const,
-                slug: `inc-${i}-${Date.now()}` // Ensure unique slug/constraints if any
+                urgency: 'HIGH' as const
             }));
 
             await testPrisma.incident.createMany({ data });
