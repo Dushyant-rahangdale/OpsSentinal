@@ -363,13 +363,15 @@
     }
 }
 
-/* Theme transition animation */
-.mobile-shell {
-    transition: background-color 0.3s ease, color 0.3s ease;
+/* Theme transition animation - only for explicit theme changes */
+.mobile-shell.theme-transitioning {
+    transition: background-color 0.3s ease;
 }
 
-.mobile-shell * {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+.mobile-shell.theme-transitioning .mobile-header,
+.mobile-shell.theme-transitioning .mobile-nav,
+.mobile-shell.theme-transitioning .mobile-content {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Skeleton shimmer class */
@@ -466,53 +468,14 @@
 
 /* ========== ENHANCED CARD EFFECTS ========== */
 
-.mobile-metric-card {
-    animation: fadeInUp 0.3s ease forwards;
-}
-
+/* Cards display instantly - no entrance animations to prevent flicker */
+.mobile-metric-card,
 .mobile-incident-card {
-    animation: fadeInUp 0.3s ease forwards;
+    opacity: 1;
 }
 
 .mobile-incident-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-/* Staggered animation for lists */
-.mobile-incident-list .mobile-incident-card:nth-child(1) {
-    animation-delay: 0.05s;
-}
-
-.mobile-incident-list .mobile-incident-card:nth-child(2) {
-    animation-delay: 0.1s;
-}
-
-.mobile-incident-list .mobile-incident-card:nth-child(3) {
-    animation-delay: 0.15s;
-}
-
-.mobile-incident-list .mobile-incident-card:nth-child(4) {
-    animation-delay: 0.2s;
-}
-
-.mobile-incident-list .mobile-incident-card:nth-child(5) {
-    animation-delay: 0.25s;
-}
-
-.mobile-metrics-grid .mobile-metric-card:nth-child(1) {
-    animation-delay: 0.05s;
-}
-
-.mobile-metrics-grid .mobile-metric-card:nth-child(2) {
-    animation-delay: 0.1s;
-}
-
-.mobile-metrics-grid .mobile-metric-card:nth-child(3) {
-    animation-delay: 0.15s;
-}
-
-.mobile-metrics-grid .mobile-metric-card:nth-child(4) {
-    animation-delay: 0.2s;
 }
 
 /* ========== GRADIENT ENHANCEMENTS ========== */
@@ -799,7 +762,6 @@ a {
 /* Smoother page transitions - reduce flickering */
 .mobile-content {
     -webkit-overflow-scrolling: touch;
-    will-change: scroll-position;
 }
 
 /* Prevent iOS text size adjustment */
@@ -820,20 +782,22 @@ a {
     flex-shrink: 0;
 }
 
-/* Optimized animations for iOS - reduce jank */
-@media (prefers-reduced-motion: no-preference) {
+/* Disable animations for reduced motion preference or page transitions */
+@media (prefers-reduced-motion: reduce) {
 
     .mobile-metric-card,
-    .mobile-incident-card {
-        animation: none;
-        opacity: 1;
-        transform: none;
-    }
-
-    /* Use subtle fade instead of translateY for iOS */
+    .mobile-incident-card,
     .mobile-dashboard {
-        animation: fadeIn 0.15s ease-out;
+        animation: none !important;
+        transition: none !important;
     }
+}
+
+/* Default: no entrance animations to prevent flickering on navigation */
+.mobile-metric-card,
+.mobile-incident-card {
+    opacity: 1;
+    transform: none;
 }
 
 /* User profile card improvements for More page */
