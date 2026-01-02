@@ -51,7 +51,7 @@ describe('Bulk Actions', () => {
             expect(prisma.incident.updateMany).toHaveBeenCalledWith({
                 where: {
                     id: { in: incidentIds },
-                    status: { not: 'RESOLVED' },
+                    status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
                 },
                 data: {
                     status: 'ACKNOWLEDGED',

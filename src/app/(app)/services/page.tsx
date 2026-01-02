@@ -1,10 +1,10 @@
 import prisma from '@/lib/prisma';
-import _Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { getUserPermissions, assertAdminOrResponder } from '@/lib/rbac';
 import { assertServiceNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
+import { getServiceDynamicStatus } from '@/lib/service-status';
 import ServiceCard from '@/components/service/ServiceCard';
 import ServicesFilters from '@/components/service/ServicesFilters';
 import CreateServiceForm from '@/components/service/CreateServiceForm';
@@ -36,8 +36,8 @@ async function createService(formData: FormData) {
                 region: region || null,
                 slaTier: slaTier || null,
                 teamId: teamId || undefined,
-                escalationPolicyId: escalationPolicyId || undefined
-            }
+                escalationPolicyId: escalationPolicyId || undefined,
+            },
         });
 
         await logAudit({
@@ -45,7 +45,7 @@ async function createService(formData: FormData) {
             entityType: 'SERVICE',
             entityId: service.id,
             actorId: await getDefaultActorId(),
-            details: { name: normalizedName, teamId: teamId || null }
+            details: { name: normalizedName, teamId: teamId || null },
         });
 
         revalidatePath('/services');
@@ -82,8 +82,8 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
         prisma.team.findMany({ orderBy: { name: 'asc' } }),
         prisma.escalationPolicy.findMany({
             select: { id: true, name: true },
-            orderBy: { name: 'asc' }
-        })
+            orderBy: { name: 'asc' },
+        }),
     ]);
 
     // Build where clause for filtering
@@ -93,12 +93,12 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                 ? {
                     OR: [
                         { name: { contains: searchQuery, mode: 'insensitive' as const } },
-                        { description: { contains: searchQuery, mode: 'insensitive' as const } }
-                    ]
+                        { description: { contains: searchQuery, mode: 'insensitive' as const } },
+                    ],
                 }
                 : {},
-            teamFilter ? { teamId: teamFilter } : {}
-        ].filter(Boolean)
+            teamFilter ? { teamId: teamFilter } : {},
+        ].filter(Boolean),
     };
 
     // Build orderBy clause
@@ -115,43 +115,67 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
 
     const services = await prisma.service.findMany({
         where,
-        include: {
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            region: true,
+            status: true,
             team: true,
             policy: {
-                select: { id: true, name: true }
+                select: { id: true, name: true },
             },
-            incidents: {
-                where: { status: { not: 'RESOLVED' } },
-                select: { id: true, urgency: true }
-            },
-            _count: { select: { incidents: true } }
+            _count: { select: { incidents: true } },
         },
-        orderBy
+        orderBy,
     });
 
-    // Calculate dynamic status for each service
-    let servicesWithStatus = services.map(service => {
-        const openIncidents = service.incidents;
-        const hasCritical = openIncidents.some(i => i.urgency === 'HIGH');
+    const serviceIds = services.map(service => service.id);
+    const openIncidentsByService = new Map<string, { total: number; critical: number }>();
 
-        const dynamicStatus = hasCritical
-            ? 'CRITICAL'
-            : openIncidents.length > 0
-                ? 'DEGRADED'
-                : 'OPERATIONAL';
+    if (serviceIds.length > 0) {
+        const openIncidents = await prisma.incident.groupBy({
+            by: ['serviceId', 'urgency'],
+            where: {
+                serviceId: { in: serviceIds },
+                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+            },
+            _count: { _all: true },
+        });
 
-        return { ...service, dynamicStatus };
+        openIncidents.forEach(group => {
+            const entry = openIncidentsByService.get(group.serviceId) || { total: 0, critical: 0 };
+            entry.total += group._count._all;
+            if (group.urgency === 'HIGH') {
+                entry.critical += group._count._all;
+            }
+            openIncidentsByService.set(group.serviceId, entry);
+        });
+    }
+
+    const servicesWithStatus = services.map(service => {
+        const counts = openIncidentsByService.get(service.id) || { total: 0, critical: 0 };
+        const openIncidentCount = counts.total;
+        const hasCritical = counts.critical > 0;
+        const dynamicStatus = getServiceDynamicStatus({ openIncidentCount, hasCritical });
+
+        return {
+            ...service,
+            openIncidentCount,
+            hasCritical,
+            dynamicStatus,
+        };
     });
 
     // Apply status filter (client-side since status is calculated)
-    if (statusFilter !== 'all') {
-        servicesWithStatus = servicesWithStatus.filter(service => service.dynamicStatus === statusFilter);
-    }
+    const filteredServices = statusFilter === 'all'
+        ? servicesWithStatus
+        : servicesWithStatus.filter(service => service.dynamicStatus === statusFilter);
 
     // Apply sorting by status if needed (client-side)
     if (sortBy === 'status') {
-        const statusOrder = { 'CRITICAL': 0, 'DEGRADED': 1, 'OPERATIONAL': 2 };
-        servicesWithStatus.sort((a, b) => {
+        const statusOrder = { CRITICAL: 0, DEGRADED: 1, OPERATIONAL: 2 };
+        filteredServices.sort((a, b) => {
             const aOrder = statusOrder[a.dynamicStatus as keyof typeof statusOrder] ?? 3;
             const bOrder = statusOrder[b.dynamicStatus as keyof typeof statusOrder] ?? 3;
             return aOrder - bOrder;
@@ -179,13 +203,13 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                     padding: '0.75rem 1rem',
                     background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
                     border: '1px solid var(--border)',
-                    borderRadius: '0px'
+                    borderRadius: '0px',
                 }}>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '500' }}>
                         Total Services:
                     </span>
                     <span style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {servicesWithStatus.length}
+                        {filteredServices.length}
                     </span>
                 </div>
             </header>
@@ -200,7 +224,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                     color: '#991b1b',
                     fontSize: '0.9rem',
                     fontWeight: '600',
-                    borderRadius: '0px'
+                    borderRadius: '0px',
                 }}>
                     A service with this name already exists. Please choose a unique name.
                 </div>
@@ -218,16 +242,16 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                     background: '#f9fafb',
                     border: '1px solid #e5e7eb',
                     opacity: 0.7,
-                    borderRadius: '0px'
+                    borderRadius: '0px',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                        <span style={{ fontSize: '1.2rem' }}>!</span>
                         <div>
                             <h2 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
                                 Create New Service
                             </h2>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                You don't have access to create services. Admin or Responder role required.
+                                You do not have access to create services. Admin or Responder role required.
                             </p>
                         </div>
                     </div>
@@ -244,16 +268,16 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
             />
 
             {/* Services Grid */}
-            {servicesWithStatus.length === 0 ? (
+            {filteredServices.length === 0 ? (
                 <div className="glass-panel empty-state" style={{
                     padding: '4rem 2rem',
                     textAlign: 'center',
                     color: 'var(--text-muted)',
                     background: 'white',
                     borderRadius: '0px',
-                    border: '1px solid var(--border)'
+                    border: '1px solid var(--border)',
                 }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>!</div>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
                         No services found
                     </h3>
@@ -265,7 +289,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
-                    {servicesWithStatus.map((service: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+                    {filteredServices.map((service: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
                         <ServiceCard key={service.id} service={service} compact={false} />
                     ))}
                 </div>

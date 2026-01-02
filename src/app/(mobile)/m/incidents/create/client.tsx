@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import MobileButton from '@/components/mobile/MobileButton';
-import MobileCard from '@/components/mobile/MobileCard';
 
 type Service = { id: string; name: string };
 type User = { id: string; name: string | null; email: string };
@@ -23,6 +22,7 @@ export default function MobileCreateIncidentClient({
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [urgency, setUrgency] = useState<'HIGH' | 'LOW'>('LOW');
 
     async function handleSubmit(formData: FormData) {
         setLoading(true);
@@ -53,6 +53,10 @@ export default function MobileCreateIncidentClient({
         if (!str) return '';
         return str.length > len ? str.substring(0, len) + '...' : str;
     };
+
+    const submitButtonStyle = urgency === 'LOW'
+        ? { background: '#ca8a04', borderColor: '#ca8a04', color: 'white' }
+        : { background: '#dc2626', borderColor: '#dc2626', color: 'white' };
 
     return (
         <form action={handleSubmit}>
@@ -153,10 +157,20 @@ export default function MobileCreateIncidentClient({
                         Urgency
                     </label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <div className="mobile-high-urgency-wrapper" style={{ flex: 1, display: 'flex' }}>
-                            <UrgencyRadio name="urgency" value="HIGH" label="High" color="var(--badge-error-bg)" textColor="var(--badge-error-text)" />
-                        </div>
-                        <UrgencyRadio name="urgency" value="LOW" label="Low" color="var(--badge-success-bg)" textColor="var(--badge-success-text)" defaultChecked />
+                        <UrgencyRadio
+                            name="urgency"
+                            value="HIGH"
+                            label="High"
+                            checked={urgency === 'HIGH'}
+                            onChange={() => setUrgency('HIGH')}
+                        />
+                        <UrgencyRadio
+                            name="urgency"
+                            value="LOW"
+                            label="Low"
+                            checked={urgency === 'LOW'}
+                            onChange={() => setUrgency('LOW')}
+                        />
                     </div>
                 </div>
 
@@ -219,7 +233,7 @@ export default function MobileCreateIncidentClient({
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                     <MobileButton
                         type="button"
-                        variant="ghost"
+                        variant="secondary"
                         style={{ flex: 1 }}
                         onClick={() => router.back()}
                     >
@@ -228,10 +242,10 @@ export default function MobileCreateIncidentClient({
                     <MobileButton
                         type="submit"
                         variant="primary"
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, ...submitButtonStyle }}
                         loading={loading}
                     >
-                        Submit
+                        {loading ? 'Submitting...' : 'Submit Incident'}
                     </MobileButton>
                 </div>
             </div>
@@ -243,49 +257,26 @@ function UrgencyRadio({
     name,
     value,
     label,
-    color,
-    textColor,
-    defaultChecked
+    checked,
+    onChange
 }: {
     name: string;
     value: string;
     label: string;
-    color: string;
-    textColor: string;
-    defaultChecked?: boolean;
+    checked: boolean;
+    onChange: () => void;
 }) {
     return (
-        <label style={{
-            flex: 1,
-            cursor: 'pointer',
-            position: 'relative',
-        }}>
+        <label className="mobile-urgency-radio" data-value={value}>
             <input
                 type="radio"
                 name={name}
                 value={value}
-                defaultChecked={defaultChecked}
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                checked={checked}
+                onChange={onChange}
             />
-            <div className="urgency-option" style={{
-                padding: '0.75rem',
-                borderRadius: '8px',
-                textAlign: 'center',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border)',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                transition: 'all 0.2s ease',
-            }}>
-                {label}
-            </div>
-            <style jsx>{`
-        input:checked + .urgency-option {
-          background-color: ${color};
-          color: ${textColor};
-          border-color: ${textColor};
-        }
-      `}</style>
+            <span className="mobile-urgency-label">{label}</span>
         </label>
     );
 }
+

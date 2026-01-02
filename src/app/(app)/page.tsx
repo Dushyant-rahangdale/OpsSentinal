@@ -6,7 +6,6 @@ import DashboardFilters from '@/components/DashboardFilters';
 import IncidentTable from '@/components/IncidentTable';
 import DashboardPerformanceMetrics from '@/components/DashboardPerformanceMetrics';
 import DashboardQuickFilters from '@/components/DashboardQuickFilters';
-import DashboardTimeRange from '@/components/DashboardTimeRange';
 import DashboardFilterChips from '@/components/DashboardFilterChips';
 import DashboardAdvancedMetrics from '@/components/DashboardAdvancedMetrics';
 import DashboardSavedFilters from '@/components/DashboardSavedFilters';
@@ -213,7 +212,7 @@ export default async function Dashboard({
     // All-time counts (for Command Center and Advanced Metrics)
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
       },
     }),
     prisma.incident.count({
@@ -223,13 +222,13 @@ export default async function Dashboard({
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         urgency: 'HIGH',
       },
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         assigneeId: null,
       },
     }),
@@ -261,7 +260,7 @@ export default async function Dashboard({
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         ...metricsWhere,
       },
     }),
@@ -273,7 +272,7 @@ export default async function Dashboard({
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         urgency: 'HIGH',
         ...metricsWhere,
       },
@@ -347,7 +346,7 @@ export default async function Dashboard({
           }),
           prisma.incident.count({
             where: {
-              status: { not: 'RESOLVED' },
+              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
               ...previousPeriodWhere,
             },
           }),
@@ -365,7 +364,7 @@ export default async function Dashboard({
           }),
           prisma.incident.count({
             where: {
-              status: { not: 'RESOLVED' },
+              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
               urgency: 'HIGH',
               ...previousPeriodWhere,
             },
@@ -382,25 +381,25 @@ export default async function Dashboard({
   // Fetch counts for all services at once using aggregation
   const [serviceActiveCounts, serviceCriticalCounts] = await Promise.all([
     serviceIds.length > 0
-      ? prisma.incident.groupBy({
-          by: ['serviceId'],
-          where: {
-            serviceId: { in: serviceIds },
-            status: { not: 'RESOLVED' },
-          },
-          _count: { _all: true },
-        })
+        ? prisma.incident.groupBy({
+            by: ['serviceId'],
+            where: {
+              serviceId: { in: serviceIds },
+              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+            },
+            _count: { _all: true },
+          })
       : [],
     serviceIds.length > 0
-      ? prisma.incident.groupBy({
-          by: ['serviceId'],
-          where: {
-            serviceId: { in: serviceIds },
-            status: { not: 'RESOLVED' },
-            urgency: 'HIGH',
-          },
-          _count: { _all: true },
-        })
+        ? prisma.incident.groupBy({
+            by: ['serviceId'],
+            where: {
+              serviceId: { in: serviceIds },
+              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+              urgency: 'HIGH',
+            },
+            _count: { _all: true },
+          })
       : [],
   ]);
 

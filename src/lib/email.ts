@@ -68,7 +68,7 @@ export async function sendEmail(
 
     // Log email if no provider configured or disabled
     if (!emailConfig.enabled || !emailConfig.provider) {
-      console.log('Email Notification (not sent - provider not configured):', {
+      logger.warn('Email notification skipped - provider not configured', {
         to: options.to,
         subject: options.subject,
         preview: options.text || options.html.substring(0, 100),
@@ -120,14 +120,14 @@ export async function sendEmail(
           return { success: false, error: result.error.message || 'Resend API error' };
         }
 
-        console.log('Email sent via Resend:', { to: options.to, id: result.data?.id });
+        logger.info('Email sent via Resend', { to: options.to, id: result.data?.id });
         return { success: true };
       } catch (error: unknown) {
-        // If resend package is not installed, fall back to console log
+        // If resend package is not installed, fall back to logger notes
         const err = error as { code?: string; message?: string };
         if (err.code === 'MODULE_NOT_FOUND') {
-          console.log('Resend package not installed. Install with: npm install resend');
-          console.log('Would send via Resend:', { to: options.to, from: emailConfig.fromEmail });
+          logger.warn('Resend package not installed', { installCommand: 'npm install resend' });
+          logger.info('Would send via Resend', { to: options.to, from: emailConfig.fromEmail });
           return { success: true };
         }
         logger.error('Resend send error', {
@@ -194,14 +194,14 @@ export async function sendEmail(
         if (response) {
           if (response.statusCode >= 200 && response.statusCode < 300) {
             const messageId = response.headers?.['x-message-id'] || 'unknown';
-            console.log('Email sent via SendGrid:', {
-              to: options.to,
-              from: emailConfig.fromEmail,
-              subject: options.subject,
-              statusCode: response.statusCode,
-              messageId: messageId,
-              note: 'Check SendGrid Activity Feed for delivery status. If email not received, verify sender email is authenticated in SendGrid.',
-            });
+              logger.info('Email sent via SendGrid', {
+                to: options.to,
+                from: emailConfig.fromEmail,
+                subject: options.subject,
+                statusCode: response.statusCode,
+                messageId: messageId,
+                note: 'Check SendGrid Activity Feed for delivery status. If email not received, verify sender email is authenticated in SendGrid.',
+              });
             return { success: true };
           } else {
             logger.error('SendGrid returned error status', {
@@ -225,7 +225,7 @@ export async function sendEmail(
           return { success: false, error: 'SendGrid API returned empty response' };
         }
       } catch (error: unknown) {
-        // If SendGrid package is not installed, fall back to console log
+        // If SendGrid package is not installed, fall back to logger notes
         const err = error as {
           code?: string;
           message?: string;
@@ -303,10 +303,10 @@ export async function sendEmail(
           text: options.text || options.html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
         });
 
-        console.log('Email sent via SMTP:', { to: options.to, messageId: info.messageId });
+        logger.info('Email sent via SMTP', { to: options.to, messageId: info.messageId });
         return { success: true };
       } catch (error: unknown) {
-        // If nodemailer package is not installed, fall back to console log
+        // If nodemailer package is not installed, fall back to logger notes
         const err = error as { code?: string; message?: string };
         if (err.code === 'MODULE_NOT_FOUND') {
           logger.warn('Nodemailer package not installed', {
@@ -383,7 +383,7 @@ export async function sendEmail(
         });
 
         const result = await sesClient.send(command);
-        console.log('Email sent via Amazon SES:', { to: options.to, messageId: result.MessageId });
+        logger.info('Email sent via Amazon SES', { to: options.to, messageId: result.MessageId });
         return { success: true };
       } catch (error: unknown) {
         const err = error as { code?: string; message?: string };

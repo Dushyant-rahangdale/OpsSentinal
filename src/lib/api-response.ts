@@ -7,7 +7,7 @@ export function jsonError(message: string, status: number, meta?: Record<string,
     return NextResponse.json({ error: friendlyMessage, meta }, { status });
 }
 
-export function jsonOk<T>(payload: T, status: number = 200) {
-    return NextResponse.json(payload, { status });
+export function jsonOk<T>(payload: T, status: number = 200, headers?: HeadersInit) {
+    return NextResponse.json(payload, { status, headers });
 }
 

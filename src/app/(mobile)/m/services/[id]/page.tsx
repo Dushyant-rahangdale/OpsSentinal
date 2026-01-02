@@ -16,7 +16,7 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
         include: {
             policy: true,
             incidents: {
-                where: { status: { not: 'RESOLVED' } },
+                where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
                 orderBy: { createdAt: 'desc' },
                 take: 5,
                 select: {
@@ -29,7 +29,7 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
             },
             _count: {
                 select: {
-                    incidents: { where: { status: { not: 'RESOLVED' } } },
+                    incidents: { where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } } },
                 },
             },
         },

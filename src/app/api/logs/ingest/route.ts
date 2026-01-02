@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true });
     } catch (error) {
         // Internal server error logging fallback
-        console.error('Failed to ingest client log:', error);
+        logger.error('Failed to ingest client log', { error });
         return NextResponse.json({ error: 'Failed to ingest log' }, { status: 500 });
     }
 }

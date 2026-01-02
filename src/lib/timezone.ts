@@ -2,6 +2,7 @@
  * Centralized timezone utilities for consistent date/time formatting
  * across all components in the incident management system
  */
+import { logger } from '@/lib/logger';
 
 /**
  * Get user's timezone preference, fallback to UTC
@@ -100,7 +101,7 @@ export function formatDateTime(
         }
     } catch (_error) {
         // Fallback to UTC if timezone is invalid
-        console.warn(`Invalid timezone: ${timeZone}, falling back to UTC`);
+        logger.warn('Invalid timezone, falling back to UTC', { timeZone });
         return formatDateTime(d, 'UTC', options);
     }
 }

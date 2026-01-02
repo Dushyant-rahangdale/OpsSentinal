@@ -10,6 +10,7 @@ interface MetricCardProps {
     variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
     children?: React.ReactNode;
     tooltip?: string;
+    href?: string;
 }
 
 function MetricCard({
@@ -21,7 +22,8 @@ function MetricCard({
     icon,
     variant = 'default',
     children,
-    tooltip
+    tooltip,
+    href
 }: MetricCardProps) {
     const variantClasses = {
         default: 'analytics-card-default',
@@ -38,29 +40,58 @@ function MetricCard({
     };
 
     return (
-        <article className={`analytics-card-enhanced ${variantClasses[variant]}`}>
-            <div className="analytics-card-header">
-                {icon && <div className="analytics-card-icon">{icon}</div>}
-                <span className="analytics-label">{label}</span>
-                {tooltip && (
-                    <div className="analytics-info-icon-wrapper">
-                        <span className="analytics-info-icon" title={tooltip}>i</span>
+        <article className={`analytics-card-enhanced ${variantClasses[variant]} ${href ? 'cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-primary/50 transition-all' : ''}`}>
+            {href ? (
+                <a href={href} className="contents">
+                    <div className="analytics-card-header">
+                        {icon && <div className="analytics-card-icon">{icon}</div>}
+                        <span className="analytics-label">{label}</span>
+                        {tooltip && (
+                            <div className="analytics-info-icon-wrapper">
+                                <span className="analytics-info-icon" title={tooltip}>i</span>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-            <div className="analytics-card-body">
-                <span className="analytics-value">{value}</span>
-                {trend && trendValue && (
-                    <div className={`analytics-trend ${trendColors[trend]}`}>
-                        <span className="analytics-trend-icon">
-                            {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
-                        </span>
-                        <span>{trendValue}</span>
+                    <div className="analytics-card-body">
+                        <span className="analytics-value">{value}</span>
+                        {trend && trendValue && (
+                            <div className={`analytics-trend ${trendColors[trend]}`}>
+                                <span className="analytics-trend-icon">
+                                    {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
+                                </span>
+                                <span>{trendValue}</span>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-            <span className="analytics-detail">{detail}</span>
-            {children}
+                    <span className="analytics-detail">{detail}</span>
+                    {children}
+                </a>
+            ) : (
+                <>
+                    <div className="analytics-card-header">
+                        {icon && <div className="analytics-card-icon">{icon}</div>}
+                        <span className="analytics-label">{label}</span>
+                        {tooltip && (
+                            <div className="analytics-info-icon-wrapper">
+                                <span className="analytics-info-icon" title={tooltip}>i</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="analytics-card-body">
+                        <span className="analytics-value">{value}</span>
+                        {trend && trendValue && (
+                            <div className={`analytics-trend ${trendColors[trend]}`}>
+                                <span className="analytics-trend-icon">
+                                    {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
+                                </span>
+                                <span>{trendValue}</span>
+                            </div>
+                        )}
+                    </div>
+                    <span className="analytics-detail">{detail}</span>
+                    {children}
+                </>
+            )}
         </article>
     );
 }

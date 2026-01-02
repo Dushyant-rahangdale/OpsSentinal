@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import { logger } from '@/lib/logger';
 import {
   type FilterCriteria,
   type SearchPresetWithCreator,
@@ -108,9 +109,7 @@ export async function getAccessiblePresets(
 ): Promise<SearchPresetWithCreator[]> {
   // Check if SearchPreset model exists in Prisma client (defensive check)
   if (!prisma.searchPreset) {
-    console.warn(
-      'SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.'
-    );
+    logger.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
     return [];
   }
 
@@ -146,9 +145,7 @@ export async function getAccessiblePresets(
      
     // Handle case where table doesn't exist yet (migration not applied)
     if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
-      console.warn(
-        'SearchPreset table does not exist. Please run "npx prisma db push" or apply migrations.'
-      );
+      logger.warn('SearchPreset table does not exist. Please run "npx prisma db push" or apply migrations.');
       return [];
     }
     // Re-throw other errors
@@ -162,9 +159,7 @@ export async function getAccessiblePresets(
 export async function trackPresetUsage(presetId: string, userId: string): Promise<void> {
   // Check if models exist
   if (!prisma.searchPreset || !prisma.searchPresetUsage) {
-    console.warn(
-      'SearchPreset models not available. Run "npx prisma generate" to regenerate Prisma client.'
-    );
+    logger.warn('SearchPreset models not available. Run "npx prisma generate" to regenerate Prisma client.');
     return;
   }
 
@@ -191,9 +186,7 @@ export async function trackPresetUsage(presetId: string, userId: string): Promis
 export async function getPopularPresets(limit: number = 10): Promise<SearchPresetWithCreator[]> {
   // Check if SearchPreset model exists
   if (!prisma.searchPreset) {
-    console.warn(
-      'SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.'
-    );
+    logger.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
     return [];
   }
 

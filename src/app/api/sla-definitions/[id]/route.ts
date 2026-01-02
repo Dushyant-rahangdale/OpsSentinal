@@ -1,0 +1,118 @@
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { getAuthOptions } from '@/lib/auth';
+import { z } from 'zod';
+import { logger } from '@/lib/logger';
+
+const updateSchema = z.object({
+    name: z.string().min(1).max(100).optional(),
+    target: z.number().min(0).max(100).optional(),
+    window: z.enum(['7d', '30d', '90d', 'quarterly', 'yearly']).optional()
+});
+
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await getServerSession(await getAuthOptions());
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const definition = await prisma.sLADefinition.findUnique({
+        where: { id },
+        include: {
+            service: { select: { id: true, name: true } },
+            snapshots: {
+                orderBy: { date: 'desc' },
+                take: 30 // Last 30 days of snapshots
+            }
+        }
+    });
+
+    if (!definition) {
+        return NextResponse.json({ error: 'SLA Definition not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(definition);
+}
+
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await getServerSession(await getAuthOptions());
+    if (!session?.user || (session.user as any).role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    try {
+        const body = await request.json();
+        const data = updateSchema.parse(body);
+
+        const existing = await prisma.sLADefinition.findUnique({ where: { id } });
+        if (!existing) {
+            return NextResponse.json({ error: 'SLA Definition not found' }, { status: 404 });
+        }
+
+        // Version the update (immutable history pattern)
+        // Deactivate current, create new version
+        await prisma.sLADefinition.update({
+            where: { id },
+            data: { activeTo: new Date() }
+        });
+
+        const newDefinition = await prisma.sLADefinition.create({
+            data: {
+                serviceId: existing.serviceId,
+                name: data.name ?? existing.name,
+                target: data.target ?? existing.target,
+                window: data.window ?? existing.window,
+                metricType: existing.metricType,
+                version: existing.version + 1,
+                activeFrom: new Date()
+            },
+            include: {
+                service: { select: { id: true, name: true } }
+            }
+        });
+
+        return NextResponse.json(newDefinition);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
+        }
+        logger.error('SLA Definition update error', { error });
+        return NextResponse.json({ error: 'Failed to update SLA definition' }, { status: 500 });
+    }
+}
+
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await getServerSession(await getAuthOptions());
+    if (!session?.user || (session.user as any).role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const { id } = await params;
+
+    const existing = await prisma.sLADefinition.findUnique({ where: { id } });
+    if (!existing) {
+        return NextResponse.json({ error: 'SLA Definition not found' }, { status: 404 });
+    }
+
+    // Soft delete by setting activeTo
+    await prisma.sLADefinition.update({
+        where: { id },
+        data: { activeTo: new Date() }
+    });
+
+    return NextResponse.json({ success: true });
+}

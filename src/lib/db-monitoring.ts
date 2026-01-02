@@ -37,6 +37,7 @@ class QueryMonitor {
       error,
     };
 
+    // V1: Legacy In-Memory Storage
     this.queries.push(metric);
 
     // Keep only the last N queries
@@ -44,15 +45,52 @@ class QueryMonitor {
       this.queries.shift();
     }
 
-    // Log slow queries
+    // V2: Enterprise Telemetry (Dual-Write)
+    // Optimized: Use cached module approach to avoid per-query import overhead
+    this.writeToTelemetryV2(metric, duration, error);
+  }
+
+  /**
+   * Safe asynchronous write to V2 Telemetry
+   */
+  private async writeToTelemetryV2(metric: QueryMetrics, duration: number, error?: Error) {
+    try {
+      const { telemetryV2 } = await import('@/services/telemetry/TelemetryServiceV2');
+
+      const tags = {
+        type: this.getQueryType(metric.query),
+      };
+
+      // Tier 1: Silver (Metrics)
+      telemetryV2.recordMetric('db.query.duration', duration, tags);
+      telemetryV2.recordMetric('db.query.count', 1, tags);
+
+      // Tier 2: Bronze (Significant Events)
+      if (error) {
+        telemetryV2.recordLog('ERROR', error.message || 'Database Error', {
+          query: metric.query,
+          code: (error as any).code
+        });
+      } else if (duration > this.slowQueryThreshold) {
+        telemetryV2.recordLog('WARN', 'Slow Query Detected', {
+          query: metric.query,
+          duration
+        });
+      }
+    } catch (e) {
+      // Fail silently
+    }
+
+    // Log slow queries (Legacy Console)
     if (duration > this.slowQueryThreshold) {
-      console.warn(`[DB Monitor] Slow query detected: ${duration}ms`, {
+      logger.warn('[DB Monitor] Slow query detected', {
+        duration,
         query: metric.query,
-        params,
+        params: metric.params,
       });
     }
 
-    // Log errors
+    // Log errors (Legacy Logger)
     if (error) {
       // Extract error information more comprehensively
       let errorMessage = 'Unknown error';
@@ -87,7 +125,7 @@ class QueryMonitor {
         code: errorCode,
         meta: errorMeta,
         stack: errorStack,
-        params: params ? JSON.stringify(params, null, 2) : undefined,
+        params: metric.params ? JSON.stringify(metric.params, null, 2) : undefined,
         errorType: error?.constructor?.name || typeof error,
       });
     }

@@ -1,11 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateIncidentStatus, addNote, updateIncidentUrgency, reassignIncident, resolveIncidentWithNote } from '@/app/(app)/incidents/actions';
+import MobileBottomSheet from '@/components/mobile/MobileBottomSheet';
+import { logger } from '@/lib/logger';
+import {
+    updateIncidentStatus,
+    addNote,
+    updateIncidentUrgency,
+    reassignIncident,
+    resolveIncidentWithNote
+} from '@/app/(app)/incidents/actions';
 
 type User = { id: string; name: string; email: string };
 type Team = { id: string; name: string };
+
+type SheetMode = 'more' | 'resolve' | 'note' | 'snooze' | 'reassign' | null;
+
+const RESOLUTION_MIN = 10;
 
 export default function MobileIncidentActions({
     incidentId,
@@ -26,68 +38,46 @@ export default function MobileIncidentActions({
 }) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [showNoteInput, setShowNoteInput] = useState(false);
-    const [showMore, setShowMore] = useState(false);
-    const [showSnoozeOptions, setShowSnoozeOptions] = useState(false);
-    const [showReassign, setShowReassign] = useState(false);
-    const [showResolveInput, setShowResolveInput] = useState(false);
+    const [sheetMode, setSheetMode] = useState<SheetMode>(null);
     const [note, setNote] = useState('');
     const [resolutionNote, setResolutionNote] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const handleReassign = async (userId: string, teamId?: string) => {
-        if (loading) return;
-        setLoading(true);
-        try {
-            await reassignIncident(incidentId, userId, teamId);
-            setShowReassign(false);
-            router.refresh();
-        } catch (error) {
-            console.error('Reassign failed:', error);
-            alert('Failed to reassign incident');
-        } finally {
-            setLoading(false);
+    const sheetTitle = useMemo(() => {
+        switch (sheetMode) {
+            case 'resolve':
+                return 'Resolve incident';
+            case 'note':
+                return 'Add note';
+            case 'snooze':
+                return 'Snooze incident';
+            case 'reassign':
+                return 'Reassign incident';
+            case 'more':
+            default:
+                return 'More actions';
         }
+    }, [sheetMode]);
+
+    const openSheet = (mode: SheetMode) => {
+        setSheetMode(mode);
+        setErrorMessage('');
     };
 
-    const handleResolve = async () => {
-        if (loading) return;
-        if (!resolutionNote || resolutionNote.trim().length < 10) {
-            alert('Resolution note must be at least 10 characters.');
-            return;
-        }
-        setLoading(true);
-        try {
-            await resolveIncidentWithNote(incidentId, resolutionNote.trim());
-            setShowResolveInput(false);
-            setResolutionNote('');
-            router.refresh();
-        } catch (error) {
-            console.error('Resolve failed:', error);
-            alert(error instanceof Error ? error.message : 'Failed to resolve incident');
-        } finally {
-            setLoading(false);
-        }
+    const closeSheet = () => {
+        setSheetMode(null);
+        setErrorMessage('');
     };
 
-    const handleSnooze = async (hours: number) => {
-        if (loading) return;
-        setLoading(true);
-        try {
-            await updateIncidentStatus(incidentId, 'SNOOZED');
-            // Note: snoozedUntil is handled by the backend if needed
-            setShowSnoozeOptions(false);
-            router.refresh();
-        } catch (error) {
-            console.error('Snooze failed:', error);
-            alert('Failed to snooze incident');
-        } finally {
-            setLoading(false);
-        }
+    const handleFailure = (message: string, error: unknown) => {
+        setErrorMessage(message);
+        logger.error('mobile.incidentAction.failed', { component: 'MobileIncidentActions', error });
     };
 
-    const handleAction = async (action: 'ACKNOWLEDGE' | 'RESOLVE' | 'SNOOZE' | 'OPEN') => {
+    const handleAction = async (action: 'ACKNOWLEDGE' | 'RESOLVE' | 'OPEN') => {
         if (loading) return;
         setLoading(true);
+        setErrorMessage('');
         try {
             if (action === 'ACKNOWLEDGE') {
                 await updateIncidentStatus(incidentId, 'ACKNOWLEDGED');
@@ -96,10 +86,47 @@ export default function MobileIncidentActions({
             } else if (action === 'OPEN') {
                 await updateIncidentStatus(incidentId, 'OPEN');
             }
+            closeSheet();
             router.refresh();
         } catch (error) {
-            console.error('Action failed:', error);
-            alert('Failed to update incident');
+            handleFailure('Failed to update incident status', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResolve = async () => {
+        if (loading) return;
+        const trimmed = resolutionNote.trim();
+        if (trimmed.length < RESOLUTION_MIN) {
+            setErrorMessage(`Resolution note must be at least ${RESOLUTION_MIN} characters.`);
+            return;
+        }
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            await resolveIncidentWithNote(incidentId, trimmed);
+            setResolutionNote('');
+            closeSheet();
+            router.refresh();
+        } catch (error) {
+            handleFailure(error instanceof Error ? error.message : 'Failed to resolve incident', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSnooze = async (hours: number) => {
+        if (loading) return;
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            await updateIncidentStatus(incidentId, 'SNOOZED');
+            await addNote(incidentId, `Snoozed for ${hours}h`);
+            closeSheet();
+            router.refresh();
+        } catch (error) {
+            handleFailure('Failed to snooze incident', error);
         } finally {
             setLoading(false);
         }
@@ -108,419 +135,280 @@ export default function MobileIncidentActions({
     const handleUrgencyToggle = async () => {
         if (loading) return;
         setLoading(true);
+        setErrorMessage('');
         try {
             const newUrgency = urgency === 'HIGH' ? 'LOW' : 'HIGH';
             await updateIncidentUrgency(incidentId, newUrgency);
+            closeSheet();
             router.refresh();
         } catch (error) {
-            console.error('Failed to update urgency:', error);
-            alert('Failed to update urgency');
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    const handleTakeOwnership = async () => {
-        if (loading || !currentUserId) return;
-        setLoading(true);
-        try {
-            await reassignIncident(incidentId, currentUserId);
-            router.refresh();
-        } catch (error) {
-            console.error('Failed to assign:', error);
-            alert('Failed to assign incident');
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    const handleAddNote = async () => {
-        if (!note.trim() || loading) return;
-        setLoading(true);
-        try {
-            await addNote(incidentId, note);
-            setNote('');
-            setShowNoteInput(false);
-            router.refresh();
-        } catch (error) {
-            console.error('Failed to add note:', error);
-            alert('Failed to add note');
+            handleFailure('Failed to update urgency', error);
         } finally {
             setLoading(false);
         }
     };
 
+    const handleTakeOwnership = async () => {
+        if (loading || !currentUserId) return;
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            await reassignIncident(incidentId, currentUserId);
+            closeSheet();
+            router.refresh();
+        } catch (error) {
+            handleFailure('Failed to assign incident', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddNote = async () => {
+        if (!note.trim() || loading) {
+            setErrorMessage('Add a note before saving.');
+            return;
+        }
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            await addNote(incidentId, note.trim());
+            setNote('');
+            closeSheet();
+            router.refresh();
+        } catch (error) {
+            handleFailure('Failed to add note', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleReassign = async (userId: string, teamId?: string) => {
+        if (loading) return;
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            await reassignIncident(incidentId, userId, teamId);
+            closeSheet();
+            router.refresh();
+        } catch (error) {
+            handleFailure('Failed to reassign incident', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const showBack = sheetMode !== null && sheetMode !== 'more' && sheetMode !== 'resolve';
+
+    const snapPoints = (sheetMode === 'resolve' || sheetMode === 'reassign' || sheetMode === 'note'
+        ? ['full']
+        : ['content']) satisfies Array<'content' | 'full' | 'half'>;
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            {/* Primary Actions */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="mobile-incident-actions">
+            <div className="mobile-incident-action-row">
                 {status === 'OPEN' && (
                     <button
                         onClick={() => handleAction('ACKNOWLEDGE')}
                         disabled={loading}
-                        style={{
-                            flex: 1,
-                            padding: '0.75rem',
-                            background: 'var(--badge-warning-bg)',
-                            border: 'none',
-                            borderRadius: '8px',
-                            color: 'var(--badge-warning-text)',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1
-                        }}
+                        className="mobile-incident-action-button warning"
                     >
                         {loading ? '...' : 'Acknowledge'}
                     </button>
                 )}
                 {status !== 'RESOLVED' && (
                     <button
-                        onClick={() => setShowResolveInput(!showResolveInput)}
+                        onClick={() => openSheet('resolve')}
                         disabled={loading}
-                        style={{
-                            flex: 1,
-                            padding: '0.75rem',
-                            background: showResolveInput ? 'var(--color-success)' : 'var(--badge-success-bg)',
-                            border: 'none',
-                            borderRadius: '8px',
-                            color: showResolveInput ? 'white' : 'var(--badge-success-text)',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1
-                        }}
+                        className="mobile-incident-action-button success"
                     >
-                        {loading ? '...' : (showResolveInput ? 'Cancel' : 'Resolve')}
+                        Resolve
                     </button>
                 )}
                 <button
-                    onClick={() => setShowMore(!showMore)}
-                    style={{
-                        padding: '0.75rem',
-                        background: 'var(--badge-neutral-bg)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: 'var(--badge-neutral-text)',
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                    }}
+                    onClick={() => openSheet('more')}
+                    className="mobile-incident-action-button neutral"
                 >
-                    {showMore ? 'Less' : 'More...'}
+                    More
                 </button>
             </div>
 
-            {/* Resolution Input Panel */}
-            {showResolveInput && (
-                <div className="mobile-metric-card" style={{ marginTop: '0.75rem' }}>
-                    <p style={{ fontSize: '0.85rem', fontWeight: '600', margin: '0 0 0.5rem' }}>
-                        Resolution Note <span style={{ color: 'var(--error)', fontSize: '0.8rem' }}>*</span>
-                    </p>
-                    <textarea
-                        placeholder="Describe root cause, fix applied, or summary... (min 10 chars)"
-                        value={resolutionNote}
-                        onChange={(e) => setResolutionNote(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            borderRadius: '6px',
-                            border: '1px solid var(--border)',
-                            fontSize: '0.85rem',
-                            minHeight: '80px',
-                            resize: 'vertical',
-                            marginBottom: '0.5rem'
-                        }}
-                    />
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                        {resolutionNote.length}/1000 characters (min 10)
-                    </div>
-                    <button
-                        onClick={handleResolve}
-                        disabled={loading || resolutionNote.trim().length < 10}
-                        style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            background: resolutionNote.trim().length >= 10 ? '#16a34a' : '#d1d5db',
-                            border: 'none',
-                            borderRadius: '6px',
-                            color: 'white',
-                            fontSize: '0.85rem',
-                            fontWeight: '600',
-                            cursor: (loading || resolutionNote.trim().length < 10) ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.7 : 1
-                        }}
-                    >
-                        {loading ? 'Resolving...' : 'Resolve with Note'}
-                    </button>
-                </div>
+            {errorMessage && sheetMode === null && (
+                <div className="mobile-incident-action-error">{errorMessage}</div>
             )}
 
-            {/* More Actions Panel */}
-            {showMore && (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '0.5rem',
-                    padding: '0.75rem',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)'
-                }}>
-                    <button
-                        onClick={() => setShowNoteInput(!showNoteInput)}
-                        style={{
-                            padding: '0.6rem',
-                            background: 'var(--bg-surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        📝 Add Note
+            <MobileBottomSheet
+                isOpen={sheetMode !== null}
+                onClose={closeSheet}
+                title={sheetTitle}
+                snapPoints={snapPoints}
+            >
+                {showBack && (
+                    <button className="mobile-incident-sheet-back" onClick={() => openSheet('more')}>
+                        Back to actions
                     </button>
+                )}
 
-                    <button
-                        onClick={handleUrgencyToggle}
-                        disabled={loading}
-                        style={{
-                            padding: '0.6rem',
-                            background: 'var(--bg-surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500',
-                            cursor: loading ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        ⚠️ {urgency === 'HIGH' ? 'Low' : 'High'} Urgency
-                    </button>
+                {errorMessage && (
+                    <div className="mobile-incident-sheet-error">{errorMessage}</div>
+                )}
 
-                    {(!assigneeId || assigneeId !== currentUserId) && (
+                {sheetMode === 'more' && (
+                    <div className="mobile-incident-sheet-grid">
                         <button
-                            onClick={handleTakeOwnership}
+                            onClick={() => openSheet('note')}
+                            className="mobile-incident-sheet-button"
+                        >
+                            Add note
+                        </button>
+                        <button
+                            onClick={handleUrgencyToggle}
                             disabled={loading}
-                            style={{
-                                padding: '0.6rem',
-                                background: 'var(--bg-surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500',
-                                cursor: loading ? 'not-allowed' : 'pointer'
-                            }}
+                            className="mobile-incident-sheet-button"
                         >
-                            🙋 Take Ownership
+                            {urgency === 'HIGH' ? 'Lower urgency' : 'Raise urgency'}
                         </button>
-                    )}
-
-                    {status !== 'RESOLVED' && status !== 'SNOOZED' && (
-                        <button
-                            onClick={() => setShowSnoozeOptions(!showSnoozeOptions)}
-                            style={{
-                                padding: '0.6rem',
-                                background: 'var(--bg-surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            💤 Snooze
-                        </button>
-                    )}
-
-                    {status === 'SNOOZED' && (
-                        <button
-                            onClick={() => handleAction('OPEN')}
-                            disabled={loading}
-                            style={{
-                                padding: '0.6rem',
-                                background: 'var(--badge-warning-bg)',
-                                border: '1px solid var(--badge-warning-text)',
-                                borderRadius: '6px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500',
-                                cursor: loading ? 'not-allowed' : 'pointer'
-                            }}
-                        >
-                            🔔 Unsnooze
-                        </button>
-                    )}
-
-                    <button
-                        onClick={() => setShowReassign(!showReassign)}
-                        style={{
-                            padding: '0.6rem',
-                            background: 'var(--bg-surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        ↔️ Reassign
-                    </button>
-                </div>
-            )}
-
-            {/* Snooze Options */}
-            {showSnoozeOptions && (
-                <div className="mobile-metric-card">
-                    <p style={{ fontSize: '0.85rem', fontWeight: '600', margin: '0 0 0.5rem' }}>Snooze for:</p>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {[1, 4, 24].map(h => (
+                        {(!assigneeId || assigneeId !== currentUserId) && (
                             <button
-                                key={h}
-                                onClick={() => handleSnooze(h)}
+                                onClick={handleTakeOwnership}
                                 disabled={loading}
-                                style={{
-                                    flex: 1,
-                                    padding: '0.5rem',
-                                    background: 'var(--badge-snoozed-bg)',
-                                    border: '1px solid var(--badge-snoozed-text)',
-                                    borderRadius: '6px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: '600',
-                                    color: 'var(--badge-snoozed-text)',
-                                    cursor: loading ? 'not-allowed' : 'pointer'
-                                }}
+                                className="mobile-incident-sheet-button"
                             >
-                                {h}h
+                                Take ownership
                             </button>
-                        ))}
+                        )}
+                        {status !== 'RESOLVED' && status !== 'SNOOZED' && (
+                            <button
+                                onClick={() => openSheet('snooze')}
+                                className="mobile-incident-sheet-button"
+                            >
+                                Snooze
+                            </button>
+                        )}
+                        {status === 'SNOOZED' && (
+                            <button
+                                onClick={() => handleAction('OPEN')}
+                                disabled={loading}
+                                className="mobile-incident-sheet-button"
+                            >
+                                Unsnooze
+                            </button>
+                        )}
+                        <button
+                            onClick={() => openSheet('reassign')}
+                            className="mobile-incident-sheet-button"
+                        >
+                            Reassign
+                        </button>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Reassign Panel */}
-            {showReassign && (
-                <div className="mobile-metric-card">
-                    <p style={{ fontSize: '0.85rem', fontWeight: '600', margin: '0 0 0.75rem' }}>Reassign To:</p>
+                {sheetMode === 'resolve' && (
+                    <div className="mobile-incident-sheet-stack">
+                        <textarea
+                            placeholder="Describe root cause, fix applied, or summary... (min 10 chars)"
+                            value={resolutionNote}
+                            onChange={(e) => setResolutionNote(e.target.value)}
+                            className="mobile-incident-sheet-textarea"
+                        />
+                        <div className="mobile-incident-sheet-helper">
+                            {resolutionNote.length}/1000 characters (min {RESOLUTION_MIN})
+                        </div>
+                        <button
+                            onClick={handleResolve}
+                            disabled={loading || resolutionNote.trim().length < RESOLUTION_MIN}
+                            className="mobile-incident-sheet-submit"
+                        >
+                            {loading ? 'Resolving...' : 'Resolve incident'}
+                        </button>
+                    </div>
+                )}
 
-                    {/* Assign to User */}
-                    <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', display: 'block' }}>
-                            User
-                        </label>
+                {sheetMode === 'note' && (
+                    <div className="mobile-incident-sheet-stack">
+                        <textarea
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Add a note..."
+                            className="mobile-incident-sheet-textarea"
+                        />
+                        <div className="mobile-incident-sheet-actions">
+                            <button
+                                onClick={() => openSheet('more')}
+                                className="mobile-incident-sheet-secondary"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAddNote}
+                                disabled={loading || !note.trim()}
+                                className="mobile-incident-sheet-submit"
+                            >
+                                Save note
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {sheetMode === 'snooze' && (
+                    <div className="mobile-incident-sheet-stack">
+                        <p className="mobile-incident-sheet-label">Snooze for</p>
+                        <div className="mobile-incident-sheet-grid">
+                            {[1, 4, 24].map((hours) => (
+                                <button
+                                    key={hours}
+                                    onClick={() => handleSnooze(hours)}
+                                    disabled={loading}
+                                    className="mobile-incident-sheet-button"
+                                >
+                                    {hours}h
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {sheetMode === 'reassign' && (
+                    <div className="mobile-incident-sheet-stack">
+                        <label className="mobile-incident-sheet-label">Assign to user</label>
                         <select
                             onChange={(e) => e.target.value && handleReassign(e.target.value)}
                             disabled={loading}
-                            style={{
-                                width: '100%',
-                                padding: '0.5rem',
-                                borderRadius: '6px',
-                                border: '1px solid var(--border)',
-                                fontSize: '0.85rem',
-                                background: 'var(--bg-surface)',
-                                color: 'var(--text-primary)'
-                            }}
+                            className="mobile-incident-sheet-select"
+                            defaultValue=""
                         >
                             <option value="">Select a user...</option>
-                            {users.map(user => (
+                            {users.map((user) => (
                                 <option key={user.id} value={user.id}>
                                     {user.name || user.email}
                                 </option>
                             ))}
                         </select>
-                    </div>
 
-                    {/* Assign to Team */}
-                    <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', display: 'block' }}>
-                            Team
-                        </label>
+                        <label className="mobile-incident-sheet-label">Assign to team</label>
                         <select
                             onChange={(e) => e.target.value && handleReassign('', e.target.value)}
                             disabled={loading}
-                            style={{
-                                width: '100%',
-                                padding: '0.5rem',
-                                borderRadius: '6px',
-                                border: '1px solid var(--border)',
-                                fontSize: '0.85rem',
-                                background: 'var(--bg-surface)',
-                                color: 'var(--text-primary)'
-                            }}
+                            className="mobile-incident-sheet-select"
+                            defaultValue=""
                         >
                             <option value="">Select a team...</option>
-                            {teams.map(team => (
+                            {teams.map((team) => (
                                 <option key={team.id} value={team.id}>
                                     {team.name}
                                 </option>
                             ))}
                         </select>
-                    </div>
 
-                    <button
-                        onClick={() => setShowReassign(false)}
-                        style={{
-                            width: '100%',
-                            marginTop: '0.5rem',
-                            padding: '0.4rem',
-                            background: 'transparent',
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Cancel
-                    </button>
-                </div>
-            )}
-
-            {showNoteInput && (
-                <div className="mobile-metric-card">
-                    <textarea
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        placeholder="Add a note..."
-                        style={{
-                            width: '100%',
-                            minHeight: '80px',
-                            padding: '0.5rem',
-                            borderRadius: '6px',
-                            border: '1px solid var(--border)',
-                            marginBottom: '0.5rem',
-                            fontFamily: 'inherit'
-                        }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                         <button
-                            onClick={() => setShowNoteInput(false)}
-                            style={{
-                                padding: '0.4rem 0.8rem',
-                                background: 'transparent',
-                                border: '1px solid var(--border)',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                            }}
+                            onClick={() => handleReassign('', '')}
+                            disabled={loading}
+                            className="mobile-incident-sheet-secondary"
                         >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleAddNote}
-                            disabled={loading || !note.trim()}
-                            style={{
-                                padding: '0.4rem 0.8rem',
-                                background: 'var(--primary)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                opacity: loading || !note.trim() ? 0.5 : 1
-                            }}
-                        >
-                            Save Note
+                            Unassign
                         </button>
                     </div>
-                </div>
-            )}
+                )}
+            </MobileBottomSheet>
         </div>
     );
 }

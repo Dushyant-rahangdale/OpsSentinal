@@ -62,7 +62,17 @@ export async function GET(req: NextRequest) {
                             }
                         },
                         orderBy: { createdAt: 'desc' },
-                        take: 10
+                        take: 8,
+                        select: {
+                            id: true,
+                            title: true,
+                            message: true,
+                            type: true,
+                            entityType: true,
+                            entityId: true,
+                            readAt: true,
+                            createdAt: true,
+                        },
                     });
 
                     let shouldUpdateUnreadCount = false;

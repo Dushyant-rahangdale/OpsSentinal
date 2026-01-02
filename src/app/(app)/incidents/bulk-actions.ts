@@ -22,7 +22,7 @@ export async function bulkAcknowledge(incidentIds: string[]) {
         await prisma.incident.updateMany({
             where: {
                 id: { in: incidentIds },
-                status: { not: 'RESOLVED' } // Only update non-resolved incidents
+                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } // Only update non-resolved incidents
             },
             data: {
                 status: 'ACKNOWLEDGED',
@@ -556,13 +556,15 @@ export async function bulkUpdateStatus(incidentIds: string[], status: 'OPEN' | '
                 }
             });
 
-            for (const incident of incidents) {
-                let nextEscalationAt: Date | null = new Date();
-                if (incident.status === 'ACKNOWLEDGED') {
-                    const stepIndex = incident.currentEscalationStep ?? 0;
-                    const delayMinutes = incident.service?.policy?.steps?.[stepIndex]?.delayMinutes ?? 0;
-                    nextEscalationAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-                }
+                for (const incident of incidents) {
+                    let nextEscalationAt: Date | null = new Date();
+                    if (incident.status === 'ACKNOWLEDGED') {
+                        const stepIndex = incident.currentEscalationStep ?? 0;
+                        const steps = incident.service?.policy?.steps ?? [];
+                        const step = steps.find((_, index) => index === stepIndex);
+                        const delayMinutes = step?.delayMinutes ?? 0;
+                        nextEscalationAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+                    }
 
                 await prisma.incident.update({
                     where: { id: incident.id },

@@ -26,8 +26,7 @@ export type SMSOptions = {
 
 /**
  * Send SMS notification
- * Currently uses console.log for development
- * Replace with actual SMS service in production
+ * Uses structured logger for delivery events and warnings
  */
 export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; error?: string }> {
     try {
@@ -36,7 +35,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
 
         // Check if SMS is enabled
         if (!smsConfig.enabled) {
-            console.log('SMS Notification (disabled):', {
+            logger.warn('SMS notification disabled', {
                 to: options.to,
                 message: options.message.substring(0, 100),
                 provider: smsConfig.provider,
@@ -81,7 +80,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     if (digits.length >= 10) {
                         // Assume US number if no country code
                         toNumber = `+1${digits}`;
-                        console.warn('Phone number missing country code, assuming US:', toNumber);
+                        logger.warn('Phone number missing country code, assuming US', { to: toNumber });
                     } else {
                         return { success: false, error: `Invalid phone number format: ${options.to}. Must be in E.164 format (e.g., +1234567890)` };
                     }
@@ -90,7 +89,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     toNumber = toNumber.replace(/[\s\-\(\)]/g, '');
                 }
 
-                console.log('Sending SMS via Twilio:', {
+                logger.info('Sending SMS via Twilio', {
                     to: toNumber,
                     from: smsConfig.fromNumber,
                     messageLength: options.message.length
@@ -102,7 +101,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                     to: toNumber
                 });
 
-                console.log('SMS sent successfully via Twilio:', {
+                logger.info('SMS sent successfully via Twilio', {
                     to: toNumber,
                     from: smsConfig.fromNumber,
                     messageSid: result.sid,
@@ -181,7 +180,7 @@ export async function sendSMS(options: SMSOptions): Promise<{ success: boolean; 
                 });
 
                 const result = await client.send(command);
-                console.log('SMS sent via AWS SNS:', { to: options.to, messageId: result.MessageId });
+                logger.info('SMS sent via AWS SNS', { to: options.to, messageId: result.MessageId });
                 return { success: true };
             } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 // If AWS SDK package is not installed, fall back to console log
@@ -270,7 +269,7 @@ export async function sendIncidentSMS(
         if (!phoneNumber.startsWith('+')) {
             // If no country code, assume it's already formatted or add default
             // For now, just use as-is and let Twilio handle validation
-            console.warn('Phone number missing country code:', phoneNumber);
+            logger.warn('Phone number missing country code', { phoneNumber });
         } else {
             // Ensure it's properly formatted (remove spaces, dashes, etc.)
             phoneNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');

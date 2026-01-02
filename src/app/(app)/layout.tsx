@@ -15,7 +15,6 @@ import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
-import { startCronScheduler } from '@/lib/cron-scheduler';
 import { logger } from '@/lib/logger';
 
 const isNextRedirectError = (error: unknown) => {
@@ -34,7 +33,6 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  startCronScheduler();
 
   const session = await getServerSession(await getAuthOptions());
   if (!session?.user?.email) {
@@ -98,7 +96,7 @@ export default async function AppLayout({
 
   const criticalOpenCount = await prisma.incident.count({
     where: {
-      status: { not: 'RESOLVED' },
+      status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
       urgency: 'HIGH'
     }
   });

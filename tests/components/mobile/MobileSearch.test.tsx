@@ -1,7 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MobileSearchWithParams } from '@/components/mobile/MobileSearchParams';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, type ReadonlyURLSearchParams } from 'next/navigation';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 vi.mock('next/navigation', () => ({
     useRouter: vi.fn(),
@@ -13,12 +14,20 @@ vi.mock('next/navigation', () => ({
 // Ideally we test that router.push is called
 
 describe('MobileSearch', () => {
-    let replaceMock: ReturnType<typeof vi.fn>;
+    let replaceMock: AppRouterInstance['replace'];
 
     beforeEach(() => {
-        replaceMock = vi.fn();
-        (useRouter as any).mockReturnValue({ replace: replaceMock });
-        (useSearchParams as any).mockReturnValue(new URLSearchParams());
+        replaceMock = vi.fn() as AppRouterInstance['replace'];
+        const mockRouter = {
+            back: vi.fn(),
+            forward: vi.fn(),
+            push: vi.fn(),
+            replace: replaceMock,
+            prefetch: vi.fn(),
+            refresh: vi.fn(),
+        } as AppRouterInstance;
+        vi.mocked(useRouter).mockReturnValue(mockRouter);
+        vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as unknown as ReadonlyURLSearchParams);
     });
 
     it('updates search params on input', () => {

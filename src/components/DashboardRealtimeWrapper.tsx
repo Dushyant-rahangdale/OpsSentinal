@@ -3,6 +3,7 @@
 import { useRealtime } from '@/hooks/useRealtime';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/lib/logger';
 
 interface DashboardRealtimeWrapperProps {
   children: React.ReactNode;
@@ -39,7 +40,7 @@ export default function DashboardRealtimeWrapper({
 
   // Show connection status indicator (optional)
   if (error && process.env.NODE_ENV === 'development') {
-    console.warn('Real-time connection error:', error);
+    logger.warn('Real-time connection error', { error });
   }
 
   return (

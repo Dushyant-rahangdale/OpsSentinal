@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { startCronScheduler } from '@/lib/cron-scheduler';
-
-// Start internal cron when the health endpoint is first loaded.
-startCronScheduler();
 
 // Generate a unique ID when the server process starts
 const SERVER_INSTANCE_ID = Date.now().toString();
@@ -78,9 +74,13 @@ export async function GET(request: NextRequest) {
         };
     }
 
-    // Determine overall status
-    const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
-    const anyUnhealthy = Object.values(checks).some(check => check.status === 'unhealthy');
+    const readinessChecks = mode === 'readiness'
+        ? Object.entries(checks).filter(([key]) => key !== 'memory').map(([, value]) => value)
+        : Object.values(checks);
+    const allHealthy = readinessChecks.length === 0
+        ? true
+        : readinessChecks.every(check => check.status === 'healthy');
+    const anyUnhealthy = readinessChecks.some(check => check.status === 'unhealthy');
 
     const overallStatus = allHealthy
         ? 'healthy'

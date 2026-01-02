@@ -8,12 +8,13 @@ interface SwipeableIncidentCardProps {
         id: string;
         title: string;
         status: string;
-        urgency: string;
+        urgency?: string | null;
         createdAt: string | Date;
         service?: { name: string } | null;
     };
     onAcknowledge?: (id: string) => void;
     onResolve?: (id: string) => void;
+    isUpdating?: boolean;
 }
 
 /**
@@ -23,45 +24,60 @@ interface SwipeableIncidentCardProps {
 export default function SwipeableIncidentCard({
     incident,
     onAcknowledge,
-    onResolve
+    onResolve,
+    isUpdating = false
 }: SwipeableIncidentCardProps) {
     const router = useRouter();
     const cardRef = useRef<HTMLDivElement>(null);
     const [translateX, setTranslateX] = useState(0);
+    const translateXRef = useRef(0);
     const [isDragging, setIsDragging] = useState(false);
+    const isDraggingRef = useRef(false);
     const startX = useRef(0);
     const threshold = 80;
 
     const handleTouchStart = (e: React.TouchEvent) => {
         startX.current = e.touches[0].clientX;
+        isDraggingRef.current = true;
         setIsDragging(true);
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isDragging) return;
+        if (!isDraggingRef.current) return;
         const deltaX = e.touches[0].clientX - startX.current;
         // Limit swipe range
         const maxSwipe = 120;
         const newTranslateX = Math.max(-maxSwipe, Math.min(maxSwipe, deltaX));
+        translateXRef.current = newTranslateX;
         setTranslateX(newTranslateX);
     };
 
     const handleTouchEnd = () => {
+        isDraggingRef.current = false;
         setIsDragging(false);
 
-        if (translateX < -threshold && onAcknowledge) {
+        if (isUpdating) {
+            translateXRef.current = 0;
+            setTranslateX(0);
+            return;
+        }
+
+        const finalTranslateX = translateXRef.current;
+        if (finalTranslateX < -threshold && onAcknowledge) {
             // Swiped left - Acknowledge
             onAcknowledge(incident.id);
-        } else if (translateX > threshold && onResolve) {
+        } else if (finalTranslateX > threshold && onResolve) {
             // Swiped right - Resolve
             onResolve(incident.id);
         }
 
         // Reset position
+        translateXRef.current = 0;
         setTranslateX(0);
     };
 
     const handleClick = () => {
+        if (isUpdating) return;
         if (Math.abs(translateX) < 10) {
             router.push(`/m/incidents/${incident.id}`);
         }
@@ -78,7 +94,8 @@ export default function SwipeableIncidentCard({
     };
 
     const getUrgencyColor = () => {
-        switch (incident.urgency.toLowerCase()) {
+        const urgencyValue = incident.urgency?.toLowerCase() || 'low';
+        switch (urgencyValue) {
             case 'high': return { bg: 'var(--badge-error-bg)', text: 'var(--badge-error-text)' };
             case 'medium': return { bg: 'var(--badge-warning-bg)', text: 'var(--badge-warning-text)' };
             case 'low': return { bg: 'var(--badge-success-bg)', text: 'var(--badge-success-text)' };
@@ -155,6 +172,7 @@ export default function SwipeableIncidentCard({
             {/* Card */}
             <div
                 ref={cardRef}
+                data-testid={`incident-card-${incident.id}`}
                 onClick={handleClick}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
@@ -171,7 +189,7 @@ export default function SwipeableIncidentCard({
                     color: 'inherit',
                     transform: `translateX(${translateX}px)`,
                     transition: isDragging ? 'none' : 'transform 0.2s ease-out',
-                    cursor: 'pointer',
+                    cursor: isUpdating ? 'progress' : 'pointer',
                     touchAction: 'pan-y'
                 }}
             >
@@ -193,17 +211,19 @@ export default function SwipeableIncidentCard({
                     }}>
                         {incident.status}
                     </span>
-                    <span style={{
-                        padding: '0.15rem 0.4rem',
-                        borderRadius: '999px',
-                        fontSize: '0.6rem',
-                        fontWeight: '700',
-                        textTransform: 'uppercase',
-                        background: urgencyColors.bg,
-                        color: urgencyColors.text
-                    }}>
-                        {incident.urgency}
-                    </span>
+                    {incident.urgency && (
+                        <span style={{
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: '999px',
+                            fontSize: '0.6rem',
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            background: urgencyColors.bg,
+                            color: urgencyColors.text
+                        }}>
+                            {incident.urgency}
+                        </span>
+                    )}
                 </div>
 
                 {/* Title */}
@@ -250,6 +270,12 @@ export default function SwipeableIncidentCard({
                     </div>
                 )}
             </div>
+
+            {isUpdating && (
+                <div className="mobile-incident-card-overlay">
+                    Updating...
+                </div>
+            )}
         </div>
     );
 }

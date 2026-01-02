@@ -75,7 +75,12 @@ export async function GET(req: NextRequest) {
                             prisma.incident.count({ where: { status: 'OPEN' } }),
                             prisma.incident.count({ where: { status: 'ACKNOWLEDGED' } }),
                             prisma.incident.count({ where: { status: 'RESOLVED', resolvedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }),
-                            prisma.incident.count({ where: { status: { not: 'RESOLVED' }, urgency: 'HIGH' } })
+                            prisma.incident.count({
+                                where: {
+                                    status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+                                    urgency: 'HIGH'
+                                }
+                            })
                         ]);
 
                         send(JSON.stringify({

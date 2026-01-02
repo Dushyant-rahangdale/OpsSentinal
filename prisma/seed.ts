@@ -5,443 +5,421 @@ import { randomBytes } from 'crypto'
 
 const prisma = new PrismaClient()
 
-const demoPassword = 'Password123!'
+// Configuration
+const TOTAL_INCIDENTS = 1000
+const INCIDENT_HISTORY_DAYS = 730 // 2 Years
+const TEAMS_COUNT = 6
+const USERS_PER_TEAM = 5
+const SERVICES_PER_TEAM = 4
 
 // =============================================================================
-// HELPER FUNCTIONS
+// DATA GENERATORS
 // =============================================================================
 
-function daysAgo(days: number) {
-    const date = new Date()
-    date.setDate(date.getDate() - days)
-    return date
-}
+const firstNames = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'David', 'Elizabeth', 'William', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen']
+const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin']
+const domains = ['example.com', 'test.com', 'demo.org']
 
-function hoursFrom(date: Date, hours: number) {
-    const next = new Date(date)
-    next.setHours(next.getHours() + hours)
-    return next
-}
+const teamNames = [
+    'Platform Engineering',
+    'Core Infrastructure',
+    'Payment Gateway',
+    'Frontend Experience',
+    'Data Science',
+    'Customer Success',
+    'Security Operations',
+    'Mobile Development'
+]
 
-function randomPick<T>(items: T[]) {
-    return items[Math.floor(Math.random() * items.length)]
-}
+const serviceTypes = [
+    { name: 'API Gateway', tier: 'Gold' },
+    { name: 'Auth Service', tier: 'Gold' },
+    { name: 'Payment Processor', tier: 'Gold' },
+    { name: 'Email Worker', tier: 'Silver' },
+    { name: 'Search Indexer', tier: 'Silver' },
+    { name: 'Analytics Pipeline', tier: 'Silver' },
+    { name: 'User Profile DB', tier: 'Gold' },
+    { name: 'Frontend CDN', tier: 'Gold' },
+    { name: 'Backoffice UI', tier: 'Bronze' },
+    { name: 'Inventory System', tier: 'Silver' },
+    { name: 'Recommendation Engine', tier: 'Silver' },
+    { name: 'Notification Service', tier: 'Gold' }
+]
+
+const incidentScenarios = [
+    { title: 'High Latency', desc: 'Response times exceeding 500ms SLA' },
+    { title: 'Database Connection Timeout', desc: 'Connection pool exhausted, refusing new connections' },
+    { title: '5xx Error Spike', desc: 'Elevated rate of 500/502 errors detected by load balancer' },
+    { title: 'Memory Leak', desc: 'Container memory usage > 90% causing OOM kills' },
+    { title: 'Certificate Expiration', desc: 'SSL certificate expiring in less than 24h' },
+    { title: 'Disk Space Low', desc: 'Root partition at 95% capacity' },
+    { title: 'Queue Backlog', desc: 'Message processing lag > 5 minutes' },
+    { title: 'Third-party API Down', desc: 'Payment provider API returning 503' },
+    { title: 'Frontend Crash', desc: 'JS error rate spike in production' },
+    { title: 'Login Failure', desc: 'Users unable to authenticate via OAuth' }
+]
+
+// =============================================================================
+// HELPERS
+// =============================================================================
 
 function randomInt(max: number) {
     return Math.floor(Math.random() * max)
 }
 
-function makeIntegrationKey() {
-    return randomBytes(16).toString('hex')
+function randomPick<T>(items: T[]): T {
+    return items[randomInt(items.length)]
+}
+
+function daysAgo(days: number) {
+    const d = new Date()
+    d.setDate(d.getDate() - days)
+    return d
+}
+
+function addMinutes(date: Date, minutes: number) {
+    return new Date(date.getTime() + minutes * 60000)
+}
+
+function hoursFrom(date: Date, hours: number) {
+    return new Date(date.getTime() + hours * 3600000)
+}
+
+function clampToNow(date: Date) {
+    const now = new Date()
+    if (date > now) return new Date(now.getTime() - 1000)
+    return date
 }
 
 // =============================================================================
-// SEED DATA DEFINITIONS
-// =============================================================================
-
-const teamSeeds = [
-    { name: 'Platform Engineering', description: 'Core infrastructure and reliability' },
-    { name: 'Payments Operations', description: 'Revenue-critical services and payments' },
-    { name: 'Customer Support', description: 'Customer communication and incident comms' },
-    { name: 'Frontend Team', description: 'Web and mobile applications' },
-    { name: 'Data Engineering', description: 'Data pipelines and analytics infrastructure' }
-]
-
-const userSeeds = [
-    { email: 'alice@example.com', name: 'Alice DevOps', role: 'ADMIN' as const },
-    { email: 'bob@example.com', name: 'Bob SRE', role: 'RESPONDER' as const },
-    { email: 'carol@example.com', name: 'Carol Ops', role: 'RESPONDER' as const },
-    { email: 'dave@example.com', name: 'Dave Analyst', role: 'USER' as const },
-    { email: 'erin@example.com', name: 'Erin Oncall', role: 'RESPONDER' as const },
-    { email: 'frank@example.com', name: 'Frank Support', role: 'RESPONDER' as const },
-    { email: 'gina@example.com', name: 'Gina Reliability', role: 'RESPONDER' as const },
-    { email: 'hank@example.com', name: 'Hank Systems', role: 'RESPONDER' as const },
-    { email: 'ivy@example.com', name: 'Ivy Platform', role: 'RESPONDER' as const },
-    { email: 'jake@example.com', name: 'Jake Engineer', role: 'RESPONDER' as const }
-]
-
-const incidentTitles = [
-    'Database connection pool exhausted',
-    'API latency spike detected',
-    'Memory leak in service worker',
-    'Failed payment processing',
-    'Certificate expiration warning',
-    'Disk space critical on production',
-    'Cache miss rate increased',
-    'Third-party API timeout',
-    'High error rate in microservice',
-    'Queue processing backlog'
-]
-
-// =============================================================================
-// MAIN SEED FUNCTION
+// MAIN
 // =============================================================================
 
 async function main() {
-    if (process.env.NODE_ENV === 'production') {
-        console.log('🛑 Production environment detected. Skipping seed.')
-        return
-    }
+    console.log('🌱 Starting ULTIMATE seed...')
 
-    console.log('🌱 Starting database seed...\n')
-    const passwordHash = await bcrypt.hash(demoPassword, 10)
+    // 1. CLEANUP
+    console.log('🗑️ Cleaning database...')
+    await prisma.$transaction([
+        prisma.incidentEvent.deleteMany(),
+        prisma.incidentNote.deleteMany(),
+        prisma.alert.deleteMany(),
+        prisma.incidentTag.deleteMany(),
+        prisma.postmortem.deleteMany(),
+        prisma.notification.deleteMany(),
+        prisma.incidentWatcher.deleteMany(),
+        prisma.incident.deleteMany(),
+        prisma.onCallShift.deleteMany(),
+        prisma.statusPageService.deleteMany(),
+        prisma.statusPage.deleteMany(),
+        prisma.integration.deleteMany(),
+        prisma.service.deleteMany(),
+        prisma.onCallLayerUser.deleteMany(),
+        prisma.onCallLayer.deleteMany(),
+        prisma.onCallSchedule.deleteMany(),
+        prisma.escalationRule.deleteMany(),
+        prisma.escalationPolicy.deleteMany(),
+        prisma.teamMember.deleteMany(),
+        prisma.team.deleteMany(),
+        prisma.apiKey.deleteMany(),
+        prisma.session.deleteMany(),
+        prisma.account.deleteMany(),
+        prisma.userDevice.deleteMany(),
+        prisma.user.deleteMany()
+    ])
+    console.log('   ✓ Database cleared')
 
-    // =========================================================================
-    // 1. CREATE TEAMS
-    // =========================================================================
-    console.log('📁 Creating teams...')
-    const teams = await Promise.all(
-        teamSeeds.map(async (seed) => {
-            const existing = await prisma.team.findFirst({ where: { name: seed.name } })
-            if (existing) return existing
-            return prisma.team.create({ data: seed })
+    const passwordHash = await bcrypt.hash('Password123!', 10)
+
+    // 2. CREATE USERS & TEAMS
+    console.log('👥 Creating Organization Structure...')
+    const allUsers = []
+    const allTeams = []
+
+    for (let i = 0; i < TEAMS_COUNT; i++) {
+        // Create Team
+        const team = await prisma.team.create({
+            data: {
+                name: teamNames[i] || `Team ${i + 1}`,
+                description: `Responsible for ${teamNames[i] || `Component ${i}`} services`
+            }
         })
-    )
-    const teamByName = new Map(teams.map((t) => [t.name, t]))
-    console.log(`   ✓ ${teams.length} teams ready`)
+        allTeams.push(team)
 
-    // =========================================================================
-    // 2. CREATE USERS
-    // =========================================================================
-    console.log('👤 Creating users...')
-    const users = await Promise.all(
-        userSeeds.map((user) =>
-            prisma.user.upsert({
-                where: { email: user.email },
-                update: {},
-                create: {
-                    email: user.email,
-                    name: user.name,
-                    role: user.role,
+        // Create Users for Team
+        const teamUsers = []
+        for (let j = 0; j < USERS_PER_TEAM; j++) {
+            const firstName = randomPick(firstNames)
+            const lastName = randomPick(lastNames)
+            const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomInt(99)}@${randomPick(domains)}`
+
+            const user = await prisma.user.create({
+                data: {
+                    name: `${firstName} ${lastName}`,
+                    email,
+                    role: 'RESPONDER', // Mostly responders
                     status: 'ACTIVE',
                     passwordHash
                 }
             })
-        )
-    )
-    const userByEmail = new Map(users.map((u) => [u.email, u]))
-    console.log(`   ✓ ${users.length} users ready`)
+            allUsers.push(user)
+            teamUsers.push(user)
 
-    // =========================================================================
-    // 3. CREATE TEAM MEMBERSHIPS
-    // =========================================================================
-    console.log('👥 Creating team memberships...')
-    await prisma.teamMember.createMany({
-        data: [
-            { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('alice@example.com')!.id, role: 'OWNER' },
-            { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('bob@example.com')!.id, role: 'ADMIN' },
-            { teamId: teamByName.get('Platform Engineering')!.id, userId: userByEmail.get('carol@example.com')!.id, role: 'MEMBER' },
-            { teamId: teamByName.get('Payments Operations')!.id, userId: userByEmail.get('erin@example.com')!.id, role: 'OWNER' },
-            { teamId: teamByName.get('Payments Operations')!.id, userId: userByEmail.get('bob@example.com')!.id, role: 'MEMBER' },
-            { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('frank@example.com')!.id, role: 'OWNER' },
-            { teamId: teamByName.get('Customer Support')!.id, userId: userByEmail.get('dave@example.com')!.id, role: 'MEMBER' },
-            { teamId: teamByName.get('Frontend Team')!.id, userId: userByEmail.get('gina@example.com')!.id, role: 'OWNER' },
-            { teamId: teamByName.get('Frontend Team')!.id, userId: userByEmail.get('hank@example.com')!.id, role: 'MEMBER' },
-            { teamId: teamByName.get('Data Engineering')!.id, userId: userByEmail.get('ivy@example.com')!.id, role: 'OWNER' },
-            { teamId: teamByName.get('Data Engineering')!.id, userId: userByEmail.get('jake@example.com')!.id, role: 'MEMBER' }
-        ],
-        skipDuplicates: true
-    })
-    console.log('   ✓ Team memberships created')
-
-    // =========================================================================
-    // 4. CREATE ESCALATION POLICIES
-    // =========================================================================
-    console.log('🛡️ Creating escalation policies...')
-    const policies = await Promise.all([
-        createPolicy('Platform Primary', 'Primary escalation for platform services', [
-            userByEmail.get('alice@example.com')!.id,
-            userByEmail.get('bob@example.com')!.id,
-            userByEmail.get('carol@example.com')!.id
-        ]),
-        createPolicy('Payments Critical', 'Critical payments escalation path', [
-            userByEmail.get('erin@example.com')!.id,
-            userByEmail.get('bob@example.com')!.id,
-            userByEmail.get('alice@example.com')!.id
-        ]),
-        createPolicy('Customer Support', 'Customer facing incident escalation', [
-            userByEmail.get('frank@example.com')!.id,
-            userByEmail.get('dave@example.com')!.id
-        ]),
-        createPolicy('Frontend Alerts', 'Frontend and UI escalation', [
-            userByEmail.get('gina@example.com')!.id,
-            userByEmail.get('hank@example.com')!.id
-        ]),
-        createPolicy('Data Pipeline', 'Data engineering escalation', [
-            userByEmail.get('ivy@example.com')!.id,
-            userByEmail.get('jake@example.com')!.id
-        ])
-    ])
-    const policyByName = new Map(policies.map((p) => [p.name, p]))
-    console.log(`   ✓ ${policies.length} escalation policies created`)
-
-    // =========================================================================
-    // 5. CREATE SERVICES
-    // =========================================================================
-    console.log('🔧 Creating services...')
-    const services = await Promise.all([
-        createService('API Gateway', 'Main public API entry point', 'OPERATIONAL',
-            teamByName.get('Platform Engineering')!.id, policyByName.get('Platform Primary')!.id),
-        createService('Auth Service', 'Authentication and sessions', 'OPERATIONAL',
-            teamByName.get('Platform Engineering')!.id, policyByName.get('Platform Primary')!.id),
-        createService('Payments API', 'Payment processing core', 'DEGRADED',
-            teamByName.get('Payments Operations')!.id, policyByName.get('Payments Critical')!.id),
-        createService('Checkout UI', 'Customer checkout experience', 'OPERATIONAL',
-            teamByName.get('Payments Operations')!.id, policyByName.get('Payments Critical')!.id),
-        createService('Customer Portal', 'Customer-facing web application', 'OPERATIONAL',
-            teamByName.get('Frontend Team')!.id, policyByName.get('Frontend Alerts')!.id),
-        createService('Data Pipeline', 'ETL and data processing', 'OPERATIONAL',
-            teamByName.get('Data Engineering')!.id, policyByName.get('Data Pipeline')!.id),
-        createService('Status Page', 'Public status page', 'OPERATIONAL',
-            teamByName.get('Customer Support')!.id, policyByName.get('Customer Support')!.id)
-    ])
-    console.log(`   ✓ ${services.length} services created`)
-
-    // =========================================================================
-    // 6. CREATE ON-CALL SCHEDULES
-    // =========================================================================
-    console.log('📅 Creating on-call schedules...')
-    const schedules = await Promise.all([
-        createSchedule('Platform Primary', [
-            userByEmail.get('alice@example.com')!.id,
-            userByEmail.get('bob@example.com')!.id,
-            userByEmail.get('carol@example.com')!.id
-        ]),
-        createSchedule('Payments Oncall', [
-            userByEmail.get('erin@example.com')!.id,
-            userByEmail.get('bob@example.com')!.id
-        ]),
-        createSchedule('Customer Support 24/7', [
-            userByEmail.get('frank@example.com')!.id,
-            userByEmail.get('dave@example.com')!.id
-        ]),
-        createSchedule('Frontend Oncall', [
-            userByEmail.get('gina@example.com')!.id,
-            userByEmail.get('hank@example.com')!.id
-        ]),
-        createSchedule('Data Engineering', [
-            userByEmail.get('ivy@example.com')!.id,
-            userByEmail.get('jake@example.com')!.id
-        ])
-    ])
-    console.log(`   ✓ ${schedules.length} on-call schedules created`)
-
-    // =========================================================================
-    // 7. CREATE ON-CALL SHIFTS
-    // =========================================================================
-    console.log('⏰ Creating on-call shifts...')
-    for (const schedule of schedules) {
-        await createShifts(schedule.id, schedule.layers[0]?.users.map((u: { userId: string }) => u.userId) || [])
+            // Add to Team
+            await prisma.teamMember.create({
+                data: {
+                    teamId: team.id,
+                    userId: user.id,
+                    role: j === 0 ? 'OWNER' : 'MEMBER'
+                }
+            })
+        }
     }
-    console.log('   ✓ On-call shifts created for 30 days')
 
-    // =========================================================================
-    // 8. CREATE INCIDENTS
-    // =========================================================================
-    console.log('🔥 Creating sample incidents...')
-    const responderIds = users.filter((u) => u.role !== 'USER').map((u) => u.id)
-    const serviceList = await prisma.service.findMany()
+    // Create Admin
+    const admin = await prisma.user.create({
+        data: {
+            name: 'System Admin',
+            email: 'admin@example.com',
+            role: 'ADMIN',
+            status: 'ACTIVE',
+            passwordHash
+        }
+    })
+    console.log(`   ✓ Created ${allTeams.length} teams and ${allUsers.length + 1} users`)
+
+    // 3. CREATE SCHEDULES & POLICIES
+    console.log('📅 Creating Schedules & Policies...')
+    const policies = []
+
+    for (const team of allTeams) {
+        // Get team members
+        const members = await prisma.teamMember.findMany({
+            where: { teamId: team.id },
+            include: { user: true }
+        })
+        const userIds = members.map(m => m.user.id)
+
+        // On-Call Schedule
+        const schedule = await prisma.onCallSchedule.create({
+            data: {
+                name: `${team.name} On-Call`,
+                timeZone: 'UTC',
+                layers: {
+                    create: [{
+                        name: 'Primary Rotation',
+                        start: daysAgo(365), // Started a year ago
+                        rotationLengthHours: 24,
+                        users: {
+                            create: userIds.map((uid, idx) => ({ userId: uid, position: idx }))
+                        }
+                    }]
+                }
+            }
+        })
+
+        // Generate Shifts (Past 30d + Future 30d)
+        for (let d = -30; d < 30; d++) {
+            const start = daysAgo(-d) // -d to go forward? No, daysAgo(-30) is 30 days in future.
+            // daysAgo(30) is 30 days ago. daysAgo(-30) is 30 days future.
+            // Loop d from -30 (future) to 30 (past). logic: daysAgo(d).
+            // Let's stick to daysAgo(i) where i is 30 down to -30
+            // start = daysAgo(d)
+        }
+
+        // Let's do simple loop for shifts: 60 days starting 30 days ago
+        const shiftStartBase = daysAgo(30)
+        for (let i = 0; i < 60; i++) {
+            const start = addMinutes(shiftStartBase, i * 24 * 60)
+            const end = addMinutes(start, 24 * 60)
+            const userId = userIds[i % userIds.length]
+            await prisma.onCallShift.create({
+                data: { scheduleId: schedule.id, userId, start, end }
+            })
+        }
+
+        // Escalation Policy
+        const policy = await prisma.escalationPolicy.create({
+            data: {
+                name: `${team.name} Policy`,
+                steps: {
+                    create: [
+                        { stepOrder: 0, delayMinutes: 0, targetType: 'SCHEDULE', targetScheduleId: schedule.id },
+                        { stepOrder: 1, delayMinutes: 15, targetType: 'USER', targetUserId: userIds[0] }, // Team lead
+                    ]
+                }
+            }
+        })
+        policies.push({ teamId: team.id, policyId: policy.id })
+    }
+    console.log('   ✓ Schedules & Policies ready')
+
+    // 4. CREATE SERVICES
+    console.log('🔧 Creating Services...')
+    const allServices = []
+
+    for (const team of allTeams) {
+        const policy = policies.find(p => p.teamId === team.id)!
+
+        for (let k = 0; k < SERVICES_PER_TEAM; k++) {
+            const template = randomPick(serviceTypes)
+            const name = `${team.name.split(' ')[0]} ${template.name} ${k + 1}`
+
+            const service = await prisma.service.create({
+                data: {
+                    name,
+                    description: `Managed by ${team.name}`,
+                    status: 'OPERATIONAL',
+                    slaTier: template.tier,
+                    teamId: team.id,
+                    escalationPolicyId: policy.policyId,
+                    targetAckMinutes: template.tier === 'Gold' ? 15 : 60,
+                    targetResolveMinutes: template.tier === 'Gold' ? 120 : 480
+                }
+            })
+            allServices.push(service)
+        }
+    }
+    console.log(`   ✓ ${allServices.length} Services active`)
+
+    // 5. INCIDENTS GENERATION
+    console.log(`🔥 Generating ${TOTAL_INCIDENTS} Incidents (2 Years History)...`)
 
     let incidentCount = 0
-    for (let i = 0; i < 50; i++) {
-        const service = randomPick(serviceList)
-        const status = randomPick(['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED'] as const)
-        const createdAt = hoursFrom(daysAgo(randomInt(30)), randomInt(24))
+    const now = new Date()
+
+    for (let i = 0; i < TOTAL_INCIDENTS; i++) {
+        const service = randomPick(allServices)
+        const scenario = randomPick(incidentScenarios)
+
+        // Date Distribution: 50% recent (last 30d), 50% old (31d - 730d)
+        const isRecent = Math.random() < 0.5
+        const daysBack = isRecent
+            ? randomInt(30)
+            : randomInt(INCIDENT_HISTORY_DAYS - 30) + 30
+
+        // Creation time
+        const createdAt = hoursFrom(daysAgo(daysBack), randomInt(24))
+        if (createdAt > now) createdAt.setTime(now.getTime() - 3600000)
+
+        // Lifecycle
+        let status: 'RESOLVED' | 'ACKNOWLEDGED' | 'OPEN' = 'RESOLVED'
+        let urgency: 'HIGH' | 'LOW' = Math.random() < 0.3 ? 'HIGH' : 'LOW'
+
+        // If very recent, might be OPEN
+        if (daysBack < 1 && Math.random() < 0.2) status = 'OPEN'
+        else if (daysBack < 2 && Math.random() < 0.3) status = 'ACKNOWLEDGED'
 
         const incident = await prisma.incident.create({
             data: {
-                title: `${service.name}: ${randomPick(incidentTitles)}`,
-                description: `Auto-generated incident for testing`,
+                title: `${service.name}: ${scenario.title}`,
+                description: scenario.desc,
                 status,
-                urgency: randomPick(['HIGH', 'LOW'] as const),
-                priority: randomPick(['P1', 'P2', 'P3', 'P4', null]),
-                dedupKey: `seed-${Date.now()}-${i}`,
+                urgency,
+                priority: urgency === 'HIGH' ? 'P1' : 'P3',
                 serviceId: service.id,
-                assigneeId: status !== 'OPEN' ? randomPick(responderIds) : null,
-                acknowledgedAt: status === 'ACKNOWLEDGED' || status === 'RESOLVED' ? hoursFrom(createdAt, 1) : null,
-                resolvedAt: status === 'RESOLVED' ? hoursFrom(createdAt, randomInt(24) + 2) : null,
+                teamId: service.teamId, // Assign to team
+                dedupKey: `seed-mega-${i}`,
                 createdAt,
-                updatedAt: createdAt
+                updatedAt: createdAt // will update below
             }
         })
-        incidentCount++
 
-        // Add activity event
+        // Events
         await prisma.incidentEvent.create({
-            data: {
-                incidentId: incident.id,
-                message: 'Incident triggered via monitoring alert',
-                createdAt
-            }
+            data: { incidentId: incident.id, message: 'Triggered via API', createdAt }
         })
+
+        let lastEventTime = createdAt
+        let acknowledgedAt: Date | null = null
+        let resolvedAt: Date | null = null
+
+        // Ack Logic
+        if (status !== 'OPEN') {
+            // Ack time: 1 min to 4 hours
+            const delay = urgency === 'HIGH' ? randomInt(15) + 1 : randomInt(240) + 5
+            acknowledgedAt = addMinutes(createdAt, delay)
+            acknowledgedAt = clampToNow(acknowledgedAt)
+
+            await prisma.incidentEvent.create({
+                data: { incidentId: incident.id, message: 'Acknowledged', createdAt: acknowledgedAt }
+            })
+            lastEventTime = acknowledgedAt
+
+            await prisma.incident.update({
+                where: { id: incident.id },
+                data: { acknowledgedAt, assigneeId: allUsers[0].id } // Assign to random admin as placeholder or team member
+            })
+        }
+
+        // Resolve Logic
+        if (status === 'RESOLVED') {
+            // Resolve time: 10 mins to 2 days
+            const delay = urgency === 'HIGH' ? randomInt(120) + 10 : randomInt(2880) + 60
+            resolvedAt = addMinutes(lastEventTime, delay)
+            resolvedAt = clampToNow(resolvedAt)
+
+            await prisma.incidentEvent.create({
+                data: { incidentId: incident.id, message: 'Resolved', createdAt: resolvedAt }
+            })
+
+            // Postmortem for severe ones
+            if (urgency === 'HIGH' && Math.random() < 0.2) {
+                await prisma.postmortem.create({
+                    data: {
+                        incidentId: incident.id,
+                        title: `Post-Mortem: ${scenario.title}`,
+                        rootCause: 'Capacity planning failure',
+                        status: 'PUBLISHED',
+                        createdById: allUsers[0].id
+                    }
+                })
+            }
+
+            await prisma.incident.update({
+                where: { id: incident.id },
+                data: { resolvedAt, updatedAt: resolvedAt }
+            })
+        }
+
+        incidentCount++
+        if (i % 100 === 0) process.stdout.write('.')
     }
-    console.log(`   ✓ ${incidentCount} incidents created`)
+    console.log(`\n   ✓ ${incidentCount} incidents generated`)
 
-    // =========================================================================
-    // 9. CREATE STATUS PAGE CONFIGURATION
-    // =========================================================================
-    console.log('🌐 Creating status page configuration...')
-
-    // Create status page
-    const statusPage = await prisma.statusPage.create({
+    // 6. STATUS PAGE
+    console.log('🌐 Configuring Status Page...')
+    const sp = await prisma.statusPage.create({
         data: {
-            name: 'OpsSentinel Status',
+            name: 'System Status',
             subdomain: 'status',
             enabled: true,
-            showServices: true,
-            showIncidents: true,
-            showMetrics: true,
-            privacyMode: 'PUBLIC',
-            branding: {
-                logoUrl: '/logo.png',
-                primaryColor: '#2563eb'
+        }
+    })
+
+    // Add services
+    for (const [idx, svc] of allServices.slice(0, 10).entries()) {
+        await prisma.statusPageService.create({
+            data: {
+                statusPageId: sp.id,
+                serviceId: svc.id,
+                order: idx,
+                showOnPage: true
             }
-        }
-    })
-
-    // Add Services to Status Page
-    const serviceListForStatus = await prisma.service.findMany()
-    await Promise.all(
-        serviceListForStatus.map((service, index) =>
-            prisma.statusPageService.create({
-                data: {
-                    statusPageId: statusPage.id,
-                    serviceId: service.id,
-                    order: index,
-                    showOnPage: true,
-                    displayName: service.name
-                }
-            })
-        )
-    )
-    console.log(`   ✓ Status page created with ${serviceListForStatus.length} services`)
-
-    // =========================================================================
-    // COMPLETE
-    // =========================================================================
-    console.log('\n✅ Seed complete!')
-    console.log(`   Demo password: ${demoPassword}`)
-    console.log(`   Login with: alice@example.com / ${demoPassword}\n`)
-}
-
-// =============================================================================
-// HELPER CREATION FUNCTIONS
-// =============================================================================
-
-async function createPolicy(name: string, description: string, userIds: string[]) {
-    const existing = await prisma.escalationPolicy.findFirst({ where: { name } })
-    if (existing) return existing
-
-    const policy = await prisma.escalationPolicy.create({
-        data: { name, description }
-    })
-
-    // Create escalation steps
-    await prisma.escalationRule.createMany({
-        data: userIds.map((userId, index) => ({
-            policyId: policy.id,
-            targetType: 'USER',
-            targetUserId: userId,
-            stepOrder: index,
-            delayMinutes: index * 15
-        }))
-    })
-
-    return policy
-}
-
-async function createService(
-    name: string,
-    description: string,
-    status: 'OPERATIONAL' | 'DEGRADED' | 'PARTIAL_OUTAGE' | 'MAJOR_OUTAGE' | 'MAINTENANCE',
-    teamId: string,
-    escalationPolicyId: string
-) {
-    const existing = await prisma.service.findFirst({ where: { name } })
-    if (existing) return existing
-
-    const service = await prisma.service.create({
-        data: {
-            name,
-            description,
-            status,
-            teamId,
-            escalationPolicyId,
-            targetAckMinutes: 15,
-            targetResolveMinutes: 120
-        }
-    })
-
-    // Create integration for the service
-    await prisma.integration.create({
-        data: {
-            name: `${name} Events`,
-            key: makeIntegrationKey(),
-            serviceId: service.id
-        }
-    })
-
-    return service
-}
-
-async function createSchedule(name: string, userIds: string[]) {
-    const existing = await prisma.onCallSchedule.findFirst({
-        where: { name },
-        include: { layers: { include: { users: true } } }
-    })
-    if (existing) return existing
-
-    return prisma.onCallSchedule.create({
-        data: {
-            name,
-            timeZone: 'UTC',
-            layers: {
-                create: [{
-                    name: `${name} Layer 1`,
-                    start: daysAgo(30),
-                    rotationLengthHours: 24,
-                    users: {
-                        create: userIds.map((userId, index) => ({
-                            userId,
-                            position: index
-                        }))
-                    }
-                }]
-            }
-        },
-        include: { layers: { include: { users: true } } }
-    })
-}
-
-async function createShifts(scheduleId: string, userIds: string[]) {
-    if (!userIds.length) return
-
-    const existingCount = await prisma.onCallShift.count({
-        where: { scheduleId, start: { gte: daysAgo(30) } }
-    })
-    if (existingCount > 0) return
-
-    for (let i = 0; i < 30; i++) {
-        const start = daysAgo(30 - i)
-        const end = hoursFrom(start, 24)
-        const userId = userIds[i % userIds.length]
-
-        await prisma.onCallShift.create({
-            data: { scheduleId, userId, start, end }
         })
     }
-}
+    console.log('   ✓ Status Page live')
 
-// =============================================================================
-// RUN
-// =============================================================================
+    console.log('\n✅ ULTIMATE SEED COMPLETE')
+    console.log(`Admin Login: admin@example.com / Password123!`)
+}
 
 main()
     .then(async () => {
         await prisma.$disconnect()
     })
-    .catch(async (error) => {
-        console.error('Seed error:', error)
+    .catch(async (e) => {
+        console.error(e)
         await prisma.$disconnect()
         process.exit(1)
     })

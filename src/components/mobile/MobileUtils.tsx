@@ -222,39 +222,46 @@ export function MobileEmptyState({
     action?: ReactNode;
 }) {
     return (
-        <div style={{
-            padding: '3rem 2rem',
-            textAlign: 'center',
-            background: 'white',
-            borderRadius: '12px',
-            border: '1px solid var(--border)',
-        }}>
+        <div className="mobile-empty-state">
             {icon && (
-                <div style={{
-                    fontSize: '3rem',
-                    marginBottom: '1rem',
-                }}>
+                <div className="mobile-empty-icon">
                     {icon}
                 </div>
             )}
-            <h3 style={{
-                margin: '0 0 0.5rem',
-                fontSize: '1rem',
-                fontWeight: '700',
-            }}>
+            <h3 className="mobile-empty-title">
                 {title}
             </h3>
             {description && (
-                <p style={{
-                    margin: '0 0 1rem',
-                    color: 'var(--text-muted)',
-                    fontSize: '0.85rem',
-                }}>
+                <p className="mobile-empty-desc">
                     {description}
                 </p>
             )}
-            {action}
+            {action && (
+                <div className="mobile-empty-actions">
+                    {action}
+                </div>
+            )}
         </div>
+    );
+}
+
+export function MobileEmptyIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+                d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+            />
+            <path
+                d="M9.5 12.5h5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+            />
+        </svg>
     );
 }
 

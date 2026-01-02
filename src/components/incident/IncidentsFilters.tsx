@@ -28,7 +28,8 @@ export default function IncidentsFilters({
     const [isPending, startTransition] = useTransition();
 
     const updateParams = (updates: Record<string, string>) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const currentQuery = searchParams.toString();
+        const params = new URLSearchParams(currentQuery);
         // Reset to page 1 when filters change
         params.delete('page');
         Object.entries(updates).forEach(([key, value]) => {
@@ -38,8 +39,13 @@ export default function IncidentsFilters({
                 params.set(key, value);
             }
         });
+        const nextQuery = params.toString();
+        if (nextQuery === currentQuery) {
+            return;
+        }
         startTransition(() => {
-            router.push(`/incidents?${params.toString()}`);
+            const nextUrl = nextQuery ? `/incidents?${nextQuery}` : '/incidents';
+            router.push(nextUrl);
         });
     };
 

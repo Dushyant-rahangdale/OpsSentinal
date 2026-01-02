@@ -4,6 +4,7 @@
  */
 
 import prisma from './prisma';
+import { logger } from '@/lib/logger';
 import { type FilterCriteria } from './search-presets';
 
 export const DEFAULT_PRESETS: Array<{
@@ -74,7 +75,7 @@ export const DEFAULT_PRESETS: Array<{
 export async function createDefaultPresetsForUser(userId: string): Promise<void> {
     // Check if SearchPreset model exists
     if (!prisma.searchPreset) {
-        console.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
+        logger.warn('SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.');
         return;
     }
 

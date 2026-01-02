@@ -11,7 +11,7 @@ export default async function MobileAnalyticsPage() {
         openIncidents,
         incidents7d
     ] = await Promise.all([
-        prisma.incident.count({ where: { status: { not: 'RESOLVED' } } }),
+        prisma.incident.count({ where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } } }),
         prisma.incident.findMany({
             where: { createdAt: { gte: sevenDaysAgo } },
             select: {

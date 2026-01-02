@@ -96,7 +96,7 @@ export async function sendSlackNotification(
     const targetUrl = webhookUrl || SLACK_WEBHOOK_URL;
 
     if (!targetUrl) {
-        console.log('[Slack] No webhook URL configured (global or service-level), skipping notification');
+        logger.warn('[Slack] No webhook URL configured (global or service-level), skipping notification');
         return { success: false, error: 'No Slack webhook URL configured' };
     }
 
@@ -153,7 +153,7 @@ export async function sendSlackNotification(
             return { success: false, error: errorText };
         }
 
-        console.log(`[Slack] Notification sent via ${webhookUrl ? 'Service' : 'Global'} Webhook: ${eventType} - ${incident.title}`);
+        logger.info(`[Slack] Notification sent via ${webhookUrl ? 'Service' : 'Global'} Webhook: ${eventType} - ${incident.title}`);
         return { success: true };
     } catch (error: unknown) {
         const err = error as { message?: string };

@@ -522,7 +522,9 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
  * Check and execute pending escalations
  * This should be called periodically (e.g., via cron job) to process delayed escalations
  */
-export async function processPendingEscalations() {
+export async function processPendingEscalations(
+    executor: (incidentId: string, stepIndex?: number) => Promise<{ escalated: boolean; reason?: string }> = executeEscalation
+) {
     const now = new Date();
     const lockCutoff = new Date(now.getTime() - ESCALATION_LOCK_TIMEOUT_MS);
 
@@ -541,24 +543,11 @@ export async function processPendingEscalations() {
                 in: ['OPEN', 'SNOOZED'] // Only escalate if still open or snoozed
             }
         },
-        include: {
-            service: {
-                include: {
-                    policy: {
-                        include: {
-                            steps: {
-                                include: {
-                                    targetUser: true,
-                                    targetTeam: true,
-                                    targetSchedule: true
-                                },
-                                orderBy: { stepOrder: 'asc' }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        select: {
+            id: true,
+            currentEscalationStep: true,
+            escalationStatus: true,
+        },
     });
 
     let processed = 0;
@@ -570,7 +559,7 @@ export async function processPendingEscalations() {
             const currentStepIndex = incident.currentEscalationStep ?? 0;
 
             // Execute the next escalation step
-            const result = await executeEscalation(incident.id, currentStepIndex);
+            const result = await executor(incident.id, currentStepIndex);
 
             if (result.escalated) {
                 processed++;

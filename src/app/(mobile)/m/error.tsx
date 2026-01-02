@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import MobileButton from '@/components/mobile/MobileButton';
+import { logger } from '@/lib/logger';
 
 export default function MobileError({
     error,
@@ -11,7 +12,7 @@ export default function MobileError({
     reset: () => void;
 }) {
     useEffect(() => {
-        console.error(error);
+        logger.error('Mobile error boundary triggered', { error });
     }, [error]);
 
     return (

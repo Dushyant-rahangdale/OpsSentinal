@@ -1,0 +1,254 @@
+/* V2 Premium Analytics Styles - FIXED */
+
+/* ANIMATIONS */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 20px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes pulse-soft {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+    }
+}
+
+/* Base Fade In for Cards */
+.analytics-card-enhanced,
+.glass-panel,
+.v2-gauge-card,
+.chart-card-v2 {
+    animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    opacity: 0;
+    /* Star hidden */
+}
+
+/* Staggered Delays (Manual for now, could be SCSS loop) */
+.v2-grid-4>*:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.v2-grid-4>*:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.v2-grid-4>*:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.v2-grid-4>*:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.v2-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+}
+
+.v2-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Premium Gradients */
+.text-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+}
+
+/* Enhanced Glassmorphism */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.05),
+        0 10px 15px -3px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-panel:hover {
+    box-shadow:
+        0 10px 20px -5px rgba(0, 0, 0, 0.05),
+        0 20px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+/* Gauge Container */
+.v2-gauge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+.v2-gauge-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    position: relative;
+    overflow: hidden;
+}
+
+.v2-gauge-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0.5;
+}
+
+.analytics-gauge-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.analytics-gauge-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Heatmap */
+.v2-heatmap-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    overflow-x: auto;
+}
+
+.heatmap-calendar-container {
+    display: inline-block;
+    min-width: 100%;
+}
+
+.heatmap-calendar-container svg {
+    display: block;
+}
+
+/* GRID SYSTEM */
+.v2-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    width: 100%;
+}
+
+.v2-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.v2-grid-split {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+@media (max-width: 1200px) {
+    .v2-grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .v2-grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .v2-grid-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+
+    .v2-grid-4,
+    .v2-grid-3,
+    .v2-gauge-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Dark Mode Overrides */
+[data-theme='dark'] .glass-panel,
+.dark .glass-panel {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.08);
+    /* More subtle border */
+    backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .glass-panel:hover {
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme='dark'] .v2-gauge-card,
+[data-theme='dark'] .v2-heatmap-container {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] text {
+    fill: #cbd5e1;
+}
+
+.h-280 {
+    height: 280px;
+}
+
+.h-200 {
+    height: 200px;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.mb-8 {
+    margin-bottom: 2rem;
+}

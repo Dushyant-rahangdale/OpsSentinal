@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
@@ -139,7 +140,6 @@ export default function MobileLoginClient({ callbackUrl, errorCode, passwordSet,
             `}</style>
 
             <div style={{
-                minHeight: '100vh',
                 minHeight: '100dvh',
                 background: 'linear-gradient(-45deg, #0f172a, #1e1b4b, #0f172a, #1a1a2e)',
                 backgroundSize: '400% 400%',
@@ -188,11 +188,7 @@ export default function MobileLoginClient({ callbackUrl, errorCode, passwordSet,
                             marginBottom: '1.5rem',
                             animation: 'pulse-glow 3s ease-in-out infinite'
                         }}>
-                            <img
-                                src="/logo.svg"
-                                alt="OpsSentinal"
-                                style={{ width: '44px', height: '44px' }}
-                            />
+                            <Image src="/logo.svg" alt="OpsSentinal" width={44} height={44} />
                         </div>
                         <h1 style={{
                             fontSize: '1.75rem',

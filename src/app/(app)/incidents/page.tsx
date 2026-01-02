@@ -6,6 +6,13 @@ import IncidentsFilters from '@/components/incident/IncidentsFilters';
 import PresetSelector from '@/components/PresetSelector';
 import { getAccessiblePresets, searchParamsToCriteria } from '@/lib/search-presets';
 import { createDefaultPresetsForUser } from '@/lib/search-presets-defaults';
+import {
+    buildIncidentOrderBy,
+    buildIncidentWhere,
+    incidentListSelect,
+    normalizeIncidentFilter,
+    normalizeIncidentSort,
+} from '@/lib/incidents-query';
 
 export const revalidate = 30;
 
@@ -13,11 +20,11 @@ const ITEMS_PER_PAGE = 50; // Number of incidents per page
 
 export default async function IncidentsPage({ searchParams }: { searchParams: Promise<{ filter?: string; search?: string; priority?: string; urgency?: string; sort?: string; page?: string }> }) {
     const params = await searchParams;
-    const currentFilter = params.filter || 'all_open';
+    const currentFilter = normalizeIncidentFilter(params.filter);
     const currentSearch = params.search || '';
     const currentPriority = params.priority || 'all';
     const currentUrgency = params.urgency || 'all';
-    const currentSort = params.sort || 'newest';
+    const currentSort = normalizeIncidentSort(params.sort);
     const currentPage = parseInt(params.page || '1', 10);
     const skip = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -59,54 +66,15 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
         sort: currentSort,
     });
 
-    let where: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (currentFilter === 'mine') {
-        where = {
-            assigneeId: currentUser?.id,
-            status: { notIn: ['RESOLVED'] }
-        };
-    } else if (currentFilter === 'all_open') {
-        where = { status: { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] } };
-    } else if (currentFilter === 'resolved') {
-        where = { status: 'RESOLVED' };
-    } else if (currentFilter === 'snoozed') {
-        where = { status: 'SNOOZED' };
-    } else if (currentFilter === 'suppressed') {
-        where = { status: 'SUPPRESSED' };
-    }
+    const where = buildIncidentWhere({
+        filter: currentFilter,
+        search: currentSearch,
+        priority: currentPriority,
+        urgency: currentUrgency,
+        assigneeId: currentUser?.id,
+    });
 
-    // Add search filter
-    if (currentSearch) {
-        where.OR = [
-            { title: { contains: currentSearch, mode: 'insensitive' as const } },
-            { description: { contains: currentSearch, mode: 'insensitive' as const } },
-            { id: { contains: currentSearch, mode: 'insensitive' as const } }
-        ];
-    }
-
-    // Add priority filter
-    if (currentPriority !== 'all') {
-        where.priority = currentPriority;
-    }
-
-    // Add urgency filter
-    if (currentUrgency !== 'all') {
-        where.urgency = currentUrgency;
-    }
-
-    // Determine sort order
-    let orderBy: any = { createdAt: 'desc' }; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (currentSort === 'oldest') {
-        orderBy = { createdAt: 'asc' };
-    } else if (currentSort === 'updated') {
-        orderBy = { updatedAt: 'desc' };
-    } else if (currentSort === 'status') {
-        orderBy = { status: 'asc' };
-    } else if (currentSort === 'priority') {
-        // For priority, we'll sort by priority then createdAt
-        // Note: Prisma doesn't support custom priority ordering, so we'll do it in memory if needed
-        orderBy = { priority: 'asc' };
-    }
+    const orderBy = buildIncidentOrderBy(currentSort);
 
     // Get total count for pagination
     const totalCount = await prisma.incident.count({ where });
@@ -115,10 +83,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
     // Get paginated incidents
     let incidents = await prisma.incident.findMany({
         where,
-        include: {
-            service: true,
-            assignee: true
-        },
+        select: incidentListSelect,
         orderBy,
         skip,
         take: ITEMS_PER_PAGE
@@ -127,10 +92,12 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
     // Custom priority sorting if needed (P1, P2, P3, P4, P5, null)
     // Note: For pagination, we should ideally do this at DB level, but for now we'll sort in memory
     if (currentSort === 'priority') {
-        const priorityOrder = { 'P1': 1, 'P2': 2, 'P3': 3, 'P4': 4, 'P5': 5, '': 6 };
+        const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4, P5: 5, '': 6 };
         incidents = incidents.sort((a, b) => {
-            const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 6;
-            const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 6;
+            const aPriorityKey = a.priority ?? '';
+            const bPriorityKey = b.priority ?? '';
+            const aPriority = priorityOrder[aPriorityKey as keyof typeof priorityOrder] || 6;
+            const bPriority = priorityOrder[bPriorityKey as keyof typeof priorityOrder] || 6;
             if (aPriority !== bPriority) {
                 return aPriority - bPriority;
             }
@@ -221,7 +188,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
             </div>
 
             <IncidentsListTable
-                incidents={incidents as any} // eslint-disable-line @typescript-eslint/no-explicit-any
+                incidents={incidents}
                 users={users}
                 canManageIncidents={permissions.isResponderOrAbove}
                 pagination={{

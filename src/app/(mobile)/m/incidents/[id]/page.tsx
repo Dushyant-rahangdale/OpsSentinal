@@ -247,43 +247,24 @@ export default async function MobileIncidentDetailPage({ params }: PageProps) {
             )}
 
             {/* Postmortem Link */}
-            {incident.status === 'RESOLVED' && (
+            {incident.status === 'RESOLVED' && incident.postmortem && (
                 <div style={{ marginTop: '1rem' }}>
-                    {incident.postmortem ? (
-                        <Link
-                            href={`/m/postmortems/${incident.postmortem.id}`}
-                            style={{
-                                display: 'block',
-                                padding: '1rem',
-                                background: 'var(--badge-success-bg)',
-                                border: '1px solid var(--badge-success-text)',
-                                borderRadius: '8px',
-                                textDecoration: 'none',
-                                textAlign: 'center'
-                            }}
-                        >
-                            <span style={{ fontWeight: '600', color: 'var(--badge-success-text)' }}>
-                                📝 View Postmortem ({incident.postmortem.status})
-                            </span>
-                        </Link>
-                    ) : (
-                        <Link
-                            href={`/postmortems/create?incidentId=${incident.id}`}
-                            style={{
-                                display: 'block',
-                                padding: '1rem',
-                                background: 'var(--badge-warning-bg)',
-                                border: '1px solid var(--badge-warning-text)',
-                                borderRadius: '8px',
-                                textDecoration: 'none',
-                                textAlign: 'center'
-                            }}
-                        >
-                            <span style={{ fontWeight: '600', color: 'var(--badge-warning-text)' }}>
-                                ➕ Create Postmortem
-                            </span>
-                        </Link>
-                    )}
+                    <Link
+                        href={`/m/postmortems/${incident.postmortem.id}`}
+                        style={{
+                            display: 'block',
+                            padding: '1rem',
+                            background: 'var(--badge-success-bg)',
+                            border: '1px solid var(--badge-success-text)',
+                            borderRadius: '8px',
+                            textDecoration: 'none',
+                            textAlign: 'center'
+                        }}
+                    >
+                        <span style={{ fontWeight: '600', color: 'var(--badge-success-text)' }}>
+                            📝 View Postmortem ({incident.postmortem.status})
+                        </span>
+                    </Link>
                 </div>
             )}
         </div>

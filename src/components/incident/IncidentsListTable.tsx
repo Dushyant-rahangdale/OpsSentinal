@@ -9,19 +9,14 @@ import StatusBadge from './StatusBadge';
 import EscalationStatusBadge from './EscalationStatusBadge';
 import PriorityBadge from './PriorityBadge';
 import AssigneeSection from './AssigneeSection';
-import { Incident, Service } from '@prisma/client';
+import type { IncidentListItem } from '@/types/incident-list';
 import { updateIncidentStatus } from '@/app/(app)/incidents/actions';
 import { bulkAcknowledge, bulkResolve, bulkReassign, bulkUpdatePriority, bulkSnooze, bulkUnsnooze, bulkSuppress, bulkUnsuppress, bulkUpdateUrgency, bulkUpdateStatus } from '@/app/(app)/incidents/bulk-actions';
 import { useToast } from '../ToastProvider';
 import Pagination from './Pagination';
 
-type IncidentWithRelations = Incident & {
-    service: Service;
-    assignee: { id: string; name: string; email: string } | null;
-};
-
 type IncidentsListTableProps = {
-    incidents: IncidentWithRelations[];
+    incidents: IncidentListItem[];
     users: Array<{ id: string; name: string; email: string }>;
     canManageIncidents: boolean;
     pagination?: {

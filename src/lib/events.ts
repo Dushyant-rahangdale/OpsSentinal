@@ -58,7 +58,7 @@ export async function processEvent(payload: EventPayload, serviceId: string, _in
             where: {
                 dedupKey: dedup_key,
                 serviceId,
-                status: { not: 'RESOLVED' }
+                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] }
             }
         });
 

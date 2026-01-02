@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
     const authOptions = await getAuthOptions();
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Failed to save subscription:', error);
+        logger.error('Failed to save subscription', { error });
         return new NextResponse('Internal Server Error', { status: 500 });
     }
 }

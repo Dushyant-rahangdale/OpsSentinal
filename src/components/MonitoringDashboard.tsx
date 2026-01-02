@@ -119,7 +119,7 @@ export default function MonitoringDashboard() {
             setWebVitals(result);
         } catch (err) {
             // Silently fail for Web Vitals - it's optional
-            console.warn('Failed to fetch Web Vitals:', err);
+            logger.warn('Failed to fetch Web Vitals', { error: err });
         } finally {
             setWebVitalsLoading(false);
         }

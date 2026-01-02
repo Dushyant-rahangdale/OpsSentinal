@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   description: 'PagerDuty Clone',
   manifest: '/manifest.json',
   icons: {
+    icon: [
+      { url: '/logo.svg', type: 'image/svg+xml' },
+      { url: '/logo.png', type: 'image/png' },
+    ],
     apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: {
