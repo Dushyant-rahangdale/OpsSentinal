@@ -84,7 +84,7 @@ export default function SmsProviderSettings({
                   inputType="text"
                   value={twilioAccountSid}
                   onChange={e => onTwilioAccountSidChange(e.target.value)}
-                  placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  placeholder="Twilio Account SID"
                   fullWidth
                 />
                 <FormField
@@ -141,7 +141,7 @@ export default function SmsProviderSettings({
                   inputType="text"
                   value={awsAccessKeyId}
                   onChange={e => onAwsAccessKeyIdChange(e.target.value)}
-                  placeholder="AKIAIOSFODNN7EXAMPLE"
+                  placeholder="AWS Access Key ID"
                   fullWidth
                 />
                 <FormField
