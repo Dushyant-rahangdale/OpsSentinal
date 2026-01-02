@@ -39,7 +39,7 @@ npx tsc --noEmit || {
 # Run all unit tests
 echo ""
 echo "🧪 Running all unit tests..."
-npx vitest run -c vitest.unit.config.ts --reporter=basic || {
+npm run test:unit || {
   echo "❌ Unit tests failed. Please fix failing tests before pushing."
   exit 1
 }
