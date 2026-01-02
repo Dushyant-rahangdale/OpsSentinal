@@ -1,3 +1,4 @@
+import React, { JSX } from 'react';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { MobileAvatar, MobileEmptyState } from '@/components/mobile/MobileUtils';
@@ -10,7 +11,7 @@ export default async function MobileUsersPage({
     searchParams,
 }: {
     searchParams: Promise<{ q?: string }>;
-}) {
+}): Promise<JSX.Element> {
     const params = await searchParams;
     const query = params.q || '';
 
@@ -48,7 +49,7 @@ export default async function MobileUsersPage({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {users.length === 0 ? (
                     <MobileEmptyState
-                        icon="👥"
+                        icon="!"
                         title="No users found"
                         description="Invite team members to get started"
                     />

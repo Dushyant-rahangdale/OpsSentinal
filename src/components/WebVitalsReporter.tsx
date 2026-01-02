@@ -1,6 +1,7 @@
 'use client';
 
 import { useReportWebVitals } from 'next/web-vitals';
+import { logger } from '@/lib/logger';
 
 // Type definition for Web Vitals Metric
 type _Metric = {
@@ -31,14 +32,14 @@ export default function WebVitalsReporter() {
     // Validate that we received a proper metric object
     if (!metric || typeof metric !== 'object' || !metric.name || typeof metric.value !== 'number') {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Invalid Web Vital metric received:', metric);
+        logger.warn('Invalid Web Vital metric received', { metric });
       }
       return;
     }
 
     // Log metrics in development for debugging
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Web Vitals] ${metric.name}:`, {
+      logger.info(`[Web Vitals] ${metric.name}`, {
         value: metric.name === 'CLS' ? metric.value.toFixed(4) : `${metric.value.toFixed(2)}ms`,
         rating: metric.rating || 'unknown',
         id: metric.id || 'unknown',
@@ -73,7 +74,7 @@ export default function WebVitalsReporter() {
       // Silently fail - don't impact user experience
       if (process.env.NODE_ENV === 'development') {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.warn('Failed to report Web Vital:', errorMessage);
+        logger.warn('Failed to report Web Vital', { errorMessage });
       }
     });
   });

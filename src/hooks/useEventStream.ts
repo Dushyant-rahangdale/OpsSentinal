@@ -17,7 +17,7 @@ type EventStreamOptions = {
  * @example
  * const { data, isConnected } = useEventStream({
  *   incidentId: 'inc_123',
- *   onMessage: (data) => console.log('Update:', data),
+ *   onMessage: (data) => logger.info('Update', { data }),
  * });
  */
 export function useEventStream(options: EventStreamOptions = {}) {

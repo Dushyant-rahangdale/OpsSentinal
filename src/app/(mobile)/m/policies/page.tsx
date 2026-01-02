@@ -13,8 +13,8 @@ export default async function MobilePoliciesPage() {
                 orderBy: { stepOrder: 'asc' },
             },
             _count: {
-                select: { services: true }
-            }
+                select: { services: true },
+            },
         },
     });
 
@@ -32,7 +32,7 @@ export default async function MobilePoliciesPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {policies.length === 0 ? (
                     <MobileEmptyState
-                        icon="🛡️"
+                        icon="!"
                         title="No policies"
                         description="Use desktop to create escalation policies"
                     />
@@ -46,7 +46,7 @@ export default async function MobilePoliciesPage() {
                                             fontWeight: '600',
                                             fontSize: '0.95rem',
                                             color: 'var(--text-primary)',
-                                            marginBottom: '0.25rem'
+                                            marginBottom: '0.25rem',
                                         }}>
                                             {policy.name}
                                         </div>
@@ -55,7 +55,7 @@ export default async function MobilePoliciesPage() {
                                                 fontSize: '0.8rem',
                                                 color: 'var(--text-muted)',
                                                 marginBottom: '0.5rem',
-                                                lineHeight: 1.3
+                                                lineHeight: 1.3,
                                             }}>
                                                 {policy.description}
                                             </div>
@@ -65,13 +65,11 @@ export default async function MobilePoliciesPage() {
                                             alignItems: 'center',
                                             gap: '0.75rem',
                                             fontSize: '0.75rem',
-                                            color: 'var(--text-secondary)'
+                                            color: 'var(--text-secondary)',
                                         }}>
-                                            {/* @ts-ignore */}
-                                            <span>👣 {policy.steps.length} steps</span>
-                                            <span>•</span>
-                                            {/* @ts-ignore */}
-                                            <span>🔧 {policy._count.services} services</span>
+                                            <span>Steps: {policy.steps.length}</span>
+                                            <span>|</span>
+                                            <span>Services: {policy._count.services}</span>
                                         </div>
                                     </div>
 

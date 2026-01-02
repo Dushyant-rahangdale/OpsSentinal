@@ -22,7 +22,7 @@ export default async function MobileUserDetailPage({ params }: PageProps) {
                 }
             },
             assignedIncidents: {
-                where: { status: { not: 'RESOLVED' } },
+                where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
                 take: 5,
                 orderBy: { createdAt: 'desc' },
                 select: {

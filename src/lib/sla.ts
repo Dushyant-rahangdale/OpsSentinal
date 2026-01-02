@@ -4,15 +4,111 @@
  */
 
 export type SLAMetrics = {
-  mttr: number | null; // Mean Time To Resolve (minutes)
-  mttd: number | null; // Mean Time To Detect (minutes)
-  mtti: number | null; // Mean Time To Investigate (minutes) - time from creation to first note/event
-  mttk: number | null; // Mean Time To Know (minutes) - similar to MTTD
-  ackCompliance: number; // Percentage of incidents acknowledged within SLA
-  resolveCompliance: number; // Percentage of incidents resolved within SLA
-  totalIncidents: number;
+  // Incident Lifecycle (minutes)
+  mttr: number | null;
+  mttd: number | null;
+  mtti: number | null;
+  mttk: number | null;
+  mttaP50: number | null;
+  mttaP95: number | null;
+  mttrP50: number | null;
+  mttrP95: number | null;
+  mtbfMs: number | null;
+
+  // SLA Compliance
+  ackCompliance: number;
+  resolveCompliance: number;
   ackBreaches: number;
   resolveBreaches: number;
+
+  // Counts
+  totalIncidents: number;
+  activeIncidents: number;
+  unassignedActive: number;
+  highUrgencyCount: number;
+  alertsCount: number;
+
+  // Rates
+  ackRate: number;
+  resolveRate: number;
+  highUrgencyRate: number;
+  afterHoursRate: number;
+  alertsPerIncident: number;
+  escalationRate: number;
+  reopenRate: number;
+  autoResolveRate: number;
+
+  previousPeriod: {
+    totalIncidents: number;
+    mtta: number | null;
+    mttr: number | null;
+    ackRate: number;
+    resolveRate: number;
+  };
+
+  // Coverage
+  coveragePercent: number;
+  coverageGapDays: number;
+  onCallHoursMs: number;
+  onCallUsersCount: number;
+  activeOverrides: number;
+
+  // Events
+  autoResolvedCount: number;
+  manualResolvedCount: number;
+  eventsCount: number;
+
+  // Golden Signals
+  avgLatencyP99: number | null;
+  errorRate: number | null;
+  totalRequests: number;
+  saturation: number | null;
+
+  // Chart Data
+  trendSeries: Array<{
+    key: string;
+    label: string;
+    count: number;
+    mtta: number;
+    mttr: number;
+    ackRate: number;
+    resolveRate: number;
+    ackCompliance: number;
+    escalationRate: number;
+  }>;
+  statusMix: Array<{ status: string; count: number }>;
+  urgencyMix: Array<{ urgency: string; count: number }>;
+  topServices: Array<{ id: string; name: string; count: number }>;
+  assigneeLoad: Array<{ id: string; name: string; count: number }>;
+  statusAges: Array<{ status: string; avgMs: number | null }>;
+  onCallLoad: Array<{ id: string; name: string; hoursMs: number; incidentCount: number }>;
+  serviceSlaTable: Array<{
+    id: string;
+    name: string;
+    ackRate: number;
+    resolveRate: number;
+    total: number;
+  }>;
+
+  // V2 Additions (V1 Parity)
+  recurringTitles: Array<{ title: string; count: number }>;
+  eventsPerIncident: number;
+  heatmapData: Array<{ date: string; count: number }>;
+
+  // New Enhanced Features
+  serviceMetrics: Array<{
+    id: string;
+    name: string;
+    count: number;
+    mtta: number;
+    mttr: number;
+    slaBreaches: number;
+    status: string;
+  }>;
+  insights: Array<{
+    type: string;
+    text: string;
+  }>;
 };
 
 /**

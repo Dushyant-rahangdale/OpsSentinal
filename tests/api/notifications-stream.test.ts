@@ -40,6 +40,7 @@ describe('API Route - Notifications Stream', () => {
     });
 
     it('returns SSE stream for authenticated users', async () => {
+        vi.useFakeTimers();
         const controller = new AbortController();
         vi.mocked(getServerSession).mockResolvedValue({ user: { email: 'user@example.com' } });
         vi.mocked(prisma.user.findUnique).mockResolvedValue({
@@ -57,6 +58,20 @@ describe('API Route - Notifications Stream', () => {
         expect(res.status).toBe(200);
         expect(res.headers.get('Content-Type')).toBe('text/event-stream');
 
+        await vi.advanceTimersByTimeAsync(5000);
+
+        expect(vi.mocked(prisma.inAppNotification.findMany)).toHaveBeenCalledWith(
+            expect.objectContaining({
+                take: 8,
+                select: expect.objectContaining({
+                    id: true,
+                    title: true,
+                    createdAt: true,
+                }),
+            })
+        );
+
         controller.abort();
+        vi.useRealTimers();
     });
 });

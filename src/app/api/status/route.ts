@@ -16,10 +16,19 @@ export async function GET(req: NextRequest) {
     try {
         const statusPage = await prisma.statusPage.findFirst({
             where: { enabled: true },
-            include: {
+            select: {
+                id: true,
+                enabled: true,
+                requireAuth: true,
+                statusApiRequireToken: true,
+                statusApiRateLimitEnabled: true,
+                statusApiRateLimitMax: true,
+                statusApiRateLimitWindowSec: true,
                 services: {
-                    include: {
-                        service: true,
+                    select: {
+                        serviceId: true,
+                        showOnPage: true,
+                        order: true,
                     },
                     orderBy: { order: 'asc' },
                 },
@@ -64,7 +73,12 @@ export async function GET(req: NextRequest) {
 
         const services = await prisma.service.findMany({
             where: { id: { in: effectiveServiceIds } },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                region: true,
+                slaTier: true,
+                status: true,
                 team: {
                     select: {
                         id: true,
@@ -125,8 +139,18 @@ export async function GET(req: NextRequest) {
                 serviceId: { in: effectiveServiceIds },
                 createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
             },
-            include: {
-                service: true,
+            select: {
+                id: true,
+                title: true,
+                status: true,
+                createdAt: true,
+                resolvedAt: true,
+                service: {
+                    select: {
+                        name: true,
+                        region: true,
+                    },
+                },
             },
             orderBy: { createdAt: 'desc' },
             take: 20,
@@ -191,6 +215,16 @@ export async function GET(req: NextRequest) {
             };
         });
 
+        const headers: Record<string, string> = statusPage.requireAuth || statusPage.statusApiRequireToken
+            ? {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                Pragma: 'no-cache',
+                Expires: '0',
+            }
+            : {
+                'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+            };
+
         return jsonOk({
             status: overallStatus,
             services: servicesData,
@@ -207,7 +241,7 @@ export async function GET(req: NextRequest) {
                 uptime: uptimeMetrics,
             },
             updatedAt: new Date().toISOString(),
-        }, 200);
+        }, 200, headers);
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         logger.error('api.status.error', { error: error instanceof Error ? error.message : String(error) });
         return jsonError('Failed to fetch status', 500);

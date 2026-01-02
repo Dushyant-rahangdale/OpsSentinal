@@ -2,7 +2,6 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
-import { cookies } from 'next/headers';
 
 
 export const dynamic = 'force-dynamic';
@@ -20,11 +19,11 @@ export default async function MobileDashboard() {
         currentOnCallShift,
     ] = await Promise.all([
         prisma.incident.count({
-            where: { status: { not: 'RESOLVED' } },
+            where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
         }),
         prisma.incident.count({
             where: {
-                status: { not: 'RESOLVED' },
+                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
                 urgency: 'HIGH',
             },
         }),
@@ -37,7 +36,7 @@ export default async function MobileDashboard() {
             },
         }),
         prisma.incident.findMany({
-            where: { status: { not: 'RESOLVED' } },
+            where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
             orderBy: { createdAt: 'desc' },
             take: 5,
             select: {
@@ -61,16 +60,6 @@ export default async function MobileDashboard() {
             }
         }) : null,
     ]);
-
-    // Function to set desktop preference cookie
-    async function setDesktopPreference() {
-        'use server';
-        const cookieStore = await cookies();
-        cookieStore.set('prefer-desktop', 'true', {
-            maxAge: 60 * 60 * 24 * 365, // 1 year
-            path: '/',
-        });
-    }
 
     const userName = session?.user?.name?.split(' ')[0] || 'there';
     const hour = new Date().getHours();

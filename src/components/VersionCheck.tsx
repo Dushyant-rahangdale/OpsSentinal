@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 /**
  * Periodically checks if the server version/instance has changed.
@@ -47,7 +48,7 @@ export default function VersionCheck() {
 
                     // If ID changed and we had a previous one, REFRESH!
                     if (currentId !== newId) {
-                        console.log('New deployment detected (Instance ID mismatch). Refreshing...');
+                        logger.info('New deployment detected (Instance ID mismatch). Refreshing...');
                         window.location.reload();
                     }
 
@@ -55,7 +56,7 @@ export default function VersionCheck() {
                 });
             } catch (err) {
                 // Ignore network errors, retry next time
-                console.debug('Version check failed', err);
+                logger.debug('Version check failed', { error: err });
             }
         }
     }, []);

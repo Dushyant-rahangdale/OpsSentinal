@@ -45,6 +45,14 @@ describe('API Response Utilities', () => {
       
       expect(response.status).toBe(201);
     });
+
+    it('should allow custom headers', () => {
+      const response = jsonOk({ ok: true }, 200, {
+        'Cache-Control': 'public, max-age=60',
+      });
+
+      expect(response.headers.get('Cache-Control')).toBe('public, max-age=60');
+    });
   });
 
   describe('jsonError', () => {

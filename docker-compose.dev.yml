@@ -3,6 +3,7 @@ services:
     image: postgres:15-alpine
     container_name: opssentinal_postgres_dev
     restart: unless-stopped
+    mem_limit: 2g
     environment:
       POSTGRES_USER: opssentinal
       POSTGRES_PASSWORD: opssentinal_secure_password_change_me

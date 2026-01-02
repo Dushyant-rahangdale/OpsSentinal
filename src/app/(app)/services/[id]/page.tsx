@@ -61,7 +61,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
     const allOpenIncidents = await prisma.incident.findMany({
         where: {
             serviceId: id,
-            status: { not: 'RESOLVED' }
+            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] }
         },
         select: { urgency: true }
     });

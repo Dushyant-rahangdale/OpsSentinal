@@ -21,7 +21,7 @@ export default async function MobileServicesPage({
             _count: {
                 select: {
                     incidents: {
-                        where: { status: { not: 'RESOLVED' } },
+                        where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
                     },
                 },
             },

@@ -25,7 +25,7 @@ export default async function MobileTeamDetailPage({ params }: PageProps) {
             },
             _count: {
                 select: {
-                    incidents: { where: { status: { not: 'RESOLVED' } } }
+                    incidents: { where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } } }
                 }
             }
         }

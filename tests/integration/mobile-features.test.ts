@@ -177,7 +177,7 @@ describeIfRealDB('Mobile Features Integration Tests', () => {
                 include: {
                     _count: {
                         select: {
-                            incidents: { where: { status: { not: 'RESOLVED' } } }
+                            incidents: { where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } } }
                         }
                     }
                 }

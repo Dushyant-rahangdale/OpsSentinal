@@ -54,13 +54,21 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Prepare test database schema
-        # Migrations in this repo may lag behind schema.prisma; for CI tests we need the latest schema.
-        run: npx prisma db push --force-reset --accept-data-loss --skip-generate
+        # Match pre-prod behavior by applying migrations in order.
+        run: npx prisma migrate deploy
+
+      - name: Generate Prisma client
+        run: npx prisma generate
 
       - name: Migration validation
         run: |
           mkdir -p reports
           npm run prisma:validate
+
+      - name: Migration health
+        run: |
+          mkdir -p reports
+          npm run prisma:health
 
 
 
@@ -75,6 +83,9 @@ jobs:
         env:
           VITEST_USE_REAL_DB: '1'
         run: npm run test:ci:db
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
 
       - name: Upload test report artifact (JUnit)
         if: always()

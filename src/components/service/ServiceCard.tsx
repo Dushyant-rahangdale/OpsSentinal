@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, memo, useMemo } from 'react';
 import StatusBadge from '../incident/StatusBadge';
+import { getServiceDynamicStatus } from '@/lib/service-status';
 
 type ServiceCardProps = {
   service: {
@@ -15,6 +16,8 @@ type ServiceCardProps = {
     policy: { id: string; name: string } | null;
     _count?: { incidents: number };
     incidents?: Array<{ id: string; urgency: string }>;
+    openIncidentCount?: number;
+    hasCritical?: boolean;
     dynamicStatus?: 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
   };
   compact?: boolean;
@@ -25,18 +28,29 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Memoize computed values to prevent recalculation on every render
-  const { openIncidents, hasCritical, status } = useMemo(() => {
+  const { openIncidents, hasCritical, status, openIncidentCount } = useMemo(() => {
     const incidents = service.incidents || [];
-    const critical = incidents.some(i => i.urgency === 'HIGH');
+    const count =
+      typeof service.openIncidentCount === 'number' ? service.openIncidentCount : incidents.length;
+    const critical =
+      typeof service.hasCritical === 'boolean'
+        ? service.hasCritical
+        : incidents.some(i => i.urgency === 'HIGH');
     const calculatedStatus =
       service.dynamicStatus ||
-      (critical ? 'CRITICAL' : incidents.length > 0 ? 'DEGRADED' : 'OPERATIONAL');
+      getServiceDynamicStatus({ openIncidentCount: count, hasCritical: critical });
     return {
       openIncidents: incidents,
       hasCritical: critical,
+      openIncidentCount: count,
       status: calculatedStatus,
     };
-  }, [service.incidents, service.dynamicStatus]);
+  }, [
+    service.incidents,
+    service.dynamicStatus,
+    service.openIncidentCount,
+    service.hasCritical,
+  ]);
 
   const displayStatus = status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
   const [compactHovered, setCompactHovered] = useState(false);
@@ -108,11 +122,11 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
               <span>{service.region}</span>
             </>
           )}
-          {openIncidents.length > 0 && (
+          {openIncidentCount > 0 && (
             <>
               <span>•</span>
               <span style={{ color: hasCritical ? 'var(--danger)' : 'var(--warning)' }}>
-                {openIncidents.length} open incident{openIncidents.length !== 1 ? 's' : ''}
+                {openIncidentCount} open incident{openIncidentCount !== 1 ? 's' : ''}
               </span>
             </>
           )}
@@ -327,7 +341,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
             Incidents
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            {openIncidents.length > 0 ? (
+            {openIncidentCount > 0 ? (
               <span
                 style={{
                   color: hasCritical ? 'var(--danger)' : 'var(--warning)',
@@ -335,7 +349,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
                   fontSize: '0.95rem',
                 }}
               >
-                {openIncidents.length} open
+                {openIncidentCount} open
               </span>
             ) : (
               <span style={{ color: 'var(--success)', fontWeight: 700, fontSize: '0.95rem' }}>

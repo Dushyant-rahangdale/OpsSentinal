@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { afterEach, vi } from 'vitest';
+import { afterEach, afterAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Cleanup after each test
@@ -82,7 +82,7 @@ const mockPrisma = {
 // NOTE: vi.mock is hoisted, so we must check the env var inside the factory or use doMock (if supported).
 // However, doMock might be too late for some imports.
 // The reliable way with hoisting is to check inside.
-vi.mock('../src/lib/prisma', async (importOriginal) => {
+vi.mock('../src/lib/prisma', async importOriginal => {
   if (process.env.VITEST_USE_REAL_DB) {
     return importOriginal();
   }
@@ -92,7 +92,7 @@ vi.mock('../src/lib/prisma', async (importOriginal) => {
   };
 });
 
-vi.mock('@/lib/prisma', async (importOriginal) => {
+vi.mock('@/lib/prisma', async importOriginal => {
   if (process.env.VITEST_USE_REAL_DB) {
     return importOriginal();
   }
@@ -116,3 +116,18 @@ vi.mock('twilio', () => {
     __esModule: true,
   };
 });
+
+if (process.env.VITEST_USE_REAL_DB) {
+  afterAll(async () => {
+    try {
+      // Dynamic import to avoid loading DB in unit tests
+      const { testPrisma } = await import('./helpers/test-db');
+      const { default: prisma } = await import('../src/lib/prisma');
+
+      await testPrisma.$disconnect();
+      await prisma.$disconnect();
+    } catch (e) {
+      console.warn('[Setup] Failed to disconnect Prisma:', e);
+    }
+  });
+}

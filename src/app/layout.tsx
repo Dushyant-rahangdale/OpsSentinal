@@ -1,13 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import VersionCheck from '@/components/VersionCheck';
-import WebVitalsReporter from '@/components/WebVitalsReporter';
 
 export const metadata: Metadata = {
   title: 'OpsSentinal | Enterprise Incident Management',
   description: 'PagerDuty Clone',
   manifest: '/manifest.json',
   icons: {
+    icon: [
+      { url: '/logo.svg', type: 'image/svg+xml' },
+      { url: '/logo.png', type: 'image/png' },
+    ],
     apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: {
@@ -29,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <VersionCheck />
-        <WebVitalsReporter />
+
         {children}
       </body>
     </html>

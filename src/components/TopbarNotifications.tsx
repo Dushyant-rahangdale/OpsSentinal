@@ -195,7 +195,7 @@ export default function TopbarNotifications() {
                         ) : notifications.length === 0 ? (
                             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                                 <p>No notifications</p>
-                                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>You're all caught up!</p>
+                                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>You are all caught up!</p>
                             </div>
                         ) : (
                             notifications.map((notification) => (

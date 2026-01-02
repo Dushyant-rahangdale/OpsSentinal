@@ -66,3 +66,14 @@ reset-prisma.ps1
 
 # misc
 .FullName
+
+# Temporary test logs and reports
+*.txt
+eslint_output.json
+job_log*.txt
+jobs.json
+run_status.txt
+failed_log.txt
+tsc_*.txt
+vitest_*.txt
+ci_*.txt

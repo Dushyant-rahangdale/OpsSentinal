@@ -21,10 +21,10 @@ type MobileButtonProps = {
 
 const variantStyles: Record<ButtonVariant, CSSProperties> = {
     primary: {
-        background: 'var(--gradient-primary)',
+        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%)',
         color: 'white',
         border: 'none',
-        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+        boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35), 0 1px 3px rgba(0, 0, 0, 0.1)',
     },
     secondary: {
         background: 'var(--bg-secondary)',

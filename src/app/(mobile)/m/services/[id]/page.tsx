@@ -16,7 +16,7 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
         include: {
             policy: true,
             incidents: {
-                where: { status: { not: 'RESOLVED' } },
+                where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
                 orderBy: { createdAt: 'desc' },
                 take: 5,
                 select: {
@@ -29,7 +29,7 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
             },
             _count: {
                 select: {
-                    incidents: { where: { status: { not: 'RESOLVED' } } },
+                    incidents: { where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } } },
                 },
             },
         },
@@ -104,23 +104,16 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
             </div>
 
             {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
                 <Link
                     href={`/m/incidents/create?serviceId=${service.id}`}
                     className="mobile-quick-action"
-                    style={{ flex: 1, display: 'flex' }}
+                    style={{ display: 'flex', width: '100%' }}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
                     </svg>
-                    Create Incident
-                </Link>
-                <Link
-                    href={`/services/${service.id}`}
-                    className="mobile-quick-action secondary"
-                    style={{ flex: 1, display: 'flex' }}
-                >
-                    Full Details →
+                    New Incident
                 </Link>
             </div>
 

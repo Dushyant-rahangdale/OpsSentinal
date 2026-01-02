@@ -403,8 +403,8 @@ spec:
 The deployment includes liveness and readiness probes:
 
 **Application:**
-- Liveness: `GET /api/health`
-- Readiness: `GET /api/health`
+- Liveness: `GET /api/health?mode=liveness`
+- Readiness: `GET /api/health?mode=readiness`
 
 **Database:**
 - Liveness: `pg_isready -U opssentinal`
@@ -463,7 +463,7 @@ kubectl get endpoints -n opssentinal opssentinal-service
 
 # Test from within cluster
 kubectl run -it --rm debug --image=curlimages/curl -n opssentinal -- \
-  curl http://opssentinal-service/api/health
+  curl http://opssentinal-service/api/health?mode=readiness
 ```
 
 ### View Events

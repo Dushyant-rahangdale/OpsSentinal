@@ -6,14 +6,13 @@ import DashboardFilters from '@/components/DashboardFilters';
 import IncidentTable from '@/components/IncidentTable';
 import DashboardPerformanceMetrics from '@/components/DashboardPerformanceMetrics';
 import DashboardQuickFilters from '@/components/DashboardQuickFilters';
-import DashboardTimeRange from '@/components/DashboardTimeRange';
 import DashboardFilterChips from '@/components/DashboardFilterChips';
 import DashboardAdvancedMetrics from '@/components/DashboardAdvancedMetrics';
 import DashboardSavedFilters from '@/components/DashboardSavedFilters';
 import DashboardPeriodComparison from '@/components/DashboardPeriodComparison';
 import DashboardServiceHealth from '@/components/DashboardServiceHealth';
 import DashboardUrgencyDistribution from '@/components/DashboardUrgencyDistribution';
-import DashboardSLAMetrics from '@/components/DashboardSLAMetrics';
+
 import { calculateSLAMetrics } from '@/lib/sla-server';
 import { Suspense } from 'react';
 import DashboardRealtimeWrapper from '@/components/DashboardRealtimeWrapper';
@@ -64,8 +63,11 @@ export default async function Dashboard({
     typeof awaitedSearchParams.assignee === 'string' ? awaitedSearchParams.assignee : undefined;
   const service =
     typeof awaitedSearchParams.service === 'string' ? awaitedSearchParams.service : undefined;
-  const urgency =
+  const urgencyParam =
     typeof awaitedSearchParams.urgency === 'string' ? awaitedSearchParams.urgency : undefined;
+  const urgency = (
+    ['HIGH', 'MEDIUM', 'LOW'].includes(urgencyParam || '') ? urgencyParam : undefined
+  ) as 'HIGH' | 'MEDIUM' | 'LOW' | undefined;
   const page =
     typeof awaitedSearchParams.page === 'string' ? parseInt(awaitedSearchParams.page) || 1 : 1;
   const sortBy =
@@ -213,7 +215,7 @@ export default async function Dashboard({
     // All-time counts (for Command Center and Advanced Metrics)
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
       },
     }),
     prisma.incident.count({
@@ -223,13 +225,13 @@ export default async function Dashboard({
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         urgency: 'HIGH',
       },
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         assigneeId: null,
       },
     }),
@@ -242,7 +244,7 @@ export default async function Dashboard({
     calculateSLAMetrics({
       serviceId: service,
       assigneeId: assigneeFilter,
-      urgency,
+      urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
       startDate: metricsStartDate,
       endDate: metricsEndDate,
       includeAllTime: range === 'all',
@@ -261,7 +263,7 @@ export default async function Dashboard({
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         ...metricsWhere,
       },
     }),
@@ -273,7 +275,7 @@ export default async function Dashboard({
     }),
     prisma.incident.count({
       where: {
-        status: { not: 'RESOLVED' },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
         urgency: 'HIGH',
         ...metricsWhere,
       },
@@ -347,7 +349,7 @@ export default async function Dashboard({
           }),
           prisma.incident.count({
             where: {
-              status: { not: 'RESOLVED' },
+              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
               ...previousPeriodWhere,
             },
           }),
@@ -365,7 +367,7 @@ export default async function Dashboard({
           }),
           prisma.incident.count({
             where: {
-              status: { not: 'RESOLVED' },
+              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
               urgency: 'HIGH',
               ...previousPeriodWhere,
             },
@@ -386,7 +388,7 @@ export default async function Dashboard({
           by: ['serviceId'],
           where: {
             serviceId: { in: serviceIds },
-            status: { not: 'RESOLVED' },
+            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
           },
           _count: { _all: true },
         })
@@ -396,7 +398,7 @@ export default async function Dashboard({
           by: ['serviceId'],
           where: {
             serviceId: { in: serviceIds },
-            status: { not: 'RESOLVED' },
+            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
             urgency: 'HIGH',
           },
           _count: { _all: true },
@@ -861,26 +863,6 @@ export default async function Dashboard({
                 resolveSlaRate={slaMetrics.resolveCompliance}
               />
             </SidebarWidget>
-
-            {/* SLA Metrics Widget - Enhanced SLA Tracking */}
-            <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-              <Suspense
-                fallback={
-                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading SLA metrics...</div>
-                }
-              >
-                <DashboardSLAMetrics
-                  metrics={slaMetrics}
-                  period={
-                    range === 'all'
-                      ? 'All time'
-                      : range === 'custom'
-                        ? 'Custom period'
-                        : `Last ${range} days`
-                  }
-                />
-              </Suspense>
-            </div>
 
             {/* Advanced Metrics */}
             <SidebarWidget

@@ -1,0 +1,666 @@
+﻿
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\analytics-new\page.tsx
+   16:8   warning  'ProgressBar' is defined but never used. Allowed unused vars must match /^_/u                                                                                    @typescript-eslint/no-unused-vars
+   27:8   warning  'InsightCard' is defined but never used. Allowed unused vars must match /^_/u                                                                                    @typescript-eslint/no-unused-vars
+   49:12  warning  Generic Object Injection Sink                                                                                                                                    security/detect-object-injection
+  128:11  warning  'activeFilterCount' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                     @typescript-eslint/no-unused-vars
+  312:80  error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  328:76  error    Unexpected any. Specify a different type                                                                                                                         @typescript-eslint/no-explicit-any
+  529:21  warning  Do not use an `<a>` element to navigate to `/incidents/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\analytics\page.tsx
+   35:12  warning  Generic Object Injection Sink  security/detect-object-injection
+   87:12  warning  Generic Object Injection Sink  security/detect-object-injection
+  432:24  warning  Generic Object Injection Sink  security/detect-object-injection
+  447:13  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\help\page.tsx
+   9:17  warning  Do not use an `<a>` element to navigate to `/incidents/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+  13:17  warning  Do not use an `<a>` element to navigate to `/schedules/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+  17:17  warning  Do not use an `<a>` element to navigate to `/services/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages   @next/next/no-html-link-for-pages
+  21:17  warning  Do not use an `<a>` element to navigate to `/policies/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages   @next/next/no-html-link-for-pages
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\incidents\actions.ts
+    5:10  warning  'redirect' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   89:42  warning  Generic Object Injection Sink                                               security/detect-object-injection
+  178:29  warning  Variable Assigned to Object Injection Sink                                  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\incidents\create\page.tsx
+  38:43  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\monitoring-new\page.tsx
+  53:77  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  61:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\policies\[id]\page.tsx
+  343:43  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\policies\actions.ts
+  344:17  warning  Generic Object Injection Sink  security/detect-object-injection
+  346:34  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\policies\page.tsx
+  431:39  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\postmortems\[incidentId]\page.tsx
+  5:1  warning  'next/navigation' import is duplicated  no-duplicate-imports
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\postmortems\create\page.tsx
+  22:31  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\reports\executive\page.tsx
+   9:18  warning  'TrendingUp' is defined but never used. Allowed unused vars must match /^_/u        @typescript-eslint/no-unused-vars
+  22:29  warning  'last90d' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\schedules\actions.ts
+  359:25  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  360:24  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\services\[id]\integrations\page.tsx
+  135:102  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  135:123  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  439:32   error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\services\[id]\settings\page.tsx
+  49:102  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  49:123  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\settings\security\page.tsx
+   7:8   warning  'SsoSettingsForm' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  30:11  warning  'callbackUrl' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  33:11  warning  'hasEncryptionKey' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\settings\sla\page.tsx
+    8:19  warning  'Settings' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
+    8:46  warning  'AlertCircle' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+   47:11  warning  'router' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  109:14  warning  Unexpected confirm                                                                 no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\settings\system\actions.ts
+  5:1  warning  '@/lib/rbac' import is duplicated  no-duplicate-imports
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\settings\system\page.tsx
+  99:9  error  Parsing error: JSX element 'SettingsSectionCard' has no corresponding closing tag
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(app)\teams\page.tsx
+  307:35  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(mobile)\m\policies\[id]\page.tsx
+  5:10  warning  'MobileAvatar' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(mobile)\m\postmortems\page.tsx
+  4:10  warning  'MobileAvatar' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(public)\status\page.tsx
+    33:48  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+    34:13  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+   138:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   139:7   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+   181:64  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+   236:45  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   237:3   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+   428:81  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   429:5   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+   452:52  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   453:5   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+   494:9   warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  1213:27  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  1420:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(public)\status\unsubscribe\[token]\page.tsx
+  2:8  warning  'Link' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\(public)\status\verify\[token]\page.tsx
+  2:8  warning  'Link' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\analytics\export\route.ts
+  9:1  warning  '@prisma/client' import is duplicated  no-duplicate-imports
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\notifications\route.ts
+  64:26  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\search-presets\[id]\route.ts
+   64:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  176:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  217:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\services\[id]\route.ts
+  36:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\services\route.ts
+  41:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\settings\notifications\route.ts
+  112:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\api\settings\status-page\route.ts
+  203:40  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\auth\signout\page.tsx
+  44:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\auth\signout\signout-client.tsx
+  55:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\forgot-password\page.tsx
+   70:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  150:51  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\login\LoginClient.tsx
+  178:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  252:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\reset-password\page.tsx
+   31:9   warning  Potential timing attack, left side: true                                                                                                                                                                                                                                                 security/detect-possible-timing-attacks
+  156:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\app\set-password\actions.ts
+  24:5  warning  Potential timing attack, left side: true  security/detect-possible-timing-attacks
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\AssigneePicker.tsx
+  83:45  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\BulkUserActionsForm.tsx
+   4:1   warning  'react' import is duplicated  no-duplicate-imports
+  84:41  warning  Unexpected confirm            no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ConfirmDialog.tsx
+  87:18  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ConfirmSubmitButton.tsx
+  24:22  warning  Unexpected confirm  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\CustomFieldsConfig.tsx
+  92:14  warning  Unexpected confirm  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\DashboardFilters.tsx
+  76:17  warning  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\DashboardInteractiveChart.tsx
+  27:37  warning  Generic Object Injection Sink  security/detect-object-injection
+  45:16  warning  Generic Object Injection Sink  security/detect-object-injection
+  45:44  warning  Generic Object Injection Sink  security/detect-object-injection
+  45:79  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\DashboardSavedFilters.tsx
+   57:7   warning  Unexpected alert    no-alert
+  133:21  warning  Unexpected confirm  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\DashboardTimelineView.tsx
+  55:10  warning  Generic Object Injection Sink  security/detect-object-injection
+  56:7   warning  Generic Object Injection Sink  security/detect-object-injection
+  58:5   warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\DashboardWidgetReorder.tsx
+  21:13  warning  Generic Object Injection Sink        security/detect-object-injection
+  22:20  warning  Function Call Object Injection Sink  security/detect-object-injection
+  59:28  warning  Generic Object Injection Sink        security/detect-object-injection
+  60:28  warning  Generic Object Injection Sink        security/detect-object-injection
+  62:7   warning  Generic Object Injection Sink        security/detect-object-injection
+  63:7   warning  Generic Object Injection Sink        security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\DeleteUserButton.tsx
+  30:14  warning  Unexpected confirm  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\GenerateResetLinkButton.tsx
+  19:14  warning  Unexpected confirm  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\IncidentCustomFields.tsx
+  95:23  warning  Unexpected alert  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\IncidentTableMobile.tsx
+  77:17  warning  Unexpected alert  no-alert
+  88:17  warning  Unexpected alert  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\LayerCard.tsx
+  313:39  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\LayerCreateForm.tsx
+  112:31  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\LayerHelpPanel.tsx
+  103:62  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\MonitoringDashboard.tsx
+  160:8   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  582:48  warning  Generic Object Injection Sink                                                                                 security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\OverrideForm.tsx
+  63:31  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\PolicyDeleteButton.tsx
+  28:14  warning  Unexpected confirm  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\PostmortemForm.tsx
+   54:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   57:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   68:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   86:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  154:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\QuickActions.tsx
+  111:8  warning  React Hook useEffect has a missing dependency: 'setIsOpen'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ScheduleCreateForm.tsx
+   4:1   warning  'react' import is duplicated                                     no-duplicate-imports
+  47:31  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\SearchPresetManager.tsx
+  172:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  193:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  213:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\Sidebar.tsx
+  250:6   warning  React Hook useEffect has missing dependencies: 'isMobileMenuOpen' and 'setIsMobileMenuOpen'. Either include them or remove the dependency array                                                                                                                                          react-hooks/exhaustive-deps
+  269:12  warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  270:9   warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  272:7   warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  379:20  warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  530:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\SidebarSearch.tsx
+    4:39  warning  'useTransition' is defined but never used. Allowed unused vars must match /^_/u                                                             @typescript-eslint/no-unused-vars
+  275:8   warning  React Hook useEffect has missing dependencies: 'handleEnterKey' and 'scrollToSelected'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  295:37  warning  Generic Object Injection Sink                                                                                                               security/detect-object-injection
+  301:36  warning  Variable Assigned to Object Injection Sink                                                                                                  security/detect-object-injection
+  321:36  warning  Variable Assigned to Object Injection Sink                                                                                                  security/detect-object-injection
+  330:8   warning  React Hook useCallback has an unnecessary dependency: 'totalItems'. Either exclude it or remove the dependency array                        react-hooks/exhaustive-deps
+  811:58  warning  Generic Object Injection Sink                                                                                                               security/detect-object-injection
+  825:81  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  888:12  warning  Generic Object Injection Sink                                                                                                               security/detect-object-injection
+  924:12  warning  Generic Object Injection Sink                                                                                                               security/detect-object-injection
+  939:22  warning  Generic Object Injection Sink                                                                                                               security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\StatusPageConfig.test.tsx
+   5:10  warning  'TimezoneProvider' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  25:38  error    Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+  45:28  error    Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+  51:16  error    Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+  56:61  error    Unexpected any. Specify a different type                                            @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\StatusPageConfig.tsx
+   877:26  warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  1025:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  1040:12  warning  Generic Object Injection Sink                                                                                                                                                                                                                                                            security/detect-object-injection
+  1130:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  1155:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  1219:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  1250:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  1431:49  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  1810:35  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  1872:35  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  2099:45  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  2099:58  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\TeamCard.tsx
+    3:20  warning  'useMemo' is defined but never used. Allowed unused vars must match /^_/u                              @typescript-eslint/no-unused-vars
+  328:27  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                        react/no-unescaped-entities
+  443:49  error    Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+  444:21  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\TeamMemberForm.tsx
+  63:21  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\Toast.tsx
+  49:20  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\TopbarClock.tsx
+  5:10  warning  'formatDateTime' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\WeekSummary.tsx
+  97:34  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\AnalyticsExportButton.tsx
+  56:13  warning  Unexpected alert  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\ExportButton.tsx
+   57:13  warning  Unexpected alert               no-alert
+   74:48  warning  Generic Object Injection Sink  security/detect-object-injection
+  110:29  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\HeatmapCalendar.tsx
+  21:12  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\InsightCard.tsx
+  2:10  warning  'ArrowUpRight' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+  2:24  warning  'ArrowDownRight' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  2:76  warning  'AlertCircle' is defined but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\LineChart.tsx
+   4:11  error    Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  10:64  warning  'valueFormatter' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  14:11  warning  'chartHeight' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\MetricCard.tsx
+  47:56  warning  Generic Object Injection Sink  security/detect-object-injection
+  62:64  warning  Generic Object Injection Sink  security/detect-object-injection
+  85:64  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\MonitoringDashboardV2.tsx
+   96:77  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  205:80  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  213:84  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\ProgressBar.tsx
+  42:60  warning  Generic Object Injection Sink  security/detect-object-injection
+  44:59  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\SmartSummary.tsx
+   4:20  warning  'ArrowUpRight' is defined but never used. Allowed unused vars must match /^_/u    @typescript-eslint/no-unused-vars
+   4:34  warning  'ArrowDownRight' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  17:18  error    Unexpected any. Specify a different type                                          @typescript-eslint/no-explicit-any
+  61:9   warning  Unexpected alert                                                                  no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\analytics\StatusBadge.tsx
+  26:52  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\EscalationStatusBadge.tsx
+  27:19  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\PriorityBadge.tsx
+  66:20  warning  Generic Object Injection Sink               security/detect-object-injection
+  67:19  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\StatusBadge.tsx
+  69:20  warning  Generic Object Injection Sink               security/detect-object-injection
+  70:19  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\TemplateSelector.tsx
+  82:21  warning  Do not use an `<a>` element to navigate to `/incidents/templates/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+  96:44  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                            react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\detail\IncidentNotes.tsx
+  130:35  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\detail\IncidentTimeline.tsx
+  131:39  warning  Generic Object Injection Sink  security/detect-object-injection
+  140:14  warning  Generic Object Injection Sink  security/detect-object-injection
+  141:13  warning  Generic Object Injection Sink  security/detect-object-injection
+  143:9   warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\incident\detail\IncidentWatchers.tsx
+  98:35  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileBottomSheet.tsx
+  35:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileBottomSheet.tsx:35:13
+  33 |         if (isOpen) {
+  34 |             document.body.style.overflow = 'hidden';
+> 35 |             setTranslateY(0);
+     |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  36 |         } else {
+  37 |             document.body.style.overflow = '';
+  38 |         }  react-hooks/set-state-in-effect
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileButton.tsx
+  104:12  warning  Generic Object Injection Sink  security/detect-object-injection
+  105:12  warning  Generic Object Injection Sink  security/detect-object-injection
+  190:29  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileCard.tsx
+  54:18  warning  Generic Object Injection Sink  security/detect-object-injection
+  57:12  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileModal.tsx
+  256:41  warning  Generic Object Injection Sink  security/detect-object-injection
+  257:36  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileNotificationButton.tsx
+  22:11  warning  'pathname' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  52:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileNotificationButton.tsx:52:9
+  50 |
+  51 |     useEffect(() => {
+> 52 |         fetchNotifications();
+     |         ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  53 |         const interval = setInterval(fetchNotifications, 30000);
+  54 |         return () => clearInterval(interval);
+  55 |     }, [fetchNotifications]);  react-hooks/set-state-in-effect
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileSearchParams.tsx
+  10:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileThemeToggle.tsx
+  12:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\mobile\MobileThemeToggle.tsx:12:9
+  10 |
+  11 |     useEffect(() => {
+> 12 |         setMounted(true);
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  13 |     }, []);
+  14 |
+  15 |     // Don't render until mounted to avoid hydration mismatch  react-hooks/set-state-in-effect
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\providers\ThemeProvider.tsx
+  4:47  warning  'Attribute' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\service\DeleteWebhookButton.tsx
+  17:14  warning  Unexpected confirm  no-alert
+  34:13  warning  Unexpected alert    no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\service\IncidentList.tsx
+  187:24  warning  Generic Object Injection Sink  security/detect-object-injection
+  188:28  warning  Generic Object Injection Sink  security/detect-object-injection
+  189:29  warning  Generic Object Injection Sink  security/detect-object-injection
+  190:30  warning  Generic Object Injection Sink  security/detect-object-injection
+  191:41  warning  Generic Object Injection Sink  security/detect-object-injection
+  192:43  warning  Generic Object Injection Sink  security/detect-object-injection
+  193:34  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\service\ServiceCard.tsx
+   31:11  warning  'openIncidents' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  162:23  warning  Generic Object Injection Sink                                                             security/detect-object-injection
+  449:30  warning  Generic Object Injection Sink                                                             security/detect-object-injection
+  449:70  warning  Generic Object Injection Sink                                                             security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\service\ServiceHealthScore.tsx
+  29:20  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\service\ServiceNotificationSettings.tsx
+   56:8    warning  React Hook useEffect has a missing dependency: 'channels'. Either include it or remove the dependency array. You can also do a functional update 'setChannels(c => ...)' if you only need 'channels' in the 'setChannels' call  react-hooks/exhaustive-deps
+   82:8    warning  React Hook useEffect has a missing dependency: 'selectedSlackChannel'. Either include it or remove the dependency array                                                                                                         react-hooks/exhaustive-deps
+  233:41   warning  Unexpected confirm                                                                                                                                                                                                              no-alert
+  284:36   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                 react/no-unescaped-entities
+  338:114  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                 react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\service\ServicesFilters.tsx
+  281:37  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  281:53  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\ConfirmDialog.tsx
+  66:19  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\InfoCallout.tsx
+  25:49  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\NotificationHistory.tsx
+  77:8  warning  React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\SettingsIcon.tsx
+  82:12  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\SettingsSearch.tsx
+   76:25  warning  Generic Object Injection Sink                                    security/detect-object-injection
+  108:59  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  108:68  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  108:73  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  108:81  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\SlackIntegrationPage.tsx
+  79:5  warning  Unused eslint-disable directive (no problems were reported from 'no-alert')
+  81:7  warning  Unexpected confirm                                                           no-alert
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\settings\SmsProviderSettings.tsx
+  3:10  warning  'useTransition' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\status-page\StatusPageHeader.tsx
+   45:20  warning  Variable Assigned to Object Injection Sink                                                                                                                                                                                                                                               security/detect-object-injection
+  156:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\status-page\StatusPageLivePreview.tsx
+   89:25  warning  Generic Object Injection Sink  security/detect-object-injection
+   90:26  warning  Generic Object Injection Sink  security/detect-object-injection
+  473:44  warning  Generic Object Injection Sink  security/detect-object-injection
+  475:73  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\status-page\StatusPagePrivacySettings.tsx
+  128:28  warning  Generic Object Injection Sink               security/detect-object-injection
+  132:21  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  150:28  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\status-page\StatusPageServices.tsx
+  211:36  warning  Generic Object Injection Sink  security/detect-object-injection
+  239:21  warning  Generic Object Injection Sink  security/detect-object-injection
+  239:68  warning  Generic Object Injection Sink  security/detect-object-injection
+  240:21  warning  Generic Object Injection Sink  security/detect-object-injection
+  249:17  warning  Generic Object Injection Sink  security/detect-object-injection
+  263:10  warning  Generic Object Injection Sink  security/detect-object-injection
+  864:76  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\status-page\StatusPageServicesGrouped.tsx
+  134:14  warning  Generic Object Injection Sink  security/detect-object-injection
+  135:13  warning  Generic Object Injection Sink  security/detect-object-injection
+  137:9   warning  Generic Object Injection Sink  security/detect-object-injection
+  156:14  warning  Generic Object Injection Sink  security/detect-object-injection
+  157:13  warning  Generic Object Injection Sink  security/detect-object-injection
+  159:9   warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Badge.tsx
+  98:12  warning  Generic Object Injection Sink  security/detect-object-injection
+  99:12  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Button.tsx
+  129:8   warning  Generic Object Injection Sink        security/detect-object-injection
+  130:8   warning  Generic Object Injection Sink        security/detect-object-injection
+  142:48  warning  Function Call Object Injection Sink  security/detect-object-injection
+  147:48  warning  Function Call Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Card.tsx
+  77:44  warning  Function Call Object Injection Sink  security/detect-object-injection
+  86:12  warning  Generic Object Injection Sink        security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Checkbox.tsx
+   64:16  warning  Generic Object Injection Sink  security/detect-object-injection
+   95:33  warning  Generic Object Injection Sink  security/detect-object-injection
+  113:33  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\EmptyState.tsx
+  62:20  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Input.tsx
+  112:16  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Modal.tsx
+  222:14  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Radio.tsx
+   58:9   warning  The attribute aria-invalid is not supported by the role radio. This role is implicit on the element input  jsx-a11y/role-supports-aria-props
+   63:16  warning  Generic Object Injection Sink                                                                              security/detect-object-injection
+   90:33  warning  Generic Object Injection Sink                                                                              security/detect-object-injection
+  108:33  warning  Generic Object Injection Sink                                                                              security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Select.tsx
+  145:16  warning  Generic Object Injection Sink  security/detect-object-injection
+  159:25  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Spinner.tsx
+  39:23  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  40:17  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Switch.tsx
+  65:18  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\Tooltip.tsx
+  166:28  warning  Generic Object Injection Sink  security/detect-object-injection
+  188:32  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\components\ui\VirtualList.tsx
+   62:22  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+   75:22  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  143:53  warning  Generic Object Injection Sink               security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\hooks\useModalState.ts
+  35:47  warning  Function Call Object Injection Sink  security/detect-object-injection
+  42:28  warning  Function Call Object Injection Sink  security/detect-object-injection
+  47:24  warning  Function Call Object Injection Sink  security/detect-object-injection
+  55:60  warning  Function Call Object Injection Sink  security/detect-object-injection
+  66:9   warning  Generic Object Injection Sink        security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\analytics-metrics.ts
+  28:12  warning  Generic Object Injection Sink  security/detect-object-injection
+  37:16  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\email-components.ts
+  186:17  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+  254:17  warning  Variable Assigned to Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\env-validation.ts
+  68:52  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\integrations\webhook.ts
+   41:53  warning  Generic Object Injection Sink  security/detect-object-injection
+  100:28  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\notifications.ts
+  149:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\password-reset.ts
+  246:9  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\service-notifications.ts
+  100:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  175:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  189:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\sla-priority.ts
+  13:21  warning  Generic Object Injection Sink  security/detect-object-injection
+  14:16  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\status-page-notifications.ts
+  118:25  warning  Generic Object Injection Sink  security/detect-object-injection
+  135:24  warning  Generic Object Injection Sink  security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\user-notifications.ts
+   14:30  warning  'getEmailConfig' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  300:56  warning  Generic Object Injection Sink                                                     security/detect-object-injection
+  301:49  warning  Generic Object Injection Sink                                                     security/detect-object-injection
+
+C:\Users\Dushyant.Rahangdale\Repo\OpsSentinal\src\lib\webhooks.ts
+  139:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  243:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  332:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  424:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  492:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  588:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  639:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 339 problems (97 errors, 242 warnings)
+  0 errors and 7 warnings potentially fixable with the `--fix` option.
+

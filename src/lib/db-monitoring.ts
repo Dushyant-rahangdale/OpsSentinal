@@ -37,6 +37,7 @@ class QueryMonitor {
       error,
     };
 
+    // V1: Legacy In-Memory Storage
     this.queries.push(metric);
 
     // Keep only the last N queries
@@ -44,15 +45,56 @@ class QueryMonitor {
       this.queries.shift();
     }
 
-    // Log slow queries
+    // V2: Enterprise Telemetry (Dual-Write)
+    // Optimized: Use cached module approach to avoid per-query import overhead
+    this.writeToTelemetryV2(metric, duration, error);
+  }
+
+  /**
+   * Safe asynchronous write to V2 Telemetry
+   */
+  private async writeToTelemetryV2(metric: QueryMetrics, duration: number, error?: Error) {
+    try {
+      const { telemetryV2 } = await import('@/services/telemetry/TelemetryServiceV2');
+
+      const tags = {
+        type: this.getQueryType(metric.query),
+      };
+
+      // Tier 1: Silver (Metrics)
+      telemetryV2.recordMetric('db.query.duration', duration, tags);
+      telemetryV2.recordMetric('db.query.count', 1, tags);
+
+      // Tier 2: Bronze (Significant Events)
+      if (error) {
+        const errorCode =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code?: unknown }).code)
+            : undefined;
+        telemetryV2.recordLog('ERROR', error.message || 'Database Error', {
+          query: metric.query,
+          code: errorCode,
+        });
+      } else if (duration > this.slowQueryThreshold) {
+        telemetryV2.recordLog('WARN', 'Slow Query Detected', {
+          query: metric.query,
+          duration,
+        });
+      }
+    } catch (_error) {
+      // Fail silently
+    }
+
+    // Log slow queries (Legacy Console)
     if (duration > this.slowQueryThreshold) {
-      console.warn(`[DB Monitor] Slow query detected: ${duration}ms`, {
+      logger.warn('[DB Monitor] Slow query detected', {
+        duration,
         query: metric.query,
-        params,
+        params: metric.params,
       });
     }
 
-    // Log errors
+    // Log errors (Legacy Logger)
     if (error) {
       // Extract error information more comprehensively
       let errorMessage = 'Unknown error';
@@ -87,7 +129,7 @@ class QueryMonitor {
         code: errorCode,
         meta: errorMeta,
         stack: errorStack,
-        params: params ? JSON.stringify(params, null, 2) : undefined,
+        params: metric.params ? JSON.stringify(metric.params, null, 2) : undefined,
         errorType: error?.constructor?.name || typeof error,
       });
     }
@@ -120,10 +162,10 @@ class QueryMonitor {
     const errorCount = relevantQueries.filter(q => q.error).length;
 
     // Group queries by type (SELECT, INSERT, UPDATE, DELETE)
-    const queriesByType: Record<string, number> = {};
+    const queriesByType = new Map<string, number>();
     relevantQueries.forEach(q => {
       const type = this.getQueryType(q.query);
-      queriesByType[type] = (queriesByType[type] || 0) + 1;
+      queriesByType.set(type, (queriesByType.get(type) || 0) + 1);
     });
 
     return {
@@ -131,7 +173,7 @@ class QueryMonitor {
       averageDuration: Math.round(averageDuration * 100) / 100,
       slowQueries,
       errorCount,
-      queriesByType,
+      queriesByType: Object.fromEntries(queriesByType),
     };
   }
 
@@ -206,7 +248,7 @@ class QueryMonitor {
       '10-100ms': 0,
       '100-500ms': 0,
       '500ms-1s': 0,
-      '>1s': 0
+      '>1s': 0,
     };
 
     relevantQueries.forEach(q => {
@@ -220,18 +262,18 @@ class QueryMonitor {
     // Convert to array for Recharts
     return Object.entries(distribution).map(([range, count]) => ({
       name: range,
-      count
+      count,
     }));
   }
 }
 
 // Singleton instance
-const globalForMonitor = globalThis as unknown as { queryMonitor: QueryMonitor | undefined }
+const globalForMonitor = globalThis as unknown as { queryMonitor: QueryMonitor | undefined };
 
-export const queryMonitor = globalForMonitor.queryMonitor ?? new QueryMonitor()
+export const queryMonitor = globalForMonitor.queryMonitor ?? new QueryMonitor();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForMonitor.queryMonitor = queryMonitor
+  globalForMonitor.queryMonitor = queryMonitor;
 }
 
 /**
@@ -282,5 +324,3 @@ export function getRecentQueryErrors(limit = 10): QueryMetrics[] {
 export function getQueryDurationDistribution(timeWindow?: number) {
   return queryMonitor.getQueryDurationDistribution(timeWindow);
 }
-
-

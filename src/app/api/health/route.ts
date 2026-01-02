@@ -1,9 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { startCronScheduler } from '@/lib/cron-scheduler';
-
-// Start internal cron when the health endpoint is first loaded.
-startCronScheduler();
 
 // Generate a unique ID when the server process starts
 const SERVER_INSTANCE_ID = Date.now().toString();
@@ -24,32 +20,35 @@ const SERVER_INSTANCE_ID = Date.now().toString();
  *   }
  * }
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
     const _startTime = Date.now();
+    const mode = request.nextUrl.searchParams.get('mode') || 'liveness';
     const checks: Record<string, { status: 'healthy' | 'unhealthy'; latency?: number; error?: string }> = {};
 
-    // Check database connection with timeout
-    try {
-        const dbStartTime = Date.now();
-        // Use Promise.race to add timeout
-        const dbCheck = Promise.race([
-            prisma.$queryRaw`SELECT 1`,
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Database connection timeout')), 5000)
-            )
-        ]);
-        await dbCheck;
-        const dbLatency = Date.now() - dbStartTime;
+    if (mode === 'readiness') {
+        // Check database connection with timeout
+        try {
+            const dbStartTime = Date.now();
+            // Use Promise.race to add timeout
+            const dbCheck = Promise.race([
+                prisma.$queryRaw`SELECT 1`,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Database connection timeout')), 5000)
+                )
+            ]);
+            await dbCheck;
+            const dbLatency = Date.now() - dbStartTime;
 
-        checks.database = {
-            status: 'healthy',
-            latency: dbLatency,
-        };
-    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-        checks.database = {
-            status: 'unhealthy',
-            error: error.message || 'Database connection failed',
-        };
+            checks.database = {
+                status: 'healthy',
+                latency: dbLatency,
+            };
+        } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+            checks.database = {
+                status: 'unhealthy',
+                error: error.message || 'Database connection failed',
+            };
+        }
     }
 
     // Check memory usage
@@ -75,9 +74,13 @@ export async function GET() {
         };
     }
 
-    // Determine overall status
-    const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
-    const anyUnhealthy = Object.values(checks).some(check => check.status === 'unhealthy');
+    const readinessChecks = mode === 'readiness'
+        ? Object.entries(checks).filter(([key]) => key !== 'memory').map(([, value]) => value)
+        : Object.values(checks);
+    const allHealthy = readinessChecks.length === 0
+        ? true
+        : readinessChecks.every(check => check.status === 'healthy');
+    const anyUnhealthy = readinessChecks.some(check => check.status === 'unhealthy');
 
     const overallStatus = allHealthy
         ? 'healthy'
@@ -87,6 +90,7 @@ export async function GET() {
 
     const response = {
         status: overallStatus,
+        mode,
         timestamp: new Date().toISOString(),
         checks,
         uptime: Math.round(process.uptime()),
@@ -95,7 +99,9 @@ export async function GET() {
         instanceId: SERVER_INSTANCE_ID,
     };
 
-    const statusCode = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503;
+    const statusCode = mode === 'readiness'
+        ? (overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503)
+        : 200;
 
     // Add cache control headers
     const headers = new Headers();

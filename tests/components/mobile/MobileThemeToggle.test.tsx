@@ -14,18 +14,30 @@ describe('MobileThemeToggle', () => {
     });
 
     it('renders correctly', () => {
-        (useTheme as any).mockReturnValue({ theme: 'light', setTheme: vi.fn() });
+        vi.mocked(useTheme).mockReturnValue({
+            theme: 'light',
+            resolvedTheme: 'light',
+            systemTheme: 'light',
+            themes: ['light', 'dark'],
+            setTheme: vi.fn(),
+        });
         render(<MobileThemeToggle />);
-        expect(screen.getAllByText('Dark Mode').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Light Mode').length).toBeGreaterThan(0);
     });
 
     it('toggles from light to dark', () => {
         const setTheme = vi.fn();
-        (useTheme as any).mockReturnValue({ theme: 'light', setTheme });
+        vi.mocked(useTheme).mockReturnValue({
+            theme: 'light',
+            resolvedTheme: 'light',
+            systemTheme: 'light',
+            themes: ['light', 'dark'],
+            setTheme,
+        });
 
         render(<MobileThemeToggle />);
 
-        const label = screen.getByText('Dark Mode');
+        const label = screen.getByText('Light Mode');
         fireEvent.click(label);
 
         expect(setTheme).toHaveBeenCalledWith('dark');
@@ -33,7 +45,13 @@ describe('MobileThemeToggle', () => {
 
     it('toggles from dark to light', () => {
         const setTheme = vi.fn();
-        (useTheme as any).mockReturnValue({ theme: 'dark', setTheme });
+        vi.mocked(useTheme).mockReturnValue({
+            theme: 'dark',
+            resolvedTheme: 'dark',
+            systemTheme: 'dark',
+            themes: ['light', 'dark'],
+            setTheme,
+        });
 
         render(<MobileThemeToggle />);
 

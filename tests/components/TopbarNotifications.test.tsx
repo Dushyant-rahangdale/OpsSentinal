@@ -2,8 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render } from '@testing-library/react';
 import TopbarNotifications from '@/components/TopbarNotifications';
 
+type MockEventSourceInstance = {
+    onmessage: ((event: MessageEvent) => void) | null;
+    onerror: ((event: Event) => void) | null;
+    close: ReturnType<typeof vi.fn>;
+};
+
 const closeSpy = vi.fn().mockName('close');
-const mockEventSourceCtor = vi.fn().mockImplementation(function (this: any) {
+const mockEventSourceCtor = vi.fn().mockImplementation(function (this: MockEventSourceInstance) {
     this.onmessage = null;
     this.onerror = null;
     this.close = closeSpy;

@@ -157,16 +157,36 @@ const navigationItems: NavItem[] = [
     ),
     section: 'INSIGHTS',
   },
+
   {
-    href: '/monitoring',
+    href: '/reports/executive',
+    label: 'Executive Report',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z" />
+      </svg>
+    ),
+    section: 'INSIGHTS',
+    requiresRole: ['ADMIN'],
+  },
+  {
+    href: '/monitoring-new',
     label: 'Monitoring',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M3 3v18h18M7 16l4-4 4 4 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="7" cy="16" r="1" />
-        <circle cx="11" cy="12" r="1" />
-        <circle cx="15" cy="12" r="1" />
-        <circle cx="21" cy="6" r="1" />
+        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    ),
+    section: 'INSIGHTS',
+    requiresRole: ['ADMIN'],
+  },
+  {
+    href: '/analytics-new',
+    label: 'Analytics V2',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M5 20V10m7 10V4m7 16v-7" strokeLinecap="round" />
       </svg>
     ),
     section: 'INSIGHTS',

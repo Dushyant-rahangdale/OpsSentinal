@@ -3,6 +3,7 @@ import MobileIncidentActions from '@/app/(mobile)/m/incidents/[id]/actions';
 import { useRouter } from 'next/navigation';
 import { updateIncidentStatus, resolveIncidentWithNote } from '@/app/(app)/incidents/actions';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -18,7 +19,14 @@ vi.mock('@/app/(app)/incidents/actions', () => ({
 }));
 
 describe('MobileIncidentActions', () => {
-    const mockRouter = { refresh: vi.fn() };
+    const mockRouter = {
+        back: vi.fn(),
+        forward: vi.fn(),
+        push: vi.fn(),
+        replace: vi.fn(),
+        prefetch: vi.fn(),
+        refresh: vi.fn(),
+    } as unknown as AppRouterInstance;
     const defaultProps = {
         incidentId: 'inc-123',
         status: 'OPEN',
@@ -31,7 +39,7 @@ describe('MobileIncidentActions', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (useRouter as any).mockReturnValue(mockRouter);
+        vi.mocked(useRouter).mockReturnValue(mockRouter);
     });
 
     it('renders Acknowledge button when status is OPEN', () => {
@@ -40,7 +48,7 @@ describe('MobileIncidentActions', () => {
     });
 
     it('calls updateIncidentStatus on Acknowledge click', async () => {
-        (updateIncidentStatus as any).mockResolvedValue({});
+        vi.mocked(updateIncidentStatus).mockResolvedValue(undefined);
         render(<MobileIncidentActions {...defaultProps} status="OPEN" />);
 
         fireEvent.click(screen.getByText('Acknowledge'));
@@ -59,7 +67,7 @@ describe('MobileIncidentActions', () => {
     });
 
     it('resolves incident with note', async () => {
-        (resolveIncidentWithNote as any).mockResolvedValue({});
+        vi.mocked(resolveIncidentWithNote).mockResolvedValue(undefined);
         render(<MobileIncidentActions {...defaultProps} status="ACKNOWLEDGED" />);
 
         // Open resolve panel
@@ -69,8 +77,8 @@ describe('MobileIncidentActions', () => {
         const input = screen.getByPlaceholderText(/Describe root cause/i);
         fireEvent.change(input, { target: { value: 'Fixed the issue completely.' } }); // 25 chars
 
-        // Click Resolve with Note
-        fireEvent.click(screen.getByText('Resolve with Note'));
+        // Click Resolve incident
+        fireEvent.click(screen.getByRole('button', { name: 'Resolve incident' }));
 
         await waitFor(() => {
             expect(resolveIncidentWithNote).toHaveBeenCalledWith('inc-123', 'Fixed the issue completely.');
@@ -78,8 +86,7 @@ describe('MobileIncidentActions', () => {
         });
     });
 
-    it('shows validation error if resolution note is too short', () => {
-        window.alert = vi.fn(); // Mock alert because component calls alert()
+    it('disables resolve submit when resolution note is too short', () => {
         render(<MobileIncidentActions {...defaultProps} status="ACKNOWLEDGED" />);
 
         fireEvent.click(screen.getByText('Resolve'));
@@ -88,8 +95,7 @@ describe('MobileIncidentActions', () => {
         fireEvent.change(input, { target: { value: 'Short' } });
 
         // Button should be disabled or handle click with check
-        // The component logic checks disabled={... || length < 10}.
-        const btn = screen.getByText('Resolve with Note');
+        const btn = screen.getByRole('button', { name: 'Resolve incident' });
         expect(btn).toBeDisabled();
     });
 });

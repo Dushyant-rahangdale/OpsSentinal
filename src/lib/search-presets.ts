@@ -1,4 +1,6 @@
+import type { IncidentStatus, IncidentUrgency, Prisma } from '@prisma/client';
 import prisma from './prisma';
+import { logger } from '@/lib/logger';
 import {
   type FilterCriteria,
   type SearchPresetWithCreator,
@@ -13,13 +15,28 @@ export { buildOrderByFromCriteria, searchParamsToCriteria, criteriaToSearchParam
 /**
  * Build Prisma where clause from filter criteria
  */
-export function buildWhereFromCriteria(criteria: FilterCriteria, currentUserId?: string): any {
-   
-  const where: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+export function buildWhereFromCriteria(
+  criteria: FilterCriteria,
+  currentUserId?: string
+): Prisma.IncidentWhereInput {
+  const where: Prisma.IncidentWhereInput = {};
+  const allowedStatuses = new Set<IncidentStatus>([
+    'OPEN',
+    'ACKNOWLEDGED',
+    'RESOLVED',
+    'SNOOZED',
+    'SUPPRESSED',
+  ]);
+  const allowedUrgencies = new Set<IncidentUrgency>(['LOW', 'MEDIUM', 'HIGH']);
 
   // Status filter
   if (criteria.statuses && criteria.statuses.length > 0) {
-    where.status = { in: criteria.statuses };
+    const statuses = criteria.statuses.filter((status): status is IncidentStatus =>
+      allowedStatuses.has(status as IncidentStatus)
+    );
+    if (statuses.length > 0) {
+      where.status = { in: statuses };
+    }
   } else if (criteria.filter === 'mine') {
     where.assigneeId = currentUserId;
     where.status = { notIn: ['RESOLVED'] };
@@ -49,7 +66,9 @@ export function buildWhereFromCriteria(criteria: FilterCriteria, currentUserId?:
 
   // Urgency filter
   if (criteria.urgency && criteria.urgency !== 'all') {
-    where.urgency = criteria.urgency;
+    if (allowedUrgencies.has(criteria.urgency as IncidentUrgency)) {
+      where.urgency = criteria.urgency as IncidentUrgency;
+    }
   }
 
   // Service filter
@@ -64,11 +83,21 @@ export function buildWhereFromCriteria(criteria: FilterCriteria, currentUserId?:
 
   // Date range filter
   if (criteria.dateRange) {
-    const field = criteria.dateRange.field;
-    where[field] = {
+    const dateRange = {
       gte: new Date(criteria.dateRange.from),
       lte: new Date(criteria.dateRange.to),
     };
+    switch (criteria.dateRange.field) {
+      case 'createdAt':
+        where.createdAt = dateRange;
+        break;
+      case 'updatedAt':
+        where.updatedAt = dateRange;
+        break;
+      case 'resolvedAt':
+        where.resolvedAt = dateRange;
+        break;
+    }
   }
 
   // Tags filter
@@ -108,7 +137,7 @@ export async function getAccessiblePresets(
 ): Promise<SearchPresetWithCreator[]> {
   // Check if SearchPreset model exists in Prisma client (defensive check)
   if (!prisma.searchPreset) {
-    console.warn(
+    logger.warn(
       'SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.'
     );
     return [];
@@ -142,11 +171,12 @@ export async function getAccessiblePresets(
     });
 
     return presets as SearchPresetWithCreator[];
-  } catch (error: any) {
-     
+  } catch (error: unknown) {
+    const errorInfo =
+      error && typeof error === 'object' ? (error as { code?: string; message?: string }) : {};
     // Handle case where table doesn't exist yet (migration not applied)
-    if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
-      console.warn(
+    if (errorInfo?.code === 'P2021' || errorInfo?.message?.includes('does not exist')) {
+      logger.warn(
         'SearchPreset table does not exist. Please run "npx prisma db push" or apply migrations.'
       );
       return [];
@@ -162,7 +192,7 @@ export async function getAccessiblePresets(
 export async function trackPresetUsage(presetId: string, userId: string): Promise<void> {
   // Check if models exist
   if (!prisma.searchPreset || !prisma.searchPresetUsage) {
-    console.warn(
+    logger.warn(
       'SearchPreset models not available. Run "npx prisma generate" to regenerate Prisma client.'
     );
     return;
@@ -191,7 +221,7 @@ export async function trackPresetUsage(presetId: string, userId: string): Promis
 export async function getPopularPresets(limit: number = 10): Promise<SearchPresetWithCreator[]> {
   // Check if SearchPreset model exists
   if (!prisma.searchPreset) {
-    console.warn(
+    logger.warn(
       'SearchPreset model not available. Run "npx prisma generate" to regenerate Prisma client.'
     );
     return [];

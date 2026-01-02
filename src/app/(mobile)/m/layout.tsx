@@ -8,7 +8,10 @@ import { ToastProvider } from '@/components/ToastProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import '@/app/globals.css';
 import './mobile.css';
+import './mobile-premium.css';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
+import MobileSwipeNavigator from '@/components/mobile/MobileSwipeNavigator';
+import MobileNetworkBanner from '@/components/mobile/MobileNetworkBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,25 +27,37 @@ export default async function MobileLayout({
     }
 
     // Check system status
-    const criticalCount = await prisma.incident.count({
-        where: {
-            status: { not: 'RESOLVED' },
-            urgency: 'HIGH',
-        },
-    });
+    // Check system status
+    const [criticalCount, lowUrgencyCount] = await Promise.all([
+        prisma.incident.count({
+            where: {
+                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+                urgency: 'HIGH',
+            },
+        }),
+        prisma.incident.count({
+            where: {
+                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+                urgency: 'LOW',
+            },
+        }),
+    ]);
 
     const systemStatus: 'ok' | 'warning' | 'danger' =
-        criticalCount > 0 ? 'danger' : 'ok';
+        criticalCount > 0 ? 'danger' : lowUrgencyCount > 0 ? 'warning' : 'ok';
 
     return (
         <ToastProvider>
             <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
-                <div className="mobile-shell">
+                <div className="mobile-shell" data-status={systemStatus}>
                     <MobileHeader systemStatus={systemStatus} />
                     <main className="mobile-content">
-                        <PullToRefresh>
-                            {children}
-                        </PullToRefresh>
+                        <MobileNetworkBanner />
+                        <MobileSwipeNavigator>
+                            <PullToRefresh>
+                                {children}
+                            </PullToRefresh>
+                        </MobileSwipeNavigator>
                     </main>
                     <MobileNav />
                 </div>

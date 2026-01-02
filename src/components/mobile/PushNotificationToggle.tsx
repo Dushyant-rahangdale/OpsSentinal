@@ -38,6 +38,8 @@ export default function PushNotificationToggle() {
     const [isSubscribed, setIsSubscribed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isTesting, setIsTesting] = useState(false);
+    const [testMessage, setTestMessage] = useState('');
     const [isSupported, setIsSupported] = useState(false);
 
     useEffect(() => {
@@ -131,6 +133,25 @@ export default function PushNotificationToggle() {
         }
     }
 
+    async function sendTestPush() {
+        setIsTesting(true);
+        setTestMessage('');
+        try {
+            const response = await fetch('/api/notifications/test-push', { method: 'POST' });
+            const data = (await response.json()) as { message?: string; error?: string };
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to send test push.');
+            }
+            setTestMessage(data.message || 'Test push sent. Check your device.');
+        } catch (error: unknown) {
+            logger.error('Push test failed', { component: 'PushNotificationToggle', error });
+            const message = error instanceof Error ? error.message : 'Failed to send test push.';
+            setTestMessage(message);
+        } finally {
+            setIsTesting(false);
+        }
+    }
+
     if (!isSupported) return null;
 
     return (
@@ -185,6 +206,19 @@ export default function PushNotificationToggle() {
                     Error: {error}
                 </div>
             )}
+            <div className="mobile-push-test">
+                <button
+                    type="button"
+                    className="mobile-push-test-button"
+                    onClick={sendTestPush}
+                    disabled={!isSubscribed || isTesting || loading}
+                >
+                    {isTesting ? 'Sending test...' : 'Send test push'}
+                </button>
+                {testMessage && (
+                    <span className="mobile-push-test-message">{testMessage}</span>
+                )}
+            </div>
             <style jsx>{`
                 @keyframes spin {
                     to { transform: rotate(360deg); }
