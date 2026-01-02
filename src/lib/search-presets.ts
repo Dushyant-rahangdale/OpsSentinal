@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { IncidentStatus, IncidentUrgency, Prisma } from '@prisma/client';
 import prisma from './prisma';
 import { logger } from '@/lib/logger';
 import {
@@ -20,10 +20,23 @@ export function buildWhereFromCriteria(
   currentUserId?: string
 ): Prisma.IncidentWhereInput {
   const where: Prisma.IncidentWhereInput = {};
+  const allowedStatuses = new Set<IncidentStatus>([
+    'OPEN',
+    'ACKNOWLEDGED',
+    'RESOLVED',
+    'SNOOZED',
+    'SUPPRESSED',
+  ]);
+  const allowedUrgencies = new Set<IncidentUrgency>(['LOW', 'MEDIUM', 'HIGH']);
 
   // Status filter
   if (criteria.statuses && criteria.statuses.length > 0) {
-    where.status = { in: criteria.statuses };
+    const statuses = criteria.statuses.filter((status): status is IncidentStatus =>
+      allowedStatuses.has(status)
+    );
+    if (statuses.length > 0) {
+      where.status = { in: statuses };
+    }
   } else if (criteria.filter === 'mine') {
     where.assigneeId = currentUserId;
     where.status = { notIn: ['RESOLVED'] };
@@ -53,7 +66,9 @@ export function buildWhereFromCriteria(
 
   // Urgency filter
   if (criteria.urgency && criteria.urgency !== 'all') {
-    where.urgency = criteria.urgency;
+    if (allowedUrgencies.has(criteria.urgency as IncidentUrgency)) {
+      where.urgency = criteria.urgency as IncidentUrgency;
+    }
   }
 
   // Service filter
