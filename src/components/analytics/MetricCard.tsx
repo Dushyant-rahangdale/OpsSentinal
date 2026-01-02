@@ -8,6 +8,7 @@ interface MetricCardProps {
     trendValue?: string;
     icon?: React.ReactNode;
     variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
+    className?: string;
     children?: React.ReactNode;
     tooltip?: string;
     href?: string;
@@ -21,6 +22,7 @@ function MetricCard({
     trendValue,
     icon,
     variant = 'default',
+    className = '',
     children,
     tooltip,
     href
@@ -39,8 +41,10 @@ function MetricCard({
         neutral: 'analytics-trend-neutral'
     };
 
+    const trendLabel = trend === 'up' ? 'UP' : trend === 'down' ? 'DOWN' : 'FLAT';
+
     return (
-        <article className={`analytics-card-enhanced ${variantClasses[variant]} ${href ? 'cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-primary/50 transition-all' : ''}`}>
+        <article className={`analytics-card-enhanced ${variantClasses[variant]} ${className} ${href ? 'cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-primary/50 transition-all' : ''}`}>
             {href ? (
                 <a href={href} className="contents">
                     <div className="analytics-card-header">
@@ -56,9 +60,7 @@ function MetricCard({
                         <span className="analytics-value">{value}</span>
                         {trend && trendValue && (
                             <div className={`analytics-trend ${trendColors[trend]}`}>
-                                <span className="analytics-trend-icon">
-                                    {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
-                                </span>
+                                <span className="analytics-trend-icon">{trendLabel}</span>
                                 <span>{trendValue}</span>
                             </div>
                         )}
@@ -81,9 +83,7 @@ function MetricCard({
                         <span className="analytics-value">{value}</span>
                         {trend && trendValue && (
                             <div className={`analytics-trend ${trendColors[trend]}`}>
-                                <span className="analytics-trend-icon">
-                                    {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
-                                </span>
+                                <span className="analytics-trend-icon">{trendLabel}</span>
                                 <span>{trendValue}</span>
                             </div>
                         )}
@@ -98,4 +98,3 @@ function MetricCard({
 
 // Memoize MetricCard to prevent unnecessary re-renders on dashboard
 export default memo(MetricCard);
-

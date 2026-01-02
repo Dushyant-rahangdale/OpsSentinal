@@ -26,11 +26,11 @@ export default function FilterChips({ filters, teams, services, users }: FilterC
                 params.append(key, value);
             }
         });
-        router.push(`/analytics?${params.toString()}`);
+        router.push(`/analytics-new?${params.toString()}`);
     };
 
     const handleClearAll = () => {
-        router.push('/analytics');
+        router.push('/analytics-new');
     };
     const activeFilters: Array<{ type: string; label: string; value: string }> = [];
 
@@ -71,7 +71,7 @@ export default function FilterChips({ filters, teams, services, users }: FilterC
                             onClick={() => handleRemoveFilter(filter.type)}
                             aria-label={`Remove ${filter.label} filter`}
                         >
-                            ×
+                            x
                         </button>
                     </span>
                 ))}
@@ -88,4 +88,3 @@ export default function FilterChips({ filters, teams, services, users }: FilterC
         </div>
     );
 }
-

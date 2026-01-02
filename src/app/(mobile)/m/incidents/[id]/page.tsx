@@ -289,31 +289,6 @@ function DetailRow({ label, value, subValue }: { label: string; value: string; s
     );
 }
 
-function ActionButton({ label, variant }: { label: string; variant: 'warning' | 'success' }) {
-    const colors = {
-        warning: { bg: 'var(--badge-warning-bg)', color: 'var(--badge-warning-text)' },
-        success: { bg: 'var(--badge-success-bg)', color: 'var(--badge-success-text)' },
-    };
-
-    return (
-        <button
-            style={{
-                flex: 1,
-                padding: '0.75rem',
-                background: colors[variant].bg,
-                border: 'none',
-                borderRadius: '8px',
-                color: colors[variant].color,
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-            }}
-        >
-            {label}
-        </button>
-    );
-}
-
 function formatDate(date: Date): string {
     return new Date(date).toLocaleDateString('en-US', {
         month: 'short',

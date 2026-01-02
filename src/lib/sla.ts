@@ -38,10 +38,25 @@ export type SLAMetrics = {
   reopenRate: number;
   autoResolveRate: number;
 
+  previousPeriod: {
+    totalIncidents: number;
+    mtta: number | null;
+    mttr: number | null;
+    ackRate: number;
+    resolveRate: number;
+  };
+
   // Coverage
   coveragePercent: number;
   coverageGapDays: number;
   onCallHoursMs: number;
+  onCallUsersCount: number;
+  activeOverrides: number;
+
+  // Events
+  autoResolvedCount: number;
+  manualResolvedCount: number;
+  eventsCount: number;
 
   // Golden Signals
   avgLatencyP99: number | null;
@@ -50,10 +65,23 @@ export type SLAMetrics = {
   saturation: number | null;
 
   // Chart Data
-  trendSeries: Array<{ key: string; label: string; count: number; mtta: number; mttr: number }>;
+  trendSeries: Array<{
+    key: string;
+    label: string;
+    count: number;
+    mtta: number;
+    mttr: number;
+    ackRate: number;
+    resolveRate: number;
+    ackCompliance: number;
+    escalationRate: number;
+  }>;
   statusMix: Array<{ status: string; count: number }>;
   topServices: Array<{ id: string; name: string; count: number }>;
   assigneeLoad: Array<{ id: string; name: string; count: number }>;
+  statusAges: Array<{ status: string; avgMs: number | null }>;
+  onCallLoad: Array<{ id: string; name: string; hoursMs: number; incidentCount: number }>;
+  serviceSlaTable: Array<{ id: string; name: string; ackRate: number; resolveRate: number; total: number }>;
 
   // V2 Additions (V1 Parity)
   recurringTitles: Array<{ title: string; count: number }>;

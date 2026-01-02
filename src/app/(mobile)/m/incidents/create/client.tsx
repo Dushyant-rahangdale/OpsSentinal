@@ -6,6 +6,7 @@ import MobileButton from '@/components/mobile/MobileButton';
 
 type Service = { id: string; name: string };
 type User = { id: string; name: string | null; email: string };
+type CreateIncidentResult = { id?: string } | null;
 
 export default function MobileCreateIncidentClient({
     services,
@@ -14,7 +15,7 @@ export default function MobileCreateIncidentClient({
 }: {
     services: Service[];
     users: User[];
-    createAction: (formData: FormData) => Promise<any>;
+    createAction: (formData: FormData) => Promise<CreateIncidentResult>;
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -37,13 +38,16 @@ export default function MobileCreateIncidentClient({
                 // Fallback if no ID returned (shouldn't happen)
                 router.push('/m/incidents');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errorInfo = err && typeof err === 'object'
+                ? (err as { message?: string; digest?: string })
+                : {};
             // We removed the server-side redirect, so NEXT_REDIRECT shouldn't happen,
             // but keeping this check doesn't hurt.
-            if (err.message === 'NEXT_REDIRECT' || err.digest?.startsWith('NEXT_REDIRECT')) {
+            if (errorInfo.message === 'NEXT_REDIRECT' || errorInfo.digest?.startsWith('NEXT_REDIRECT')) {
                 throw err;
             }
-            setError(err.message || 'Failed to create incident');
+            setError(errorInfo.message || 'Failed to create incident');
             setLoading(false);
         }
     }

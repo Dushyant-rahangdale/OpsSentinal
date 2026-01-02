@@ -114,7 +114,7 @@ export default function AnalyticsFilters({
                     <button type="submit" className="glass-button primary">
                         Apply Filters
                     </button>
-                    <a href="/analytics" className="glass-button">
+                    <a href="/analytics-new" className="glass-button">
                         Reset
                     </a>
                 </div>

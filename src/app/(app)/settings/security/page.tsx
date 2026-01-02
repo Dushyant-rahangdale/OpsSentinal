@@ -37,16 +37,7 @@ export default async function SecuritySettingsPage() {
     const timeZone = getUserTimeZone(user ?? undefined);
     const isAdmin = (session?.user as any)?.role === 'ADMIN'; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    const ssoFormConfig = oidcConfig
-        ? {
-            enabled: oidcConfig.enabled,
-            issuer: oidcConfig.issuer,
-            clientId: oidcConfig.clientId,
-            autoProvision: oidcConfig.autoProvision,
-            allowedDomains: oidcConfig.allowedDomains ?? [],
-            hasClientSecret: Boolean(oidcConfig.clientSecret)
-        }
-        : null;
+
 
     return (
         <SettingsPage
@@ -78,27 +69,15 @@ export default async function SecuritySettingsPage() {
                 </div>
             </SettingsSectionCard>
 
-            {isAdmin ? (
-                <SettingsSectionCard
-                    title="Single sign-on (OIDC)"
-                    description="Configure your OpenID Connect provider for SSO login."
-                >
-                    <SsoSettingsForm
-                        initialConfig={ssoFormConfig}
-                        callbackUrl={callbackUrl}
-                        hasEncryptionKey={hasEncryptionKey}
-                    />
-                </SettingsSectionCard>
-            ) : (
-                <SettingsSectionCard
-                    title="Single sign-on (OIDC)"
-                    description="SSO settings are managed by your administrators."
-                >
-                    <div className="settings-inline-note">
-                        Contact an administrator to update your SSO configuration.
-                    </div>
-                </SettingsSectionCard>
-            )}
+            <SettingsSectionCard
+                title="Single sign-on (OIDC)"
+                description="SSO configuration has moved to System Settings."
+            >
+                <div className="settings-inline-note">
+                    SSO settings are now managed in <a href="/settings/system" style={{ textDecoration: 'underline' }}>System Settings</a>.
+                    {isAdmin ? ' (Admin access required)' : ' (Contact your administrator)'}
+                </div>
+            </SettingsSectionCard>
 
             <SettingsSectionCard
                 title="Password"

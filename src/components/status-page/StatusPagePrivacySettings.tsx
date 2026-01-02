@@ -106,7 +106,6 @@ export default function StatusPagePrivacySettings({
   onChange,
   customFields = [],
 }: StatusPagePrivacySettingsProps) {
-  const [localSettings, setLocalSettings] = useState<PrivacySettings>(settings);
   const [expandedPreset, setExpandedPreset] = useState<keyof typeof PRIVACY_PRESETS | null>(null);
 
   const PRESET_DETAIL_LABELS: Array<{ key: keyof PrivacySettings; label: string }> = [
@@ -143,19 +142,17 @@ export default function StatusPagePrivacySettings({
   };
 
   const updateSetting = <K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]) => {
-    const updated = { ...localSettings, [key]: value, privacyMode: 'CUSTOM' as const };
-    setLocalSettings(updated);
+    const updated = { ...settings, [key]: value, privacyMode: 'CUSTOM' as const };
     onChange(updated);
   };
 
   const applyPreset = (preset: keyof typeof PRIVACY_PRESETS) => {
     const presetSettings = PRIVACY_PRESETS[preset];
     const updated: PrivacySettings = {
-      ...localSettings,
+      ...settings,
       privacyMode: preset,
       ...presetSettings.settings,
     };
-    setLocalSettings(updated);
     onChange(updated);
   };
 
@@ -190,20 +187,27 @@ export default function StatusPagePrivacySettings({
             }}
           >
             {Object.entries(PRIVACY_PRESETS).map(([key, preset]) => (
-              <button
+              <div
                 key={key}
-                type="button"
+                role="button"
                 onClick={() => applyPreset(key as keyof typeof PRIVACY_PRESETS)}
                 title={getPresetSummary(key as keyof typeof PRIVACY_PRESETS)}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    applyPreset(key as keyof typeof PRIVACY_PRESETS);
+                  }
+                }}
                 style={{
                   padding: 'var(--spacing-4)',
                   border: '2px solid',
-                  borderColor: localSettings.privacyMode === key ? 'var(--primary)' : '#e5e7eb',
+                  borderColor: settings.privacyMode === key ? 'var(--primary)' : '#e5e7eb',
                   borderRadius: 'var(--radius-md)',
-                  background: localSettings.privacyMode === key ? '#f0f9ff' : 'white',
+                  background: settings.privacyMode === key ? '#f0f9ff' : 'white',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.2s ease',
+                  position: 'relative',
                 }}
               >
                 <div
@@ -211,7 +215,7 @@ export default function StatusPagePrivacySettings({
                     fontWeight: '600',
                     marginBottom: 'var(--spacing-1)',
                     color:
-                      localSettings.privacyMode === key ? 'var(--primary)' : 'var(--text-primary)',
+                      settings.privacyMode === key ? 'var(--primary)' : 'var(--text-primary)',
                   }}
                 >
                   {preset.label}
@@ -257,8 +261,9 @@ export default function StatusPagePrivacySettings({
                     {getPresetSummary(key as keyof typeof PRIVACY_PRESETS)}
                   </div>
                 )}
-              </button>
+              </div>
             ))}
+
           </div>
         </div>
       </Card>
@@ -277,43 +282,43 @@ export default function StatusPagePrivacySettings({
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
             <Switch
-              checked={localSettings.showIncidentDetails}
+              checked={settings.showIncidentDetails}
               onChange={checked => updateSetting('showIncidentDetails', checked)}
               label="Show Incident Details"
               helperText="Show the full incident timeline and update details"
             />
             <Switch
-              checked={localSettings.showIncidentTitles}
+              checked={settings.showIncidentTitles}
               onChange={checked => updateSetting('showIncidentTitles', checked)}
               label="Show Incident Titles"
               helperText="Display incident titles on the status page"
             />
             <Switch
-              checked={localSettings.showIncidentDescriptions}
+              checked={settings.showIncidentDescriptions}
               onChange={checked => updateSetting('showIncidentDescriptions', checked)}
               label="Show Incident Descriptions"
               helperText="Display detailed incident descriptions"
             />
             <Switch
-              checked={localSettings.showAffectedServices}
+              checked={settings.showAffectedServices}
               onChange={checked => updateSetting('showAffectedServices', checked)}
               label="Show Affected Services"
               helperText="Display which services are affected by incidents"
             />
             <Switch
-              checked={localSettings.showIncidentTimestamps}
+              checked={settings.showIncidentTimestamps}
               onChange={checked => updateSetting('showIncidentTimestamps', checked)}
               label="Show Incident Timestamps"
               helperText="Display when incidents occurred and were resolved"
             />
             <Switch
-              checked={localSettings.showIncidentUrgency}
+              checked={settings.showIncidentUrgency}
               onChange={checked => updateSetting('showIncidentUrgency', checked)}
               label="Show Incident Urgency"
               helperText="Display urgency level (High/Low) for incidents"
             />
             <Switch
-              checked={localSettings.showIncidentAssignees}
+              checked={settings.showIncidentAssignees}
               onChange={checked => updateSetting('showIncidentAssignees', checked)}
               label="Show Incident Assignees"
               helperText="Display who is assigned to handle incidents"
@@ -336,31 +341,31 @@ export default function StatusPagePrivacySettings({
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
             <Switch
-              checked={localSettings.showServiceMetrics}
+              checked={settings.showServiceMetrics}
               onChange={checked => updateSetting('showServiceMetrics', checked)}
               label="Show Service Metrics"
               helperText="Display uptime percentages and availability metrics"
             />
             <Switch
-              checked={localSettings.showServiceDescriptions}
+              checked={settings.showServiceDescriptions}
               onChange={checked => updateSetting('showServiceDescriptions', checked)}
               label="Show Service Descriptions"
               helperText="Display service descriptions and details"
             />
             <Switch
-              checked={localSettings.showServiceRegions}
+              checked={settings.showServiceRegions}
               onChange={checked => updateSetting('showServiceRegions', checked)}
               label="Show Service Regions"
               helperText="Display hosting regions for each service"
             />
             <Switch
-              checked={localSettings.showUptimeHistory}
+              checked={settings.showUptimeHistory}
               onChange={checked => updateSetting('showUptimeHistory', checked)}
               label="Show Uptime History"
               helperText="Display historical uptime charts and timelines"
             />
             <Switch
-              checked={localSettings.showTeamInformation}
+              checked={settings.showTeamInformation}
               onChange={checked => updateSetting('showTeamInformation', checked)}
               label="Show Team Information"
               helperText="Display team names and ownership information"
@@ -383,7 +388,7 @@ export default function StatusPagePrivacySettings({
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
             <Switch
-              checked={localSettings.showRecentIncidents}
+              checked={settings.showRecentIncidents}
               onChange={checked => updateSetting('showRecentIncidents', checked)}
               label="Show Recent Incidents"
               helperText="Display recent incidents list"
@@ -392,7 +397,7 @@ export default function StatusPagePrivacySettings({
               type="input"
               label="Maximum Incidents to Show"
               inputType="number"
-              value={localSettings.maxIncidentsToShow.toString()}
+              value={settings.maxIncidentsToShow.toString()}
               onChange={e => updateSetting('maxIncidentsToShow', parseInt(e.target.value) || 50)}
               helperText="Limit the number of incidents displayed (1-500)"
             />
@@ -400,7 +405,7 @@ export default function StatusPagePrivacySettings({
               type="input"
               label="Incident History Days"
               inputType="number"
-              value={localSettings.incidentHistoryDays.toString()}
+              value={settings.incidentHistoryDays.toString()}
               onChange={e => updateSetting('incidentHistoryDays', parseInt(e.target.value) || 90)}
               helperText="How many days of incident history to display"
             />
@@ -408,7 +413,7 @@ export default function StatusPagePrivacySettings({
               type="input"
               label="Data Retention Days (Optional)"
               inputType="number"
-              value={localSettings.dataRetentionDays?.toString() || ''}
+              value={settings.dataRetentionDays?.toString() || ''}
               onChange={e =>
                 updateSetting('dataRetentionDays', e.target.value ? parseInt(e.target.value) : null)
               }
@@ -417,12 +422,12 @@ export default function StatusPagePrivacySettings({
             {customFields.length > 0 && (
               <div>
                 <Switch
-                  checked={localSettings.showCustomFields}
+                  checked={settings.showCustomFields}
                   onChange={checked => updateSetting('showCustomFields', checked)}
                   label="Show Custom Fields"
                   helperText="Display custom fields on incidents"
                 />
-                {localSettings.showCustomFields && (
+                {settings.showCustomFields && (
                   <div
                     style={{
                       marginTop: 'var(--spacing-3)',
@@ -490,7 +495,7 @@ export default function StatusPagePrivacySettings({
                 marginBottom: 'var(--spacing-2)',
               }}
             >
-              Current privacy mode: <strong>{localSettings.privacyMode}</strong>
+              Current privacy mode: <strong>{settings.privacyMode}</strong>
             </div>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
               These settings control what information is visible on your public status page. Changes
@@ -502,3 +507,4 @@ export default function StatusPagePrivacySettings({
     </div>
   );
 }
+

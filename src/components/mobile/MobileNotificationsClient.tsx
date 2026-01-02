@@ -30,17 +30,20 @@ const filters = [
     { label: 'Unread', value: 'unread' },
 ];
 
-const typeLabels: Record<NotificationItem['type'], string> = {
-    incident: 'Incident',
-    service: 'Service',
-    schedule: 'Schedule',
-};
+const typeLabelMap = new Map<NotificationItem['type'], string>([
+    ['incident', 'Incident'],
+    ['service', 'Service'],
+    ['schedule', 'Schedule'],
+]);
 
-const typeActions: Record<NotificationItem['type'], string> = {
-    incident: 'Open',
-    service: 'Services',
-    schedule: 'Schedules',
-};
+const typeActionMap = new Map<NotificationItem['type'], string>([
+    ['incident', 'Open'],
+    ['service', 'Services'],
+    ['schedule', 'Schedules'],
+]);
+
+const getTypeLabel = (type: NotificationItem['type']) => typeLabelMap.get(type) ?? 'Notification';
+const getTypeAction = (type: NotificationItem['type']) => typeActionMap.get(type) ?? 'Open';
 
 const formatDayLabel = (date: Date) => {
     const now = new Date();
@@ -191,19 +194,20 @@ export default function MobileNotificationsClient() {
     }, [activeFilter]);
 
     const groupedNotifications = useMemo(() => {
-        const groups: Record<string, NotificationItem[]> = {};
+        const groups = new Map<string, NotificationItem[]>();
 
         notifications.forEach((notification) => {
             const parsedDate = new Date(notification.createdAt);
             const safeDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
             const label = formatDayLabel(safeDate);
-            if (!groups[label]) {
-                groups[label] = [];
+            const bucket = groups.get(label) ?? [];
+            if (!groups.has(label)) {
+                groups.set(label, bucket);
             }
-            groups[label].push(notification);
+            bucket.push(notification);
         });
 
-        return Object.entries(groups).map(([label, items]) => ({
+        return Array.from(groups.entries()).map(([label, items]) => ({
             label,
             items,
         }));
@@ -278,17 +282,19 @@ export default function MobileNotificationsClient() {
                     {groupedNotifications.map((group) => (
                         <div key={group.label} className="mobile-notifications-group">
                             <div className="mobile-notifications-group-title">{group.label}</div>
-                            {group.items.map((notification) => {
-                                const href = resolveNotificationHref(notification);
-                                return (
-                                    <MobileCard
+                                    {group.items.map((notification) => {
+                                        const href = resolveNotificationHref(notification);
+                                        const typeLabel = getTypeLabel(notification.type);
+                                        const typeAction = getTypeAction(notification.type);
+                                        return (
+                                            <MobileCard
                                         key={notification.id}
                                         className={`mobile-notification-card${notification.unread ? ' unread' : ''}`}
                                         onClick={href ? () => router.push(href) : undefined}
                                     >
                                         <div className="mobile-notification-main">
                                             <div className={`mobile-notification-icon tone-${notification.type}`}>
-                                                <span>{typeLabels[notification.type][0]}</span>
+                                                <span>{typeLabel.charAt(0)}</span>
                                             </div>
                                             <div className="mobile-notification-body">
                                                 <div className="mobile-notification-title-row">
@@ -297,7 +303,7 @@ export default function MobileNotificationsClient() {
                                                 </div>
                                                 <p className="mobile-notification-message">{notification.message}</p>
                                                 <div className="mobile-notification-meta">
-                                                    <span>{typeLabels[notification.type]}</span>
+                                                    <span>{typeLabel}</span>
                                                     <span>-</span>
                                                     <span>{notification.time}</span>
                                                 </div>
@@ -314,7 +320,7 @@ export default function MobileNotificationsClient() {
                                                         router.push(href);
                                                     }}
                                                 >
-                                                    {typeActions[notification.type]}
+                                                    {typeAction}
                                                 </button>
                                             )}
                                             {notification.unread && (
