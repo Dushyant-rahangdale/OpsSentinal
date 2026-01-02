@@ -100,7 +100,11 @@ export default async function SystemSettingsPage() {
         title="Single Sign-On (OIDC)"
         description="Allow users to log in with your identity provider."
       >
-        <SsoSettingsForm config={oidcConfig} hasEncryptionKey={encryptionKeySet} />
+        <SsoSettingsForm
+          initialConfig={oidcConfig}
+          callbackUrl={`${appUrlData.appUrl || 'https://your-ops-sentinel.com'}/api/auth/callback/oidc`}
+          hasEncryptionKey={encryptionKeySet}
+        />
       </SettingsSectionCard>
     </SettingsPage>
   );
