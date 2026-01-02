@@ -304,7 +304,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   }
 
   // Calc Metrics Helper
-  const calculateSetMetrics = (incidents: typeof recentIncidents, eventsMap: Map<string, Date>) => {
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const calculateSetMetrics = (incidents: any[], eventsMap: Map<string, Date>) => {
     let ackSum = 0,
       ackCount = 0;
     let resolveSum = 0,

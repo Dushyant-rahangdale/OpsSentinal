@@ -10,7 +10,6 @@ const DashboardAdvancedMetrics = lazy(() => import('./DashboardAdvancedMetrics')
 const DashboardStatusChart = lazy(() => import('./DashboardStatusChart'));
 const DashboardServiceHealth = lazy(() => import('./DashboardServiceHealth'));
 const DashboardUrgencyDistribution = lazy(() => import('./DashboardUrgencyDistribution'));
-const DashboardSLAMetrics = lazy(() => import('./DashboardSLAMetrics'));
 
 interface DashboardClientProps {
   children: React.ReactNode;
@@ -22,9 +21,7 @@ interface DashboardClientProps {
 export default function DashboardClient({ children }: DashboardClientProps) {
   return (
     <DashboardRealtimeWrapper>
-      <Suspense fallback={<DashboardSkeleton />}>
-        {children}
-      </Suspense>
+      <Suspense fallback={<DashboardSkeleton />}>{children}</Suspense>
     </DashboardRealtimeWrapper>
   );
 }
@@ -36,6 +33,4 @@ export {
   DashboardStatusChart,
   DashboardServiceHealth,
   DashboardUrgencyDistribution,
-  DashboardSLAMetrics,
 };
-

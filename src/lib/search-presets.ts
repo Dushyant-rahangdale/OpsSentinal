@@ -32,7 +32,7 @@ export function buildWhereFromCriteria(
   // Status filter
   if (criteria.statuses && criteria.statuses.length > 0) {
     const statuses = criteria.statuses.filter((status): status is IncidentStatus =>
-      allowedStatuses.has(status)
+      allowedStatuses.has(status as IncidentStatus)
     );
     if (statuses.length > 0) {
       where.status = { in: statuses };

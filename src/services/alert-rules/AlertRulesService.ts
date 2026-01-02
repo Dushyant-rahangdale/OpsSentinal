@@ -45,7 +45,7 @@ export class AlertRulesService {
     }
 
     try {
-      return JSON.parse(config.value) as AlertRule[];
+      return config.value as unknown as AlertRule[];
     } catch {
       return this.getDefaultRules();
     }
