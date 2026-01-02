@@ -1106,36 +1106,43 @@ export default async function AnalyticsV2Page({
         <span className="text-xs text-muted-foreground">Targets, breaches, and scheduling</span>
       </div>
 
-      <section className="glass-panel mb-8 overflow-hidden v2-panel-surface v2-panel-coverage">
-        <div className="p-4 border-b border-border/50 bg-muted/20 flex items-center justify-between v2-panel-surface-header">
-          <h3 className="font-semibold text-foreground v2-panel-surface-title">Coverage Outlook</h3>
-          <span className="text-xs text-muted-foreground">Next 14 days</span>
+      <section className="sla-coverage-panel mb-8">
+        <div className="sla-coverage-header">
+          <div className="sla-coverage-title">
+            <span className="sla-coverage-icon">
+              <Shield className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-coverage-eyebrow">Coverage Outlook</span>
+              <h3>Next 14 days staffing readiness</h3>
+            </div>
+          </div>
+          <div className="sla-coverage-meta">
+            <span>Coverage {formatPercent(metrics.coveragePercent)}</span>
+            <span>{metrics.coverageGapDays.toLocaleString()} gap days</span>
+          </div>
         </div>
-        <div className="p-4">
-          <div className="sla-kpi-grid">
-            <div className="sla-kpi-card">
+        <div className="sla-coverage-body">
+          <div className="sla-coverage-track">
+            <span style={{ width: `${metrics.coveragePercent.toFixed(1)}%` }} />
+          </div>
+          <div className="sla-coverage-grid">
+            <div>
               <span>Coverage</span>
               <strong>{formatPercent(metrics.coveragePercent)}</strong>
-              <div className="sla-kpi-bar">
-                <span style={{ width: `${metrics.coveragePercent.toFixed(1)}%` }} />
-              </div>
-            </div>
-            <div className="sla-kpi-card">
-              <span>Coverage gap days</span>
-              <strong>{metrics.coverageGapDays.toLocaleString()}</strong>
               <em>Next 14 days</em>
             </div>
-            <div className="sla-kpi-card">
-              <span>Scheduled on-call hours</span>
+            <div>
+              <span>Coverage gaps</span>
+              <strong>{metrics.coverageGapDays.toLocaleString()}</strong>
+              <em>Days without coverage</em>
+            </div>
+            <div>
+              <span>Scheduled hours</span>
               <strong>{formatHours(metrics.onCallHoursMs)}</strong>
               <em>{metrics.onCallUsersCount.toLocaleString()} responders</em>
             </div>
-            <div className="sla-kpi-card">
-              <span>Unique responders</span>
-              <strong>{metrics.onCallUsersCount.toLocaleString()}</strong>
-              <em>Scheduled</em>
-            </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>Active overrides</span>
               <strong>{metrics.activeOverrides.toLocaleString()}</strong>
               <em>Current</em>
@@ -1144,106 +1151,147 @@ export default async function AnalyticsV2Page({
         </div>
       </section>
 
-      <section className="glass-panel mb-8 overflow-hidden v2-panel-surface v2-panel-sla-summary">
-        <div className="p-4 border-b border-border/50 bg-muted/20 flex items-center justify-between v2-panel-surface-header">
-          <h3 className="font-semibold text-foreground v2-panel-surface-title">SLA Summary</h3>
-          <span className="text-xs text-muted-foreground">{windowDays} day window</span>
+      <section className="sla-summary-panel mb-8">
+        <div className="sla-summary-header">
+          <div className="sla-summary-title">
+            <span className="sla-summary-icon">
+              <Activity className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-summary-eyebrow">SLA Summary</span>
+              <h3>Latency, breach, and burn performance</h3>
+            </div>
+          </div>
+          <div className="sla-summary-meta">
+            <span>{windowDays} day window</span>
+            <span>{metrics.eventsCount.toLocaleString()} events</span>
+          </div>
         </div>
-        <div className="p-4">
-          <div className="sla-kpi-grid">
-            <div className="sla-kpi-card">
+        <div className="sla-summary-body">
+          <div className="sla-summary-grid">
+            <div>
               <span>MTTA p50</span>
               <strong>{metrics.mttaP50 === null ? '--' : formatMinutes(metrics.mttaP50)}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>MTTA p95</span>
               <strong>{metrics.mttaP95 === null ? '--' : formatMinutes(metrics.mttaP95)}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>MTTR p50</span>
               <strong>{metrics.mttrP50 === null ? '--' : formatMinutes(metrics.mttrP50)}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>MTTR p95</span>
               <strong>{metrics.mttrP95 === null ? '--' : formatMinutes(metrics.mttrP95)}</strong>
             </div>
-          </div>
-          <div className="sla-kpi-grid mt-4">
-            <div className="sla-kpi-card">
+            <div>
               <span>High urgency share</span>
               <strong>{formatPercent(metrics.highUrgencyRate)}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>Ack SLA breaches</span>
               <strong>{metrics.ackBreaches.toLocaleString()}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>Resolve SLA breaches</span>
               <strong>{metrics.resolveBreaches.toLocaleString()}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>Ack SLA burn</span>
               <strong>{formatPercent(ackSlaBurnRate)}</strong>
             </div>
-            <div className="sla-kpi-card">
+            <div>
               <span>Resolve SLA burn</span>
               <strong>{formatPercent(resolveSlaBurnRate)}</strong>
             </div>
-            <div className="sla-kpi-card">
-              <span>Unassigned active incidents</span>
+            <div>
+              <span>Unassigned active</span>
               <strong>{metrics.unassignedActive.toLocaleString()}</strong>
-            </div>
-            <div className="sla-kpi-card">
-              <span>Incident events logged</span>
-              <strong>{metrics.eventsCount.toLocaleString()}</strong>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="glass-panel mb-8 overflow-hidden v2-panel-surface v2-panel-sla-service">
-        <div className="p-4 border-b border-border/50 bg-muted/20 flex items-center justify-between v2-panel-surface-header">
-          <h3 className="font-semibold text-foreground v2-panel-surface-title">
-            SLA Compliance by Service
-          </h3>
-          <span className="text-xs text-muted-foreground">Top services by volume</span>
+      <section className="sla-service-panel mb-8">
+        <div className="sla-service-header">
+          <div className="sla-service-title">
+            <span className="sla-service-icon">
+              <Shield className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-service-eyebrow">SLA Compliance by Service</span>
+              <h3>Response and resolve adherence for top services</h3>
+            </div>
+          </div>
+          <div className="sla-service-meta">
+            <span>{metrics.serviceSlaTable.length} services</span>
+            <span>Last {windowDays} days</span>
+          </div>
         </div>
-        <div className="p-4">
+
+        <div className="sla-service-body">
           {metrics.serviceSlaTable.length === 0 ? (
-            <div className="distribution-empty">No SLA data in this window.</div>
+            <div className="sla-service-empty">No SLA data in this window.</div>
           ) : (
-            <div className="sla-service-table">
-              <div className="sla-service-header">
-                <span>Service</span>
-                <span>Ack SLA</span>
-                <span>Resolve SLA</span>
-              </div>
+            <div className="sla-service-grid">
               {metrics.serviceSlaTable.map(entry => (
-                <div key={entry.id} className="sla-service-row">
-                  <span>{entry.name}</span>
-                  <strong>{formatPercent(entry.ackRate)}</strong>
-                  <strong>{formatPercent(entry.resolveRate)}</strong>
-                </div>
+                <article key={entry.id} className="sla-service-card">
+                  <div className="sla-service-card-head">
+                    <span className="sla-service-name">{entry.name}</span>
+                    <span className="sla-service-tag">Service</span>
+                  </div>
+                  <div className="sla-service-metrics">
+                    <div>
+                      <span>Ack SLA</span>
+                      <strong>{formatPercent(entry.ackRate)}</strong>
+                    </div>
+                    <div>
+                      <span>Resolve SLA</span>
+                      <strong>{formatPercent(entry.resolveRate)}</strong>
+                    </div>
+                  </div>
+                  <div className="sla-service-bars">
+                    <div className="sla-service-bar">
+                      <span style={{ width: `${entry.ackRate.toFixed(1)}%` }} />
+                    </div>
+                    <div className="sla-service-bar is-resolve">
+                      <span style={{ width: `${entry.resolveRate.toFixed(1)}%` }} />
+                    </div>
+                  </div>
+                </article>
               ))}
             </div>
           )}
         </div>
       </section>
 
-      <section className="glass-panel mb-8 overflow-hidden v2-panel-surface v2-panel-gauges">
-        <div className="p-4 border-b border-border/50 bg-muted/20 flex items-center justify-between v2-panel-surface-header">
-          <h3 className="font-semibold text-foreground v2-panel-surface-title">SLA Compliance</h3>
-          <span className="text-xs text-muted-foreground">Current averages</span>
+      <section className="sla-compliance-panel mb-8">
+        <div className="sla-compliance-header">
+          <div className="sla-compliance-title">
+            <span className="sla-compliance-icon">
+              <Shield className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-compliance-eyebrow">SLA Compliance</span>
+              <h3>Overall adherence across response and coverage</h3>
+            </div>
+          </div>
+          <div className="sla-compliance-meta">
+            <span>Ack {formatPercent(metrics.ackCompliance)}</span>
+            <span>Resolve {formatPercent(metrics.resolveCompliance)}</span>
+            <span>Coverage {formatPercent(metrics.coveragePercent)}</span>
+          </div>
         </div>
-        <div className="p-4">
-          <div className="v2-gauge-grid">
-            <div className="v2-gauge-card gauge-accent-indigo">
+        <div className="sla-compliance-body">
+          <div className="sla-compliance-grid">
+            <div className="sla-compliance-card">
               <GaugeChart value={metrics.ackCompliance} label="Ack SLA" size={120} />
             </div>
-            <div className="v2-gauge-card gauge-accent-emerald">
+            <div className="sla-compliance-card">
               <GaugeChart value={metrics.resolveCompliance} label="Resolve SLA" size={120} />
             </div>
-            <div className="v2-gauge-card gauge-accent-blue">
+            <div className="sla-compliance-card">
               <GaugeChart value={metrics.coveragePercent} label="Coverage" size={120} />
             </div>
           </div>
@@ -1266,16 +1314,14 @@ export default async function AnalyticsV2Page({
 
         <div className="activity-github-body">
           <div className="activity-github-heatmap">
-            <HeatmapCalendar data={metrics.heatmapData} days={365} />
+            <HeatmapCalendar data={metrics.heatmapData} days={365} fitWidth />
           </div>
           <div className="activity-github-legend">
             <span>Less</span>
             <div className="activity-github-legend-swatch">
-              <span style={{ background: 'rgba(34, 197, 94, 0.15)' }} />
-              <span style={{ background: 'rgba(34, 197, 94, 0.5)' }} />
-              <span style={{ background: 'rgba(234, 179, 8, 0.6)' }} />
-              <span style={{ background: 'rgba(249, 115, 22, 0.7)' }} />
-              <span style={{ background: 'rgba(239, 68, 68, 0.85)' }} />
+              <span />
+              <span />
+              <span />
             </div>
             <span>More</span>
           </div>
