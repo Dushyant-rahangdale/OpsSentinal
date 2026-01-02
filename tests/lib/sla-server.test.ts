@@ -95,6 +95,7 @@ const setupBaseMocks = ({
   prismaMock.incident.groupBy
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
     .mockResolvedValueOnce([]);
   prismaMock.service.findMany.mockResolvedValueOnce([]);
   prismaMock.incidentEvent.findMany
@@ -105,11 +106,9 @@ const setupBaseMocks = ({
 };
 
 const toHourKey = (date: Date) => {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  const hour = `${date.getHours()}`.padStart(2, '0');
-  return `${year}-${month}-${day}-${hour}`;
+  const dayKey = date.toISOString().split('T')[0];
+  const hour = `${date.getUTCHours()}`.padStart(2, '0');
+  return `${dayKey}-${hour}`;
 };
 
 describe('calculateSLAMetrics trend series', () => {

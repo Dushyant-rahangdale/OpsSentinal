@@ -54,7 +54,7 @@ function toDateKey(date: Date) {
 
 function startOfHour(date: Date) {
   const next = new Date(date);
-  next.setMinutes(0, 0, 0);
+  next.setUTCMinutes(0, 0, 0);
   return next;
 }
 
@@ -482,9 +482,9 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const trendSeries = Array.from({ length: useHourlyTrend ? 24 : windowDays }, (_, idx) => {
     const point = new Date(trendStart);
     if (useHourlyTrend) {
-      point.setHours(trendStart.getHours() + idx);
+      point.setUTCHours(trendStart.getUTCHours() + idx);
     } else {
-      point.setDate(trendStart.getDate() + idx);
+      point.setUTCDate(trendStart.getUTCDate() + idx);
     }
     return {
       date: point,
