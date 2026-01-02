@@ -244,7 +244,7 @@ export default async function Dashboard({
     calculateSLAMetrics({
       serviceId: service,
       assigneeId: assigneeFilter,
-      urgency,
+      urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
       startDate: metricsStartDate,
       endDate: metricsEndDate,
       includeAllTime: range === 'all',

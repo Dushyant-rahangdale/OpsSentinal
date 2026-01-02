@@ -49,6 +49,7 @@ describe('API Route - Notifications Test Push', () => {
 
   it('returns 200 when push succeeds', async () => {
     vi.mocked(getServerSession).mockResolvedValue({ user: { email: 'user@example.com' } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'user-1', name: 'Test User' } as any);
     vi.mocked(sendPush).mockResolvedValue({ success: true });
 

@@ -1,5 +1,4 @@
 import 'server-only';
-import type { IncidentUrgency } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -190,7 +189,7 @@ export class AlertRulesService {
         data: {
           title: `[Auto] ${rule.name}: ${evaluation.currentValue.toFixed(2)} exceeds threshold`,
           description: `Automated incident created by AlertRulesService.\n\nRule: ${rule.name}\nMetric: ${rule.metricName}\nCondition: ${rule.condition} ${rule.threshold}\nCurrent Value: ${evaluation.currentValue.toFixed(2)}\nWindow: ${rule.windowMinutes} minutes`,
-          urgency: rule.severity as IncidentUrgency,
+          urgency: rule.severity,
           serviceId,
           dedupKey,
           events: {

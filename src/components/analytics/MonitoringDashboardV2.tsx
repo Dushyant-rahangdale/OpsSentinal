@@ -94,6 +94,7 @@ export default function MonitoringDashboardV2({ metrics }: MonitoringDashboardV2
             label="Latency (P99)"
             value={metrics.avgLatencyP99 !== null ? `${metrics.avgLatencyP99}ms` : '--'}
             detail="99th percentile"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             variant={getLatencyStatus(metrics.avgLatencyP99) as any}
             icon={<Clock className="w-5 h-5" />}
             tooltip="Response time for 99% of requests"
@@ -102,6 +103,7 @@ export default function MonitoringDashboardV2({ metrics }: MonitoringDashboardV2
             label="Error Rate"
             value={metrics.errorRate !== null ? `${metrics.errorRate.toFixed(2)}%` : '--'}
             detail="5xx errors"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             variant={getErrorRateStatus(metrics.errorRate) as any}
             icon={<AlertCircle className="w-5 h-5" />}
             tooltip="Percentage of failed requests"
@@ -187,9 +189,10 @@ export default function MonitoringDashboardV2({ metrics }: MonitoringDashboardV2
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#171717', border: '1px solid #333' }}
-                  formatter={(value: number | undefined) =>
-                    [value ? `${value.toFixed(1)} min` : '--', 'Duration'] as [string, string]
-                  }
+                  formatter={(value?: number) => [
+                    value != null ? `${value.toFixed(1)} min` : '--',
+                    'Duration',
+                  ]}
                 />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -211,6 +214,7 @@ export default function MonitoringDashboardV2({ metrics }: MonitoringDashboardV2
             label="Ack Compliance"
             value={`${metrics.ackCompliance.toFixed(1)}%`}
             detail={`${metrics.ackBreaches} breaches`}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             variant={getComplianceStatus(metrics.ackCompliance) as any}
             icon={<CheckCircle className="w-5 h-5" />}
             tooltip="Percentage of incidents acknowledged within SLA"
@@ -219,6 +223,7 @@ export default function MonitoringDashboardV2({ metrics }: MonitoringDashboardV2
             label="Resolve Compliance"
             value={`${metrics.resolveCompliance.toFixed(1)}%`}
             detail={`${metrics.resolveBreaches} breaches`}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             variant={getComplianceStatus(metrics.resolveCompliance) as any}
             icon={<CheckCircle className="w-5 h-5" />}
             tooltip="Percentage of incidents resolved within SLA"
