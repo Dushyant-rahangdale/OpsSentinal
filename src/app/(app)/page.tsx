@@ -63,8 +63,11 @@ export default async function Dashboard({
     typeof awaitedSearchParams.assignee === 'string' ? awaitedSearchParams.assignee : undefined;
   const service =
     typeof awaitedSearchParams.service === 'string' ? awaitedSearchParams.service : undefined;
-  const urgency =
+  const urgencyParam =
     typeof awaitedSearchParams.urgency === 'string' ? awaitedSearchParams.urgency : undefined;
+  const urgency = (
+    ['HIGH', 'MEDIUM', 'LOW'].includes(urgencyParam || '') ? urgencyParam : undefined
+  ) as 'HIGH' | 'MEDIUM' | 'LOW' | undefined;
   const page =
     typeof awaitedSearchParams.page === 'string' ? parseInt(awaitedSearchParams.page) || 1 : 1;
   const sortBy =
@@ -381,25 +384,25 @@ export default async function Dashboard({
   // Fetch counts for all services at once using aggregation
   const [serviceActiveCounts, serviceCriticalCounts] = await Promise.all([
     serviceIds.length > 0
-        ? prisma.incident.groupBy({
-            by: ['serviceId'],
-            where: {
-              serviceId: { in: serviceIds },
-              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-            },
-            _count: { _all: true },
-          })
+      ? prisma.incident.groupBy({
+          by: ['serviceId'],
+          where: {
+            serviceId: { in: serviceIds },
+            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+          },
+          _count: { _all: true },
+        })
       : [],
     serviceIds.length > 0
-        ? prisma.incident.groupBy({
-            by: ['serviceId'],
-            where: {
-              serviceId: { in: serviceIds },
-              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-              urgency: 'HIGH',
-            },
-            _count: { _all: true },
-          })
+      ? prisma.incident.groupBy({
+          by: ['serviceId'],
+          where: {
+            serviceId: { in: serviceIds },
+            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+            urgency: 'HIGH',
+          },
+          _count: { _all: true },
+        })
       : [],
   ]);
 

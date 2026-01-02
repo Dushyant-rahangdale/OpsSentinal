@@ -194,14 +194,14 @@ export async function sendEmail(
         if (response) {
           if (response.statusCode >= 200 && response.statusCode < 300) {
             const messageId = response.headers?.['x-message-id'] || 'unknown';
-              logger.info('Email sent via SendGrid', {
-                to: options.to,
-                from: emailConfig.fromEmail,
-                subject: options.subject,
-                statusCode: response.statusCode,
-                messageId: messageId,
-                note: 'Check SendGrid Activity Feed for delivery status. If email not received, verify sender email is authenticated in SendGrid.',
-              });
+            logger.info('Email sent via SendGrid', {
+              to: options.to,
+              from: emailConfig.fromEmail,
+              subject: options.subject,
+              statusCode: response.statusCode,
+              messageId: messageId,
+              note: 'Check SendGrid Activity Feed for delivery status. If email not received, verify sender email is authenticated in SendGrid.',
+            });
             return { success: true };
           } else {
             logger.error('SendGrid returned error status', {

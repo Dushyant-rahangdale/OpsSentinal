@@ -1023,7 +1023,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         setTimeout(() => setSuccessMessage(null), 3000);
         router.refresh();
       } catch (err: any) {
-         
         const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
         setError(getUserFriendlyError(err) || 'Failed to save settings');
       }
@@ -1128,7 +1127,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
           affectedServiceIds: [],
         });
       } catch (err: any) {
-         
         const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
         setAnnouncementError(getUserFriendlyError(err) || 'Failed to create announcement');
       }
@@ -1153,7 +1151,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
         setAnnouncements(current => current.filter(announcement => announcement.id !== id));
       } catch (err: any) {
-         
         const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
         setAnnouncementError(getUserFriendlyError(err) || 'Failed to delete announcement');
       }
@@ -1217,7 +1214,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         setApiTokenValue(data?.token || null);
         setApiTokenName('');
       } catch (err: any) {
-         
         const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
         setApiTokenError(getUserFriendlyError(err) || 'Failed to create token');
       }
@@ -1248,7 +1244,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
           );
         }
       } catch (err: any) {
-         
         const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
         setApiTokenError(getUserFriendlyError(err) || 'Failed to revoke token');
       }
@@ -1429,7 +1424,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     services: previewServices,
     statusPageServices: previewStatusPageServices,
     announcements: previewAnnouncements.map((a: any) => ({
-       
       ...a,
       startDate: a.startDate.toISOString(),
       endDate: a.endDate ? a.endDate.toISOString() : null,

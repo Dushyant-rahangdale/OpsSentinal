@@ -1,19 +1,19 @@
 export type ServiceDynamicStatus = 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
 
 export function getServiceDynamicStatus({
-    openIncidentCount,
-    hasCritical,
+  openIncidentCount,
+  hasCritical,
 }: {
-    openIncidentCount: number;
-    hasCritical: boolean;
+  openIncidentCount: number;
+  hasCritical: boolean;
 }): ServiceDynamicStatus {
-    if (hasCritical) {
-        return 'CRITICAL';
-    }
+  if (hasCritical) {
+    return 'CRITICAL';
+  }
 
-    if (openIncidentCount > 0) {
-        return 'DEGRADED';
-    }
+  if (openIncidentCount > 0) {
+    return 'DEGRADED';
+  }
 
-    return 'OPERATIONAL';
+  return 'OPERATIONAL';
 }
