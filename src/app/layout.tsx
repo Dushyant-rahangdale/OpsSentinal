@@ -5,7 +5,6 @@ import VersionCheck from '@/components/VersionCheck';
 export const metadata: Metadata = {
   title: 'OpsSentinal | Enterprise Incident Management',
   description: 'PagerDuty Clone',
-  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/logo.svg', type: 'image/svg+xml' },
@@ -25,6 +24,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

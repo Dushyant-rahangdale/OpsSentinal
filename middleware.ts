@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+﻿import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from './src/lib/rate-limit';
 import { logger } from '@/lib/logger';
@@ -17,11 +17,17 @@ const PUBLIC_PATH_PREFIXES = [
  * Detect mobile device from User-Agent header
  */
 function isMobileUserAgent(userAgent: string | null): boolean {
-  if (!userAgent) return false;
+  if (!userAgent) {
+    logger.info('Mobile detection: No user agent');
+    return false;
+  }
   // Match common mobile device patterns
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(
-    userAgent
-  );
+  const isMobile =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(
+      userAgent
+    );
+  logger.info('Mobile detection', { userAgent, isMobile });
+  return isMobile;
 }
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
   .split(',')
