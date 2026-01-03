@@ -1,6 +1,6 @@
 ﻿import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { checkRateLimit } from './src/lib/rate-limit';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 
 const PUBLIC_PATH_PREFIXES = [
@@ -128,9 +128,9 @@ function getSecurityHeaders(): Record<string, string> {
     'Content-Security-Policy': [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-eval
-      "style-src 'self' 'unsafe-inline'", // Next.js requires unsafe-inline for styles
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Allow Google Fonts
       "img-src 'self' data: https:",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com", // Allow Google Fonts
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join('; '),
@@ -159,7 +159,7 @@ export async function middleware(req: NextRequest) {
   // so this measures middleware + routing overhead, which is a good proxy for latency.
   // For full execution time, we'd need to wrap API handlers, but this is a great global catch-all.
   const duration = Date.now() - start;
-  import('./src/middleware/telemetry-middleware')
+  import('./middleware/telemetry-middleware')
     .then(({ recordRequestTelemetry }) => {
       recordRequestTelemetry(req, response.status, duration);
     })

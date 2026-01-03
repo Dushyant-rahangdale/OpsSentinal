@@ -134,7 +134,9 @@ describe('Slack OAuth Integration', () => {
       const response = await callbackHandler(req);
 
       expect(response.status).toBe(307);
-      expect(response.headers.get('Location')).toContain('slack_connected=true');
+      expect(response.headers.get('Location')).toContain(
+        '/settings/integrations/slack?slack_connected=true'
+      );
 
       // Verify fetch call includes cache: 'no-store' (Critical for OAuth)
       expect(global.fetch).toHaveBeenCalledWith(

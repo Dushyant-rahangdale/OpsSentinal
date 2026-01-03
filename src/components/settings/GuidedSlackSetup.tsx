@@ -96,14 +96,16 @@ export default function GuidedSlackSetup() {
               <p>
                 <strong>1.</strong> Click the button below to open Slack API in a new tab
               </p>
-              <a
-                href="https://api.slack.com/apps?new_app=1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="settings-slack-connect"
-              >
-                Create New Slack App
-              </a>
+              <div className="settings-slack-cta">
+                <a
+                  href="https://api.slack.com/apps?new_app=1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="settings-slack-connect settings-slack-connect-primary"
+                >
+                  Create New Slack App
+                </a>
+              </div>
             </div>
 
             <div className="settings-slack-step-section">

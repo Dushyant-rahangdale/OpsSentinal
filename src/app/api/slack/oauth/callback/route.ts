@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
       getFullUrl(
         serviceId
           ? `/services/${serviceId}/settings?slack_connected=true`
-          : '/settings/slack?slack_connected=true',
+          : '/settings/integrations/slack?slack_connected=true',
         appUrl
       )
     );

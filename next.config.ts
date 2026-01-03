@@ -11,6 +11,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   workboxOptions: {
     disableDevLogs: true,
     additionalManifestEntries: [],
+    importScripts: ['/custom-sw.js'],
     // Add custom runtime caching and handlers
     runtimeCaching: [
       {

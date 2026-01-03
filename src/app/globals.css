@@ -13003,6 +13003,110 @@ span:hover>.info-tooltip {
   gap: var(--spacing-4);
 }
 
+.settings-slack-summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.settings-slack-summary-meta {
+  float: right;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-right: 1.25rem;
+}
+
+.settings-slack-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-slack-summary::after {
+  content: '▾';
+  float: right;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+details[open] > .settings-slack-summary::after {
+  transform: rotate(180deg);
+}
+
+.settings-slack-channel-row:hover {
+  background: #f8fafc;
+}
+
+.settings-slack-channel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.settings-slack-legend-meta {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.settings-slack-troubleshoot {
+  margin-top: var(--spacing-3);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.settings-slack-troubleshoot ul {
+  margin: var(--spacing-2) 0 0;
+  padding-left: 1.25rem;
+}
+
+.settings-slack-cta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+  width: 100%;
+}
+
+.settings-slack-connect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  width: 100%;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border 0.18s ease;
+}
+
+.settings-slack-connect:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-slack-connect-primary {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 10px 18px rgba(22, 163, 74, 0.25);
+}
+
+.settings-slack-connect-primary:hover {
+  background: #15803d;
+  border-color: #15803d;
+  box-shadow: 0 12px 22px rgba(21, 128, 61, 0.32);
+}
+
 /* ============================================
    STATUS PAGE SETTINGS
    ============================================ */

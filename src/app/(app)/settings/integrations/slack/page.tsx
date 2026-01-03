@@ -5,51 +5,56 @@ import SlackIntegrationPage from '@/components/settings/SlackIntegrationPage';
 import SettingsPage from '@/components/settings/SettingsPage';
 
 export default async function GlobalSlackIntegrationPage() {
-    const permissions = await getUserPermissions();
+  const permissions = await getUserPermissions();
 
-    if (!permissions) {
-        redirect('/login');
-    }
+  if (!permissions) {
+    redirect('/login');
+  }
 
-    // Get global Slack integration (not tied to any service)
-    const globalIntegration = await prisma.slackIntegration.findFirst({
-        where: {
-            service: null // Global integration
+  // Get global Slack integration (not tied to any service)
+  const globalIntegration = await prisma.slackIntegration.findFirst({
+    where: {
+      service: null, // Global integration
+    },
+    select: {
+      id: true,
+      workspaceId: true,
+      workspaceName: true,
+      enabled: true,
+      createdAt: true,
+      updatedAt: true,
+      scopes: true,
+      installer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
         },
-        include: {
-            installer: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true
-                }
-            }
-        },
-        orderBy: { updatedAt: 'desc' }
-    });
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
 
-    // Check if OAuth is configured (database only - no env vars for UI-driven setup)
-    const oauthConfig = await prisma.slackOAuthConfig.findFirst({
-        where: { enabled: true },
-        orderBy: { updatedAt: 'desc' }
-    });
+  // Check if OAuth is configured (database only - no env vars for UI-driven setup)
+  const oauthConfig = await prisma.slackOAuthConfig.findFirst({
+    where: { enabled: true },
+    orderBy: { updatedAt: 'desc' },
+  });
 
-    const isOAuthConfigured = !!(oauthConfig?.clientId && oauthConfig?.clientSecret);
+  const isOAuthConfigured = !!(oauthConfig?.clientId && oauthConfig?.clientSecret);
 
-    return (
-        <SettingsPage
-            currentPageId="slack"
-            backHref="/settings/integrations"
-            title="Slack Integration"
-            description="Connect your Slack workspace to receive incident notifications."
-        >
-            <SlackIntegrationPage
-                integration={globalIntegration}
-                isOAuthConfigured={isOAuthConfigured}
-                isAdmin={permissions.isAdmin}
-            />
-        </SettingsPage>
-    );
+  return (
+    <SettingsPage
+      currentPageId="slack"
+      backHref="/settings/integrations"
+      title="Slack Integration"
+      description="Connect your Slack workspace to receive incident notifications."
+    >
+      <SlackIntegrationPage
+        integration={globalIntegration}
+        isOAuthConfigured={isOAuthConfigured}
+        isAdmin={permissions.isAdmin}
+      />
+    </SettingsPage>
+  );
 }
-
-
