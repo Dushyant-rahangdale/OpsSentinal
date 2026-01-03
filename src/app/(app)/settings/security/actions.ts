@@ -48,6 +48,39 @@ export async function saveOidcConfig(
   const autoProvision = autoProvisionValue === 'on' || autoProvisionValue === 'true';
   const allowedDomainsInput = (formData.get('allowedDomains') as string | null) ?? '';
   const allowedDomains = normalizeDomains(allowedDomainsInput);
+  const customScopes = (formData.get('customScopes') as string | null)?.trim() ?? null;
+  const providerLabel = (formData.get('providerLabel') as string | null)?.trim() ?? null;
+
+  // Auto-detect provider type from Issuer URL
+  function detectProviderType(issuerUrl: string): string {
+    const url = issuerUrl.toLowerCase();
+    if (url.includes('accounts.google.com') || url.includes('googleapis.com')) return 'google';
+    if (url.includes('.okta.com')) return 'okta';
+    if (url.includes('login.microsoftonline.com') || url.includes('sts.windows.net'))
+      return 'azure';
+    if (url.includes('.auth0.com')) return 'auth0';
+    return 'custom';
+  }
+  const providerType = detectProviderType(issuer);
+
+  // Profile Mapping - collect individual fields
+  const profileMapping: Record<string, string> = {};
+  const pmDepartment = (formData.get('profileMapping.department') as string | null)?.trim();
+  const pmJobTitle = (formData.get('profileMapping.jobTitle') as string | null)?.trim();
+  const pmAvatarUrl = (formData.get('profileMapping.avatarUrl') as string | null)?.trim();
+  if (pmDepartment) profileMapping.department = pmDepartment;
+  if (pmJobTitle) profileMapping.jobTitle = pmJobTitle;
+  if (pmAvatarUrl) profileMapping.avatarUrl = pmAvatarUrl;
+
+  let roleMapping = null;
+  const roleMappingInput = formData.get('roleMapping') as string | null;
+  if (roleMappingInput) {
+    try {
+      roleMapping = JSON.parse(roleMappingInput);
+    } catch {
+      return { error: 'Invalid Role Mapping configuration.' };
+    }
+  }
 
   if (enabled) {
     if (!issuer || !isValidIssuer(issuer)) {
@@ -118,6 +151,11 @@ export async function saveOidcConfig(
       enabled,
       autoProvision,
       allowedDomains,
+      roleMapping: roleMapping ?? [],
+      customScopes,
+      providerType,
+      providerLabel,
+      profileMapping: Object.keys(profileMapping).length > 0 ? profileMapping : {},
       updatedBy: actorId,
     },
     update: {
@@ -127,6 +165,11 @@ export async function saveOidcConfig(
       enabled,
       autoProvision,
       allowedDomains,
+      roleMapping: roleMapping ?? [],
+      customScopes,
+      providerType,
+      providerLabel,
+      profileMapping: Object.keys(profileMapping).length > 0 ? profileMapping : {},
       updatedBy: actorId,
     },
   });
@@ -141,6 +184,8 @@ export async function saveOidcConfig(
       autoProvision,
       issuer,
       allowedDomainsCount: allowedDomains.length,
+      hasRoleMapping: !!roleMapping,
+      customScopes,
     },
   });
 
@@ -148,4 +193,10 @@ export async function saveOidcConfig(
   revalidatePath('/login');
 
   return { success: true };
+}
+
+export async function validateOidcConnectionAction(issuer: string) {
+  if (!issuer) return { isValid: false, error: 'Issuer URL is missing' };
+  const { validateOidcConnection } = await import('@/lib/oidc-validation');
+  return await validateOidcConnection(issuer);
 }

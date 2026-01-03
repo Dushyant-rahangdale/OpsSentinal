@@ -33,10 +33,18 @@ const getRequestOrigin = (request: NextRequest): string | null => {
 };
 
 export async function GET(request: NextRequest) {
+  // Default to sync/env URL initially
+  let appUrl = 'http://localhost:3000';
+  if (process.env.NEXT_PUBLIC_APP_URL) appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  else if (process.env.NEXTAUTH_URL) appUrl = process.env.NEXTAUTH_URL;
+
   try {
+    // Try to get configured URL from DB
     const configuredAppUrl = await getAppUrl();
     const requestOrigin = getRequestOrigin(request);
-    const appUrl =
+
+    // Use request origin if configured URL is localhost but request comes from elsewhere
+    appUrl =
       requestOrigin && isLocalhostUrl(configuredAppUrl) && !isLocalhostUrl(requestOrigin)
         ? requestOrigin
         : configuredAppUrl;
@@ -232,9 +240,7 @@ export async function GET(request: NextRequest) {
       error: error.message,
       stack: error.stack,
     });
-    // We use localhost fallback here since we might fail before fetching settings
-    return NextResponse.redirect(
-      getFullUrl('/services?error=slack_oauth_error', 'http://localhost:3000')
-    );
+    // Use the determined appUrl (which might have been updated from DB)
+    return NextResponse.redirect(getFullUrl('/services?error=slack_oauth_error', appUrl));
   }
 }

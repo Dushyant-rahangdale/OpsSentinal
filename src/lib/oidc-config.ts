@@ -9,6 +9,11 @@ type OidcConfigRecord = {
   clientSecret: string;
   autoProvision: boolean;
   allowedDomains: string[];
+  roleMapping?: any;
+  customScopes?: string | null;
+  providerType?: string | null;
+  providerLabel?: string | null;
+  profileMapping?: Record<string, string> | null;
 };
 
 export type OidcConfig = {
@@ -18,6 +23,11 @@ export type OidcConfig = {
   clientSecret: string;
   autoProvision: boolean;
   allowedDomains: string[];
+  roleMapping?: any;
+  customScopes?: string | null;
+  providerType?: string | null;
+  providerLabel?: string | null;
+  profileMapping?: Record<string, string> | null;
 };
 
 export type OidcPublicConfig = {
@@ -26,6 +36,8 @@ export type OidcPublicConfig = {
   clientId: string | null;
   autoProvision: boolean;
   allowedDomains: string[];
+  providerType?: string | null;
+  providerLabel?: string | null;
 };
 
 function normalizeDomains(domains: string[]) {
@@ -49,6 +61,11 @@ async function getOidcConfigRecord(): Promise<OidcConfigRecord | null> {
       clientSecret: config.clientSecret,
       autoProvision: config.autoProvision,
       allowedDomains: config.allowedDomains ?? [],
+      roleMapping: config.roleMapping,
+      customScopes: config.customScopes,
+      providerType: config.providerType,
+      providerLabel: config.providerLabel,
+      profileMapping: config.profileMapping as Record<string, string> | null,
     };
   } catch (error) {
     // Database connection error or other Prisma errors
@@ -77,6 +94,8 @@ export async function getOidcConfig(): Promise<OidcConfig | null> {
       clientSecret,
       autoProvision: config.autoProvision,
       allowedDomains: normalizeDomains(config.allowedDomains),
+      roleMapping: config.roleMapping,
+      customScopes: config.customScopes,
     };
   } catch (error) {
     logger.error('[OIDC] Failed to decrypt client secret', { error });
@@ -96,6 +115,8 @@ export async function getOidcPublicConfig(): Promise<OidcPublicConfig | null> {
     clientId: config.clientId || null,
     autoProvision: config.autoProvision,
     allowedDomains: normalizeDomains(config.allowedDomains),
+    providerType: config.providerType,
+    providerLabel: config.providerLabel,
   };
 }
 

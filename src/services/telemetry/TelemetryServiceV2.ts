@@ -1,6 +1,16 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { logger } from '@/lib/logger';
-import prisma from '@/lib/prisma';
+
+// Lazy Prisma import to avoid Edge Runtime issues
+// Prisma is only loaded when actually needed (server-side only)
+let prismaInstance: typeof import('@/lib/prisma').default | null = null;
+async function getPrisma() {
+  if (!prismaInstance) {
+    const mod = await import('@/lib/prisma');
+    prismaInstance = mod.default;
+  }
+  return prismaInstance;
+}
 
 type MetricBufferEntry = { count: number; sum: number; min: number; max: number };
 type MetricRollupInput = Prisma.MetricRollupCreateManyInput;
@@ -154,6 +164,7 @@ class TelemetryServiceV2 {
       }
 
       if (batch.length > 0) {
+        const prisma = await getPrisma();
         await prisma.metricRollup.createMany({
           data: batch,
         });
@@ -180,6 +191,7 @@ class TelemetryServiceV2 {
     this.logBuffer = [];
 
     try {
+      const prisma = await getPrisma();
       await prisma.logEntry.createMany({
         data: batch,
       });
