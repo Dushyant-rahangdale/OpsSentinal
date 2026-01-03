@@ -128,18 +128,16 @@ export async function saveOidcConfig(
   const allowedDomainsInput = (formData.get('allowedDomains') as string | null) ?? '';
   const allowedDomains = normalizeDomains(allowedDomainsInput);
 
-  if (enabled) {
-    if (!issuer || !isValidIssuer(issuer)) {
-      return { error: 'Issuer URL must be a valid HTTPS URL.' };
-    }
+  if (!issuer || !isValidIssuer(issuer)) {
+    return { error: 'Issuer URL must be a valid HTTPS URL.' };
+  }
 
-    if (!clientId) {
-      return { error: 'Client ID is required.' };
-    }
+  if (!clientId) {
+    return { error: 'Client ID is required.' };
+  }
 
-    if (allowedDomains.length > 0 && allowedDomains.some(domain => !isValidDomain(domain))) {
-      return { error: 'Allowed domains must be valid domain names.' };
-    }
+  if (allowedDomains.length > 0 && allowedDomains.some(domain => !isValidDomain(domain))) {
+    return { error: 'Allowed domains must be valid domain names.' };
   }
 
   const existing = await prisma.oidcConfig.findFirst({
@@ -156,7 +154,7 @@ export async function saveOidcConfig(
     return { error: 'ENCRYPTION_KEY must be set before saving the client secret.' };
   }
 
-  if (!existing && enabled && !clientSecret) {
+  if (!existing && !clientSecret) {
     return { error: 'Client Secret is required for new configuration.' };
   }
 

@@ -1,17 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-type RoleMappingRule = {
+export type RoleMappingRule = {
   claim: string;
   value: string;
   role: 'USER' | 'ADMIN' | 'RESPONDER';
 };
 
-export default function RoleMappingEditor({ initialMappings }: { initialMappings?: any }) {
-  // Ensure initialMappings is a valid array
+type Props = {
+  initialMappings?: RoleMappingRule[] | null;
+  onChange?: (mappings: RoleMappingRule[]) => void;
+};
+
+export default function RoleMappingEditor({ initialMappings, onChange }: Props) {
   const parsedMappings = Array.isArray(initialMappings) ? initialMappings : [];
   const [mappings, setMappings] = useState<RoleMappingRule[]>(parsedMappings);
+
+  useEffect(() => {
+    onChange?.(mappings);
+  }, [mappings, onChange]);
 
   const addRule = () => {
     setMappings([...mappings, { claim: 'groups', value: '', role: 'USER' }]);

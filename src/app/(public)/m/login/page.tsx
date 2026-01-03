@@ -90,6 +90,8 @@ export default async function MobileLoginPage({
       passwordSet={passwordSet}
       ssoError={ssoError}
       ssoEnabled={ssoEnabled}
+      ssoProviderType={ssoConfig?.providerType}
+      ssoProviderLabel={ssoConfig?.providerLabel}
     />
   );
 }

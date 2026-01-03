@@ -11,6 +11,8 @@ type Props = {
   passwordSet?: boolean;
   ssoError?: string | null;
   ssoEnabled: boolean;
+  ssoProviderType?: 'google' | 'okta' | 'azure' | 'auth0' | 'custom' | null;
+  ssoProviderLabel?: string | null;
 };
 
 function formatError(message: string | null | undefined) {
@@ -28,6 +30,8 @@ export default function MobileLoginClient({
   passwordSet,
   ssoError,
   ssoEnabled,
+  ssoProviderType,
+  ssoProviderLabel,
 }: Props) {
   const router = useRouter();
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +57,16 @@ export default function MobileLoginClient({
       emailInputRef.current?.focus();
     }
   }, [mounted]);
+
+  const providerLabelMap: Record<string, string> = {
+    google: 'Google',
+    okta: 'Okta',
+    azure: 'Microsoft',
+    auth0: 'Auth0',
+    custom: 'SSO',
+  };
+  const providerLabel =
+    ssoProviderLabel || providerLabelMap[ssoProviderType ?? 'custom'] || providerLabelMap.custom;
 
   const handleSSO = async () => {
     setIsSSOLoading(true);
@@ -298,7 +312,7 @@ export default function MobileLoginClient({
                         strokeLinejoin="round"
                       />
                     </svg>
-                    <span>Continue with SSO</span>
+                    <span>Continue with {providerLabel}</span>
                   </>
                 )}
               </button>

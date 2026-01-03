@@ -33,6 +33,8 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
   const [bootstrapConfirmed, setBootstrapConfirmed] = useState(false);
   const [showRotateModal, setShowRotateModal] = useState(false);
   const [state, formAction] = useActionState(manageEncryptionKey, {});
+  const hasPendingChanges = keyInput.length > 0;
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
 
   // Automatically open edit mode if system is locked (Emergency Recovery)
   // or if no key exists yet (First Time Setup)
@@ -41,6 +43,15 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
       setIsEditing(true);
     }
   }, [isSystemLocked, hasKey]);
+
+  useEffect(() => {
+    if (state?.success) {
+      setLastSaved(new Date().toLocaleString());
+    }
+  }, [state?.success]);
+
+  const isValidKey = (value: string) => /^[0-9a-f]{64}$/i.test(value);
+  const keyStatus = keyInput ? (isValidKey(keyInput) ? 'ok' : 'error') : null;
 
   const generateKey = () => {
     // Generate a random 32-byte hex string
@@ -144,50 +155,36 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
       )}
 
       {isEditing && hasKey && !isSystemLocked && (
-        <div
-          className="settings-alert"
-          style={{
-            border: '1px solid var(--color-info)',
-            background: 'var(--surface-overlay)',
-            color: 'var(--text-primary)',
-            padding: '1rem',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '1.5rem',
-          }}
-        >
-          <strong style={{ fontSize: '1.1em', color: 'var(--color-info)' }}>
-            🔄 Safe Key Rotation
-          </strong>
-          <p style={{ margin: '0.5rem 0', fontSize: '0.95em' }}>
-            The system will attempt to <strong>decrypt all existing secrets</strong> (SSO, Slack,
-            etc.) with the old key and re-encrypt them with this new key.
-          </p>
-          <p style={{ fontSize: '0.95em', marginBottom: '1rem' }}>
-            This process is atomic. If decryption fails for any reason, the rotation will be aborted
-            and your data will remain safe with the old key.
-          </p>
-
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginTop: '1rem',
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
-          >
-            <input
-              type="checkbox"
-              name="confirm"
-              checked={confirmed}
-              onChange={e => setConfirmed(e.target.checked)}
-              style={{ width: '1.2em', height: '1.2em' }}
-            />
-            I allow the system to re-encrypt my data.
-          </label>
-        </div>
+        <details className="settings-advanced-disclosure">
+          <summary>
+            <div>
+              <strong>Safe Key Rotation</strong>
+              <p>Review the rotation workflow before continuing.</p>
+            </div>
+          </summary>
+          <div className="settings-advanced-body">
+            <p>
+              The system will attempt to <strong>decrypt all existing secrets</strong> (SSO, Slack,
+              etc.) with the old key and re-encrypt them with this new key.
+            </p>
+            <p>
+              This process is atomic. If decryption fails for any reason, the rotation will be
+              aborted and your data will remain safe with the old key.
+            </p>
+            <label className="settings-advanced-confirm">
+              <input
+                type="checkbox"
+                name="confirm"
+                checked={confirmed}
+                onChange={e => setConfirmed(e.target.checked)}
+              />
+              I allow the system to re-encrypt my data.
+            </label>
+          </div>
+        </details>
       )}
+
+      {(isSystemLocked || !hasKey || isEditing) && <div className="settings-divider" />}
 
       <SettingRow
         label="System Encryption Key"
@@ -379,6 +376,11 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
                   </button>
                 </div>
               </div>
+              {keyStatus && (
+                <div className={`settings-field-status ${keyStatus}`}>
+                  {keyStatus === 'ok' ? 'Valid 32-byte key' : 'Key must be 64 hex characters'}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={generateKey}
@@ -415,7 +417,27 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
         </div>
       )}
 
+      <div className="settings-meta-row">
+        <span>Last updated</span>
+        <span>{lastSaved || 'Not saved yet'}</span>
+      </div>
+
       <StickyActionBar>
+        {hasPendingChanges && <div className="settings-action-note">Unsaved changes</div>}
+        {hasPendingChanges && (
+          <button
+            type="button"
+            className="settings-link-button"
+            onClick={() => {
+              setKeyInput('');
+              setShowKey(false);
+              setConfirmed(false);
+              setBootstrapConfirmed(false);
+            }}
+          >
+            Reset
+          </button>
+        )}
         {/* Disable if: 
             1. Bootstrap mode (!hasKey) AND Not confirmed
             2. Rotation mode (hasKey & !Locked) AND Not confirmed

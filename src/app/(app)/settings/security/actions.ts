@@ -89,11 +89,23 @@ export async function saveOidcConfig(
   // Auto-detect provider type from Issuer URL
   function detectProviderType(issuerUrl: string): string {
     const url = issuerUrl.toLowerCase();
-    if (url.includes('accounts.google.com') || url.includes('googleapis.com')) return 'google';
-    if (url.includes('.okta.com')) return 'okta';
-    if (url.includes('login.microsoftonline.com') || url.includes('sts.windows.net'))
+    if (
+      url.includes('accounts.google.com') ||
+      url.includes('googleapis.com') ||
+      url.includes('google')
+    ) {
+      return 'google';
+    }
+    if (url.includes('okta')) return 'okta';
+    if (
+      url.includes('login.microsoftonline.com') ||
+      url.includes('login.microsoft.com') ||
+      url.includes('sts.windows.net') ||
+      url.includes('microsoftonline')
+    ) {
       return 'azure';
-    if (url.includes('.auth0.com')) return 'auth0';
+    }
+    if (url.includes('auth0')) return 'auth0';
     return 'custom';
   }
   const providerType = detectProviderType(issuer);
@@ -117,19 +129,19 @@ export async function saveOidcConfig(
     }
   }
 
+  if (!issuer || !isValidIssuer(issuer)) {
+    return { error: 'Issuer URL must be a valid HTTPS URL.' };
+  }
+
+  if (!clientId) {
+    return { error: 'Client ID is required.' };
+  }
+
+  if (allowedDomains.length > 0 && allowedDomains.some(domain => !isValidDomain(domain))) {
+    return { error: 'Allowed domains must be valid domain names.' };
+  }
+
   if (enabled) {
-    if (!issuer || !isValidIssuer(issuer)) {
-      return { error: 'Issuer URL must be a valid HTTPS URL.' };
-    }
-
-    if (!clientId) {
-      return { error: 'Client ID is required.' };
-    }
-
-    if (allowedDomains.length > 0 && allowedDomains.some(domain => !isValidDomain(domain))) {
-      return { error: 'Allowed domains must be valid domain names.' };
-    }
-
     // Perform "Dry Run" validation
     const { validateOidcConnection } = await import('@/lib/oidc-validation');
     const validation = await validateOidcConnection(issuer);
@@ -162,7 +174,7 @@ export async function saveOidcConfig(
     return { error: 'ENCRYPTION_KEY must be set before saving the client secret.' };
   }
 
-  if (!existing && enabled && !clientSecret) {
+  if (!existing && !clientSecret) {
     return { error: 'Client Secret is required for new configuration.' };
   }
 

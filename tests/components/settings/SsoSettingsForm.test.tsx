@@ -55,11 +55,17 @@ describe('SsoSettingsForm', () => {
     render(<SsoSettingsForm {...defaultProps} />);
 
     // Check Section Headers
-    expect(screen.getByText(/Connection Settings/i)).toBeInTheDocument();
-    expect(screen.getByText(/User Provisioning/i)).toBeInTheDocument();
-    expect(screen.getByText(/Advanced Settings/i)).toBeInTheDocument();
-    expect(screen.getByText(/Role Mapping/i)).toBeInTheDocument();
-    expect(screen.getByText(/Profile Attribute Mapping/i)).toBeInTheDocument();
+    expect(screen.getByText(/Access & availability/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Identity provider/i })).toBeInTheDocument();
+    expect(screen.getByText(/Provisioning rules/i)).toBeInTheDocument();
+    expect(screen.getByText(/Advanced mapping/i)).toBeInTheDocument();
+    expect(screen.getByText(/Role mapping/i)).toBeInTheDocument();
+    expect(screen.getByText(/Profile attribute mapping/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Callback URL/i })).toBeInTheDocument();
+    expect(screen.getByText(/Provider presets/i)).toBeInTheDocument();
+    expect(screen.getByText(/Setup checklist/i)).toBeInTheDocument();
+    expect(screen.getByText(/SSO overview/i)).toBeInTheDocument();
+    expect(screen.getByText(/JSON preview/i)).toBeInTheDocument();
   });
 
   it('displays profile attribute mapping inputs correctly', () => {
@@ -76,14 +82,22 @@ describe('SsoSettingsForm', () => {
 
   it('allows entering custom provider label', () => {
     render(<SsoSettingsForm {...defaultProps} />);
-    const labelInput = screen.getByPlaceholderText('Leave empty for auto-detection');
+    const labelInput = screen.getByPlaceholderText('Auto-detect from issuer');
     fireEvent.change(labelInput, { target: { value: 'My Corp Login' } });
     expect(labelInput).toHaveValue('My Corp Login');
   });
 
+  it('updates issuer URL when selecting a preset', () => {
+    render(<SsoSettingsForm {...defaultProps} />);
+    const presetButton = screen.getByRole('button', { name: /Okta/i });
+    fireEvent.click(presetButton);
+    const issuerInput = screen.getByPlaceholderText('https://login.company.com');
+    expect(issuerInput).toHaveValue('https://{yourOktaDomain}/oauth2/default');
+  });
+
   it('shows warning if encryption key is missing', () => {
     render(<SsoSettingsForm {...defaultProps} hasEncryptionKey={false} />);
-    expect(screen.getByText(/ENCRYPTION_KEY is not configured/i)).toBeInTheDocument();
+    expect(screen.getByText(/Encryption key is required/i)).toBeInTheDocument();
   });
 
   it('renders RoleMappingEditor', () => {

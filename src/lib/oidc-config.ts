@@ -40,6 +40,30 @@ export type OidcPublicConfig = {
   providerLabel?: string | null;
 };
 
+function detectProviderType(issuer: string | null): string | null {
+  if (!issuer) return null;
+  const url = issuer.toLowerCase();
+
+  if (
+    url.includes('accounts.google.com') ||
+    url.includes('googleapis.com') ||
+    url.includes('google')
+  ) {
+    return 'google';
+  }
+  if (url.includes('okta')) return 'okta';
+  if (
+    url.includes('login.microsoftonline.com') ||
+    url.includes('login.microsoft.com') ||
+    url.includes('sts.windows.net') ||
+    url.includes('microsoftonline')
+  ) {
+    return 'azure';
+  }
+  if (url.includes('auth0')) return 'auth0';
+  return 'custom';
+}
+
 function normalizeDomains(domains: string[]) {
   return domains.map(domain => domain.trim().toLowerCase()).filter(Boolean);
 }
@@ -116,7 +140,7 @@ export async function getOidcPublicConfig(): Promise<OidcPublicConfig | null> {
     clientId: config.clientId || null,
     autoProvision: config.autoProvision,
     allowedDomains: normalizeDomains(config.allowedDomains),
-    providerType: config.providerType,
+    providerType: config.providerType ?? detectProviderType(config.issuer),
     providerLabel: config.providerLabel,
   };
 }
