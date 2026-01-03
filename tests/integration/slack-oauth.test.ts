@@ -9,6 +9,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     systemSettings: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
     },
     slackOAuthConfig: {
       findFirst: vi.fn(),
@@ -151,7 +152,7 @@ describe('Slack OAuth Integration', () => {
     it('should use SystemSettings for absolute URL construction', async () => {
       // Scenario: Env var is missing, but DB has setting
       delete process.env.NEXT_PUBLIC_APP_URL;
-      vi.mocked(prisma.systemSettings.findFirst).mockResolvedValue({
+      vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({
         id: 'default',
         appUrl: 'https://db-config-url.com',
         createdAt: new Date(),
