@@ -23,10 +23,10 @@ export async function POST() {
 
     const result = await sendPush({
       userId: user.id,
-      title: 'OpsSentinal Test Push',
-      body: 'This is a test push notification.',
+      title: '🔔 OpsSentinal Test Push',
+      body: `Hey ${user.name || 'there'}! Your push notifications are working perfectly. ✅`,
       data: {
-        url: '/m/notifications?test=1',
+        url: '/m/notifications',
         type: 'test',
       },
       badge: 1,
@@ -36,7 +36,10 @@ export async function POST() {
       return jsonError(result.error || 'Failed to send test push', 500);
     }
 
-    return jsonOk({ success: true, message: 'Test push sent. Check your device.' }, 200);
+    return jsonOk(
+      { success: true, message: 'Test notification sent successfully! Check your device.' },
+      200
+    );
   } catch (error) {
     logger.error('api.notifications.test_push_error', {
       error: error instanceof Error ? error.message : String(error),

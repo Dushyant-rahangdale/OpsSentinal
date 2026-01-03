@@ -1,15 +1,40 @@
 import path from 'path';
 
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
-const withPWA = require("@ducanh2912/next-pwa").default({
-  dest: "public",
+const withPWA = require('@ducanh2912/next-pwa').default({
+  dest: 'public',
   disable: process.env.NODE_ENV === 'development', // Disable in dev for faster builds
   register: true,
   skipWaiting: true,
+  sw: 'sw.js', // Use auto-generated SW but we'll add push handlers via workbox
   workboxOptions: {
     disableDevLogs: true,
+    additionalManifestEntries: [],
+    // Add custom runtime caching and handlers
+    runtimeCaching: [
+      {
+        urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'google-fonts-webfonts',
+          expiration: {
+            maxEntries: 4,
+            maxAgeSeconds: 365 * 24 * 60 * 60, // 365 days
+          },
+        },
+      },
+    ],
   },
+  // Inject custom push event handlers
+  extendDefaultRuntimeCaching: true,
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: false,
+  reloadOnOnline: true,
+  swcMinify: true,
+  fallbacks: {},
+  cacheStartUrl: true,
+  dynamicStartUrl: false,
 });
 
 const nextConfig: NextConfig = {
@@ -24,9 +49,12 @@ const nextConfig: NextConfig = {
   turbopack: {},
   // Compiler optimizations
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn'],
-    } : false,
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? {
+            exclude: ['error', 'warn'],
+          }
+        : false,
   },
   // Security headers
   async headers() {
@@ -36,31 +64,31 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',
-            value: 'on'
+            value: 'on',
           },
           {
             key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload'
+            value: 'max-age=63072000; includeSubDomains; preload',
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY'
+            value: 'DENY',
           },
           {
             key: 'X-Content-Type-Options',
-            value: 'nosniff'
+            value: 'nosniff',
           },
           {
             key: 'X-XSS-Protection',
-            value: '1; mode=block'
+            value: '1; mode=block',
           },
           {
             key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin'
+            value: 'strict-origin-when-cross-origin',
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()'
+            value: 'camera=(), microphone=(), geolocation=()',
           },
           {
             key: 'Content-Security-Policy',
@@ -73,8 +101,8 @@ const nextConfig: NextConfig = {
               "connect-src 'self'",
               "frame-ancestors 'none'",
               "manifest-src 'self'",
-            ].join('; ')
-          }
+            ].join('; '),
+          },
         ],
       },
     ];

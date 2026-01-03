@@ -13507,316 +13507,455 @@ span:hover>.info-tooltip {
   gap: var(--spacing-3);
 }
 
-.settings-slack-logo {
-  width: 48px;
-  height: 48px;
+/* ============================================
+   SLACK INTEGRATION SETTINGS
+   ============================================ */
+
+.settings-slack-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
   border-radius: var(--radius-md);
-  background: #4a154b;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
+  margin-bottom: 1.5rem;
 }
 
-.settings-slack-meta {
-  flex: 1;
-  min-width: 200px;
-}
-
-.settings-slack-meta h3 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-}
-
-.settings-slack-meta p {
-  margin-top: var(--spacing-1);
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.settings-slack-pill {
-  padding: 0.2rem 0.7rem;
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
-.settings-slack-pill.active {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.settings-slack-pill.disabled {
-  background: var(--color-neutral-100);
+.settings-slack-banner.error {
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
   color: #991b1b;
 }
 
-.settings-slack-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-3);
+.settings-slack-banner.error h3 {
+  color: #7f1d1d;
 }
 
-.settings-slack-connect {
+.settings-slack-banner.info {
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #1e40af;
+}
+
+.settings-slack-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: white;
+}
+
+.settings-slack-banner.error .settings-slack-icon {
+  color: #ef4444;
+}
+
+.settings-slack-icon.info {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+.settings-slack-icon.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.settings-slack-card {
+  /* Container for the main integration content */
+}
+
+/* Status Header Section */
+.settings-slack-status-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (min-width: 640px) {
+  .settings-slack-status-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.settings-slack-identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-slack-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: #4a154b;
+  /* Slack purple */
+  border-radius: 0.5rem;
+  color: white;
+  flex-shrink: 0;
+}
+
+.settings-slack-logo.large {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.75rem;
+}
+
+.settings-slack-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.settings-slack-meta h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.settings-slack-meta p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Status Pill */
+.settings-slack-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.2rem;
-  background: #4a154b;
-  color: #fff;
-  border-radius: var(--radius-md);
-  text-decoration: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
   font-weight: 600;
-  font-size: var(--font-size-sm);
-  transition: var(--transition-base) var(--ease-out);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.settings-slack-connect:hover {
-  background: #350d36;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+.settings-slack-pill.active {
+  background-color: var(--badge-success-bg);
+  color: var(--badge-success-text);
+  border: 1px solid rgba(22, 163, 74, 0.2);
 }
 
-.settings-slack-channel-card {
-  padding: var(--spacing-4);
+.settings-slack-pill.disabled {
+  background-color: var(--badge-neutral-bg);
+  color: var(--badge-neutral-text);
+  border: 1px solid var(--border);
+}
+
+/* Channel Section */
+.settings-slack-channel-section {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.settings-slack-search {
+  width: 100%;
+  min-width: 240px;
+  padding: 0.4rem 0.75rem;
+  padding-right: 2rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: #f8fafc;
-  display: grid;
-  gap: var(--spacing-3);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
 }
 
-.settings-slack-channel-list {
+.settings-slack-search:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.settings-slack-channel-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.settings-slack-channel-card-item {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
-}
-
-.settings-slack-channel-item {
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-sm);
-  background: #fff;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  cursor: default;
 }
 
+.settings-slack-channel-card-item:hover {
+  border-color: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.channel-hash {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 1.1em;
+}
+
+.channel-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-slack-channel-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.5rem;
+}
+
+/* Empty / Connect State */
 .settings-slack-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  display: grid;
-  gap: var(--spacing-3);
-  justify-items: center;
+  padding: 3rem 1.5rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .settings-slack-empty-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 999px;
-  background: #f3f4f6;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+  color: #6b7280;
 }
 
+.settings-slack-center h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.settings-slack-center p {
+  color: var(--text-secondary);
+  max-width: 400px;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* Setup Wizard Steps */
 .settings-slack-setup {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-5);
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .settings-slack-setup-header {
   text-align: center;
+  margin-bottom: 3rem;
 }
 
 .settings-slack-setup-header h2 {
-  margin: 0 0 var(--spacing-2);
-  color: #1e40af;
-  font-size: 1.5rem;
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .settings-slack-setup-header p {
-  margin: 0;
-  color: #1e3a8a;
-  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  font-size: 1.125rem;
 }
 
+/* Stepper */
 .settings-slack-stepper {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--spacing-3);
+  margin-bottom: 3rem;
 }
 
 .settings-slack-step {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .settings-slack-step-number {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-  background: #cbd5e1;
-  color: #fff;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 1rem;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
 }
 
 .settings-slack-step-number.active {
-  background: #3b82f6;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.1);
 }
 
 .settings-slack-step-line {
-  width: 40px;
+  width: 4rem;
   height: 2px;
-  background: #cbd5e1;
+  background: var(--border);
+  margin: 0 0.5rem;
 }
 
 .settings-slack-step-line.active {
-  background: #3b82f6;
+  background: var(--primary);
 }
 
+/* Step Cards */
 .settings-slack-step-card {
-  background: #fff;
-  border: 1px solid #bfdbfe;
-  border-radius: var(--radius-md);
-  padding: var(--spacing-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.4s ease-out;
 }
 
 .settings-slack-step-card h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: #1e40af;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-slack-step-section {
-  padding: var(--spacing-4);
-  border-radius: var(--radius-md);
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  display: grid;
-  gap: var(--spacing-3);
+  margin-bottom: 1.5rem;
 }
 
 .settings-slack-step-section h4 {
-  margin: 0;
-  font-size: 1rem;
-  color: #1e40af;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
 }
 
 .settings-slack-step-section p {
-  margin: 0;
-  color: #475569;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
 }
 
-.settings-slack-step-section ul {
-  margin: 0;
-  padding-left: 1.5rem;
-  color: #64748b;
-  line-height: 1.8;
-}
-
+.settings-slack-step-section ul,
 .settings-slack-step-section ol {
-  margin: 0;
   padding-left: 1.5rem;
-  color: #475569;
-  line-height: 1.8;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.settings-slack-step-section li {
+  margin-bottom: 0.5rem;
 }
 
 .settings-slack-step-note {
-  padding: var(--spacing-3);
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  padding: 1rem;
   border-radius: var(--radius-md);
-  border: 1px solid #86efac;
-  background: #f0fdf4;
-  color: #166534;
-  font-size: var(--font-size-sm);
+  font-size: 0.875rem;
 }
 
 .settings-slack-code {
-  position: relative;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
   border-radius: var(--radius-md);
-  padding: var(--spacing-3);
-  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-  font-size: var(--font-size-sm);
+  font-family: monospace;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
   word-break: break-all;
 }
 
 .settings-slack-copy {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  background: #334155;
+  color: white;
   border: none;
-  border-radius: var(--radius-sm);
-  padding: 0.25rem 0.6rem;
-  background: #3b82f6;
-  color: #fff;
-  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
   cursor: pointer;
+  margin-left: 1rem;
+  flex-shrink: 0;
+}
+
+.settings-slack-copy:hover {
+  background: #475569;
 }
 
 .settings-slack-scopes {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin: 0.75rem 0;
 }
 
 .settings-slack-scope {
-  padding: 0.4rem 0.6rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-  font-size: var(--font-size-sm);
-  color: #1e40af;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.8125rem;
 }
 
 .settings-slack-credential {
-  padding: var(--spacing-4);
-  border-radius: var(--radius-md);
-  border: 1px solid #f59e0b;
-  background: #fef3c7;
-  display: grid;
-  gap: var(--spacing-3);
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-top: 1.5rem;
 }
 
 .settings-slack-credential h4 {
-  margin: 0;
-  font-size: 1rem;
-  color: #92400e;
+  margin-bottom: 1rem;
 }
 
 .settings-slack-credential label {
   display: block;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: #92400e;
-  margin-bottom: var(--spacing-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
 }
 
 .settings-slack-credential input {
   width: 100%;
-  padding: 0.75rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid #f59e0b;
-  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-  font-size: var(--font-size-sm);
-  background: #fff;
-}
-
-.settings-slack-credential p {
-  margin: 0;
-  font-size: var(--font-size-xs);
   color: #78350f;
 }
 
