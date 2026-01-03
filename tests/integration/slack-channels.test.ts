@@ -42,10 +42,25 @@ const initialSlackToken = process.env.SLACK_BOT_TOKEN;
 describe('Slack Channels API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-1' });
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      id: 'user-1',
+      name: 'Test User',
+      email: 'user@example.com',
+      role: 'ADMIN',
+      timeZone: 'UTC',
+    });
     vi.mocked(prisma.slackIntegration.findFirst).mockResolvedValue({
+      id: 'integration-1',
+      workspaceId: 'T123',
+      workspaceName: 'OpsSentinal HQ',
       botToken: 'encrypted_token',
-    } as unknown as { botToken: string });
+      signingSecret: null,
+      installedBy: 'user-1',
+      scopes: ['chat:write'],
+      enabled: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 
   afterEach(() => {
