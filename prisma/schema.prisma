@@ -106,6 +106,11 @@ model User {
   pushNotificationsEnabled     Boolean     @default(false)
   whatsappNotificationsEnabled Boolean     @default(false)
   phoneNumber                  String? // For SMS notifications
+  // JIT Profile Sync - synced from OIDC provider
+  department                   String?
+  jobTitle                     String?
+  avatarUrl                    String?
+  lastOidcSync                 DateTime?
   invitedAt                    DateTime?
   deactivatedAt                DateTime?
   createdAt                    DateTime    @default(now())
@@ -298,6 +303,11 @@ model OidcConfig {
   enabled        Boolean  @default(true)
   autoProvision  Boolean  @default(true)
   allowedDomains String[] @default([])
+  roleMapping    Json?    @default("[]") // Schema: [{ claim: string, value: string, role: Role }]
+  customScopes   String?  // e.g. "groups profile email"
+  providerType   String?  // e.g. 'google', 'okta', 'azure', 'auth0', 'custom'
+  providerLabel  String?  // Custom display name, e.g. "Acme Corp SSO"
+  profileMapping Json?    @default("{}") // { department: "dept", jobTitle: "title", avatarUrl: "picture" }
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   updatedBy      String

@@ -1,22 +1,37 @@
 import { NextRequest } from 'next/server';
-import { telemetryV2 } from '@/services/telemetry/TelemetryServiceV2';
 import { logger } from '@/lib/logger';
+
+// Lazy import to avoid Edge Runtime issues - telemetryV2 uses Prisma
+let telemetryModule: typeof import('@/services/telemetry/TelemetryServiceV2') | null = null;
+async function getTelemetry() {
+  if (!telemetryModule) {
+    telemetryModule = await import('@/services/telemetry/TelemetryServiceV2');
+  }
+  return telemetryModule.telemetryV2;
+}
 
 /**
  * Telemetry Middleware Helper
  * Records Silver Tier (Metrics) and optional Bronze Tier (Logs) for API requests.
  * designed to be "fire and forget" to avoid slowing down the request.
  */
-export function recordRequestTelemetry(
+export async function recordRequestTelemetry(
   req: NextRequest,
   resStatus: number = 200,
   durationMs: number = 0
 ) {
   try {
+    // Skip in Edge Runtime (middleware) - telemetry uses Prisma which doesn't work there
+    if (typeof (globalThis as Record<string, unknown>).EdgeRuntime !== 'undefined') {
+      return;
+    }
+
     const { pathname } = req.nextUrl;
 
     // Only record API routes to avoid noise from static assets
     if (!pathname.startsWith('/api')) return;
+
+    const telemetryV2 = await getTelemetry();
 
     // 1. Silver Tier (Metrics)
     // Record Latency

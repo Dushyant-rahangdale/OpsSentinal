@@ -4,7 +4,11 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import SettingRow from '@/components/settings/SettingRow';
 import StickyActionBar from '@/components/settings/StickyActionBar';
-import { saveOidcConfig } from '@/app/(app)/settings/security/actions';
+import RoleMappingEditor from '@/components/settings/RoleMappingEditor';
+import {
+  saveOidcConfig,
+  validateOidcConnectionAction,
+} from '@/app/(app)/settings/security/actions';
 
 type Props = {
   initialConfig: {
@@ -14,6 +18,11 @@ type Props = {
     autoProvision: boolean;
     allowedDomains: string[];
     hasClientSecret: boolean;
+    roleMapping?: any;
+    customScopes?: string | null;
+    providerType?: string | null;
+    providerLabel?: string | null;
+    profileMapping?: Record<string, string> | null;
   } | null;
   callbackUrl: string;
   hasEncryptionKey: boolean;
@@ -34,6 +43,27 @@ function SubmitButton() {
   );
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="settings-secondary-button"
+      style={{ minWidth: '80px' }}
+    >
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+}
+
 export default function SsoSettingsForm({
   initialConfig,
   callbackUrl,
@@ -45,53 +75,52 @@ export default function SsoSettingsForm({
     success: false,
   });
   const [domains, setDomains] = useState((initialConfig?.allowedDomains ?? []).join(', '));
+  const [issuerUrl, setIssuerUrl] = useState(initialConfig?.issuer ?? '');
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
+
+  const handleTestConnection = async () => {
+    if (!issuerUrl) {
+      setTestStatus('error');
+      setTestMessage('Please enter an Issuer URL first.');
+      return;
+    }
+    setTestStatus('testing');
+    setTestMessage('Connecting...');
+
+    try {
+      const result = await validateOidcConnectionAction(issuerUrl);
+      if (result.isValid) {
+        setTestStatus('success');
+        setTestMessage('✓ Connection Successful');
+      } else {
+        setTestStatus('error');
+        setTestMessage('✕ ' + (result.error || 'Connection failed'));
+      }
+    } catch {
+      setTestStatus('error');
+      setTestMessage('✕ Unexpected error');
+    }
+  };
 
   return (
     <form action={formAction} className="settings-form-stack">
       {!hasEncryptionKey && (
-        <div
-          className="settings-alert"
-          style={{
-            border: '1px solid var(--color-warning)',
-            color: 'var(--color-warning)',
-            background: 'var(--surface-overlay)',
-            padding: '1rem',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-          }}
-        >
+        <div className="settings-alert warning">
           <span style={{ fontSize: '1.2em' }}>⚠️</span>
           ENCRYPTION_KEY is not configured. Set it before enabling or saving SSO secrets.
         </div>
       )}
+
       {configError && (
-        <div
-          className="settings-alert"
-          style={{
-            border: '1px solid var(--color-error)',
-            color: 'var(--color-error)',
-            background: 'var(--surface-overlay)',
-            padding: '1rem',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-          }}
-        >
+        <div className="settings-alert error">
           <span style={{ fontSize: '1.2em' }}>⛔</span>
           <div>
-            <strong>Configuration Error: </strong>
-            {configError}
-            <div style={{ marginTop: '0.5rem', fontSize: '0.9em' }}>
-              Please re-enter your Client Secret and save to resolve this issue.
-            </div>
+            <strong>Configuration Error: </strong> {configError}
           </div>
         </div>
       )}
+
       <SettingRow
         label="Enable SSO"
         description="Allow users to sign in with your identity provider."
@@ -102,17 +131,65 @@ export default function SsoSettingsForm({
         </label>
       </SettingRow>
 
+      <div className="settings-separator"></div>
+
+      {/* Connection Settings Section */}
+      <div className="settings-section-header">
+        <h3>🔗 Connection Settings</h3>
+        <p>Configure your identity provider connection details.</p>
+      </div>
+
+      <SettingRow
+        label="Custom SSO Button Label"
+        description="Optional custom label for the SSO button (e.g., 'Acme Corp SSO'). If empty, the provider name will be detected from the Issuer URL."
+      >
+        <input
+          type="text"
+          name="providerLabel"
+          placeholder="Leave empty for auto-detection"
+          defaultValue={initialConfig?.providerLabel ?? ''}
+        />
+      </SettingRow>
+
       <SettingRow
         label="Issuer URL"
         description="Your OIDC issuer URL from the identity provider."
         helpText="Example: https://login.company.com"
       >
-        <input
-          type="url"
-          name="issuer"
-          placeholder="https://login.company.com"
-          defaultValue={initialConfig?.issuer ?? ''}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="url"
+              name="issuer"
+              placeholder="https://login.company.com"
+              value={issuerUrl}
+              onChange={e => {
+                setIssuerUrl(e.target.value);
+                setTestStatus('idle');
+              }}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              className="settings-secondary-button"
+              disabled={testStatus === 'testing' || !issuerUrl}
+            >
+              {testStatus === 'testing' ? 'Testing...' : 'Test'}
+            </button>
+          </div>
+          {testStatus !== 'idle' && (
+            <div
+              style={{
+                fontSize: '0.85rem',
+                color: testStatus === 'success' ? 'var(--color-success)' : 'var(--color-error)',
+                fontWeight: 500,
+              }}
+            >
+              {testMessage}
+            </div>
+          )}
+        </div>
       </SettingRow>
 
       <SettingRow label="Client ID" description="OIDC client identifier from your provider.">
@@ -126,10 +203,10 @@ export default function SsoSettingsForm({
 
       <SettingRow
         label="Client Secret"
-        description="Stored securely and used to complete OIDC authentication."
+        description="Stored securely."
         helpText={
           initialConfig?.hasClientSecret
-            ? 'Leave blank to keep the current secret.'
+            ? 'Leave blank to keep current secret.'
             : 'Required for new configuration.'
         }
       >
@@ -140,6 +217,14 @@ export default function SsoSettingsForm({
           autoComplete="off"
         />
       </SettingRow>
+
+      <div className="settings-separator"></div>
+
+      {/* User Provisioning Section */}
+      <div className="settings-section-header">
+        <h3>👤 User Provisioning</h3>
+        <p>Control how users are created and managed via SSO.</p>
+      </div>
 
       <SettingRow
         label="Auto-provision users"
@@ -158,7 +243,7 @@ export default function SsoSettingsForm({
       <SettingRow
         label="Allowed email domains"
         description="Optional allowlist of domains that can use SSO."
-        helpText="Separate multiple domains with commas or spaces. Leave empty to allow all domains."
+        helpText="Separate multiple domains with commas or spaces."
       >
         <input
           type="text"
@@ -169,11 +254,108 @@ export default function SsoSettingsForm({
         />
       </SettingRow>
 
+      <div className="settings-separator"></div>
+
+      {/* Advanced Settings Section */}
+      <div className="settings-section-header">
+        <h3>⚙️ Advanced Settings</h3>
+        <p>Request additional scopes and configure attribute mappings.</p>
+      </div>
+
+      <SettingRow
+        label="Custom Scopes"
+        description="Additional OIDC scopes to request."
+        helpText="Standard scopes (openid, email, profile) are always requested."
+      >
+        <input
+          type="text"
+          name="customScopes"
+          placeholder="groups department"
+          defaultValue={initialConfig?.customScopes ?? ''}
+        />
+      </SettingRow>
+
+      <div className="settings-separator"></div>
+
+      <div className="settings-section-header">
+        <h3>📋 Role Mapping</h3>
+        <p>Automatically assign roles based on OIDC claims.</p>
+      </div>
+
+      <RoleMappingEditor initialMappings={initialConfig?.roleMapping} />
+
+      <div className="settings-separator"></div>
+
+      <div className="settings-section-header">
+        <h3>🔄 Profile Attribute Mapping</h3>
+        <p>
+          Map OIDC claims to user profile fields. When a user logs in, their profile will be
+          automatically updated with values from your identity provider.
+        </p>
+        <div
+          className="settings-alert"
+          style={{ marginTop: '0.75rem', background: 'var(--bg-tertiary)' }}
+        >
+          <span style={{ fontSize: '1.1em' }}>💡</span>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <strong>How it works:</strong> Enter the exact claim name from your IdP. Common
+            examples: <code>department</code>, <code>title</code>, <code>picture</code>. Leave empty
+            to skip syncing that field.
+          </div>
+        </div>
+      </div>
+
+      <SettingRow
+        label="Department Claim"
+        description="Claim name for user's department (e.g., 'department' for Azure AD, custom for Okta)"
+      >
+        <input
+          type="text"
+          name="profileMapping.department"
+          placeholder="e.g., department"
+          defaultValue={initialConfig?.profileMapping?.department ?? ''}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Job Title Claim"
+        description="Claim name for user's job title (e.g., 'jobTitle' for Azure AD, 'title' for others)"
+      >
+        <input
+          type="text"
+          name="profileMapping.jobTitle"
+          placeholder="e.g., title or jobTitle"
+          defaultValue={initialConfig?.profileMapping?.jobTitle ?? ''}
+        />
+      </SettingRow>
+
+      <SettingRow
+        label="Avatar URL Claim"
+        description="Claim name for profile picture URL (e.g., 'picture' for Google/Auth0)"
+      >
+        <input
+          type="text"
+          name="profileMapping.avatarUrl"
+          placeholder="e.g., picture"
+          defaultValue={initialConfig?.profileMapping?.avatarUrl ?? ''}
+        />
+      </SettingRow>
+
+      <div className="settings-separator"></div>
+
       <SettingRow
         label="Callback URL"
         description="Add this URL to your identity provider redirect list."
       >
-        <input type="text" readOnly value={callbackUrl} />
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+          <input
+            type="text"
+            readOnly
+            value={callbackUrl}
+            style={{ flex: 1, background: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
+          />
+          <CopyButton text={callbackUrl} />
+        </div>
       </SettingRow>
 
       {(state?.error || state?.success) && (

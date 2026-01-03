@@ -35,11 +35,12 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
   const [state, formAction] = useActionState(manageEncryptionKey, {});
 
   // Automatically open edit mode if system is locked (Emergency Recovery)
+  // or if no key exists yet (First Time Setup)
   useEffect(() => {
-    if (isSystemLocked) {
+    if (isSystemLocked || !hasKey) {
       setIsEditing(true);
     }
-  }, [isSystemLocked]);
+  }, [isSystemLocked, hasKey]);
 
   const generateKey = () => {
     // Generate a random 32-byte hex string
@@ -232,47 +233,149 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
                 className="settings-secondary-button"
                 style={{ whiteSpace: 'nowrap' }}
               >
-                Replace Key
+                {hasKey ? '🔄 Replace Key' : '🔑 Generate Key'}
               </button>
             </>
           ) : (
             // Edit Mode
             <>
-              <div style={{ position: 'relative', flex: 1 }}>
+              <div
+                style={{
+                  position: 'relative',
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  background: 'var(--bg-primary)',
+                  overflow: 'hidden',
+                }}
+              >
                 <input
                   type={showKey ? 'text' : 'password'}
                   name="encryptionKey"
-                  placeholder="Enter or generate new key"
+                  placeholder="Click Generate or paste your key"
                   value={keyInput}
                   onChange={e => setKeyInput(e.target.value)}
-                  style={{ paddingRight: '5.5rem', fontFamily: 'monospace' }}
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    background: 'transparent',
+                    fontFamily: 'monospace',
+                    fontSize: '0.9rem',
+                    padding: '0.75rem 1rem',
+                    outline: 'none',
+                  }}
                   autoFocus
                 />
                 <div
                   style={{
-                    position: 'absolute',
-                    right: '0.5rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
                     display: 'flex',
+                    alignItems: 'center',
                     gap: '0.25rem',
+                    paddingRight: '0.5rem',
+                    borderLeft: '1px solid var(--border)',
+                    height: '100%',
+                    paddingLeft: '0.5rem',
                   }}
                 >
                   <button
                     type="button"
                     onClick={() => setShowKey(!showKey)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6 }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-secondary)',
+                      borderRadius: '4px',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }}
                     aria-label={showKey ? 'Hide key' : 'Show key'}
+                    title={showKey ? 'Hide key' : 'Show key'}
                   >
-                    {showKey ? '👁️' : '👁️‍🗨️'}
+                    {showKey ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    )}
                   </button>
                   <button
                     type="button"
                     onClick={copyToClipboard}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6 }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--text-secondary)',
+                      borderRadius: '4px',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }}
                     title="Copy to Clipboard"
                   >
-                    📋
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
                   </button>
                 </div>
               </div>
