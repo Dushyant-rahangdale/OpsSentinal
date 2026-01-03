@@ -69,8 +69,14 @@ export default async function MobileLoginPage({
       }
     }
     const awaitedSearchParams = await searchParams;
-    const callbackUrl =
+    let callbackUrl =
       typeof awaitedSearchParams?.callbackUrl === 'string' ? awaitedSearchParams.callbackUrl : '/m';
+
+    // Fix: Prevent redirect loop if callbackUrl is the login page itself
+    if (callbackUrl.includes('/login') || callbackUrl === '/') {
+      callbackUrl = '/m';
+    }
+
     // Redirect to mobile callback or mobile dashboard
     const redirectUrl = callbackUrl.startsWith('/m') ? callbackUrl : '/m';
     redirect(redirectUrl);

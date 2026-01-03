@@ -15,53 +15,47 @@ import MobileNetworkBanner from '@/components/mobile/MobileNetworkBanner';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MobileLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    const session = await getServerSession(await getAuthOptions());
+export default async function MobileLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(await getAuthOptions());
 
-    if (!session?.user?.email) {
-        redirect('/login');
-    }
+  if (!session?.user?.email) {
+    redirect('/m/login');
+  }
 
-    // Check system status
-    // Check system status
-    const [criticalCount, lowUrgencyCount] = await Promise.all([
-        prisma.incident.count({
-            where: {
-                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-                urgency: 'HIGH',
-            },
-        }),
-        prisma.incident.count({
-            where: {
-                status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-                urgency: 'LOW',
-            },
-        }),
-    ]);
+  // Check system status
+  // Check system status
+  const [criticalCount, lowUrgencyCount] = await Promise.all([
+    prisma.incident.count({
+      where: {
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+        urgency: 'HIGH',
+      },
+    }),
+    prisma.incident.count({
+      where: {
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+        urgency: 'LOW',
+      },
+    }),
+  ]);
 
-    const systemStatus: 'ok' | 'warning' | 'danger' =
-        criticalCount > 0 ? 'danger' : lowUrgencyCount > 0 ? 'warning' : 'ok';
+  const systemStatus: 'ok' | 'warning' | 'danger' =
+    criticalCount > 0 ? 'danger' : lowUrgencyCount > 0 ? 'warning' : 'ok';
 
-    return (
-        <ToastProvider>
-            <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
-                <div className="mobile-shell" data-status={systemStatus}>
-                    <MobileHeader systemStatus={systemStatus} />
-                    <main className="mobile-content">
-                        <MobileNetworkBanner />
-                        <MobileSwipeNavigator>
-                            <PullToRefresh>
-                                {children}
-                            </PullToRefresh>
-                        </MobileSwipeNavigator>
-                    </main>
-                    <MobileNav />
-                </div>
-            </ThemeProvider>
-        </ToastProvider>
-    );
+  return (
+    <ToastProvider>
+      <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+        <div className="mobile-shell" data-status={systemStatus}>
+          <MobileHeader systemStatus={systemStatus} />
+          <main className="mobile-content">
+            <MobileNetworkBanner />
+            <MobileSwipeNavigator>
+              <PullToRefresh>{children}</PullToRefresh>
+            </MobileSwipeNavigator>
+          </main>
+          <MobileNav />
+        </div>
+      </ThemeProvider>
+    </ToastProvider>
+  );
 }

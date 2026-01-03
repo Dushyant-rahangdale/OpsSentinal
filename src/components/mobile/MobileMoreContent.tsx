@@ -4,6 +4,7 @@ import MobileThemeToggle from '@/components/mobile/MobileThemeToggle';
 import PushNotificationToggle from '@/components/mobile/PushNotificationToggle';
 import { MobileAvatar } from '@/components/mobile/MobileUtils';
 import PwaInstallCard from '@/components/mobile/PwaInstallCard';
+import MobileSignOutButton from '@/components/mobile/MobileSignOutButton';
 
 type Tone = 'blue' | 'teal' | 'amber' | 'green' | 'slate' | 'red';
 
@@ -328,14 +329,6 @@ export default function MobileMoreContent({ name, email, role }: MobileMoreConte
       icon: iconDesktop,
       tone: 'slate',
     },
-    {
-      href: '/api/auth/signout',
-      label: 'Sign Out',
-      description: 'Sign out of OpsSentinal',
-      icon: iconSignOut,
-      tone: 'red',
-      danger: true,
-    },
   ];
 
   const renderItem = (item: ListItem) => {
@@ -429,6 +422,14 @@ export default function MobileMoreContent({ name, email, role }: MobileMoreConte
 
       <section className="mobile-more-section">
         <div className="mobile-more-list">{actions.map(renderItem)}</div>
+        <div className="mobile-more-list" style={{ marginTop: '0.75rem' }}>
+          <MobileSignOutButton
+            icon={iconSignOut}
+            label="Sign Out"
+            description="Sign out of OpsSentinal"
+            tone="red"
+          />
+        </div>
       </section>
 
       <div className="mobile-more-footer">OpsSentinal Mobile v1.0.0</div>

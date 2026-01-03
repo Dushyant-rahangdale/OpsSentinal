@@ -58,7 +58,10 @@ export default function MobileLoginClient({
     }
   }, [mounted]);
 
-  const safeCallbackUrl = callbackUrl.startsWith('/m') ? callbackUrl : '/m';
+  let safeCallbackUrl = callbackUrl.startsWith('/m') ? callbackUrl : '/m';
+  if (safeCallbackUrl.includes('/login') || safeCallbackUrl === '/') {
+    safeCallbackUrl = '/m';
+  }
 
   const providerLabelMap: Record<string, string> = {
     google: 'Google',
@@ -74,14 +77,18 @@ export default function MobileLoginClient({
     setIsSSOLoading(true);
     setError('');
     try {
-      const result = await signIn('oidc', { callbackUrl: safeCallbackUrl, redirect: false });
-      if (result?.url) {
-        window.location.assign(result.url);
-        return;
+      // Fix: Override callbackUrl to /m if it is root or empty or signout to prevent desktop fallback
+      // Fix: Override callbackUrl to /m if it is root, /login, or signout to prevent desktop fallback or loop
+      let finalCallbackUrl = callbackUrl;
+      if (
+        !finalCallbackUrl ||
+        finalCallbackUrl === '/' ||
+        finalCallbackUrl.includes('/login') ||
+        finalCallbackUrl.includes('/auth/signout')
+      ) {
+        finalCallbackUrl = '/m';
       }
-      window.location.assign(
-        `/api/auth/signin/oidc?callbackUrl=${encodeURIComponent(safeCallbackUrl)}`
-      );
+      await signIn('oidc', { callbackUrl: finalCallbackUrl });
     } catch {
       setError('SSO authentication failed.');
       setIsSSOLoading(false);
@@ -179,11 +186,11 @@ export default function MobileLoginClient({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           padding: '1.5rem',
           boxSizing: 'border-box',
           position: 'relative',
-          overflow: 'hidden',
+          overflowX: 'hidden',
+          overflowY: 'auto',
         }}
       >
         {/* Floating Background Shapes */}
@@ -222,6 +229,7 @@ export default function MobileLoginClient({
         <div
           className="login-card"
           style={{
+            margin: 'auto',
             width: '100%',
             maxWidth: '400px',
             background: 'rgba(30, 41, 59, 0.8)',
