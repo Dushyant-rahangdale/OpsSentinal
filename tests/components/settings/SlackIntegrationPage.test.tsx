@@ -44,6 +44,7 @@ describe('SlackIntegrationPage', () => {
 
   it('renders integration status and channels when connected', async () => {
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: async () => ({
         channels: [
           { id: 'C1', name: 'alerts', isPrivate: false, isMember: true },
