@@ -203,7 +203,7 @@ export default function GuidedSlackSetup() {
                     type="text"
                     value={clientId}
                     onChange={e => setClientId(e.target.value)}
-                    placeholder="e.g., 1234567890.1234567890123"
+                    placeholder="Paste Client ID here"
                   />
                   <p>Found at the top of OAuth &amp; Permissions page</p>
                 </div>
@@ -214,9 +214,12 @@ export default function GuidedSlackSetup() {
                     type="password"
                     value={clientSecret}
                     onChange={e => setClientSecret(e.target.value)}
-                    placeholder="Click 'Show' to reveal, then copy"
+                    placeholder="Paste Client Secret here"
                   />
-                  <p>Click &quot;Show&quot; next to Client Secret, then copy and paste here</p>
+                  <p>
+                    In your Slack app settings, click &quot;Show&quot; next to Client Secret, then
+                    copy and paste it here.
+                  </p>
                 </div>
               </div>
             </div>
