@@ -63,9 +63,9 @@ async function getOidcConfigRecord(): Promise<OidcConfigRecord | null> {
       allowedDomains: config.allowedDomains ?? [],
       roleMapping: config.roleMapping,
       customScopes: config.customScopes,
+      profileMapping: config.profileMapping as Record<string, string> | null,
       providerType: config.providerType,
       providerLabel: config.providerLabel,
-      profileMapping: config.profileMapping as Record<string, string> | null,
     };
   } catch (error) {
     // Database connection error or other Prisma errors
@@ -96,6 +96,7 @@ export async function getOidcConfig(): Promise<OidcConfig | null> {
       allowedDomains: normalizeDomains(config.allowedDomains),
       roleMapping: config.roleMapping,
       customScopes: config.customScopes,
+      profileMapping: config.profileMapping as Record<string, string> | null,
     };
   } catch (error) {
     logger.error('[OIDC] Failed to decrypt client secret', { error });

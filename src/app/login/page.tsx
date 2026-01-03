@@ -1,7 +1,7 @@
 import LoginClient from './LoginClient';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
-import { getOidcPublicConfig } from '@/lib/oidc-config';
+import { getOidcConfig, getOidcPublicConfig } from '@/lib/oidc-config';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -44,8 +44,13 @@ export default async function LoginPage({
   }
 
   const session = await getServerSession(await getAuthOptions());
+  const oidcConfig = await getOidcConfig();
   const ssoConfig = await getOidcPublicConfig();
-  const ssoEnabled = Boolean(ssoConfig?.enabled);
+  const ssoEnabled = Boolean(oidcConfig);
+  const ssoError =
+    ssoConfig?.enabled && !oidcConfig
+      ? 'Single sign-on is enabled but not configured correctly. Contact your administrator.'
+      : null;
 
   // Server-side check: If user is already authenticated, redirect them away
   if (session) {
@@ -88,6 +93,7 @@ export default async function LoginPage({
       callbackUrl={callbackUrl}
       errorCode={errorCode}
       passwordSet={passwordSet}
+      ssoError={ssoError}
       ssoEnabled={ssoEnabled}
       ssoProviderType={ssoConfig?.providerType}
       ssoProviderLabel={ssoConfig?.providerLabel}

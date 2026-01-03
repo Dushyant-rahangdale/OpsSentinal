@@ -27,6 +27,41 @@ function isValidDomain(domain: string) {
   return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain);
 }
 
+type RoleMappingRule = {
+  claim: string;
+  value: string;
+  role: 'ADMIN' | 'RESPONDER' | 'USER';
+};
+
+const allowedRoles = new Set<RoleMappingRule['role']>(['ADMIN', 'RESPONDER', 'USER']);
+
+function parseRoleMapping(input: string): RoleMappingRule[] | null {
+  const parsed: unknown = JSON.parse(input);
+  if (!Array.isArray(parsed)) {
+    throw new Error('Role mapping must be an array.');
+  }
+
+  const rules: RoleMappingRule[] = [];
+  for (const entry of parsed) {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error('Role mapping entries must be objects.');
+    }
+
+    const candidate = entry as Record<string, unknown>;
+    const claim = typeof candidate.claim === 'string' ? candidate.claim.trim() : '';
+    const value = typeof candidate.value === 'string' ? candidate.value.trim() : '';
+    const role = typeof candidate.role === 'string' ? candidate.role : '';
+
+    if (!claim || !value || !allowedRoles.has(role as RoleMappingRule['role'])) {
+      throw new Error('Role mapping entries must include claim, value, and a valid role.');
+    }
+
+    rules.push({ claim, value, role: role as RoleMappingRule['role'] });
+  }
+
+  return rules;
+}
+
 export async function saveOidcConfig(
   prevState: { error?: string | null; success?: boolean } | undefined,
   formData: FormData
@@ -72,11 +107,11 @@ export async function saveOidcConfig(
   if (pmJobTitle) profileMapping.jobTitle = pmJobTitle;
   if (pmAvatarUrl) profileMapping.avatarUrl = pmAvatarUrl;
 
-  let roleMapping = null;
+  let roleMapping: RoleMappingRule[] | null = null;
   const roleMappingInput = formData.get('roleMapping') as string | null;
   if (roleMappingInput) {
     try {
-      roleMapping = JSON.parse(roleMappingInput);
+      roleMapping = parseRoleMapping(roleMappingInput);
     } catch {
       return { error: 'Invalid Role Mapping configuration.' };
     }

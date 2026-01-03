@@ -26,6 +26,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               clientId: oidcConfig.clientId,
               clientSecret: oidcConfig.clientSecret,
               issuer: oidcConfig.issuer,
+              customScopes: oidcConfig.customScopes ?? null,
             }),
           ]
         : []),
@@ -124,7 +125,12 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
         return session;
       },
       async signIn({ user, account, profile }) {
-        if (!user?.email) return true;
+        if (!user?.email) {
+          logger.warn('Sign-in rejected: missing email', {
+            provider: account?.provider ?? 'unknown',
+          });
+          return false;
+        }
 
         const email = user.email.toLowerCase();
         const existing = await prisma.user.findUnique({
@@ -133,23 +139,31 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
 
         // Final check - prevent disabled users from signing in
         if (existing?.status === 'DISABLED') {
+          logger.warn('Sign-in rejected: user disabled', { provider: account?.provider, email });
           return false;
         }
 
         if (account?.provider === 'oidc') {
           const activeConfig = await getOidcConfig();
           if (!activeConfig) {
+            logger.warn('OIDC sign-in rejected: configuration missing or invalid', { email });
             return false;
           }
 
           if (activeConfig.allowedDomains.length > 0) {
             const domain = email.split('@')[1] || '';
+            if (!domain) {
+              logger.warn('OIDC sign-in rejected: invalid email domain', { email });
+              return false;
+            }
             if (!activeConfig.allowedDomains.includes(domain)) {
+              logger.warn('OIDC sign-in rejected: domain not allowed', { email, domain });
               return false;
             }
           }
 
           if (!activeConfig.autoProvision && !existing) {
+            logger.warn('OIDC sign-in rejected: auto-provision disabled', { email });
             if (user?.id) {
               try {
                 await prisma.user.delete({ where: { id: user.id } });
@@ -185,7 +199,15 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 value: string;
                 role: string;
               }>;
+              const allowedRoles = new Set(['ADMIN', 'RESPONDER', 'USER']);
               for (const rule of mapping) {
+                if (!allowedRoles.has(rule.role)) {
+                  logger.warn('OIDC role mapping ignored: invalid role', {
+                    role: rule.role,
+                    claim: rule.claim,
+                  });
+                  continue;
+                }
                 const claimValue = (profile as any)[rule.claim];
                 let match = false;
 

@@ -1,19 +1,71 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { getAuthOptions } from '@/lib/auth';
-import { type Role, type User, type UserStatus, DigestLevel } from '@prisma/client';
+import { encryptWithKey } from '@/lib/encryption';
+import type { Adapter } from 'next-auth/adapters';
+import { type UserStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { testPrisma, resetDatabase, createTestUser } from '../helpers/test-db';
 
-const describeIfRealDB = (process.env.VITEST_USE_REAL_DB === '1' || process.env.CI) ? describe : describe.skip;
+const describeIfRealDB =
+  process.env.VITEST_USE_REAL_DB === '1' || process.env.CI ? describe : describe.skip;
 
 type Credentials = { email?: string; password?: string };
+
+const ENCRYPTION_KEY = 'a'.repeat(64);
+
+async function seedOidcConfig(
+  overrides: Partial<{
+    customScopes: string | null;
+    allowedDomains: string[];
+    autoProvision: boolean;
+    roleMapping: unknown;
+    profileMapping: Record<string, string> | null;
+  }> = {}
+) {
+  const encryptedSecret = await encryptWithKey('oidc-secret', ENCRYPTION_KEY);
+  const adminUser = await createTestUser({
+    email: 'oidc-admin@example.com',
+    role: 'ADMIN',
+  });
+
+  await testPrisma.oidcConfig.upsert({
+    where: { id: 'default' },
+    create: {
+      id: 'default',
+      issuer: 'https://login.example.com',
+      clientId: 'client-id',
+      clientSecret: encryptedSecret,
+      enabled: true,
+      autoProvision: overrides.autoProvision ?? true,
+      allowedDomains: overrides.allowedDomains ?? [],
+      roleMapping: overrides.roleMapping ?? [],
+      customScopes: overrides.customScopes ?? null,
+      profileMapping: overrides.profileMapping ?? {},
+      updatedBy: adminUser.id,
+    },
+    update: {
+      issuer: 'https://login.example.com',
+      clientId: 'client-id',
+      clientSecret: encryptedSecret,
+      enabled: true,
+      autoProvision: overrides.autoProvision ?? true,
+      allowedDomains: overrides.allowedDomains ?? [],
+      roleMapping: overrides.roleMapping ?? [],
+      customScopes: overrides.customScopes ?? null,
+      profileMapping: overrides.profileMapping ?? {},
+      updatedBy: adminUser.id,
+    },
+  });
+
+  return adminUser;
+}
 
 function getCredentialsAuthorize(authOptions: Awaited<ReturnType<typeof getAuthOptions>>) {
   const provider = authOptions.providers.find(p => p.id === 'credentials');
   if (
     !provider ||
     typeof (provider as unknown as { options?: { authorize?: unknown } }).options?.authorize !==
-    'function'
+      'function'
   ) {
     throw new Error('Credentials provider authorize function not found');
   }
@@ -28,6 +80,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
   beforeAll(async () => {
     // Ensure we are in real DB mode for these tests if this file is run
     process.env.VITEST_USE_REAL_DB = '1';
+    process.env.ENCRYPTION_KEY = ENCRYPTION_KEY;
   });
 
   beforeEach(async () => {
@@ -45,7 +98,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       const user = await createTestUser({
         email: 'test@example.com',
         passwordHash,
-        role: 'ADMIN'
+        role: 'ADMIN',
       });
 
       const result = await authorize({
@@ -84,7 +137,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       await createTestUser({
         email: 'test@example.com',
         passwordHash,
-        status: 'DISABLED' as UserStatus
+        status: 'DISABLED' as UserStatus,
       });
 
       const result = await authorize({
@@ -115,11 +168,188 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
 
       // Verification: Check DB for status update
       const updatedUser = await testPrisma.user.findUnique({
-        where: { email: 'invited@example.com' }
+        where: { email: 'invited@example.com' },
       });
 
       expect(updatedUser?.status).toBe('ACTIVE');
       expect(updatedUser?.invitedAt).toBeNull();
+    });
+  });
+
+  describe('PrismaAdapter', () => {
+    it('should create user when emailVerified is null', async () => {
+      const authOptions = await getAuthOptions();
+      const adapter = authOptions.adapter as Adapter;
+
+      if (!adapter?.createUser) {
+        throw new Error('Prisma adapter createUser not configured');
+      }
+
+      const created = await adapter.createUser({
+        name: 'Adapter User',
+        email: 'adapter@example.com',
+        emailVerified: null,
+      });
+
+      expect(created.email).toBe('adapter@example.com');
+      expect(created.emailVerified).toBeNull();
+    });
+  });
+
+  describe('OIDC Sign-In', () => {
+    it('rejects OIDC sign-in when email is missing', async () => {
+      await seedOidcConfig();
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const result = await signInCallback({
+        user: { name: 'No Email' },
+        account: { provider: 'oidc' },
+        profile: {},
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('applies custom scopes to the OIDC provider', async () => {
+      await seedOidcConfig({ customScopes: 'groups department' });
+
+      const authOptions = await getAuthOptions();
+      const provider = authOptions.providers.find(p => p.id === 'oidc');
+      const scopes = (
+        provider as {
+          authorization?: { params?: { scope?: string } };
+        }
+      )?.authorization?.params?.scope;
+
+      expect(scopes).toContain('groups');
+      expect(scopes).toContain('department');
+    });
+
+    it('rejects OIDC sign-in for disallowed domains', async () => {
+      await seedOidcConfig({ allowedDomains: ['example.com'] });
+
+      const user = await createTestUser({
+        email: 'oidc-user@other.com',
+      });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const result = await signInCallback({
+        user: { id: user.id, email: user.email, name: user.name },
+        account: { provider: 'oidc' },
+        profile: { groups: ['any'] },
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('rejects OIDC sign-in when auto-provision is disabled', async () => {
+      await seedOidcConfig({ autoProvision: false });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const result = await signInCallback({
+        user: { email: 'new-user@example.com', name: 'New User' },
+        account: { provider: 'oidc' },
+        profile: { groups: ['any'] },
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('ignores invalid role mappings', async () => {
+      await seedOidcConfig({
+        roleMapping: [{ claim: 'groups', value: 'admins', role: 'SUPER' }],
+      });
+
+      const user = await createTestUser({
+        email: 'oidc-role@example.com',
+        role: 'USER',
+      });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const result = await signInCallback({
+        user: { id: user.id, email: user.email, name: user.name },
+        account: { provider: 'oidc' },
+        profile: { groups: ['admins'] },
+      });
+
+      expect(result).toBe(true);
+
+      const updated = await testPrisma.user.findUnique({
+        where: { id: user.id },
+        select: { role: true },
+      });
+
+      expect(updated?.role).toBe('USER');
+    });
+
+    it('syncs profile attributes from OIDC claims', async () => {
+      await seedOidcConfig({
+        profileMapping: {
+          department: 'dept',
+          jobTitle: 'title',
+          avatarUrl: 'picture',
+        },
+      });
+
+      const user = await createTestUser({
+        email: 'oidc-user@example.com',
+        department: 'Old Department',
+        jobTitle: 'Old Title',
+        avatarUrl: 'https://old.example.com/avatar.png',
+      });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const result = await signInCallback({
+        user: { id: user.id, email: user.email, name: user.name },
+        account: { provider: 'oidc' },
+        profile: {
+          dept: 'Engineering',
+          title: 'Staff Engineer',
+          picture: 'https://example.com/avatar.png',
+        },
+      });
+
+      expect(result).toBe(true);
+
+      const updated = await testPrisma.user.findUnique({
+        where: { id: user.id },
+        select: { department: true, jobTitle: true, avatarUrl: true, lastOidcSync: true },
+      });
+
+      expect(updated?.department).toBe('Engineering');
+      expect(updated?.jobTitle).toBe('Staff Engineer');
+      expect(updated?.avatarUrl).toBe('https://example.com/avatar.png');
+      expect(updated?.lastOidcSync).not.toBeNull();
     });
   });
 
@@ -137,7 +367,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       // Simulate name change in DB
       await testPrisma.user.update({
         where: { id: user.id },
-        data: { name: 'New Name', role: 'ADMIN' }
+        data: { name: 'New Name', role: 'ADMIN' },
       });
 
       const jwtCallback = authOptions.callbacks?.jwt as unknown as (args: {
