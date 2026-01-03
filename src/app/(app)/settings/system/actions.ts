@@ -259,6 +259,221 @@ export async function saveEncryptionKey(
     })
   );
 
+  // CRITICAL: Update the fingerprint to match the new key
+  // Otherwise the system will lock out writes due to mismatch
+  const { getFingerprint } = await import('@/lib/encryption');
+  const fingerprint = getFingerprint(key);
+  await prisma.systemConfig.upsert({
+    where: { key: 'encryption_fingerprint' },
+    create: { key: 'encryption_fingerprint', value: { fingerprint } },
+    update: { value: { fingerprint } },
+  });
+
+  // Update Canary
+  const { encryptWithKey } = await import('@/lib/encryption');
+  const canaryCipher = await encryptWithKey('OPS_SENTINAL_CRYPTO_CHECK', key);
+  await prisma.systemConfig.upsert({
+    where: { key: 'encryption_canary' },
+    create: { key: 'encryption_canary', value: { encrypted: canaryCipher } },
+    update: { value: { encrypted: canaryCipher } },
+  });
+
   revalidatePath('/settings/system');
   return { success: true };
+}
+
+/**
+ * Rotate System Encryption Key (Advanced)
+ * Decrypts all data with old key and re-encrypts with new key.
+ */
+export async function rotateSystemEncryptionKey(
+  prevState: { error?: string | null; success?: boolean } | undefined,
+  formData: FormData
+): Promise<{ error?: string | null; success?: boolean }> {
+  try {
+    await assertAdmin();
+
+    const newKey = (formData.get('encryptionKey') as string | null)?.trim() ?? '';
+    const confirm = formData.get('confirm') === 'on';
+
+    if (!newKey || !/^[0-9a-fA-F]{64}$/.test(newKey)) {
+      return { error: 'Invalid new key format.' };
+    }
+    if (!confirm) {
+      return { error: 'Please confirm that you understand the risks.' };
+    }
+
+    const { getEncryptionKey, decryptWithKey, encryptWithKey, getFingerprint } =
+      await import('@/lib/encryption');
+    const oldKey = await getEncryptionKey();
+
+    if (!oldKey) {
+      // If no old key exists, just save the new one (bootstrap mode)
+      // But we should use saveEncryptionKey for that.
+      // Rotation implies shifting data.
+      return { error: 'No existing key found to rotate from. Use standard save.' };
+    }
+
+    if (oldKey === newKey) {
+      return { error: 'New key must be different from current key.' };
+    }
+
+    // 1. Fetch all encrypted data
+    const oidcConfigs = await prisma.oidcConfig.findMany();
+    const slackOAuths = await prisma.slackOAuthConfig.findMany();
+    const slackIntegrations = await prisma.slackIntegration.findMany();
+
+    // 2. Prepare updates (Fail Check first)
+    const oidcUpdates: { id: string; clientSecret: string }[] = [];
+    for (const config of oidcConfigs) {
+      if (!config.clientSecret) continue;
+      try {
+        const plain = await decryptWithKey(config.clientSecret, oldKey);
+        const reEncrypted = await encryptWithKey(plain, newKey);
+        oidcUpdates.push({ id: config.id, clientSecret: reEncrypted });
+      } catch (e) {
+        return {
+          error: `Rotation Aborted: Failed to decrypt OIDC Config (ID: ${config.id}). Data consistency check failed.`,
+        };
+      }
+    }
+
+    const slackOUpdates: { id: string; clientSecret: string }[] = [];
+    for (const config of slackOAuths) {
+      if (!config.clientSecret) continue;
+      try {
+        const plain = await decryptWithKey(config.clientSecret, oldKey);
+        const reEncrypted = await encryptWithKey(plain, newKey);
+        slackOUpdates.push({ id: config.id, clientSecret: reEncrypted });
+      } catch (e) {
+        return { error: `Rotation Aborted: Failed to decrypt Slack OAuth (ID: ${config.id}).` };
+      }
+    }
+
+    const slackIntUpdates: { id: string; botToken: string; signingSecret: string | null }[] = [];
+    for (const int of slackIntegrations) {
+      try {
+        const plainBot = await decryptWithKey(int.botToken, oldKey);
+        const reBot = await encryptWithKey(plainBot, newKey);
+
+        let reSign = null;
+        if (int.signingSecret) {
+          const plainSign = await decryptWithKey(int.signingSecret, oldKey);
+          reSign = await encryptWithKey(plainSign, newKey);
+        }
+        slackIntUpdates.push({ id: int.id, botToken: reBot, signingSecret: reSign });
+      } catch (e) {
+        return {
+          error: `Rotation Aborted: Failed to decrypt Slack Workspace (ID: ${int.workspaceId}).`,
+        };
+      }
+    }
+
+    // 3. Execute Transaction
+    await prisma.$transaction(async tx => {
+      // Update OIDC
+      for (const up of oidcUpdates) {
+        await tx.oidcConfig.update({
+          where: { id: up.id },
+          data: { clientSecret: up.clientSecret },
+        });
+      }
+      // Update Slack OAuth
+      for (const up of slackOUpdates) {
+        await tx.slackOAuthConfig.update({
+          where: { id: up.id },
+          data: { clientSecret: up.clientSecret },
+        });
+      }
+      // Update Slack Integrations
+      for (const up of slackIntUpdates) {
+        await tx.slackIntegration.update({
+          where: { id: up.id },
+          data: {
+            botToken: up.botToken,
+            ...(up.signingSecret ? { signingSecret: up.signingSecret } : {}),
+          },
+        });
+      }
+
+      // Update System Key and Fingerprint
+      const fingerprint = getFingerprint(newKey);
+      await tx.systemSettings.upsert({
+        where: { id: 'default' },
+        create: { encryptionKey: newKey },
+        update: { encryptionKey: newKey },
+      });
+
+      // Update Fingerprint (using untyped `any` for value field since it's JSON)
+      // Update Fingerprint
+      await tx.systemConfig.upsert({
+        where: { key: 'encryption_fingerprint' },
+        create: { key: 'encryption_fingerprint', value: { fingerprint } },
+        update: { value: { fingerprint } },
+      });
+
+      // Update Canary (Re-encrypt static plaintext with NEW key)
+      const canaryCipher = await encryptWithKey('OPS_SENTINAL_CRYPTO_CHECK', newKey);
+      await tx.systemConfig.upsert({
+        where: { key: 'encryption_canary' },
+        create: { key: 'encryption_canary', value: { encrypted: canaryCipher } },
+        update: { value: { encrypted: canaryCipher } },
+      });
+    });
+
+    const user = await getCurrentUser();
+    await import('@/lib/audit').then(m =>
+      m.logAudit({
+        action: 'system.encryption_key.rotated',
+        entityType: 'USER',
+        entityId: user.id,
+        actorId: user.id,
+        details: { countOidc: oidcUpdates.length, countSlack: slackIntUpdates.length },
+      })
+    );
+
+    revalidatePath('/settings/system');
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Rotation failed.' };
+  }
+}
+
+/**
+ * Smart Router for Encryption Key Management
+ * Handles: Bootstrap, Rotation, and Emergency Recovery
+ */
+export async function manageEncryptionKey(
+  prevState: { error?: string | null; success?: boolean } | undefined,
+  formData: FormData
+): Promise<{ error?: string | null; success?: boolean }> {
+  try {
+    await assertAdmin();
+
+    const { getEncryptionKey, validateCanary } = await import('@/lib/encryption');
+    const existingKey = await getEncryptionKey(); // Returns null if invalid/canary-fail
+
+    // Case 1: Recovery Mode (System Locked)
+    // getEncryptionKey returns null if canary fails, BUT we need to check if a key actually EXISTS in DB to distinguish from Bootstrap.
+    // We can check prisma directly or rely on the fact that if getEncryptionKey is null but DB has data...
+    const dbSettings = await prisma.systemSettings.findUnique({ where: { id: 'default' } });
+    const hasRawKey = !!dbSettings?.encryptionKey;
+
+    if (hasRawKey && !existingKey) {
+      // Key exists but is invalid (Canary failed).
+      // Action: Emergency Restore (Overwrite Key)
+      return saveEncryptionKey(prevState, formData);
+    }
+
+    // Case 2: Bootstrap (First Time Setup)
+    if (!hasRawKey) {
+      return saveEncryptionKey(prevState, formData);
+    }
+
+    // Case 3: Rotation (Normal Operation)
+    // Key exists and is valid. Use Rotation Logic.
+    return rotateSystemEncryptionKey(prevState, formData);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Operation failed' };
+  }
 }

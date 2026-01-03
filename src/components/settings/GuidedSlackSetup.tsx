@@ -180,14 +180,14 @@ export default function GuidedSlackSetup() {
                 <strong>&quot;Bot Token Scopes&quot;</strong> and add these:
               </p>
               <div className="settings-slack-scopes">
-                {['chat:write', 'channels:read'].map(scope => (
+                {['chat:write', 'channels:read', 'channels:join', 'groups:read'].map(scope => (
                   <code key={scope} className="settings-slack-scope">
                     {scope}
                   </code>
                 ))}
               </div>
               <p className="settings-muted">
-                Click &quot;Add an OAuth Scope&quot; and search for each scope above
+                Add all scopes above. <strong>groups:read</strong> is required for private channels.
               </p>
             </div>
 

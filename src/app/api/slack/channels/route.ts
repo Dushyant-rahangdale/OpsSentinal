@@ -141,12 +141,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const channelId = typeof body?.channelId === 'string' ? body.channelId : null;
+    const serviceId = typeof body?.serviceId === 'string' ? body.serviceId : null;
 
     if (!channelId) {
       return NextResponse.json({ error: 'Channel ID is required' }, { status: 400 });
     }
 
-    const botToken = await resolveSlackBotToken(null);
+    const botToken = await resolveSlackBotToken(serviceId);
     if (!botToken) {
       return NextResponse.json(
         { error: 'Slack bot token not configured. Please connect Slack workspace first.' },

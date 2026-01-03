@@ -8,7 +8,26 @@ import { getCurrentUser } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
+import { getAppUrl } from '@/lib/app-url';
 import crypto from 'crypto';
+
+const isLocalhostUrl = (value: string) =>
+  value.includes('localhost') || value.includes('127.0.0.1');
+
+const getRequestOrigin = (request: NextRequest): string | null => {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  if (forwardedHost) {
+    const protocol = forwardedProto?.split(',')[0]?.trim() || 'https';
+    return `${protocol}://${forwardedHost}`;
+  }
+
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return null;
+  }
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +51,6 @@ export async function GET(request: NextRequest) {
         ? await decrypt(config.clientSecret)
         : process.env.SLACK_CLIENT_SECRET;
     } catch (decryptError: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       logger.error('[Slack] Failed to decrypt Slack Client Secret', {
         error: decryptError.message,
         configId: config?.id,
@@ -45,9 +63,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch system settings for App URL fallback
-    const settings = await prisma.systemSettings.findFirst();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || settings?.appUrl || 'http://localhost:3000';
+    const configuredAppUrl = await getAppUrl();
+    const requestOrigin = getRequestOrigin(request);
+    const appUrl =
+      requestOrigin && isLocalhostUrl(configuredAppUrl) && !isLocalhostUrl(requestOrigin)
+        ? requestOrigin
+        : configuredAppUrl;
 
     const SLACK_REDIRECT_URI =
       config?.redirectUri || process.env.SLACK_REDIRECT_URI || `${appUrl}/api/slack/oauth/callback`;
@@ -78,6 +99,7 @@ export async function GET(request: NextRequest) {
     const scopes = [
       'chat:write',
       'channels:read',
+      'channels:join',
       'groups:read',
       'im:read',
       'mpim:read',
@@ -123,7 +145,6 @@ export async function GET(request: NextRequest) {
     logger.info('[Slack] Redirecting to Slack OAuth', { state, hasServiceId: !!serviceId });
     return response;
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('[Slack] OAuth initiation unexpected error', {
       error: error.message,
       stack: error.stack,

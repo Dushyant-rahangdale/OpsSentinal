@@ -49,7 +49,7 @@ export default function ServiceNotificationSettings({
     if (slackIntegration) {
       setLoadingChannels(true); // eslint-disable-line react-hooks/set-state-in-effect
       setChannelsError(null);
-      fetch('/api/slack/channels')
+      fetch(`/api/slack/channels?serviceId=${encodeURIComponent(serviceId)}`)
         .then(async res => {
           const data = await res.json();
           if (!res.ok) {
@@ -123,7 +123,7 @@ export default function ServiceNotificationSettings({
       const response = await fetch('/api/slack/channels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId: channel.id }),
+        body: JSON.stringify({ channelId: channel.id, serviceId }),
       });
 
       const data = await response.json();
@@ -131,7 +131,7 @@ export default function ServiceNotificationSettings({
         const errorCode = typeof data?.error === 'string' ? data.error : 'unknown_error';
         const friendlyMessage =
           errorCode === 'missing_scope'
-            ? 'Missing Slack scope: channels:join. Update scopes and reinstall the app.'
+            ? 'Missing Slack scope: channels:join. Update scopes and reconnect the Slack app.'
             : errorCode === 'not_allowed' || errorCode === 'restricted_action'
               ? 'Slack blocked this action. Check app permissions and try again.'
               : errorCode === 'not_in_channel'

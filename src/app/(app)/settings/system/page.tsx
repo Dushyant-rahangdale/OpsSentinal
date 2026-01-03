@@ -58,11 +58,22 @@ export default async function SystemSettingsPage() {
       })
     );
 
-    oidcConfig = await import('@/lib/prisma').then(m =>
+    const rawOidcConfig = await import('@/lib/prisma').then(m =>
       m.default.oidcConfig.findFirst({
         orderBy: { updatedAt: 'desc' },
       })
     );
+
+    if (rawOidcConfig) {
+      oidcConfig = {
+        enabled: rawOidcConfig.enabled,
+        issuer: rawOidcConfig.issuer,
+        clientId: rawOidcConfig.clientId,
+        autoProvision: rawOidcConfig.autoProvision,
+        allowedDomains: rawOidcConfig.allowedDomains,
+        hasClientSecret: !!rawOidcConfig.clientSecret,
+      };
+    }
 
     if (systemSettings) {
       appUrlData.appUrl = systemSettings.appUrl;
@@ -74,6 +85,16 @@ export default async function SystemSettingsPage() {
   }
 
   const encryptionKeySet = Boolean(systemSettings?.encryptionKey);
+
+  // Check for System Lockout (Safe Mode)
+  let isSystemLocked = false;
+  if (systemSettings?.encryptionKey) {
+    const { validateCanary } = await import('@/lib/encryption');
+    const isSafe = await validateCanary(systemSettings.encryptionKey);
+    isSystemLocked = !isSafe;
+  }
+
+  const integrityCheck = await import('@/lib/oidc-config').then(m => m.checkOidcIntegrity());
 
   return (
     <SettingsPage
@@ -93,7 +114,7 @@ export default async function SystemSettingsPage() {
         title="Encryption Key"
         description="Required for securing sensitive credentials like SSO secrets."
       >
-        <EncryptionKeyForm hasKey={encryptionKeySet} />
+        <EncryptionKeyForm hasKey={encryptionKeySet} isSystemLocked={isSystemLocked} />
       </SettingsSectionCard>
 
       <SettingsSectionCard
@@ -104,6 +125,7 @@ export default async function SystemSettingsPage() {
           initialConfig={oidcConfig}
           callbackUrl={`${appUrlData.appUrl || 'https://your-ops-sentinel.com'}/api/auth/callback/oidc`}
           hasEncryptionKey={encryptionKeySet}
+          configError={integrityCheck.ok ? undefined : integrityCheck.error}
         />
       </SettingsSectionCard>
     </SettingsPage>

@@ -17,6 +17,7 @@ type Props = {
   } | null;
   callbackUrl: string;
   hasEncryptionKey: boolean;
+  configError?: string;
 };
 
 type State = {
@@ -33,7 +34,12 @@ function SubmitButton() {
   );
 }
 
-export default function SsoSettingsForm({ initialConfig, callbackUrl, hasEncryptionKey }: Props) {
+export default function SsoSettingsForm({
+  initialConfig,
+  callbackUrl,
+  hasEncryptionKey,
+  configError,
+}: Props) {
   const [state, formAction] = useActionState<State, FormData>(saveOidcConfig, {
     error: null,
     success: false,
@@ -59,6 +65,31 @@ export default function SsoSettingsForm({ initialConfig, callbackUrl, hasEncrypt
         >
           <span style={{ fontSize: '1.2em' }}>⚠️</span>
           ENCRYPTION_KEY is not configured. Set it before enabling or saving SSO secrets.
+        </div>
+      )}
+      {configError && (
+        <div
+          className="settings-alert"
+          style={{
+            border: '1px solid var(--color-error)',
+            color: 'var(--color-error)',
+            background: 'var(--surface-overlay)',
+            padding: '1rem',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}
+        >
+          <span style={{ fontSize: '1.2em' }}>⛔</span>
+          <div>
+            <strong>Configuration Error: </strong>
+            {configError}
+            <div style={{ marginTop: '0.5rem', fontSize: '0.9em' }}>
+              Please re-enter your Client Secret and save to resolve this issue.
+            </div>
+          </div>
         </div>
       )}
       <SettingRow
