@@ -74,8 +74,8 @@ export async function getIncidentContext(
     };
     existing.sum += rollup.sum;
     existing.count += rollup.count;
-    existing.min = Math.min(existing.min, rollup.min);
-    existing.max = Math.max(existing.max, rollup.max);
+    existing.min = Math.min(existing.min, rollup.min ?? Infinity);
+    existing.max = Math.max(existing.max, rollup.max ?? -Infinity);
     metricMap.set(rollup.name, existing);
   }
 

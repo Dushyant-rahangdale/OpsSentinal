@@ -26,11 +26,11 @@ export default function FilterChips({ filters, teams, services, users }: FilterC
         params.append(key, value);
       }
     });
-    router.push(`/analytics-new?${params.toString()}`);
+    router.push(`/analytics?${params.toString()}`);
   };
 
   const handleClearAll = () => {
-    router.push('/analytics-new');
+    router.push('/analytics');
   };
   const activeFilters: Array<{ type: string; label: string; value: string }> = [];
 

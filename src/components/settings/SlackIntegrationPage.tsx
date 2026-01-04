@@ -51,6 +51,15 @@ export default function SlackIntegrationPage({
   const [actionError, setActionError] = useState<string | null>(null);
   const [lastChannelsSync, setLastChannelsSync] = useState<Date | null>(null);
   const [visibleCount, setVisibleCount] = useState(50);
+  const [joiningChannelId, setJoiningChannelId] = useState<string | null>(null);
+  const [bulkConnecting, setBulkConnecting] = useState(false);
+  const [testingChannelId, setTestingChannelId] = useState<string | null>(null);
+  const [leavingChannelId, setLeavingChannelId] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{
+    channelId: string;
+    success: boolean;
+    message: string;
+  } | null>(null);
   const requiredScopes = ['chat:write', 'channels:read', 'channels:join'];
   const optionalScopes = ['groups:read'];
   const scopeSet = useMemo(() => new Set(integration?.scopes ?? []), [integration]);
@@ -144,6 +153,92 @@ export default function SlackIntegrationPage({
   useEffect(() => {
     setVisibleCount(50);
   }, [searchQuery, filter]);
+
+  const handleJoinChannel = async (channel: SlackChannel) => {
+    if (channel.isMember || channel.isPrivate || joiningChannelId) return;
+
+    setJoiningChannelId(channel.id);
+    setActionError(null);
+
+    try {
+      const response = await fetch('/api/slack/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: channel.id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const errorCode = typeof data?.error === 'string' ? data.error : 'unknown_error';
+        const friendlyMessage =
+          errorCode === 'missing_scope'
+            ? 'Missing Slack scope: channels:join. Reconnect the app with updated scopes.'
+            : errorCode === 'channel_not_found'
+              ? 'Channel not found. It may have been deleted.'
+              : `Failed to join channel: ${errorCode}`;
+        throw new Error(friendlyMessage);
+      }
+
+      // Update the channel list to reflect the bot is now a member
+      setChannels(prev => prev.map(ch => (ch.id === channel.id ? { ...ch, isMember: true } : ch)));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setActionError(errorMessage);
+      logger.error('Failed to join Slack channel', { error: errorMessage, channelId: channel.id });
+    } finally {
+      setJoiningChannelId(null);
+    }
+  };
+
+  const handleLeaveChannel = async (channel: { id: string; name: string }) => {
+    if (!confirm(`Are you sure you want the bot to leave #${channel.name}?`)) return;
+    setLeavingChannelId(channel.id);
+    setActionError(null);
+    try {
+      const response = await fetch('/api/slack/channels/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: channel.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to leave channel');
+      }
+      setChannels(prev => prev.map(c => (c.id === channel.id ? { ...c, isMember: false } : c)));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLeavingChannelId(null);
+    }
+  };
+
+  const handleBulkConnect = async () => {
+    const publicDisconnected = channels.filter(ch => !ch.isMember && !ch.isPrivate);
+    if (publicDisconnected.length === 0 || bulkConnecting) return;
+
+    setBulkConnecting(true);
+    setActionError(null);
+
+    for (const channel of publicDisconnected) {
+      try {
+        const response = await fetch('/api/slack/channels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelId: channel.id }),
+        });
+
+        if (response.ok) {
+          setChannels(prev =>
+            prev.map(ch => (ch.id === channel.id ? { ...ch, isMember: true } : ch))
+          );
+        }
+      } catch (error) {
+        logger.error('Bulk connect: failed to join channel', { channelId: channel.id });
+      }
+    }
+
+    setBulkConnecting(false);
+  };
 
   const getSlackChannelErrorMessage = (errorCode: string) => {
     const normalized = errorCode.toLowerCase();
@@ -447,6 +542,18 @@ export default function SlackIntegrationPage({
                     >
                       {loadingChannels ? 'Refreshing...' : 'Refresh'}
                     </button>
+                    {channelSummary.autoAdd > 0 && (
+                      <button
+                        type="button"
+                        className="status-page-button primary"
+                        onClick={() => void handleBulkConnect()}
+                        disabled={bulkConnecting || loadingChannels}
+                      >
+                        {bulkConnecting
+                          ? 'Connecting...'
+                          : `Connect ${channelSummary.autoAdd} public`}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="settings-slack-channel-filters">
@@ -560,36 +667,187 @@ export default function SlackIntegrationPage({
                     </p>
                   </div>
                 ) : (
-                  <div className="settings-slack-channel-grid">
-                    {visibleChannels.map(ch => (
-                      <div
-                        key={ch.id}
-                        className="settings-slack-channel-card-item settings-slack-channel-row"
-                      >
-                        <div className="settings-slack-channel-card">
-                          <div className="settings-slack-channel-title">
-                            <span className="channel-hash">#</span>
-                            <span className="channel-name" title={ch.name}>
-                              {ch.name}
-                            </span>
-                          </div>
-                          <div className="settings-slack-channel-meta">
-                            <span className="settings-slack-channel-type">
+                  <div className="slack-channel-list">
+                    {visibleChannels.map(ch => {
+                      const isJoining = joiningChannelId === ch.id;
+                      return (
+                        <div
+                          key={ch.id}
+                          className={`slack-channel-item ${ch.isMember ? 'connected' : ''}`}
+                        >
+                          {/* Channel Info */}
+                          <div className="slack-channel-info">
+                            <div className="slack-channel-name">
+                              {ch.isPrivate && (
+                                <svg
+                                  className="slack-channel-lock"
+                                  width="12"
+                                  height="12"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                                </svg>
+                              )}
+                              <span className="slack-channel-hash">#</span>
+                              <span className="slack-channel-text" title={ch.name}>
+                                {ch.name}
+                              </span>
+                            </div>
+                            <span className="slack-channel-type">
                               {ch.isPrivate ? 'Private' : 'Public'}
                             </span>
-                            <span className="settings-slack-channel-dot">•</span>
-                            <span className="settings-slack-channel-type">
-                              {ch.isMember ? 'Bot connected' : 'Bot not connected'}
-                            </span>
+                          </div>
+
+                          {/* Status Badge / Action */}
+                          <div className="slack-channel-status">
+                            {ch.isMember ? (
+                              <div className="slack-channel-actions">
+                                <span className="slack-status-badge connected">
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="3"
+                                  >
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  Connected
+                                </span>
+                                <button
+                                  type="button"
+                                  className="slack-test-btn"
+                                  onClick={async () => {
+                                    setTestingChannelId(ch.id);
+                                    setTestResult(null);
+                                    try {
+                                      const res = await fetch('/api/slack/test', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          channelId: ch.id,
+                                          channelName: ch.name,
+                                        }),
+                                      });
+                                      const data = await res.json();
+                                      setTestResult({
+                                        channelId: ch.id,
+                                        success: res.ok,
+                                        message: res.ok ? 'Test sent!' : data.error || 'Failed',
+                                      });
+                                    } catch {
+                                      setTestResult({
+                                        channelId: ch.id,
+                                        success: false,
+                                        message: 'Network error',
+                                      });
+                                    } finally {
+                                      setTestingChannelId(null);
+                                      setTimeout(() => setTestResult(null), 3000);
+                                    }
+                                  }}
+                                  disabled={testingChannelId === ch.id}
+                                  title="Send a test notification to this channel"
+                                >
+                                  {testingChannelId === ch.id ? (
+                                    <span className="slack-spinner" />
+                                  ) : testResult?.channelId === ch.id ? (
+                                    testResult.success ? (
+                                      '✓'
+                                    ) : (
+                                      '✗'
+                                    )
+                                  ) : (
+                                    'Test'
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="slack-disconnect-btn"
+                                  onClick={() => void handleLeaveChannel(ch)}
+                                  disabled={
+                                    leavingChannelId === ch.id || testingChannelId === ch.id
+                                  }
+                                  title="Disconnect bot from channel"
+                                >
+                                  {leavingChannelId === ch.id ? (
+                                    <span
+                                      className="slack-spinner"
+                                      style={{ width: 10, height: 10, borderTopColor: '#dc2626' }}
+                                    />
+                                  ) : (
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
+                                      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                                      <line x1="12" y1="2" x2="12" y2="12" />
+                                    </svg>
+                                  )}
+                                </button>
+                              </div>
+                            ) : ch.isPrivate ? (
+                              <span
+                                className="slack-status-badge invite"
+                                title="Invite the bot in Slack: /invite @YourBotName"
+                              >
+                                <svg
+                                  width="12"
+                                  height="12"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                                </svg>
+                                Invite Required
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="slack-status-badge action"
+                                onClick={() => void handleJoinChannel(ch)}
+                                disabled={isJoining}
+                              >
+                                {isJoining ? (
+                                  <>
+                                    <span className="slack-spinner" />
+                                    Joining...
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg
+                                      width="12"
+                                      height="12"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
+                                      <circle cx="12" cy="12" r="10" />
+                                      <line x1="12" y1="8" x2="12" y2="16" />
+                                      <line x1="8" y1="12" x2="16" y2="12" />
+                                    </svg>
+                                    Connect
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
-                        <span
-                          className={`settings-slack-pill ${ch.isMember ? 'active' : 'disabled'}`}
-                        >
-                          {ch.isMember ? 'connected' : ch.isPrivate ? 'invite bot' : 'auto-add'}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {!searchQuery && filteredChannels.length > visibleCount && (
                       <div className="settings-slack-channel-more">
                         <button

@@ -197,7 +197,7 @@ export default function HeatmapCalendar({
             style={{ transition: 'all 0.2s ease', cursor: 'default' }}
           >
             {cell.count >= 0 && (
-              <title>{`${cell.date.toLocaleDateString()}: ${cell.count} incident${cell.count !== 1 ? 's' : ''}`}</title>
+              <title>{`${cell.date.getMonth() + 1}/${cell.date.getDate()}/${cell.date.getFullYear()}: ${cell.count} incident${cell.count !== 1 ? 's' : ''}`}</title>
             )}
           </rect>
         ))}

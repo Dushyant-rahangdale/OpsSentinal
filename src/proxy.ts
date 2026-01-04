@@ -1,4 +1,4 @@
-﻿import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
@@ -141,7 +141,7 @@ function getSecurityHeaders(): Record<string, string> {
   };
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const origin = req.headers.get('origin');
 
@@ -153,17 +153,7 @@ export async function middleware(req: NextRequest) {
     response.headers.set(key, value);
   });
 
-  // Fire-and-Forget Telemetry (Non-blocking)
-  // We calculate duration based on processing time up to here.
-  // Note: In Next.js middleware, we can't easily hook 'after' response is sent without custom server,
-  // so this measures middleware + routing overhead, which is a good proxy for latency.
-  // For full execution time, we'd need to wrap API handlers, but this is a great global catch-all.
-  const duration = Date.now() - start;
-  import('./middleware/telemetry-middleware')
-    .then(({ recordRequestTelemetry }) => {
-      recordRequestTelemetry(req, response.status, duration);
-    })
-    .catch(err => logger.error('Telemetry Load Error', { error: err }));
+  // Telemetry removed - using standard logging instead
 
   // ===== MOBILE DEVICE REDIRECT =====
   // Redirect mobile users to /m/* routes for optimized mobile experience

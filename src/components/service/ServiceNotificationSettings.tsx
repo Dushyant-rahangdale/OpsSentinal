@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { logger } from '@/lib/logger';
 
 type ServiceNotificationSettingsProps = {
@@ -21,6 +21,9 @@ type ServiceNotificationSettingsProps = {
     url: string;
     enabled: boolean;
   }>;
+  serviceNotifyOnTriggered: boolean;
+  serviceNotifyOnAck: boolean;
+  serviceNotifyOnResolved: boolean;
 };
 
 export default function ServiceNotificationSettings({
@@ -30,8 +33,14 @@ export default function ServiceNotificationSettings({
   slackWebhookUrl,
   slackIntegration,
   webhookIntegrations,
+  serviceNotifyOnTriggered,
+  serviceNotifyOnAck,
+  serviceNotifyOnResolved,
 }: ServiceNotificationSettingsProps) {
   const [channels, setChannels] = useState<string[]>(serviceNotificationChannels || []);
+  const [notifyOnTriggered, setNotifyOnTriggered] = useState(serviceNotifyOnTriggered ?? true);
+  const [notifyOnAck, setNotifyOnAck] = useState(serviceNotifyOnAck ?? true);
+  const [notifyOnResolved, setNotifyOnResolved] = useState(serviceNotifyOnResolved ?? true);
   const [selectedSlackChannel, setSelectedSlackChannel] = useState(slackChannel || '');
   const [slackChannels, setSlackChannels] = useState<
     Array<{ id: string; name: string; isMember: boolean; isPrivate: boolean }>
@@ -43,6 +52,62 @@ export default function ServiceNotificationSettings({
     message: string | null;
     channelId: string | null;
   }>({ status: 'idle', message: null, channelId: null });
+  const [testState, setTestState] = useState<{
+    testing: boolean;
+    result: 'success' | 'error' | null;
+  }>({ testing: false, result: null });
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  // Validation effect
+  useEffect(() => {
+    if (!selectRef.current) return;
+
+    if (!selectedSlackChannel) {
+      selectRef.current.setCustomValidity('');
+      return;
+    }
+
+    const channel = slackChannels.find(ch => ch.name === selectedSlackChannel);
+    if (channel && !channel.isMember) {
+      selectRef.current.setCustomValidity('Bot must be connected to this channel before saving.');
+    } else {
+      selectRef.current.setCustomValidity('');
+    }
+  }, [selectedSlackChannel, slackChannels]);
+
+  const refreshChannels = () => {
+    if (!slackIntegration) return;
+    setLoadingChannels(true);
+    setChannelsError(null);
+    fetch(`/api/slack/channels?serviceId=${encodeURIComponent(serviceId)}`)
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load channels');
+        return data;
+      })
+      .then(data => {
+        if (data.channels) setSlackChannels(data.channels);
+      })
+      .catch(err => setChannelsError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoadingChannels(false));
+  };
+
+  const handleTestNotification = async () => {
+    const channel = slackChannels.find(ch => ch.name === selectedSlackChannel);
+    if (!channel || !channel.isMember) return;
+    setTestState({ testing: true, result: null });
+    try {
+      const res = await fetch('/api/slack/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: channel.id, channelName: channel.name }),
+      });
+      setTestState({ testing: false, result: res.ok ? 'success' : 'error' });
+      setTimeout(() => setTestState({ testing: false, result: null }), 3000);
+    } catch {
+      setTestState({ testing: false, result: 'error' });
+    }
+  };
 
   // Fetch Slack channels when Slack is selected or integration exists
   useEffect(() => {
@@ -77,45 +142,44 @@ export default function ServiceNotificationSettings({
     }
   }, [slackIntegration]);
 
-  const handleSlackChannelChange = async (channelName: string) => {
+  const handleSlackChannelChange = (channelName: string) => {
     setSelectedSlackChannel(channelName);
+    setJoinState({ status: 'idle', message: null, channelId: null });
 
-    if (!channelName) {
-      setJoinState({ status: 'idle', message: null, channelId: null });
-      return;
-    }
+    if (!channelName) return;
 
     const channel = slackChannels.find(ch => ch.name === channelName);
-    if (!channel) {
-      setJoinState({
-        status: 'error',
-        message: 'Selected channel not found. Refresh the list and try again.',
-        channelId: null,
-      });
-      return;
-    }
+    if (!channel) return;
 
+    // Just show status information - do NOT auto-join
     if (channel.isMember) {
       setJoinState({
         status: 'success',
-        message: `Bot already has access to #${channel.name}.`,
+        message: `✓ Bot is connected to #${channel.name}. Ready to send notifications.`,
         channelId: channel.id,
       });
-      return;
-    }
-
-    if (channel.isPrivate) {
+    } else if (channel.isPrivate) {
       setJoinState({
         status: 'error',
-        message: `Private channel. Invite the bot in Slack with /invite @OpsSentinal, then refresh.`,
+        message: `⚠️ Bot is NOT connected to #${channel.name}. For private channels, invite the bot in Slack using: /invite @OpsSentinal`,
         channelId: channel.id,
       });
-      return;
+    } else {
+      setJoinState({
+        status: 'error',
+        message: `⚠️ Bot is NOT connected to #${channel.name}. Click "Connect Bot" below to add the bot to this channel.`,
+        channelId: channel.id,
+      });
     }
+  };
+
+  const handleConnectBot = async () => {
+    const channel = slackChannels.find(ch => ch.name === selectedSlackChannel);
+    if (!channel || channel.isMember || channel.isPrivate) return;
 
     setJoinState({
       status: 'joining',
-      message: `Adding bot to #${channel.name}...`,
+      message: `Connecting bot to #${channel.name}...`,
       channelId: channel.id,
     });
 
@@ -151,7 +215,7 @@ export default function ServiceNotificationSettings({
       );
       setJoinState({
         status: 'success',
-        message: `Bot added to #${channel.name}.`,
+        message: `✓ Bot connected to #${channel.name}. Ready to send notifications.`,
         channelId: channel.id,
       });
     } catch (error) {
@@ -263,6 +327,81 @@ export default function ServiceNotificationSettings({
               {channel}
             </label>
           ))}
+        </div>
+
+        <div
+          style={{
+            marginTop: '1.5rem',
+            borderTop: '1px solid var(--border)',
+            paddingTop: '1.5rem',
+          }}
+        >
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '0.75rem',
+              fontWeight: '600',
+              fontSize: '0.95rem',
+              color: 'var(--text-primary)',
+            }}
+          >
+            Notification Events
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={notifyOnTriggered}
+                onChange={e => setNotifyOnTriggered(e.target.checked)}
+              />
+              Notify when incident is <strong>TRIGGERED</strong>
+            </label>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={notifyOnAck}
+                onChange={e => setNotifyOnAck(e.target.checked)}
+              />
+              Notify when incident is <strong>ACKNOWLEDGED</strong>
+            </label>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={notifyOnResolved}
+                onChange={e => setNotifyOnResolved(e.target.checked)}
+              />
+              Notify when incident is <strong>RESOLVED</strong>
+            </label>
+          </div>
+
+          {/* Hidden inputs for form submission */}
+          <input type="hidden" name="serviceNotifyOnTriggered" value={String(notifyOnTriggered)} />
+          <input type="hidden" name="serviceNotifyOnAck" value={String(notifyOnAck)} />
+          <input type="hidden" name="serviceNotifyOnResolved" value={String(notifyOnResolved)} />
         </div>
       </div>
 
@@ -442,63 +581,266 @@ export default function ServiceNotificationSettings({
                 </p>
               ) : (
                 <>
-                  <select
-                    name="slackChannel"
-                    value={selectedSlackChannel}
-                    onChange={e => handleSlackChannelChange(e.target.value)}
-                    className="focus-border"
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid var(--border)',
-                      borderRadius: '6px',
-                      fontSize: '0.9rem',
-                      background: 'white',
-                      cursor: 'pointer',
-                      fontWeight: selectedSlackChannel ? '500' : '400',
-                    }}
-                  >
-                    <option value="">Choose a channel...</option>
-                    {slackChannels.map(ch => (
-                      <option key={ch.id} value={ch.name}>
-                        #{ch.name}
-                        {ch.isPrivate ? ' (private)' : ''}
-                        {ch.isMember ? '' : ch.isPrivate ? ' (invite bot)' : ' (auto-add)'}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Channel selector with refresh button */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                    <select
+                      ref={selectRef}
+                      name="slackChannel"
+                      value={selectedSlackChannel}
+                      onChange={e => handleSlackChannelChange(e.target.value)}
+                      className="focus-border"
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '6px',
+                        fontSize: '0.9rem',
+                        background: 'white',
+                        cursor: 'pointer',
+                        fontWeight: selectedSlackChannel ? '500' : '400',
+                      }}
+                    >
+                      <option value="">Choose a channel...</option>
+                      {slackChannels.map(ch => (
+                        <option key={ch.id} value={ch.name}>
+                          #{ch.name}
+                          {ch.isPrivate ? ' 🔒' : ''}
+                          {ch.isMember ? ' ✓' : ' ⚠️'}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={refreshChannels}
+                      disabled={loadingChannels}
+                      title="Refresh channel list"
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        background: '#f1f5f9',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        cursor: loadingChannels ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {loadingChannels ? (
+                        <span
+                          style={{
+                            width: 16,
+                            height: 16,
+                            border: '2px solid #94a3b8',
+                            borderTopColor: '#475569',
+                            borderRadius: '50%',
+                            animation: 'spin 0.6s linear infinite',
+                          }}
+                        />
+                      ) : (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#475569"
+                          strokeWidth="2"
+                        >
+                          <polyline points="23 4 23 10 17 10" />
+                          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Action buttons row */}
+                  {selectedSlackChannel &&
+                    (() => {
+                      const channel = slackChannels.find(ch => ch.name === selectedSlackChannel);
+                      if (channel?.isMember) {
+                        return (
+                          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => void handleTestNotification()}
+                              disabled={testState.testing}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background:
+                                  testState.result === 'success'
+                                    ? '#dcfce7'
+                                    : testState.result === 'error'
+                                      ? '#fee2e2'
+                                      : '#f1f5f9',
+                                color:
+                                  testState.result === 'success'
+                                    ? '#166534'
+                                    : testState.result === 'error'
+                                      ? '#991b1b'
+                                      : '#475569',
+                                border: `1px solid ${testState.result === 'success' ? '#86efac' : testState.result === 'error' ? '#fecaca' : '#e2e8f0'}`,
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                cursor: testState.testing ? 'wait' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                              }}
+                            >
+                              {testState.testing ? (
+                                <>
+                                  <span
+                                    style={{
+                                      width: 12,
+                                      height: 12,
+                                      border: '2px solid #94a3b8',
+                                      borderTopColor: '#475569',
+                                      borderRadius: '50%',
+                                      animation: 'spin 0.6s linear infinite',
+                                    }}
+                                  />
+                                  Sending...
+                                </>
+                              ) : testState.result === 'success' ? (
+                                '✓ Test Sent!'
+                              ) : testState.result === 'error' ? (
+                                '✗ Failed'
+                              ) : (
+                                <>
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path d="M22 2L11 13" />
+                                    <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                                  </svg>
+                                  Send Test
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                  {/* Status message */}
                   {joinState.status !== 'idle' && joinState.message && (
                     <div
                       style={{
                         marginTop: '0.75rem',
-                        padding: '0.6rem 0.75rem',
+                        padding: '0.75rem 1rem',
                         background: joinStateStyle.background,
                         border: `1px solid ${joinStateStyle.border}`,
                         borderRadius: '6px',
                       }}
                     >
-                      <p style={{ fontSize: '0.85rem', color: joinStateStyle.color, margin: 0 }}>
+                      <p
+                        style={{
+                          fontSize: '0.85rem',
+                          color: joinStateStyle.color,
+                          margin: 0,
+                          lineHeight: 1.5,
+                        }}
+                      >
                         {joinState.message}
                       </p>
                     </div>
                   )}
-                  {selectedSlackChannel && (
-                    <p
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--text-secondary)',
-                        marginTop: '0.5rem',
-                      }}
-                    >
-                      Notifications will be sent to #{selectedSlackChannel}.
-                    </p>
-                  )}
-                  <p
-                    style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}
+
+                  {/* Connect Bot button - only for public, non-connected channels */}
+                  {selectedSlackChannel &&
+                    (() => {
+                      const channel = slackChannels.find(ch => ch.name === selectedSlackChannel);
+                      if (channel && !channel.isMember && !channel.isPrivate) {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => void handleConnectBot()}
+                            disabled={joinState.status === 'joining'}
+                            style={{
+                              marginTop: '0.75rem',
+                              padding: '0.6rem 1.25rem',
+                              background: joinState.status === 'joining' ? '#94a3b8' : '#2563eb',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              cursor: joinState.status === 'joining' ? 'wait' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            {joinState.status === 'joining' ? (
+                              <>
+                                <span
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    border: '2px solid rgba(255,255,255,0.3)',
+                                    borderTopColor: 'white',
+                                    borderRadius: '50%',
+                                    animation: 'spin 0.6s linear infinite',
+                                  }}
+                                />
+                                Connecting...
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <line x1="12" y1="8" x2="12" y2="16" />
+                                  <line x1="8" y1="12" x2="16" y2="12" />
+                                </svg>
+                                Connect Bot to Channel
+                              </>
+                            )}
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                  {/* Instructions */}
+                  <div
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.75rem',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                    }}
                   >
-                    Public channels can be auto-added. For private channels, invite the bot in Slack
-                    before selecting. Save changes after selecting.
-                  </p>
+                    <p
+                      style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, lineHeight: 1.6 }}
+                    >
+                      <strong>How it works:</strong>
+                      <br />
+                      • ✓ = Bot is connected and ready
+                      <br />
+                      • ⚠️ = Bot needs to be connected first
+                      <br />• For <strong>public channels</strong>: Click "Connect Bot" button above
+                      <br />• For <strong>private channels</strong> 🔒: Run{' '}
+                      <code
+                        style={{ background: '#e2e8f0', padding: '0.1rem 0.3rem', borderRadius: 3 }}
+                      >
+                        /invite @OpsSentinal
+                      </code>{' '}
+                      in Slack
+                    </p>
+                  </div>
                 </>
               )}
             </div>

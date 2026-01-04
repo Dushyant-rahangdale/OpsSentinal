@@ -5,11 +5,11 @@ import { describe, it, expect } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const pagePath = path.resolve(__dirname, '../../src/app/(app)/analytics-new/page.tsx');
-const cssPath = path.resolve(__dirname, '../../src/app/(app)/analytics-new/analytics-v2.css');
+const pagePath = path.resolve(__dirname, '../../src/app/(app)/analytics/page.tsx');
+const cssPath = path.resolve(__dirname, '../../src/app/(app)/analytics/analytics-v2.css');
 
-describe('analytics-new panel overhaul', () => {
-  it('adds panel hooks in the analytics-new page', () => {
+describe('Analytics panel structure', () => {
+  it('contains expected panel hooks in the analytics page', () => {
     const page = readFileSync(pagePath, 'utf8');
     const hooks = [
       'v2-panel-insights',

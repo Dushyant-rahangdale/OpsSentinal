@@ -208,7 +208,7 @@ export default async function SystemSettingsPage() {
                 </div>
                 <SsoSettingsForm
                   initialConfig={oidcConfig}
-                  callbackUrl={`${appUrlData.appUrl || 'https://your-ops-sentinel.com'}/api/auth/callback/oidc`}
+                  callbackUrl={`${appUrlData.appUrl || appUrlData.fallback}/api/auth/callback/oidc`}
                   hasEncryptionKey={encryptionKeySet}
                   configError={integrityCheck.ok ? undefined : integrityCheck.error}
                 />

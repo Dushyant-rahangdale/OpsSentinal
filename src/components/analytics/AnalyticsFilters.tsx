@@ -25,7 +25,7 @@ export default function AnalyticsFilters({
 }: AnalyticsFiltersProps) {
   const statusOptions = ['ALL', 'OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
   const urgencyOptions = ['ALL', 'HIGH', 'LOW'];
-  const windowOptions = [1, 3, 7, 14, 30, 60, 90];
+  const windowOptions = [1, 3, 7, 14, 30, 60, 90, 180, 365];
 
   const getUserName = (user: { name: string | null; email: string | null }) => {
     return user.name || user.email || 'Unknown user';
@@ -114,7 +114,7 @@ export default function AnalyticsFilters({
           <button type="submit" className="analytics-primary-button">
             Apply Filters
           </button>
-          <a href="/analytics-new" className="analytics-ghost-button">
+          <a href="/analytics" className="analytics-ghost-button">
             Reset
           </a>
         </div>

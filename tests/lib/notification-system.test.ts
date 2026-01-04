@@ -141,7 +141,7 @@ describe('Notification System Tests', () => {
 
       (vi.mocked(prisma.user.create) as any).mockImplementation(({ data }: any) =>
         Promise.resolve({ id: data.email === 'user1@example.com' ? user1Id : user2Id, ...data })
-      ); // eslint-disable-line @typescript-eslint/no-explicit-any
+      );
 
       vi.mocked(prisma.onCallSchedule.findUnique).mockResolvedValue({
         id: scheduleId,

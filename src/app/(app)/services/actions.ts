@@ -9,159 +9,178 @@ import { assertAdminOrResponder, assertAdmin } from '@/lib/rbac';
 import { assertServiceNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 
 export async function createIntegration(formData: FormData) {
-    try {
-        await assertAdminOrResponder();
-    } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized');
-    }
-    const serviceId = formData.get('serviceId') as string;
-    const name = formData.get('name') as string;
-    const type = formData.get('type') as string || 'EVENTS_API_V2';
+  try {
+    await assertAdminOrResponder();
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unauthorized');
+  }
+  const serviceId = formData.get('serviceId') as string;
+  const name = formData.get('name') as string;
+  const type = (formData.get('type') as string) || 'EVENTS_API_V2';
 
-    if (!serviceId || !name) {
-        throw new Error('Missing required fields');
-    }
+  if (!serviceId || !name) {
+    throw new Error('Missing required fields');
+  }
 
-    // Generate a random 32-char hex key
-    const key = randomBytes(16).toString('hex');
+  // Generate a random 32-char hex key
+  const key = randomBytes(16).toString('hex');
 
-    await prisma.integration.create({
-        data: {
-            name,
-            serviceId,
-            type,
-            key,
-        }
-    });
+  await prisma.integration.create({
+    data: {
+      name,
+      serviceId,
+      type,
+      key,
+    },
+  });
 
-    await logAudit({
-        action: 'integration.created',
-        entityType: 'SERVICE',
-        entityId: serviceId,
-        actorId: await getDefaultActorId(),
-        details: { name, type }
-    });
+  await logAudit({
+    action: 'integration.created',
+    entityType: 'SERVICE',
+    entityId: serviceId,
+    actorId: await getDefaultActorId(),
+    details: { name, type },
+  });
 
-    revalidatePath(`/services/${serviceId}/integrations`);
+  revalidatePath(`/services/${serviceId}/integrations`);
 }
 
-export async function deleteIntegration(integrationId: string, serviceId: string, _formData?: FormData) {
-    try {
-        await assertAdminOrResponder();
-    } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized');
-    }
+export async function deleteIntegration(
+  integrationId: string,
+  serviceId: string,
+  _formData?: FormData
+) {
+  try {
+    await assertAdminOrResponder();
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unauthorized');
+  }
 
-    await prisma.integration.delete({
-        where: { id: integrationId }
-    });
+  await prisma.integration.delete({
+    where: { id: integrationId },
+  });
 
-    await logAudit({
-        action: 'integration.deleted',
-        entityType: 'SERVICE',
-        entityId: serviceId,
-        actorId: await getDefaultActorId(),
-        details: { integrationId }
-    });
+  await logAudit({
+    action: 'integration.deleted',
+    entityType: 'SERVICE',
+    entityId: serviceId,
+    actorId: await getDefaultActorId(),
+    details: { integrationId },
+  });
 
-    revalidatePath(`/services/${serviceId}/integrations`);
-    revalidatePath(`/services/${serviceId}`);
+  revalidatePath(`/services/${serviceId}/integrations`);
+  revalidatePath(`/services/${serviceId}`);
 }
 
 export async function updateService(serviceId: string, formData: FormData) {
-    try {
-        await assertAdminOrResponder();
-    } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized');
-    }
-    const rawName = formData.get('name');
-    const name = typeof rawName === 'string' ? rawName : '';
-    const description = formData.get('description') as string;
-    const region = formData.get('region') as string;
-    const slaTier = formData.get('slaTier') as string;
-    const slackWebhookUrl = formData.get('slackWebhookUrl') as string;
-    const slackChannel = formData.get('slackChannel') as string;
-    const teamId = formData.get('teamId') as string;
-    const escalationPolicyId = formData.get('escalationPolicyId') as string;
-    
-    // Get service notification channels (isolated from escalation)
-    // Filter to only valid NotificationChannel enum values
-    const allChannels = formData.getAll('serviceNotificationChannels') as string[];
-    const validChannels = ['SLACK', 'WEBHOOK', 'EMAIL', 'SMS', 'PUSH', 'WHATSAPP'];
-    const serviceNotificationChannels = allChannels.filter(ch => 
-        validChannels.includes(ch) && !ch.includes(',')
-    );
+  try {
+    await assertAdminOrResponder();
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unauthorized');
+  }
+  const rawName = formData.get('name');
+  const name = typeof rawName === 'string' ? rawName : '';
+  const description = formData.get('description') as string;
+  const region = formData.get('region') as string;
+  const slaTier = formData.get('slaTier') as string;
+  const slackWebhookUrl = formData.get('slackWebhookUrl') as string;
+  const slackChannel = formData.get('slackChannel') as string;
+  const teamId = formData.get('teamId') as string;
+  const escalationPolicyId = formData.get('escalationPolicyId') as string;
 
-    try {
-        const normalizedName = await assertServiceNameAvailable(name, { excludeId: serviceId });
+  // Notification preferences
+  const serviceNotifyOnTriggered = formData.get('serviceNotifyOnTriggered') === 'true';
+  const serviceNotifyOnAck = formData.get('serviceNotifyOnAck') === 'true';
+  const serviceNotifyOnResolved = formData.get('serviceNotifyOnResolved') === 'true';
 
-        await prisma.service.update({
-            where: { id: serviceId },
-            data: {
-                name: normalizedName,
-                description,
-                region: region || null,
-                slaTier: slaTier || null,
-                slackWebhookUrl: slackWebhookUrl || null,
-                slackChannel: slackChannel || null,
-                teamId: teamId || null,
-                escalationPolicyId: escalationPolicyId || null,
-                serviceNotificationChannels: serviceNotificationChannels.length > 0 
-                    ? (serviceNotificationChannels as any[]) // eslint-disable-line @typescript-eslint/no-explicit-any
-                    : [] // Default: no channels selected
-            }
-        });
+  // Get service notification channels (isolated from escalation)
+  // Filter to only valid NotificationChannel enum values
+  const allChannels = formData.getAll('serviceNotificationChannels') as string[];
+  const validChannels = ['SLACK', 'WEBHOOK', 'EMAIL', 'SMS', 'PUSH', 'WHATSAPP'];
+  const serviceNotificationChannels = allChannels.filter(
+    ch => validChannels.includes(ch) && !ch.includes(',')
+  );
 
-        await logAudit({
-            action: 'service.updated',
-            entityType: 'SERVICE',
-            entityId: serviceId,
-            actorId: await getDefaultActorId(),
-            details: { name: normalizedName, teamId: teamId || null, escalationPolicyId: escalationPolicyId || null }
-        });
+  try {
+    const normalizedName = await assertServiceNameAvailable(name, { excludeId: serviceId });
 
-        revalidatePath(`/services/${serviceId}`);
-        revalidatePath(`/services/${serviceId}/settings`);
-        revalidatePath('/services');
-        revalidatePath('/audit');
-        redirect(`/services/${serviceId}/settings?saved=1`);
-    } catch (error) {
-        if (error instanceof UniqueNameConflictError) {
-            redirect(`/services/${serviceId}/settings?error=duplicate-service`);
-        }
-
-        throw error;
-    }
-}
-
-export async function deleteService(serviceId: string) {
-    try {
-        await assertAdmin();
-    } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unauthorized. Admin access required.');
-    }
-    if (!serviceId) return;
-
-    // Cascade delete is configured in schema, so deleting the service will automatically
-    // delete related incidents, alerts, integrations, etc.
-    // No need to manually delete them
-
-    // Now delete the service
-    await prisma.service.delete({
-        where: { id: serviceId }
+    await prisma.service.update({
+      where: { id: serviceId },
+      data: {
+        name: normalizedName,
+        description,
+        region: region || null,
+        slaTier: slaTier || null,
+        slackWebhookUrl: slackWebhookUrl || null,
+        slackChannel: slackChannel || null,
+        teamId: teamId || null,
+        escalationPolicyId: escalationPolicyId || null,
+        serviceNotificationChannels:
+          serviceNotificationChannels.length > 0
+            ? (serviceNotificationChannels as any[]) // eslint-disable-line @typescript-eslint/no-explicit-any
+            : [], // Default: no channels selected
+        serviceNotifyOnTriggered,
+        serviceNotifyOnAck,
+        serviceNotifyOnResolved,
+      },
     });
 
     await logAudit({
-        action: 'service.deleted',
-        entityType: 'SERVICE',
-        entityId: serviceId,
-        actorId: await getDefaultActorId(),
-        details: { serviceId }
+      action: 'service.updated',
+      entityType: 'SERVICE',
+      entityId: serviceId,
+      actorId: await getDefaultActorId(),
+      details: {
+        name: normalizedName,
+        teamId: teamId || null,
+        escalationPolicyId: escalationPolicyId || null,
+      },
     });
 
+    revalidatePath(`/services/${serviceId}`);
+    revalidatePath(`/services/${serviceId}/settings`);
     revalidatePath('/services');
-    revalidatePath('/incidents');
     revalidatePath('/audit');
-    
-    redirect('/services');
+    redirect(`/services/${serviceId}/settings?saved=1`);
+  } catch (error) {
+    if (error instanceof UniqueNameConflictError) {
+      redirect(`/services/${serviceId}/settings?error=duplicate-service`);
+    }
+
+    throw error;
+  }
+}
+
+export async function deleteService(serviceId: string) {
+  try {
+    await assertAdmin();
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : 'Unauthorized. Admin access required.'
+    );
+  }
+  if (!serviceId) return;
+
+  // Cascade delete is configured in schema, so deleting the service will automatically
+  // delete related incidents, alerts, integrations, etc.
+  // No need to manually delete them
+
+  // Now delete the service
+  await prisma.service.delete({
+    where: { id: serviceId },
+  });
+
+  await logAudit({
+    action: 'service.deleted',
+    entityType: 'SERVICE',
+    entityId: serviceId,
+    actorId: await getDefaultActorId(),
+    details: { serviceId },
+  });
+
+  revalidatePath('/services');
+  revalidatePath('/incidents');
+  revalidatePath('/audit');
+
+  redirect('/services');
 }

@@ -169,29 +169,6 @@ const navigationItems: NavItem[] = [
     section: 'INSIGHTS',
     requiresRole: ['ADMIN'],
   },
-  {
-    href: '/monitoring-new',
-    label: 'Monitoring',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-    ),
-    section: 'INSIGHTS',
-    requiresRole: ['ADMIN'],
-  },
-  {
-    href: '/analytics-new',
-    label: 'Analytics V2',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M5 20V10m7 10V4m7 16v-7" strokeLinecap="round" />
-      </svg>
-    ),
-    section: 'INSIGHTS',
-    requiresRole: ['ADMIN'],
-  },
 ];
 
 type SidebarProps = {

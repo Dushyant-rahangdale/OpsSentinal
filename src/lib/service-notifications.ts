@@ -54,6 +54,23 @@ export async function sendServiceNotifications(
     const serviceChannels = incident.service.serviceNotificationChannels || [];
     const errors: string[] = [];
 
+    // Check notification filters
+    // Cast to any because types might not be generated yet
+    const s = incident.service as any;
+    const notifyTriggered = s.serviceNotifyOnTriggered ?? true;
+    const notifyAck = s.serviceNotifyOnAck ?? true;
+    const notifyResolved = s.serviceNotifyOnResolved ?? true;
+
+    let shouldNotify = true;
+    if (eventType === 'triggered' && !notifyTriggered) shouldNotify = false;
+    else if (eventType === 'acknowledged' && !notifyAck) shouldNotify = false;
+    else if (eventType === 'resolved' && !notifyResolved) shouldNotify = false;
+
+    if (!shouldNotify) {
+      logger.info('Service notification skipped by filter', { incidentId, eventType });
+      return { success: true };
+    }
+
     // Handle SLACK channel
     if (serviceChannels.includes('SLACK')) {
       try {
@@ -98,7 +115,6 @@ export async function sendServiceNotifications(
           });
         }
       } catch (error: any) {
-         
         logger.error('Slack notification error', {
           incidentId,
           error: error.message,
@@ -133,7 +149,6 @@ export async function sendServiceNotifications(
           }
           return null;
         } catch (error: any) {
-           
           logger.error('Webhook notification error', {
             incidentId,
             webhookId: webhook.id,
@@ -173,7 +188,6 @@ export async function sendServiceNotifications(
           errors.push(`Legacy webhook failed: ${result.error}`);
         }
       } catch (error: any) {
-         
         logger.error('Legacy webhook notification error', {
           incidentId,
           error: error.message,
@@ -187,7 +201,6 @@ export async function sendServiceNotifications(
       errors: errors.length > 0 ? errors : undefined,
     };
   } catch (error: any) {
-     
     logger.error('Service notification error', {
       incidentId,
       error: error.message,

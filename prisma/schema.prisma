@@ -194,6 +194,10 @@ model Service {
   slackIntegrationId          String?               @unique // Reference to SlackIntegration (OAuth-based)
   webhookUrl                  String? // Per-service generic webhook URL
   serviceNotificationChannels NotificationChannel[] @default([]) // Service-level notification channels (isolated from escalation)
+  serviceNotifyOnTriggered    Boolean               @default(true)
+  serviceNotifyOnAck          Boolean               @default(true)
+  serviceNotifyOnResolved     Boolean               @default(true)
+  slaDefinitions              SLADefinition[]
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
 
@@ -207,7 +211,7 @@ model Service {
   statusPageServices  StatusPageService[]
   webhookIntegrations WebhookIntegration[]
   slackIntegration    SlackIntegration?    @relation("ServiceSlackIntegration", fields: [slackIntegrationId], references: [id], onDelete: Cascade)
-  slaDefinitions      SLADefinition[]
+
 }
 
 // Enhanced Escalation Policy
@@ -1031,6 +1035,25 @@ model SearchPresetUsage {
   @@index([usedAt])
 }
 
+// Telemetry Metrics Rollup
+model MetricRollup {
+  id        String   @id @default(cuid())
+  name      String   // e.g., 'http.request.duration', 'http.request.status'
+  bucket    DateTime // Time bucket start
+  serviceId String?  // Optional service association
+  count     Int      // Number of sample points
+  sum       Float    // Sum of values
+  min       Float?
+  max       Float?
+  tags      Json?    // Additional dimensions (status code, method, etc.)
+
+  createdAt DateTime @default(now())
+
+  @@index([name, bucket])
+  @@index([serviceId, bucket])
+  @@index([bucket])
+}
+
 // System-wide settings (singleton pattern)
 model SystemSettings {
   id        String   @id @default("default")
@@ -1040,96 +1063,76 @@ model SystemSettings {
   updatedAt DateTime @updatedAt
 }
 
-// -----------------------------------------------------------------------------
-// Enterprise Observability Engine Schema
-// -----------------------------------------------------------------------------
-
-// ⚙️ Governance Layer
-// Stores system-wide policies (e.g., retention_policy, sampling_rates)
+// ⚙️ Governance / System Config
+// Stores system-wide policies and security markers (encryption fingerprint, canary)
 model SystemConfig {
-  key       String   @id // e.g., 'retention_policy'
+  key       String   @id // e.g., 'encryption_fingerprint'
   value     Json     // Flexible JSON config
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
 
-// 🥇 Gold Tier: SLA & Business Compliance
-// High-Value, Infinite Retention, Audit-Ready
-model SLADefinition {
-  id          String    @id @default(cuid())
-  serviceId   String
-  name        String    @default("Standard SLA")
-  version     Int       @default(1) // version++ on change
-  target      Float     @default(99.9) // e.g., 99.9%
-  window      String    @default("30d") // "30d", "quarterly"
-  metricType  String    @default("UPTIME") // "UPTIME", "LATENCY_P99"
-  activeFrom  DateTime  @default(now())
-  activeTo    DateTime? // Null means currently active
-  
-  service     Service   @relation(fields: [serviceId], references: [id])
-  snapshots   SLASnapshot[]
-
-  @@index([serviceId])
-}
-
-model SLASnapshot {
-  id              String        @id @default(cuid())
-  date            DateTime      // The day this snapshot represents (00:00 UTC)
-  slaDefinitionId String
-  
-  // The Frozen Truth (Calculated Nightly)
-  totalEvents      Int          @default(0)
-  errorEvents      Int          @default(0)
-  uptimePercentage Float        @default(100.0)
-  breachCount      Int          @default(0)
-  errorBudgetBurn  Float        @default(0.0) // Percentage of budget consumed
-  
-  metadata         Json?        // Context: "Major Outage ID: 123"
-
-  definition      SLADefinition @relation(fields: [slaDefinitionId], references: [id])
-
-  @@unique([date, slaDefinitionId]) // One snapshot per SLA per day
-  @@index([date])
-}
-
-// 🥈 Silver Tier: Performance Trends
-// Aggregated Metrics, Configurable Retention (e.g., 90 days)
-model MetricRollup {
-  id        String   @id @default(cuid())
-  bucket    DateTime // Truncated timestamp (Minute or Hour)
-  serviceId String?  // Optional: Global metrics might not have a service
-  name      String   // e.g., 'http.request.duration', 'db.pool.usage'
-  
-  tags      Json     // { "method": "GET", "status": "200" }
-  
-  // Pre-computed Stats
-  count     Int
-  sum       Float
-  min       Float
-  max       Float
-  p50       Float?
-  p90       Float?
-  p95       Float?
-  p99       Float?
-
-  @@index([name, bucket]) // Fast graph queries
-  @@index([bucket])       // Fast cleanup (Smart Janitor)
-}
-
-// 🥉 Bronze Tier: Incident Debugging
-// Raw Events, Short Retention (e.g., 7 days)
+// Bronze Tier: Raw Log Storage
 model LogEntry {
   id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  serviceId String?
-  level     String   // ERROR, WARN, INFO, DEBUG
-  
+  level     String   // 'info', 'error', 'warn', etc.
   message   String
-  context   Json?    // Stack trace, query params, etc.
-  traceId   String?  // Propagated Trace ID
-  userId    String?  // Anonymized user ID if applicable
+  timestamp DateTime
+  serviceId String?  
+  context   Json?    // Structured log context
 
+  createdAt DateTime @default(now())
+
+  @@index([timestamp])
   @@index([serviceId, timestamp])
-  @@index([timestamp]) // Fast cleanup
-  @@index([traceId])
 }
+
+// SLA Management
+model SLADefinition {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // Targets (minutes)
+  targetAckTime     Int? 
+  targetResolveTime Int? 
+  
+  // Scope of Applicability
+  serviceId String?
+  service   Service?  @relation(fields: [serviceId], references: [id]) 
+  priority  String? // Filter by priority (e.g. "P1")
+  
+  // SLA Specifics
+  target     Float    // e.g. 99.9
+  window     String   // e.g. '30d'
+  metricType String   // e.g. 'UPTIME', 'MTTA'
+  version    Int      @default(1)
+
+  activeFrom DateTime @default(now())
+  activeTo   DateTime?
+  
+  snapshots SLASnapshot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Daily SLA Compliance Snapshots
+model SLASnapshot {
+  id              String   @id @default(cuid())
+  slaDefinitionId String
+  date            DateTime // Midnight of the day captured
+  
+  totalIncidents Int
+  metAckTime     Int      // Count of incidents meeting ack SLA
+  metResolveTime Int      // Count of incidents meeting resolve SLA
+  complianceScore Float   // 0-100%
+  
+  slaDefinition SLADefinition @relation(fields: [slaDefinitionId], references: [id])
+  
+  createdAt DateTime @default(now())
+
+  @@unique([date, slaDefinitionId])
+}
+
+

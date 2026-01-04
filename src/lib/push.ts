@@ -177,7 +177,6 @@ export async function sendPush(
               }),
             });
           } catch (initError: any) {
-            // eslint-disable-line @typescript-eslint/no-explicit-any
             // App might already be initialized with different config
             if (!initError.message?.includes('already been initialized')) {
               throw initError;
@@ -222,7 +221,6 @@ export async function sendPush(
             });
             successCount++;
           } catch (error: any) {
-            // eslint-disable-line @typescript-eslint/no-explicit-any
             // Handle invalid token errors
             if (
               error.code === 'messaging/invalid-registration-token' ||
@@ -237,7 +235,6 @@ export async function sendPush(
           }
         }
       } catch (error: any) {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         // If Firebase package is not installed
         if (error.code === 'MODULE_NOT_FOUND') {
           logger.warn('Firebase Admin package not installed', {
@@ -303,7 +300,6 @@ export async function sendPush(
           return { success: false, error: 'OneSignal API returned no notification ID' };
         }
       } catch (error: any) {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         // If OneSignal package is not installed
         if (error.code === 'MODULE_NOT_FOUND') {
           logger.warn('OneSignal package not installed', {
@@ -342,7 +338,6 @@ export async function sendPush(
       return { success: false, error: errorMessages.join('; ') || 'Failed to send to all devices' };
     }
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('Push send error', { component: 'push', error, userId: options.userId });
     return { success: false, error: error.message };
   }
@@ -454,7 +449,6 @@ export async function sendIncidentPush(
       badge: 1,
     });
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('Send incident push error', {
       component: 'push',
       error,

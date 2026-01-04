@@ -486,6 +486,9 @@ export default async function ServiceSettingsPage({
               slackWebhookUrl={service.slackWebhookUrl}
               slackIntegration={globalSlackIntegration || null}
               webhookIntegrations={webhookIntegrations}
+              serviceNotifyOnTriggered={service.serviceNotifyOnTriggered}
+              serviceNotifyOnAck={service.serviceNotifyOnAck}
+              serviceNotifyOnResolved={service.serviceNotifyOnResolved}
             />
           </div>
 

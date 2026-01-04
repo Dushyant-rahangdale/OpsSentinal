@@ -1,5 +1,5 @@
 import 'server-only';
-import type { IncidentUrgency } from '@prisma/client';
+import type { IncidentUrgency, MetricRollup } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -111,18 +111,18 @@ export class AlertRulesService {
       let aggregateValue = 0;
       if (rule.metricName.includes('status')) {
         // Error rate calculation
-        const totalCount = metrics.reduce((sum, m) => sum + m.count, 0);
+        const totalCount = metrics.reduce((sum: number, m: MetricRollup) => sum + m.count, 0);
         const errorCount = metrics
-          .filter(m => {
+          .filter((m: MetricRollup) => {
             const tags = m.tags as Record<string, string>;
             return tags?.status?.startsWith('5');
           })
-          .reduce((sum, m) => sum + m.count, 0);
+          .reduce((sum: number, m: MetricRollup) => sum + m.count, 0);
         aggregateValue = totalCount > 0 ? (errorCount / totalCount) * 100 : 0;
       } else {
         // Average value (e.g., latency)
-        const totalSum = metrics.reduce((sum, m) => sum + m.sum, 0);
-        const totalCount = metrics.reduce((sum, m) => sum + m.count, 0);
+        const totalSum = metrics.reduce((sum: number, m: MetricRollup) => sum + m.sum, 0);
+        const totalCount = metrics.reduce((sum: number, m: MetricRollup) => sum + m.count, 0);
         aggregateValue = totalCount > 0 ? totalSum / totalCount : 0;
       }
 

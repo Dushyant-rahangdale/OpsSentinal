@@ -1,1115 +1,1383 @@
-import { Prisma } from '@prisma/client';
-import prisma from '@/lib/prisma';
-import MetricCard from '@/components/analytics/MetricCard';
-import ChartCard from '@/components/analytics/ChartCard';
-import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
-import BarChart from '@/components/analytics/BarChart';
-import MetricIcon from '@/components/analytics/MetricIcon';
-import ProgressBar from '@/components/analytics/ProgressBar';
-import PieChart from '@/components/analytics/PieChart';
-import GaugeChart from '@/components/analytics/GaugeChart';
-import FilterChips from '@/components/analytics/FilterChips';
-import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { calculateSLAMetrics } from '@/lib/sla-server';
+import { formatTimeMinutesMs } from '@/lib/time-format';
+import { buildAnalyticsExportUrl } from '@/lib/analytics-export';
+import { smoothSeries } from '@/lib/analytics-metrics';
+import type { Metadata } from 'next';
+import { getUserTimeZone } from '@/lib/timezone';
 import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
+import prisma from '@/lib/prisma';
+import MetricCard from '@/components/analytics/MetricCard';
+import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
+import FilterChips from '@/components/analytics/FilterChips';
+import MetricIcon from '@/components/analytics/MetricIcon';
 
-// Force dynamic rendering - this page requires database access
+import {
+  Shield,
+  CheckCircle,
+  AlertCircle,
+  Zap,
+  Users,
+  TrendingUp,
+  Moon,
+  Bell,
+  Repeat,
+  Activity,
+  Sparkles,
+  LayoutDashboard,
+  BarChart3,
+  AlertTriangle,
+  Clock,
+} from 'lucide-react';
+import GaugeChart from '@/components/analytics/GaugeChart';
+import HeatmapCalendar from '@/components/analytics/HeatmapCalendar';
+import LineChart from '@/components/analytics/LineChart';
+import ServiceHealthTable from '@/components/analytics/ServiceHealthTable';
+
+import './analytics-v2.css';
+
 export const dynamic = 'force-dynamic';
 
-const formatMinutes = (ms: number | null) => (ms === null ? '--' : `${(ms / 1000 / 60).toFixed(1)}m`);
-const formatPercent = (value: number) => `${value.toFixed(0)}%`;
-const formatHours = (ms: number) => `${(ms / 1000 / 60 / 60).toFixed(1)}h`;
-const formatRatio = (value: number) => `${value.toFixed(1)}x`;
-const formatHoursCompact = (ms: number) => `${(ms / 1000 / 60 / 60).toFixed(2)}h`;
-const defaultAckTargetMinutes = 15;
-const defaultResolveTargetMinutes = 120;
-
-function getStatusColor(status: string): string {
-    const colors: Record<string, string> = {
-        'OPEN': '#dc2626',
-        'ACKNOWLEDGED': '#2563eb',
-        'SNOOZED': '#ca8a04',
-        'SUPPRESSED': '#7c3aed',
-        'RESOLVED': '#16a34a'
-    };
-    return colors[status] || '#6b7280';
-}
-
-function getMetricTooltip(label: string): string {
-    const tooltips: Record<string, string> = {
-        'Incidents in view': 'Total number of incidents matching your current filters',
-        'Incidents': 'Number of new incidents created in the selected time window',
-        'MTTA': 'Mean Time to Acknowledge - Average time from incident creation to acknowledgment',
-        'MTTR': 'Mean Time to Resolve - Average time from incident creation to resolution',
-        'Ack rate': 'Percentage of incidents that were acknowledged',
-        'Resolve rate': 'Percentage of incidents that were resolved',
-        'Ack SLA met': 'Percentage of acknowledged incidents that met the SLA target time',
-        'Resolve SLA met': 'Percentage of resolved incidents that met the SLA target time',
-        'High urgency': 'Percentage of incidents marked as HIGH urgency',
-        'Alerts': 'Total number of alerts received in the time window',
-        'Alerts per incident': 'Average number of alerts per incident (noise indicator)',
-        'Unassigned active': 'Number of active incidents without an assignee',
-        'MTBF': 'Mean Time Between Failures - Average time between incident occurrences',
-        'After-hours': 'Percentage of incidents created outside business hours (8 AM - 6 PM)',
-        'Coverage': 'Percentage of days in the next 14 days with on-call coverage scheduled',
-        'On-call hours': 'Total scheduled on-call hours in the next 14 days'
-    };
-
-    for (const [key, value] of Object.entries(tooltips)) {
-        if (label.includes(key)) {
-            return value;
-        }
-    }
-    return 'Analytics metric';
-}
-
-function startOfDay(date: Date) {
-    const next = new Date(date);
-    next.setHours(0, 0, 0, 0);
-    return next;
-}
-
-function toDateKey(date: Date) {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function formatDayLabel(date: Date, timeZone: string = 'UTC') {
-    return formatDateTime(date, timeZone, { format: 'short' });
-}
-
-function percentile(values: number[], percentileValue: number) {
-    if (values.length === 0) return null;
-    const sorted = [...values].sort((a, b) => a - b);
-    const index = Math.min(sorted.length - 1, Math.ceil((percentileValue / 100) * sorted.length) - 1);
-    return sorted[index];
-}
-
-function isAfterHours(date: Date) {
-    const day = date.getDay();
-    const hour = date.getHours();
-    const isWeekend = day === 0 || day === 6;
-    const isBusinessHours = hour >= 8 && hour < 18;
-    return isWeekend || !isBusinessHours;
-}
-
-type SearchParams = {
-    service?: string;
-    team?: string;
-    assignee?: string;
-    status?: string;
-    urgency?: string;
-    window?: string;
+export const metadata: Metadata = {
+  title: 'Analytics V2 | OpsSentinel',
+  description: 'Incident Operations Analytics',
 };
 
 const allowedStatus = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'] as const;
 const allowedUrgency = ['HIGH', 'LOW'] as const;
-const allowedWindows = new Set([1, 3, 7, 14, 30, 60, 90]);
+const allowedWindows = new Set([1, 3, 7, 14, 30, 60, 90, 180, 365]);
 
-export default async function AnalyticsPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
-    // Get user timezone for date formatting
-    const session = await getServerSession(await getAuthOptions());
-    const email = session?.user?.email ?? null;
-    const user = email
-        ? await prisma.user.findUnique({
-            where: { email },
-            select: { timeZone: true }
-        })
-        : null;
-    const userTimeZone = getUserTimeZone(user ?? undefined);
+function getStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    OPEN: '#dc2626',
+    ACKNOWLEDGED: '#2563eb',
+    SNOOZED: '#ca8a04',
+    SUPPRESSED: '#7c3aed',
+    RESOLVED: '#16a34a',
+  };
+  return colors[status] || '#6b7280';
+}
 
-    const awaitedSearchParams = await searchParams;
-    const teamId = typeof awaitedSearchParams?.team === 'string' && awaitedSearchParams.team !== 'ALL'
-        ? awaitedSearchParams.team
-        : null;
-    const serviceId = typeof awaitedSearchParams?.service === 'string' && awaitedSearchParams.service !== 'ALL'
-        ? awaitedSearchParams.service
-        : null;
-    const assigneeId = typeof awaitedSearchParams?.assignee === 'string' && awaitedSearchParams.assignee !== 'ALL'
-        ? awaitedSearchParams.assignee
-        : null;
-    const statusFilter: (typeof allowedStatus)[number] | 'ALL' = allowedStatus.includes(awaitedSearchParams?.status as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-        ? (awaitedSearchParams?.status as (typeof allowedStatus)[number])
-        : 'ALL';
-    const urgencyFilter: (typeof allowedUrgency)[number] | 'ALL' = allowedUrgency.includes(awaitedSearchParams?.urgency as any) // eslint-disable-line @typescript-eslint/no-explicit-any
-        ? (awaitedSearchParams?.urgency as (typeof allowedUrgency)[number])
-        : 'ALL';
-    const windowCandidate = Number(awaitedSearchParams?.window ?? 7);
-    const windowDays = allowedWindows.has(windowCandidate) ? windowCandidate : 7;
+function buildSparklinePath(values: number[], width: number = 72, height: number = 24): string {
+  if (values.length === 0) return '';
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = values.length > 1 ? width / (values.length - 1) : width;
 
-    const now = new Date();
-    const recentWindowDays = windowDays;
-    const trendWindowDays = windowDays;
-    const serviceWindowDays = windowDays;
-    const coverageWindowDays = 14;
+  if (values.length === 1) {
+    const y = height - ((values[0] - min) / range) * height;
+    return `M0,${y.toFixed(1)} L${width},${y.toFixed(1)}`;
+  }
 
-    const recentStart = new Date(now);
-    recentStart.setDate(now.getDate() - recentWindowDays);
-    const trendStart = new Date(now);
-    trendStart.setDate(now.getDate() - (trendWindowDays - 1));
-    const serviceStart = new Date(now);
-    serviceStart.setDate(now.getDate() - serviceWindowDays);
+  return values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - ((value - min) / range) * height;
+      return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
 
-    const coverageWindowEnd = new Date(now);
-    coverageWindowEnd.setDate(now.getDate() + coverageWindowDays);
+function buildSparklineAreaPath(values: number[], width: number = 72, height: number = 24): string {
+  const linePath = buildSparklinePath(values, width, height);
+  if (!linePath) return '';
+  return `${linePath} L${width},${height} L0,${height} Z`;
+}
 
-    const teamServiceIds = teamId
-        ? await prisma.service.findMany({
-            where: { teamId },
-            select: { id: true }
-        })
-        : null;
+type SearchParams = {
+  service?: string;
+  team?: string;
+  assignee?: string;
+  status?: string;
+  urgency?: string;
+  window?: string;
+};
 
-    const teamServiceIdList = teamServiceIds?.map((service) => service.id) ?? null;
+export default async function AnalyticsV2Page({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
+  const session = await getServerSession(await getAuthOptions());
+  const email = session?.user?.email ?? null;
+  const user = email
+    ? await prisma.user.findUnique({ where: { email }, select: { timeZone: true } })
+    : null;
+  const userTimeZone = getUserTimeZone(user ?? undefined);
 
-    const statusValue = statusFilter !== 'ALL' ? (statusFilter as (typeof allowedStatus)[number]) : null;
-    const urgencyValue = urgencyFilter !== 'ALL' ? (urgencyFilter as (typeof allowedUrgency)[number]) : null;
-    const statusWhere = statusValue ? { status: statusValue } : null;
-    const urgencyWhere = urgencyValue ? { urgency: urgencyValue } : null;
-    const serviceWhere = serviceId
-        ? { serviceId }
-        : teamServiceIdList
-            ? { serviceId: { in: teamServiceIdList } }
-            : null;
-    const assigneeWhere = assigneeId ? { assigneeId } : null;
+  const params = await searchParams;
+  const teamId =
+    typeof params?.team === 'string' && params.team !== 'ALL' ? params.team : undefined;
+  const serviceId =
+    typeof params?.service === 'string' && params.service !== 'ALL' ? params.service : undefined;
+  const assigneeId =
+    typeof params?.assignee === 'string' && params.assignee !== 'ALL' ? params.assignee : undefined;
+  const statusFilter =
+    typeof params?.status === 'string' &&
+    allowedStatus.includes(params.status as (typeof allowedStatus)[number])
+      ? (params.status as (typeof allowedStatus)[number])
+      : undefined;
+  const urgencyFilter =
+    typeof params?.urgency === 'string' &&
+    allowedUrgency.includes(params.urgency as (typeof allowedUrgency)[number])
+      ? (params.urgency as (typeof allowedUrgency)[number])
+      : undefined;
+  const windowCandidate = Number(params?.window ?? 7);
+  const windowDays = allowedWindows.has(windowCandidate) ? windowCandidate : 7;
 
-    const activeStatusWhere = statusValue ? { status: statusValue } : { status: { not: 'RESOLVED' as const } };
-    const activeWhere: Prisma.IncidentWhereInput = {
-        ...activeStatusWhere,
-        ...(serviceWhere ?? {}),
-        ...(urgencyWhere ?? {}),
-        ...(assigneeWhere ?? {})
-    };
+  const [metrics, teams, services, users] = await Promise.all([
+    calculateSLAMetrics({
+      teamId,
+      serviceId,
+      assigneeId,
+      status: statusFilter,
+      urgency: urgencyFilter,
+      windowDays,
+      userTimeZone,
+    }),
+    prisma.team.findMany({ select: { id: true, name: true } }),
+    prisma.service.findMany({ select: { id: true, name: true, teamId: true } }),
+    prisma.user.findMany({ select: { id: true, name: true, email: true } }),
+  ]);
 
-    const recentIncidentWhere = {
-        createdAt: { gte: recentStart },
-        ...(serviceWhere ?? {}),
-        ...(urgencyWhere ?? {}),
-        ...(statusWhere ?? {}),
-        ...(assigneeWhere ?? {})
-    };
+  const servicesForFilter = teamId ? services.filter(s => s.teamId === teamId) : services;
 
-    const trendIncidentWhere = {
-        createdAt: { gte: trendStart },
-        ...(serviceWhere ?? {}),
-        ...(urgencyWhere ?? {}),
-        ...(statusWhere ?? {}),
-        ...(assigneeWhere ?? {})
-    };
+  const formatMinutes = (val: number | null) =>
+    val === null ? '--' : formatTimeMinutesMs(val * 60 * 1000);
+  const formatPercent = (val: number) => `${val.toFixed(0)}%`;
+  const formatHours = (ms: number) => `${(ms / 3600000).toFixed(1)}h`;
+  const getComplianceStatus = (val: number) =>
+    val >= 95 ? 'success' : val >= 80 ? 'warning' : 'danger';
+  const lowUrgencyCount = Math.max(0, metrics.totalIncidents - metrics.highUrgencyCount);
+  const highUrgencyPercent = metrics.totalIncidents
+    ? (metrics.highUrgencyCount / metrics.totalIncidents) * 100
+    : 0;
+  const lowUrgencyPercent = metrics.totalIncidents
+    ? (lowUrgencyCount / metrics.totalIncidents) * 100
+    : 0;
+  const ackSlaBurnRate = Math.max(0, 100 - metrics.ackCompliance);
+  const resolveSlaBurnRate = Math.max(0, 100 - metrics.resolveCompliance);
+  const activeFilterCount =
+    [teamId, serviceId, assigneeId, statusFilter, urgencyFilter].filter(value => Boolean(value))
+      .length + (windowDays !== 7 ? 1 : 0);
 
-    const topServiceWhere = {
-        createdAt: { gte: serviceStart },
-        ...(urgencyWhere ?? {}),
-        ...(statusWhere ?? {}),
-        ...(assigneeWhere ?? {})
-    };
+  const getDelta = (current: number | null, previous: number | null) => {
+    if (current === null || previous === null || previous === 0) return null;
+    return ((current - previous) / previous) * 100;
+  };
 
-    const [
-        activeIncidents,
-        unassignedActive,
-        recentIncidents,
-        incidentsTrend,
-        alertsLastWeek,
-        futureShifts,
-        windowShifts,
-        activeOverrides,
-        statusTrends,
-        services,
-        topServiceCounts,
-        assigneeCounts,
-        recurringTitles,
-        teams,
-        users
-    ] = await Promise.all([
-        prisma.incident.count({ where: activeWhere }),
-        prisma.incident.count({ where: { ...activeWhere, assigneeId: null } }),
-        prisma.incident.findMany({
-            where: recentIncidentWhere,
-            select: {
-                id: true,
-                createdAt: true,
-                updatedAt: true,
-                status: true,
-                urgency: true,
-                assigneeId: true,
-                serviceId: true,
-                acknowledgedAt: true,
-                resolvedAt: true,
-                service: {
-                    select: {
-                        targetAckMinutes: true,
-                        targetResolveMinutes: true
-                    }
-                }
-            }
-        }),
-        prisma.incident.findMany({
-            where: trendIncidentWhere,
-            select: { createdAt: true }
-        }),
-        prisma.alert.count({
-            where: {
-                createdAt: { gte: recentStart },
-                ...(serviceWhere ?? {})
-            }
-        }),
-        prisma.onCallShift.findMany({
-            where: { end: { gte: now }, start: { lte: coverageWindowEnd } },
-            select: { start: true, end: true, userId: true }
-        }),
-        prisma.onCallShift.findMany({
-            where: { end: { gte: recentStart }, start: { lte: now } },
-            select: { start: true, end: true, userId: true }
-        }),
-        prisma.onCallOverride.count({ where: { end: { gte: now } } }),
-        prisma.incident.groupBy({
-            by: ['status'],
-            where: recentIncidentWhere,
-            _count: { _all: true }
-        }),
-        prisma.service.findMany({
-            select: { id: true, name: true, teamId: true, targetAckMinutes: true, targetResolveMinutes: true }
-        }),
-        prisma.incident.groupBy({
-            by: ['serviceId'],
-            where: {
-                ...topServiceWhere,
-                ...(serviceWhere ?? {})
-            },
-            _count: { _all: true },
-            orderBy: { _count: { id: 'desc' } },
-            take: 5
-        }),
-        prisma.incident.groupBy({
-            by: ['assigneeId'],
-            where: {
-                ...recentIncidentWhere,
-                assigneeId: { not: null }
-            },
-            _count: { _all: true },
-            orderBy: { _count: { id: 'desc' } },
-            take: 6
-        }),
-        prisma.incident.groupBy({
-            by: ['title'],
-            where: recentIncidentWhere,
-            _count: { _all: true },
-            orderBy: { _count: { id: 'desc' } },
-            take: 5
-        }),
-        prisma.team.findMany({
-            select: { id: true, name: true }
-        }),
-        prisma.user.findMany({
-            select: { id: true, name: true, email: true }
-        })
-    ]);
+  const formatDelta = (delta: number | null) => {
+    if (delta === null) return undefined;
+    const prefix = delta > 0 ? '+' : '';
+    return `${prefix}${delta.toFixed(1)}% vs prev`;
+  };
 
-    const recentIncidentIds = recentIncidents.map((incident) => incident.id);
-    const eventsLastWeek = recentIncidentIds.length
-        ? await prisma.incidentEvent.count({
-            where: {
-                createdAt: { gte: recentStart },
-                incidentId: { in: recentIncidentIds }
-            }
-        })
-        : 0;
-    const [ackEvents, autoResolveEvents, escalationEvents, reopenEvents] = recentIncidentIds.length
-        ? await Promise.all([
-            prisma.incidentEvent.findMany({
-                where: {
-                    createdAt: { gte: recentStart },
-                    incidentId: { in: recentIncidentIds },
-                    message: { contains: 'acknowledged', mode: 'insensitive' }
-                },
-                select: { incidentId: true, createdAt: true },
-                orderBy: { createdAt: 'asc' }
-            }),
-            prisma.incidentEvent.findMany({
-                where: {
-                    createdAt: { gte: recentStart },
-                    incidentId: { in: recentIncidentIds },
-                    message: { contains: 'auto-resolved', mode: 'insensitive' }
-                },
-                select: { incidentId: true }
-            }),
-            prisma.incidentEvent.findMany({
-                where: {
-                    createdAt: { gte: recentStart },
-                    incidentId: { in: recentIncidentIds },
-                    message: { contains: 'escalated to', mode: 'insensitive' }
-                },
-                select: { incidentId: true }
-            }),
-            prisma.incidentEvent.findMany({
-                where: {
-                    createdAt: { gte: recentStart },
-                    incidentId: { in: recentIncidentIds },
-                    message: { contains: 'reopen', mode: 'insensitive' }
-                },
-                select: { incidentId: true }
-            })
-        ])
-        : [[], [], [], []];
+  const getTrend = (delta: number | null) => {
+    if (delta === null) return undefined;
+    if (delta > 0) return 'up';
+    if (delta < 0) return 'down';
+    return 'neutral';
+  };
 
-    // Use acknowledgedAt field if available, fallback to event parsing for backward compatibility
-    const ackByIncident = new Map<string, Date>();
-    for (const incident of recentIncidents) {
-        if (incident.acknowledgedAt) {
-            ackByIncident.set(incident.id, incident.acknowledgedAt);
-        }
-    }
-    // Fallback to event parsing for incidents without acknowledgedAt
-    for (const ack of ackEvents) {
-        if (!ackByIncident.has(ack.incidentId)) {
-            ackByIncident.set(ack.incidentId, ack.createdAt);
-        }
-    }
+  const incidentDelta = getDelta(metrics.totalIncidents, metrics.previousPeriod.totalIncidents);
+  const mttaDelta = getDelta(metrics.mttd, metrics.previousPeriod.mtta);
+  const mttrDelta = getDelta(metrics.mttr, metrics.previousPeriod.mttr);
+  const smoothingWindow = windowDays <= 3 ? 1 : windowDays <= 14 ? 3 : 7;
+  const countSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.count),
+    smoothingWindow
+  );
+  const mttaSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.mtta),
+    smoothingWindow
+  );
+  const mttrSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.mttr),
+    smoothingWindow
+  );
+  const activeSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.count),
+    smoothingWindow
+  );
+  const ackComplianceSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.ackCompliance),
+    smoothingWindow
+  );
+  const resolveRateSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.resolveRate),
+    smoothingWindow
+  );
+  const escalationRateSeries = smoothSeries(
+    metrics.trendSeries.map(entry => entry.escalationRate),
+    smoothingWindow
+  );
 
-    const ackDiffs: number[] = [];
-    for (const incident of recentIncidents) {
-        const ackedAt = ackByIncident.get(incident.id);
-        if (ackedAt && incident.createdAt) {
-            ackDiffs.push(ackedAt.getTime() - incident.createdAt.getTime());
-        }
-    }
-    const mttaMs = ackDiffs.length ? ackDiffs.reduce((sum, diff) => sum + diff, 0) / ackDiffs.length : null;
-    const mttaP50 = percentile(ackDiffs, 50);
-    const mttaP95 = percentile(ackDiffs, 95);
+  const showInsights = metrics.insights.length > 0;
+  const exportUrl = buildAnalyticsExportUrl({
+    windowDays,
+    teamId,
+    serviceId,
+    assigneeId,
+    status: statusFilter,
+    urgency: urgencyFilter,
+  });
+  const insightCounts = metrics.insights.reduce(
+    (acc, insight) => {
+      if (insight.type === 'positive') acc.positive += 1;
+      else if (insight.type === 'negative') acc.negative += 1;
+      else acc.neutral += 1;
+      return acc;
+    },
+    { positive: 0, negative: 0, neutral: 0 }
+  );
+  const statusTotal = metrics.statusMix.reduce((sum, entry) => sum + entry.count, 0);
+  const statusMixWithPercent = metrics.statusMix.map(entry => ({
+    ...entry,
+    percent: statusTotal ? (entry.count / statusTotal) * 100 : 0,
+  }));
+  const topServiceMax = Math.max(1, ...metrics.topServices.map(entry => entry.count));
+  const assigneeMax = Math.max(1, ...metrics.assigneeLoad.map(entry => entry.count));
+  const statusAgeMax = Math.max(1, ...metrics.statusAges.map(entry => entry.avgMs ?? 0));
+  const onCallMax = Math.max(1, ...metrics.onCallLoad.map(entry => entry.incidentCount));
+  const resolvedTotal = metrics.autoResolvedCount + metrics.manualResolvedCount;
+  const autoResolvedShare = resolvedTotal ? (metrics.autoResolvedCount / resolvedTotal) * 100 : 0;
+  const manualResolvedShare = resolvedTotal
+    ? (metrics.manualResolvedCount / resolvedTotal) * 100
+    : 0;
 
-    const resolvedIncidents = recentIncidents.filter((incident) => incident.status === 'RESOLVED');
-    const resolvedDiffs = resolvedIncidents.map((incident) => {
-        // Use resolvedAt field if available, fallback to updatedAt
-        const resolvedAt = incident.resolvedAt || incident.updatedAt;
-        if (resolvedAt && incident.createdAt) {
-            return resolvedAt.getTime() - incident.createdAt.getTime();
-        }
-        return null;
-    }).filter((diff): diff is number => diff !== null);
-    const mttrMs = resolvedDiffs.length ? resolvedDiffs.reduce((sum, diff) => sum + diff, 0) / resolvedDiffs.length : null;
-    const mttrP50 = percentile(resolvedDiffs, 50);
-    const mttrP95 = percentile(resolvedDiffs, 95);
+  const serviceHealthCounts = metrics.serviceMetrics.reduce(
+    (acc, service) => {
+      if (service.status === 'Healthy') acc.healthy += 1;
+      else if (service.status === 'Degraded') acc.degraded += 1;
+      else if (service.status === 'Critical') acc.critical += 1;
+      else acc.unknown += 1;
+      return acc;
+    },
+    { total: metrics.serviceMetrics.length, healthy: 0, degraded: 0, critical: 0, unknown: 0 }
+  );
 
-    const totalRecent = recentIncidents.length;
-    const highUrgencyCount = recentIncidents.filter((incident) => incident.urgency === 'HIGH').length;
-    const lowUrgencyCount = Math.max(0, totalRecent - highUrgencyCount);
-    const ackedIncidents = ackByIncident.size;
-    const resolutionRate = totalRecent ? (resolvedIncidents.length / totalRecent) * 100 : 0;
-    const ackRate = totalRecent ? (ackedIncidents / totalRecent) * 100 : 0;
-    const highUrgencyRate = totalRecent ? (highUrgencyCount / totalRecent) * 100 : 0;
-    const alertsPerIncident = totalRecent ? alertsLastWeek / totalRecent : 0;
+  return (
+    <main className="page-shell analytics-shell analytics-v2 pb-20">
+      <div className="analytics-header">
+        <div className="analytics-header-left">
+          <div className="analytics-header-pill-row">
+            <span className="analytics-status-pill">
+              <span className="analytics-live-dot" aria-hidden="true" />
+              Live operations
+            </span>
+            <span className="analytics-window-pill">Last {windowDays} days</span>
+            <span className="analytics-update">Updated just now</span>
+          </div>
+          <h1 className="analytics-header-title">Analytics &amp; Insights</h1>
+          <p className="analytics-header-subtitle">
+            Incident health, SLA performance, and on-call readiness.
+          </p>
+          <div className="analytics-header-highlights">
+            <span>Coverage outlook</span>
+            <span>SLA compliance</span>
+            <span>Ownership load</span>
+            <span>Service health</span>
+          </div>
+        </div>
 
-    const coverageDays = new Set<string>();
-    let totalShiftMs = 0;
-    const onCallUsers = new Set<string>();
-    for (const shift of futureShifts) {
-        const shiftStart = shift.start < now ? now : shift.start;
-        const shiftEnd = shift.end > coverageWindowEnd ? coverageWindowEnd : shift.end;
-        if (shiftEnd <= shiftStart) {
-            continue;
-        }
-        totalShiftMs += shiftEnd.getTime() - shiftStart.getTime();
-        onCallUsers.add(shift.userId);
-        const cursor = new Date(shiftStart);
-        while (cursor <= shiftEnd) {
-            coverageDays.add(cursor.toDateString());
-            cursor.setDate(cursor.getDate() + 1);
-        }
-    }
-    const coveragePercent = Math.min(100, (coverageDays.size / coverageWindowDays) * 100);
-    const coverageGapDays = Math.max(0, coverageWindowDays - coverageDays.size);
+        <div className="analytics-header-actions">
+          <button className="analytics-ghost-button" type="button">
+            <Repeat className="w-4 h-4" />
+            Refresh
+          </button>
+          <button className="analytics-ghost-button" type="button">
+            <Bell className="w-4 h-4" />
+            Subscribe
+          </button>
+          <a href={exportUrl} className="analytics-primary-button">
+            <BarChart3 className="w-4 h-4" />
+            Export report
+          </a>
+        </div>
+      </div>
 
-    const afterHoursCount = recentIncidents.filter((incident) => isAfterHours(incident.createdAt)).length;
-    const afterHoursRate = totalRecent ? (afterHoursCount / totalRecent) * 100 : 0;
+      <AnalyticsFilters
+        teams={teams}
+        services={servicesForFilter}
+        users={users}
+        currentFilters={{
+          team: teamId ?? 'ALL',
+          service: serviceId ?? 'ALL',
+          assignee: assigneeId ?? 'ALL',
+          status: statusFilter ?? 'ALL',
+          urgency: urgencyFilter ?? 'ALL',
+          window: `${windowDays}`,
+        }}
+      />
 
-    const sortedTrend = incidentsTrend
-        .map((entry) => entry.createdAt)
-        .sort((a, b) => a.getTime() - b.getTime());
-    const mtbfDiffs: number[] = [];
-    for (let i = 1; i < sortedTrend.length; i += 1) {
-        mtbfDiffs.push(sortedTrend[i].getTime() - sortedTrend[i - 1].getTime());
-    }
-    const mtbfMs = mtbfDiffs.length ? mtbfDiffs.reduce((sum, diff) => sum + diff, 0) / mtbfDiffs.length : null;
+      <div className="analytics-context analytics-context-compact">
+        <div className="analytics-context-row">
+          <div className="analytics-context-inline">
+            <span className="analytics-context-label">Filters</span>
+            <span className="analytics-context-pill">Last {windowDays} days</span>
+          </div>
+        </div>
+        <FilterChips
+          filters={{
+            team: teamId ?? 'ALL',
+            service: serviceId ?? 'ALL',
+            assignee: assigneeId ?? 'ALL',
+            status: statusFilter ?? 'ALL',
+            urgency: urgencyFilter ?? 'ALL',
+          }}
+          teams={teams}
+          services={servicesForFilter}
+          users={users}
+        />
+      </div>
 
-    const trendStartDay = startOfDay(trendStart);
-    const trendSeries = Array.from({ length: trendWindowDays }, (_, index) => {
-        const day = new Date(trendStartDay);
-        day.setDate(trendStartDay.getDate() + index);
-        return { date: day, key: toDateKey(day), label: formatDayLabel(day, userTimeZone), count: 0 };
-    });
-    const trendIndex = new Map(trendSeries.map((entry, index) => [entry.key, index]));
-    for (const incident of incidentsTrend) {
-        const key = toDateKey(startOfDay(incident.createdAt));
-        const index = trendIndex.get(key);
-        if (index !== undefined) {
-            trendSeries[index].count += 1;
-        }
-    }
-    const maxTrend = Math.max(1, ...trendSeries.map((entry) => entry.count));
+      <div className="v2-section-header v2-panel-heading">
+        <h2 className="v2-section-title">
+          <LayoutDashboard className="w-5 h-5" /> Executive Summary
+        </h2>
+        <span className="text-xs text-muted-foreground">Highlights vs previous period</span>
+      </div>
 
-    const statusOrder: Array<(typeof allowedStatus)[number]> = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'];
-    const statusMap = new Map(statusTrends.map((entry) => [entry.status, entry._count._all]));
-    const statusMix = statusOrder.map((status) => ({
-        status,
-        count: statusMap.get(status) ?? 0
-    }));
+      <section className="v2-grid-4 mb-4">
+        <MetricCard
+          label={`Incidents (${windowDays}d)`}
+          value={metrics.totalIncidents.toLocaleString()}
+          detail="New incidents"
+          trend={getTrend(incidentDelta)}
+          trendValue={formatDelta(incidentDelta)}
+          variant={incidentDelta !== null && incidentDelta > 0 ? 'warning' : 'default'}
+          icon={<MetricIcon type="incidents" />}
+          href="/incidents"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg className="analytics-sparkline analytics-sparkline-blue" viewBox="0 0 72 24">
+              <path className="analytics-sparkline-area" d={buildSparklineAreaPath(countSeries)} />
+              <path className="analytics-sparkline-line" d={buildSparklinePath(countSeries)} />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label="Active Incidents"
+          value={metrics.activeIncidents.toLocaleString()}
+          detail="Current backlog"
+          variant={metrics.activeIncidents > 5 ? 'danger' : 'default'}
+          icon={<MetricIcon type="incidents" />}
+          href="/incidents?status=OPEN"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg className="analytics-sparkline analytics-sparkline-blue" viewBox="0 0 72 24">
+              <path className="analytics-sparkline-area" d={buildSparklineAreaPath(activeSeries)} />
+              <path className="analytics-sparkline-line" d={buildSparklinePath(activeSeries)} />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label={`MTTA (${windowDays}d)`}
+          value={formatMinutes(metrics.mttd)}
+          detail="Avg response time"
+          trend={getTrend(mttaDelta)}
+          trendValue={formatDelta(mttaDelta)}
+          variant="primary"
+          icon={<MetricIcon type="MTTA" />}
+          href="/incidents"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg className="analytics-sparkline analytics-sparkline-amber" viewBox="0 0 72 24">
+              <path className="analytics-sparkline-area" d={buildSparklineAreaPath(mttaSeries)} />
+              <path className="analytics-sparkline-line" d={buildSparklinePath(mttaSeries)} />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label={`MTTR (${windowDays}d)`}
+          value={formatMinutes(metrics.mttr)}
+          detail="Avg resolution time"
+          trend={getTrend(mttrDelta)}
+          trendValue={formatDelta(mttrDelta)}
+          variant="primary"
+          icon={<MetricIcon type="MTTR" />}
+          href="/incidents?status=RESOLVED"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg className="analytics-sparkline analytics-sparkline-emerald" viewBox="0 0 72 24">
+              <path className="analytics-sparkline-area" d={buildSparklineAreaPath(mttrSeries)} />
+              <path className="analytics-sparkline-line" d={buildSparklinePath(mttrSeries)} />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label="Resolution Compliance"
+          value={formatPercent(metrics.resolveCompliance)}
+          detail="SLA compliance"
+          variant={
+            getComplianceStatus(metrics.resolveCompliance) as 'success' | 'warning' | 'danger'
+          }
+          icon={<Shield className="w-5 h-5" />}
+          href="/incidents?status=RESOLVED"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg
+              className="analytics-sparkline analytics-sparkline-indigo"
+              viewBox="0 0 72 24"
+              aria-hidden="true"
+            >
+              <path className="analytics-sparkline-area" d={buildSparklineAreaPath(mttrSeries)} />
+              <path className="analytics-sparkline-line" d={buildSparklinePath(mttrSeries)} />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label="Ack SLA"
+          value={formatPercent(metrics.ackCompliance)}
+          detail="Within target"
+          variant={getComplianceStatus(metrics.ackCompliance) as 'success' | 'warning' | 'danger'}
+          icon={<Shield className="w-5 h-5" />}
+          href="/incidents"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg
+              className="analytics-sparkline analytics-sparkline-indigo"
+              viewBox="0 0 72 24"
+              aria-hidden="true"
+            >
+              <path
+                className="analytics-sparkline-area"
+                d={buildSparklineAreaPath(ackComplianceSeries)}
+              />
+              <path
+                className="analytics-sparkline-line"
+                d={buildSparklinePath(ackComplianceSeries)}
+              />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label="Resolve Rate"
+          value={formatPercent(metrics.resolveRate)}
+          detail="Completion"
+          variant={metrics.resolveRate > 80 ? 'success' : 'default'}
+          icon={<CheckCircle className="w-5 h-5 text-green-500" />}
+          href="/incidents?status=RESOLVED"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg
+              className="analytics-sparkline analytics-sparkline-emerald"
+              viewBox="0 0 72 24"
+              aria-hidden="true"
+            >
+              <path
+                className="analytics-sparkline-area"
+                d={buildSparklineAreaPath(resolveRateSeries)}
+              />
+              <path
+                className="analytics-sparkline-line"
+                d={buildSparklinePath(resolveRateSeries)}
+              />
+            </svg>
+          </div>
+        </MetricCard>
+        <MetricCard
+          label="Escalation Rate"
+          value={formatPercent(metrics.escalationRate)}
+          detail="Incidents escalated"
+          variant={metrics.escalationRate > 20 ? 'warning' : 'default'}
+          icon={<TrendingUp className="w-5 h-5" />}
+          href="/incidents"
+          className="analytics-card-large"
+        >
+          <div className="analytics-kpi-meta">
+            <svg
+              className="analytics-sparkline analytics-sparkline-rose"
+              viewBox="0 0 72 24"
+              aria-hidden="true"
+            >
+              <path
+                className="analytics-sparkline-area"
+                d={buildSparklineAreaPath(escalationRateSeries)}
+              />
+              <path
+                className="analytics-sparkline-line"
+                d={buildSparklinePath(escalationRateSeries)}
+              />
+            </svg>
+          </div>
+        </MetricCard>
+      </section>
 
-    const serviceNameMap = new Map(services.map((service) => [service.id, service.name]));
-    const serviceTargetMap = new Map(
-        services.map((service) => [
-            service.id,
-            {
-                ackMinutes: service.targetAckMinutes ?? defaultAckTargetMinutes,
-                resolveMinutes: service.targetResolveMinutes ?? defaultResolveTargetMinutes
-            }
-        ])
-    );
-    const topServices = topServiceCounts.map((entry) => ({
-        id: entry.serviceId,
-        name: serviceNameMap.get(entry.serviceId) || 'Deleted service',
-        count: entry._count._all
-    }));
+      <section className="v2-grid-4 mb-8">
+        <MetricCard
+          className="analytics-card-compact"
+          label="Ack Rate"
+          value={formatPercent(metrics.ackRate)}
+          detail="Acknowledgment"
+          variant={metrics.ackRate > 90 ? 'success' : 'warning'}
+          icon={<CheckCircle className="w-5 h-5 text-blue-500" />}
+          href="/incidents?status=ACKNOWLEDGED"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Resolve Breaches"
+          value={metrics.resolveBreaches.toLocaleString()}
+          detail="SLA misses"
+          variant={metrics.resolveBreaches > 0 ? 'warning' : 'success'}
+          icon={<AlertCircle className="w-5 h-5 text-rose-500" />}
+          href="/incidents?status=RESOLVED"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="High Urgency"
+          value={formatPercent(metrics.highUrgencyRate)}
+          detail="Share of Total"
+          variant={metrics.highUrgencyRate > 50 ? 'warning' : 'default'}
+          icon={<AlertTriangle className="w-5 h-5 text-orange-500" />}
+          href="/incidents?urgency=HIGH"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Ack Breaches"
+          value={metrics.ackBreaches.toLocaleString()}
+          detail="SLA misses"
+          variant={metrics.ackBreaches > 0 ? 'warning' : 'success'}
+          icon={<AlertCircle className="w-5 h-5 text-orange-500" />}
+          href="/incidents"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Alerts"
+          value={metrics.alertsCount.toLocaleString()}
+          detail="Total Signals"
+          variant="default"
+          icon={<Bell className="w-5 h-5 text-gray-500" />}
+          href="/alerts"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Noise Ratio"
+          value={metrics.alertsPerIncident.toFixed(1) + 'x'}
+          detail="Alerts/Incident"
+          variant="default"
+          icon={<Zap className="w-5 h-5 text-yellow-500" />}
+          href="/alerts"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Unassigned"
+          value={metrics.unassignedActive.toLocaleString()}
+          detail="Needs Owner"
+          variant={metrics.unassignedActive > 0 ? 'warning' : 'success'}
+          icon={<Users className="w-5 h-5" />}
+          href="/incidents?assignee=UNASSIGNED"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Coverage Gaps"
+          value={metrics.coverageGapDays.toLocaleString()}
+          detail="Days uncovered"
+          variant={metrics.coverageGapDays > 0 ? 'warning' : 'success'}
+          icon={<AlertTriangle className="w-5 h-5 text-orange-500" />}
+          href="/on-call"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="After Hours"
+          value={formatPercent(metrics.afterHoursRate)}
+          detail="Off-Business Hours"
+          variant="default"
+          icon={<Moon className="w-5 h-5 text-indigo-500" />}
+          href="/on-call"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="Coverage"
+          value={formatPercent(metrics.coveragePercent)}
+          detail="On-Call Schedule"
+          variant={metrics.coveragePercent > 95 ? 'success' : 'danger'}
+          icon={<Shield className="w-5 h-5" />}
+          href="/on-call"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="On-Call Hours"
+          value={formatHours(metrics.onCallHoursMs)}
+          detail="Total Scheduled"
+          variant="primary"
+          icon={<Clock className="w-5 h-5" />}
+          href="/on-call"
+        />
+        <MetricCard
+          className="analytics-card-compact"
+          label="MTBF"
+          value={metrics.mtbfMs ? formatHours(metrics.mtbfMs) : '--'}
+          detail="Mean Time Between"
+          variant="default"
+          icon={<Activity className="w-5 h-5" />}
+          href="/incidents"
+        />
+      </section>
 
-    const servicesForFilter = teamId
-        ? services.filter((service) => service.teamId === teamId)
-        : services;
-
-    const assigneeIds = assigneeCounts
-        .map((entry) => entry.assigneeId)
-        .filter((id): id is string => Boolean(id));
-    const onCallUserIds = Array.from(new Set(windowShifts.map((shift) => shift.userId)));
-    const usersById = assigneeIds.length || onCallUserIds.length
-        ? await prisma.user.findMany({
-            where: { id: { in: Array.from(new Set([...assigneeIds, ...onCallUserIds])) } },
-            select: { id: true, name: true, email: true }
-        })
-        : [];
-    const userNameMap = new Map(usersById.map((user) => [user.id, user.name || user.email || 'Unknown user']));
-    const _filterUserNameMap = new Map(users.map((user) => [user.id, user.name || user.email || 'Unknown user']));
-
-    const assigneeLoad = assigneeCounts.map((entry) => ({
-        id: entry.assigneeId as string,
-        name: userNameMap.get(entry.assigneeId as string) || 'Unknown user',
-        count: entry._count._all
-    }));
-
-    const onCallLoadMap = new Map<string, { hoursMs: number; incidentCount: number }>();
-    for (const shift of windowShifts) {
-        const shiftStart = shift.start < recentStart ? recentStart : shift.start;
-        const shiftEnd = shift.end > now ? now : shift.end;
-        if (shiftEnd <= shiftStart) {
-            continue;
-        }
-        const entry = onCallLoadMap.get(shift.userId) || { hoursMs: 0, incidentCount: 0 };
-        entry.hoursMs += shiftEnd.getTime() - shiftStart.getTime();
-        onCallLoadMap.set(shift.userId, entry);
-    }
-    for (const incident of recentIncidents) {
-        for (const shift of windowShifts) {
-            if (incident.createdAt >= shift.start && incident.createdAt <= shift.end) {
-                const entry = onCallLoadMap.get(shift.userId) || { hoursMs: 0, incidentCount: 0 };
-                entry.incidentCount += 1;
-                onCallLoadMap.set(shift.userId, entry);
-            }
-        }
-    }
-    const onCallLoad = Array.from(onCallLoadMap.entries())
-        .map(([userId, stats]) => ({
-            id: userId,
-            name: userNameMap.get(userId) || 'Unknown user',
-            hoursMs: stats.hoursMs,
-            incidentCount: stats.incidentCount
-        }))
-        .sort((a, b) => b.incidentCount - a.incidentCount)
-        .slice(0, 6);
-
-    const statusAgeMap = new Map<string, { totalMs: number; count: number }>();
-    for (const incident of recentIncidents) {
-        const durationMs = incident.status === 'RESOLVED' && incident.updatedAt
-            ? incident.updatedAt.getTime() - incident.createdAt.getTime()
-            : now.getTime() - incident.createdAt.getTime();
-        const current = statusAgeMap.get(incident.status) || { totalMs: 0, count: 0 };
-        current.totalMs += durationMs;
-        current.count += 1;
-        statusAgeMap.set(incident.status, current);
-    }
-    const statusAges = statusOrder.map((status) => {
-        const data = statusAgeMap.get(status);
-        const avgMs = data && data.count ? data.totalMs / data.count : null;
-        return { status, avgMs };
-    });
-
-    const serviceSlaStats = new Map<string, { ackMet: number; ackTotal: number; resolveMet: number; resolveTotal: number }>();
-    for (const incident of recentIncidents) {
-        const targets = serviceTargetMap.get(incident.serviceId);
-        const ackTargetMinutes = targets?.ackMinutes ?? defaultAckTargetMinutes;
-        const resolveTargetMinutes = targets?.resolveMinutes ?? defaultResolveTargetMinutes;
-        const current = serviceSlaStats.get(incident.serviceId) || { ackMet: 0, ackTotal: 0, resolveMet: 0, resolveTotal: 0 };
-
-        const ackedAt = ackByIncident.get(incident.id);
-        if (ackedAt && incident.createdAt) {
-            current.ackTotal += 1;
-            const diffMinutes = (ackedAt.getTime() - incident.createdAt.getTime()) / 1000 / 60;
-            if (diffMinutes <= ackTargetMinutes) {
-                current.ackMet += 1;
-            }
-        }
-
-        if (incident.status === 'RESOLVED') {
-            const resolvedAt = incident.resolvedAt || incident.updatedAt;
-            if (resolvedAt && incident.createdAt) {
-                current.resolveTotal += 1;
-                const diffMinutes = (resolvedAt.getTime() - incident.createdAt.getTime()) / 1000 / 60;
-                if (diffMinutes <= resolveTargetMinutes) {
-                    current.resolveMet += 1;
-                }
-            }
-        }
-
-        serviceSlaStats.set(incident.serviceId, current);
-    }
-
-    const serviceSlaTable = Array.from(serviceSlaStats.entries())
-        .map(([serviceIdKey, stats]) => ({
-            id: serviceIdKey,
-            name: serviceNameMap.get(serviceIdKey) || 'Deleted service',
-            ackRate: stats.ackTotal ? (stats.ackMet / stats.ackTotal) * 100 : 0,
-            resolveRate: stats.resolveTotal ? (stats.resolveMet / stats.resolveTotal) * 100 : 0,
-            total: Math.max(stats.ackTotal, stats.resolveTotal)
-        }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 8);
-
-    let ackSlaMet = 0;
-    let resolveSlaMet = 0;
-    for (const incident of recentIncidents) {
-        const targets = serviceTargetMap.get(incident.serviceId);
-        const ackTargetMinutes = targets?.ackMinutes ?? defaultAckTargetMinutes;
-        const resolveTargetMinutes = targets?.resolveMinutes ?? defaultResolveTargetMinutes;
-
-        const ackedAt = ackByIncident.get(incident.id);
-        if (ackedAt && incident.createdAt) {
-            const diffMinutes = (ackedAt.getTime() - incident.createdAt.getTime()) / 1000 / 60;
-            if (diffMinutes <= ackTargetMinutes) {
-                ackSlaMet += 1;
-            }
-        }
-
-        if (incident.status === 'RESOLVED') {
-            const resolvedAt = incident.resolvedAt || incident.updatedAt;
-            if (resolvedAt && incident.createdAt) {
-                const diffMinutes = (resolvedAt.getTime() - incident.createdAt.getTime()) / 1000 / 60;
-                if (diffMinutes <= resolveTargetMinutes) {
-                    resolveSlaMet += 1;
-                }
-            }
-        }
-    }
-
-    const ackSlaRate = ackedIncidents ? (ackSlaMet / ackedIncidents) * 100 : 0;
-    const resolveSlaRate = resolvedIncidents.length ? (resolveSlaMet / resolvedIncidents.length) * 100 : 0;
-    const ackSlaBreaches = Math.max(0, ackedIncidents - ackSlaMet);
-    const resolveSlaBreaches = Math.max(0, resolvedIncidents.length - resolveSlaMet);
-    const ackSlaBurnRate = Math.max(0, 100 - ackSlaRate);
-    const resolveSlaBurnRate = Math.max(0, 100 - resolveSlaRate);
-
-    const autoResolvedIds = new Set(autoResolveEvents.map((event) => event.incidentId));
-    const escalatedIds = new Set(escalationEvents.map((event) => event.incidentId));
-    const reopenedIds = new Set(reopenEvents.map((event) => event.incidentId));
-    const autoResolvedCount = resolvedIncidents.filter((incident) => autoResolvedIds.has(incident.id)).length;
-    const manualResolvedCount = Math.max(0, resolvedIncidents.length - autoResolvedCount);
-    const autoResolvedRate = resolvedIncidents.length ? (autoResolvedCount / resolvedIncidents.length) * 100 : 0;
-    const reopenCount = reopenedIds.size;
-    const reopenRate = resolvedIncidents.length ? (reopenCount / resolvedIncidents.length) * 100 : 0;
-    const escalationRate = totalRecent ? (escalatedIds.size / totalRecent) * 100 : 0;
-
-    const metricCards = [
-        { label: 'Incidents in view', value: activeIncidents.toLocaleString(), detail: 'Filtered set' },
-        { label: `Incidents (${recentWindowDays}d)`, value: totalRecent.toLocaleString(), detail: 'New incidents' },
-        { label: 'MTTA', value: formatMinutes(mttaMs), detail: `Avg ack time (${recentWindowDays}d)` },
-        { label: 'MTTR', value: formatMinutes(mttrMs), detail: `Avg resolve time (${recentWindowDays}d)` },
-        { label: 'Ack rate', value: formatPercent(ackRate), detail: 'Incidents acknowledged' },
-        { label: 'Resolve rate', value: formatPercent(resolutionRate), detail: 'Incidents resolved' },
-        { label: 'Ack SLA met', value: formatPercent(ackSlaRate), detail: 'Within target' },
-        { label: 'Resolve SLA met', value: formatPercent(resolveSlaRate), detail: 'Within target' },
-        { label: 'High urgency', value: formatPercent(highUrgencyRate), detail: 'Share of HIGH' },
-        { label: `Alerts (${recentWindowDays}d)`, value: alertsLastWeek.toLocaleString(), detail: 'Incoming alerts' },
-        { label: 'Alerts per incident', value: formatRatio(alertsPerIncident), detail: 'Alert noise' },
-        { label: 'Unassigned active', value: unassignedActive.toLocaleString(), detail: 'Needs ownership' },
-        { label: 'MTBF', value: mtbfMs ? formatHours(mtbfMs) : '--', detail: `Between incidents (${recentWindowDays}d)` },
-        { label: 'After-hours', value: formatPercent(afterHoursRate), detail: `Outside 8-18 (${recentWindowDays}d)` },
-        { label: 'Coverage', value: formatPercent(coveragePercent), detail: 'Next 14 days' },
-        { label: 'On-call hours', value: formatHours(totalShiftMs), detail: 'Next 14 days' }
-    ];
-
-    // Build export URL with all filters
-    const exportParams = new URLSearchParams();
-    exportParams.append('format', 'csv');
-    exportParams.append('window', `${windowDays}`);
-    if (teamId && teamId !== 'ALL') exportParams.append('team', teamId);
-    if (serviceId && serviceId !== 'ALL') exportParams.append('service', serviceId);
-    if (assigneeId && assigneeId !== 'ALL') exportParams.append('assignee', assigneeId);
-    if (statusFilter !== 'ALL') exportParams.append('status', statusFilter);
-    if (urgencyFilter !== 'ALL') exportParams.append('urgency', urgencyFilter);
-    const exportUrl = `/api/analytics/export?${exportParams.toString()}`;
-
-    return (
-        <main className="page-shell analytics-shell">
-            <div className="analytics-hero-redesigned">
-                <div className="analytics-hero-inner">
-                    <div className="analytics-hero-left">
-                        <p className="schedule-eyebrow">Analytics</p>
-                        <h1>Operational Readiness</h1>
-                    </div>
-                    <div className="analytics-hero-right">
-                        <a
-                            href={exportUrl}
-                            className="analytics-export-btn"
-                        >
-                            <span>📥</span>
-                            Export CSV
-                        </a>
-                    </div>
+      <section className={`${showInsights ? 'v2-grid-split' : 'w-full'} mb-8 insights-trends`}>
+        {showInsights && (
+          <div className="insights-panel v2-panel-insights">
+            <div className="insights-panel-header">
+              <div className="insights-panel-title-row">
+                <span className="insights-panel-icon">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div>
+                  <div className="insights-panel-kicker">Smart Insights</div>
+                  <h3 className="insights-panel-title">
+                    Key signals in the last {windowDays} days
+                  </h3>
                 </div>
+              </div>
+              <div className="insights-panel-badges">
+                <span>Attention {insightCounts.negative}</span>
+                <span>Opportunity {insightCounts.positive}</span>
+                <span>Neutral {insightCounts.neutral}</span>
+              </div>
             </div>
+            <div className="insights-panel-body">
+              {metrics.insights.slice(0, 5).map((insight, i) => (
+                <div
+                  className={`insights-panel-row ${insight.type === 'positive' ? 'is-positive' : insight.type === 'negative' ? 'is-negative' : ''}`}
+                  key={i}
+                >
+                  <div className="insights-panel-row-tag">
+                    {insight.type === 'positive'
+                      ? 'Opportunity'
+                      : insight.type === 'negative'
+                        ? 'Attention'
+                        : 'Insight'}
+                  </div>
+                  <div className="insights-panel-row-text">{insight.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-            <AnalyticsFilters
-                teams={teams}
-                services={servicesForFilter}
-                users={users}
-                currentFilters={{
-                    team: teamId ?? 'ALL',
-                    service: serviceId ?? 'ALL',
-                    assignee: assigneeId ?? 'ALL',
-                    status: statusFilter,
-                    urgency: urgencyFilter,
-                    window: `${windowDays}`
-                }}
-            />
-
-            <FilterChips
-                filters={{
-                    team: teamId ?? 'ALL',
-                    service: serviceId ?? 'ALL',
-                    assignee: assigneeId ?? 'ALL',
-                    status: statusFilter,
-                    urgency: urgencyFilter,
-                    window: `${windowDays}`
-                }}
-                teams={teams}
-                services={servicesForFilter}
-                users={users}
-            />
-
-            <section className="glass-panel analytics-grid">
-                {metricCards.map((metric, index) => {
-                    // Determine variant based on metric type with better logic
-                    let variant: 'default' | 'primary' | 'success' | 'warning' | 'danger' = 'default';
-                    let showProgress = false;
-                    let progressValue = 0;
-                    const tooltipText = getMetricTooltip(metric.label);
-
-                    // SLA metrics - color by performance
-                    if (metric.label.includes('SLA met')) {
-                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
-                        if (!isNaN(value)) {
-                            variant = value >= 95 ? 'success' : value >= 80 ? 'warning' : 'danger';
-                            showProgress = true;
-                            progressValue = value;
-                        }
-                    }
-                    // Rate metrics - color by performance
-                    else if (metric.label.includes('rate') && !metric.label.includes('SLA')) {
-                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
-                        if (!isNaN(value)) {
-                            if (metric.label.includes('Ack rate') || metric.label.includes('Resolve rate')) {
-                                variant = value >= 80 ? 'success' : value >= 60 ? 'warning' : 'danger';
-                            } else if (metric.label.includes('High urgency')) {
-                                variant = value >= 50 ? 'warning' : 'default';
-                            } else if (metric.label.includes('After-hours')) {
-                                variant = value >= 50 ? 'warning' : 'default';
-                            }
-                        }
-                    }
-                    // Time metrics - primary color
-                    else if (metric.label.includes('MTTA') || metric.label.includes('MTTR') || metric.label.includes('MTBF')) {
-                        variant = 'primary';
-                    }
-                    // Key metrics - primary color
-                    else if (index === 0 || index === 1) {
-                        variant = 'primary';
-                    }
-                    // Coverage - success if 100%
-                    else if (metric.label.includes('Coverage')) {
-                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
-                        if (!isNaN(value)) {
-                            variant = value >= 100 ? 'success' : value >= 80 ? 'warning' : 'danger';
-                            showProgress = true;
-                            progressValue = value;
-                        }
-                    }
-                    // Unassigned - danger if high
-                    else if (metric.label.includes('Unassigned')) {
-                        const value = parseFloat(metric.value.replace(/[^0-9.]/g, ''));
-                        if (!isNaN(value)) {
-                            variant = value > 0 ? 'warning' : 'success';
-                        }
-                    }
-
-                    return (
-                        <MetricCard
-                            key={metric.label}
-                            label={metric.label}
-                            value={metric.value}
-                            detail={metric.detail}
-                            variant={variant}
-                            icon={<MetricIcon type={metric.label} />}
-                            tooltip={tooltipText}
+        <div className="trends-panel v2-panel-trends">
+          <div className="trends-panel-header">
+            <div className="trends-panel-title-row">
+              <span className="trends-panel-icon">
+                <TrendingUp className="w-4 h-4" />
+              </span>
+              <div>
+                <div className="trends-panel-kicker">Response Performance Trends</div>
+                <h3 className="trends-panel-title">MTTA vs MTTR · Last {windowDays} days</h3>
+              </div>
+            </div>
+            <div className="trends-panel-badges">
+              <span className="trends-badge trends-badge-mtta">
+                MTTA avg {formatMinutes(metrics.mttd)}
+              </span>
+              <span className="trends-badge trends-badge-mttr">
+                MTTR avg {formatMinutes(metrics.mttr)}
+              </span>
+            </div>
+          </div>
+          <div className="trends-panel-body">
+            {metrics.totalIncidents === 0 ? (
+              <div className="analytics-empty-state">
+                <div className="analytics-empty-title">No incidents in this window</div>
+              </div>
+            ) : (
+              <div className="trends-panel-grid">
+                <div className="trends-panel-chart">
+                  <LineChart
+                    data={metrics.trendSeries}
+                    lines={[
+                      { key: 'mtta', color: '#f59e0b', label: 'MTTA' },
+                      { key: 'mttr', color: '#10b981', label: 'MTTR' },
+                    ]}
+                    height={280}
+                    valueFormatter={(v: number) => formatTimeMinutesMs(v * 60000)}
+                  />
+                </div>
+                <div className="trends-panel-stats">
+                  <div className="trends-panel-stat">
+                    <span>MTTA delta</span>
+                    <strong>
+                      {mttaDelta !== null && (
+                        <span
+                          className={`analytics-trend-arrow ${mttaDelta > 0 ? 'trend-negative' : 'trend-positive'}`}
                         >
-                            {showProgress && (
-                                <div style={{ marginTop: '0.75rem' }}>
-                                    <ProgressBar
-                                        value={progressValue}
-                                        variant={variant === 'success' ? 'success' : variant === 'warning' ? 'warning' : variant === 'danger' ? 'danger' : 'primary'}
-                                        size="sm"
-                                    />
-                                </div>
-                            )}
-                        </MetricCard>
-                    );
-                })}
-            </section>
+                          {mttaDelta > 0 ? '⬆' : '⬇'}
+                        </span>
+                      )}
+                      {mttaDelta === null ? '--' : `${Math.abs(mttaDelta).toFixed(1)}%`}
+                    </strong>
+                  </div>
+                  <div className="trends-panel-stat">
+                    <span>MTTR delta</span>
+                    <strong>
+                      {mttrDelta !== null && (
+                        <span
+                          className={`analytics-trend-arrow ${mttrDelta > 0 ? 'trend-negative' : 'trend-positive'}`}
+                        >
+                          {mttrDelta > 0 ? '⬆' : '⬇'}
+                        </span>
+                      )}
+                      {mttrDelta === null ? '--' : `${Math.abs(mttrDelta).toFixed(1)}%`}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
-            <section className="glass-panel analytics-charts">
-                <ChartCard title={`Incident volume (last ${trendWindowDays} days)`}>
-                    <BarChart
-                        data={trendSeries.map(entry => ({ key: entry.key, label: entry.label, count: entry.count }))}
-                        maxValue={maxTrend}
-                        height={180}
+      <section className="glass-panel mb-8 analytics-narrative analytics-narrative-compact">
+        <div className="analytics-narrative-header">
+          <div className="analytics-narrative-title-block">
+            <span className="analytics-narrative-kicker">Narrative</span>
+            <h3 className="analytics-narrative-title">Key changes vs previous period</h3>
+          </div>
+          <a href="/incidents" className="analytics-narrative-link">
+            View incidents
+          </a>
+        </div>
+        <div className="analytics-narrative-list">
+          <div
+            className={`analytics-narrative-item ${incidentDelta !== null && incidentDelta > 0 ? 'is-up' : incidentDelta !== null && incidentDelta < 0 ? 'is-down' : ''}`}
+          >
+            <span>Incident volume</span>
+            <strong>
+              {incidentDelta === null
+                ? 'No prior data'
+                : `${Math.abs(incidentDelta).toFixed(1)}% ${incidentDelta > 0 ? 'up' : 'down'}`}
+            </strong>
+          </div>
+          <div
+            className={`analytics-narrative-item ${mttaDelta !== null && mttaDelta > 0 ? 'is-up' : mttaDelta !== null && mttaDelta < 0 ? 'is-down' : ''}`}
+          >
+            <span>Response time (MTTA)</span>
+            <strong>
+              {mttaDelta === null
+                ? 'No prior data'
+                : `${Math.abs(mttaDelta).toFixed(1)}% ${mttaDelta > 0 ? 'slower' : 'faster'}`}
+            </strong>
+          </div>
+          <div
+            className={`analytics-narrative-item ${mttrDelta !== null && mttrDelta > 0 ? 'is-up' : mttrDelta !== null && mttrDelta < 0 ? 'is-down' : ''}`}
+          >
+            <span>Resolution time (MTTR)</span>
+            <strong>
+              {mttrDelta === null
+                ? 'No prior data'
+                : `${Math.abs(mttrDelta).toFixed(1)}% ${mttrDelta > 0 ? 'slower' : 'faster'}`}
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="operational-grid mb-8">
+        <div className="operational-card">
+          <div className="operational-card-header">
+            <h3>Incident Volume Trend</h3>
+            <span>Window {windowDays} days</span>
+          </div>
+          <div className="operational-card-body">
+            <div className="operational-chart h-200 w-full pl-0 pr-0">
+              {metrics.totalIncidents === 0 ? (
+                <div className="analytics-empty-state">
+                  <div className="analytics-empty-title">No incident volume yet</div>
+                </div>
+              ) : (
+                <LineChart
+                  data={metrics.trendSeries}
+                  lines={[{ key: 'count', color: '#6366f1', label: 'Volume' }]}
+                  height={180}
+                  showLegend={false}
+                  valueFormatter={v => v.toFixed(0)}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="operational-card">
+          <div className="operational-card-header">
+            <h3>Current Status Mix</h3>
+            <span>{metrics.totalIncidents.toLocaleString()} incidents</span>
+          </div>
+          <div className="operational-card-body">
+            <div className="operational-status-list">
+              {statusMixWithPercent.map(entry => (
+                <div key={entry.status} className="operational-status-row">
+                  <div className="operational-status-head">
+                    <span
+                      className="operational-status-dot"
+                      style={{ background: getStatusColor(entry.status) }}
                     />
-                </ChartCard>
-                <ChartCard title={`Incident status mix (${recentWindowDays}d)`}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'center' }}>
-                        <PieChart
-                            data={statusMix.map(entry => ({
-                                label: entry.status,
-                                value: entry.count,
-                                color: getStatusColor(entry.status)
-                            }))}
-                            size={140}
-                            showLegend={false}
-                        />
-                        <div className="analytics-list">
-                            {statusMix.map((entry) => (
-                                <div key={entry.status} className={`analytics-list-item-enhanced analytics-status-${entry.status.toLowerCase()}`}>
-                                    <span className="analytics-status-badge">{entry.status}</span>
-                                    <strong>{entry.count}</strong>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </ChartCard>
-                <ChartCard title={`Top noisy services (${serviceWindowDays}d)`}>
-                    <div className="analytics-list">
-                        {topServices.length === 0 ? (
-                            <div className="analytics-empty-state">
-                                <div className="analytics-empty-icon">📊</div>
-                                <div className="analytics-empty-title">No incidents found</div>
-                                <div className="analytics-empty-description">No incidents in the last {serviceWindowDays} days for the selected filters.</div>
-                            </div>
-                        ) : topServices.map((service, index) => {
-                            const percentage = totalRecent > 0 ? (service.count / totalRecent) * 100 : 0;
-                            return (
-                                <div key={service.id} className="analytics-list-item-enhanced">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{
-                                            fontSize: '0.7rem',
-                                            fontWeight: '700',
-                                            color: 'var(--text-muted)',
-                                            minWidth: '20px'
-                                        }}>#{index + 1}</span>
-                                        <span>{service.name}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                            {percentage.toFixed(1)}%
-                                        </span>
-                                        <strong>{service.count}</strong>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </ChartCard>
-                <ChartCard title={`Urgency mix (${recentWindowDays}d)`}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'center' }}>
-                        <PieChart
-                            data={[
-                                { label: 'HIGH', value: highUrgencyCount, color: '#dc2626' },
-                                { label: 'LOW', value: lowUrgencyCount, color: '#6b7280' }
-                            ]}
-                            size={140}
-                            showLegend={false}
-                        />
-                        <div className="analytics-list">
-                            <div className="analytics-list-item-enhanced analytics-urgency-high">
-                                <span className="analytics-urgency-badge">HIGH</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        {totalRecent > 0 ? ((highUrgencyCount / totalRecent) * 100).toFixed(1) : 0}%
-                                    </span>
-                                    <strong>{highUrgencyCount}</strong>
-                                </div>
-                            </div>
-                            <div className="analytics-list-item-enhanced analytics-urgency-low">
-                                <span className="analytics-urgency-badge">LOW</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        {totalRecent > 0 ? ((lowUrgencyCount / totalRecent) * 100).toFixed(1) : 0}%
-                                    </span>
-                                    <strong>{lowUrgencyCount}</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </ChartCard>
-            </section>
-
-            <section className="analytics-split">
-                <div className="glass-panel analytics-section-enhanced">
-                    <h2>Response health</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                            <GaugeChart
-                                value={ackSlaRate}
-                                label="Ack SLA"
-                                thresholds={{ good: 95, warning: 80 }}
-                            />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                            <GaugeChart
-                                value={resolveSlaRate}
-                                label="Resolve SLA"
-                                thresholds={{ good: 95, warning: 80 }}
-                            />
-                        </div>
-                    </div>
-                    <div className="analytics-kpi-row">
-                        <div className="analytics-kpi">
-                            <span>Avg ack time</span>
-                            <strong>{formatMinutes(mttaMs)}</strong>
-                        </div>
-                        <div className="analytics-kpi">
-                            <span>Avg resolve time</span>
-                            <strong>{formatMinutes(mttrMs)}</strong>
-                        </div>
-                        <div className="analytics-kpi">
-                            <span>Acked incidents</span>
-                            <strong>{formatPercent(ackRate)}</strong>
-                        </div>
-                        <div className="analytics-kpi">
-                            <span>Resolved incidents</span>
-                            <strong>{formatPercent(resolutionRate)}</strong>
-                        </div>
-                    </div>
-                    <div className="analytics-table">
-                        <div className="analytics-table-row">
-                            <span>MTTA p50</span>
-                            <strong>{mttaP50 === null ? '--' : formatMinutes(mttaP50)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>MTTA p95</span>
-                            <strong>{mttaP95 === null ? '--' : formatMinutes(mttaP95)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>MTTR p50</span>
-                            <strong>{mttrP50 === null ? '--' : formatMinutes(mttrP50)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>MTTR p95</span>
-                            <strong>{mttrP95 === null ? '--' : formatMinutes(mttrP95)}</strong>
-                        </div>
-                    </div>
-                    <div className="analytics-table">
-                        <div className="analytics-table-row">
-                            <span>High urgency share ({recentWindowDays}d)</span>
-                            <strong>{formatPercent(highUrgencyRate)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Ack SLA breaches ({recentWindowDays}d)</span>
-                            <strong>{ackSlaBreaches.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Resolve SLA breaches ({recentWindowDays}d)</span>
-                            <strong>{resolveSlaBreaches.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Unassigned active incidents</span>
-                            <strong>{unassignedActive.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Incident events logged ({recentWindowDays}d)</span>
-                            <strong>{eventsLastWeek.toLocaleString()}</strong>
-                        </div>
-                    </div>
+                    <span className="operational-status-name">{entry.status}</span>
+                    <span className="operational-status-count">{entry.count}</span>
+                    <span className="operational-status-share">{entry.percent.toFixed(1)}%</span>
+                  </div>
+                  <div className="operational-status-bar">
+                    <span
+                      style={{
+                        width: `${entry.percent.toFixed(1)}%`,
+                        background: getStatusColor(entry.status),
+                      }}
+                    />
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="operational-card">
+          <div className="operational-card-header">
+            <h3>Assignee Load</h3>
+            <span>{metrics.assigneeLoad.length} responders</span>
+          </div>
+          <div className="operational-card-body">
+            {metrics.assigneeLoad.map((entry, index) => {
+              const percent = (entry.count / assigneeMax) * 100;
+              return (
+                <div key={entry.id} className="operational-status-row operational-assignee-row">
+                  <div className="operational-status-head">
+                    <span className={`operational-rank ${index < 3 ? 'is-top' : ''}`}>
+                      {index + 1}
+                    </span>
+                    <span className="operational-status-name">{entry.name}</span>
+                    <span className="operational-status-count">{entry.count}</span>
+                  </div>
+                  <div className="operational-status-bar">
+                    <span style={{ width: `${percent.toFixed(1)}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-                <div className="glass-panel analytics-section-enhanced">
-                    <h2>Coverage outlook</h2>
-                    <div className="analytics-table">
-                        <div className="analytics-table-row">
-                            <span>Coverage next {coverageWindowDays} days</span>
-                            <strong>{formatPercent(coveragePercent)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Coverage gap days</span>
-                            <strong>{coverageGapDays.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Scheduled on-call hours</span>
-                            <strong>{formatHours(totalShiftMs)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Unique responders scheduled</span>
-                            <strong>{onCallUsers.size.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Active overrides</span>
-                            <strong>{activeOverrides.toLocaleString()}</strong>
-                        </div>
+      <div className="v2-section-header v2-panel-heading">
+        <h2 className="v2-section-title">
+          <BarChart3 className="w-5 h-5" /> Distribution &amp; Mix
+        </h2>
+        <span className="text-xs text-muted-foreground">Service, urgency, and status age</span>
+      </div>
+
+      <section className="distribution-grid mb-8">
+        <div className="distribution-card">
+          <div className="distribution-card-header">
+            <h3>Top Services by Incidents</h3>
+            <span>{metrics.topServices.length} services</span>
+          </div>
+          <div className="distribution-card-body">
+            {metrics.topServices.length === 0 ? (
+              <div className="distribution-empty">No incidents in this window.</div>
+            ) : (
+              metrics.topServices.map((service, index) => {
+                const percent = (service.count / topServiceMax) * 100;
+                const share = metrics.totalIncidents
+                  ? (service.count / metrics.totalIncidents) * 100
+                  : 0;
+                return (
+                  <div key={service.id} className="distribution-row">
+                    <div className="distribution-row-head">
+                      <span className={`distribution-rank ${index < 3 ? 'is-top' : ''}`}>
+                        {index + 1}
+                      </span>
+                      <span className="distribution-name">{service.name}</span>
+                      <span className="distribution-count">{service.count}</span>
+                      <span className="distribution-share">{share.toFixed(1)}%</span>
                     </div>
-                </div>
-            </section>
-
-            <section className="glass-panel analytics-section-enhanced">
-                <h2>SLA compliance by service</h2>
-                <div className="analytics-table">
-                    {serviceSlaTable.length === 0 ? (
-                        <div className="analytics-empty-state">
-                            <div className="analytics-empty-icon">🎯</div>
-                            <div className="analytics-empty-title">No SLA data</div>
-                            <div className="analytics-empty-description">No SLA compliance data available in this time window.</div>
-                        </div>
-                    ) : serviceSlaTable.map((entry) => (
-                        <div key={entry.id} className="analytics-table-row">
-                            <span>{entry.name}</span>
-                            <strong>Ack {formatPercent(entry.ackRate)} · Resolve {formatPercent(entry.resolveRate)}</strong>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            <section className="analytics-split">
-                <div className="glass-panel analytics-section-enhanced">
-                    <h2>Reliability signals</h2>
-                    <div className="analytics-table">
-                        <div className="analytics-table-row">
-                            <span>MTBF</span>
-                            <strong>{mtbfMs ? formatHours(mtbfMs) : '--'}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>After-hours incidents</span>
-                            <strong>{afterHoursCount.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Escalation rate</span>
-                            <strong>{formatPercent(escalationRate)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Reopen rate</span>
-                            <strong>{formatPercent(reopenRate)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Auto-resolved share</span>
-                            <strong>{formatPercent(autoResolvedRate)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Manual resolved</span>
-                            <strong>{manualResolvedCount.toLocaleString()}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Ack SLA burn</span>
-                            <strong>{formatPercent(ackSlaBurnRate)}</strong>
-                        </div>
-                        <div className="analytics-table-row">
-                            <span>Resolve SLA burn</span>
-                            <strong>{formatPercent(resolveSlaBurnRate)}</strong>
-                        </div>
+                    <div className="distribution-bar">
+                      <span style={{ width: `${percent.toFixed(1)}%` }} />
                     </div>
-                </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
 
-                <div className="glass-panel analytics-section-enhanced">
-                    <h2>State age breakdown</h2>
-                    <div className="analytics-list">
-                        {statusAges.map((entry) => (
-                            <div key={entry.status} className={`analytics-list-item-enhanced analytics-status-${entry.status.toLowerCase()}`}>
-                                <span className="analytics-status-badge">{entry.status}</span>
-                                <strong>{entry.avgMs === null ? '--' : formatHoursCompact(entry.avgMs)}</strong>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
+        <div className="distribution-card">
+          <div className="distribution-card-header">
+            <h3>Urgency Mix</h3>
+            <span>{metrics.totalIncidents.toLocaleString()} incidents</span>
+          </div>
+          <div className="distribution-card-body distribution-urgency">
+            <div className="distribution-urgency-row">
+              <span>High urgency</span>
+              <strong>{metrics.highUrgencyCount.toLocaleString()}</strong>
+              <em>{highUrgencyPercent.toFixed(1)}%</em>
+              <div className="distribution-urgency-bar">
+                <span style={{ width: `${highUrgencyPercent.toFixed(1)}%` }} />
+              </div>
+            </div>
+            <div className="distribution-urgency-row is-low">
+              <span>Low urgency</span>
+              <strong>{lowUrgencyCount.toLocaleString()}</strong>
+              <em>{lowUrgencyPercent.toFixed(1)}%</em>
+              <div className="distribution-urgency-bar">
+                <span style={{ width: `${lowUrgencyPercent.toFixed(1)}%` }} />
+              </div>
+            </div>
+            <div className="distribution-urgency-footnote">Window: {windowDays} days</div>
+          </div>
+        </div>
 
-            <section className="glass-panel analytics-section-enhanced">
-                <h2>Ownership & on-call load</h2>
-                <div className="analytics-columns">
-                    <div>
-                        <p className="analytics-subtitle">Assignee load</p>
-                        <div className="analytics-list">
-                            {assigneeLoad.length === 0 ? (
-                                <div className="analytics-empty-state">
-                                    <div className="analytics-empty-icon">👤</div>
-                                    <div className="analytics-empty-title">No assignee data</div>
-                                    <div className="analytics-empty-description">No assignee data available in this time window.</div>
-                                </div>
-                            ) : assigneeLoad.map((entry) => (
-                                <div key={entry.id} className="analytics-list-item">
-                                    <span>{entry.name}</span>
-                                    <strong>{entry.count}</strong>
-                                </div>
-                            ))}
-                        </div>
+        <div className="distribution-card">
+          <div className="distribution-card-header">
+            <h3>State Age Breakdown</h3>
+            <span>Average time</span>
+          </div>
+          <div className="distribution-card-body">
+            {metrics.statusAges.length === 0 ? (
+              <div className="distribution-empty">No status age data available.</div>
+            ) : (
+              metrics.statusAges.map(entry => {
+                const percent = statusAgeMax ? ((entry.avgMs ?? 0) / statusAgeMax) * 100 : 0;
+                return (
+                  <div key={entry.status} className="distribution-row">
+                    <div className="distribution-row-head">
+                      <span className="distribution-name">{entry.status}</span>
+                      <span className="distribution-count">
+                        {entry.avgMs === null ? '--' : formatHours(entry.avgMs)}
+                      </span>
                     </div>
-                    <div>
-                        <p className="analytics-subtitle">On-call load</p>
-                        <div className="analytics-list">
-                            {onCallLoad.length === 0 ? (
-                                <div className="analytics-empty-state">
-                                    <div className="analytics-empty-icon">👥</div>
-                                    <div className="analytics-empty-title">No on-call shifts</div>
-                                    <div className="analytics-empty-description">No on-call shifts scheduled in this time window.</div>
-                                </div>
-                            ) : onCallLoad.map((entry) => (
-                                <div key={entry.id} className="analytics-list-item">
-                                    <span>{entry.name}</span>
-                                    <strong>{entry.incidentCount} incidents · {formatHoursCompact(entry.hoursMs)}</strong>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="distribution-bar distribution-bar-muted">
+                      <span style={{ width: `${percent.toFixed(1)}%` }} />
                     </div>
-                </div>
-            </section>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </section>
 
-            <section className="glass-panel analytics-section-enhanced">
-                <h2>Top recurring incident titles</h2>
-                <div className="analytics-list">
-                    {recurringTitles.length === 0 ? (
-                        <div className="analytics-empty-state">
-                            <div className="analytics-empty-icon">🔄</div>
-                            <div className="analytics-empty-title">No recurring incidents</div>
-                            <div className="analytics-empty-description">No recurring incident patterns found in this time window.</div>
-                        </div>
-                    ) : recurringTitles.map((entry) => (
-                        <div key={entry.title} className="analytics-list-item">
-                            <span>{entry.title}</span>
-                            <strong>{entry._count._all}</strong>
-                        </div>
-                    ))}
+      <div className="v2-section-header v2-panel-heading">
+        <h2 className="v2-section-title">
+          <Users className="w-5 h-5" /> Ownership &amp; Reliability
+        </h2>
+        <span className="text-xs text-muted-foreground">On-call load and recurring incidents</span>
+      </div>
+
+      <section className="ownership-grid mb-8">
+        <div className="ownership-card">
+          <div className="ownership-card-header">
+            <h3>On-Call Load</h3>
+            <span>{metrics.onCallLoad.length} responders</span>
+          </div>
+          <div className="ownership-card-body">
+            {metrics.onCallLoad.length === 0 ? (
+              <div className="ownership-empty">No on-call shifts in this window.</div>
+            ) : (
+              metrics.onCallLoad.map((entry, index) => {
+                const percent = onCallMax ? (entry.incidentCount / onCallMax) * 100 : 0;
+                return (
+                  <div key={entry.id} className="ownership-row">
+                    <div className="ownership-row-top">
+                      <span className={`ownership-rank ${index < 3 ? 'is-top' : ''}`}>
+                        {index + 1}
+                      </span>
+                      <span className="ownership-name">{entry.name}</span>
+                      <span className="ownership-meta">{formatHours(entry.hoursMs)}</span>
+                      <span className="ownership-count">{entry.incidentCount}</span>
+                    </div>
+                    <div className="ownership-bar">
+                      <span style={{ width: `${percent.toFixed(1)}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="ownership-card">
+          <div className="ownership-card-header">
+            <h3>Recurring Incident Titles</h3>
+            <span>{metrics.recurringTitles.length} patterns</span>
+          </div>
+          <div className="ownership-card-body">
+            {metrics.recurringTitles.length === 0 ? (
+              <div className="ownership-empty">No recurring incidents in this window.</div>
+            ) : (
+              metrics.recurringTitles.map(entry => (
+                <div key={entry.title} className="ownership-row ownership-row-compact">
+                  <div>
+                    <div className="ownership-name">{entry.title}</div>
+                    <div className="ownership-meta">Recurring pattern</div>
+                  </div>
+                  <span className="ownership-count">{entry.count}</span>
                 </div>
-            </section>
-        </main>
-    );
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="ownership-card">
+          <div className="ownership-card-header">
+            <h3>Resolution Breakdown</h3>
+            <span>{metrics.eventsCount.toLocaleString()} events logged</span>
+          </div>
+          <div className="ownership-card-body">
+            <div className="ownership-kpi-grid">
+              <div className="ownership-kpi">
+                <span>Auto-resolved</span>
+                <strong>{metrics.autoResolvedCount.toLocaleString()}</strong>
+                <em>{formatPercent(autoResolvedShare)}</em>
+              </div>
+              <div className="ownership-kpi">
+                <span>Manual resolved</span>
+                <strong>{metrics.manualResolvedCount.toLocaleString()}</strong>
+                <em>{formatPercent(manualResolvedShare)}</em>
+              </div>
+              <div className="ownership-kpi">
+                <span>Reopen rate</span>
+                <strong>{formatPercent(metrics.reopenRate)}</strong>
+                <em>Last {windowDays} days</em>
+              </div>
+              <div className="ownership-kpi">
+                <span>Event volume</span>
+                <strong>{metrics.eventsCount.toLocaleString()}</strong>
+                <em>Incident events</em>
+              </div>
+            </div>
+            <div className="ownership-share">
+              <div className="ownership-share-track">
+                <span style={{ width: `${manualResolvedShare.toFixed(1)}%` }} />
+              </div>
+              <div className="ownership-share-labels">
+                <span>Auto</span>
+                <span>Manual</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="service-health-section mb-8">
+        <div className="service-health-shell">
+          <header className="service-health-header">
+            <div className="service-health-title">
+              <span className="service-health-icon">
+                <Activity className="w-5 h-5" />
+              </span>
+              <div>
+                <span className="service-health-eyebrow">Service Health Matrix</span>
+                <h3 className="service-health-heading">
+                  Operational health across monitored services
+                </h3>
+              </div>
+            </div>
+            <div className="service-health-meta">
+              <div className="service-health-meta-card">
+                <span>Services monitored</span>
+                <strong>{serviceHealthCounts.total.toLocaleString()}</strong>
+                <em>Active catalog</em>
+              </div>
+              <div className="service-health-meta-card is-critical">
+                <span>Critical</span>
+                <strong>{serviceHealthCounts.critical.toLocaleString()}</strong>
+                <em>Immediate focus</em>
+              </div>
+              <div className="service-health-meta-card is-degraded">
+                <span>Degraded</span>
+                <strong>{serviceHealthCounts.degraded.toLocaleString()}</strong>
+                <em>Needs attention</em>
+              </div>
+              <div className="service-health-meta-card is-healthy">
+                <span>Healthy</span>
+                <strong>{serviceHealthCounts.healthy.toLocaleString()}</strong>
+                <em>Stable</em>
+              </div>
+            </div>
+          </header>
+          <div className="service-health-body">
+            <ServiceHealthTable services={metrics.serviceMetrics} />
+          </div>
+        </div>
+      </section>
+
+      <div className="v2-section-header v2-panel-heading">
+        <h2 className="v2-section-title">
+          <Shield className="w-5 h-5" /> SLA &amp; Coverage
+        </h2>
+        <span className="text-xs text-muted-foreground">Targets, breaches, and scheduling</span>
+      </div>
+
+      <section className="sla-coverage-panel mb-8">
+        <div className="sla-coverage-header">
+          <div className="sla-coverage-title">
+            <span className="sla-coverage-icon">
+              <Shield className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-coverage-eyebrow">Coverage Outlook</span>
+              <h3>Staffing readiness for the next 14 days</h3>
+            </div>
+          </div>
+          <div className="sla-coverage-chips">
+            <span>Coverage {formatPercent(metrics.coveragePercent)}</span>
+            <span>{metrics.coverageGapDays.toLocaleString()} gap days</span>
+            <span>{formatHours(metrics.onCallHoursMs)} scheduled</span>
+          </div>
+        </div>
+        <div className="sla-coverage-body">
+          <div className="sla-coverage-progress">
+            <div className="sla-coverage-track">
+              <span style={{ width: `${metrics.coveragePercent.toFixed(1)}%` }} />
+            </div>
+            <div className="sla-coverage-progress-meta">
+              <span>Target 100%</span>
+              <span>Current {formatPercent(metrics.coveragePercent)}</span>
+            </div>
+          </div>
+          <div className="sla-coverage-stats">
+            <div>
+              <span>Coverage</span>
+              <strong>{formatPercent(metrics.coveragePercent)}</strong>
+              <em>Next 14 days</em>
+            </div>
+            <div>
+              <span>Coverage gaps</span>
+              <strong>{metrics.coverageGapDays.toLocaleString()}</strong>
+              <em>Days without coverage</em>
+            </div>
+            <div>
+              <span>Scheduled hours</span>
+              <strong>{formatHours(metrics.onCallHoursMs)}</strong>
+              <em>{metrics.onCallUsersCount.toLocaleString()} responders</em>
+            </div>
+            <div>
+              <span>Active overrides</span>
+              <strong>{metrics.activeOverrides.toLocaleString()}</strong>
+              <em>Current</em>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="sla-summary-panel mb-8">
+        <div className="sla-summary-header">
+          <div className="sla-summary-title">
+            <span className="sla-summary-icon">
+              <Activity className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-summary-eyebrow">SLA Summary</span>
+              <h3>Latency distribution and SLA risk signals</h3>
+            </div>
+          </div>
+          <div className="sla-summary-meta">
+            <span>{windowDays} day window</span>
+            <span>{metrics.eventsCount.toLocaleString()} events</span>
+          </div>
+        </div>
+        <div className="sla-summary-body">
+          <div className="sla-summary-columns">
+            <div className="sla-summary-block">
+              <div className="sla-summary-block-title">Latency percentiles</div>
+              <div className="sla-summary-grid">
+                <div>
+                  <span>MTTA p50</span>
+                  <strong>
+                    {metrics.mttaP50 === null ? '--' : formatMinutes(metrics.mttaP50)}
+                  </strong>
+                </div>
+                <div>
+                  <span>MTTA p95</span>
+                  <strong>
+                    {metrics.mttaP95 === null ? '--' : formatMinutes(metrics.mttaP95)}
+                  </strong>
+                </div>
+                <div>
+                  <span>MTTR p50</span>
+                  <strong>
+                    {metrics.mttrP50 === null ? '--' : formatMinutes(metrics.mttrP50)}
+                  </strong>
+                </div>
+                <div>
+                  <span>MTTR p95</span>
+                  <strong>
+                    {metrics.mttrP95 === null ? '--' : formatMinutes(metrics.mttrP95)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+            <div className="sla-summary-block">
+              <div className="sla-summary-block-title">Breaches &amp; burn</div>
+              <div className="sla-summary-grid">
+                <div>
+                  <span>Ack SLA breaches</span>
+                  <strong>{metrics.ackBreaches.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Resolve SLA breaches</span>
+                  <strong>{metrics.resolveBreaches.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Ack SLA burn</span>
+                  <strong>{formatPercent(ackSlaBurnRate)}</strong>
+                </div>
+                <div>
+                  <span>Resolve SLA burn</span>
+                  <strong>{formatPercent(resolveSlaBurnRate)}</strong>
+                </div>
+                <div>
+                  <span>High urgency share</span>
+                  <strong>{formatPercent(metrics.highUrgencyRate)}</strong>
+                </div>
+                <div>
+                  <span>Unassigned active</span>
+                  <strong>{metrics.unassignedActive.toLocaleString()}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="sla-service-panel mb-8">
+        <div className="sla-service-header">
+          <div className="sla-service-title">
+            <span className="sla-service-icon">
+              <Shield className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-service-eyebrow">SLA Compliance by Service</span>
+              <h3>Response and resolve adherence per service</h3>
+            </div>
+          </div>
+          <div className="sla-service-meta">
+            <span>{metrics.serviceSlaTable.length} services</span>
+            <span>Last {windowDays} days</span>
+          </div>
+        </div>
+
+        <div className="sla-service-body">
+          {metrics.serviceSlaTable.length === 0 ? (
+            <div className="sla-service-empty">No SLA data in this window.</div>
+          ) : (
+            <div className="sla-service-list">
+              {metrics.serviceSlaTable.map(entry => (
+                <div key={entry.id} className="sla-service-row">
+                  <div className="sla-service-row-name">{entry.name}</div>
+                  <div className="sla-service-row-metrics">
+                    <div className="sla-service-row-metric">
+                      <div>
+                        <span>Ack SLA</span>
+                        <strong>{formatPercent(entry.ackRate)}</strong>
+                      </div>
+                      <div className="sla-service-row-bar">
+                        <span style={{ width: `${entry.ackRate.toFixed(1)}%` }} />
+                      </div>
+                    </div>
+                    <div className="sla-service-row-metric is-resolve">
+                      <div>
+                        <span>Resolve SLA</span>
+                        <strong>{formatPercent(entry.resolveRate)}</strong>
+                      </div>
+                      <div className="sla-service-row-bar">
+                        <span style={{ width: `${entry.resolveRate.toFixed(1)}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="sla-compliance-panel mb-8">
+        <div className="sla-compliance-header">
+          <div className="sla-compliance-title">
+            <span className="sla-compliance-icon">
+              <Shield className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="sla-compliance-eyebrow">SLA Compliance</span>
+              <h3>Adherence across response, resolve, and coverage</h3>
+            </div>
+          </div>
+          <div className="sla-compliance-meta">
+            <span>Ack {formatPercent(metrics.ackCompliance)}</span>
+            <span>Resolve {formatPercent(metrics.resolveCompliance)}</span>
+            <span>Coverage {formatPercent(metrics.coveragePercent)}</span>
+          </div>
+        </div>
+        <div className="sla-compliance-body">
+          <div className="sla-compliance-grid">
+            <div className="sla-compliance-card">
+              <div className="sla-compliance-card-head">
+                <span>Ack SLA</span>
+                <strong>{formatPercent(metrics.ackCompliance)}</strong>
+              </div>
+              <GaugeChart value={metrics.ackCompliance} label="Ack SLA" size={110} />
+              <div className="sla-compliance-bar">
+                <span style={{ width: `${metrics.ackCompliance.toFixed(1)}%` }} />
+              </div>
+            </div>
+            <div className="sla-compliance-card">
+              <div className="sla-compliance-card-head">
+                <span>Resolve SLA</span>
+                <strong>{formatPercent(metrics.resolveCompliance)}</strong>
+              </div>
+              <GaugeChart value={metrics.resolveCompliance} label="Resolve SLA" size={110} />
+              <div className="sla-compliance-bar is-resolve">
+                <span style={{ width: `${metrics.resolveCompliance.toFixed(1)}%` }} />
+              </div>
+            </div>
+            <div className="sla-compliance-card">
+              <div className="sla-compliance-card-head">
+                <span>Coverage</span>
+                <strong>{formatPercent(metrics.coveragePercent)}</strong>
+              </div>
+              <GaugeChart value={metrics.coveragePercent} label="Coverage" size={110} />
+              <div className="sla-compliance-bar is-coverage">
+                <span style={{ width: `${metrics.coveragePercent.toFixed(1)}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="activity-panel mb-8">
+        <div className="activity-github-header">
+          <div className="activity-github-title">
+            <span className="activity-github-icon">
+              <Clock className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="activity-github-eyebrow">Historical Activity</span>
+              <h3>Incident frequency over the last year</h3>
+            </div>
+          </div>
+          <span className="activity-github-meta">Timezone: {userTimeZone}</span>
+        </div>
+
+        <div className="activity-github-body">
+          <div className="activity-github-heatmap">
+            <HeatmapCalendar data={metrics.heatmapData} days={365} fitWidth />
+          </div>
+          <div className="activity-github-legend">
+            <span>Less</span>
+            <div className="activity-github-legend-swatch">
+              <span />
+              <span />
+              <span />
+            </div>
+            <span>More</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
