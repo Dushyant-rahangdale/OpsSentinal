@@ -29,8 +29,8 @@ COPY prisma ./prisma/
 
 # Install production dependencies including optional dependencies
 # Optional dependencies (twilio, @sendgrid/mail, resend, nodemailer, firebase-admin, onesignal-node, @aws-sdk/client-sns)
-# are needed for notification features. npm ci --only=production installs optionalDependencies by default.
-RUN npm ci --only=production --ignore-scripts --legacy-peer-deps --prefer-offline --no-audit --no-fund && \
+# are needed for notification features. npm ci --omit=dev installs optionalDependencies by default.
+RUN npm ci --omit=dev --ignore-scripts --legacy-peer-deps --no-audit --no-fund && \
     npm cache clean --force && \
     rm -rf /tmp/*
 
@@ -61,8 +61,8 @@ RUN echo "Build date: $BUILD_DATE"
 
 COPY prisma ./prisma/
 
-# Install all dependencies (including dev)
-RUN npm ci --ignore-scripts --legacy-peer-deps --prefer-offline --no-audit --no-fund && \
+# Install all dependencies (including dev) - essential for build steps
+RUN npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund && \
     npm cache clean --force
 
 # Copy application source
