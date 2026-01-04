@@ -233,14 +233,40 @@ export default function SidebarWidget({
   );
 }
 
-function getTimeAgo(date: Date): string {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+/**
+ * Formats a Date object as a human-readable relative time string
+ * Handles edge cases: invalid dates, future dates, very old dates
+ */
+function getTimeAgo(date: Date | null | undefined): string {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return 'unknown';
+  }
+
+  const now = Date.now();
+  const then = date.getTime();
+  const diffMs = now - then;
+
+  // Handle future dates
+  if (diffMs < 0) {
+    return 'just now';
+  }
+
+  const seconds = Math.floor(diffMs / 1000);
+
   if (seconds < 10) return 'just now';
   if (seconds < 60) return `${seconds}s ago`;
+
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
+
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  // For older dates, show actual date
+  return date.toLocaleDateString();
 }
 
 // Icon backgrounds - solid colors for reliability

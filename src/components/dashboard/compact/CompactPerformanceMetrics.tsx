@@ -1,57 +1,101 @@
 'use client';
 
-/**
- * Compact Performance Metrics Widget - Subtle Design
- */
-export default function CompactPerformanceMetrics({
-  mtta,
-  mttr,
-  ackSlaRate,
-  resolveSlaRate,
-}: {
+import { memo, useMemo } from 'react';
+
+interface CompactPerformanceMetricsProps {
   mtta: number | null;
   mttr: number | null;
   ackSlaRate: number;
   resolveSlaRate: number;
-}) {
-  const formatTime = (minutes: number | null) => {
-    if (minutes === null || minutes === undefined || isNaN(minutes)) return 'N/A';
-    if (minutes < 1) return '<1m';
+}
 
-    const rounded = Math.round(minutes);
-    if (rounded >= 60) {
-      const hours = Math.floor(rounded / 60);
-      const mins = rounded % 60;
-      return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-    }
-    return `${rounded}m`;
-  };
+/**
+ * Safely formats a time value in minutes to a human-readable string
+ */
+function formatTime(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) return 'N/A';
+  if (!Number.isFinite(minutes) || minutes < 0) return 'N/A';
+  if (minutes < 1) return '<1m';
 
-  const getStatusColor = (rate: number) => {
-    if (isNaN(rate)) return 'var(--text-muted)';
-    if (rate >= 95) return 'var(--color-success)';
-    if (rate >= 80) return 'var(--color-warning)';
-    return 'var(--color-error)';
-  };
+  const rounded = Math.round(minutes);
+  if (rounded >= 60) {
+    const hours = Math.floor(rounded / 60);
+    const mins = rounded % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+  return `${rounded}m`;
+}
 
-  const formatPercent = (rate: number) => {
-    if (isNaN(rate)) return 'N/A';
-    return `${Math.round(rate)}%`;
-  };
+/**
+ * Gets the status color based on SLA compliance rate
+ */
+function getStatusColor(rate: number | null | undefined): string {
+  if (rate === null || rate === undefined || !Number.isFinite(rate)) {
+    return 'var(--text-muted)';
+  }
+  if (rate >= 95) return 'var(--color-success)';
+  if (rate >= 80) return 'var(--color-warning)';
+  return 'var(--color-error)';
+}
 
-  const metrics = [
-    { label: 'MTTA', value: formatTime(mtta), color: 'var(--text-primary)' },
-    { label: 'MTTR', value: formatTime(mttr), color: 'var(--text-primary)' },
-    { label: 'ACK SLA', value: formatPercent(ackSlaRate), color: getStatusColor(ackSlaRate) },
-    {
-      label: 'Resolve SLA',
-      value: formatPercent(resolveSlaRate),
-      color: getStatusColor(resolveSlaRate),
-    },
-  ];
+/**
+ * Safely formats a percentage value
+ */
+function formatPercent(rate: number | null | undefined): string {
+  if (rate === null || rate === undefined || !Number.isFinite(rate)) {
+    return 'N/A';
+  }
+  // Clamp to 0-100 range
+  const clamped = Math.max(0, Math.min(100, rate));
+  return `${Math.round(clamped)}%`;
+}
+
+/**
+ * Compact Performance Metrics Widget
+ * Displays MTTA, MTTR, and SLA compliance rates
+ */
+const CompactPerformanceMetrics = memo(function CompactPerformanceMetrics({
+  mtta,
+  mttr,
+  ackSlaRate,
+  resolveSlaRate,
+}: CompactPerformanceMetricsProps) {
+  const metrics = useMemo(
+    () => [
+      {
+        label: 'MTTA',
+        value: formatTime(mtta),
+        color: 'var(--text-primary)',
+        description: 'Mean Time to Acknowledge',
+      },
+      {
+        label: 'MTTR',
+        value: formatTime(mttr),
+        color: 'var(--text-primary)',
+        description: 'Mean Time to Resolve',
+      },
+      {
+        label: 'ACK SLA',
+        value: formatPercent(ackSlaRate),
+        color: getStatusColor(ackSlaRate),
+        description: 'Acknowledgment SLA Compliance',
+      },
+      {
+        label: 'Resolve SLA',
+        value: formatPercent(resolveSlaRate),
+        color: getStatusColor(resolveSlaRate),
+        description: 'Resolution SLA Compliance',
+      },
+    ],
+    [mtta, mttr, ackSlaRate, resolveSlaRate]
+  );
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
+    <div
+      style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}
+      role="list"
+      aria-label="Performance metrics"
+    >
       {metrics.map((metric, idx) => (
         <div
           key={idx}
@@ -62,6 +106,8 @@ export default function CompactPerformanceMetrics({
             border: '1px solid var(--border)',
             overflow: 'hidden',
           }}
+          role="listitem"
+          aria-label={`${metric.description}: ${metric.value}`}
         >
           <div
             style={{
@@ -83,6 +129,7 @@ export default function CompactPerformanceMetrics({
               lineHeight: '1.3',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              fontVariantNumeric: 'tabular-nums',
             }}
           >
             {metric.value}
@@ -91,4 +138,6 @@ export default function CompactPerformanceMetrics({
       ))}
     </div>
   );
-}
+});
+
+export default CompactPerformanceMetrics;

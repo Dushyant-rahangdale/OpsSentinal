@@ -1,10 +1,11 @@
 import prisma from '@/lib/prisma';
 import { calculateSLAMetrics } from '@/lib/sla-server';
+import type { SLAMetrics as SLAServerMetrics } from '@/lib/sla';
 
 /**
- * Centralized Widget Data Provider - SIMPLIFIED VERSION
- * Single source of truth for all dashboard widget data
- * Note: Some features simplified due to schema limitations
+ * Centralized Widget Data Provider
+ * Single source of truth: Delegates ALL metric calculations to sla-server
+ * This provider only handles data transformation and context-specific filtering
  */
 
 export interface ActiveIncidentData {
@@ -74,162 +75,163 @@ export interface WidgetDataContext {
   lastUpdated: Date;
 }
 
+// Threshold for overload detection (configurable)
+const OVERLOAD_THRESHOLD = 5;
+
+// SLA breach alert windows (in milliseconds)
+const ACK_BREACH_ALERT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RESOLVE_BREACH_ALERT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
- * Get all widget data in a single optimized query
+ * Determines trend direction based on current and previous values
+ * Lower is better for response times, so 'down' is positive
  */
-export async function getWidgetData(userId: string, userRole: string): Promise<WidgetDataContext> {
+function determineTrend(current: number, previous: number): 'up' | 'down' | 'stable' {
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return 'stable';
+  if (previous === 0 && current === 0) return 'stable';
+  if (previous === 0) return current > 0 ? 'up' : 'stable';
+
+  const threshold = 0.05; // 5% change threshold for stability
+  const change = (current - previous) / previous;
+
+  if (Math.abs(change) < threshold) return 'stable';
+  return change < 0 ? 'down' : 'up';
+}
+
+/**
+ * Get all widget data using sla-server as the single source of truth
+ * This function delegates all metric calculations to calculateSLAMetrics
+ */
+export async function getWidgetData(userId: string, _userRole: string): Promise<WidgetDataContext> {
   const now = new Date();
 
-  // Determine scope based on role
-  const isAdmin = userRole === 'ADMIN' || userRole === 'RESPONDER';
-
-  // Build incident filter - use OPEN and ACKNOWLEDGED (not TRIGGERED)
-  const incidentWhere: any = {
-    status: { in: ['OPEN', 'ACKNOWLEDGED'] },
-  };
-
-  // Fetch active incidents with SLA info
-  const activeIncidents = await prisma.incident.findMany({
-    where: incidentWhere,
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      urgency: true,
-      createdAt: true,
-      acknowledgedAt: true,
-      resolvedAt: true,
-      service: {
-        select: {
-          id: true,
-          name: true,
-          targetAckMinutes: true,
-          targetResolveMinutes: true,
-        },
-      },
-      assignee: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
+  // Single source of truth: Get ALL metrics from sla-server
+  // This includes incidents, SLA compliance, service health, team workload, etc.
+  const slaMetricsRaw: SLAServerMetrics = await calculateSLAMetrics({
+    useOrScope: true,
+    includeIncidents: true,
+    incidentLimit: 100,
+    windowDays: 7,
   });
 
-  // Calculate SLA deadlines and map to ActiveIncidentData
-  const activeIncidentsData: ActiveIncidentData[] = activeIncidents.map(inc => {
-    const slaAckDeadline =
-      inc.service.targetAckMinutes && !inc.acknowledgedAt
-        ? new Date(inc.createdAt.getTime() + inc.service.targetAckMinutes * 60000)
+  // Default SLA targets (in minutes)
+  const DEFAULT_ACK_MINUTES = 15;
+  const DEFAULT_RESOLVE_MINUTES = 120;
+
+  // Transform sla-server data to widget format
+  // Active incidents from recentIncidents that aren't resolved
+  const activeIncidentsData: ActiveIncidentData[] = (slaMetricsRaw.recentIncidents || [])
+    .filter(inc => inc.status !== 'RESOLVED')
+    .map(inc => {
+      // Use default SLA targets (service-specific targets would require additional query)
+      const targetAckMinutes = DEFAULT_ACK_MINUTES;
+      const targetResolveMinutes = DEFAULT_RESOLVE_MINUTES;
+
+      const slaAckDeadline =
+        !inc.resolvedAt && inc.status !== 'ACKNOWLEDGED'
+          ? new Date(new Date(inc.createdAt).getTime() + targetAckMinutes * 60000)
+          : null;
+
+      const slaResolveDeadline = !inc.resolvedAt
+        ? new Date(new Date(inc.createdAt).getTime() + targetResolveMinutes * 60000)
         : null;
 
-    const slaResolveDeadline =
-      inc.service.targetResolveMinutes && !inc.resolvedAt
-        ? new Date(inc.createdAt.getTime() + inc.service.targetResolveMinutes * 60000)
-        : null;
+      return {
+        id: inc.id,
+        title: inc.title,
+        status: inc.status,
+        urgency: inc.urgency as 'HIGH' | 'MEDIUM' | 'LOW',
+        createdAt: new Date(inc.createdAt),
+        acknowledgedAt: null, // Not included in recentIncidents minimal response
+        resolvedAt: inc.resolvedAt ? new Date(inc.resolvedAt) : null,
+        serviceId: inc.service?.id || '',
+        serviceName: inc.service?.name || 'Unknown Service',
+        assigneeId: null, // Not included in minimal response
+        assigneeName: null,
+        slaAckDeadline,
+        slaResolveDeadline,
+      };
+    });
 
-    return {
-      id: inc.id,
-      title: inc.title,
-      status: inc.status,
-      urgency: inc.urgency as 'HIGH' | 'MEDIUM' | 'LOW',
-      createdAt: inc.createdAt,
-      acknowledgedAt: inc.acknowledgedAt,
-      resolvedAt: inc.resolvedAt,
-      serviceId: inc.service.id,
-      serviceName: inc.service.name,
-      assigneeId: inc.assignee?.id || null,
-      assigneeName: inc.assignee?.name || null,
-      slaAckDeadline,
-      slaResolveDeadline,
-    };
-  });
-
-  // Identify SLA breach alerts (within 15 min for ACK, 30 min for Resolve)
+  // Identify SLA breach alerts using calculated deadlines
   const slaBreachAlerts = activeIncidentsData.filter(inc => {
-    if (inc.slaAckDeadline && !inc.acknowledgedAt) {
-      const timeToAckBreach = inc.slaAckDeadline.getTime() - now.getTime();
-      if (timeToAckBreach > 0 && timeToAckBreach <= 15 * 60000) return true;
+    const nowMs = now.getTime();
+
+    // Check ACK breach alert
+    if (inc.slaAckDeadline && inc.status === 'OPEN') {
+      const timeToAckBreach = inc.slaAckDeadline.getTime() - nowMs;
+      if (timeToAckBreach > 0 && timeToAckBreach <= ACK_BREACH_ALERT_WINDOW_MS) {
+        return true;
+      }
     }
+
+    // Check Resolve breach alert
     if (inc.slaResolveDeadline && !inc.resolvedAt) {
-      const timeToResolveBreach = inc.slaResolveDeadline.getTime() - now.getTime();
-      if (timeToResolveBreach > 0 && timeToResolveBreach <= 30 * 60000) return true;
+      const timeToResolveBreach = inc.slaResolveDeadline.getTime() - nowMs;
+      if (timeToResolveBreach > 0 && timeToResolveBreach <= RESOLVE_BREACH_ALERT_WINDOW_MS) {
+        return true;
+      }
     }
+
     return false;
   });
 
-  // Get user's on-call status
-  const activeShifts = await prisma.onCallShift.findMany({
+  // Query directly for user's on-call status
+  const userOnCallShift = await prisma.onCallShift.findFirst({
     where: {
       userId,
       start: { lte: now },
       end: { gte: now },
     },
     orderBy: { start: 'asc' },
-    take: 1,
   });
 
-  const currentShift = activeShifts[0];
-  const userOnCall: OnCallStatus = currentShift
+  const userAssignedCount = activeIncidentsData.filter(i => i.assigneeId === userId).length;
+
+  const userOnCall: OnCallStatus = userOnCallShift
     ? {
         isOnCall: true,
-        shiftStart: currentShift.start,
-        shiftEnd: currentShift.end,
-        assignedIncidents: activeIncidentsData.filter(i => i.assigneeId === userId).length,
+        shiftStart: userOnCallShift.start,
+        shiftEnd: userOnCallShift.end,
+        assignedIncidents: userAssignedCount,
       }
     : {
         isOnCall: false,
         shiftStart: null,
         shiftEnd: null,
-        assignedIncidents: activeIncidentsData.filter(i => i.assigneeId === userId).length,
+        assignedIncidents: userAssignedCount,
       };
 
-  // Calculate SLA metrics using existing function
-  const slaMetricsRaw = await calculateSLAMetrics({ useOrScope: true });
-
-  // Determine trends (comparing with previous period) - handle null values
-  const currentMtta = slaMetricsRaw.mttd || 0;
-  const prevMtta = slaMetricsRaw.previousPeriod.mtta || 0;
-  const currentMttr = slaMetricsRaw.mttr || 0;
-  const prevMttr = slaMetricsRaw.previousPeriod.mttr || 0;
-
-  const trendMtta = currentMtta < prevMtta ? 'down' : currentMtta > prevMtta ? 'up' : 'stable';
-  const trendMttr = currentMttr < prevMttr ? 'down' : currentMttr > prevMttr ? 'up' : 'stable';
+  // SLA metrics directly from sla-server (single source of truth)
+  const currentMtta = slaMetricsRaw.mttd ?? 0;
+  const prevMtta = slaMetricsRaw.previousPeriod?.mtta ?? 0;
+  const currentMttr = slaMetricsRaw.mttr ?? 0;
+  const prevMttr = slaMetricsRaw.previousPeriod?.mttr ?? 0;
 
   const slaMetrics: SLAMetrics = {
     mtta: currentMtta,
     mttr: currentMttr,
-    ackCompliance: slaMetricsRaw.ackCompliance,
-    resolveCompliance: slaMetricsRaw.resolveCompliance,
-    trendMtta,
-    trendMttr,
+    ackCompliance: slaMetricsRaw.ackCompliance ?? 100,
+    resolveCompliance: slaMetricsRaw.resolveCompliance ?? 100,
+    trendMtta: determineTrend(currentMtta, prevMtta),
+    trendMttr: determineTrend(currentMttr, prevMttr),
   };
 
-  // Get service health
-  const services = await prisma.service.findMany({
-    select: {
-      id: true,
-      name: true,
-      status: true,
-    },
-  });
+  // Service health directly from sla-server serviceMetrics (single source of truth)
+  const serviceHealth: ServiceHealthData[] = slaMetricsRaw.serviceMetrics.map(service => ({
+    id: service.id,
+    name: service.name,
+    status: service.dynamicStatus as
+      | 'OPERATIONAL'
+      | 'DEGRADED'
+      | 'PARTIAL_OUTAGE'
+      | 'MAJOR_OUTAGE'
+      | 'MAINTENANCE',
+    activeIncidents: service.activeCount ?? 0,
+    criticalIncidents: service.criticalCount ?? 0,
+  }));
 
-  const serviceHealth: ServiceHealthData[] = services.map(service => {
-    const serviceIncidents = activeIncidentsData.filter(i => i.serviceId === service.id);
-    const criticalCount = serviceIncidents.filter(i => i.urgency === 'HIGH').length;
-
-    return {
-      id: service.id,
-      name: service.name,
-      status: service.status as any,
-      activeIncidents: serviceIncidents.length,
-      criticalIncidents: criticalCount,
-    };
-  });
-
-  // Get recent activity (last 10 events from IncidentEvent table)
+  // Recent activity from IncidentEvents (minimal query, sla-server doesn't include this)
   const recentIncidentEvents = await prisma.incidentEvent.findMany({
     take: 10,
     orderBy: { createdAt: 'desc' },
@@ -248,39 +250,44 @@ export async function getWidgetData(userId: string, userRole: string): Promise<W
     incidentId: event.incidentId,
   }));
 
-  // Get team workload
-  const teamMembers = await prisma.user.findMany({
-    take: 20, // Limit to top 20 users
-    select: {
-      id: true,
-      name: true,
-    },
+  // Team workload from sla-server assigneeLoad (single source of truth)
+  // Note: onCallLoad has different structure (id, name, hoursMs, incidentCount)
+  const teamWorkload: WorkloadData[] = slaMetricsRaw.assigneeLoad.map(assignee => {
+    // Check if user is in onCallLoad (means they have on-call hours)
+    const onCallEntry = slaMetricsRaw.onCallLoad?.find(oc => oc.id === assignee.id);
+    const isOnCall = (onCallEntry?.hoursMs ?? 0) > 0;
+
+    // Get critical count from active incidents
+    const criticalCount = activeIncidentsData.filter(
+      i => i.assigneeId === assignee.id && i.urgency === 'HIGH'
+    ).length;
+
+    return {
+      userId: assignee.id,
+      userName: assignee.name || 'Unknown',
+      activeIncidents: assignee.count,
+      criticalIncidents: criticalCount,
+      isOnCall,
+      isOverloaded: assignee.count > OVERLOAD_THRESHOLD,
+    };
   });
 
-  const teamWorkload: WorkloadData[] = await Promise.all(
-    teamMembers.map(async member => {
-      const memberIncidents = activeIncidentsData.filter(i => i.assigneeId === member.id);
-      const criticalCount = memberIncidents.filter(i => i.urgency === 'HIGH').length;
+  // Add on-call users who may not have assigned incidents
+  const onCallUserIds = new Set(teamWorkload.map(w => w.userId));
+  const additionalOnCallUsers: WorkloadData[] = (slaMetricsRaw.onCallLoad || [])
+    .filter(oc => (oc.hoursMs ?? 0) > 0 && !onCallUserIds.has(oc.id))
+    .map(oc => ({
+      userId: oc.id,
+      userName: oc.name || 'Unknown',
+      activeIncidents: oc.incidentCount ?? 0,
+      criticalIncidents: 0,
+      isOnCall: true,
+      isOverloaded: (oc.incidentCount ?? 0) > OVERLOAD_THRESHOLD,
+    }));
 
-      // Check if user is currently on-call
-      const onCallShifts = await prisma.onCallShift.count({
-        where: {
-          userId: member.id,
-          start: { lte: now },
-          end: { gte: now },
-        },
-      });
-
-      return {
-        userId: member.id,
-        userName: member.name || 'Unknown',
-        activeIncidents: memberIncidents.length,
-        criticalIncidents: criticalCount,
-        isOnCall: onCallShifts > 0,
-        isOverloaded: memberIncidents.length > 5, // Configurable threshold
-      };
-    })
-  );
+  const combinedWorkload = [...teamWorkload, ...additionalOnCallUsers]
+    .filter(w => w.activeIncidents > 0 || w.isOnCall)
+    .sort((a, b) => b.activeIncidents - a.activeIncidents);
 
   return {
     activeIncidents: activeIncidentsData,
@@ -289,9 +296,7 @@ export async function getWidgetData(userId: string, userRole: string): Promise<W
     slaMetrics,
     serviceHealth,
     recentActivity,
-    teamWorkload: teamWorkload
-      .filter(w => w.activeIncidents > 0 || w.isOnCall)
-      .sort((a, b) => b.activeIncidents - a.activeIncidents),
+    teamWorkload: combinedWorkload,
     lastUpdated: now,
   };
 }

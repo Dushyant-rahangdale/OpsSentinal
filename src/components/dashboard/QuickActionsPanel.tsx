@@ -1,10 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import SidebarWidget, {
-  WIDGET_ICON_BG,
-  WIDGET_ICON_COLOR,
-} from '@/components/dashboard/SidebarWidget';
+import SidebarWidget, { WIDGET_ICON_BG } from '@/components/dashboard/SidebarWidget';
 
 interface QuickActionsPanelProps {
   greeting: string;

@@ -1,32 +1,72 @@
 'use client';
 
-/**
- * Compact Stats Overview - Subtle Design
- */
-export default function CompactStatsOverview({
-  totalIncidents,
-  openIncidents,
-  resolvedIncidents,
-  criticalIncidents,
-  unassignedIncidents,
-  servicesCount,
-}: {
+import { memo, useMemo } from 'react';
+
+interface CompactStatsOverviewProps {
   totalIncidents: number;
   openIncidents: number;
   resolvedIncidents: number;
   criticalIncidents: number;
   unassignedIncidents: number;
   servicesCount: number;
-}) {
-  const stats = [
-    { label: 'Open', value: openIncidents, color: 'var(--color-info)' },
-    { label: 'Critical', value: criticalIncidents, color: 'var(--color-error)' },
-    { label: 'Unassigned', value: unassignedIncidents, color: 'var(--color-warning)' },
-    { label: 'Services', value: servicesCount, color: 'var(--text-primary)' },
-  ];
+}
+
+/**
+ * Safely formats a number for display
+ */
+function formatNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '0';
+  }
+  return Math.max(0, Math.round(value)).toLocaleString();
+}
+
+/**
+ * Compact Stats Overview Widget
+ * Displays key incident statistics in a compact format
+ */
+const CompactStatsOverview = memo(function CompactStatsOverview({
+  openIncidents,
+  criticalIncidents,
+  unassignedIncidents,
+  servicesCount,
+}: CompactStatsOverviewProps) {
+  const stats = useMemo(
+    () => [
+      {
+        label: 'Open',
+        value: formatNumber(openIncidents),
+        color: 'var(--color-info)',
+        description: 'Open incidents',
+      },
+      {
+        label: 'Critical',
+        value: formatNumber(criticalIncidents),
+        color: criticalIncidents > 0 ? 'var(--color-error)' : 'var(--text-muted)',
+        description: 'Critical priority incidents',
+      },
+      {
+        label: 'Unassigned',
+        value: formatNumber(unassignedIncidents),
+        color: unassignedIncidents > 0 ? 'var(--color-warning)' : 'var(--text-muted)',
+        description: 'Unassigned incidents',
+      },
+      {
+        label: 'Services',
+        value: formatNumber(servicesCount),
+        color: 'var(--text-primary)',
+        description: 'Total services',
+      },
+    ],
+    [openIncidents, criticalIncidents, unassignedIncidents, servicesCount]
+  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+      role="list"
+      aria-label="Stats overview"
+    >
       {stats.map((stat, idx) => (
         <div
           key={idx}
@@ -39,6 +79,8 @@ export default function CompactStatsOverview({
             background: 'var(--color-neutral-50)',
             border: '1px solid var(--border)',
           }}
+          role="listitem"
+          aria-label={`${stat.description}: ${stat.value}`}
         >
           <span
             style={{
@@ -54,6 +96,7 @@ export default function CompactStatsOverview({
               fontSize: '1rem',
               fontWeight: 'var(--font-weight-bold)',
               color: stat.color,
+              fontVariantNumeric: 'tabular-nums',
             }}
           >
             {stat.value}
@@ -62,4 +105,6 @@ export default function CompactStatsOverview({
       ))}
     </div>
   );
-}
+});
+
+export default CompactStatsOverview;
