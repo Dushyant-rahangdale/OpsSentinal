@@ -128,6 +128,15 @@
     background-color: var(--color-neutral-50);
 }
 
+.rowSelected {
+    background-color: rgba(59, 130, 246, 0.08);
+    border-left: 3px solid var(--primary);
+}
+
+.rowSelected:hover {
+    background-color: rgba(59, 130, 246, 0.12);
+}
+
 .td {
     padding: 0.875rem 1rem;
     vertical-align: middle;

@@ -177,7 +177,10 @@ export default memo(function IncidentTable({
         </thead>
         <tbody>
           {incidents.map(incident => (
-            <tr key={incident.id} className={styles.row}>
+            <tr
+              key={incident.id}
+              className={`${styles.row} ${selectedIds.has(incident.id) ? styles.rowSelected : ''}`}
+            >
               <td className={styles.td}>
                 <input
                   type="checkbox"

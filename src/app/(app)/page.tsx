@@ -315,26 +315,21 @@ export default async function Dashboard({
         <div className={styles.mainGrid}>
           {/* Left Column - Filters and Table */}
           <div className={styles.leftColumn}>
-            {/* Filters Panel - Defined in globals.css */}
+            {/* Filters Panel - Matches Sidebar Theme */}
             <div className={`glass-panel ${styles.filtersPanel}`}>
               <div className={styles.filtersHeader}>
                 <div className={styles.filtersIcon}>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="var(--text-primary)"
-                    strokeWidth="2"
-                  >
-                    <path
-                      d="M3 6l3 3m0 0l3-3m-3 3v12m6-9h6m-6 3h6m-6 3h6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <span style={{ fontSize: '18px' }}>🔍</span>
                 </div>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
+                <h2
+                  style={{
+                    fontSize: 'var(--font-size-lg)',
+                    fontWeight: 'var(--font-weight-bold)',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                    letterSpacing: '-0.3px',
+                  }}
+                >
                   Filter Incidents
                 </h2>
               </div>

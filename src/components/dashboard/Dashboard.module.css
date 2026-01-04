@@ -126,31 +126,37 @@
 }
 
 .filtersPanel {
-    padding: 1.5rem;
+    padding: var(--spacing-6);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
 }
 
 .filtersHeader {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    gap: var(--spacing-3);
+    margin-bottom: var(--spacing-5);
 }
 
 .filtersIcon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.05) 0%, rgba(51, 65, 85, 0.05) 100%);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: #475569;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-primary);
+    color: white;
+    box-shadow: var(--shadow-xs);
 }
 
 .filtersTitle {
-    font-size: 1.125rem;
-    font-weight: 700;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
     color: var(--text-primary);
+    letter-spacing: -0.3px;
 }
 
 /* Skeletons */
