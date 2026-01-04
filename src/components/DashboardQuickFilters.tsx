@@ -8,7 +8,6 @@ const quickFilters = [
     label: 'Open',
     icon: '📋',
     buildUrl: (params: URLSearchParams) => {
-      // If already showing Open, clear the filter
       if (
         params.get('status') === 'OPEN' &&
         !params.get('assignee') &&
@@ -33,7 +32,6 @@ const quickFilters = [
     label: 'Critical',
     icon: '🔴',
     buildUrl: (params: URLSearchParams) => {
-      // If already showing Critical, clear the filter
       if (params.get('status') === 'OPEN' && params.get('urgency') === 'HIGH') {
         return '/';
       }
@@ -50,7 +48,6 @@ const quickFilters = [
     label: 'Unassigned',
     icon: '⚠️',
     buildUrl: (params: URLSearchParams) => {
-      // If already showing Unassigned, clear the filter
       if (params.get('status') === 'OPEN' && params.get('assignee') === '') {
         return '/';
       }
@@ -70,14 +67,12 @@ const quickFilters = [
       const newParams = new URLSearchParams(params.toString());
       newParams.set('sortBy', 'createdAt');
       newParams.set('sortOrder', 'desc');
-      // Remove page to reset to first page
       newParams.delete('page');
       return `/?${newParams.toString()}`;
     },
     isActive: (params: URLSearchParams) => {
       const sortBy = params.get('sortBy');
       const sortOrder = params.get('sortOrder');
-      // Active if sorting by createdAt desc (default) and no other specific filters
       return (sortBy === 'createdAt' || !sortBy) && (sortOrder === 'desc' || !sortOrder);
     },
   },
@@ -88,13 +83,15 @@ export default function DashboardQuickFilters() {
   const _pathname = usePathname();
 
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.875rem' }}>
       <span
         style={{
-          fontSize: '0.85rem',
+          fontSize: 'var(--font-size-xs)',
           color: 'var(--text-muted)',
-          fontWeight: '600',
+          fontWeight: 'var(--font-weight-medium)',
           alignSelf: 'center',
+          textTransform: 'uppercase',
+          letterSpacing: '0.03em',
         }}
       >
         Quick Filters:
@@ -108,38 +105,35 @@ export default function DashboardQuickFilters() {
             key={filter.label}
             href={href}
             style={{
-              padding: '0.4rem 0.9rem',
+              padding: '0.375rem 0.75rem',
               borderRadius: '999px',
-              fontSize: '0.75rem',
+              fontSize: 'var(--font-size-xs)',
               textDecoration: 'none',
-              background: isActive ? 'var(--surface-active)' : 'var(--surface-card)',
-              color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
-              fontWeight: '600',
+              background: isActive ? 'var(--primary)' : 'var(--color-neutral-50)',
+              color: isActive ? 'white' : 'var(--text-secondary)',
+              fontWeight: 'var(--font-weight-medium)',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              gap: '0.375rem',
               border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
-              boxShadow: isActive ? '0 0 0 1px var(--primary-alpha-20)' : 'var(--shadow-sm)',
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: isActive ? 'translateY(0)' : 'translateY(0)',
+              boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 0.15s ease',
               cursor: 'pointer',
             }}
             onMouseEnter={e => {
               if (!isActive) {
                 e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.borderColor = 'var(--border-hover)';
-                e.currentTarget.style.background = 'var(--surface-hover)';
+                e.currentTarget.style.background = 'var(--color-neutral-100)';
               }
             }}
             onMouseLeave={e => {
               if (!isActive) {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.background = 'var(--surface-card)';
+                e.currentTarget.style.background = 'var(--color-neutral-50)';
               }
             }}
           >
-            <span>{filter.icon}</span>
+            <span style={{ fontSize: '12px' }}>{filter.icon}</span>
             {filter.label}
           </Link>
         );

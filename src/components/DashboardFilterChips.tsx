@@ -52,7 +52,7 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
   const removeFilter = (key: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete(key);
-    params.delete('page'); // Reset to page 1
+    params.delete('page');
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -74,7 +74,15 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
         marginTop: '0.5rem',
       }}
     >
-      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+      <span
+        style={{
+          fontSize: 'var(--font-size-xs)',
+          color: 'var(--text-muted)',
+          fontWeight: 'var(--font-weight-medium)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.03em',
+        }}
+      >
         Active Filters:
       </span>
       {activeFilters.map(filter => (
@@ -83,15 +91,14 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.35rem 0.75rem',
-            background: 'var(--surface-hover)',
+            gap: '0.375rem',
+            padding: '0.3rem 0.625rem',
+            background: 'var(--color-neutral-100)',
             borderRadius: '999px',
-            fontSize: '0.8rem',
+            fontSize: 'var(--font-size-xs)',
             color: 'var(--text-primary)',
-            fontWeight: '500',
+            fontWeight: 'var(--font-weight-medium)',
             border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-sm)',
           }}
         >
           <span>
@@ -103,15 +110,17 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              fontSize: '1rem',
+              color: 'var(--text-muted)',
+              fontSize: '0.95rem',
               lineHeight: 1,
               padding: 0,
-              marginLeft: '0.25rem',
               display: 'flex',
               alignItems: 'center',
+              transition: 'color 0.15s ease',
             }}
             title={`Remove ${filter.label} filter`}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
           >
             ×
           </button>
@@ -120,14 +129,23 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
       <button
         onClick={clearAll}
         style={{
-          padding: '0.35rem 0.75rem',
+          padding: '0.3rem 0.625rem',
           background: 'transparent',
           border: '1px solid var(--border)',
           borderRadius: '999px',
-          fontSize: '0.8rem',
+          fontSize: 'var(--font-size-xs)',
           color: 'var(--text-secondary)',
           cursor: 'pointer',
-          fontWeight: '500',
+          fontWeight: 'var(--font-weight-medium)',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'var(--color-neutral-100)';
+          e.currentTarget.style.color = 'var(--text-primary)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
         }}
       >
         Clear All
