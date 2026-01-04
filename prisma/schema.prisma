@@ -1102,6 +1102,12 @@ model SLADefinition {
   service   Service?  @relation(fields: [serviceId], references: [id]) 
   priority  String? // Filter by priority (e.g. "P1")
   
+  // SLA Specifics
+  target     Float    // e.g. 99.9
+  window     String   // e.g. '30d'
+  metricType String   // e.g. 'UPTIME', 'MTTA'
+  version    Int      @default(1)
+
   activeFrom DateTime @default(now())
   activeTo   DateTime?
   
