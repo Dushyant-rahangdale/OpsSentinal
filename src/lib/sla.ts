@@ -119,6 +119,7 @@ export type SLAMetrics = {
     criticalCount: number;
   }>;
   insights: Array<{
+    type: 'positive' | 'negative';
     text: string;
   }>;
   currentShifts: Array<{

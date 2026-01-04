@@ -4,7 +4,7 @@ import { GET } from '@/app/api/sidebar-stats/route';
 import prisma from '@/lib/prisma';
 import { calculateSLAMetrics } from '@/lib/sla-server';
 import { parseResponse } from '../helpers/api-test';
-import type { SLAMetrics } from '@/lib/sla-server';
+import type { SLAMetrics } from '@/lib/sla';
 
 vi.mock('next-auth', () => ({
   getServerSession: vi.fn(),

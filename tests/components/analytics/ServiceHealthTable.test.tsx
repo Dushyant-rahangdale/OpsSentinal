@@ -13,6 +13,9 @@ describe('ServiceHealthTable', () => {
       mttr: 120,
       slaBreaches: 4,
       status: 'Critical',
+      dynamicStatus: 'CRITICAL',
+      activeCount: 2,
+      criticalCount: 1,
     },
     {
       id: 'svc-2',
@@ -22,6 +25,9 @@ describe('ServiceHealthTable', () => {
       mttr: 30,
       slaBreaches: 0,
       status: 'Healthy',
+      dynamicStatus: 'OPERATIONAL',
+      activeCount: 0,
+      criticalCount: 0,
     },
     {
       id: 'svc-3',
@@ -31,6 +37,9 @@ describe('ServiceHealthTable', () => {
       mttr: 70,
       slaBreaches: 2,
       status: 'Degraded',
+      dynamicStatus: 'DEGRADED',
+      activeCount: 1,
+      criticalCount: 0,
     },
   ];
 
