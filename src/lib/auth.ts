@@ -92,13 +92,45 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       signOut: '/auth/signout',
     },
     callbacks: {
-      async jwt({ token, user }) {
-        // Initial sign in - set user data
-        if (user) {
-          token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
-          token.sub = (user as any).id ?? token.sub; // eslint-disable-line @typescript-eslint/no-explicit-any
-          token.name = (user as any).name; // eslint-disable-line @typescript-eslint/no-explicit-any
-          token.email = (user as any).email; // eslint-disable-line @typescript-eslint/no-explicit-any
+      async jwt({ token, user, account }) {
+        // Initial sign in
+        if (user && account) {
+          // For OIDC, we must look up the user in the DB to get the internal CUID and current role
+          // The 'user' object from OIDC is just the profile, so 'user.id' is the OIDC 'sub' (not our DB ID)
+          if (account.provider === 'oidc' && user.email) {
+            try {
+              const dbUser = await prisma.user.findUnique({
+                where: { email: user.email.toLowerCase() },
+              });
+
+              if (dbUser) {
+                token.sub = dbUser.id; // Use internal CUID
+                token.role = dbUser.role;
+                token.name = dbUser.name;
+                token.email = dbUser.email;
+                logger.info('[Auth] JWT callback - Mapped OIDC user to DB user', {
+                  component: 'auth:jwt',
+                  oidcSub: user.id,
+                  dbUserId: dbUser.id,
+                  email: user.email,
+                });
+              } else {
+                // This should technically not happen if signIn passed, but just in case
+                logger.error('[Auth] JWT callback - OIDC user not found in DB', {
+                  component: 'auth:jwt',
+                  email: user.email,
+                });
+              }
+            } catch (error) {
+              logger.error('[Auth] JWT callback - DB lookup failed', { error });
+            }
+          } else {
+            // For Credentials, 'user' comes from authorize() and is already the DB user object
+            token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
+            token.sub = user.id;
+            token.name = user.name;
+            token.email = user.email;
+          }
         }
 
         // Fetch latest user data from database on each request to ensure name is up-to-date
