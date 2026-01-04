@@ -51,7 +51,7 @@ jobs:
         env:
           # CI doesn't need git hooks; this also avoids husky-related setup issues.
           HUSKY: '0'
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Prepare test database schema
         # Match pre-prod behavior by applying migrations in order.
