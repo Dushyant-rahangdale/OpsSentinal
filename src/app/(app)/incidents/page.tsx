@@ -157,23 +157,23 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                 style={{
                     background: 'var(--gradient-primary)',
                     color: 'white',
-                    padding: '2rem',
+                    padding: '1.5rem',
                     borderRadius: '12px',
-                    marginBottom: '1.5rem',
+                    marginBottom: '1rem',
                     boxShadow: 'var(--shadow-lg)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
                     flexWrap: 'wrap',
-                    gap: '1.5rem',
+                    gap: '1rem',
                 }}
             >
                 <div style={{ minWidth: 240 }}>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Incidents</h1>
-                    <p style={{ opacity: 0.92, fontSize: '1.05rem', margin: 0 }}>
+                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.35rem' }}>Incidents</h1>
+                    <p style={{ opacity: 0.92, fontSize: '1rem', margin: 0 }}>
                         Triage, assign, and resolve operational issues fast.
                     </p>
-                    <p style={{ opacity: 0.8, fontSize: '0.9rem', marginTop: '0.75rem' }}>
+                    <p style={{ opacity: 0.8, fontSize: '0.85rem', marginTop: '0.55rem', marginBottom: 0 }}>
                         Showing <strong>{showingFrom}-{showingTo}</strong> of <strong>{totalCount}</strong> in this view
                     </p>
                 </div>
@@ -183,7 +183,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                         <Link
                             href="/incidents/create"
                             className="glass-button primary"
-                            style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+                            style={{ textDecoration: 'none', whiteSpace: 'nowrap', padding: '0.5rem 0.9rem' }}
                         >
                             + Create Incident
                         </Link>
@@ -197,6 +197,7 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                                 opacity: 0.6,
                                 cursor: 'not-allowed',
                                 whiteSpace: 'nowrap',
+                                padding: '0.5rem 0.9rem',
                             }}
                             title="Responder role or above required to create incidents"
                         >
@@ -206,7 +207,13 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                     <Link
                         href="/"
                         className="glass-button"
-                        style={{ textDecoration: 'none', whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.18)', color: 'white' }}
+                        style={{
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                            background: 'rgba(255,255,255,0.14)',
+                            color: 'white',
+                            padding: '0.5rem 0.9rem',
+                        }}
                     >
                         Dashboard →
                     </Link>
@@ -215,36 +222,36 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                 <div
                     style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                        gap: '1rem',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: '0.75rem',
                         width: '100%',
                     }}
                 >
-                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1 }}>{mineCount}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.25rem' }}>MINE</div>
+                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', padding: '0.8rem 0.9rem', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{mineCount}</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.9, marginTop: '0.2rem', letterSpacing: '0.04em' }}>MINE</div>
                     </div>
-                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1 }}>{openCount}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.25rem' }}>OPEN</div>
+                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', padding: '0.8rem 0.9rem', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{openCount}</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.9, marginTop: '0.2rem', letterSpacing: '0.04em' }}>OPEN</div>
                     </div>
-                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1 }}>{resolvedCount}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.25rem' }}>RESOLVED</div>
+                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', padding: '0.8rem 0.9rem', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{resolvedCount}</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.9, marginTop: '0.2rem', letterSpacing: '0.04em' }}>RESOLVED</div>
                     </div>
-                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1 }}>{snoozedCount}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.25rem' }}>SNOOZED</div>
+                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', padding: '0.8rem 0.9rem', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{snoozedCount}</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.9, marginTop: '0.2rem', letterSpacing: '0.04em' }}>SNOOZED</div>
                     </div>
-                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1 }}>{suppressedCount}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.25rem' }}>SUPPRESSED</div>
+                    <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', padding: '0.8rem 0.9rem', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{suppressedCount}</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.9, marginTop: '0.2rem', letterSpacing: '0.04em' }}>SUPPRESSED</div>
                     </div>
                 </div>
             </div>
 
             {/* Tabs (pill-style, with counts) */}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
                 {tabs.map(tab => {
                     const tabParams = new URLSearchParams(baseParams.toString());
                     if (tab.id === 'all_open') {
@@ -259,24 +266,24 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
                             key={tab.id}
                             href={buildIncidentsUrl(tabParams)}
                             style={{
-                                padding: '0.5rem 0.75rem',
+                                padding: '0.4rem 0.65rem',
                                 borderRadius: '9999px',
-                                fontSize: '0.85rem',
+                                fontSize: '0.82rem',
                                 textDecoration: 'none',
                                 background: isActive ? 'var(--primary)' : 'rgba(211, 47, 47, 0.1)',
                                 color: isActive ? 'white' : 'var(--primary)',
                                 fontWeight: 700,
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.5rem',
+                                gap: '0.4rem',
                             }}
                         >
                             <span>{tab.label}</span>
                             <span
                                 style={{
-                                    padding: '0.1rem 0.5rem',
+                                    padding: '0.08rem 0.45rem',
                                     borderRadius: '9999px',
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.72rem',
                                     background: isActive ? 'rgba(255,255,255,0.18)' : 'rgba(211, 47, 47, 0.12)',
                                     color: isActive ? 'white' : 'var(--primary)',
                                     fontWeight: 800,
@@ -290,22 +297,20 @@ export default async function IncidentsPage({ searchParams }: { searchParams: Pr
             </div>
 
             {/* Filters Panel */}
-            <div className="glass-panel" style={{ background: 'white', padding: '1.25rem 1.5rem', marginBottom: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
-                    <div>
-                        <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '0.25rem' }}>
+            <div className="glass-panel" style={{ background: 'white', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+                        <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontWeight: 800, margin: 0 }}>
                             Filters
                         </p>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
-                            Search, prioritize, and save views as presets.
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                            Refine the list and save presets.
                         </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <PresetSelector presets={presets} currentCriteria={currentCriteria} />
-                    </div>
+                    <PresetSelector presets={presets} currentCriteria={currentCriteria} />
                 </div>
 
-                <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginTop: '0.75rem' }}>
                     <IncidentsFilters
                         currentFilter={currentFilter}
                         currentSort={currentSort}

@@ -133,7 +133,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
             {/* Bulk Actions Bar */}
             {(selectedIds.size > 0 || bulkAction) && (
                 <div style={{
-                    padding: '1rem 1.5rem',
+                    padding: '0.75rem 1.25rem',
                     background: 'linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 100%)',
                     color: 'white',
                     display: 'flex',
@@ -142,7 +142,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                     gap: '1rem',
                     flexWrap: 'wrap'
                 }}>
-                    <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>
+                    <span style={{ fontWeight: '650', fontSize: '0.9rem' }}>
                         {selectedIds.size} incident{selectedIds.size !== 1 ? 's' : ''} selected
                     </span>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -480,17 +480,17 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
             )}
 
             {/* Export Button */}
-            <div style={{ padding: '0.75rem 1.5rem', background: '#f9fafb', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '0.5rem 1.25rem', background: '#f9fafb', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                     onClick={handleExport}
                     aria-label="Export incidents to CSV"
                     style={{
-                        padding: '0.5rem 1rem',
+                        padding: '0.45rem 0.85rem',
                         background: 'white',
                         border: '1px solid var(--border)',
                         borderRadius: 'var(--radius-sm)',
                         color: 'var(--text-primary)',
-                        fontSize: '0.85rem',
+                        fontSize: '0.82rem',
                         fontWeight: '500',
                         cursor: 'pointer',
                         display: 'flex',
@@ -520,7 +520,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                     <thead style={{ background: '#f9fafb', borderBottom: '2px solid var(--border)' }}>
                         <tr>
                             {canManageIncidents && (
-                                <th style={{ width: '50px', padding: '1rem', textAlign: 'left' }}>
+                                <th style={{ width: '50px', padding: '0.85rem 1rem', textAlign: 'left' }}>
                                     <input
                                         type="checkbox"
                                         checked={selectedIds.size === incidents.length && incidents.length > 0}
@@ -529,25 +529,25 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     />
                                 </th>
                             )}
-                            <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Status
                             </th>
-                            <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Priority
                             </th>
-                            <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Incident
                             </th>
-                            <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Service
                             </th>
-                            <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Assignee
                             </th>
-                            <th style={{ textAlign: 'left', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Created
                             </th>
-                            <th style={{ textAlign: 'right', padding: '1rem', fontWeight: '700', color: 'var(--text-secondary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            <th style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                                 Actions
                             </th>
                         </tr>
@@ -586,7 +586,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                     }}
                                 >
                                     {canManageIncidents && (
-                                        <td style={{ padding: '1rem' }} onClick={(e) => e.stopPropagation()}>
+                                        <td style={{ padding: '0.85rem 1rem' }} onClick={(e) => e.stopPropagation()}>
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.has(incident.id)}
@@ -596,7 +596,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                             />
                                         </td>
                                     )}
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '0.85rem 1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <StatusBadge status={incidentStatus} size="sm" showDot />
                                             {incident.escalationStatus && (
@@ -609,10 +609,10 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                             )}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '0.85rem 1rem' }}>
                                         <PriorityBadge priority={incident.priority} size="sm" />
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '0.85rem 1rem' }}>
                                         <Link
                                             href={`/incidents/${incident.id}`}
                                             onClick={(e) => e.stopPropagation()}
@@ -620,7 +620,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                                 fontWeight: '700',
                                                 color: 'var(--primary)',
                                                 textDecoration: 'none',
-                                                fontSize: '0.95rem',
+                                                fontSize: '0.92rem',
                                                 display: 'block',
                                                 marginBottom: '0.25rem'
                                             }}
@@ -629,14 +629,14 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                         >
                                             {incident.title}
                                         </Link>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                             #{incident.id.slice(-5).toUpperCase()}
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: incident.urgency === 'HIGH' ? 'var(--danger)' : 'var(--warning)', fontWeight: 600, marginTop: '0.25rem' }}>
+                                        <div style={{ fontSize: '0.72rem', color: incident.urgency === 'HIGH' ? 'var(--danger)' : 'var(--warning)', fontWeight: 650, marginTop: '0.2rem' }}>
                                             {incident.urgency}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '0.85rem 1rem' }}>
                                         <Link
                                             href={`/services/${incident.service.id}`}
                                             onClick={(e) => e.stopPropagation()}
@@ -647,7 +647,7 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                             {incident.service.name}
                                         </Link>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td style={{ padding: '0.85rem 1rem' }}>
                                         <div onClick={(e) => e.stopPropagation()}>
                                             <AssigneeSection
                                                 assignee={incident.assignee}
@@ -662,10 +662,10 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                                             />
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                                         {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
                                     </td>
-                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
                                         {canManageIncidents && (
                                             <div
                                                 onClick={(e) => e.stopPropagation()}

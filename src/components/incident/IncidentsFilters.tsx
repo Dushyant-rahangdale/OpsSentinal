@@ -86,8 +86,8 @@ export default function IncidentsFilters({
                 <label
                     style={{
                         display: 'block',
-                        marginBottom: '0.4rem',
-                        fontSize: '0.85rem',
+                        marginBottom: '0.25rem',
+                        fontSize: '0.78rem',
                         fontWeight: 700,
                         color: 'var(--text-secondary)',
                     }}
@@ -102,11 +102,11 @@ export default function IncidentsFilters({
                         placeholder="Title, description, or ID…"
                         style={{
                             width: '100%',
-                            padding: '0.65rem 2.5rem 0.65rem 0.9rem',
+                            padding: '0.55rem 2.4rem 0.55rem 0.85rem',
                             border: '1px solid var(--border)',
                             borderRadius: '8px',
                             background: '#fff',
-                            fontSize: '0.9rem',
+                            fontSize: '0.88rem',
                             outline: 'none'
                         }}
                     />
@@ -139,8 +139,8 @@ export default function IncidentsFilters({
                 <label
                     style={{
                         display: 'block',
-                        marginBottom: '0.4rem',
-                        fontSize: '0.85rem',
+                        marginBottom: '0.25rem',
+                        fontSize: '0.78rem',
                         fontWeight: 700,
                         color: 'var(--text-secondary)',
                     }}
@@ -152,11 +152,11 @@ export default function IncidentsFilters({
                     onChange={(e) => updateParams({ priority: e.target.value })}
                     style={{
                         width: '100%',
-                        padding: '0.65rem 0.85rem',
+                        padding: '0.55rem 0.8rem',
                         border: '1px solid var(--border)',
                         borderRadius: '8px',
                         background: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         cursor: 'pointer',
                     }}
                 >
@@ -174,8 +174,8 @@ export default function IncidentsFilters({
                 <label
                     style={{
                         display: 'block',
-                        marginBottom: '0.4rem',
-                        fontSize: '0.85rem',
+                        marginBottom: '0.25rem',
+                        fontSize: '0.78rem',
                         fontWeight: 700,
                         color: 'var(--text-secondary)',
                     }}
@@ -187,11 +187,11 @@ export default function IncidentsFilters({
                     onChange={(e) => updateParams({ urgency: e.target.value })}
                     style={{
                         width: '100%',
-                        padding: '0.65rem 0.85rem',
+                        padding: '0.55rem 0.8rem',
                         border: '1px solid var(--border)',
                         borderRadius: '8px',
                         background: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         cursor: 'pointer',
                     }}
                 >
@@ -206,8 +206,8 @@ export default function IncidentsFilters({
                 <label
                     style={{
                         display: 'block',
-                        marginBottom: '0.4rem',
-                        fontSize: '0.85rem',
+                        marginBottom: '0.25rem',
+                        fontSize: '0.78rem',
                         fontWeight: 700,
                         color: 'var(--text-secondary)',
                     }}
@@ -219,11 +219,11 @@ export default function IncidentsFilters({
                     onChange={(e) => updateParams({ sort: e.target.value })}
                     style={{
                         width: '100%',
-                        padding: '0.65rem 0.85rem',
+                        padding: '0.55rem 0.8rem',
                         border: '1px solid var(--border)',
                         borderRadius: '8px',
                         background: '#fff',
-                        fontSize: '0.9rem',
+                        fontSize: '0.88rem',
                         cursor: 'pointer',
                     }}
                 >
@@ -240,7 +240,7 @@ export default function IncidentsFilters({
                     type="button"
                     onClick={clearFilters}
                     className="glass-button"
-                    style={{ whiteSpace: 'nowrap' }}
+                    style={{ whiteSpace: 'nowrap', padding: '0.5rem 0.75rem' }}
                     aria-label="Clear incident filters"
                     disabled={isPending}
                 >
