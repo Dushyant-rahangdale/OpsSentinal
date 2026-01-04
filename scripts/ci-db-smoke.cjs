@@ -13,6 +13,8 @@
 
 const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -22,12 +24,60 @@ function requireEnv(name) {
   return value;
 }
 
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function ensureReportsDir() {
+  const dir = path.join(__dirname, '..', 'reports');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function writeJUnit({ ok, durationMs, message, details }) {
+  const reportsDir = ensureReportsDir();
+  const outPath = path.join(reportsDir, 'ci-db-smoke.xml');
+  const tests = 1;
+  const failures = ok ? 0 : 1;
+  const timeSec = (durationMs / 1000).toFixed(3);
+
+  const systemOut = details ? `      <system-out>${escapeXml(details)}</system-out>` : '';
+  const failureBlock = ok
+    ? ''
+    : `      <failure message="${escapeXml(message || 'DB smoke test failed')}">${escapeXml(
+        details || ''
+      )}</failure>`;
+
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<testsuites tests="${tests}" failures="${failures}" errors="0" skipped="0">`,
+    `  <testsuite name="ci-db-smoke" tests="${tests}" failures="${failures}" errors="0" skipped="0" time="${timeSec}">`,
+    `    <testcase name="ci-db-smoke" time="${timeSec}">`,
+    failureBlock,
+    systemOut,
+    '    </testcase>',
+    '  </testsuite>',
+    '</testsuites>',
+    '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  fs.writeFileSync(outPath, xml, 'utf8');
+}
+
 async function main() {
   requireEnv('DATABASE_URL');
 
   const prisma = new PrismaClient();
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const email = `ci-smoke-${runId}@example.com`.toLowerCase();
+  const startedAt = Date.now();
 
   try {
     // 1) Basic connectivity
@@ -81,6 +131,12 @@ async function main() {
     await prisma.userToken.deleteMany({ where: { identifier: user.email } });
     await prisma.user.delete({ where: { id: user.id } });
 
+    writeJUnit({
+      ok: true,
+      durationMs: Date.now() - startedAt,
+      message: 'OK',
+      details: `[ci-db-smoke] OK (user=${user.id})`,
+    });
     console.log('[ci-db-smoke] OK');
   } finally {
     await prisma.$disconnect();
@@ -90,6 +146,14 @@ async function main() {
 main().catch((err) => {
   console.error('[ci-db-smoke] FAILED');
   console.error(err);
+  try {
+    writeJUnit({
+      ok: false,
+      durationMs: 0,
+      message: err instanceof Error ? err.message : 'Unknown error',
+      details: err instanceof Error ? err.stack : String(err),
+    });
+  } catch {}
   process.exit(1);
 });
 
