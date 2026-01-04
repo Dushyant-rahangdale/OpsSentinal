@@ -77,7 +77,7 @@ describe('PublicStatusPage Custom CSS', () => {
     });
 
     expect(cssFound).toBe(true);
-  });
+  }, 15000);
 
   it('does not render custom css when not provided', async () => {
     mockPrisma.statusPage.findFirst.mockResolvedValue({

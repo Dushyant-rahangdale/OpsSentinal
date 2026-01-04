@@ -13,6 +13,8 @@ import PullToRefresh from '@/components/mobile/PullToRefresh';
 import MobileSwipeNavigator from '@/components/mobile/MobileSwipeNavigator';
 import MobileNetworkBanner from '@/components/mobile/MobileNetworkBanner';
 
+import { calculateSLAMetrics } from '@/lib/sla-server';
+
 export const dynamic = 'force-dynamic';
 
 export default async function MobileLayout({ children }: { children: React.ReactNode }) {
@@ -23,24 +25,11 @@ export default async function MobileLayout({ children }: { children: React.React
   }
 
   // Check system status
-  // Check system status
-  const [criticalCount, lowUrgencyCount] = await Promise.all([
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-        urgency: 'HIGH',
-      },
-    }),
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-        urgency: 'LOW',
-      },
-    }),
-  ]);
+  const slaMetrics = await calculateSLAMetrics();
 
+  // Align with dashboard greeting/system status logic
   const systemStatus: 'ok' | 'warning' | 'danger' =
-    criticalCount > 0 ? 'danger' : lowUrgencyCount > 0 ? 'warning' : 'ok';
+    slaMetrics.criticalCount > 0 ? 'danger' : slaMetrics.openCount > 0 ? 'warning' : 'ok';
 
   return (
     <ToastProvider>

@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+﻿import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
@@ -6,11 +6,19 @@ import { logger } from '@/lib/logger';
 const PUBLIC_PATH_PREFIXES = [
   '/login',
   '/set-password',
-  '/api',
+  '/api/auth',
+  '/api/health',
+  '/api/public-logs',
+  '/api/logs/ingest',
+  '/api/status-page',
+  '/api/slack/actions',
+  '/api/slack/oauth/callback',
+  '/api/integrations',
   '/status',
   '/setup',
   '/logs',
-  '/m',
+  '/m/login',
+  '/m/forgot-password',
 ];
 
 /**
@@ -141,12 +149,11 @@ function getSecurityHeaders(): Record<string, string> {
   };
 }
 
-export async function proxy(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const origin = req.headers.get('origin');
 
   // Create response with security headers
-  const start = Date.now();
   const response = NextResponse.next();
   const securityHeaders = getSecurityHeaders();
   Object.entries(securityHeaders).forEach(([key, value]) => {
@@ -278,28 +285,35 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  if (pathname.startsWith('/api/status-page/domains')) {
-    return response;
-  }
+  // ===== DOMAIN CONFIG (STATUS PAGE) =====
+  // Skip domain check for internal paths, static files, and most API routes to save performance
+  const skipDomainCheck =
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/setup') ||
+    pathname.startsWith('/status') ||
+    pathname.startsWith('/logs') ||
+    isPublicPath(pathname) ||
+    /\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot)$/i.test(pathname);
 
-  const statusConfig = await fetchStatusDomainConfig(req.nextUrl.origin);
-  if (statusConfig?.enabled) {
-    const hostname = normalizeHostname(req.headers.get('host'));
-    const allowedHosts = new Set<string>();
-    if (statusConfig.subdomain && statusConfig.appHost) {
-      const subdomainHost = buildSubdomainHost(statusConfig.subdomain, statusConfig.appHost);
-      if (subdomainHost) {
-        allowedHosts.add(subdomainHost);
+  if (!skipDomainCheck) {
+    const statusConfig = await fetchStatusDomainConfig(req.nextUrl.origin);
+    if (statusConfig?.enabled) {
+      const hostname = normalizeHostname(req.headers.get('host'));
+      const allowedHosts = new Set<string>();
+      if (statusConfig.subdomain && statusConfig.appHost) {
+        const subdomainHost = buildSubdomainHost(statusConfig.subdomain, statusConfig.appHost);
+        if (subdomainHost) {
+          allowedHosts.add(subdomainHost);
+        }
       }
-    }
-    if (statusConfig.customDomain) {
-      const customHost = parseHostname(statusConfig.customDomain);
-      if (customHost) {
-        allowedHosts.add(customHost);
+      if (statusConfig.customDomain) {
+        const customHost = parseHostname(statusConfig.customDomain);
+        if (customHost) {
+          allowedHosts.add(customHost);
+        }
       }
-    }
-    if (hostname && allowedHosts.has(hostname)) {
-      if (!pathname.startsWith('/api') && !pathname.startsWith('/status')) {
+      if (hostname && allowedHosts.has(hostname)) {
         const url = req.nextUrl.clone();
         url.pathname = '/status';
         const rewriteResponse = NextResponse.rewrite(url);
@@ -308,7 +322,6 @@ export async function proxy(req: NextRequest) {
         });
         return rewriteResponse;
       }
-      return response;
     }
   }
 
@@ -333,15 +346,6 @@ export async function proxy(req: NextRequest) {
       });
       return redirectResponse;
     }
-    if (pathname === '/setup') {
-      // Redirect authenticated users away from setup page (bootstrap only)
-      const redirectResponse = NextResponse.redirect(new URL('/', req.url));
-      // Apply security headers to redirect
-      Object.entries(securityHeaders).forEach(([key, value]) => {
-        redirectResponse.headers.set(key, value);
-      });
-      return redirectResponse;
-    }
     // Authenticated user accessing protected route - allow
     return response;
   }
@@ -352,12 +356,9 @@ export async function proxy(req: NextRequest) {
     return response;
   }
 
-  // Allow the root page to render for unauthenticated users
-  // This allows the root page's server component to decide whether to redirect to /login or /setup
-  // based on whether users exist in the database.
-  // if (pathname === '/') {
-  //    return response;
-  // }
+  if (pathname === '/') {
+    return response;
+  }
 
   // Unauthenticated user trying to access protected route - redirect to login
   const url = req.nextUrl.clone();

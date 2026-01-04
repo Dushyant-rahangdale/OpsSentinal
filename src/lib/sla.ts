@@ -27,6 +27,14 @@ export type SLAMetrics = {
   unassignedActive: number;
   highUrgencyCount: number;
   alertsCount: number;
+  openCount: number;
+  acknowledgedCount: number;
+  snoozedCount: number;
+  suppressedCount: number;
+  resolved24h: number;
+  dynamicStatus: 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
+  activeCount: number;
+  criticalCount: number;
 
   // Rates
   ackRate: number;
@@ -40,6 +48,7 @@ export type SLAMetrics = {
 
   previousPeriod: {
     totalIncidents: number;
+    highUrgencyCount: number;
     mtta: number | null;
     mttr: number | null;
     ackRate: number;
@@ -74,6 +83,7 @@ export type SLAMetrics = {
     ackRate: number;
     resolveRate: number;
     ackCompliance: number;
+    resolveCount: number;
     escalationRate: number;
   }>;
   statusMix: Array<{ status: string; count: number }>;
@@ -104,10 +114,28 @@ export type SLAMetrics = {
     mttr: number;
     slaBreaches: number;
     status: string;
+    dynamicStatus: 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL';
+    activeCount: number;
+    criticalCount: number;
   }>;
   insights: Array<{
-    type: string;
+    type: 'positive' | 'negative';
     text: string;
+  }>;
+  currentShifts: Array<{
+    id: string;
+    user: { name: string };
+    schedule: { name: string };
+  }>;
+  recentIncidents?: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    urgency: string;
+    createdAt: Date;
+    resolvedAt: Date | null;
+    service: { id: string; name: string; region?: string | null };
   }>;
 };
 

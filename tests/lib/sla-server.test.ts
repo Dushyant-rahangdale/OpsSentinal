@@ -36,13 +36,20 @@ const prismaMock = prisma as unknown as PrismaMock & {
 };
 
 const setupBaseMocks = ({
+  activeIncidents,
   recentIncidents,
   previousIncidents,
   heatmapIncidents,
   escalationEvents,
-  activeCount = 0,
-  unassignedCount = 0,
+  resolved24hCount = 0,
 }: {
+  activeIncidents: Array<{
+    id: string;
+    status: string;
+    urgency: string;
+    assigneeId: string | null;
+    serviceId: string;
+  }>;
   recentIncidents: Array<{
     id: string;
     createdAt: Date;
@@ -65,8 +72,7 @@ const setupBaseMocks = ({
   }>;
   heatmapIncidents: Array<{ createdAt: Date }>;
   escalationEvents: Array<{ incidentId: string; createdAt: Date }>;
-  activeCount?: number;
-  unassignedCount?: number;
+  resolved24hCount?: number;
 }) => {
   if (!prismaMock.alert) {
     prismaMock.alert = { count: vi.fn() };
@@ -80,17 +86,19 @@ const setupBaseMocks = ({
   if (!prismaMock.incident.groupBy) {
     prismaMock.incident.groupBy = vi.fn();
   }
-  prismaMock.incident.count
-    .mockResolvedValueOnce(activeCount)
-    .mockResolvedValueOnce(unassignedCount);
+  prismaMock.incident.count.mockResolvedValueOnce(resolved24hCount);
   prismaMock.incident.findMany
+    .mockResolvedValueOnce(activeIncidents)
+    .mockResolvedValueOnce(heatmapIncidents)
     .mockResolvedValueOnce(recentIncidents)
-    .mockResolvedValueOnce(previousIncidents)
-    .mockResolvedValueOnce(heatmapIncidents);
+    .mockResolvedValueOnce(previousIncidents);
   prismaMock.alert.count.mockResolvedValueOnce(0);
   prismaMock.alert.groupBy.mockResolvedValueOnce([]);
   prismaMock.incidentNote.groupBy.mockResolvedValueOnce([]);
-  prismaMock.onCallShift.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+  prismaMock.onCallShift.findMany
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([]);
   prismaMock.onCallOverride.count.mockResolvedValueOnce(0);
   prismaMock.incident.groupBy
     .mockResolvedValueOnce([])
@@ -152,12 +160,19 @@ describe('calculateSLAMetrics trend series', () => {
     const escalationEvents = [{ incidentId: 'inc-2', createdAt: new Date('2026-01-01T05:15:00Z') }];
 
     setupBaseMocks({
+      activeIncidents: [
+        {
+          id: 'inc-2',
+          status: 'OPEN',
+          urgency: 'LOW',
+          assigneeId: null,
+          serviceId: 'service-1',
+        },
+      ],
       recentIncidents,
       previousIncidents: [],
       heatmapIncidents: [],
       escalationEvents,
-      activeCount: 1,
-      unassignedCount: 1,
     });
 
     const metrics = await calculateSLAMetrics({ windowDays: 1, userTimeZone: 'UTC' });
@@ -188,6 +203,7 @@ describe('calculateSLAMetrics trend series', () => {
 
   it('builds daily trend series for multi-day windows with new fields', async () => {
     setupBaseMocks({
+      activeIncidents: [],
       recentIncidents: [],
       previousIncidents: [],
       heatmapIncidents: [],
@@ -246,6 +262,7 @@ describe('calculateSLAMetrics investigation metrics', () => {
     ];
 
     setupBaseMocks({
+      activeIncidents: [],
       recentIncidents,
       previousIncidents: [],
       heatmapIncidents: [],

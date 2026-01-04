@@ -105,13 +105,32 @@ export function buildOnCallLoad(
     onCallLoadMap.set(shift.userId, entry);
   }
 
-  for (const incident of incidents) {
-    for (const shift of shifts) {
-      if (incident.createdAt >= shift.start && incident.createdAt <= shift.end) {
+  // Optimize incident-to-shift matching using sorted arrays and pointers
+  const sortedShifts = [...shifts].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const sortedIncidents = [...incidents].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+  );
+
+  let shiftIdx = 0;
+  for (const incident of sortedIncidents) {
+    const time = incident.createdAt.getTime();
+
+    // Fast-forward shifts that ended before this incident
+    while (shiftIdx < sortedShifts.length && sortedShifts[shiftIdx].end.getTime() < time) {
+      shiftIdx++;
+    }
+
+    // Check current and subsequent shifts that might overlap with this incident time
+    // Usually only one shift matches, but on-call rotations might have overlaps
+    let currentIdx = shiftIdx;
+    while (currentIdx < sortedShifts.length && sortedShifts[currentIdx].start.getTime() <= time) {
+      const shift = sortedShifts[currentIdx];
+      if (time <= shift.end.getTime()) {
         const entry = onCallLoadMap.get(shift.userId) || { hoursMs: 0, incidentCount: 0 };
         entry.incidentCount += 1;
         onCallLoadMap.set(shift.userId, entry);
       }
+      currentIdx++;
     }
   }
 

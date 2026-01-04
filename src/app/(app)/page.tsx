@@ -130,29 +130,7 @@ export default async function Dashboard({
   const skip = (page - 1) * INCIDENTS_PER_PAGE;
 
   // Fetch Data in Parallel
-  const [
-    incidents,
-    totalCount,
-    services,
-    users,
-    activeShifts,
-    urgencyGroupCounts,
-    metricsResolvedCount,
-    allOpenIncidentsCount,
-    allAcknowledgedCount,
-    allCriticalIncidentsCount,
-    unassignedCount,
-    allIncidentsCount,
-    allResolvedCountAllTime,
-    slaMetrics,
-    // MTTA calculation - optimized to only fetch what we need
-    acknowledgedIncidentsForMTTA,
-    metricsTotalCount,
-    metricsOpenCount,
-    // Current period metrics - moved into parallel batch
-    currentPeriodAcknowledged,
-    currentPeriodCritical,
-  ] = await Promise.all([
+  const [incidents, totalCount, services, users, slaMetrics] = await Promise.all([
     prisma.incident.findMany({
       where,
       select: {
@@ -194,53 +172,6 @@ export default async function Dashboard({
         name: true,
       },
     }),
-    prisma.onCallShift.findMany({
-      where: {
-        start: { lte: new Date() },
-        end: { gte: new Date() },
-      },
-      include: { user: true, schedule: true },
-    }),
-    prisma.incident.groupBy({
-      by: ['urgency'],
-      where: chartWhere,
-      _count: { _all: true },
-    }),
-    prisma.incident.count({
-      where: {
-        status: 'RESOLVED',
-        ...metricsWhere,
-      },
-    }),
-    // All-time counts (for Command Center and Advanced Metrics)
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-      },
-    }),
-    prisma.incident.count({
-      where: {
-        status: 'ACKNOWLEDGED',
-      },
-    }),
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-        urgency: 'HIGH',
-      },
-    }),
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-        assigneeId: null,
-      },
-    }),
-    prisma.incident.count({}),
-    prisma.incident.count({
-      where: {
-        status: 'RESOLVED',
-      },
-    }),
     calculateSLAMetrics({
       serviceId: service,
       assigneeId: assigneeFilter,
@@ -249,61 +180,38 @@ export default async function Dashboard({
       endDate: metricsEndDate,
       includeAllTime: range === 'all',
     }),
-    // Optimized MTTA: Only fetch timestamps we need, limit to reasonable amount
-    prisma.incident.findMany({
-      where: mttaWhere,
-      select: {
-        createdAt: true,
-        acknowledgedAt: true,
-      },
-      take: 500, // Limit for performance - MTTA doesn't need all incidents
-    }),
-    prisma.incident.count({
-      where: metricsWhere,
-    }),
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-        ...metricsWhere,
-      },
-    }),
-    prisma.incident.count({
-      where: {
-        status: 'ACKNOWLEDGED',
-        ...metricsWhere,
-      },
-    }),
-    prisma.incident.count({
-      where: {
-        status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-        urgency: 'HIGH',
-        ...metricsWhere,
-      },
-    }),
   ]);
 
   // Calculate MTTA
-  const acknowledgedIncidents = acknowledgedIncidentsForMTTA;
+  // Map SLA Server metrics to Dashboard variables
+  const activeShifts = slaMetrics.currentShifts;
+  const metricsTotalCount = slaMetrics.totalIncidents;
+  const metricsOpenCount = slaMetrics.openCount;
+  const metricsResolvedCount = slaMetrics.statusMix.find(s => s.status === 'RESOLVED')?.count ?? 0;
+  const unassignedCount = slaMetrics.unassignedActive;
 
-  let mttaMinutes: number | null = null;
-  if (acknowledgedIncidents.length > 0) {
-    const ackTimes = acknowledgedIncidents
-      .filter(i => i.acknowledgedAt && i.createdAt)
-      .map(i => {
-        const created = i.createdAt.getTime();
-        const acked = i.acknowledgedAt!.getTime();
-        return (acked - created) / (1000 * 60);
-      });
+  const allOpenIncidentsCount = slaMetrics.openCount;
+  const allAcknowledgedCount = slaMetrics.acknowledgedCount;
+  const allCriticalIncidentsCount = slaMetrics.criticalCount;
+  const currentCriticalActive = slaMetrics.criticalCount;
 
-    if (ackTimes.length > 0) {
-      mttaMinutes = ackTimes.reduce((sum, time) => sum + time, 0) / ackTimes.length;
-    }
-  }
+  const currentPeriodAcknowledged = allAcknowledgedCount;
+  const currentPeriodCritical = slaMetrics.criticalCount;
+  const mttaMinutes = slaMetrics.mttd;
+  const allIncidentsCount = metricsTotalCount;
+  const allResolvedCountAllTime = metricsResolvedCount;
 
-  // Calculate urgency distribution
-  const urgencyCounts = urgencyGroupCounts.reduce(
+  // Previous Period Stats
+  const prevTotal = slaMetrics.previousPeriod.totalIncidents;
+  const prevOpen = 0; // Point-in-time snapshot not available in history
+  const prevResolved = Math.round(prevTotal * (slaMetrics.previousPeriod.resolveRate / 100));
+  const prevAcknowledged = Math.round(prevTotal * (slaMetrics.previousPeriod.ackRate / 100));
+  const prevCritical = slaMetrics.previousPeriod.highUrgencyCount;
+
+  // Urgency Distribution
+  const urgencyCounts = slaMetrics.urgencyMix.reduce(
     (acc, item) => {
-      acc[item.urgency] = item._count._all;
+      acc[item.urgency] = item.count;
       return acc;
     },
     {} as Record<string, number>
@@ -315,112 +223,18 @@ export default async function Dashboard({
     { label: 'Low', value: urgencyCounts['LOW'] || 0, color: '#22c55e' },
   ].filter(item => item.value > 0);
 
-  // Calculate previous period data for comparison
-  const currentPeriodDays = getDaysFromRange(range);
-  const previousPeriodStart = new Date();
-  previousPeriodStart.setDate(previousPeriodStart.getDate() - currentPeriodDays * 2);
-  const previousPeriodEnd = new Date();
-  previousPeriodEnd.setDate(previousPeriodEnd.getDate() - currentPeriodDays);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const previousPeriodWhere: any = {
-    createdAt: {
-      gte: previousPeriodStart,
-      lt: previousPeriodEnd,
-    },
-  };
-  if (assignee !== undefined) {
-    if (assignee === '') {
-      previousPeriodWhere.assigneeId = null;
-    } else {
-      previousPeriodWhere.assigneeId = assignee;
-    }
-  }
-  if (service) previousPeriodWhere.serviceId = service;
-  if (urgency) previousPeriodWhere.urgency = urgency;
-
-  const previousPeriodIncidents =
-    currentPeriodDays > 0
-      ? await Promise.all([
-          prisma.incident.count({
-            where: {
-              ...previousPeriodWhere,
-            },
-          }),
-          prisma.incident.count({
-            where: {
-              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-              ...previousPeriodWhere,
-            },
-          }),
-          prisma.incident.count({
-            where: {
-              status: 'RESOLVED',
-              ...previousPeriodWhere,
-            },
-          }),
-          prisma.incident.count({
-            where: {
-              status: 'ACKNOWLEDGED',
-              ...previousPeriodWhere,
-            },
-          }),
-          prisma.incident.count({
-            where: {
-              status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-              urgency: 'HIGH',
-              ...previousPeriodWhere,
-            },
-          }),
-        ])
-      : [0, 0, 0, 0, 0];
-
-  const [prevTotal, prevOpen, prevResolved, prevAcknowledged, prevCritical] =
-    previousPeriodIncidents;
-
-  // Get service health data - Optimized: Use groupBy to avoid N+1 queries
-  const serviceIds = services.map(s => s.id);
-
-  // Fetch counts for all services at once using aggregation
-  const [serviceActiveCounts, serviceCriticalCounts] = await Promise.all([
-    serviceIds.length > 0
-      ? prisma.incident.groupBy({
-          by: ['serviceId'],
-          where: {
-            serviceId: { in: serviceIds },
-            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-          },
-          _count: { _all: true },
-        })
-      : [],
-    serviceIds.length > 0
-      ? prisma.incident.groupBy({
-          by: ['serviceId'],
-          where: {
-            serviceId: { in: serviceIds },
-            status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-            urgency: 'HIGH',
-          },
-          _count: { _all: true },
-        })
-      : [],
-  ]);
-
-  // Create maps for O(1) lookup
-  const activeCountMap = new Map(
-    serviceActiveCounts.map(item => [item.serviceId, item._count._all])
-  );
-  const criticalCountMap = new Map(
-    serviceCriticalCounts.map(item => [item.serviceId, item._count._all])
-  );
-
-  // Build service health array
-  const servicesWithIncidents = services.map(service => ({
-    id: service.id,
-    name: service.name,
-    status: service.status,
-    activeIncidents: activeCountMap.get(service.id) || 0,
-    criticalIncidents: criticalCountMap.get(service.id) || 0,
+  // Service Health
+  const servicesWithIncidents = slaMetrics.serviceMetrics.map(s => ({
+    id: s.id,
+    name: s.name,
+    status: s.dynamicStatus as
+      | 'OPERATIONAL'
+      | 'DEGRADED'
+      | 'PARTIAL_OUTAGE'
+      | 'MAJOR_OUTAGE'
+      | 'MAINTENANCE',
+    activeIncidents: s.activeCount,
+    criticalIncidents: s.criticalCount,
   }));
 
   // Helper functions for period labels
@@ -439,9 +253,9 @@ export default async function Dashboard({
 
   // Calculate system status
   const systemStatus =
-    allCriticalIncidentsCount > 0
+    currentCriticalActive > 0
       ? { label: 'CRITICAL', color: 'var(--color-danger)', bg: 'rgba(239, 68, 68, 0.1)' }
-      : allOpenIncidentsCount > 0
+      : metricsOpenCount > 0
         ? { label: 'DEGRADED', color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.1)' }
         : { label: 'OPERATIONAL', color: 'var(--color-success)', bg: 'rgba(34, 197, 94, 0.1)' };
 

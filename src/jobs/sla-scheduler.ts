@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { slaService } from '@/services/sla/SLAService';
+import { generateDailySnapshot } from '@/lib/sla-server';
 
 /**
  * Processes pending SLA snapshots for the previous day.
@@ -40,7 +40,7 @@ export async function processSLASnapshots() {
 
       if (!existing) {
         // 3. Generate Snapshot if missing
-        await slaService.generateDailySnapshot(def.id, startOfYesterday);
+        await generateDailySnapshot(def.id, startOfYesterday);
         processedCount++;
       } else {
         // Optional: Recalculate if we want to support "updating" results?

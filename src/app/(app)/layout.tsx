@@ -28,12 +28,7 @@ const isNextRedirectError = (error: unknown) => {
 export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(await getAuthOptions());
   if (!session?.user?.email) {
     let userCount = 0;
@@ -56,7 +51,7 @@ export default async function AppLayout({
   try {
     dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, role: true, name: true, email: true, timeZone: true }
+      select: { id: true, role: true, name: true, email: true, timeZone: true },
     });
   } catch (error) {
     dbError = error;
@@ -94,18 +89,14 @@ export default async function AppLayout({
 
   const canCreate = userRole === 'ADMIN' || userRole === 'RESPONDER';
 
-  const criticalOpenCount = await prisma.incident.count({
-    where: {
-      status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
-      urgency: 'HIGH'
-    }
-  });
+  const { calculateSLAMetrics } = await import('@/lib/sla-server');
+  const slaMetrics = await calculateSLAMetrics();
+  const criticalOpenCount = slaMetrics.criticalCount;
 
   const statusTone = criticalOpenCount > 0 ? 'danger' : 'ok';
   const statusLabel = criticalOpenCount > 0 ? 'Red Alert' : 'Green Corridor';
-  const statusDetail = criticalOpenCount > 0
-    ? `${criticalOpenCount} critical open`
-    : 'No critical incidents';
+  const statusDetail =
+    criticalOpenCount > 0 ? `${criticalOpenCount} critical open` : 'No critical incidents';
 
   const userTimeZone = dbUser?.timeZone || 'UTC';
 

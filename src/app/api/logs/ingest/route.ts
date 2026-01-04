@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+const MAX_BODY_SIZE = 50 * 1024; // 50KB
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 30; // 30 logs per minute per IP
 
 export async function POST(req: NextRequest) {
   try {
+    // Basic Rate Limiting by IP
+    const ip = req.headers.get('x-forwarded-for') || 'anonymous';
+    const rate = checkRateLimit(`api:logs:ingest:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+    if (!rate.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
+    // Body size check
+    const contentLength = Number(req.headers.get('content-length') || 0);
+    if (contentLength > MAX_BODY_SIZE) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    }
+
     const body = await req.json();
     const { level, message, context } = body;
 

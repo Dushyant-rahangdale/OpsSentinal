@@ -297,34 +297,6 @@ async function renderStatusPage(statusPage: any) {
   }
 
   // Calculate actual status based on active incidents
-  services = services.map(service => {
-    const activeIncidents = service.incidents || [];
-
-    // Filter out resolved incidents (shouldn't happen, but just in case)
-    const unresolvedIncidents = activeIncidents.filter(
-      (
-        inc: any // eslint-disable-line @typescript-eslint/no-explicit-any
-      ) => inc.status !== 'RESOLVED' && inc.status !== 'SNOOZED' && inc.status !== 'SUPPRESSED'
-    );
-
-    const highUrgencyIncidents = unresolvedIncidents.filter((inc: any) => inc.urgency === 'HIGH'); // eslint-disable-line @typescript-eslint/no-explicit-any
-    const lowUrgencyIncidents = unresolvedIncidents.filter((inc: any) => inc.urgency === 'LOW'); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-    // Determine status based on incidents
-    // Priority: HIGH urgency incidents = MAJOR_OUTAGE, LOW urgency = PARTIAL_OUTAGE, none = OPERATIONAL
-    let calculatedStatus = 'OPERATIONAL';
-    if (highUrgencyIncidents.length > 0) {
-      calculatedStatus = 'MAJOR_OUTAGE';
-    } else if (lowUrgencyIncidents.length > 0) {
-      calculatedStatus = 'PARTIAL_OUTAGE';
-    }
-
-    return {
-      ...service,
-      status: calculatedStatus, // Override with calculated status based on active incidents
-    };
-  });
-
   // Get recent incidents (last 90 days) with events
   // Use all services if none configured, or specific service IDs
   const incidentServiceIds = serviceIds.length > 0 ? serviceIds : services.map(s => s.id);
@@ -354,9 +326,36 @@ async function renderStatusPage(statusPage: any) {
     : [];
 
   // Calculate uptime metrics for last 30 and 90 days
+  const { calculateSLAMetrics, calculateMultiServiceUptime, getExternalStatusLabel } =
+    await import('@/lib/sla-server');
+
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const serviceIdsForSLA = statusPage.services.map((sp: any) => sp.serviceId);
+
+  // Optimized: Single call to get metrics for all services
+  const [uptime90, metrics] = await Promise.all([
+    calculateMultiServiceUptime(serviceIdsForSLA, ninetyDaysAgo, now),
+    calculateSLAMetrics({ serviceId: serviceIdsForSLA }),
+  ]);
+
+  const serviceStatusMap = new Map<string, string>();
+  metrics.serviceMetrics.forEach((m: any) => {
+    serviceStatusMap.set(m.id, getExternalStatusLabel(m.dynamicStatus));
+  });
+
+  // Re-map services to include SLA-derived status and incident counts
+  services = statusPage.services.map((sp: any) => {
+    const serviceMetric = metrics.serviceMetrics.find((m: any) => m.id === sp.serviceId);
+    return {
+      ...sp.service,
+      status: serviceStatusMap.get(sp.serviceId) || sp.service.status,
+      _count: {
+        incidents: serviceMetric?.activeCount || 0,
+      },
+    };
+  });
 
   // Get incidents for status history and uptime calculation
   const allIncidents = await prisma.incident.findMany({
@@ -408,7 +407,7 @@ async function renderStatusPage(statusPage: any) {
           };
   const lastUpdatedLabel = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 
-  const serviceUptime90 = buildServiceUptime(allIncidents, services, ninetyDaysAgo, now);
+  const serviceUptime90 = uptime90;
   const incidentsForHistory = allIncidents.map(incident => ({
     serviceId: incident.serviceId,
     createdAt: incident.createdAt.toISOString(),
@@ -1442,55 +1441,4 @@ async function renderStatusPage(statusPage: any) {
       </div>
     </>
   );
-}
-
-function buildServiceUptime(
-  incidents: Array<{
-    serviceId: string;
-    createdAt: Date;
-    resolvedAt?: Date | null;
-    status: string;
-  }>,
-  services: Array<{ id: string }>,
-  periodStart: Date,
-  periodEnd: Date
-) {
-  const uptimeByService: Record<string, number> = {};
-  const totalMinutes = (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60);
-
-  services.forEach(service => {
-    if (totalMinutes <= 0) {
-      uptimeByService[service.id] = 100;
-      return;
-    }
-
-    const serviceIncidents = incidents.filter(incident => {
-      if (incident.serviceId !== service.id) {
-        return false;
-      }
-      if (incident.status === 'SUPPRESSED' || incident.status === 'SNOOZED') {
-        return false;
-      }
-      const incidentEnd = incident.resolvedAt || periodEnd;
-      return incident.createdAt < periodEnd && incidentEnd > periodStart;
-    });
-
-    let downtimeMinutes = 0;
-    serviceIncidents.forEach(incident => {
-      const incidentStart = incident.createdAt > periodStart ? incident.createdAt : periodStart;
-      const incidentEnd =
-        (incident.resolvedAt || periodEnd) < periodEnd
-          ? incident.resolvedAt || periodEnd
-          : periodEnd;
-      const incidentMinutes = (incidentEnd.getTime() - incidentStart.getTime()) / (1000 * 60);
-      if (incidentMinutes > 0) {
-        downtimeMinutes += incidentMinutes;
-      }
-    });
-
-    const uptime = totalMinutes > 0 ? ((totalMinutes - downtimeMinutes) / totalMinutes) * 100 : 100;
-    uptimeByService[service.id] = Math.max(0, Math.min(100, uptime));
-  });
-
-  return uptimeByService;
 }

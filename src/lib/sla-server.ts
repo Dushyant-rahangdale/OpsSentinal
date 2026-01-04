@@ -9,14 +9,16 @@ import {
   calculateMtbfMs,
   calculatePercentile,
 } from './analytics-metrics';
+import { getServiceDynamicStatus } from './service-status';
+import { logger } from './logger';
 
 /**
  * Extended SLA Metrics Filter
  * Supports all legacy analytics filters
  */
 type SLAMetricsFilter = {
-  serviceId?: string;
-  teamId?: string;
+  serviceId?: string | string[];
+  teamId?: string | string[];
   assigneeId?: string | null;
   urgency?: 'HIGH' | 'MEDIUM' | 'LOW';
   status?: 'OPEN' | 'ACKNOWLEDGED' | 'SNOOZED' | 'SUPPRESSED' | 'RESOLVED';
@@ -25,6 +27,9 @@ type SLAMetricsFilter = {
   windowDays?: number;
   includeAllTime?: boolean;
   userTimeZone?: string;
+  useOrScope?: boolean;
+  includeIncidents?: boolean;
+  incidentLimit?: number;
 };
 
 const allowedStatus = ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED', 'RESOLVED'] as const;
@@ -110,20 +115,26 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const userTimeZone = filters.userTimeZone || 'UTC';
 
   // 2. Build Where Clauses
-  let teamServiceIds: string[] | null = null;
-  if (filters.teamId) {
-    const teamServices = await prisma.service.findMany({
-      where: { teamId: filters.teamId },
-      select: { id: true },
-    });
-    teamServiceIds = teamServices.map(s => s.id);
-  }
-
   const serviceWhere = filters.serviceId
-    ? { serviceId: filters.serviceId }
-    : teamServiceIds
-      ? { serviceId: { in: teamServiceIds } }
-      : null;
+    ? {
+        serviceId: Array.isArray(filters.serviceId) ? { in: filters.serviceId } : filters.serviceId,
+      }
+    : {};
+
+  const teamWhere = filters.teamId
+    ? filters.useOrScope
+      ? {
+          OR: [
+            { teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId },
+            {
+              service: {
+                teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId,
+              },
+            },
+          ],
+        }
+      : { teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId }
+    : {};
 
   const assigneeWhere = filters.assigneeId ? { assigneeId: filters.assigneeId } : null;
   const statusWhere = filters.status ? { status: filters.status } : null;
@@ -132,20 +143,49 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const activeStatusWhere = filters.status
     ? { status: filters.status }
     : { status: { not: 'RESOLVED' as const } };
-  const activeWhere: Prisma.IncidentWhereInput = {
+
+  let activeWhere: Prisma.IncidentWhereInput = {
     ...activeStatusWhere,
-    ...(serviceWhere ?? {}),
     ...(urgencyWhere ?? {}),
-    ...(assigneeWhere ?? {}),
   };
+
+  const hasServiceFilter = Object.keys(serviceWhere).length > 0;
+  const hasTeamFilter = Object.keys(teamWhere).length > 0;
+
+  if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
+    activeWhere.OR = [
+      ...(hasServiceFilter ? [serviceWhere] : []),
+      ...(hasTeamFilter ? [{ service: teamWhere }] : []),
+      ...(assigneeWhere ? [assigneeWhere] : []),
+    ];
+  } else {
+    activeWhere = {
+      ...activeWhere,
+      ...(hasServiceFilter ? serviceWhere : {}),
+      ...(hasTeamFilter ? { service: teamWhere } : {}),
+      ...(assigneeWhere ?? {}),
+    };
+  }
 
   const recentIncidentWhere: Prisma.IncidentWhereInput = {
     createdAt: { gte: start, lte: end },
-    ...(serviceWhere ?? {}),
     ...(urgencyWhere ?? {}),
     ...(statusWhere ?? {}),
-    ...(assigneeWhere ?? {}),
   };
+
+  if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
+    recentIncidentWhere.OR = [
+      ...(hasServiceFilter ? [serviceWhere] : []),
+      ...(hasTeamFilter ? [{ service: teamWhere }] : []),
+      ...(assigneeWhere ? [assigneeWhere] : []),
+    ];
+  } else {
+    Object.assign(recentIncidentWhere, {
+      ...(hasServiceFilter ? serviceWhere : {}),
+      ...(hasTeamFilter ? { service: teamWhere } : {}),
+      ...(assigneeWhere ?? {}),
+    });
+  }
 
   // Heatmap query (always last 365 days regardless of window)
   const heatmapStart = new Date(now);
@@ -166,10 +206,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
 
   // 3. Parallel Data Fetching
   const [
-    activeIncidents,
-    unassignedActive,
-    recentIncidents,
-    previousIncidents,
+    activeIncidentsData,
     alertsCount,
     futureShifts,
     windowShifts,
@@ -180,36 +217,22 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     recurringTitleCounts,
     heatmapIncidents,
     urgencyCounts,
+    currentShiftsData,
+    resolved24hCount,
+    recentIncidents,
+    previousIncidents,
   ] = await Promise.all([
-    prisma.incident.count({ where: activeWhere }),
-    prisma.incident.count({ where: { ...activeWhere, assigneeId: null } }),
+    // Active breakdown (Status, Urgency, Assignment) - Batch fetch
     prisma.incident.findMany({
-      where: recentIncidentWhere,
-      select: {
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-        status: true,
-        urgency: true,
-        assigneeId: true,
-        serviceId: true,
-        acknowledgedAt: true,
-        resolvedAt: true,
-        service: { select: { targetAckMinutes: true, targetResolveMinutes: true } },
+      where: activeWhere,
+      select: { id: true, status: true, urgency: true, assigneeId: true, serviceId: true },
+    }),
+    prisma.alert.count({
+      where: {
+        createdAt: { gte: start },
+        ...(Object.keys(serviceWhere).length > 0 ? serviceWhere : {}),
       },
     }),
-    prisma.incident.findMany({
-      where: previousWhere,
-      select: {
-        id: true,
-        createdAt: true,
-        acknowledgedAt: true,
-        resolvedAt: true,
-        urgency: true,
-        status: true,
-      },
-    }),
-    prisma.alert.count({ where: { createdAt: { gte: start }, ...(serviceWhere ?? {}) } }),
     prisma.onCallShift.findMany({
       where: { end: { gte: now }, start: { lte: coverageWindowEnd } },
       select: { start: true, end: true, userId: true },
@@ -224,7 +247,12 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       where: recentIncidentWhere,
       _count: { _all: true },
     }),
-    prisma.service.findMany({ select: { id: true, name: true } }),
+    prisma.service.findMany({
+      where: filters.serviceId
+        ? { id: Array.isArray(filters.serviceId) ? { in: filters.serviceId } : filters.serviceId }
+        : {},
+      select: { id: true, name: true },
+    }),
     prisma.incident.groupBy({
       by: ['assigneeId'],
       where: { ...recentIncidentWhere, assigneeId: { not: null } },
@@ -248,7 +276,103 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       where: recentIncidentWhere,
       _count: { _all: true },
     }),
+    // On-Call Widget
+    prisma.onCallShift.findMany({
+      where: { start: { lte: now }, end: { gte: now } },
+      include: {
+        user: { select: { name: true } },
+        schedule: { select: { name: true } },
+      },
+      take: 5,
+    }),
+    prisma.incident.count({
+      where: {
+        ...(Object.keys(serviceWhere).length > 0 ? serviceWhere : {}),
+        ...(Object.keys(teamWhere).length > 0 ? { service: teamWhere } : {}),
+        ...(assigneeWhere ?? {}),
+        status: 'RESOLVED',
+        resolvedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    }),
+    // Fetch Recent/Previous separately as they are large and use more fields
+    prisma.incident.findMany({
+      where: recentIncidentWhere,
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+        status: true,
+        urgency: true,
+        assigneeId: true,
+        serviceId: true,
+        description: true,
+        acknowledgedAt: true,
+        resolvedAt: true,
+        service: {
+          select: {
+            id: true,
+            name: true,
+            region: true,
+            targetAckMinutes: true,
+            targetResolveMinutes: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: filters.incidentLimit || 50,
+    }),
+    prisma.incident.findMany({
+      where: previousWhere,
+      select: {
+        id: true,
+        createdAt: true,
+        acknowledgedAt: true,
+        resolvedAt: true,
+        urgency: true,
+        status: true,
+      },
+    }),
   ]);
+
+  // DERIVE active metrics from the single batch fetch
+  const activeIncidents = activeIncidentsData.length;
+  const unassignedActive = activeIncidentsData.filter(i => !i.assigneeId).length;
+  const criticalActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'HIGH').length;
+
+  const activeStatusCountMap = new Map<string, number>();
+  activeIncidentsData.forEach(i => {
+    activeStatusCountMap.set(i.status, (activeStatusCountMap.get(i.status) || 0) + 1);
+  });
+
+  const activeStatusBreakdown = Array.from(activeStatusCountMap.entries()).map(
+    ([status, count]) => ({
+      status,
+      _count: { _all: count },
+    })
+  );
+
+  const serviceActiveCountMap = new Map<string, number>();
+  const serviceCriticalCountMap = new Map<string, number>();
+  activeIncidentsData.forEach(i => {
+    serviceActiveCountMap.set(i.serviceId, (serviceActiveCountMap.get(i.serviceId) || 0) + 1);
+    if (i.urgency === 'HIGH') {
+      serviceCriticalCountMap.set(i.serviceId, (serviceCriticalCountMap.get(i.serviceId) || 0) + 1);
+    }
+  });
+
+  const serviceActiveCounts = Array.from(serviceActiveCountMap.entries()).map(
+    ([serviceId, count]) => ({
+      serviceId,
+      _count: { _all: count },
+    })
+  );
+  const serviceCriticalCounts = Array.from(serviceCriticalCountMap.entries()).map(
+    ([serviceId, count]) => ({
+      serviceId,
+      _count: { _all: count },
+    })
+  );
 
   // 4. Fetch Incident Events
   const recentIncidentIds = recentIncidents.map(i => i.id);
@@ -425,7 +549,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   };
 
   // Insights
-  const insights = [];
+  const insights: SLAMetrics['insights'] = [];
   if (currentStats.count > prevStats.count)
     insights.push({
       type: 'negative',
@@ -535,6 +659,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   }
 
   // Service Map
+  // Service Map
   const serviceMap = new Map<
     string,
     {
@@ -546,24 +671,52 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       resolveSum: number;
       resolveCount: number;
       breaches: number;
+      activeCount: number;
+      criticalCount: number;
     }
   >();
+
+  // Pre-fill with known services
   const serviceNameMap = new Map(services.map(s => [s.id, s.name]));
+  for (const service of services) {
+    serviceMap.set(service.id, {
+      id: service.id,
+      name: service.name,
+      count: 0,
+      ackSum: 0,
+      ackCount: 0,
+      resolveSum: 0,
+      resolveCount: 0,
+      breaches: 0,
+      activeCount: 0,
+      criticalCount: 0,
+    });
+  }
+
+  // Hydrate Active/Critical Counts
+  for (const group of serviceActiveCounts) {
+    if (!group.serviceId) continue;
+    const s = serviceMap.get(group.serviceId);
+    if (s) s.activeCount = group._count._all;
+  }
+  for (const group of serviceCriticalCounts) {
+    if (!group.serviceId) continue;
+    const s = serviceMap.get(group.serviceId);
+    if (s) s.criticalCount = group._count._all;
+  }
+
+  // Hydrate Recent Incident Stats
   for (const incident of recentIncidents) {
     if (!incident.serviceId) continue;
-    if (!serviceMap.has(incident.serviceId)) {
-      serviceMap.set(incident.serviceId, {
-        id: incident.serviceId,
-        name: serviceNameMap.get(incident.serviceId) || 'Unknown',
-        count: 0,
-        ackSum: 0,
-        ackCount: 0,
-        resolveSum: 0,
-        resolveCount: 0,
-        breaches: 0,
-      });
+    // Note: If a service was created/deleted recently it might not be in 'services' list or 'recentIncidents' might have old ID.
+    // Ensure we handle missing map entries if necessary (though services list should be fresh).
+    const s = serviceMap.get(incident.serviceId);
+    if (!s) {
+      // Fallback for edge case where service exists in incident but not in service list (e.g. soft deleted?)
+      // For now, we skip or create ad-hoc. Let's skip to keep list clean.
+      continue;
     }
-    const s = serviceMap.get(incident.serviceId)!;
+
     s.count++;
     const ackAt = ackMap.get(incident.id);
     const ackTarget = incident.service.targetAckMinutes ?? 15;
@@ -577,6 +730,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       s.resolveCount++;
     }
   }
+
   const serviceMetrics = Array.from(serviceMap.values())
     .map(s => ({
       id: s.id,
@@ -586,6 +740,12 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       mttr: s.resolveCount ? s.resolveSum / s.resolveCount / 60000 : 0,
       slaBreaches: s.breaches,
       status: s.breaches === 0 ? 'Healthy' : s.breaches < 3 ? 'Degraded' : 'Critical',
+      dynamicStatus: getServiceDynamicStatus({
+        openIncidentCount: s.activeCount,
+        hasCritical: s.criticalCount > 0,
+      }),
+      activeCount: s.activeCount,
+      criticalCount: s.criticalCount,
     }))
     .sort((a, b) => b.count - a.count);
 
@@ -691,6 +851,11 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const onCallLoad = buildOnCallLoad(windowShifts, recentIncidents, start, end, userNameMap);
   const onCallUsersCount = onCallUserIds.length;
 
+  const activeStatusFinalMap = new Map(activeStatusBreakdown.map(e => [e.status, e._count._all]));
+
+  const hasCritical = criticalActiveIncidents > 0;
+  const hasDegraded = activeIncidents > 0 && !hasCritical; // Simplified for overall status
+
   return {
     // Lifecycle
     mttr: currentStats.mttr ? currentStats.mttr / 60000 : null,
@@ -715,6 +880,14 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     unassignedActive,
     highUrgencyCount: currentStats.highUrg,
     alertsCount,
+    openCount: activeStatusFinalMap.get('OPEN') ?? 0,
+    acknowledgedCount: activeStatusFinalMap.get('ACKNOWLEDGED') ?? 0,
+    snoozedCount: activeStatusFinalMap.get('SNOOZED') ?? 0,
+    suppressedCount: activeStatusFinalMap.get('SUPPRESSED') ?? 0,
+    resolved24h: resolved24hCount,
+    dynamicStatus: hasCritical ? 'CRITICAL' : hasDegraded ? 'DEGRADED' : 'OPERATIONAL',
+    activeCount: activeIncidents,
+    criticalCount: criticalActiveIncidents,
 
     // Rates
     ackRate: Math.round(ackRate * 100) / 100,
@@ -728,6 +901,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
 
     previousPeriod: {
       totalIncidents: prevStatsDetailed.count,
+      highUrgencyCount: prevStatsDetailed.highUrg,
       mtta: prevStatsDetailed.mtta ? prevStatsDetailed.mtta / 60000 : null,
       mttr: prevStatsDetailed.mttr ? prevStatsDetailed.mttr / 60000 : null,
       ackRate: Math.round(prevStatsDetailed.ackRate * 100) / 100,
@@ -738,6 +912,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     autoResolvedCount,
     manualResolvedCount,
     eventsCount,
+    insights,
 
     // Coverage
     coveragePercent: Math.round(coveragePercent * 100) / 100,
@@ -761,6 +936,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       mttr: s.resolveCount ? s.resolveSum / s.resolveCount / 60000 : 0,
       ackRate: s.count ? (s.ackCount / s.count) * 100 : 0,
       resolveRate: s.count ? (s.resolveCount / s.count) * 100 : 0,
+      resolveCount: s.resolveCount,
       ackCompliance: s.ackCount ? (s.ackSlaMet / s.ackCount) * 100 : 0,
       escalationRate: s.count ? (s.escalationCount / s.count) * 100 : 0,
     })),
@@ -772,7 +948,6 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     statusAges,
     onCallLoad,
     serviceSlaTable,
-    insights,
 
     // V2 Additions
     recurringTitles: recurringTitleCounts.map(t => ({ title: t.title, count: t._count._all })),
@@ -785,7 +960,109 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
           totalRecent
         : 0,
     heatmapData,
+    currentShifts: currentShiftsData.map(s => ({
+      id: s.id,
+      user: { name: s.user.name },
+      schedule: { name: s.schedule.name },
+    })),
+    recentIncidents: filters.includeIncidents
+      ? recentIncidents.map(inc => ({
+          id: inc.id,
+          title: inc.title,
+          description: inc.description,
+          status: inc.status,
+          urgency: inc.urgency,
+          createdAt: inc.createdAt,
+          resolvedAt: inc.resolvedAt,
+          service: { id: inc.serviceId, name: inc.service.name, region: inc.service.region },
+        }))
+      : undefined,
   };
+}
+
+/**
+ * Generate a daily SLA compliance snapshot for a specific definition and date
+ * Consolidated from SLAService
+ */
+export async function generateDailySnapshot(definitionId: string, date: Date): Promise<void> {
+  const { default: prisma } = await import('./prisma');
+
+  const definition = await prisma.sLADefinition.findUnique({
+    where: { id: definitionId },
+  });
+
+  if (!definition) {
+    logger.warn(`[SLA] Definition not found for snapshot: ${definitionId}`);
+    return;
+  }
+
+  const start = new Date(date);
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setUTCHours(23, 59, 59, 999);
+
+  // Filter incidents based on definition scope
+  const whereClause: any = {
+    createdAt: { gte: start, lte: end },
+    serviceId: definition.serviceId || undefined,
+  };
+
+  const incidents = await prisma.incident.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      createdAt: true,
+      acknowledgedAt: true,
+      resolvedAt: true,
+    },
+  });
+
+  let metAck = 0;
+  let metResolve = 0;
+
+  for (const incident of incidents) {
+    if ((definition as any).targetAckTime && incident.acknowledgedAt) {
+      const ackMinutes = (incident.acknowledgedAt.getTime() - incident.createdAt.getTime()) / 60000;
+      if (ackMinutes <= (definition as any).targetAckTime) metAck++;
+    }
+    if ((definition as any).targetResolveTime && incident.resolvedAt) {
+      const resolveMinutes = (incident.resolvedAt.getTime() - incident.createdAt.getTime()) / 60000;
+      if (resolveMinutes <= (definition as any).targetResolveTime) metResolve++;
+    }
+  }
+
+  const total = incidents.length;
+  let score = 100;
+  if (total > 0) {
+    const ackScore = (definition as any).targetAckTime ? (metAck / total) * 100 : 100;
+    const resolveScore = (definition as any).targetResolveTime ? (metResolve / total) * 100 : 100;
+    score = (ackScore + resolveScore) / 2;
+  }
+
+  await prisma.sLASnapshot.upsert({
+    where: {
+      date_slaDefinitionId: {
+        date: start,
+        slaDefinitionId: definitionId,
+      },
+    },
+    create: {
+      slaDefinitionId: definitionId,
+      date: start,
+      totalIncidents: total,
+      metAckTime: metAck,
+      metResolveTime: metResolve,
+      complianceScore: score,
+    },
+    update: {
+      totalIncidents: total,
+      metAckTime: metAck,
+      metResolveTime: metResolve,
+      complianceScore: score,
+    },
+  });
+
+  logger.info(`[SLA] Snapshot updated`, { definitionId, date: start.toISOString(), score });
 }
 
 export async function checkIncidentSLA(incidentId: string): Promise<IncidentSLAResult> {
@@ -836,4 +1113,110 @@ export async function checkIncidentSLA(incidentId: string): Promise<IncidentSLAR
       targetMinutes: targetResolveMinutes,
     },
   };
+}
+
+/**
+ * Merges overlapping time intervals and calculates total duration in ms
+ */
+function calculateMergedDuration(intervals: Array<{ start: Date; end: Date }>): number {
+  if (intervals.length === 0) return 0;
+
+  // Sort by start time
+  const sorted = [...intervals].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  const merged: Array<{ start: Date; end: Date }> = [];
+  let current = sorted[0];
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const next = sorted[i];
+
+    if (next.start <= current.end) {
+      // Overlap, extend current
+      if (next.end > current.end) {
+        current.end = next.end;
+      }
+    } else {
+      // No overlap, push current and move to next
+      merged.push(current);
+      current = next;
+    }
+  }
+  merged.push(current);
+
+  return merged.reduce((sum, interval) => {
+    return sum + (interval.end.getTime() - interval.start.getTime());
+  }, 0);
+}
+
+/**
+ * Calculates uptime percentage for a set of services over a given period
+ * Shared logic for Status Pages and Exports
+ */
+export async function calculateMultiServiceUptime(
+  serviceIds: string[],
+  startDate: Date,
+  endDate: Date = new Date()
+): Promise<Record<string, number>> {
+  const { default: prisma } = await import('./prisma');
+
+  const incidents = await prisma.incident.findMany({
+    where: {
+      serviceId: { in: serviceIds },
+      AND: [
+        { createdAt: { lt: endDate } },
+        {
+          OR: [{ resolvedAt: { gte: startDate } }, { status: { in: ['OPEN', 'ACKNOWLEDGED'] } }],
+        },
+      ],
+    },
+    select: {
+      serviceId: true,
+      createdAt: true,
+      resolvedAt: true,
+      status: true,
+    },
+  });
+
+  const uptimeByService: Record<string, number> = {};
+  const totalMs = endDate.getTime() - startDate.getTime();
+
+  for (const serviceId of serviceIds) {
+    if (totalMs <= 0) {
+      uptimeByService[serviceId] = 100;
+      continue;
+    }
+
+    const serviceIncidents = incidents.filter(
+      inc => inc.serviceId === serviceId && inc.status !== 'SUPPRESSED' && inc.status !== 'SNOOZED'
+    );
+
+    const intervals = serviceIncidents
+      .map(incident => ({
+        start: incident.createdAt > startDate ? incident.createdAt : startDate,
+        end: incident.resolvedAt && incident.resolvedAt < endDate ? incident.resolvedAt : endDate,
+      }))
+      .filter(interval => interval.start < interval.end);
+
+    const downtimeMs = calculateMergedDuration(intervals);
+    const uptime = ((totalMs - downtimeMs) / totalMs) * 100;
+    uptimeByService[serviceId] = Math.max(0, Math.min(100, uptime));
+  }
+
+  return uptimeByService;
+}
+
+/**
+ * Get the current health status labels for public status pages
+ * Map dynamicStatus to External Status Labels
+ */
+export function getExternalStatusLabel(dynamicStatus: string): string {
+  switch (dynamicStatus) {
+    case 'CRITICAL':
+      return 'MAJOR_OUTAGE';
+    case 'DEGRADED':
+      return 'PARTIAL_OUTAGE';
+    case 'OPERATIONAL':
+    default:
+      return 'OPERATIONAL';
+  }
 }
