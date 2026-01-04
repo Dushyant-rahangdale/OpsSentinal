@@ -132,11 +132,33 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             token.email = user.email;
           }
         }
+        // The user provided in the jwt callback is the one returned by the `authorize` function
+        // or the OIDC provider. We need to ensure `token.sub` is set to our internal user ID
+        // and `token.role` is set correctly.
+        // This block handles the initial population of the token from the `user` object.
+        else if (user) {
+          logger.debug('[Auth] JWT callback - initial sign in (credentials or OIDC fallback)', {
+            component: 'auth:jwt',
+            userId: (user as any).id,
+            hasRole: !!(user as any).role,
+            hasEmail: !!(user as any).email,
+          });
+
+          token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
+          token.sub = (user as any).id ?? token.sub; // eslint-disable-line @typescript-eslint/no-explicit-any
+          token.name = (user as any).name; // eslint-disable-line @typescript-eslint/no-explicit-any
+          token.email = (user as any).email; // eslint-disable-line @typescript-eslint/no-explicit-any
+        }
 
         // Fetch latest user data from database on each request to ensure name is up-to-date
         // This ensures name changes reflect immediately without requiring re-login
         if (token.sub && typeof token.sub === 'string') {
           try {
+            logger.debug('[Auth] JWT callback - fetching user data', {
+              component: 'auth:jwt',
+              userId: token.sub,
+            });
+
             const dbUser = await prisma.user.findUnique({
               where: { id: token.sub },
               select: { name: true, email: true, role: true },
@@ -146,25 +168,62 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               token.name = dbUser.name;
               token.email = dbUser.email;
               token.role = dbUser.role;
+
+              logger.debug('[Auth] JWT callback - user data updated', {
+                component: 'auth:jwt',
+                userId: token.sub,
+                role: dbUser.role,
+              });
+            } else {
+              logger.warn('[Auth] JWT callback - user not found in database', {
+                component: 'auth:jwt',
+                userId: token.sub,
+              });
             }
           } catch (error) {
             // If database fetch fails, keep existing token data
-            logger.error('Error fetching user data in JWT callback', {
-              error: error instanceof Error ? error.message : 'Unknown error',
+            logger.error('[Auth] Error fetching user data in JWT callback', {
+              component: 'auth:jwt',
+              error,
+              errorMessage: error instanceof Error ? error.message : 'Unknown error',
             });
           }
         }
 
+        logger.debug('[Auth] JWT callback complete', {
+          component: 'auth:jwt',
+          hasRole: !!token.role,
+          hasSub: !!token.sub,
+        });
+
         return token;
       },
       async session({ session, token }) {
+        logger.debug('[Auth] Session callback started', {
+          component: 'auth:session',
+          hasUser: !!session.user,
+          hasToken: !!token,
+        });
+
         if (session.user) {
           (session.user as any).role = token.role; // eslint-disable-line @typescript-eslint/no-explicit-any
           (session.user as any).id = token.sub; // eslint-disable-line @typescript-eslint/no-explicit-any
           // Always use the latest name from token (which is fetched from DB)
           session.user.name = (token.name as string) || session.user.name;
           session.user.email = (token.email as string) || session.user.email;
+
+          logger.debug('[Auth] Session callback - user data set', {
+            component: 'auth:session',
+            userId: token.sub,
+            role: token.role,
+            hasEmail: !!session.user.email,
+          });
         }
+
+        logger.debug('[Auth] Session callback complete', {
+          component: 'auth:session',
+        });
+
         return session;
       },
       async signIn({ user, account, profile }) {
