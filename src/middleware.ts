@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+﻿import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
