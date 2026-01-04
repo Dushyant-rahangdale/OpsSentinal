@@ -17,12 +17,32 @@ vi.mock('@/lib/oidc-config', () => {
   };
 });
 
+vi.mock('@/lib/prisma', () => {
+  const mockPrisma = {
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    oidcIdentity: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+    oidcConfig: {
+      findFirst: vi.fn(),
+      upsert: vi.fn(),
+    },
+  };
+  return { default: mockPrisma };
+});
+
 import prisma from '@/lib/prisma';
-import { getAuthOptions, revokeUserSessions } from '@/lib/auth';
+import { getAuthOptions, revokeUserSessions, resetAuthOptionsCache } from '@/lib/auth';
 
 describe('Auth JWT + OIDC (unit)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetAuthOptionsCache();
     process.env.AUTH_OPTIONS_CACHE_TTL_MS = '0';
     process.env.JWT_USER_REFRESH_TTL_MS = '60000';
     process.env.OIDC_REQUIRE_EMAIL_VERIFIED_STRICT = 'false';
