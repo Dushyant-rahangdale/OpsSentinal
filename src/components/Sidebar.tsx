@@ -456,10 +456,12 @@ export default function Sidebar(
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.875rem',
+              gap: 'clamp(0.5rem, 1vw, 0.875rem)',
               position: 'relative',
               zIndex: 1,
               transition: 'transform 0.2s ease',
+              minWidth: 0,
+              flex: 1,
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateX(2px)';
@@ -470,15 +472,15 @@ export default function Sidebar(
           >
             <div
               style={{
-                width: 'clamp(34px, 3.6vw, 42px)',
-                height: 'clamp(34px, 3.6vw, 42px)',
+                width: 'clamp(32px, 4vw, 42px)',
+                height: 'clamp(32px, 4vw, 42px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: 'clamp(9px, 1vw, 11px)',
+                background: 'rgba(255,255,255,0.08)',
+                borderRadius: 'clamp(8px, 1vw, 11px)',
                 flexShrink: 0,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.12)',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                 position: 'relative',
                 overflow: 'hidden',
@@ -498,8 +500,8 @@ export default function Sidebar(
                 src="/logo.svg"
                 alt="OpsSentinal"
                 style={{
-                  width: 'clamp(22px, 2.6vw, 28px)',
-                  height: 'clamp(22px, 2.6vw, 28px)',
+                  width: 'clamp(20px, 2.8vw, 28px)',
+                  height: 'clamp(20px, 2.8vw, 28px)',
                   objectFit: 'contain',
                   filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.2))',
                   position: 'relative',
@@ -507,10 +509,10 @@ export default function Sidebar(
                 }}
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', minWidth: 0 }}>
               <h1
                 style={{
-                  fontSize: 'clamp(1.1rem, 2vw, 1.35rem)',
+                  fontSize: 'clamp(0.95rem, 2.2vw, 1.35rem)',
                   fontWeight: '800',
                   color: 'white',
                   margin: 0,
@@ -522,9 +524,10 @@ export default function Sidebar(
                 OpsSentinal
               </h1>
               <div
+                className="sidebar-subtitle"
                 style={{
-                  fontSize: 'clamp(0.6rem, 0.85vw, 0.7rem)',
-                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 'clamp(0.55rem, 0.9vw, 0.7rem)',
+                  color: 'rgba(255,255,255,0.65)',
                   fontWeight: '600',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
