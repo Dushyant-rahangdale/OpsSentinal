@@ -24,7 +24,6 @@ describe('App URL', () => {
   });
 
   it('returns normalized appUrl from database when valid', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(prisma.systemSettings.findUnique).mockResolvedValue({
       appUrl: 'https://db.example.com/',
     } as any);

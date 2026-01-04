@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
     typeof statusPage.branding === 'object' &&
     !Array.isArray(statusPage.branding)
       ? (statusPage.branding as Record<string, any>)
-      : {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+      : {};
   const metaTitle = (branding.metaTitle as string) || statusPage.name;
   const metaDescription =
     (branding.metaDescription as string) || `Status page for ${statusPage.name}`;
@@ -136,7 +136,6 @@ export default async function PublicStatusPage() {
       });
       return renderStatusPage(newStatusPage);
     } catch (error: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       logger.error('Status page creation error', { component: 'status-page', error });
       const isTableMissing =
         error.message?.includes('does not exist') ||
@@ -234,7 +233,6 @@ export default async function PublicStatusPage() {
 }
 
 async function renderStatusPage(statusPage: any) {
-  // eslint-disable-line @typescript-eslint/no-explicit-any
   // Parse branding
   const branding =
     statusPage.branding &&
@@ -426,7 +424,6 @@ async function renderStatusPage(statusPage: any) {
 
   const serviceLookup = new Map(services.map(service => [service.id, service] as const));
   const announcementsWithServices = statusPage.announcements.map((announcement: any) => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     const affectedServiceIds = normalizeAffectedServiceIds(announcement.affectedServiceIds).filter(
       id => serviceLookup.has(id)
     );
@@ -450,7 +447,6 @@ async function renderStatusPage(statusPage: any) {
 
   const activeMaintenanceServiceIds = new Set<string>();
   announcementsWithServices.forEach((announcement: any) => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     if (announcement.type !== 'MAINTENANCE' || !announcement.isActive) {
       return;
     }

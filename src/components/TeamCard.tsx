@@ -441,7 +441,6 @@ export default function TeamCard({
                 <TeamMemberSearch members={team.members} onFilterChange={setFilteredMembers} />
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   {filteredMembers.map((member: any) => {
-                    // eslint-disable-line @typescript-eslint/no-explicit-any
                     const handleUpdateRole = async (formData: FormData) => {
                       return await updateTeamMemberRole(member.id, formData);
                     };

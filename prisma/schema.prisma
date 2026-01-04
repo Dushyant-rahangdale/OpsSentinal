@@ -1071,4 +1071,60 @@ model SystemConfig {
   updatedBy String?
 }
 
+// Bronze Tier: Raw Log Storage
+model LogEntry {
+  id        String   @id @default(cuid())
+  level     String   // 'info', 'error', 'warn', etc.
+  message   String
+  timestamp DateTime
+  serviceId String?  
+  context   Json?    // Structured log context
+
+  createdAt DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([serviceId, timestamp])
+}
+
+// SLA Management
+model SLADefinition {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // Targets (minutes)
+  targetAckTime     Int? 
+  targetResolveTime Int? 
+  
+  // Scope of Applicability
+  serviceId String? 
+  priority  String? // Filter by priority (e.g. "P1")
+  
+  activeFrom DateTime @default(now())
+  activeTo   DateTime?
+  
+  snapshots SLASnapshot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Daily SLA Compliance Snapshots
+model SLASnapshot {
+  id              String   @id @default(cuid())
+  slaDefinitionId String
+  date            DateTime // Midnight of the day captured
+  
+  totalIncidents Int
+  metAckTime     Int      // Count of incidents meeting ack SLA
+  metResolveTime Int      // Count of incidents meeting resolve SLA
+  complianceScore Float   // 0-100%
+  
+  slaDefinition SLADefinition @relation(fields: [slaDefinitionId], references: [id])
+  
+  createdAt DateTime @default(now())
+
+  @@unique([date, slaDefinitionId])
+}
+
 
