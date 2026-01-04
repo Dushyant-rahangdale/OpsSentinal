@@ -54,6 +54,16 @@ export default function IncidentsFilters({
         updateParams({ search: searchQuery.trim() });
     };
 
+    const clearFilters = () => {
+        startTransition(() => {
+            if (currentFilter && currentFilter !== 'all_open') {
+                router.push(`/incidents?filter=${encodeURIComponent(currentFilter)}`);
+            } else {
+                router.push('/incidents');
+            }
+        });
+    };
+
     const criteria: FilterCriteria = currentCriteria || {
         filter: currentFilter,
         search: currentSearch,
@@ -63,30 +73,38 @@ export default function IncidentsFilters({
     };
 
     return (
-        <div style={{ 
-            display: 'flex', 
-            gap: '1rem', 
-            marginBottom: '1.5rem', 
-            flexWrap: 'wrap', 
-            alignItems: 'center',
-            padding: '1rem',
-            background: '#f9fafb',
-            border: '1px solid var(--border)',
-            borderRadius: '0px'
-        }}>
+        <div
+            style={{
+                display: 'flex',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                alignItems: 'flex-end',
+            }}
+        >
             {/* Search */}
-            <form onSubmit={handleSearch} style={{ flex: '1', minWidth: '200px', maxWidth: '400px' }}>
+            <form onSubmit={handleSearch} style={{ flex: 1, minWidth: '240px', maxWidth: '520px' }}>
+                <label
+                    style={{
+                        display: 'block',
+                        marginBottom: '0.4rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                    }}
+                >
+                    Search
+                </label>
                 <div style={{ position: 'relative' }}>
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search incidents..."
+                        placeholder="Title, description, or ID…"
                         style={{
                             width: '100%',
-                            padding: '0.625rem 2.5rem 0.625rem 0.875rem',
+                            padding: '0.65rem 2.5rem 0.65rem 0.9rem',
                             border: '1px solid var(--border)',
-                            borderRadius: '0px',
+                            borderRadius: '8px',
                             background: '#fff',
                             fontSize: '0.9rem',
                             outline: 'none'
@@ -104,7 +122,8 @@ export default function IncidentsFilters({
                             cursor: 'pointer',
                             padding: '0.25rem',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            color: 'var(--text-muted)',
                         }}
                     >
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
@@ -116,73 +135,125 @@ export default function IncidentsFilters({
             </form>
 
             {/* Priority Filter */}
-            <select
-                value={currentPriority}
-                onChange={(e) => updateParams({ priority: e.target.value })}
-                style={{
-                    padding: '0.625rem 0.875rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    background: '#fff',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    minWidth: '120px'
-                }}
-            >
-                <option value="all">All Priorities</option>
-                <option value="P1">P1 - Critical</option>
-                <option value="P2">P2 - High</option>
-                <option value="P3">P3 - Medium</option>
-                <option value="P4">P4 - Low</option>
-                <option value="P5">P5 - Info</option>
-            </select>
+            <div style={{ minWidth: 180 }}>
+                <label
+                    style={{
+                        display: 'block',
+                        marginBottom: '0.4rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                    }}
+                >
+                    Priority
+                </label>
+                <select
+                    value={currentPriority}
+                    onChange={(e) => updateParams({ priority: e.target.value })}
+                    style={{
+                        width: '100%',
+                        padding: '0.65rem 0.85rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        background: '#fff',
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <option value="all">All</option>
+                    <option value="P1">P1 - Critical</option>
+                    <option value="P2">P2 - High</option>
+                    <option value="P3">P3 - Medium</option>
+                    <option value="P4">P4 - Low</option>
+                    <option value="P5">P5 - Info</option>
+                </select>
+            </div>
 
             {/* Urgency Filter */}
-            <select
-                value={currentUrgency}
-                onChange={(e) => updateParams({ urgency: e.target.value })}
-                style={{
-                    padding: '0.625rem 0.875rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    background: '#fff',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    minWidth: '120px'
-                }}
-            >
-                <option value="all">All Urgencies</option>
-                <option value="HIGH">High</option>
-                <option value="LOW">Low</option>
-            </select>
+            <div style={{ minWidth: 160 }}>
+                <label
+                    style={{
+                        display: 'block',
+                        marginBottom: '0.4rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                    }}
+                >
+                    Urgency
+                </label>
+                <select
+                    value={currentUrgency}
+                    onChange={(e) => updateParams({ urgency: e.target.value })}
+                    style={{
+                        width: '100%',
+                        padding: '0.65rem 0.85rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        background: '#fff',
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <option value="all">All</option>
+                    <option value="HIGH">High</option>
+                    <option value="LOW">Low</option>
+                </select>
+            </div>
 
             {/* Sort */}
-            <select
-                value={currentSort}
-                onChange={(e) => updateParams({ sort: e.target.value })}
-                style={{
-                    padding: '0.625rem 0.875rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    background: '#fff',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    minWidth: '140px'
-                }}
-            >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="priority">Priority (P1→P5)</option>
-                <option value="status">Status</option>
-                <option value="updated">Recently Updated</option>
-            </select>
+            <div style={{ minWidth: 190 }}>
+                <label
+                    style={{
+                        display: 'block',
+                        marginBottom: '0.4rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                    }}
+                >
+                    Sort
+                </label>
+                <select
+                    value={currentSort}
+                    onChange={(e) => updateParams({ sort: e.target.value })}
+                    style={{
+                        width: '100%',
+                        padding: '0.65rem 0.85rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        background: '#fff',
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                    }}
+                >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="priority">Priority (P1→P5)</option>
+                    <option value="status">Status</option>
+                    <option value="updated">Recently Updated</option>
+                </select>
+            </div>
 
-            {isPending && (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading...</span>
-            )}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="glass-button"
+                    style={{ whiteSpace: 'nowrap' }}
+                    aria-label="Clear incident filters"
+                    disabled={isPending}
+                >
+                    Clear
+                </button>
 
-            {/* Save as Preset Button */}
-            <CreatePresetFromCurrent currentCriteria={criteria} />
+                {/* Save as Preset Button */}
+                <CreatePresetFromCurrent currentCriteria={criteria} />
+
+                {isPending && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading…</span>
+                )}
+            </div>
         </div>
     );
 }
