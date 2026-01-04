@@ -196,6 +196,7 @@
 
   /* Layout */
   --sidebar-width: clamp(220px, 18vw, 264px);
+  --sidebar-width-collapsed: 76px;
 }
 
 [data-theme='dark'] .mobile-shell {
@@ -2980,6 +2981,11 @@ select option {
   min-height: 0; /* critical for flex + scroll */
   scrollbar-gutter: stable both-edges;
   overscroll-behavior: contain;
+}
+
+/* Collapsed sidebar helpers */
+.sidebar.sidebar-collapsed .sidebar-subtitle {
+  display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
