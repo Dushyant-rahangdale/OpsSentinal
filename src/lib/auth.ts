@@ -1,4 +1,3 @@
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import type { NextAuthOptions } from 'next-auth';
 import OIDCProvider from '@/lib/oidc';
 import CredentialsProvider from 'next-auth/providers/credentials';
@@ -28,7 +27,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
   }
 
   return {
-    adapter: PrismaAdapter(prisma as any), // eslint-disable-line @typescript-eslint/no-explicit-any
+    // No adapter - using pure JWT sessions (industry standard for OIDC)
     session: { strategy: 'jwt', maxAge: sessionMaxAgeSeconds },
     jwt: { maxAge: sessionMaxAgeSeconds },
     providers: [
@@ -93,10 +92,52 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       signOut: '/auth/signout',
     },
     callbacks: {
-      async jwt({ token, user }) {
-        // Initial sign in - set user data
-        if (user) {
-          logger.debug('[Auth] JWT callback - initial sign in', {
+      async jwt({ token, user, account }) {
+        // Initial sign in
+        if (user && account) {
+          // For OIDC, we must look up the user in the DB to get the internal CUID and current role
+          // The 'user' object from OIDC is just the profile, so 'user.id' is the OIDC 'sub' (not our DB ID)
+          if (account.provider === 'oidc' && user.email) {
+            try {
+              const dbUser = await prisma.user.findUnique({
+                where: { email: user.email.toLowerCase() },
+              });
+
+              if (dbUser) {
+                token.sub = dbUser.id; // Use internal CUID
+                token.role = dbUser.role;
+                token.name = dbUser.name;
+                token.email = dbUser.email;
+                logger.info('[Auth] JWT callback - Mapped OIDC user to DB user', {
+                  component: 'auth:jwt',
+                  oidcSub: user.id,
+                  dbUserId: dbUser.id,
+                  email: user.email,
+                });
+              } else {
+                // This should technically not happen if signIn passed, but just in case
+                logger.error('[Auth] JWT callback - OIDC user not found in DB', {
+                  component: 'auth:jwt',
+                  email: user.email,
+                });
+              }
+            } catch (error) {
+              logger.error('[Auth] JWT callback - DB lookup failed', { error });
+            }
+          } else {
+            // For Credentials, 'user' comes from authorize() and is already the DB user object
+            token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
+            token.sub = user.id;
+            token.name = user.name;
+            token.email = user.email;
+          }
+        }
+        // The user provided in the jwt callback is the one returned by the `authorize` function
+        // or the OIDC provider. We need to ensure `token.sub` is set to our internal user ID
+        // and `token.role` is set correctly.
+        // This block handles the initial population of the token from the `user` object.
+        else if (user) {
+          logger.debug('[Auth] JWT callback - initial sign in (credentials or OIDC fallback)', {
             component: 'auth:jwt',
             userId: (user as any).id,
             hasRole: !!(user as any).role,
@@ -251,206 +292,230 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             });
           }
 
-          if (!activeConfig.autoProvision && !existing) {
-            logger.warn('[Auth] OIDC sign-in rejected: auto-provision disabled', {
+          // Create new user if auto-provision is enabled
+          if (!existing) {
+            if (!activeConfig.autoProvision) {
+              logger.warn('[Auth] OIDC sign-in rejected: auto-provision disabled', {
+                component: 'auth:signIn',
+                email,
+              });
+              return false;
+            }
+
+            // Create new user from OIDC profile
+            try {
+              const newUser = await prisma.user.create({
+                data: {
+                  email,
+                  name: user.name || email.split('@')[0],
+                  role: 'USER', // Default role, can be overridden by role mapping below
+                  status: 'ACTIVE',
+                },
+              });
+
+              logger.info('[Auth] Created new user via OIDC auto-provision', {
+                component: 'auth:signIn',
+                userId: newUser.id,
+                email,
+              });
+
+              // Update user object with new ID for JWT callback
+              user.id = newUser.id;
+            } catch (error) {
+              logger.error('[Auth] Failed to create OIDC user', {
+                component: 'auth:signIn',
+                error,
+              });
+              return false;
+            }
+          }
+
+          // Get user for updates (either existing or newly created)
+          const targetUser = existing || (await prisma.user.findUnique({ where: { email } }));
+
+          if (!targetUser) {
+            logger.error('[Auth] OIDC user not found after creation', {
               component: 'auth:signIn',
               email,
             });
-            if (user?.id) {
-              try {
-                await prisma.user.delete({ where: { id: user.id } });
-                logger.debug('[Auth] Cleaned up auto-created user record', {
-                  component: 'auth:signIn',
-                  userId: user.id,
-                });
-              } catch (error) {
-                logger.error('[Auth] Failed to rollback OIDC user creation', {
-                  component: 'auth:signIn',
-                  error,
-                });
-              }
-            }
             return false;
           }
 
-          const targetUser =
-            existing ||
-            (user?.id ? await prisma.user.findUnique({ where: { id: user.id } }) : null);
+          const updateData: any = {};
 
-          if (targetUser) {
-            const updateData: any = {};
+          // Ensure user object has correct ID for JWT
+          user.id = targetUser.id;
 
-            // Reactivate if disabled
-            if (targetUser.status !== 'ACTIVE') {
-              updateData.status = 'ACTIVE';
-              updateData.invitedAt = null;
-              updateData.deactivatedAt = null;
-              logger.info('[Auth] Reactivating user via OIDC', {
-                component: 'auth:signIn',
-                userId: targetUser.id,
-                previousStatus: targetUser.status,
-              });
-            }
+          // Reactivate if disabled
+          if (targetUser.status !== 'ACTIVE') {
+            updateData.status = 'ACTIVE';
+            updateData.invitedAt = null;
+            updateData.deactivatedAt = null;
+            logger.info('[Auth] Reactivating user via OIDC', {
+              component: 'auth:signIn',
+              userId: targetUser.id,
+              previousStatus: targetUser.status,
+            });
+          }
 
-            // Role Evaluation
-            if (
-              activeConfig.roleMapping &&
-              Array.isArray(activeConfig.roleMapping) &&
-              (profile as any)
-            ) {
-              logger.debug('[Auth] Evaluating OIDC role mapping', {
-                component: 'auth:signIn',
-                ruleCount: activeConfig.roleMapping.length,
-                currentRole: targetUser.role,
-              });
+          // Role Evaluation
+          if (
+            activeConfig.roleMapping &&
+            Array.isArray(activeConfig.roleMapping) &&
+            (profile as any)
+          ) {
+            logger.debug('[Auth] Evaluating OIDC role mapping', {
+              component: 'auth:signIn',
+              ruleCount: activeConfig.roleMapping.length,
+              currentRole: targetUser.role,
+            });
 
-              const mapping = activeConfig.roleMapping as Array<{
-                claim: string;
-                value: string;
-                role: string;
-              }>;
-              const allowedRoles = new Set(['ADMIN', 'RESPONDER', 'USER']);
-              for (const rule of mapping) {
-                if (!allowedRoles.has(rule.role)) {
-                  logger.warn('[Auth] OIDC role mapping ignored: invalid role', {
-                    component: 'auth:signIn',
-                    role: rule.role,
-                    claim: rule.claim,
-                  });
-                  continue;
-                }
-                const claimValue = (profile as any)[rule.claim];
-                let match = false;
+            const mapping = activeConfig.roleMapping as Array<{
+              claim: string;
+              value: string;
+              role: string;
+            }>;
+            const allowedRoles = new Set(['ADMIN', 'RESPONDER', 'USER']);
+            for (const rule of mapping) {
+              if (!allowedRoles.has(rule.role)) {
+                logger.warn('[Auth] OIDC role mapping ignored: invalid role', {
+                  component: 'auth:signIn',
+                  role: rule.role,
+                  claim: rule.claim,
+                });
+                continue;
+              }
+              const claimValue = (profile as any)[rule.claim];
+              let match = false;
 
-                if (Array.isArray(claimValue)) {
-                  match = claimValue.includes(rule.value);
-                  logger.debug('[Auth] Checking array claim for role mapping', {
-                    component: 'auth:signIn',
-                    claim: rule.claim,
-                    expectedValue: rule.value,
-                    actualValues: claimValue,
-                    matched: match,
-                  });
-                } else if (claimValue === rule.value) {
-                  match = true;
-                  logger.debug('[Auth] Checking scalar claim for role mapping', {
-                    component: 'auth:signIn',
-                    claim: rule.claim,
-                    expectedValue: rule.value,
-                    actualValue: claimValue,
-                    matched: match,
-                  });
-                }
-
-                if (match) {
-                  if (targetUser.role !== rule.role) {
-                    updateData.role = rule.role;
-                    logger.info('[Auth] OIDC role mapping applied', {
-                      component: 'auth:signIn',
-                      userId: targetUser.id,
-                      oldRole: targetUser.role,
-                      newRole: rule.role,
-                      matchedClaim: rule.claim,
-                      matchedValue: rule.value,
-                    });
-                  }
-                  break; // Stop at first match
-                }
+              if (Array.isArray(claimValue)) {
+                match = claimValue.includes(rule.value);
+                logger.debug('[Auth] Checking array claim for role mapping', {
+                  component: 'auth:signIn',
+                  claim: rule.claim,
+                  expectedValue: rule.value,
+                  actualValues: claimValue,
+                  matched: match,
+                });
+              } else if (claimValue === rule.value) {
+                match = true;
+                logger.debug('[Auth] Checking scalar claim for role mapping', {
+                  component: 'auth:signIn',
+                  claim: rule.claim,
+                  expectedValue: rule.value,
+                  actualValue: claimValue,
+                  matched: match,
+                });
               }
 
-              if (!updateData.role) {
-                logger.debug('[Auth] No role mapping matched', {
+              if (match) {
+                if (targetUser.role !== rule.role) {
+                  updateData.role = rule.role;
+                  logger.info('[Auth] OIDC role mapping applied', {
+                    component: 'auth:signIn',
+                    userId: targetUser.id,
+                    oldRole: targetUser.role,
+                    newRole: rule.role,
+                    matchedClaim: rule.claim,
+                    matchedValue: rule.value,
+                  });
+                }
+                break; // Stop at first match
+              }
+            }
+
+            if (!updateData.role) {
+              logger.debug('[Auth] No role mapping matched', {
+                component: 'auth:signIn',
+                availableClaims: Object.keys(profile as any),
+              });
+            }
+          }
+
+          // JIT Profile Sync - sync attributes from OIDC profile
+          if (
+            activeConfig.profileMapping &&
+            typeof activeConfig.profileMapping === 'object' &&
+            profile
+          ) {
+            logger.debug('[Auth] Evaluating OIDC profile sync', {
+              component: 'auth:signIn',
+              mappingKeys: Object.keys(activeConfig.profileMapping),
+            });
+
+            const mapping = activeConfig.profileMapping as Record<string, string>;
+            const oidcProfile = profile as Record<string, unknown>;
+
+            // Sync department
+            if (mapping.department && oidcProfile[mapping.department]) {
+              const dept = String(oidcProfile[mapping.department]);
+              if (dept && dept !== targetUser.department) {
+                updateData.department = dept;
+                logger.debug('[Auth] Syncing department from OIDC', {
                   component: 'auth:signIn',
-                  availableClaims: Object.keys(profile as any),
+                  claimName: mapping.department,
+                  newValue: dept,
+                  oldValue: targetUser.department,
                 });
               }
             }
 
-            // JIT Profile Sync - sync attributes from OIDC profile
-            if (
-              activeConfig.profileMapping &&
-              typeof activeConfig.profileMapping === 'object' &&
-              profile
-            ) {
-              logger.debug('[Auth] Evaluating OIDC profile sync', {
-                component: 'auth:signIn',
-                mappingKeys: Object.keys(activeConfig.profileMapping),
-              });
-
-              const mapping = activeConfig.profileMapping as Record<string, string>;
-              const oidcProfile = profile as Record<string, unknown>;
-
-              // Sync department
-              if (mapping.department && oidcProfile[mapping.department]) {
-                const dept = String(oidcProfile[mapping.department]);
-                if (dept && dept !== targetUser.department) {
-                  updateData.department = dept;
-                  logger.debug('[Auth] Syncing department from OIDC', {
-                    component: 'auth:signIn',
-                    claimName: mapping.department,
-                    newValue: dept,
-                    oldValue: targetUser.department,
-                  });
-                }
-              }
-
-              // Sync job title
-              if (mapping.jobTitle && oidcProfile[mapping.jobTitle]) {
-                const title = String(oidcProfile[mapping.jobTitle]);
-                if (title && title !== targetUser.jobTitle) {
-                  updateData.jobTitle = title;
-                  logger.debug('[Auth] Syncing job title from OIDC', {
-                    component: 'auth:signIn',
-                    claimName: mapping.jobTitle,
-                    newValue: title,
-                    oldValue: targetUser.jobTitle,
-                  });
-                }
-              }
-
-              // Sync avatar URL
-              if (mapping.avatarUrl && oidcProfile[mapping.avatarUrl]) {
-                const avatar = String(oidcProfile[mapping.avatarUrl]);
-                if (avatar && avatar !== targetUser.avatarUrl) {
-                  updateData.avatarUrl = avatar;
-                  logger.debug('[Auth] Syncing avatar URL from OIDC', {
-                    component: 'auth:signIn',
-                    claimName: mapping.avatarUrl,
-                    hasNewValue: !!avatar,
-                  });
-                }
-              }
-
-              // Update lastOidcSync timestamp if any profile data was synced
-              if (updateData.department || updateData.jobTitle || updateData.avatarUrl) {
-                updateData.lastOidcSync = new Date();
-                logger.info('[Auth] OIDC profile sync completed', {
+            // Sync job title
+            if (mapping.jobTitle && oidcProfile[mapping.jobTitle]) {
+              const title = String(oidcProfile[mapping.jobTitle]);
+              if (title && title !== targetUser.jobTitle) {
+                updateData.jobTitle = title;
+                logger.debug('[Auth] Syncing job title from OIDC', {
                   component: 'auth:signIn',
-                  userId: targetUser.id,
-                  syncedFields: Object.keys(updateData).filter(k =>
-                    ['department', 'jobTitle', 'avatarUrl'].includes(k)
-                  ),
+                  claimName: mapping.jobTitle,
+                  newValue: title,
+                  oldValue: targetUser.jobTitle,
                 });
               }
             }
 
-            if (Object.keys(updateData).length > 0) {
-              await prisma.user.update({
-                where: { id: targetUser.id },
-                data: updateData,
-              });
-              logger.info('[Auth] Updated user from OIDC data', {
+            // Sync avatar URL
+            if (mapping.avatarUrl && oidcProfile[mapping.avatarUrl]) {
+              const avatar = String(oidcProfile[mapping.avatarUrl]);
+              if (avatar && avatar !== targetUser.avatarUrl) {
+                updateData.avatarUrl = avatar;
+                logger.debug('[Auth] Syncing avatar URL from OIDC', {
+                  component: 'auth:signIn',
+                  claimName: mapping.avatarUrl,
+                  hasNewValue: !!avatar,
+                });
+              }
+            }
+
+            // Update lastOidcSync timestamp if any profile data was synced
+            if (updateData.department || updateData.jobTitle || updateData.avatarUrl) {
+              updateData.lastOidcSync = new Date();
+              logger.info('[Auth] OIDC profile sync completed', {
                 component: 'auth:signIn',
                 userId: targetUser.id,
-                updatedFields: Object.keys(updateData),
+                syncedFields: Object.keys(updateData).filter(k =>
+                  ['department', 'jobTitle', 'avatarUrl'].includes(k)
+                ),
               });
             }
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await prisma.user.update({
+              where: { id: targetUser.id },
+              data: updateData,
+            });
+            logger.info('[Auth] Updated user from OIDC data', {
+              component: 'auth:signIn',
+              userId: targetUser.id,
+              updatedFields: Object.keys(updateData),
+            });
           }
 
           logger.info('[Auth] OIDC sign-in successful', {
             component: 'auth:signIn',
             email,
-            userId: targetUser?.id,
+            userId: user.id,
           });
         }
 

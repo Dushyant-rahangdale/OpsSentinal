@@ -24,6 +24,10 @@ import SidebarWidget, {
   WIDGET_ICON_COLOR,
 } from '@/components/dashboard/SidebarWidget';
 import styles from '@/components/dashboard/Dashboard.module.css';
+import CompactOnCallStatus from '@/components/dashboard/compact/CompactOnCallStatus';
+import CompactPerformanceMetrics from '@/components/dashboard/compact/CompactPerformanceMetrics';
+import CompactStatsOverview from '@/components/dashboard/compact/CompactStatsOverview';
+import CompactServiceHealth from '@/components/dashboard/compact/CompactServiceHealth';
 import {
   buildDateFilter,
   buildIncidentWhere,
@@ -638,39 +642,30 @@ export default async function Dashboard({
             </div>
           </div>
 
-          {/* Right Sidebar - All Widgets (matching users page style) */}
+          {/* Right Sidebar - Compact Modern Design */}
           <aside
             className="dashboard-sidebar animate-slide-in-right"
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
           >
             {/* Quick Actions Panel */}
             <QuickActionsPanel greeting={greeting} userName={userName} />
 
-            {/* On-Call Widget */}
-            <OnCallWidget activeShifts={activeShifts} />
-
-            {/* Performance Metrics Widget */}
+            {/* On-Call Status - Compact */}
             <SidebarWidget
-              title="Performance Metrics"
+              title="On-Call"
               iconBg={WIDGET_ICON_BG.green}
-              icon={
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={WIDGET_ICON_COLOR.green}
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
+              icon={<span style={{ fontSize: '20px', color: 'white' }}>⏰</span>}
             >
-              <DashboardPerformanceMetrics
+              <CompactOnCallStatus activeShifts={activeShifts} />
+            </SidebarWidget>
+
+            {/* Performance Metrics - Compact */}
+            <SidebarWidget
+              title="Performance"
+              iconBg={WIDGET_ICON_BG.blue}
+              icon={<span style={{ fontSize: '20px', color: 'white' }}>⚡</span>}
+            >
+              <CompactPerformanceMetrics
                 mtta={mttaMinutes}
                 mttr={slaMetrics.mttr}
                 ackSlaRate={slaMetrics.ackCompliance}
@@ -678,125 +673,29 @@ export default async function Dashboard({
               />
             </SidebarWidget>
 
-            {/* Advanced Metrics */}
+            {/* Quick Stats - Compact */}
             <SidebarWidget
-              title="Advanced Metrics"
-              iconBg={WIDGET_ICON_BG.blue}
-              icon={
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={WIDGET_ICON_COLOR.blue}
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
+              title="Overview"
+              iconBg={WIDGET_ICON_BG.purple}
+              icon={<span style={{ fontSize: '20px', color: 'white' }}>📊</span>}
             >
-              <DashboardAdvancedMetrics
+              <CompactStatsOverview
                 totalIncidents={allIncidentsCount}
                 openIncidents={allOpenIncidentsCount}
                 resolvedIncidents={allResolvedCountAllTime}
-                acknowledgedIncidents={allAcknowledgedCount}
                 criticalIncidents={allCriticalIncidentsCount}
                 unassignedIncidents={unassignedCount}
                 servicesCount={services.length}
               />
             </SidebarWidget>
 
-            {/* Period Comparison Widget */}
+            {/* Service Health - Compact */}
             <SidebarWidget
-              title="Period Comparison"
-              iconBg={WIDGET_ICON_BG.orange}
-              icon={
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={WIDGET_ICON_COLOR.orange}
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M3 3v18h18M7 16l4-4 4 4 6-6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
-            >
-              <DashboardPeriodComparison
-                current={{
-                  total: totalInRange,
-                  open: metricsOpenCount,
-                  resolved: metricsResolvedCount,
-                  acknowledged: currentPeriodAcknowledged,
-                  critical: currentPeriodCritical,
-                }}
-                previous={{
-                  total: prevTotal,
-                  open: prevOpen,
-                  resolved: prevResolved,
-                  acknowledged: prevAcknowledged,
-                  critical: prevCritical,
-                }}
-                periodLabel={periodLabels.current}
-                previousPeriodLabel={periodLabels.previous}
-              />
-            </SidebarWidget>
-
-            {/* Service Health Widget */}
-            <SidebarWidget
-              title="Service Health"
+              title="Services"
               iconBg={WIDGET_ICON_BG.green}
-              icon={
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={WIDGET_ICON_COLOR.green}
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
+              icon={<span style={{ fontSize: '20px', color: 'white' }}>🔧</span>}
             >
-              <DashboardServiceHealth services={servicesWithIncidents} />
-            </SidebarWidget>
-
-            {/* Urgency Distribution Widget */}
-            <SidebarWidget
-              title="Urgency Distribution"
-              iconBg={WIDGET_ICON_BG.red}
-              icon={
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={WIDGET_ICON_COLOR.red}
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
-            >
-              <DashboardUrgencyDistribution data={urgencyDistribution} />
+              <CompactServiceHealth services={servicesWithIncidents} />
             </SidebarWidget>
           </aside>
         </div>
