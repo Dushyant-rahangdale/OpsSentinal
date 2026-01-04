@@ -203,7 +203,9 @@ export default memo(function IncidentTable({
                   <span
                     className={`
                                         ${styles.urgencyBadge}
-                                        ${incident.urgency === 'HIGH' ? styles.urgencyHigh : styles.urgencyLow}
+                                        ${incident.urgency === 'HIGH' ? styles.urgencyHigh : ''}
+                                        ${incident.urgency === 'MEDIUM' ? styles.urgencyMedium : ''}
+                                        ${incident.urgency === 'LOW' ? styles.urgencyLow : ''}
                                     `}
                   >
                     {incident.urgency}
