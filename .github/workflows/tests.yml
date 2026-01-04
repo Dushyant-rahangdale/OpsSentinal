@@ -60,6 +60,9 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: DB smoke test (post-migrations)
+        run: node scripts/ci-db-smoke.cjs
+
       - name: Migration validation
         run: |
           mkdir -p reports
