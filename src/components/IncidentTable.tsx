@@ -208,9 +208,7 @@ export default memo(function IncidentTable({
             borderBottom: '1px solid rgba(255,255,255,0.12)',
           }}
         >
-          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-            {selectedIds.size} selected
-          </span>
+          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedIds.size} selected</span>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               onClick={handleBulkAcknowledge}
@@ -264,7 +262,9 @@ export default memo(function IncidentTable({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>Sort:</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+            Sort:
+          </span>
           {[
             { key: 'createdAt', label: 'Created' },
             { key: 'status', label: 'Status' },
@@ -305,7 +305,9 @@ export default memo(function IncidentTable({
             style={{ padding: '0.45rem 0.75rem' }}
             disabled={incidents.length === 0}
           >
-            {selectedIds.size === incidents.length && incidents.length > 0 ? 'Clear selection' : 'Select page'}
+            {selectedIds.size === incidents.length && incidents.length > 0
+              ? 'Clear selection'
+              : 'Select page'}
           </button>
         </div>
       </div>
@@ -324,7 +326,14 @@ export default memo(function IncidentTable({
             }}
           >
             <div style={{ fontSize: '2.25rem', marginBottom: '0.75rem', opacity: 0.3 }}>📊</div>
-            <div style={{ fontSize: '1rem', fontWeight: 750, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+            <div
+              style={{
+                fontSize: '1rem',
+                fontWeight: 750,
+                color: 'var(--text-secondary)',
+                marginBottom: '0.25rem',
+              }}
+            >
               No incidents found
             </div>
             <div style={{ fontSize: '0.85rem' }}>
@@ -345,10 +354,13 @@ export default memo(function IncidentTable({
                     border: `1px solid ${isSelected ? 'rgba(211, 47, 47, 0.35)' : 'var(--border)'}`,
                     borderRadius: '14px',
                     background: isSelected ? 'rgba(211, 47, 47, 0.03)' : 'white',
-                    boxShadow: isSelected ? `0 12px 26px rgba(15, 23, 42, 0.10), 0 0 0 4px ${accent.glow}` : 'var(--shadow-xs)',
+                    boxShadow: isSelected
+                      ? `0 12px 26px rgba(15, 23, 42, 0.10), 0 0 0 4px ${accent.glow}`
+                      : 'var(--shadow-xs)',
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    transition: 'transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease',
+                    transition:
+                      'transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease',
                   }}
                   onMouseEnter={e => {
                     if (!isSelected) {
@@ -376,7 +388,15 @@ export default memo(function IncidentTable({
                     }
                   }}
                 >
-                  <div style={{ display: 'flex', gap: '0.85rem', padding: '0.9rem 1rem', alignItems: 'flex-start', borderLeft: `4px solid ${accent.accent}` }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '0.85rem',
+                      padding: '0.9rem 1rem',
+                      alignItems: 'flex-start',
+                      borderLeft: `4px solid ${accent.accent}`,
+                    }}
+                  >
                     <div data-no-row-nav="true" style={{ paddingTop: '0.15rem' }}>
                       <input
                         type="checkbox"
@@ -388,7 +408,15 @@ export default memo(function IncidentTable({
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: '0.75rem',
+                          flexWrap: 'wrap',
+                        }}
+                      >
                         <div style={{ minWidth: 0 }}>
                           <Link
                             href={`/incidents/${incident.id}`}
@@ -409,15 +437,35 @@ export default memo(function IncidentTable({
                             {incident.title}
                           </Link>
 
-                          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 650 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: '0.6rem',
+                              alignItems: 'center',
+                              marginTop: '0.35rem',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: '0.8rem',
+                                color: 'var(--text-muted)',
+                                fontWeight: 650,
+                              }}
+                            >
                               #{incident.id.slice(-5).toUpperCase()}
                             </span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>•</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                              {formatDateTime(incident.createdAt, userTimeZone, { format: 'short' })}
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                              •
                             </span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>•</span>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              {formatDateTime(incident.createdAt, userTimeZone, {
+                                format: 'short',
+                              })}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                              •
+                            </span>
                             <span
                               style={{
                                 fontSize: '0.8rem',
@@ -435,7 +483,16 @@ export default memo(function IncidentTable({
                           </div>
                         </div>
 
-                        <div data-no-row-nav="true" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <div
+                          data-no-row-nav="true"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
                           <Link
                             href={`/incidents/${incident.id}`}
                             onClick={e => e.stopPropagation()}
@@ -458,7 +515,11 @@ export default memo(function IncidentTable({
                             Open
                           </Link>
 
-                          <details className="dashboard-incident-menu" style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+                          <details
+                            className="dashboard-incident-menu"
+                            style={{ position: 'relative' }}
+                            onClick={e => e.stopPropagation()}
+                          >
                             <summary
                               aria-label="More actions"
                               style={{
@@ -517,7 +578,13 @@ export default memo(function IncidentTable({
                                 View details →
                               </Link>
 
-                              <div style={{ height: '1px', background: 'var(--border)', margin: '0.25rem 0.35rem' }} />
+                              <div
+                                style={{
+                                  height: '1px',
+                                  background: 'var(--border)',
+                                  margin: '0.25rem 0.35rem',
+                                }}
+                              />
 
                               {incident.status !== 'RESOLVED' && (
                                 <button
@@ -551,37 +618,38 @@ export default memo(function IncidentTable({
                                 </button>
                               )}
 
-                              {incident.status !== 'ACKNOWLEDGED' && incident.status !== 'RESOLVED' && (
-                                <button
-                                  type="button"
-                                  disabled={isPending}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    closeDetailsMenu(e.currentTarget);
-                                    handleStatusChange(incident.id, 'ACKNOWLEDGED');
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '0.55rem 0.6rem',
-                                    borderRadius: '10px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: isPending ? 'not-allowed' : 'pointer',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 600,
-                                    color: 'var(--text-primary)',
-                                  }}
-                                  onMouseEnter={e => {
-                                    e.currentTarget.style.background = 'var(--color-neutral-50)';
-                                  }}
-                                  onMouseLeave={e => {
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  ✓ Acknowledge
-                                </button>
-                              )}
+                              {incident.status !== 'ACKNOWLEDGED' &&
+                                incident.status !== 'RESOLVED' && (
+                                  <button
+                                    type="button"
+                                    disabled={isPending}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      closeDetailsMenu(e.currentTarget);
+                                      handleStatusChange(incident.id, 'ACKNOWLEDGED');
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      textAlign: 'left',
+                                      padding: '0.55rem 0.6rem',
+                                      borderRadius: '10px',
+                                      border: 'none',
+                                      background: 'transparent',
+                                      cursor: isPending ? 'not-allowed' : 'pointer',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 600,
+                                      color: 'var(--text-primary)',
+                                    }}
+                                    onMouseEnter={e => {
+                                      e.currentTarget.style.background = 'var(--color-neutral-50)';
+                                    }}
+                                    onMouseLeave={e => {
+                                      e.currentTarget.style.background = 'transparent';
+                                    }}
+                                  >
+                                    ✓ Acknowledge
+                                  </button>
+                                )}
 
                               {incident.status === 'ACKNOWLEDGED' && (
                                 <button
@@ -648,11 +716,25 @@ export default memo(function IncidentTable({
                         </div>
                       </div>
 
-                      <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          marginTop: '0.6rem',
+                          display: 'flex',
+                          gap: '0.4rem',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                        }}
+                      >
                         <StatusBadge status={incident.status as any} size="sm" showDot />
                         {urgencyChip}
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>•</span>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 650 }}>
+                        <span
+                          style={{
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.85rem',
+                            fontWeight: 650,
+                          }}
+                        >
                           {incident.assignee ? incident.assignee.name : 'Unassigned'}
                         </span>
                       </div>

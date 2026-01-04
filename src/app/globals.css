@@ -2963,6 +2963,7 @@ select option {
   box-shadow: 2px 0 25px rgba(0, 0, 0, 0.15), inset -1px 0 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
   z-index: 1000;
+  transition: width var(--transition-base), transform var(--transition-slow);
 }
 
 /* Sidebar resilience (zoom/overflow/accessibility) */
@@ -2971,16 +2972,261 @@ select option {
   box-sizing: border-box;
 }
 
+.sidebar-header {
+  position: relative;
+}
+
+.sidebar.sidebar-collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+/* Simple << / >> Toggle - Enhanced Visibility */
+.sidebar-collapse-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  /* Visible background */
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 8px 12px;
+  border-radius: 8px;
+
+  /* Typography for << >> - larger and brighter */
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.85);
+
+  /* Subtle glow */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.sidebar-collapse-toggle:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 0 15px rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.sidebar-collapse-toggle:active {
+  transform: scale(0.95);
+}
+
+.sidebar-collapse-toggle:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Collapsed state - position below logo with resonating effect */
+.sidebar[data-collapsed='true'] .sidebar-collapse-toggle {
+  /* Position below the logo, centered */
+  top: auto;
+  bottom: -50px;
+  /* Below the header */
+  right: 50%;
+  transform: translateX(50%);
+  padding: 12px 16px;
+
+  /* Much brighter styling when collapsed */
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: white;
+  font-size: 1.2rem;
+
+  /* Strong resonating (pulsing glow) animation */
+  animation: sidebar-toggle-resonate 1.5s ease-in-out infinite;
+}
+
+/* Resonating glow animation - strong pulse */
+@keyframes sidebar-toggle-resonate {
+
+  0%,
+  100% {
+    box-shadow:
+      0 2px 10px rgba(0, 0, 0, 0.3),
+      0 0 0 0 rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  50% {
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.4),
+      0 0 25px 6px rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+.sidebar[data-collapsed='true'] .sidebar-collapse-toggle:hover {
+  transform: translateX(50%) scale(1.1);
+  animation: none;
+  /* Stop animation on hover */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), 0 0 25px rgba(255, 255, 255, 0.25);
+}
+
+.sidebar-brand {
+  width: 100%;
+}
+
+.sidebar[data-collapsed='true'] .sidebar-brand {
+  gap: 0.35rem;
+}
+
+.sidebar-logo {
+  transition: transform 0.2s ease;
+}
+
+.sidebar[data-collapsed='true'] .sidebar-logo {
+  transform: scale(0.92);
+}
+
+.sidebar-section {
+  position: relative;
+}
+
+.sidebar.sidebar-collapsed .sidebar-section+.sidebar-section {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+  padding-left: 0.25rem;
+}
+
+.sidebar-section-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sidebar-section-title {
+  font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
 .sidebar .nav-item:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.65);
   outline-offset: 2px;
   border-radius: 10px;
 }
 
+.sidebar .nav-item {
+  padding: clamp(0.5rem, 1vw, 0.625rem) clamp(0.6rem, 1.2vw, 0.75rem);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 7px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  font-size: clamp(0.82rem, 1.05vw, 0.9rem);
+  border: 1px solid transparent;
+  min-width: 0;
+  position: relative;
+}
+
+.sidebar.sidebar-collapsed .nav-item {
+  justify-content: center;
+  padding: 0.65rem;
+  border-radius: 10px;
+}
+
+.sidebar .nav-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar .nav-item.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.sidebar .nav-icon {
+  width: clamp(16px, 1.8vw, 18px);
+  height: clamp(16px, 1.8vw, 18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.sidebar .nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.sidebar-label {
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ef4444;
+  color: white;
+  font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  font-weight: 700;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-badge--dot {
+  min-width: 10px;
+  height: 10px;
+  padding: 0;
+  border-radius: 9999px;
+}
+
+.sidebar.sidebar-collapsed .sidebar-badge--dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
 .sidebar-nav {
-  min-height: 0; /* critical for flex + scroll */
+  min-height: 0;
+  /* critical for flex + scroll */
   scrollbar-gutter: stable both-edges;
   overscroll-behavior: contain;
+}
+
+.sidebar.sidebar-collapsed .sidebar-nav {
+  align-items: center;
+}
+
+.sidebar.sidebar-collapsed .nav-item {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  gap: 0;
 }
 
 /* Collapsed sidebar helpers */
@@ -16251,10 +16497,17 @@ details[open]>.settings-slack-summary::after {
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: min(86vw, 320px);
+    visibility: hidden;
   }
 
   .sidebar-mobile-open {
     transform: translateX(0);
+    visibility: visible;
   }
 
   .mobile-menu-button {

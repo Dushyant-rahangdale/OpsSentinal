@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
+import { revokeUserSessions } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     // The DB stores the SHA256 hash of it.
     const tokenHash = createHash('sha256').update(token).digest('hex');
 
+    // Look up token
     const record = await prisma.userToken.findFirst({
       where: {
         tokenHash,
@@ -69,6 +71,9 @@ export async function POST(req: NextRequest) {
         deactivatedAt: null,
       },
     });
+
+    // Revoke any existing sessions after a password reset.
+    await revokeUserSessions(user.id);
 
     // 3. Cleanup Token
     await prisma.userToken.update({

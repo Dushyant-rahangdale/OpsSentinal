@@ -158,7 +158,7 @@ describe('Slack OAuth Integration', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         encryptionKey: null,
-      });
+      } as any); // Type assertion to handle Prisma client version differences
 
       const req = new NextRequest(
         'http://localhost:3000/api/slack/oauth/callback?error=test_error'

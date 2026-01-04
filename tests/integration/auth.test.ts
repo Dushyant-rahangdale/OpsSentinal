@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { getAuthOptions } from '@/lib/auth';
+import { getAuthOptions, resetAuthOptionsCache } from '@/lib/auth';
+import { resetOidcConfigCache } from '@/lib/oidc-config';
 import { encryptWithKey } from '@/lib/encryption';
 import { type UserStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -80,11 +81,17 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
     // Ensure we are in real DB mode for these tests if this file is run
     process.env.VITEST_USE_REAL_DB = '1';
     process.env.ENCRYPTION_KEY = ENCRYPTION_KEY;
+    // Avoid module-level caching interfering with test expectations
+    process.env.AUTH_OPTIONS_CACHE_TTL_MS = '0';
+    process.env.OIDC_CONFIG_CACHE_TTL_MS = '0';
+    process.env.OIDC_CONFIG_RECORD_CACHE_TTL_MS = '0';
   });
 
   beforeEach(async () => {
     vi.clearAllMocks();
     await resetDatabase();
+    resetAuthOptionsCache();
+    resetOidcConfigCache();
   });
 
   describe('CredentialsProvider authorize', () => {
@@ -258,6 +265,90 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       });
 
       expect(result).toBe(false);
+    });
+
+    it('rejects OIDC sign-in when email_verified is false', async () => {
+      await seedOidcConfig();
+
+      const user = await createTestUser({
+        email: 'oidc-verify@example.com',
+      });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const result = await signInCallback({
+        user: { id: user.id, email: user.email, name: user.name },
+        account: { provider: 'oidc', providerAccountId: 'sub-1' },
+        profile: { email_verified: false, sub: 'sub-1' },
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('creates an OIDC identity link on successful sign-in', async () => {
+      await seedOidcConfig();
+
+      const user = await createTestUser({
+        email: 'oidc-linked@example.com',
+      });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const ok = await signInCallback({
+        user: { id: user.id, email: user.email, name: user.name },
+        account: { provider: 'oidc', providerAccountId: 'sub-abc' },
+        profile: { email_verified: true, sub: 'sub-abc' },
+      });
+
+      expect(ok).toBe(true);
+
+      const linked = await testPrisma.oidcIdentity.findUnique({
+        where: { issuer_subject: { issuer: 'https://login.example.com', subject: 'sub-abc' } },
+      });
+
+      expect(linked?.userId).toBe(user.id);
+      expect(linked?.email).toBe(user.email);
+    });
+
+    it('rejects sign-in when OIDC identity is already linked to another user', async () => {
+      await seedOidcConfig();
+
+      const user1 = await createTestUser({ email: 'oidc-a@example.com' });
+      const user2 = await createTestUser({ email: 'oidc-b@example.com' });
+
+      await testPrisma.oidcIdentity.create({
+        data: {
+          issuer: 'https://login.example.com',
+          subject: 'sub-conflict',
+          email: user1.email,
+          userId: user1.id,
+        },
+      });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      const ok = await signInCallback({
+        user: { id: user2.id, email: user2.email, name: user2.name },
+        account: { provider: 'oidc', providerAccountId: 'sub-conflict' },
+        profile: { email_verified: true, sub: 'sub-conflict' },
+      });
+
+      expect(ok).toBe(false);
     });
 
     it('ignores invalid role mappings', async () => {

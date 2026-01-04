@@ -7,6 +7,7 @@ import { randomBytes, createHash } from 'crypto';
 import { assertAdmin, assertAdminOrResponder, assertNotSelf } from '@/lib/rbac';
 import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
+import { revokeUserSessions } from '@/lib/auth';
 
 async function assertUserIsNotSoleOwner(userId: string) {
   const ownedMemberships = await prisma.teamMember.findMany({
@@ -285,6 +286,7 @@ export async function deactivateUser(userId: string, _formData?: FormData) {
       deactivatedAt: new Date(),
     },
   });
+  await revokeUserSessions(userId);
 
   await logAudit({
     action: 'user.deactivated',
@@ -455,6 +457,7 @@ export async function bulkUpdateUsers(
           deactivatedAt: new Date(),
         },
       });
+      await revokeUserSessions(userId);
 
       await logAudit({
         action: 'user.deactivated',

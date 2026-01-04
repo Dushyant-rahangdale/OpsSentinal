@@ -101,6 +101,8 @@ model User {
   name                         String
   email                        String      @unique
   emailVerified               DateTime?
+  // Session revocation marker: increment to force-logout all JWT sessions
+  tokenVersion                 Int         @default(0)
   role                         Role        @default(USER)
   status                       UserStatus  @default(INVITED)
   passwordHash                 String?
@@ -147,10 +149,29 @@ model User {
   slackIntegrations    SlackIntegration[]
   slackOAuthConfigs    SlackOAuthConfig[]     @relation("SlackOAuthConfigUpdater")
   oidcConfigs          OidcConfig[]
+  oidcIdentities       OidcIdentity[]
 
   @@index([email]) // CRITICAL: Performance index for email lookups (fixes 2-4s queries)
   @@index([role, status]) // For filtering users by role and status
   @@index([status]) // For active user queries
+}
+
+// Stable link between an IdP identity (issuer+sub) and an internal user.
+// Avoids unsafe "email-only" linking for OIDC sign-in.
+model OidcIdentity {
+  id      String @id @default(cuid())
+  issuer  String
+  subject String
+  email   String?
+  userId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([issuer, subject])
+  @@index([userId])
+  @@index([issuer])
 }
 
 model Team {

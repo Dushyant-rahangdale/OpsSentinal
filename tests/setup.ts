@@ -56,6 +56,7 @@ const mockPrisma = {
   service: createMockModel(),
   team: createMockModel(),
   user: createMockModel(),
+  oidcIdentity: createMockModel(),
   oidcConfig: createMockModel(),
   backgroundJob: createMockModel(),
   incidentEvent: createMockModel(),

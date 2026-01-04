@@ -66,7 +66,7 @@ export default function DashboardSavedFilters() {
     const newFilter: SavedFilter = {
       id: Date.now().toString(),
       name: filterName.trim(),
-      filters: currentFilters
+      filters: currentFilters,
     };
 
     const updated = [...savedFilters, newFilter];
@@ -96,9 +96,19 @@ export default function DashboardSavedFilters() {
 
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>Saved Filters:</span>
-        {savedFilters.map((filter) => (
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+          Saved Filters:
+        </span>
+        {savedFilters.map(filter => (
           <button
             key={filter.id}
             onClick={() => loadFilter(filter)}
@@ -114,13 +124,13 @@ export default function DashboardSavedFilters() {
               display: 'flex',
               alignItems: 'center',
               gap: '0.4rem',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
             }}
-            onMouseEnter={(e) => {
+            onMouseEnter={e => {
               e.currentTarget.style.background = '#f9fafb';
               e.currentTarget.style.borderColor = 'var(--primary)';
             }}
-            onMouseLeave={(e) => {
+            onMouseLeave={e => {
               e.currentTarget.style.background = 'white';
               e.currentTarget.style.borderColor = 'var(--border)';
             }}
@@ -128,7 +138,7 @@ export default function DashboardSavedFilters() {
             <span>💾</span>
             {filter.name}
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 if (confirm(`Delete "${filter.name}"?`)) {
                   deleteFilter(filter.id);
@@ -143,7 +153,7 @@ export default function DashboardSavedFilters() {
                 padding: 0,
                 marginLeft: '0.25rem',
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
               }}
               title="Delete filter"
             >
@@ -165,7 +175,7 @@ export default function DashboardSavedFilters() {
               fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem'
+              gap: '0.4rem',
             }}
           >
             <span>💾</span>
@@ -175,18 +185,19 @@ export default function DashboardSavedFilters() {
       </div>
 
       {showSaveDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
           onClick={() => setShowSaveDialog(false)}
         >
           <div
@@ -196,15 +207,17 @@ export default function DashboardSavedFilters() {
               borderRadius: '12px',
               maxWidth: '400px',
               width: '90%',
-              boxShadow: 'var(--shadow-lg)'
+              boxShadow: 'var(--shadow-lg)',
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem' }}>Save Filter Preset</h3>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '1rem' }}>
+              Save Filter Preset
+            </h3>
             <input
               type="text"
               value={filterName}
-              onChange={(e) => setFilterName(e.target.value)}
+              onChange={e => setFilterName(e.target.value)}
               placeholder="Filter name (e.g., My Open Incidents)"
               style={{
                 width: '100%',
@@ -212,10 +225,10 @@ export default function DashboardSavedFilters() {
                 border: '1px solid var(--border)',
                 borderRadius: '8px',
                 fontSize: '0.9rem',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
               }}
               autoFocus
-              onKeyDown={(e) => {
+              onKeyDown={e => {
                 if (e.key === 'Enter' && filterName.trim()) {
                   saveCurrentFilter();
                 }
@@ -237,7 +250,7 @@ export default function DashboardSavedFilters() {
                   background: 'white',
                   cursor: 'pointer',
                   fontSize: '0.9rem',
-                  fontWeight: '600'
+                  fontWeight: '600',
                 }}
               >
                 Cancel
@@ -253,7 +266,7 @@ export default function DashboardSavedFilters() {
                   color: 'white',
                   cursor: filterName.trim() ? 'pointer' : 'not-allowed',
                   fontSize: '0.9rem',
-                  fontWeight: '600'
+                  fontWeight: '600',
                 }}
               >
                 Save
@@ -265,4 +278,3 @@ export default function DashboardSavedFilters() {
     </div>
   );
 }
-

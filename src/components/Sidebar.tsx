@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import _KeyboardShortcuts from './KeyboardShortcuts';
 import { useModalState } from '@/hooks/useModalState';
 
@@ -189,6 +189,9 @@ export default function Sidebar(
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useModalState('sidebarMobileMenu');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarId = 'app-sidebar';
+  const isDesktopCollapsed = !isMobile && isCollapsed;
+  const actionButtonPadding = isDesktopCollapsed ? '0.45rem' : '0.5rem';
 
   useEffect(() => {
     // Fetch active incidents count
@@ -209,6 +212,7 @@ export default function Sidebar(
 
   useEffect(() => {
     // Load collapse preference (desktop only)
+    if (isMobile) return;
     try {
       const saved = localStorage.getItem('sidebarCollapsed');
       if (saved === '1') setIsCollapsed(true);
@@ -216,7 +220,7 @@ export default function Sidebar(
     } catch {
       // ignore
     }
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     // Persist collapse preference (desktop only)
@@ -241,6 +245,13 @@ export default function Sidebar(
       setIsMobileMenuOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    // Ensure mobile menu is closed when switching to desktop
+    if (!isMobile && isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [isMobile, isMobileMenuOpen, setIsMobileMenuOpen]);
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true;
@@ -279,85 +290,17 @@ export default function Sidebar(
         href={item.href}
         className={`nav-item ${active ? 'active' : ''}`}
         aria-current={active ? 'page' : undefined}
-        aria-label={isCollapsed ? item.label : undefined}
-        title={isCollapsed ? item.label : undefined}
-        style={{
-          padding: 'clamp(0.5rem, 1vw, 0.625rem) clamp(0.6rem, 1.2vw, 0.75rem)',
-          textDecoration: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          borderRadius: '7px',
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
-          color: active ? 'white' : 'rgba(255,255,255,0.75)',
-          fontWeight: active ? '700' : '500',
-          fontSize: 'clamp(0.82rem, 1.05vw, 0.9rem)',
-          border: active ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
-          minWidth: 0,
-          justifyContent: isCollapsed ? 'center' : 'flex-start',
-        }}
-        onMouseEnter={e => {
-          if (!active) {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.12)';
-          }
-        }}
-        onMouseLeave={e => {
-          if (!active) {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'rgba(255,255,255,0.75)';
-            e.currentTarget.style.boxShadow = 'none';
-          }
-        }}
+        aria-label={isDesktopCollapsed ? item.label : undefined}
+        title={isDesktopCollapsed ? item.label : undefined}
       >
-        <span
-          className="nav-icon"
-          style={{
-            width: 'clamp(16px, 1.8vw, 18px)',
-            height: 'clamp(16px, 1.8vw, 18px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            opacity: active ? 1 : 0.8,
-          }}
-        >
-          {item.icon}
-        </span>
-        {!isCollapsed && (
-          <span
-            style={{
-              whiteSpace: 'nowrap',
-              flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {item.label}
-          </span>
-        )}
+        <span className="nav-icon">{item.icon}</span>
+        {!isDesktopCollapsed && <span className="sidebar-label">{item.label}</span>}
         {showBadge && (
           <span
             aria-label={`${activeIncidentsCount} active incidents`}
-            style={{
-              minWidth: isCollapsed ? '10px' : '18px',
-              height: isCollapsed ? '10px' : '18px',
-              padding: isCollapsed ? 0 : '0 5px',
-              background: '#ef4444',
-              color: 'white',
-              fontSize: 'clamp(0.6rem, 0.85vw, 0.7rem)',
-              fontWeight: '700',
-              borderRadius: isCollapsed ? '9999px' : '9px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
+            className={`sidebar-badge ${isDesktopCollapsed ? 'sidebar-badge--dot' : ''}`}
           >
-            {isCollapsed ? '' : activeIncidentsCount > 99 ? '99+' : activeIncidentsCount}
+            {isDesktopCollapsed ? '' : activeIncidentsCount > 99 ? '99+' : activeIncidentsCount}
           </span>
         )}
       </Link>
@@ -367,7 +310,12 @@ export default function Sidebar(
   const renderSection = (sectionName: string, items: NavItem[]) => {
     if (sectionName === 'MAIN') {
       return (
-        <div key={sectionName} style={{ marginBottom: '1.25rem' }}>
+        <div
+          key={sectionName}
+          className="sidebar-section"
+          data-section={sectionName}
+          style={{ marginBottom: isDesktopCollapsed ? '0.8rem' : '1.25rem' }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
             {items.map(renderNavItem)}
           </div>
@@ -393,36 +341,17 @@ export default function Sidebar(
     };
 
     return (
-      <div key={sectionName} style={{ marginBottom: '1.25rem' }}>
+      <div
+        key={sectionName}
+        className="sidebar-section"
+        data-section={sectionName}
+        style={{ marginBottom: isDesktopCollapsed ? '0.8rem' : '1.25rem' }}
+      >
         {/* Minimal section header */}
-        {!isCollapsed && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.625rem',
-              paddingLeft: '0.25rem',
-            }}
-          >
-            <div
-              style={{
-                width: '4px',
-                height: '4px',
-                borderRadius: '50%',
-                background: colors.dot,
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 'clamp(0.6rem, 0.85vw, 0.7rem)',
-                fontWeight: '600',
-                color: colors.text,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
+        {!isDesktopCollapsed && (
+          <div className="sidebar-section-header">
+            <div className="sidebar-section-dot" style={{ background: colors.dot }} />
+            <span className="sidebar-section-title" style={{ color: colors.text }}>
               {sectionName}
             </span>
           </div>
@@ -447,41 +376,26 @@ export default function Sidebar(
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
       <aside
-        className={`sidebar ${isCollapsed ? 'sidebar-collapsed' : ''} ${isMobile ? 'sidebar-mobile' : ''} ${isMobileMenuOpen ? 'sidebar-mobile-open' : ''}`}
-        style={{
-          width: isMobile ? 'min(86vw, 320px)' : isCollapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)',
-          background: 'linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #172554)',
-          backgroundSize: '400% 400%',
-          animation: 'sidebar-ambient 15s ease infinite',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100dvh',
-          position: isMobile ? 'fixed' : 'sticky',
-          top: 0,
-          left: 0,
-          color: 'white',
-          boxShadow: '2px 0 25px rgba(0, 0, 0, 0.15), inset -1px 0 0 rgba(255, 255, 255, 0.05)',
-          overflow: 'hidden',
-          zIndex: 1000,
-          transition: isMobile ? 'transform var(--transition-slow) var(--ease-out)' : 'none',
-          transform: isMobile && !isMobileMenuOpen ? 'translateX(-100%)' : 'translateX(0)',
-          visibility: isMobile && !isMobileMenuOpen ? 'hidden' : 'visible',
-        }}
+        id={sidebarId}
+        className={`sidebar ${isDesktopCollapsed ? 'sidebar-collapsed' : ''} ${isMobile ? 'sidebar-mobile' : ''} ${isMobileMenuOpen ? 'sidebar-mobile-open' : ''}`}
+        data-collapsed={isDesktopCollapsed ? 'true' : 'false'}
         aria-label="Main navigation"
+        aria-hidden={isMobile && !isMobileMenuOpen}
       >
         {' '}
         {/* Branding Header - Enhanced */}
         <div
+          className="sidebar-header"
           style={{
-            padding:
-              'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.25rem) clamp(0.9rem, 1.8vw, 1.25rem)',
+            padding: isDesktopCollapsed
+              ? '0.85rem 0.65rem 0.75rem'
+              : 'clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.25rem) clamp(0.9rem, 1.8vw, 1.25rem)',
             flexShrink: 0,
             borderBottom: '1px solid rgba(255,255,255,0.1)',
             background:
               'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)',
             position: 'relative',
-            overflow: 'hidden',
+            overflow: isDesktopCollapsed ? 'visible' : 'hidden', // Allow overflow when collapsed for toggle
           }}
         >
           {/* Subtle background pattern */}
@@ -500,16 +414,20 @@ export default function Sidebar(
 
           <Link
             href="/"
+            className="sidebar-brand"
             style={{
               textDecoration: 'none',
               display: 'flex',
+              flexDirection: isDesktopCollapsed ? 'column' : 'row', // Stack vertically if collapsed
               alignItems: 'center',
+              justifyContent: isDesktopCollapsed ? 'center' : 'flex-start',
               gap: 'clamp(0.5rem, 1vw, 0.875rem)',
               position: 'relative',
               zIndex: 1,
               transition: 'transform 0.2s ease',
               minWidth: 0,
-              flex: 1,
+              flex: isDesktopCollapsed ? 0 : 1, // Don't take full width if collapsed (allow button to exist)
+              width: isDesktopCollapsed ? '100%' : 'auto',
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateX(2px)';
@@ -519,6 +437,7 @@ export default function Sidebar(
             }}
           >
             <div
+              className="sidebar-logo"
               style={{
                 width: 'clamp(32px, 4vw, 42px)',
                 height: 'clamp(32px, 4vw, 42px)',
@@ -557,7 +476,7 @@ export default function Sidebar(
                 }}
               />
             </div>
-            {!isCollapsed && (
+            {!isDesktopCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', minWidth: 0 }}>
                 <h1
                   style={{
@@ -588,41 +507,18 @@ export default function Sidebar(
             )}
           </Link>
 
-          {/* Desktop collapse toggle */}
+          {/* Simple << / >> Collapse Toggle */}
           {!isMobile && (
             <button
               type="button"
-              onClick={() => setIsCollapsed(v => !v)}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={isCollapsed ? 'Expand' : 'Collapse'}
-              style={{
-                position: 'absolute',
-                top: '0.9rem',
-                right: '0.85rem',
-                width: '34px',
-                height: '34px',
-                borderRadius: '10px',
-                background: 'rgba(255,255,255,0.10)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all var(--transition-base)',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.16)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.10)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
-              }}
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-expanded={!isDesktopCollapsed}
+              aria-controls={sidebarId}
+              title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="sidebar-collapse-toggle"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d={isCollapsed ? 'M9 18l6-6-6-6' : 'M15 18l-6-6 6-6'} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              {isDesktopCollapsed ? '>>' : '<<'}
             </button>
           )}
         </div>
@@ -636,8 +532,10 @@ export default function Sidebar(
             minHeight: 0,
             overflowY: 'auto',
             overflowX: 'hidden',
-            padding: 'clamp(0.75rem, 1.6vw, 1rem) clamp(0.6rem, 1.4vw, 0.75rem)',
-            gap: '0.5rem',
+            padding: isDesktopCollapsed
+              ? '0.7rem 0.5rem'
+              : 'clamp(0.75rem, 1.6vw, 1rem) clamp(0.6rem, 1.4vw, 0.75rem)',
+            gap: isDesktopCollapsed ? '0.35rem' : '0.5rem',
             scrollbarGutter: 'stable',
             overscrollBehavior: 'contain',
           }}
@@ -681,14 +579,15 @@ export default function Sidebar(
         )}
         {/* User Profile and Footer - Refined */}
         <div
+          className="sidebar-footer"
           style={{
-            padding: '1rem 0.75rem',
+            padding: isDesktopCollapsed ? '0.75rem 0.5rem' : '1rem 0.75rem',
             borderTop: '1px solid rgba(255,255,255,0.1)',
             flexShrink: 0,
             marginTop: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.75rem',
+            gap: isDesktopCollapsed ? '0.6rem' : '0.75rem',
           }}
         >
           {/* User Profile - Compact */}
@@ -697,10 +596,10 @@ export default function Sidebar(
               display: 'flex',
               alignItems: 'center',
               gap: '0.75rem',
-              padding: '0.75rem',
+              padding: isDesktopCollapsed ? '0.5rem' : '0.75rem',
               background: 'rgba(255,255,255,0.08)',
               borderRadius: '8px',
-              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              justifyContent: isDesktopCollapsed ? 'center' : 'flex-start',
             }}
           >
             <div
@@ -731,7 +630,7 @@ export default function Sidebar(
                   ? userEmail[0].toUpperCase()
                   : 'U'}
             </div>
-            {!isCollapsed && (
+            {!isDesktopCollapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
@@ -762,9 +661,10 @@ export default function Sidebar(
           {/* Action Buttons Row */}
           <div
             style={{
-              display: 'grid',
+              display: isDesktopCollapsed ? 'flex' : 'grid',
+              flexDirection: isDesktopCollapsed ? 'column' : 'row',
               gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '0.5rem',
+              gap: isDesktopCollapsed ? '0.4rem' : '0.5rem',
             }}
           >
             {/* Documentation Link */}
@@ -772,8 +672,9 @@ export default function Sidebar(
               href="/help"
               onClick={() => isMobile && setIsMobileMenuOpen(false)}
               aria-label="Documentation"
+              title="Documentation"
               style={{
-                padding: '0.5rem',
+                padding: actionButtonPadding,
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '6px',
@@ -788,6 +689,7 @@ export default function Sidebar(
                 justifyContent: 'center',
                 gap: '0.25rem',
                 textAlign: 'center',
+                minWidth: 0,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
@@ -809,9 +711,11 @@ export default function Sidebar(
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01" />
               </svg>
-              <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>
-                Docs
-              </span>
+              {!isDesktopCollapsed && (
+                <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>
+                  Docs
+                </span>
+              )}
             </Link>
 
             {/* Shortcuts Button */}
@@ -821,8 +725,9 @@ export default function Sidebar(
                 if (isMobile) setIsMobileMenuOpen(false);
               }}
               aria-label="Show keyboard shortcuts"
+              title="Keyboard Shortcuts"
               style={{
-                padding: '0.5rem',
+                padding: actionButtonPadding,
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '6px',
@@ -837,6 +742,7 @@ export default function Sidebar(
                 justifyContent: 'center',
                 gap: '0.25rem',
                 textAlign: 'center',
+                minWidth: 0,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
@@ -858,9 +764,11 @@ export default function Sidebar(
                 <rect x="4" y="2" width="16" height="20" rx="2" />
                 <path d="M9 6h6m-6 4h6m-2 4h2" />
               </svg>
-              <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>
-                Keys
-              </span>
+              {!isDesktopCollapsed && (
+                <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>
+                  Keys
+                </span>
+              )}
             </button>
 
             {/* Settings Link */}
@@ -868,8 +776,9 @@ export default function Sidebar(
               href="/settings"
               onClick={() => isMobile && setIsMobileMenuOpen(false)}
               aria-label="Settings"
+              title="Settings"
               style={{
-                padding: '0.5rem',
+                padding: actionButtonPadding,
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: '6px',
@@ -884,6 +793,7 @@ export default function Sidebar(
                 justifyContent: 'center',
                 gap: '0.25rem',
                 textAlign: 'center',
+                minWidth: 0,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
@@ -905,18 +815,22 @@ export default function Sidebar(
                 <circle cx="12" cy="12" r="3" />
                 <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
               </svg>
-              <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>
-                Settings
-              </span>
+              {!isDesktopCollapsed && (
+                <span style={{ fontSize: 'clamp(0.58rem, 0.85vw, 0.7rem)', lineHeight: '1' }}>
+                  Settings
+                </span>
+              )}
             </Link>
           </div>
 
           {/* Logout Button */}
           <button
             onClick={() => (window.location.href = '/api/auth/signout')}
+            aria-label="Sign Out"
+            title="Sign Out"
             style={{
               width: '100%',
-              padding: '0.625rem',
+              padding: isDesktopCollapsed ? '0.5rem' : '0.625rem',
               background: 'rgba(255,255,255,0.1)',
               border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: '6px',
@@ -951,7 +865,7 @@ export default function Sidebar(
                 strokeLinejoin="round"
               />
             </svg>
-            Sign Out
+            {!isDesktopCollapsed && 'Sign Out'}
           </button>
         </div>
       </aside>
