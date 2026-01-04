@@ -197,6 +197,7 @@ model Service {
   serviceNotifyOnTriggered    Boolean               @default(true)
   serviceNotifyOnAck          Boolean               @default(true)
   serviceNotifyOnResolved     Boolean               @default(true)
+  slaDefinitions              SLADefinition[]
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
 
@@ -1097,7 +1098,8 @@ model SLADefinition {
   targetResolveTime Int? 
   
   // Scope of Applicability
-  serviceId String? 
+  serviceId String?
+  service   Service?  @relation(fields: [serviceId], references: [id]) 
   priority  String? // Filter by priority (e.g. "P1")
   
   activeFrom DateTime @default(now())
