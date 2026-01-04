@@ -19,9 +19,9 @@ for protected in $PROTECTED_BRANCHES; do
     echo "   You must use a feature branch and create a pull request."
     echo ""
     echo "   Steps to fix:"
-    echo "   1. Create a new branch:  git checkout -b feature/your-feature-name"
+    echo "   1. Create a new branch:  git checkout -b feature/name or fix/name"
     echo "   2. Commit your changes:  git add . && git commit -m 'your message'"
-    echo "   3. Push the branch:      git push -u origin feature/your-feature-name"
+    echo "   3. Push the branch:      git push -u origin your-branch-name"
     echo "   4. Create a PR on GitHub/GitLab"
     echo ""
     exit 1
