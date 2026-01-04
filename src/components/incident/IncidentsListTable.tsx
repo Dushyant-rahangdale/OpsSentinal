@@ -128,6 +128,58 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
         window.open(`/api/incidents/export?${params.toString()}`, '_blank');
     };
 
+    const gridTemplateColumns = canManageIncidents
+        ? '44px minmax(320px, 2.2fr) minmax(220px, 1.2fr) minmax(260px, 1.6fr) minmax(200px, 1fr) 190px 190px'
+        : 'minmax(340px, 2.2fr) minmax(220px, 1.2fr) minmax(260px, 1.6fr) minmax(200px, 1fr) 190px 190px';
+
+    const headerCellStyle: React.CSSProperties = {
+        padding: '0.75rem 0.85rem',
+        fontWeight: 800,
+        color: 'var(--text-secondary)',
+        fontSize: '0.7rem',
+        textTransform: 'uppercase',
+        letterSpacing: '0.12em',
+        whiteSpace: 'nowrap',
+    };
+
+    const buildUrgencyChip = (urgency: string | null | undefined) => {
+        if (!urgency) return null;
+        const u = urgency.toUpperCase();
+        const config =
+            u === 'HIGH'
+                ? { bg: 'rgba(239, 68, 68, 0.10)', border: 'rgba(239, 68, 68, 0.25)', color: '#b91c1c' }
+                : u === 'MEDIUM'
+                    ? { bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.25)', color: '#b45309' }
+                    : { bg: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.25)', color: '#15803d' };
+
+        return (
+            <span
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: '9999px',
+                    background: config.bg,
+                    border: `1px solid ${config.border}`,
+                    color: config.color,
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    lineHeight: 1,
+                    whiteSpace: 'nowrap',
+                }}
+                title={`Urgency: ${u}`}
+            >
+                {u}
+            </span>
+        );
+    };
+
+    const closeDetailsMenu = (el: HTMLElement) => {
+        const details = el.closest('details') as HTMLDetailsElement | null;
+        if (details) details.open = false;
+    };
+
     return (
         <div className="glass-panel" style={{ background: 'white', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
             {/* Bulk Actions Bar */}
@@ -507,335 +559,449 @@ export default function IncidentsListTable({ incidents, users, canManageIncident
                 </button>
             </div>
 
-            <div style={{
-                overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch'
-            }}>
-                <table style={{
-                    width: '100%',
-                    minWidth: '1200px',
-                    borderCollapse: 'collapse',
-                    fontSize: '0.9rem'
-                }}>
-                    <thead style={{ background: '#f9fafb', borderBottom: '2px solid var(--border)' }}>
-                        <tr>
-                            {canManageIncidents && (
-                                <th style={{ width: '50px', padding: '0.85rem 1rem', textAlign: 'left' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedIds.size === incidents.length && incidents.length > 0}
-                                        onChange={toggleSelectAll}
-                                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                                    />
-                                </th>
-                            )}
-                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Status
-                            </th>
-                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Priority
-                            </th>
-                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Incident
-                            </th>
-                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Service
-                            </th>
-                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Assignee
-                            </th>
-                            <th style={{ textAlign: 'left', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Created
-                            </th>
-                            <th style={{ textAlign: 'right', padding: '0.85rem 1rem', fontWeight: '750', color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {incidents.map((incident) => {
-                            const incidentStatus = incident.status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-                            return (
-                                <tr
-                                    key={incident.id}
-                                    style={{
-                                        borderBottom: '1px solid var(--border)',
-                                        cursor: 'pointer',
-                                        transition: 'background 0.15s',
-                                        background: selectedIds.has(incident.id) ? '#fef3f3' : 'transparent'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!selectedIds.has(incident.id)) {
-                                            e.currentTarget.style.background = '#f9fafb';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!selectedIds.has(incident.id)) {
-                                            e.currentTarget.style.background = 'transparent';
-                                        }
-                                    }}
-                                    onClick={(e) => {
-                                        // Don't navigate if clicking checkbox or action buttons
-                                        if ((e.target as HTMLElement).tagName !== 'INPUT' &&
-                                            (e.target as HTMLElement).tagName !== 'BUTTON' &&
-                                            (e.target as HTMLElement).tagName !== 'SELECT' &&
-                                            !(e.target as HTMLElement).closest('button') &&
-                                            !(e.target as HTMLElement).closest('select')) {
-                                            router.push(`/incidents/${incident.id}`);
-                                        }
-                                    }}
-                                >
-                                    {canManageIncidents && (
-                                        <td style={{ padding: '0.85rem 1rem' }} onClick={(e) => e.stopPropagation()}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedIds.has(incident.id)}
-                                                onChange={() => toggleSelect(incident.id)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                                            />
-                                        </td>
-                                    )}
-                                    <td style={{ padding: '0.85rem 1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <StatusBadge status={incidentStatus} size="sm" showDot />
-                                            {incident.escalationStatus && (
-                                                <EscalationStatusBadge
-                                                    status={incident.escalationStatus}
-                                                    currentStep={incident.currentEscalationStep}
-                                                    nextEscalationAt={incident.nextEscalationAt}
-                                                    size="sm"
-                                                />
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '0.85rem 1rem' }}>
-                                        <PriorityBadge priority={incident.priority} size="sm" />
-                                    </td>
-                                    <td style={{ padding: '0.85rem 1rem' }}>
-                                        <Link
-                                            href={`/incidents/${incident.id}`}
-                                            onClick={(e) => e.stopPropagation()}
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ minWidth: canManageIncidents ? '1220px' : '1160px' }}>
+                    {/* Header row */}
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns,
+                            alignItems: 'center',
+                            background: '#f9fafb',
+                            borderBottom: '1px solid var(--border)',
+                            padding: '0.25rem 0.25rem',
+                        }}
+                    >
+                        {canManageIncidents && (
+                            <div style={{ padding: '0.75rem 0.85rem' }} data-no-row-nav="true">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedIds.size === incidents.length && incidents.length > 0}
+                                    onChange={toggleSelectAll}
+                                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                    aria-label="Select all incidents"
+                                />
+                            </div>
+                        )}
+                        <div style={headerCellStyle}>Incident</div>
+                        <div style={headerCellStyle}>Service</div>
+                        <div style={headerCellStyle}>Signals</div>
+                        <div style={headerCellStyle}>Assignee</div>
+                        <div style={headerCellStyle}>Created</div>
+                        <div style={{ ...headerCellStyle, textAlign: 'right' }}>Actions</div>
+                    </div>
+
+                    {/* Rows */}
+                    <div style={{ padding: '0.75rem', background: 'white' }}>
+                        {incidents.length === 0 ? (
+                            <div
+                                style={{
+                                    padding: '3rem 1.5rem',
+                                    textAlign: 'center',
+                                    color: 'var(--text-muted)',
+                                    border: '1px dashed var(--border)',
+                                    borderRadius: '12px',
+                                    background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
+                                }}
+                            >
+                                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem', opacity: 0.3 }}>📋</div>
+                                <p style={{ fontSize: '1.05rem', marginBottom: '0.35rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    No incidents found
+                                </p>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                                    Try adjusting filters to see more results.
+                                </p>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                {incidents.map((incident) => {
+                                    const incidentStatus = incident.status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+                                    const isSelected = selectedIds.has(incident.id);
+                                    const urgencyChip = buildUrgencyChip(incident.urgency);
+
+                                    return (
+                                        <div
+                                            key={incident.id}
+                                            role="row"
                                             style={{
-                                                fontWeight: '700',
-                                                color: 'var(--primary)',
-                                                textDecoration: 'none',
-                                                fontSize: '0.92rem',
-                                                display: 'block',
-                                                marginBottom: '0.25rem'
+                                                display: 'grid',
+                                                gridTemplateColumns,
+                                                alignItems: 'center',
+                                                gap: '0px',
+                                                border: `1px solid ${isSelected ? 'rgba(211, 47, 47, 0.35)' : 'var(--border)'}`,
+                                                borderRadius: '12px',
+                                                background: isSelected ? 'rgba(211, 47, 47, 0.04)' : 'white',
+                                                boxShadow: isSelected ? '0 6px 18px rgba(211, 47, 47, 0.10)' : 'var(--shadow-xs)',
+                                                cursor: 'pointer',
+                                                transition: 'transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease',
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                            onMouseEnter={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                }
+                                            }}
+                                            onClick={(e) => {
+                                                const target = e.target as HTMLElement;
+                                                if (target.closest('[data-no-row-nav="true"]')) return;
+                                                router.push(`/incidents/${incident.id}`);
+                                            }}
                                         >
-                                            {incident.title}
-                                        </Link>
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                            #{incident.id.slice(-5).toUpperCase()}
-                                        </div>
-                                        <div style={{ fontSize: '0.72rem', color: incident.urgency === 'HIGH' ? 'var(--danger)' : 'var(--warning)', fontWeight: 650, marginTop: '0.2rem' }}>
-                                            {incident.urgency}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '0.85rem 1rem' }}>
-                                        <Link
-                                            href={`/services/${incident.service.id}`}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}
-                                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                                        >
-                                            {incident.service.name}
-                                        </Link>
-                                    </td>
-                                    <td style={{ padding: '0.85rem 1rem' }}>
-                                        <div onClick={(e) => e.stopPropagation()}>
-                                            <AssigneeSection
-                                                assignee={incident.assignee}
-                                                assigneeId={incident.assigneeId}
-                                                team={null}
-                                                teamId={null}
-                                                users={users}
-                                                teams={[]}
-                                                incidentId={incident.id}
-                                                canManage={canManageIncidents}
-                                                variant="list"
-                                            />
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '0.85rem 1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                                        {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
-                                    </td>
-                                    <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                                        {canManageIncidents && (
+                                            {canManageIncidents && (
+                                                <div style={{ padding: '0.85rem 0.85rem' }} data-no-row-nav="true">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleSelect(incident.id)}
+                                                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                                        aria-label={`Select incident ${incident.title}`}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Incident */}
+                                            <div style={{ padding: '0.85rem 0.85rem', minWidth: 0 }}>
+                                                <Link
+                                                    href={`/incidents/${incident.id}`}
+                                                    data-no-row-nav="true"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        display: 'block',
+                                                        fontWeight: 800,
+                                                        color: 'var(--text-primary)',
+                                                        textDecoration: 'none',
+                                                        fontSize: '0.95rem',
+                                                        lineHeight: 1.25,
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {incident.title}
+                                                </Link>
+                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 650 }}>
+                                                        #{incident.id.slice(-5).toUpperCase()}
+                                                    </span>
+                                                    {urgencyChip}
+                                                </div>
+                                            </div>
+
+                                            {/* Service */}
+                                            <div style={{ padding: '0.85rem 0.85rem', minWidth: 0 }}>
+                                                <Link
+                                                    href={`/services/${incident.service.id}`}
+                                                    data-no-row-nav="true"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        color: 'var(--primary)',
+                                                        textDecoration: 'none',
+                                                        fontWeight: 650,
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                        display: 'block',
+                                                    }}
+                                                >
+                                                    {incident.service.name}
+                                                </Link>
+                                            </div>
+
+                                            {/* Signals */}
+                                            <div style={{ padding: '0.85rem 0.85rem' }}>
+                                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <StatusBadge status={incidentStatus} size="sm" showDot />
+                                                    <PriorityBadge priority={incident.priority} size="sm" />
+                                                    {incident.escalationStatus && (
+                                                        <EscalationStatusBadge
+                                                            status={incident.escalationStatus}
+                                                            currentStep={incident.currentEscalationStep}
+                                                            nextEscalationAt={incident.nextEscalationAt}
+                                                            size="sm"
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Assignee */}
+                                            <div style={{ padding: '0.85rem 0.85rem' }} data-no-row-nav="true">
+                                                <AssigneeSection
+                                                    assignee={incident.assignee}
+                                                    assigneeId={incident.assigneeId}
+                                                    team={null}
+                                                    teamId={null}
+                                                    users={users}
+                                                    teams={[]}
+                                                    incidentId={incident.id}
+                                                    canManage={canManageIncidents}
+                                                    variant="list"
+                                                />
+                                            </div>
+
+                                            {/* Created */}
+                                            <div style={{ padding: '0.85rem 0.85rem', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 550 }}>
+                                                {formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })}
+                                            </div>
+
+                                            {/* Actions */}
                                             <div
-                                                onClick={(e) => e.stopPropagation()}
-                                                style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}
+                                                style={{ padding: '0.85rem 0.85rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center' }}
+                                                data-no-row-nav="true"
                                             >
-                                                {incident.status !== 'ACKNOWLEDGED' && incident.status !== 'RESOLVED' && incident.status !== 'SUPPRESSED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'ACKNOWLEDGED')}
-                                                        disabled={isPending}
-                                                        aria-label={`Acknowledge incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: 'linear-gradient(180deg, #fff4cc 0%, #ffe9a8 100%)',
-                                                            border: '1px solid #f6c453',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: '#b45309',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Acknowledge"
-                                                    >
-                                                        ✓ Ack
-                                                    </button>
-                                                )}
-                                                {incident.status !== 'SNOOZED' && incident.status !== 'RESOLVED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'SNOOZED')}
-                                                        disabled={isPending}
-                                                        aria-label={`Snooze incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid var(--border)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--text-secondary)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Snooze"
-                                                    >
-                                                        ⏰ Snooze
-                                                    </button>
-                                                )}
-                                                {incident.status === 'SNOOZED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'OPEN')}
-                                                        disabled={isPending}
-                                                        aria-label={`Unsnooze incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#feecec',
-                                                            border: '1px solid rgba(211,47,47,0.25)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--danger)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Unsnooze"
-                                                    >
-                                                        🔔 Unsnooze
-                                                    </button>
-                                                )}
-                                                {incident.status !== 'SUPPRESSED' && incident.status !== 'RESOLVED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'SUPPRESSED')}
-                                                        disabled={isPending}
-                                                        aria-label={`Suppress incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#f3f4f6',
-                                                            border: '1px solid var(--border)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--text-secondary)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Suppress"
-                                                    >
-                                                        🔕 Suppress
-                                                    </button>
-                                                )}
-                                                {incident.status === 'SUPPRESSED' && (
-                                                    <button
-                                                        onClick={() => handleStatusChange(incident.id, 'OPEN')}
-                                                        disabled={isPending}
-                                                        aria-label={`Unsuppress incident ${incident.title}`}
-                                                        style={{
-                                                            padding: '0.4rem 0.75rem',
-                                                            background: '#feecec',
-                                                            border: '1px solid rgba(211,47,47,0.25)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
-                                                            color: 'var(--danger)',
-                                                            cursor: isPending ? 'not-allowed' : 'pointer',
-                                                            opacity: isPending ? 0.6 : 1
-                                                        }}
-                                                        title="Unsuppress"
-                                                    >
-                                                        🔊 Unsuppress
-                                                    </button>
-                                                )}
                                                 {incident.status !== 'RESOLVED' && (
                                                     <Link
                                                         href={`/incidents/${incident.id}`}
                                                         onClick={(e) => e.stopPropagation()}
-                                                        aria-label={`Resolve incident ${incident.title}`}
                                                         style={{
-                                                            padding: '0.4rem 0.75rem',
+                                                            padding: '0.45rem 0.8rem',
                                                             background: 'var(--primary)',
                                                             border: 'none',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 600,
+                                                            borderRadius: '10px',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: 750,
                                                             color: 'white',
                                                             textDecoration: 'none',
-                                                            display: 'inline-block'
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            boxShadow: 'var(--shadow-xs)',
                                                         }}
                                                     >
                                                         Resolve
                                                     </Link>
                                                 )}
+
+                                                {canManageIncidents && (
+                                                    <details
+                                                        style={{ position: 'relative' }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <summary
+                                                            aria-label="More actions"
+                                                            style={{
+                                                                listStyle: 'none',
+                                                                cursor: 'pointer',
+                                                                padding: '0.45rem 0.7rem',
+                                                                borderRadius: '10px',
+                                                                border: '1px solid var(--border)',
+                                                                background: 'white',
+                                                                color: 'var(--text-secondary)',
+                                                                fontSize: '0.9rem',
+                                                                lineHeight: 1,
+                                                                userSelect: 'none',
+                                                            }}
+                                                        >
+                                                            ⋯
+                                                        </summary>
+                                                        <div
+                                                            style={{
+                                                                position: 'absolute',
+                                                                right: 0,
+                                                                top: 'calc(100% + 8px)',
+                                                                minWidth: '220px',
+                                                                background: 'white',
+                                                                border: '1px solid var(--border)',
+                                                                borderRadius: '12px',
+                                                                boxShadow: 'var(--shadow-lg)',
+                                                                padding: '0.35rem',
+                                                                zIndex: 50,
+                                                            }}
+                                                        >
+                                                            <Link
+                                                                href={`/incidents/${incident.id}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    closeDetailsMenu(e.currentTarget as unknown as HTMLElement);
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.5rem',
+                                                                    padding: '0.55rem 0.6rem',
+                                                                    borderRadius: '10px',
+                                                                    textDecoration: 'none',
+                                                                    color: 'var(--text-primary)',
+                                                                    fontWeight: 650,
+                                                                    fontSize: '0.85rem',
+                                                                }}
+                                                            >
+                                                                View details →
+                                                            </Link>
+
+                                                            <div style={{ height: '1px', background: 'var(--border)', margin: '0.25rem 0.35rem' }} />
+
+                                                            {incident.status !== 'ACKNOWLEDGED' && incident.status !== 'RESOLVED' && incident.status !== 'SUPPRESSED' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isPending}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        closeDetailsMenu(e.currentTarget);
+                                                                        handleStatusChange(incident.id, 'ACKNOWLEDGED');
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        textAlign: 'left',
+                                                                        padding: '0.55rem 0.6rem',
+                                                                        borderRadius: '10px',
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--text-primary)',
+                                                                    }}
+                                                                >
+                                                                    ✓ Acknowledge
+                                                                </button>
+                                                            )}
+
+                                                            {incident.status === 'ACKNOWLEDGED' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isPending}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        closeDetailsMenu(e.currentTarget);
+                                                                        handleStatusChange(incident.id, 'OPEN');
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        textAlign: 'left',
+                                                                        padding: '0.55rem 0.6rem',
+                                                                        borderRadius: '10px',
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--text-primary)',
+                                                                    }}
+                                                                >
+                                                                    ↩ Unacknowledge
+                                                                </button>
+                                                            )}
+
+                                                            {incident.status !== 'SNOOZED' && incident.status !== 'RESOLVED' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isPending}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        closeDetailsMenu(e.currentTarget);
+                                                                        handleStatusChange(incident.id, 'SNOOZED');
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        textAlign: 'left',
+                                                                        padding: '0.55rem 0.6rem',
+                                                                        borderRadius: '10px',
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--text-primary)',
+                                                                    }}
+                                                                >
+                                                                    ⏰ Snooze
+                                                                </button>
+                                                            )}
+
+                                                            {incident.status === 'SNOOZED' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isPending}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        closeDetailsMenu(e.currentTarget);
+                                                                        handleStatusChange(incident.id, 'OPEN');
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        textAlign: 'left',
+                                                                        padding: '0.55rem 0.6rem',
+                                                                        borderRadius: '10px',
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--text-primary)',
+                                                                    }}
+                                                                >
+                                                                    🔔 Unsnooze
+                                                                </button>
+                                                            )}
+
+                                                            {incident.status !== 'SUPPRESSED' && incident.status !== 'RESOLVED' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isPending}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        closeDetailsMenu(e.currentTarget);
+                                                                        handleStatusChange(incident.id, 'SUPPRESSED');
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        textAlign: 'left',
+                                                                        padding: '0.55rem 0.6rem',
+                                                                        borderRadius: '10px',
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--text-primary)',
+                                                                    }}
+                                                                >
+                                                                    🔕 Suppress
+                                                                </button>
+                                                            )}
+
+                                                            {incident.status === 'SUPPRESSED' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isPending}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        closeDetailsMenu(e.currentTarget);
+                                                                        handleStatusChange(incident.id, 'OPEN');
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        textAlign: 'left',
+                                                                        padding: '0.55rem 0.6rem',
+                                                                        borderRadius: '10px',
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        cursor: isPending ? 'not-allowed' : 'pointer',
+                                                                        fontSize: '0.85rem',
+                                                                        fontWeight: 600,
+                                                                        color: 'var(--text-primary)',
+                                                                    }}
+                                                                >
+                                                                    🔊 Unsuppress
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </details>
+                                                )}
                                             </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {incidents.length === 0 && (
-                            <tr>
-                                <td colSpan={canManageIncidents ? 8 : 7} style={{ padding: 0 }}>
-                                    <div style={{
-                                        padding: '4rem 2rem',
-                                        textAlign: 'center',
-                                        color: 'var(--text-muted)',
-                                        background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
-                                    }}>
-                                        <div style={{
-                                            fontSize: '3rem',
-                                            marginBottom: '1rem',
-                                            opacity: 0.3
-                                        }}>📋</div>
-                                        <p style={{
-                                            fontSize: '1.1rem',
-                                            marginBottom: '0.5rem',
-                                            fontWeight: '600',
-                                            color: 'var(--text-secondary)'
-                                        }}>
-                                            No incidents found
-                                        </p>
-                                        <p style={{
-                                            fontSize: '0.9rem',
-                                            color: 'var(--text-muted)'
-                                        }}>
-                                            Try adjusting your filters to see more results.
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             </div>
 
             {/* Pagination */}

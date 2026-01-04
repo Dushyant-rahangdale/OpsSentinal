@@ -76,7 +76,7 @@ function PriorityBadge({ priority, size = 'md', showLabel = false }: PriorityBad
                 background: config.bg,
                 color: config.color,
                 border: config.border,
-                borderRadius: '0px',
+                borderRadius: '9999px',
                 fontWeight: 700,
                 lineHeight: 1,
                 whiteSpace: 'nowrap',

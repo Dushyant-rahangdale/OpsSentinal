@@ -45,6 +45,14 @@ function EscalationStatusBadge({
 
 
     const timeText = getTimeUntilNext();
+    const compact = size === 'sm';
+    const stepText =
+        currentStep !== null && currentStep !== undefined ? `Step ${currentStep + 1}` : null;
+    const titleParts = [
+        status === 'ESCALATING' ? 'Escalating' : 'Escalation',
+        stepText,
+        timeText ? `Next: ${timeText}` : null,
+    ].filter(Boolean);
 
     return (
         <div style={{
@@ -59,8 +67,9 @@ function EscalationStatusBadge({
             border: status === 'ESCALATING'
                 ? '1px solid rgba(180, 83, 9, 0.2)'
                 : '1px solid rgba(107, 114, 128, 0.2)',
-            borderRadius: '0px',
-            fontWeight: 700
+            borderRadius: '9999px',
+            fontWeight: 700,
+            letterSpacing: '0.02em',
         }}>
             <span style={{
                 width: '6px',
@@ -69,13 +78,11 @@ function EscalationStatusBadge({
                 background: status === 'ESCALATING' ? '#f59e0b' : '#9ca3af',
                 boxShadow: status === 'ESCALATING' ? '0 0 0 2px #f59e0b33' : '0 0 0 2px #9ca3af33'
             }} />
-            Escalating
-            {currentStep !== null && currentStep !== undefined && (
-                <span style={{ opacity: 0.8 }}>• Step {currentStep + 1}</span>
-            )}
-            {timeText && (
-                <span style={{ fontSize: '0.7em', opacity: 0.8 }}>• {timeText}</span>
-            )}
+            <span title={titleParts.join(' • ')}>
+                Escalating
+                {!compact && stepText && <span style={{ opacity: 0.8 }}>• {stepText}</span>}
+                {timeText && <span style={{ fontSize: '0.7em', opacity: 0.8 }}>• {timeText}</span>}
+            </span>
         </div>
     );
 }

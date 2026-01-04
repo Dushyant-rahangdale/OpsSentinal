@@ -10,7 +10,7 @@ type StatusBadgeProps = {
 
 function StatusBadge({ status, size = 'md', showDot = false }: StatusBadgeProps) {
     const sizeStyles = {
-        sm: { padding: '0.2rem 0.5rem', fontSize: '0.7rem' },
+        sm: { padding: '0.22rem 0.55rem', fontSize: '0.7rem' },
         md: { padding: '0.25rem 0.75rem', fontSize: '0.8rem' },
         lg: { padding: '0.4rem 1rem', fontSize: '0.9rem' }
     };
@@ -79,10 +79,11 @@ function StatusBadge({ status, size = 'md', showDot = false }: StatusBadgeProps)
                 background: config.bg,
                 color: config.color,
                 border: config.border,
-                borderRadius: '0px',
+                borderRadius: '9999px',
                 fontWeight: 700,
                 lineHeight: 1,
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                letterSpacing: '0.02em',
             }}
         >
             {showDot && (
