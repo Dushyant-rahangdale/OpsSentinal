@@ -33,6 +33,12 @@ enum AuditEntityType {
   ESCALATION_POLICY
 }
 
+enum UserTokenType {
+  INVITE
+  PASSWORD_RESET
+  ADMIN_RESET_LINK
+}
+
 enum ServiceStatus {
   OPERATIONAL
   DEGRADED
@@ -664,6 +670,22 @@ model AuditLog {
   @@index([createdAt]) // For time-based queries
 }
 
+// User tokens for invite links, password resets, and admin reset links
+// Tokens are stored as SHA256 hashes (never store raw tokens in DB)
+model UserToken {
+  id         String        @id @default(cuid())
+  type       UserTokenType
+  identifier String // typically the user's email (lowercased)
+  tokenHash  String        @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime      @default(now())
+  metadata   Json?
+
+  @@index([identifier, type])
+  @@index([expiresAt])
+}
+
 
 
 model ApiKey {
@@ -1097,13 +1119,4 @@ model SLASnapshot {
 
   @@unique([date, slaDefinitionId])
 }
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
 

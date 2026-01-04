@@ -63,17 +63,22 @@ export async function initiatePasswordReset(
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000);
 
-    // Store token in VerificationToken (or dedicated PasswordResetToken table if we had one, but VerificationToken is generic enough or we create a new one?
-    // Plan said "VerificationToken". Schema has `VerificationToken { identifier, token, expires }`.
-    // Identifier can be email. Token should be the HASH.
-    // Wait, schema `VerificationToken` has composite unique [identifier, token].
-    // NextAuth uses this table. We can reuse it.
+    // Invalidate any existing unused password reset tokens for this user (best-effort)
+    await prisma.userToken.deleteMany({
+      where: {
+        identifier: normalizedEmail,
+        type: 'PASSWORD_RESET',
+        usedAt: null,
+      },
+    });
 
-    await prisma.verificationToken.create({
+    // Store SHA256(token) only (never store raw token)
+    await prisma.userToken.create({
       data: {
         identifier: normalizedEmail,
-        token: tokenHash,
-        expires,
+        type: 'PASSWORD_RESET',
+        tokenHash,
+        expiresAt: expires,
       },
     });
 
@@ -99,7 +104,8 @@ export async function initiatePasswordReset(
       // For this implementation, I'll assume we can use a direct email helper.
       try {
         const { sendEmail } = await import('@/lib/email');
-        const { getPasswordResetEmailTemplate } = await import('@/lib/password-reset-email-template');
+        const { getPasswordResetEmailTemplate } =
+          await import('@/lib/password-reset-email-template');
 
         const emailTemplate = getPasswordResetEmailTemplate({
           userName: user.name,
@@ -245,7 +251,6 @@ async function logAttempt(
   userId: string | undefined,
   data: any
 ) {
-
   try {
     await prisma.auditLog.create({
       data: {
@@ -258,7 +263,12 @@ async function logAttempt(
     });
   } catch (e) {
     // Don't fail the flow if logging fails
-    logger.error('Failed to write audit log', { component: 'password-reset', error: e, email, action });
+    logger.error('Failed to write audit log', {
+      component: 'password-reset',
+      error: e,
+      email,
+      action,
+    });
   }
 }
 
@@ -273,7 +283,7 @@ async function simulateWork(startTime: number) {
   // bcrypt.compare is async
   try {
     await bcrypt.compare('dummy-password', dummy);
-  } catch { } // Ignore result
+  } catch {} // Ignore result
 
   // Ensure we wait at least a minimum time if hashing was too fast
   const elapsed = Date.now() - startTime;

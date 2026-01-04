@@ -63,7 +63,7 @@ const mockPrisma = {
   notificationProvider: createMockModel(),
   slackOAuthConfig: createMockModel(),
   apiKey: createMockModel(),
-  verificationToken: createMockModel(),
+  userToken: createMockModel(),
   account: createMockModel(),
   session: createMockModel(),
 
@@ -125,7 +125,9 @@ if (process.env.VITEST_USE_REAL_DB) {
       const { default: prisma } = await import('../src/lib/prisma');
 
       await testPrisma.$disconnect();
-      await prisma.$disconnect();
+      if (typeof (prisma as any)?.$disconnect === 'function') {
+        await (prisma as any).$disconnect();
+      }
     } catch (e) {
       console.warn('[Setup] Failed to disconnect Prisma:', e);
     }

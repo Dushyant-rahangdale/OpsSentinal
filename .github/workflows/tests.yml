@@ -60,6 +60,11 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: DB smoke test (post-migrations)
+        run: |
+          mkdir -p reports
+          node scripts/ci-db-smoke.cjs
+
       - name: Migration validation
         run: |
           mkdir -p reports
@@ -162,6 +167,15 @@ jobs:
             const status = (totals.failures > 0 || totals.errors > 0) ? '❌ Failed' : '✅ Passed';
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
 
+            const smokePath = 'reports/ci-db-smoke.xml';
+            let smokeLine = '';
+            if (fs.existsSync(smokePath)) {
+              const smokeXml = fs.readFileSync(smokePath, 'utf8');
+              const smokeCounts = parseXml(smokeXml);
+              const ok = (smokeCounts.failures + smokeCounts.errors) === 0;
+              smokeLine = `- **DB smoke test**: ${ok ? '✅ Passed' : '❌ Failed'}`;
+            }
+
             const md = [
               `## ${status} Vitest Results`,
               '',
@@ -171,6 +185,8 @@ jobs:
               `| **Passed** | ${passed} |`,
               `| **Failed** | ${totals.failures + totals.errors} |`,
               `| **Skipped** | ${totals.skipped} |`,
+              '',
+              smokeLine,
               '',
               `[View Full Test Report](${runUrl})`,
               '',

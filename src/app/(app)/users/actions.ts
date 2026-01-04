@@ -3,7 +3,7 @@
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import { assertAdmin, assertAdminOrResponder, assertNotSelf } from '@/lib/rbac';
 import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
@@ -87,17 +87,21 @@ type UserFormState = {
 
 async function createInviteToken(email: string) {
   const token = randomBytes(32).toString('base64url');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  await prisma.verificationToken.deleteMany({
-    where: { identifier: email },
+  const identifier = email.toLowerCase();
+
+  await prisma.userToken.deleteMany({
+    where: { identifier, type: 'INVITE', usedAt: null },
   });
 
-  await prisma.verificationToken.create({
+  await prisma.userToken.create({
     data: {
-      identifier: email,
-      token,
-      expires,
+      identifier,
+      type: 'INVITE',
+      tokenHash,
+      expiresAt: expires,
     },
   });
 

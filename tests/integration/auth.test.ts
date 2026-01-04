@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { getAuthOptions } from '@/lib/auth';
 import { encryptWithKey } from '@/lib/encryption';
-import type { Adapter } from 'next-auth/adapters';
 import { type UserStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { testPrisma, resetDatabase, createTestUser } from '../helpers/test-db';
@@ -176,23 +175,11 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
     });
   });
 
-  describe('PrismaAdapter', () => {
-    it('should create user when emailVerified is null', async () => {
+  describe('NextAuth adapter configuration', () => {
+    it('does not configure a database adapter when using JWT sessions', async () => {
       const authOptions = await getAuthOptions();
-      const adapter = authOptions.adapter as Adapter;
-
-      if (!adapter?.createUser) {
-        throw new Error('Prisma adapter createUser not configured');
-      }
-
-      const created = await adapter.createUser({
-        name: 'Adapter User',
-        email: 'adapter@example.com',
-        emailVerified: null,
-      });
-
-      expect(created.email).toBe('adapter@example.com');
-      expect(created.emailVerified).toBeNull();
+      // This app uses JWT sessions and does not rely on NextAuth adapter tables.
+      expect(authOptions.adapter).toBeUndefined();
     });
   });
 

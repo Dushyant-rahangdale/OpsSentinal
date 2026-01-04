@@ -18,6 +18,11 @@ const REPORTS_DIR = path.join(__dirname, '..', 'reports');
 const REPORT_PATH = path.join(REPORTS_DIR, 'prisma-validate.xml');
 const DANGEROUS_OPERATIONS = ['DROP TABLE', 'DROP COLUMN', 'TRUNCATE', 'DELETE FROM'];
 const ENUM_ALTER_PATTERN = /ALTER\s+TYPE\s+"?\w+"?\s+ADD\s+VALUE/i;
+// Some legacy migrations predate stricter safety checks and are allowed to violate them.
+// Avoid editing historical migrations that may have been applied in production.
+const DROP_WITHOUT_IF_EXISTS_ALLOWLIST = new Set([
+  '20260104135828_remove_nextauth_adapter_tables',
+]);
 
 function escapeXml(value) {
   return String(value)
@@ -197,11 +202,15 @@ function validateMigrationContent(migrationName, sql) {
     }
   }
 
-  if (/DROP\s+(TABLE|INDEX|COLUMN)/i.test(sql) && !/IF\s+EXISTS/i.test(sql)) {
+  const hasDrop = /DROP\s+(TABLE|INDEX|COLUMN|TYPE)/i.test(sql);
+  const hasIfExists = /IF\s+EXISTS/i.test(sql);
+  if (hasDrop && !hasIfExists) {
+    const severity = DROP_WITHOUT_IF_EXISTS_ALLOWLIST.has(migrationName) ? 'warning' : 'error';
     issues.push({
-      severity: 'warning',
+      severity,
       migration: migrationName,
-      message: 'DROP operation without IF EXISTS clause. This may fail if object does not exist.',
+      message:
+        'DROP operation without IF EXISTS clause. Use IF EXISTS for safer deploys (or add to allowlist only for legacy migrations).',
     });
   }
 
