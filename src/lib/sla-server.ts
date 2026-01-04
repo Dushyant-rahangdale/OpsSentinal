@@ -549,7 +549,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   };
 
   // Insights
-  const insights = [];
+  const insights: SLAMetrics['insights'] = [];
   if (currentStats.count > prevStats.count)
     insights.push({
       type: 'negative',
