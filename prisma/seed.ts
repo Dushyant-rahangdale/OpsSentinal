@@ -166,8 +166,7 @@ async function main() {
     prisma.teamMember.deleteMany(),
     prisma.team.deleteMany(),
     prisma.apiKey.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.account.deleteMany(),
+
     prisma.userDevice.deleteMany(),
     prisma.user.deleteMany(),
   ]);
