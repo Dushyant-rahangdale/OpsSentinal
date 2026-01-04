@@ -39,14 +39,30 @@ export default function DashboardCommandCenter({
   filters,
   currentPeriodAcknowledged,
 }: DashboardCommandCenterProps) {
+  // Determine pulse color RGB based on status label
+  const getPulseRgb = () => {
+    switch (systemStatus.label) {
+      case 'CRITICAL':
+        return '239, 68, 68'; // Red
+      case 'DEGRADED':
+        return '245, 158, 11'; // Amber
+      case 'OPERATIONAL':
+        return '34, 197, 94'; // Green
+      default:
+        return '255, 255, 255';
+    }
+  };
+
   return (
     <div
+      className={`${styles.cinematicGlass}`}
       style={{
-        background: 'linear-gradient(135deg, #2d3748 0%, #1a202c 100%)',
         borderRadius: 'var(--radius-lg)',
-        padding: '1.5rem',
-        marginBottom: '1.5rem',
+        padding: '2rem', // Increased padding for luxury feel
+        marginBottom: '2rem',
         color: 'white',
+        position: 'relative',
+        overflow: 'hidden', // Clip ambient background
       }}
     >
       {/* Header */}
@@ -55,9 +71,11 @@ export default function DashboardCommandCenter({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          marginBottom: '1rem',
-          gap: '1rem',
+          marginBottom: '1.5rem', // More breathing room
+          gap: '1.5rem',
           flexWrap: 'wrap' as const,
+          position: 'relative',
+          zIndex: 10, // Ensure content stays above ambient noise
         }}
       >
         <div>
@@ -67,6 +85,7 @@ export default function DashboardCommandCenter({
               fontWeight: 'var(--font-weight-bold)',
               margin: '0 0 0.625rem 0',
               color: 'white',
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)', // Subtle text shadow for legibility
             }}
           >
             Command Center
@@ -79,28 +98,33 @@ export default function DashboardCommandCenter({
               alignItems: 'center',
               gap: '0.5rem',
               fontSize: 'var(--font-size-sm)',
-              color: 'rgba(255, 255, 255, 0.8)',
+              color: 'rgba(255, 255, 255, 0.9)',
               marginBottom: '0.75rem',
             }}
           >
             <span style={{ fontWeight: 'var(--font-weight-medium)' }}>System Status:</span>
             <strong
-              style={{
-                color: systemStatus.color,
-                fontWeight: 'var(--font-weight-semibold)',
-                background: systemStatus.bg,
-                padding: '0.125rem 0.5rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 'var(--font-size-xs)',
-                textTransform: 'uppercase' as const,
-                letterSpacing: '0.05em',
-              }}
+              className={styles.statusPulse}
+              style={
+                {
+                  color: systemStatus.color,
+                  fontWeight: 'var(--font-weight-bold)',
+                  background: systemStatus.bg,
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px', // Pill shape
+                  fontSize: '0.75rem',
+                  textTransform: 'uppercase' as const,
+                  letterSpacing: '0.05em',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  '--status-color-rgb': getPulseRgb(),
+                } as React.CSSProperties
+              }
             >
               {systemStatus.label}
             </strong>
             {allOpenIncidentsCount > 0 && (
               <span style={{ opacity: 0.7, fontSize: 'var(--font-size-xs)' }}>
-                ({allOpenIncidentsCount} active incident{allOpenIncidentsCount !== 1 ? 's' : ''})
+                ({allOpenIncidentsCount} active)
               </span>
             )}
           </div>
