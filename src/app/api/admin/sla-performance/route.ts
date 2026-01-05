@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Query SLA performance logs
-  const logs = await prisma.sla_performance_logs.findMany({
+  const logs = await prisma.sLAPerformanceLog.findMany({
     where: {
       timestamp: { gte: startTime },
     },
@@ -117,11 +117,11 @@ export async function GET(req: NextRequest) {
 
   if (queryCount > 0) {
     // Average duration
-    const totalDuration = logs.reduce((sum: number, log) => sum + log.durationMs, 0);
+    const totalDuration = logs.reduce((sum: number, log: any) => sum + log.durationMs, 0);
     avgDuration = Math.round(totalDuration / queryCount);
 
     // Average incident count
-    const totalIncidentCount = logs.reduce((sum: number, log) => sum + log.incidentCount, 0);
+    const totalIncidentCount = logs.reduce((sum: number, log: any) => sum + log.incidentCount, 0);
     avgIncidentCount = Math.round(totalIncidentCount / queryCount);
 
     // Percentiles (logs are already sorted by durationMs)
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
     p95Duration = logs[p95Index]?.durationMs ?? null;
 
     // Slow queries (>5 seconds)
-    slowQueryCount = logs.filter(log => log.durationMs > 5000).length;
+    slowQueryCount = logs.filter((log: any) => log.durationMs > 5000).length;
   }
 
   const metrics: PerformanceMetrics = {
