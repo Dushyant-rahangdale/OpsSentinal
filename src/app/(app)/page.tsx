@@ -39,6 +39,11 @@ import {
   type DashboardFilters as DashboardFilterParams,
 } from '@/lib/dashboard-utils';
 
+// New Imports for SLA Breach Widget
+import { getWidgetData } from '@/lib/widget-data-provider';
+import { WidgetProvider } from '@/components/dashboard/WidgetProvider';
+import SLABreachAlertsWidget from '@/components/dashboard/widgets/SLABreachAlertsWidget';
+
 export const revalidate = 30;
 
 const INCIDENTS_PER_PAGE = 30;
@@ -92,9 +97,9 @@ export default async function Dashboard({
   const email = session?.user?.email ?? null;
   const user = email
     ? await prisma.user.findUnique({
-      where: { email },
-      select: { name: true, timeZone: true },
-    })
+        where: { email },
+        select: { id: true, name: true, timeZone: true },
+      })
     : null;
   const userName = user?.name || 'there';
   const userTimeZone = user?.timeZone || 'UTC';
@@ -137,7 +142,7 @@ export default async function Dashboard({
   const skip = (page - 1) * INCIDENTS_PER_PAGE;
 
   // Fetch Data in Parallel
-  const [incidents, totalCount, services, users, slaMetrics] = await Promise.all([
+  const [incidents, totalCount, services, users, slaMetrics, widgetData] = await Promise.all([
     prisma.incident.findMany({
       where,
       select: {
@@ -189,6 +194,8 @@ export default async function Dashboard({
       includeIncidents: true,
       incidentLimit: 5,
     }),
+    // Fetch widget data specifically for the active incident summaries
+    user ? getWidgetData(user.id, 'user') : Promise.resolve(null),
   ]);
 
   // Calculate MTTA
@@ -650,14 +657,15 @@ export default async function Dashboard({
             {/* Quick Actions Panel */}
             <QuickActionsPanel greeting={greeting} userName={userName} />
 
-            {/* On-Call Status - Compact */}
-            <SidebarWidget
-              title="On-Call"
-              iconBg={WIDGET_ICON_BG.green}
-              icon={<span style={{ fontSize: '20px', color: 'white' }}>⏰</span>}
-            >
-              <CompactOnCallStatus activeShifts={activeShifts} />
-            </SidebarWidget>
+            {/* SLA Breach Alerts - New Real-time Widget */}
+            {widgetData && (
+              <WidgetProvider initialData={widgetData}>
+                <SLABreachAlertsWidget />
+              </WidgetProvider>
+            )}
+
+            {/* On-Call Widget - Full Featured */}
+            <OnCallWidget activeShifts={activeShifts} />
 
             {/* Performance Metrics - Compact */}
             <SidebarWidget

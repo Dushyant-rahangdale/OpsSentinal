@@ -1211,3 +1211,19 @@ model SLASnapshot {
   @@unique([date, slaDefinitionId])
 }
 
+model SLAPerformanceLog {
+  id              String   @id @default(cuid())
+  timestamp       DateTime @default(now())
+  
+  serviceId       String?
+  teamId          String?
+  windowDays      Int
+  
+  durationMs      Int
+  incidentCount   Int
+  
+  @@index([timestamp])
+  @@index([durationMs])
+  @@map("sla_performance_logs")
+}
+

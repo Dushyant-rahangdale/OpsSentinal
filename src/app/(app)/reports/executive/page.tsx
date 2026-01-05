@@ -26,6 +26,14 @@ export default async function ExecutiveReportPage() {
     calculateSLAMetrics({ windowDays: 90 }),
   ]);
 
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  const getEffectiveDays = (metrics: { effectiveStart: Date; effectiveEnd: Date }) =>
+    Math.max(
+      1,
+      Math.ceil((metrics.effectiveEnd.getTime() - metrics.effectiveStart.getTime()) / dayMs)
+    );
+
   // Calculate trends
   const incidentTrend =
     last30d.totalIncidents > 0 && last7d.totalIncidents > 0
@@ -37,7 +45,30 @@ export default async function ExecutiveReportPage() {
       ? ((last7d.mttr - last30d.mttr) / last30d.mttr) * 100
       : 0;
 
-  const formatPercent = (val: number) => `${val.toFixed(1)}%`;
+  const buildWindowLabel = (
+    metrics: { effectiveStart: Date; effectiveEnd: Date; isClipped: boolean },
+    requestedDays: number
+  ) => {
+    const effectiveDays = metrics.isClipped
+      ? Math.max(
+          1,
+          Math.ceil((metrics.effectiveEnd.getTime() - metrics.effectiveStart.getTime()) / dayMs)
+        )
+      : requestedDays;
+    return {
+      label: `${effectiveDays}d`,
+      suffix: metrics.isClipped ? ' (retention limit)' : '',
+    };
+  };
+
+  const last7dLabel = buildWindowLabel(last7d, 7);
+  const last30dLabel = buildWindowLabel(last30d, 30);
+
+  const formatPercent = (val: number | null) => (val === null ? '--' : `${val.toFixed(1)}%`);
+  const complianceVariant = (val: number | null) => {
+    if (val === null) return 'default';
+    return val >= 95 ? 'success' : val >= 80 ? 'warning' : 'danger';
+  };
   const formatMinutes = (val: number | null) => (val === null ? '--' : `${val.toFixed(1)}m`);
   const formatTrend = (val: number) => (val > 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`);
 

@@ -153,8 +153,11 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
     });
     logCount = logsDeleted.count;
 
-    // Cleanup old metric rollups
+    // Cleanup old metric rollups (telemetry)
     metricsCount = await cleanupOldRollups();
+
+    // Cleanup old SLA performance rollups
+    const slaRollupsDeleted = await cleanupOldSLARollups();
 
     const executionTimeMs = Date.now() - startTime;
 
@@ -164,6 +167,7 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
       alerts: alertCount,
       logs: logCount,
       metrics: metricsCount,
+      slaRollups: slaRollupsDeleted,
       executionTimeMs,
     });
 
@@ -179,6 +183,36 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
   } catch (error) {
     logger.error('[DataCleanup] Cleanup failed', { error });
     throw error;
+  }
+}
+
+/**
+ * Cleanup old SLA metric rollups based on retention policy
+ */
+export async function cleanupOldSLARollups(): Promise<number> {
+  const { default: prisma } = await import('./prisma');
+  const policy = await getRetentionPolicy();
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - policy.metricsRetentionDays);
+
+  try {
+    const deleted = await prisma.incidentMetricRollup.deleteMany({
+      where: {
+        date: { lt: cutoffDate },
+      },
+    });
+
+    logger.info('[DataCleanup] Old SLA rollups deleted', {
+      count: deleted.count,
+      cutoffDate: cutoffDate.toISOString(),
+      retentionDays: policy.metricsRetentionDays,
+    });
+
+    return deleted.count;
+  } catch (error) {
+    logger.error('[DataCleanup] Failed to cleanup old SLA rollups', { error });
+    return 0;
   }
 }
 

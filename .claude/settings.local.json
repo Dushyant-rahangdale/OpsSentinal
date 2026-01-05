@@ -4,7 +4,10 @@
       "Bash(npm test:*)",
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(cat:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx prisma generate:*)"
     ]
   }
 }

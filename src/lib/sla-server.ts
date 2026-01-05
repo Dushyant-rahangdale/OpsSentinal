@@ -11,7 +11,12 @@ import {
 } from './analytics-metrics';
 import { getServiceDynamicStatus } from './service-status';
 import { logger } from './logger';
-import { getRetentionPolicy, getQueryDateBounds, shouldUseRollups, type RetentionPolicy } from './retention-policy';
+import {
+  getRetentionPolicy,
+  getQueryDateBounds,
+  shouldUseRollups,
+  type RetentionPolicy,
+} from './retention-policy';
 
 /**
  * SLA Server - World-Class SLA Metrics Calculation
@@ -227,9 +232,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       ? filters.serviceId[0]
       : filters.serviceId;
 
-    const teamIdFilter = Array.isArray(filters.teamId)
-      ? filters.teamId[0]
-      : filters.teamId;
+    const teamIdFilter = Array.isArray(filters.teamId) ? filters.teamId[0] : filters.teamId;
 
     const rollupMetrics = await calculateSLAMetricsFromRollups(finalStart, finalEnd, {
       serviceId: serviceIdFilter,
@@ -266,22 +269,22 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   // 2. Build Where Clauses
   const serviceWhere = filters.serviceId
     ? {
-      serviceId: Array.isArray(filters.serviceId) ? { in: filters.serviceId } : filters.serviceId,
-    }
+        serviceId: Array.isArray(filters.serviceId) ? { in: filters.serviceId } : filters.serviceId,
+      }
     : {};
 
   const teamWhere = filters.teamId
     ? filters.useOrScope
       ? {
-        OR: [
-          { teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId },
-          {
-            service: {
-              teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId,
+          OR: [
+            { teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId },
+            {
+              service: {
+                teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId,
+              },
             },
-          },
-        ],
-      }
+          ],
+        }
       : { teamId: Array.isArray(filters.teamId) ? { in: filters.teamId } : filters.teamId }
     : {};
 
@@ -573,53 +576,53 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const recentIncidentIds = recentIncidents.map(i => i.id);
   const [ackEvents, escalationEvents, reopenEvents, autoResolveEvents] = recentIncidentIds.length
     ? await Promise.all([
-      // FIX: Add ordering to get EARLIEST ack event, not random
-      prisma.incidentEvent.findMany({
-        where: {
-          incidentId: { in: recentIncidentIds },
-          message: { contains: 'acknowledged', mode: 'insensitive' },
-        },
-        select: { incidentId: true, createdAt: true },
-        orderBy: { createdAt: 'asc' }, // CRITICAL: Get earliest event first
-      }),
-      prisma.incidentEvent.findMany({
-        where: {
-          incidentId: { in: recentIncidentIds },
-          message: { contains: 'escalated to', mode: 'insensitive' },
-        },
-        select: { incidentId: true, createdAt: true },
-        orderBy: { createdAt: 'asc' },
-      }),
-      prisma.incidentEvent.findMany({
-        where: {
-          incidentId: { in: recentIncidentIds },
-          message: { contains: 'reopen', mode: 'insensitive' },
-        },
-        select: { incidentId: true },
-      }),
-      prisma.incidentEvent.findMany({
-        where: {
-          incidentId: { in: recentIncidentIds },
-          message: { contains: 'auto-resolved', mode: 'insensitive' },
-        },
-        select: { incidentId: true },
-      }),
-    ])
+        // FIX: Add ordering to get EARLIEST ack event, not random
+        prisma.incidentEvent.findMany({
+          where: {
+            incidentId: { in: recentIncidentIds },
+            message: { contains: 'acknowledged', mode: 'insensitive' },
+          },
+          select: { incidentId: true, createdAt: true },
+          orderBy: { createdAt: 'asc' }, // CRITICAL: Get earliest event first
+        }),
+        prisma.incidentEvent.findMany({
+          where: {
+            incidentId: { in: recentIncidentIds },
+            message: { contains: 'escalated to', mode: 'insensitive' },
+          },
+          select: { incidentId: true, createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        }),
+        prisma.incidentEvent.findMany({
+          where: {
+            incidentId: { in: recentIncidentIds },
+            message: { contains: 'reopen', mode: 'insensitive' },
+          },
+          select: { incidentId: true },
+        }),
+        prisma.incidentEvent.findMany({
+          where: {
+            incidentId: { in: recentIncidentIds },
+            message: { contains: 'auto-resolved', mode: 'insensitive' },
+          },
+          select: { incidentId: true },
+        }),
+      ])
     : [[], [], [], []];
 
   const [firstNotes, firstAlerts] = recentIncidentIds.length
     ? await Promise.all([
-      prisma.incidentNote.groupBy({
-        by: ['incidentId'],
-        where: { incidentId: { in: recentIncidentIds } },
-        _min: { createdAt: true },
-      }),
-      prisma.alert.groupBy({
-        by: ['incidentId'],
-        where: { incidentId: { in: recentIncidentIds } },
-        _min: { createdAt: true },
-      }),
-    ])
+        prisma.incidentNote.groupBy({
+          by: ['incidentId'],
+          where: { incidentId: { in: recentIncidentIds } },
+          _min: { createdAt: true },
+        }),
+        prisma.alert.groupBy({
+          by: ['incidentId'],
+          where: { incidentId: { in: recentIncidentIds } },
+          _min: { createdAt: true },
+        }),
+      ])
     : [[], []];
 
   // Build Global Ack Map - FIX: Use earliest ack event due to ordering above
@@ -1153,9 +1156,9 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const userIds = Array.from(new Set([...assigneeIds, ...onCallUserIds]));
   const usersById = userIds.length
     ? await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true },
-    })
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true },
+      })
     : [];
   const userNameMap = new Map(usersById.map(u => [u.id, u.name || u.email || 'Unknown']));
   const assigneeLoad = assigneeCounts.map(e => ({
@@ -1186,9 +1189,10 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
 
   // Performance monitoring: Final timing and metrics
   const totalQueryDuration = Date.now() - queryStartTime;
-  const incidentsPerSecond = totalIncidentCount > 0 && totalQueryDuration > 0
-    ? Math.round(totalIncidentCount / (totalQueryDuration / 1000))
-    : 0;
+  const incidentsPerSecond =
+    totalIncidentCount > 0 && totalQueryDuration > 0
+      ? Math.round(totalIncidentCount / (totalQueryDuration / 1000))
+      : 0;
 
   logger.info('[SLA] Query performance', {
     duration: totalQueryDuration,
@@ -1196,7 +1200,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     dateRange: {
       start: finalStart.toISOString(),
       end: finalEnd.toISOString(),
-      days: actualWindowDays
+      days: actualWindowDays,
     },
     filters: {
       hasServiceFilter: !!filters.serviceId,
@@ -1205,9 +1209,29 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     },
     performanceMetric: {
       incidentsPerSecond,
-      msPerIncident: totalIncidentCount > 0 ? Math.round(totalQueryDuration / totalIncidentCount * 100) / 100 : null,
-    }
+      msPerIncident:
+        totalIncidentCount > 0
+          ? Math.round((totalQueryDuration / totalIncidentCount) * 100) / 100
+          : null,
+    },
   });
+  // Write performance log to database using raw SQL (bypasses Prisma client cache)
+  const serviceIdValue = Array.isArray(filters.serviceId)
+    ? filters.serviceId[0]
+    : filters.serviceId || null;
+  const teamIdValue = Array.isArray(filters.teamId) ? filters.teamId[0] : filters.teamId || null;
+  const perfId = `perf_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+  prisma.$executeRaw`
+    INSERT INTO sla_performance_logs (id, timestamp, "serviceId", "teamId", "windowDays", "durationMs", "incidentCount")
+    VALUES (${perfId}, NOW(), ${serviceIdValue}, ${teamIdValue}, ${actualWindowDays}, ${totalQueryDuration}, ${totalIncidentCount})
+  `
+    .then(() => {
+      logger.info('[SLA] Performance log written', { id: perfId });
+    })
+    .catch((err: unknown) => {
+      logger.error('[SLA] Failed to log performance', { err: String(err) });
+    });
 
   // Slow query alert (>10s threshold)
   if (totalQueryDuration > 10000) {
@@ -1219,7 +1243,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
         serviceId: filters.serviceId,
         teamId: filters.teamId,
         windowDays: actualWindowDays,
-      }
+      },
     });
   }
 
@@ -1228,7 +1252,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     logger.warn('[SLA] Large dataset detected, consider using streaming API or rollups', {
       count: totalIncidentCount,
       threshold: 50000,
-      filters
+      filters,
     });
   }
 
@@ -1338,10 +1362,10 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     eventsPerIncident:
       totalRecent > 0
         ? (ackEvents.length +
-          escalationEvents.length +
-          reopenEvents.length +
-          autoResolveEvents.length) /
-        totalRecent
+            escalationEvents.length +
+            reopenEvents.length +
+            autoResolveEvents.length) /
+          totalRecent
         : 0,
     heatmapData,
     currentShifts: currentShiftsData.map(s => ({
@@ -1351,15 +1375,15 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     })),
     recentIncidents: filters.includeIncidents
       ? displayIncidents.map(inc => ({
-        id: inc.id,
-        title: inc.title,
-        description: inc.description,
-        status: inc.status,
-        urgency: inc.urgency,
-        createdAt: inc.createdAt,
-        resolvedAt: inc.resolvedAt,
-        service: { id: inc.serviceId, name: inc.service.name, region: inc.service.region },
-      }))
+          id: inc.id,
+          title: inc.title,
+          description: inc.description,
+          status: inc.status,
+          urgency: inc.urgency,
+          createdAt: inc.createdAt,
+          resolvedAt: inc.resolvedAt,
+          service: { id: inc.serviceId, name: inc.service.name, region: inc.service.region },
+        }))
       : undefined,
   };
 }
@@ -1729,7 +1753,8 @@ export async function calculateSLAMetricsFromRollups(
   const ackCompliance = totalAckEvaluated > 0 ? (ackSlaMet / totalAckEvaluated) * 100 : 0;
 
   const totalResolveEvaluated = resolveSlaMet + resolveSlaBreached;
-  const resolveCompliance = totalResolveEvaluated > 0 ? (resolveSlaMet / totalResolveEvaluated) * 100 : 0;
+  const resolveCompliance =
+    totalResolveEvaluated > 0 ? (resolveSlaMet / totalResolveEvaluated) * 100 : 0;
 
   // Calculate rates
   const afterHoursRate = totalIncidents > 0 ? (afterHoursCount / totalIncidents) * 100 : 0;

@@ -4,6 +4,7 @@ import { logger } from './logger';
 import { retryFailedNotifications } from './notification-retry';
 import { processAutoUnsnooze } from '@/app/(app)/incidents/snooze-actions';
 import { cleanupUserTokens } from '@/lib/user-tokens';
+import { checkSLABreaches } from './sla-breach-monitor';
 
 // Global state to persist across HMR
 const globalForCron = global as unknown as {
@@ -16,6 +17,7 @@ const globalForCron = global as unknown as {
         lastError: string | null;
         nextRunAt: Date | null;
         initialized: boolean;
+        lastRollupDate: string | null;
       }
     | undefined;
 };
@@ -28,17 +30,18 @@ const state = globalForCron.cronState || {
   lastError: null,
   nextRunAt: null,
   initialized: false,
+  lastRollupDate: null,
 };
 
 if (process.env.NODE_ENV !== 'production') globalForCron.cronState = state;
 
 const MIN_DELAY_MS = 15_000;
-const MAX_DELAY_MS = 5 * 60_000;
+const MAX_DELAY_MS = 2 * 60_000; // Reduced from 5min to 2min for faster SLA breach detection
 
 async function getNextScheduledTime(): Promise<Date> {
   try {
     const prisma = (await import('./prisma')).default;
-    const [nextIncident, nextJob] = await Promise.all([
+    const [nextIncident, nextJob, nextSlaBreach] = await Promise.all([
       prisma.incident.findFirst({
         where: {
           escalationStatus: 'ESCALATING',
@@ -54,18 +57,51 @@ async function getNextScheduledTime(): Promise<Date> {
         orderBy: { scheduledAt: 'asc' },
         select: { scheduledAt: true },
       }),
+      // Check for next potential SLA breach
+      prisma.incident.findFirst({
+        where: {
+          status: { not: 'RESOLVED' },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          createdAt: true,
+          acknowledgedAt: true,
+          service: {
+            select: {
+              targetAckMinutes: true,
+              targetResolveMinutes: true,
+              serviceNotifyOnSlaBreach: true,
+            },
+          },
+        },
+      }),
     ]);
 
     const times = [
       nextIncident?.nextEscalationAt ? new Date(nextIncident.nextEscalationAt).getTime() : null,
       nextJob?.scheduledAt ? new Date(nextJob.scheduledAt).getTime() : null,
-    ].filter((value): value is number => typeof value === 'number');
+    ];
 
-    if (times.length === 0) {
+    // Add SLA breach check time (5 min before ack target for unacked incidents)
+    if (
+      nextSlaBreach &&
+      !nextSlaBreach.acknowledgedAt &&
+      nextSlaBreach.service.serviceNotifyOnSlaBreach
+    ) {
+      const createdAt = new Date(nextSlaBreach.createdAt).getTime();
+      const ackWarningMs = 5 * 60 * 1000; // 5 min warning threshold
+      const targetAckMs = (nextSlaBreach.service.targetAckMinutes || 15) * 60 * 1000;
+      const breachCheckTime = createdAt + targetAckMs - ackWarningMs;
+      times.push(breachCheckTime > Date.now() ? breachCheckTime : null);
+    }
+
+    const validTimes = times.filter((value): value is number => typeof value === 'number');
+
+    if (validTimes.length === 0) {
       return new Date(Date.now() + MAX_DELAY_MS);
     }
 
-    return new Date(Math.min(...times));
+    return new Date(Math.min(...validTimes));
   } catch (error) {
     // Database connection error - use max delay as fallback
     logger.error('[Cron Scheduler] Failed to query next scheduled time from database', { error });
@@ -119,6 +155,42 @@ async function runOnce() {
 
     const tokenCleanup = await cleanupUserTokens();
     logger.info('User tokens cleaned up', tokenCleanup);
+
+    // SLA Breach Monitoring (runs every cycle)
+    const breachResult = await checkSLABreaches();
+    logger.info('SLA breaches checked', {
+      activeIncidents: breachResult.activeIncidentCount,
+      warnings: breachResult.warningCount,
+    });
+
+    // Metric Rollup Generation (runs once daily at/after 1 AM UTC)
+    const now = new Date();
+    const todayKey = now.toISOString().split('T')[0];
+    const isNewDay = !state.lastRollupDate || state.lastRollupDate !== todayKey;
+    const isAfter1AM = now.getUTCHours() >= 1;
+
+    if (isNewDay && isAfter1AM) {
+      try {
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setUTCHours(0, 0, 0, 0);
+
+        const { generateAllDailyRollups } = await import('./metric-rollup');
+        await generateAllDailyRollups(yesterday);
+
+        state.lastRollupDate = todayKey;
+        logger.info('Daily metric rollups generated', {
+          date: yesterday.toISOString().split('T')[0],
+          nextRun: 'tomorrow at 1 AM UTC',
+        });
+      } catch (error) {
+        logger.error('Failed to generate daily rollups', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        // Don't set lastRollupDate so it will retry next cycle
+      }
+    }
 
     const duration = Date.now() - startTime;
     state.lastSuccessAt = new Date();

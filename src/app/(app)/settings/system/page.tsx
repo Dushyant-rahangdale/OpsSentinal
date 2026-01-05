@@ -1,5 +1,6 @@
 import { getUserPermissions } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
+import Link from 'next/link';
 import AppUrlSettings from '@/components/settings/AppUrlSettings';
 import SettingsPage from '@/components/settings/SettingsPage';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
@@ -235,6 +236,24 @@ export default async function SystemSettingsPage() {
                   </p>
                 </div>
                 <RetentionPolicySettings />
+              </SettingsSectionCard>
+            </div>
+
+            {/* Performance Monitoring */}
+            <div id="system-settings-performance">
+              <SettingsSectionCard
+                title="Performance Monitoring"
+                description="Monitor SLA query performance and system metrics"
+                action={
+                  <Link href="/settings/system/performance" className="btn btn-secondary">
+                    View Metrics →
+                  </Link>
+                }
+                className="system-settings-card"
+              >
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Track query durations, slow queries, and optimization opportunities.
+                </p>
               </SettingsSectionCard>
             </div>
           </div>
