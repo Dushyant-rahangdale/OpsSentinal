@@ -2,11 +2,14 @@ import { calculateSLAMetrics } from '@/lib/sla-server';
 import { assertAdmin } from '@/lib/rbac';
 import { Metadata } from 'next';
 import prisma from '@/lib/prisma';
+import { getAuthOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
+import { formatDateTime, getUserTimeZone } from '@/lib/timezone';
 import MetricCard from '@/components/analytics/MetricCard';
 import ChartCard from '@/components/analytics/ChartCard';
 import ProgressBar from '@/components/analytics/ProgressBar';
 import BarChart from '@/components/analytics/BarChart';
-import { Shield, TrendingUp, Users, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Shield, Users, Clock, AlertCircle } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +20,19 @@ export const metadata: Metadata = {
 
 export default async function ExecutiveReportPage() {
   await assertAdmin();
+  const session = await getServerSession(await getAuthOptions());
+  const email = session?.user?.email ?? null;
+  const user = email
+    ? await prisma.user.findUnique({ where: { email }, select: { timeZone: true } })
+    : null;
+  const userTimeZone = getUserTimeZone(user ?? undefined);
+  const lastUpdatedLabel = formatDateTime(new Date(), userTimeZone, { format: 'datetime' });
 
   // Fetch metrics for multiple time windows
   // Fetch metrics for multiple time windows
-  const [last7d, last30d, last90d] = await Promise.all([
+  const [last7d, last30d] = await Promise.all([
     calculateSLAMetrics({ windowDays: 7 }),
     calculateSLAMetrics({ windowDays: 30 }),
-    calculateSLAMetrics({ windowDays: 90 }),
   ]);
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -35,16 +44,17 @@ export default async function ExecutiveReportPage() {
     );
 
   // Calculate trends
+  const last7dDays = getEffectiveDays(last7d);
+  const last30dDays = getEffectiveDays(last30d);
   const incidentTrend =
     last30d.totalIncidents > 0 && last7d.totalIncidents > 0
-      ? (last7d.totalIncidents / 7 / (last30d.totalIncidents / 30) - 1) * 100
+      ? (last7d.totalIncidents / last7dDays / (last30d.totalIncidents / last30dDays) - 1) * 100
       : 0;
 
   const mttrTrend =
     last30d.mttr !== null && last7d.mttr !== null && last30d.mttr > 0
       ? ((last7d.mttr - last30d.mttr) / last30d.mttr) * 100
       : 0;
-
   const buildWindowLabel = (
     metrics: { effectiveStart: Date; effectiveEnd: Date; isClipped: boolean },
     requestedDays: number
@@ -91,7 +101,7 @@ export default async function ExecutiveReportPage() {
             className="analytics-hero-right"
             style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}
           >
-            Last updated: {new Date().toLocaleString()}
+            Last updated: {lastUpdatedLabel}
           </div>
         </div>
       </div>
@@ -107,14 +117,14 @@ export default async function ExecutiveReportPage() {
         }}
       >
         <MetricCard
-          label="Incidents (7d)"
+          label={`Incidents (${last7dLabel.label})${last7dLabel.suffix}`}
           value={last7d.totalIncidents.toString()}
           detail={formatTrend(incidentTrend) + ' vs avg'}
           variant={incidentTrend < 0 ? 'success' : incidentTrend > 20 ? 'danger' : 'default'}
           icon={<AlertCircle className="w-5 h-5" />}
         />
         <MetricCard
-          label="MTTR (7d)"
+          label={`MTTR (${last7dLabel.label})${last7dLabel.suffix}`}
           value={formatMinutes(last7d.mttr)}
           detail={formatTrend(mttrTrend) + ' vs 30d'}
           variant={mttrTrend < 0 ? 'success' : mttrTrend > 20 ? 'danger' : 'default'}
@@ -124,19 +134,15 @@ export default async function ExecutiveReportPage() {
           label="SLA Compliance"
           value={formatPercent(last7d.ackCompliance)}
           detail="Acknowledgement"
-          variant={
-            last7d.ackCompliance >= 95
-              ? 'success'
-              : last7d.ackCompliance >= 80
-                ? 'warning'
-                : 'danger'
-          }
+          variant={complianceVariant(last7d.ackCompliance)}
           icon={<Shield className="w-5 h-5" />}
         >
           <div style={{ marginTop: '0.75rem' }}>
             <ProgressBar
-              value={last7d.ackCompliance}
-              variant={last7d.ackCompliance >= 95 ? 'success' : 'warning'}
+              value={last7d.ackCompliance ?? 0}
+              variant={
+                last7d.ackCompliance !== null && last7d.ackCompliance >= 95 ? 'success' : 'warning'
+              }
               size="sm"
             />
           </div>
@@ -166,7 +172,10 @@ export default async function ExecutiveReportPage() {
 
       {/* INCIDENT TREND */}
       <section className="glass-panel analytics-charts">
-        <ChartCard title="Incident Volume (Last 30 Days)" subtitle="Daily incident count">
+        <ChartCard
+          title={`Incident Volume (Last ${last30dLabel.label})${last30dLabel.suffix}`}
+          subtitle="Daily incident count"
+        >
           <BarChart
             data={last30d.trendSeries}
             maxValue={Math.max(1, ...last30d.trendSeries.map(e => e.count))}
@@ -184,7 +193,7 @@ export default async function ExecutiveReportPage() {
               }}
             >
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
-                Resolve Rate (7d)
+                Resolve Rate ({last7dLabel.label}){last7dLabel.suffix}
               </p>
               <p style={{ color: '#22c55e', fontSize: '1.5rem', fontWeight: 700 }}>
                 {formatPercent(last7d.resolveRate)}
@@ -198,7 +207,9 @@ export default async function ExecutiveReportPage() {
                 borderRadius: 8,
               }}
             >
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>Ack Rate (7d)</p>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+                Ack Rate ({last7dLabel.label}){last7dLabel.suffix}
+              </p>
               <p style={{ color: '#3b82f6', fontSize: '1.5rem', fontWeight: 700 }}>
                 {formatPercent(last7d.ackRate)}
               </p>
@@ -212,7 +223,7 @@ export default async function ExecutiveReportPage() {
               }}
             >
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
-                After-Hours (7d)
+                After-Hours ({last7dLabel.label}){last7dLabel.suffix}
               </p>
               <p style={{ color: '#a78bfa', fontSize: '1.5rem', fontWeight: 700 }}>
                 {formatPercent(last7d.afterHoursRate)}
@@ -227,7 +238,7 @@ export default async function ExecutiveReportPage() {
               }}
             >
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
-                Escalation Rate (7d)
+                Escalation Rate ({last7dLabel.label}){last7dLabel.suffix}
               </p>
               <p style={{ color: '#eab308', fontSize: '1.5rem', fontWeight: 700 }}>
                 {formatPercent(last7d.escalationRate)}

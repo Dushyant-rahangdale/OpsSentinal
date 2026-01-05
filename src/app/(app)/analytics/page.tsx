@@ -3,7 +3,7 @@ import { formatTimeMinutesMs } from '@/lib/time-format';
 import { buildAnalyticsExportUrl } from '@/lib/analytics-export';
 import { smoothSeries } from '@/lib/analytics-metrics';
 import type { Metadata } from 'next';
-import { getUserTimeZone } from '@/lib/timezone';
+import { formatDateTime, getUserTimeZone } from '@/lib/timezone';
 import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
@@ -115,12 +115,12 @@ export default async function AnalyticsV2Page({
     typeof params?.assignee === 'string' && params.assignee !== 'ALL' ? params.assignee : undefined;
   const statusFilter =
     typeof params?.status === 'string' &&
-      allowedStatus.includes(params.status as (typeof allowedStatus)[number])
+    allowedStatus.includes(params.status as (typeof allowedStatus)[number])
       ? (params.status as (typeof allowedStatus)[number])
       : undefined;
   const urgencyFilter =
     typeof params?.urgency === 'string' &&
-      allowedUrgency.includes(params.urgency as (typeof allowedUrgency)[number])
+    allowedUrgency.includes(params.urgency as (typeof allowedUrgency)[number])
       ? (params.urgency as (typeof allowedUrgency)[number])
       : undefined;
   const windowCandidate = Number(params?.window ?? 7);
@@ -145,10 +145,14 @@ export default async function AnalyticsV2Page({
 
   const formatMinutes = (val: number | null) =>
     val === null ? '--' : formatTimeMinutesMs(val * 60 * 1000);
-  const formatPercent = (val: number) => `${val.toFixed(0)}%`;
+  const formatPercent = (val: number | null) => (val === null ? '--' : `${val.toFixed(0)}%`);
+  const formatPercentWidth = (val: number | null) => (val === null ? '0%' : `${val.toFixed(1)}%`);
+  const toGaugeValue = (val: number | null) => val ?? 0;
   const formatHours = (ms: number) => `${(ms / 3600000).toFixed(1)}h`;
-  const getComplianceStatus = (val: number) =>
-    val >= 95 ? 'success' : val >= 80 ? 'warning' : 'danger';
+  const getComplianceStatus = (val: number | null) => {
+    if (val === null) return 'default';
+    return val >= 95 ? 'success' : val >= 80 ? 'warning' : 'danger';
+  };
   const lowUrgencyCount = Math.max(0, metrics.totalIncidents - metrics.highUrgencyCount);
   const highUrgencyPercent = metrics.totalIncidents
     ? (metrics.highUrgencyCount / metrics.totalIncidents) * 100
@@ -156,11 +160,21 @@ export default async function AnalyticsV2Page({
   const lowUrgencyPercent = metrics.totalIncidents
     ? (lowUrgencyCount / metrics.totalIncidents) * 100
     : 0;
-  const ackSlaBurnRate = Math.max(0, 100 - metrics.ackCompliance);
-  const resolveSlaBurnRate = Math.max(0, 100 - metrics.resolveCompliance);
+  const ackSlaBurnRate =
+    metrics.ackCompliance === null ? null : Math.max(0, 100 - metrics.ackCompliance);
+  const resolveSlaBurnRate =
+    metrics.resolveCompliance === null ? null : Math.max(0, 100 - metrics.resolveCompliance);
   const activeFilterCount =
     [teamId, serviceId, assigneeId, statusFilter, urgencyFilter].filter(value => Boolean(value))
       .length + (windowDays !== 7 ? 1 : 0);
+  const dayMs = 24 * 60 * 60 * 1000;
+  const effectiveWindowDays = Math.max(
+    1,
+    Math.ceil((metrics.effectiveEnd.getTime() - metrics.effectiveStart.getTime()) / dayMs)
+  );
+  const windowLabelDays = metrics.isClipped ? effectiveWindowDays : windowDays;
+  const windowLabelSuffix = metrics.isClipped ? ' (retention limit)' : '';
+  const formatDate = (date: Date) => formatDateTime(date, userTimeZone, { format: 'short' });
 
   const getDelta = (current: number | null, previous: number | null) => {
     if (current === null || previous === null || previous === 0) return null;
@@ -266,7 +280,9 @@ export default async function AnalyticsV2Page({
               <span className="analytics-live-dot" aria-hidden="true" />
               Live operations
             </span>
-            <span className="analytics-window-pill">Last {windowDays} days</span>
+            <span className="analytics-window-pill">
+              Last {windowLabelDays} days{windowLabelSuffix}
+            </span>
             <span className="analytics-update">Updated just now</span>
           </div>
           <h1 className="analytics-header-title">Analytics &amp; Insights</h1>
@@ -315,8 +331,8 @@ export default async function AnalyticsV2Page({
         >
           <AlertCircle className="w-4 h-4" />
           <span>
-            <strong>Retention Notice:</strong> Analysis limited to the last{' '}
-            {metrics.retentionDays} days by data retention policy.
+            <strong>Retention Notice:</strong> Analysis limited to the last {metrics.retentionDays}{' '}
+            days by data retention policy.
           </span>
         </div>
       )}
@@ -339,7 +355,14 @@ export default async function AnalyticsV2Page({
         <div className="analytics-context-row">
           <div className="analytics-context-inline">
             <span className="analytics-context-label">Filters</span>
-            <span className="analytics-context-pill">Last {windowDays} days</span>
+            <span className="analytics-context-pill">
+              Last {windowLabelDays} days{windowLabelSuffix}
+            </span>
+            {metrics.isClipped ? (
+              <span className="analytics-context-pill">
+                Retention {formatDate(metrics.effectiveStart)} - {formatDate(metrics.effectiveEnd)}
+              </span>
+            ) : null}
           </div>
         </div>
         <FilterChips
@@ -365,7 +388,7 @@ export default async function AnalyticsV2Page({
 
       <section className="v2-grid-4 mb-4">
         <MetricCard
-          label={`Incidents (${windowDays}d)`}
+          label={`Incidents (${windowLabelDays}d)${windowLabelSuffix}`}
           value={metrics.totalIncidents.toLocaleString()}
           detail="New incidents"
           trend={getTrend(incidentDelta)}
@@ -399,7 +422,7 @@ export default async function AnalyticsV2Page({
           </div>
         </MetricCard>
         <MetricCard
-          label={`MTTA (${windowDays}d)`}
+          label={`MTTA (${windowLabelDays}d)${windowLabelSuffix}`}
           value={formatMinutes(metrics.mttd)}
           detail="Avg response time"
           trend={getTrend(mttaDelta)}
@@ -417,7 +440,7 @@ export default async function AnalyticsV2Page({
           </div>
         </MetricCard>
         <MetricCard
-          label={`MTTR (${windowDays}d)`}
+          label={`MTTR (${windowLabelDays}d)${windowLabelSuffix}`}
           value={formatMinutes(metrics.mttr)}
           detail="Avg resolution time"
           trend={getTrend(mttrDelta)}
@@ -439,7 +462,11 @@ export default async function AnalyticsV2Page({
           value={formatPercent(metrics.resolveCompliance)}
           detail="SLA compliance"
           variant={
-            getComplianceStatus(metrics.resolveCompliance) as 'success' | 'warning' | 'danger'
+            getComplianceStatus(metrics.resolveCompliance) as
+              | 'success'
+              | 'warning'
+              | 'danger'
+              | 'default'
           }
           icon={<Shield className="w-5 h-5" />}
           href="/incidents?status=RESOLVED"
@@ -460,7 +487,13 @@ export default async function AnalyticsV2Page({
           label="Ack SLA"
           value={formatPercent(metrics.ackCompliance)}
           detail="Within target"
-          variant={getComplianceStatus(metrics.ackCompliance) as 'success' | 'warning' | 'danger'}
+          variant={
+            getComplianceStatus(metrics.ackCompliance) as
+              | 'success'
+              | 'warning'
+              | 'danger'
+              | 'default'
+          }
           icon={<Shield className="w-5 h-5" />}
           href="/incidents"
           className="analytics-card-large"
@@ -658,7 +691,7 @@ export default async function AnalyticsV2Page({
                 <div>
                   <div className="insights-panel-kicker">Smart Insights</div>
                   <h3 className="insights-panel-title">
-                    Key signals in the last {windowDays} days
+                    Key signals in the last {windowLabelDays} days{windowLabelSuffix}
                   </h3>
                 </div>
               </div>
@@ -696,7 +729,9 @@ export default async function AnalyticsV2Page({
               </span>
               <div>
                 <div className="trends-panel-kicker">Response Performance Trends</div>
-                <h3 className="trends-panel-title">MTTA vs MTTR · Last {windowDays} days</h3>
+                <h3 className="trends-panel-title">
+                  MTTA vs MTTR · Last {windowLabelDays} days{windowLabelSuffix}
+                </h3>
               </div>
             </div>
             <div className="trends-panel-badges">
@@ -808,7 +843,9 @@ export default async function AnalyticsV2Page({
         <div className="operational-card">
           <div className="operational-card-header">
             <h3>Incident Volume Trend</h3>
-            <span>Window {windowDays} days</span>
+            <span>
+              Window {windowLabelDays} days{windowLabelSuffix}
+            </span>
           </div>
           <div className="operational-card-body">
             <div className="operational-chart h-200 w-full pl-0 pr-0">
@@ -950,7 +987,9 @@ export default async function AnalyticsV2Page({
                 <span style={{ width: `${lowUrgencyPercent.toFixed(1)}%` }} />
               </div>
             </div>
-            <div className="distribution-urgency-footnote">Window: {windowDays} days</div>
+            <div className="distribution-urgency-footnote">
+              Window: {windowLabelDays} days{windowLabelSuffix}
+            </div>
           </div>
         </div>
 
@@ -1065,7 +1104,9 @@ export default async function AnalyticsV2Page({
               <div className="ownership-kpi">
                 <span>Reopen rate</span>
                 <strong>{formatPercent(metrics.reopenRate)}</strong>
-                <em>Last {windowDays} days</em>
+                <em>
+                  Last {windowLabelDays} days{windowLabelSuffix}
+                </em>
               </div>
               <div className="ownership-kpi">
                 <span>Event volume</span>
@@ -1200,7 +1241,9 @@ export default async function AnalyticsV2Page({
             </div>
           </div>
           <div className="sla-summary-meta">
-            <span>{windowDays} day window</span>
+            <span>
+              {windowLabelDays} day window{windowLabelSuffix}
+            </span>
             <span>{metrics.eventsCount.toLocaleString()} events</span>
           </div>
         </div>
@@ -1281,7 +1324,9 @@ export default async function AnalyticsV2Page({
           </div>
           <div className="sla-service-meta">
             <span>{metrics.serviceSlaTable.length} services</span>
-            <span>Last {windowDays} days</span>
+            <span>
+              Last {windowLabelDays} days{windowLabelSuffix}
+            </span>
           </div>
         </div>
 
@@ -1344,9 +1389,9 @@ export default async function AnalyticsV2Page({
                 <span>Ack SLA</span>
                 <strong>{formatPercent(metrics.ackCompliance)}</strong>
               </div>
-              <GaugeChart value={metrics.ackCompliance} label="Ack SLA" size={110} />
+              <GaugeChart value={toGaugeValue(metrics.ackCompliance)} label="Ack SLA" size={110} />
               <div className="sla-compliance-bar">
-                <span style={{ width: `${metrics.ackCompliance.toFixed(1)}%` }} />
+                <span style={{ width: formatPercentWidth(metrics.ackCompliance) }} />
               </div>
             </div>
             <div className="sla-compliance-card">
@@ -1354,9 +1399,13 @@ export default async function AnalyticsV2Page({
                 <span>Resolve SLA</span>
                 <strong>{formatPercent(metrics.resolveCompliance)}</strong>
               </div>
-              <GaugeChart value={metrics.resolveCompliance} label="Resolve SLA" size={110} />
+              <GaugeChart
+                value={toGaugeValue(metrics.resolveCompliance)}
+                label="Resolve SLA"
+                size={110}
+              />
               <div className="sla-compliance-bar is-resolve">
-                <span style={{ width: `${metrics.resolveCompliance.toFixed(1)}%` }} />
+                <span style={{ width: formatPercentWidth(metrics.resolveCompliance) }} />
               </div>
             </div>
             <div className="sla-compliance-card">

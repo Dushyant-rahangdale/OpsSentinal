@@ -34,8 +34,8 @@ export interface OnCallStatus {
 export interface SLAMetrics {
   mtta: number; // minutes
   mttr: number; // minutes
-  ackCompliance: number; // percentage
-  resolveCompliance: number; // percentage
+  ackCompliance: number | null; // percentage
+  resolveCompliance: number | null; // percentage
   trendMtta: 'up' | 'down' | 'stable';
   trendMttr: 'up' | 'down' | 'stable';
 }
@@ -110,48 +110,41 @@ export async function getWidgetData(userId: string, _userRole: string): Promise<
   const slaMetricsRaw: SLAServerMetrics = await calculateSLAMetrics({
     useOrScope: true,
     includeIncidents: true,
+    includeActiveIncidents: true,
     incidentLimit: 100,
     windowDays: 7,
   });
 
-  // Default SLA targets (in minutes)
-  const DEFAULT_ACK_MINUTES = 15;
-  const DEFAULT_RESOLVE_MINUTES = 120;
-
   // Transform sla-server data to widget format
   // Active incidents from recentIncidents that aren't resolved
-  const activeIncidentsData: ActiveIncidentData[] = (slaMetricsRaw.recentIncidents || [])
-    .filter(inc => inc.status !== 'RESOLVED')
-    .map(inc => {
-      // Use default SLA targets (service-specific targets would require additional query)
-      const targetAckMinutes = DEFAULT_ACK_MINUTES;
-      const targetResolveMinutes = DEFAULT_RESOLVE_MINUTES;
-
-      const slaAckDeadline =
-        !inc.resolvedAt && inc.status !== 'ACKNOWLEDGED'
-          ? new Date(new Date(inc.createdAt).getTime() + targetAckMinutes * 60000)
-          : null;
-
-      const slaResolveDeadline = !inc.resolvedAt
-        ? new Date(new Date(inc.createdAt).getTime() + targetResolveMinutes * 60000)
+  const activeIncidentsData: ActiveIncidentData[] = (
+    slaMetricsRaw.activeIncidentSummaries || []
+  ).map(inc => {
+    const slaAckDeadline =
+      inc.status !== 'ACKNOWLEDGED'
+        ? new Date(new Date(inc.createdAt).getTime() + inc.targetAckMinutes * 60000)
         : null;
 
-      return {
-        id: inc.id,
-        title: inc.title,
-        status: inc.status,
-        urgency: inc.urgency as 'HIGH' | 'MEDIUM' | 'LOW',
-        createdAt: new Date(inc.createdAt),
-        acknowledgedAt: null, // Not included in recentIncidents minimal response
-        resolvedAt: inc.resolvedAt ? new Date(inc.resolvedAt) : null,
-        serviceId: inc.service?.id || '',
-        serviceName: inc.service?.name || 'Unknown Service',
-        assigneeId: null, // Not included in minimal response
-        assigneeName: null,
-        slaAckDeadline,
-        slaResolveDeadline,
-      };
-    });
+    const slaResolveDeadline = new Date(
+      new Date(inc.createdAt).getTime() + inc.targetResolveMinutes * 60000
+    );
+
+    return {
+      id: inc.id,
+      title: inc.title,
+      status: inc.status,
+      urgency: inc.urgency as 'HIGH' | 'MEDIUM' | 'LOW',
+      createdAt: new Date(inc.createdAt),
+      acknowledgedAt: inc.acknowledgedAt ? new Date(inc.acknowledgedAt) : null,
+      resolvedAt: null,
+      serviceId: inc.serviceId,
+      serviceName: inc.serviceName,
+      assigneeId: inc.assigneeId,
+      assigneeName: null,
+      slaAckDeadline,
+      slaResolveDeadline,
+    };
+  });
 
   // Identify SLA breach alerts using calculated deadlines
   const slaBreachAlerts = activeIncidentsData.filter(inc => {
@@ -211,8 +204,8 @@ export async function getWidgetData(userId: string, _userRole: string): Promise<
   const slaMetrics: SLAMetrics = {
     mtta: currentMtta,
     mttr: currentMttr,
-    ackCompliance: slaMetricsRaw.ackCompliance ?? 100,
-    resolveCompliance: slaMetricsRaw.resolveCompliance ?? 100,
+    ackCompliance: slaMetricsRaw.ackCompliance ?? null,
+    resolveCompliance: slaMetricsRaw.resolveCompliance ?? null,
     trendMtta: determineTrend(currentMtta, prevMtta),
     trendMttr: determineTrend(currentMttr, prevMttr),
   };

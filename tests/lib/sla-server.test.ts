@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
 import { calculateSLAMetrics } from '@/lib/sla-server';
+import { clearRetentionPolicyCache } from '@/lib/retention-policy';
 
 type PrismaMock = {
   incident: {
@@ -29,6 +30,10 @@ type PrismaMock = {
   };
   $executeRaw: ReturnType<typeof vi.fn>;
   $queryRaw: ReturnType<typeof vi.fn>;
+  systemSettings: {
+    findUnique: ReturnType<typeof vi.fn>;
+    upsert: ReturnType<typeof vi.fn>;
+  };
 };
 
 const prismaMock = prisma as unknown as PrismaMock & {
@@ -37,6 +42,7 @@ const prismaMock = prisma as unknown as PrismaMock & {
   incidentNote?: PrismaMock['incidentNote'];
   $executeRaw: ReturnType<typeof vi.fn>;
   $queryRaw: ReturnType<typeof vi.fn>;
+  systemSettings?: PrismaMock['systemSettings'];
 };
 
 // Initialize the new mock functions
@@ -94,6 +100,23 @@ const setupBaseMocks = ({
   if (!prismaMock.incident.groupBy) {
     prismaMock.incident.groupBy = vi.fn();
   }
+  if (!prismaMock.systemSettings) {
+    prismaMock.systemSettings = { findUnique: vi.fn(), upsert: vi.fn() };
+  }
+  prismaMock.systemSettings.findUnique.mockResolvedValue({
+    incidentRetentionDays: 30,
+    alertRetentionDays: 30,
+    logRetentionDays: 30,
+    metricsRetentionDays: 30,
+    realTimeWindowDays: 30,
+  });
+  prismaMock.systemSettings.upsert.mockResolvedValue({
+    incidentRetentionDays: 30,
+    alertRetentionDays: 30,
+    logRetentionDays: 30,
+    metricsRetentionDays: 30,
+    realTimeWindowDays: 30,
+  });
   prismaMock.incident.count.mockResolvedValueOnce(resolved24hCount);
   prismaMock.incident.findMany
     .mockResolvedValueOnce(activeIncidents)
@@ -134,6 +157,7 @@ describe('calculateSLAMetrics trend series', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
     vi.clearAllMocks();
+    clearRetentionPolicyCache();
   });
 
   afterEach(() => {
@@ -232,11 +256,50 @@ describe('calculateSLAMetrics trend series', () => {
   });
 });
 
+describe('calculateSLAMetrics retention metadata', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
+    vi.clearAllMocks();
+    clearRetentionPolicyCache();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('clips requested window to retention policy and exposes metadata', async () => {
+    setupBaseMocks({
+      activeIncidents: [],
+      recentIncidents: [],
+      previousIncidents: [],
+      heatmapIncidents: [],
+      escalationEvents: [],
+    });
+
+    prismaMock.systemSettings.findUnique.mockResolvedValue({
+      incidentRetentionDays: 1,
+      alertRetentionDays: 1,
+      logRetentionDays: 1,
+      metricsRetentionDays: 1,
+      realTimeWindowDays: 1,
+    });
+
+    const metrics = await calculateSLAMetrics({ windowDays: 7, userTimeZone: 'UTC' });
+
+    expect(metrics.isClipped).toBe(true);
+    expect(metrics.retentionDays).toBe(1);
+    expect(metrics.requestedStart.toISOString().startsWith('2025-12-26')).toBe(true);
+    expect(metrics.effectiveStart.toISOString().startsWith('2026-01-01')).toBe(true);
+  });
+});
+
 describe('calculateSLAMetrics investigation metrics', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
     vi.clearAllMocks();
+    clearRetentionPolicyCache();
   });
 
   afterEach(() => {

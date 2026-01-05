@@ -451,7 +451,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
         )}
 
         {/* SLA Compliance - only show if not 100% */}
-        {slaCompliance < 100 && (
+        {slaCompliance !== null && slaCompliance < 100 && (
           <div
             style={{
               padding: '1.5rem',

@@ -1,4 +1,3 @@
-import prisma from '@/lib/prisma';
 import MobileCard from '@/components/mobile/MobileCard';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +8,14 @@ export default async function MobileAnalyticsPage() {
     windowDays: 7,
     includeAllTime: false,
   });
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const effectiveWindowDays = Math.max(
+    1,
+    Math.ceil((slaMetrics.effectiveEnd.getTime() - slaMetrics.effectiveStart.getTime()) / dayMs)
+  );
+  const windowLabelDays = slaMetrics.isClipped ? effectiveWindowDays : 7;
+  const windowLabelSuffix = slaMetrics.isClipped ? ' (retention limit)' : '';
 
   const openIncidents = slaMetrics.activeIncidents;
   const incidentsInRange = slaMetrics.totalIncidents;
@@ -34,22 +41,29 @@ export default async function MobileAnalyticsPage() {
         </MobileCard>
         <MobileCard className="mobile-metric-card">
           <div className="mobile-metric-value">{incidentsInRange}</div>
-          <div className="mobile-metric-label">New (7d)</div>
+          <div className="mobile-metric-label">
+            New ({windowLabelDays}d){windowLabelSuffix}
+          </div>
         </MobileCard>
         <MobileCard className="mobile-metric-card">
           <div className="mobile-metric-value">{formatDuration(mtta)}</div>
-          <div className="mobile-metric-label">MTTA (7d)</div>
+          <div className="mobile-metric-label">
+            MTTA ({windowLabelDays}d){windowLabelSuffix}
+          </div>
         </MobileCard>
         <MobileCard className="mobile-metric-card">
           <div className="mobile-metric-value">{formatDuration(mttr)}</div>
-          <div className="mobile-metric-label">MTTR (7d)</div>
+          <div className="mobile-metric-label">
+            MTTR ({windowLabelDays}d){windowLabelSuffix}
+          </div>
         </MobileCard>
       </div>
 
       <div style={{ marginTop: '1.5rem', padding: '0 0.5rem' }}>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Metrics are calculated based on the last 7 days of activity. For detailed reports and
-          custom ranges, please use the desktop dashboard.
+          Metrics are calculated based on the last {windowLabelDays} days of activity.
+          {slaMetrics.isClipped ? ' Data is limited by retention settings.' : ''} For detailed
+          reports and custom ranges, please use the desktop dashboard.
         </p>
       </div>
     </div>

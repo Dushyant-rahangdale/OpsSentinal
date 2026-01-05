@@ -8,13 +8,14 @@ import { generateDailySnapshot } from '@/lib/sla-server';
  * Idempotent: Can be run multiple times safely.
  */
 export async function processSLASnapshots() {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const yesterdayUtc = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1)
+  );
 
-  const startOfYesterday = new Date(yesterday);
-  const endOfYesterday = new Date(yesterday);
-  endOfYesterday.setHours(23, 59, 59, 999);
+  const startOfYesterday = new Date(yesterdayUtc);
+  const endOfYesterday = new Date(yesterdayUtc);
+  endOfYesterday.setUTCHours(23, 59, 59, 999);
 
   try {
     // 1. Find all active SLA Definitions

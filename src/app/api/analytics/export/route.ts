@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { getQueryDateBounds } from '@/lib/retention-policy';
+import { calculateSLAMetrics } from '@/lib/sla-server';
 
 const incidentStatusValues = new Set<string>(Object.values(IncidentStatusEnum));
 const incidentUrgencyValues = new Set<string>(Object.values(IncidentUrgencyEnum));
@@ -97,8 +99,13 @@ export async function GET(req: NextRequest) {
     const windowDays = parseInt(searchParams.get('window') || '7', 10);
 
     const now = new Date();
-    const recentStart = new Date(now);
-    recentStart.setDate(now.getDate() - windowDays);
+    const requestedStart = new Date(now);
+    requestedStart.setDate(now.getDate() - windowDays);
+    const {
+      start: effectiveStart,
+      end: effectiveEnd,
+      isClipped,
+    } = await getQueryDateBounds(requestedStart, now, 'incident');
 
     // Build where clauses
     const serviceWhere = serviceId ? { serviceId } : teamId ? { service: { teamId } } : null;
@@ -108,7 +115,7 @@ export async function GET(req: NextRequest) {
     const assigneeWhere = assigneeId ? { assigneeId } : null;
 
     const recentIncidentWhere = {
-      createdAt: { gte: recentStart },
+      createdAt: { gte: effectiveStart, lte: effectiveEnd },
       ...(serviceWhere ?? {}),
       ...(urgencyWhere ?? {}),
       ...(statusWhere ?? {}),
@@ -116,7 +123,17 @@ export async function GET(req: NextRequest) {
     };
 
     // Fetch data
-    const [recentIncidents, services, teams, users, statusTrends, topServices] = await Promise.all([
+    const [metrics, recentIncidents, services, teams, users] = await Promise.all([
+      calculateSLAMetrics({
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+        teamId: teamId || undefined,
+        serviceId: serviceId || undefined,
+        assigneeId: assigneeId || undefined,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        urgency: urgencyFilter !== 'ALL' ? urgencyFilter : undefined,
+        userTimeZone,
+      }),
       prisma.incident.findMany({
         where: recentIncidentWhere,
         include: {
@@ -131,65 +148,19 @@ export async function GET(req: NextRequest) {
       }),
       prisma.team.findMany(),
       prisma.user.findMany(),
-      prisma.incident.groupBy({
-        by: ['status'],
-        where: recentIncidentWhere,
-        _count: { _all: true },
-      }),
-      prisma.incident.groupBy({
-        by: ['serviceId'],
-        where: recentIncidentWhere,
-        _count: { _all: true },
-        orderBy: { _count: { id: 'desc' } },
-        take: 10,
-      }),
     ]);
 
     // Calculate metrics
-    const totalIncidents = recentIncidents.length;
+    const totalIncidents = metrics.totalIncidents;
     const resolvedIncidents = recentIncidents.filter(i => i.status === 'RESOLVED');
     const openIncidents = recentIncidents.filter(i => i.status === 'OPEN');
-    const highUrgencyCount = recentIncidents.filter(i => i.urgency === 'HIGH').length;
+    const highUrgencyCount = metrics.highUrgencyCount;
 
-    // Calculate MTTA and MTTR (simplified)
-    const ackEvents = await prisma.incidentEvent.findMany({
-      where: {
-        incidentId: { in: recentIncidents.map(i => i.id) },
-        message: { contains: 'acknowledged', mode: 'insensitive' },
-      },
-      select: { incidentId: true, createdAt: true },
-    });
+    const mttaMs = metrics.mttd === null ? null : metrics.mttd * 60 * 1000;
+    const mttrMs = metrics.mttr === null ? null : metrics.mttr * 60 * 1000;
 
-    const ackByIncident = new Map<string, Date>();
-    for (const ack of ackEvents) {
-      if (!ackByIncident.has(ack.incidentId)) {
-        ackByIncident.set(ack.incidentId, ack.createdAt);
-      }
-    }
-
-    const ackDiffs: number[] = [];
-    for (const incident of recentIncidents) {
-      const ackedAt = ackByIncident.get(incident.id);
-      if (ackedAt && incident.createdAt) {
-        ackDiffs.push(ackedAt.getTime() - incident.createdAt.getTime());
-      }
-    }
-    const mttaMs = ackDiffs.length
-      ? ackDiffs.reduce((sum, diff) => sum + diff, 0) / ackDiffs.length
-      : null;
-
-    const resolvedDiffs = resolvedIncidents
-      .map(i => {
-        const resolvedAt = i.resolvedAt || i.updatedAt;
-        return resolvedAt && i.createdAt ? resolvedAt.getTime() - i.createdAt.getTime() : null;
-      })
-      .filter((diff): diff is number => diff !== null);
-    const mttrMs = resolvedDiffs.length
-      ? resolvedDiffs.reduce((sum, diff) => sum + diff, 0) / resolvedDiffs.length
-      : null;
-
-    const resolutionRate = totalIncidents ? (resolvedIncidents.length / totalIncidents) * 100 : 0;
-    const ackRate = totalIncidents ? (ackByIncident.size / totalIncidents) * 100 : 0;
+    const resolutionRate = metrics.resolveRate;
+    const ackRate = metrics.ackRate;
 
     // Build CSV content with well-designed structure
     const csvRows: string[][] = [];
@@ -204,8 +175,14 @@ export async function GET(req: NextRequest) {
     csvRows.push(['Time Window:', `Last ${windowDays} day${windowDays !== 1 ? 's' : ''}`]);
     csvRows.push([
       'Report Period:',
-      `${formatDate(recentStart, userTimeZone)} to ${formatDate(now, userTimeZone)}`,
+      `${formatDate(effectiveStart, userTimeZone)} to ${formatDate(effectiveEnd, userTimeZone)}`,
     ]);
+    if (isClipped) {
+      csvRows.push([
+        'Retention Note:',
+        `Data clipped to retention window (${formatDate(effectiveStart, userTimeZone)} to ${formatDate(effectiveEnd, userTimeZone)})`,
+      ]);
+    }
     csvRows.push(['']);
 
     // Filter information
@@ -302,7 +279,7 @@ export async function GET(req: NextRequest) {
     csvRows.push(['---------------------------------------------------------------']);
     csvRows.push(['Status', 'Count', 'Percentage', 'Visual Bar']);
     const statusMap = new Map<IncidentStatus, number>(
-      statusTrends.map(s => [s.status, s._count._all])
+      metrics.statusMix.map(entry => [entry.status as IncidentStatus, entry.count])
     );
     const statusOrder: IncidentStatus[] = [
       'OPEN',
@@ -327,19 +304,18 @@ export async function GET(req: NextRequest) {
     csvRows.push(['TOP SERVICES BY INCIDENT COUNT']);
     csvRows.push(['---------------------------------------------------------------']);
     csvRows.push(['Rank', 'Service', 'Incident Count', 'Percentage', 'Visual Bar']);
-    const serviceNameMap = new Map(services.map(s => [s.id, s.name]));
     const maxServiceCount =
-      topServices.length > 0 ? Math.max(...topServices.map(s => s._count._all)) : 1;
-    topServices.forEach((entry, index) => {
-      const serviceName = serviceNameMap.get(entry.serviceId) || 'Unknown Service';
-      const percentage = totalIncidents
-        ? ((entry._count._all / totalIncidents) * 100).toFixed(1)
-        : '0.0';
-      const progressBar = createProgressBar(entry._count._all, maxServiceCount, 25);
+      metrics.topServices.length > 0
+        ? Math.max(...metrics.topServices.map(entry => entry.count))
+        : 1;
+    metrics.topServices.forEach((entry, index) => {
+      const serviceName = entry.name || 'Unknown Service';
+      const percentage = totalIncidents ? ((entry.count / totalIncidents) * 100).toFixed(1) : '0.0';
+      const progressBar = createProgressBar(entry.count, maxServiceCount, 25);
       csvRows.push([
         `#${index + 1}`,
         serviceName,
-        entry._count._all.toString(),
+        entry.count.toString(),
         `${percentage}%`,
         progressBar,
       ]);

@@ -5,8 +5,8 @@ import { memo, useMemo } from 'react';
 interface CompactPerformanceMetricsProps {
   mtta: number | null;
   mttr: number | null;
-  ackSlaRate: number;
-  resolveSlaRate: number;
+  ackSlaRate: number | null;
+  resolveSlaRate: number | null;
 }
 
 /**

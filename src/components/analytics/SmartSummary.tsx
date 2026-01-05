@@ -1,22 +1,15 @@
 'use client';
 
 import React from 'react';
-import {
-  Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
-  AlertTriangle,
-  CheckCircle,
-  Copy,
-} from 'lucide-react';
+import { Sparkles, AlertTriangle, CheckCircle, Copy } from 'lucide-react';
 
 interface SmartSummaryProps {
   metrics: {
     mtta: number | null;
     mttr: number | null;
     activeIncidents: number;
-    ackCompliance: number;
-    resolveCompliance: number;
+    ackCompliance: number | null;
+    resolveCompliance: number | null;
     highUrgencyRate: number;
     totalIncidents: number;
   };
@@ -57,7 +50,11 @@ export default function SmartSummary({ metrics, windowDays, trendSeries }: Smart
   }
 
   // Compliance Analysis
-  if (metrics.ackCompliance < 90 || metrics.resolveCompliance < 90) {
+  if (
+    metrics.ackCompliance !== null &&
+    metrics.resolveCompliance !== null &&
+    (metrics.ackCompliance < 90 || metrics.resolveCompliance < 90)
+  ) {
     insights.push({
       type: 'bad',
       text: `SLA compliance is at risk (Ack: ${metrics.ackCompliance.toFixed(0)}%, Resolve: ${metrics.resolveCompliance.toFixed(0)}%).`,
