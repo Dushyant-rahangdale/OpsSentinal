@@ -3,6 +3,43 @@ import prisma from '@/lib/prisma';
 import { calculateSLAMetrics } from '@/lib/sla-server';
 import { clearRetentionPolicyCache } from '@/lib/retention-policy';
 
+// Local mock for this test file to ensure isolation
+vi.mock('@/lib/prisma', () => ({
+  __esModule: true,
+  default: {
+    incident: {
+      count: vi.fn().mockResolvedValue(0),
+      findMany: vi.fn().mockResolvedValue([]),
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    alert: {
+      count: vi.fn().mockResolvedValue(0),
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    incidentNote: {
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    onCallShift: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    onCallOverride: {
+      count: vi.fn().mockResolvedValue(0),
+    },
+    service: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    incidentEvent: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    systemSettings: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    $queryRaw: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 type PrismaMock = {
   incident: {
     count: ReturnType<typeof vi.fn>;
@@ -100,9 +137,7 @@ const setupBaseMocks = ({
   if (!prismaMock.incident.groupBy) {
     prismaMock.incident.groupBy = vi.fn();
   }
-  if (!prismaMock.systemSettings) {
-    prismaMock.systemSettings = { findUnique: vi.fn(), upsert: vi.fn() };
-  }
+  // systemSettings is now in the global mock - just call mockResolvedValue
   prismaMock.systemSettings.findUnique.mockResolvedValue({
     incidentRetentionDays: 30,
     alertRetentionDays: 30,
@@ -156,7 +191,6 @@ describe('calculateSLAMetrics trend series', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
-    vi.clearAllMocks();
     clearRetentionPolicyCache();
   });
 
@@ -260,7 +294,6 @@ describe('calculateSLAMetrics retention metadata', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
-    vi.clearAllMocks();
     clearRetentionPolicyCache();
   });
 
@@ -298,7 +331,6 @@ describe('calculateSLAMetrics investigation metrics', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
-    vi.clearAllMocks();
     clearRetentionPolicyCache();
   });
 

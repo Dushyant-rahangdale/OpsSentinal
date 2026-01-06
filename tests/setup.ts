@@ -70,10 +70,15 @@ const mockPrisma = {
 
   auditLog: createMockModel(),
   inAppNotification: createMockModel(),
+  systemSettings: createMockModel(),
+  alert: createMockModel(),
+  incidentNote: createMockModel(),
   $transaction: vi
     .fn()
     .mockImplementation((cb: (tx: typeof mockPrisma) => unknown) => cb(mockPrisma)),
   $extends: vi.fn().mockReturnThis(),
+  $executeRaw: vi.fn().mockResolvedValue(0),
+  $queryRaw: vi.fn().mockResolvedValue([]),
 };
 
 // Default test mode: mock Prisma so unit tests don't require a DB.
