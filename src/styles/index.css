@@ -41,3 +41,8 @@
 @import './components/cards.css';
 @import './components/modals.css';
 @import './components/dropdowns.css';
+
+/* Pages Layer - Page-specific styles */
+@import './pages/login.css';
+@import './pages/mobile.css';
+@import './pages/analytics.css';
