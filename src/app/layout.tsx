@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'OpsSentinel',
   },
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
