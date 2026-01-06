@@ -1,85 +1,83 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: OpsSentinal-app-netpol
-  namespace: OpsSentinal
+  name: opssentinal-app-netpol
+  namespace: opssentinal
 spec:
   podSelector:
     matchLabels:
-      app: OpsSentinal-app
+      app: opssentinal-app
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  # Allow ingress from ingress controller
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: ingress-nginx  # Adjust based on your ingress namespace
-    ports:
-    - protocol: TCP
-      port: 3000
-  # Allow ingress from same namespace
-  - from:
-    - podSelector:
-        matchLabels:
-          app: OpsSentinal-app
-    ports:
-    - protocol: TCP
-      port: 3000
+    # Allow ingress from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx # Adjust based on your ingress namespace
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Allow ingress from same namespace
+    - from:
+        - podSelector:
+            matchLabels:
+              app: opssentinal-app
+      ports:
+        - protocol: TCP
+          port: 3000
   egress:
-  # Allow egress to PostgreSQL
-  - to:
-    - podSelector:
-        matchLabels:
-          app: OpsSentinal-postgres
-    ports:
-    - protocol: TCP
-      port: 5432
-  # Allow DNS resolution
-  - to:
-    - namespaceSelector: {}
-    ports:
-    - protocol: UDP
-      port: 53
-  # Allow HTTPS for external API calls (if needed)
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 443
+    # Allow egress to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opssentinal-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow HTTPS for external API calls (if needed)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: OpsSentinal-postgres-netpol
-  namespace: OpsSentinal
+  name: opssentinal-postgres-netpol
+  namespace: opssentinal
 spec:
   podSelector:
     matchLabels:
-      app: OpsSentinal-postgres
+      app: opssentinal-postgres
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  # Only allow connections from OpsSentinal-app
-  - from:
-    - podSelector:
-        matchLabels:
-          app: OpsSentinal-app
-    ports:
-    - protocol: TCP
-      port: 5432
+    # Only allow connections from opssentinal-app
+    - from:
+        - podSelector:
+            matchLabels:
+              app: opssentinal-app
+      ports:
+        - protocol: TCP
+          port: 5432
   egress:
-  # Allow DNS resolution
-  - to:
-    - namespaceSelector: {}
-    ports:
-    - protocol: UDP
-      port: 53
-  # Allow outbound for backups (if needed)
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 443
-
-
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow outbound for backups (if needed)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443

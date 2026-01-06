@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opssentinal-app
+  namespace: opssentinal
+  labels:
+    app: opssentinal-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: opssentinal-app
+  template:
+    metadata:
+      labels:
+        app: opssentinal-app
+    spec:
+      serviceAccountName: opssentinal-app
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: opssentinal-app
+          image: ghcr.io/dushyant-rahangdale/opssentinal-test:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: opssentinal-config
+            - secretRef:
+                name: opssentinal-secrets
+          env:
+            - name: DATABASE_URL
+              value: 'postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?schema=public'
+            - name: CRON_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: opssentinal-secrets
+                  key: CRON_SECRET
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '256Mi'
+            limits:
+              cpu: '500m'
+              memory: '1Gi'
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health?mode=readiness
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3

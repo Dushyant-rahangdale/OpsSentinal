@@ -1,17 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: OpsSentinal-postgres-service
-  namespace: OpsSentinal
+  name: opssentinal-postgres-service
+  namespace: opssentinal
   labels:
-    app: OpsSentinal-postgres
+    app: opssentinal-postgres
 spec:
   type: ClusterIP
   ports:
-  - port: 5432
-    targetPort: 5432
-    protocol: TCP
-    name: postgres
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
   selector:
-    app: OpsSentinal-postgres
-
+    app: opssentinal-postgres

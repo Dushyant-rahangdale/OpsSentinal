@@ -1,13 +1,13 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: OpsSentinal-ingress
-  namespace: OpsSentinal
+  name: opssentinal-ingress
+  namespace: opssentinal
   annotations:
     # Nginx Ingress Controller annotations
     kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
     # Security headers
     nginx.ingress.kubernetes.io/configuration-snippet: |
       more_set_headers "X-Content-Type-Options: nosniff";
@@ -16,31 +16,30 @@ metadata:
       more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
       more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
     # Rate limiting
-    nginx.ingress.kubernetes.io/limit-rps: "100"
-    nginx.ingress.kubernetes.io/limit-connections: "50"
+    nginx.ingress.kubernetes.io/limit-rps: '100'
+    nginx.ingress.kubernetes.io/limit-connections: '50'
     # SSL/TLS configuration
     cert-manager.io/cluster-issuer: letsencrypt-prod
     # Proxy settings
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: '10m'
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: '60'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '60'
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '60'
 spec:
   ingressClassName: nginx
   rules:
-  - host: OpsSentinal.example.com  # Update with your domain
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: OpsSentinal-service
-            port:
-              number: 80
+    - host: opssentinal.example.com # Update with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opssentinal-service
+                port:
+                  number: 80
   # TLS/HTTPS configuration
   tls:
-  - hosts:
-    - OpsSentinal.example.com  # Update with your domain
-    secretName: OpsSentinal-tls
-
+    - hosts:
+        - opssentinal.example.com # Update with your domain
+      secretName: opssentinal-tls

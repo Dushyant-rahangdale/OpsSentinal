@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: OpsSentinal-postgres
-  namespace: OpsSentinal
+  name: opssentinal-postgres
+  namespace: opssentinal
   labels:
-    app: OpsSentinal-postgres
+    app: opssentinal-postgres
     version: v1
 spec:
-  serviceName: "OpsSentinal-postgres-service" # Headless service needed for StatefulSet
+  serviceName: 'opssentinal-postgres-service' # Headless service needed for StatefulSet
   replicas: 1
   selector:
     matchLabels:
-      app: OpsSentinal-postgres
+      app: opssentinal-postgres
   template:
     metadata:
       labels:
-        app: OpsSentinal-postgres
+        app: opssentinal-postgres
         version: v1
     spec:
       securityContext:
@@ -25,66 +25,75 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: postgres
-        image: postgres:15-alpine
-        imagePullPolicy: Always
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 999
-        ports:
-        - containerPort: 5432
-          name: postgres
-          protocol: TCP
-        env:
-        - name: POSTGRES_DB
-          valueFrom:
-            configMapKeyRef:
-              name: OpsSentinal-config
-              key: POSTGRES_DB
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: OpsSentinal-secrets
-              key: POSTGRES_USER
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: OpsSentinal-secrets
-              key: POSTGRES_PASSWORD
-        - name: PGDATA
-          value: /var/lib/postgresql/data/pgdata
-        - name: POSTGRES_INITDB_ARGS
-          value: "-E UTF8 --locale=C"
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
+        - name: postgres
+          image: postgres:15-alpine
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: opssentinal-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: opssentinal-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: opssentinal-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_INITDB_ARGS
+              value: '-E UTF8 --locale=C'
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-run
+              mountPath: /var/run/postgresql
+            - name: postgres-tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: '512Mi'
+              cpu: '500m'
+            limits:
+              memory: '2Gi'
+              cpu: '2000m'
+          livenessProbe:
+            exec:
+              command: ['pg_isready', '-U', 'opssentinal']
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ['pg_isready', '-U', 'opssentinal']
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: postgres-run
+          emptyDir: {}
+        - name: postgres-tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ['ReadWriteOnce']
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "2Gi"
-            cpu: "2000m"
-        livenessProbe:
-          exec:
-            command: ["pg_isready", "-U", "OpsSentinal"]
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          exec:
-            command: ["pg_isready", "-U", "OpsSentinal"]
-          initialDelaySeconds: 5
-          periodSeconds: 5
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-storage
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 10Gi
+            storage: 10Gi
