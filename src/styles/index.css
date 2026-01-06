@@ -26,3 +26,9 @@
 @import './utilities/layout.css';
 @import './utilities/spacing.css';
 @import './utilities/colors.css';
+
+/* Layouts Layer - Overrides globals.css duplicates */
+@import './layouts/sidebar.css';
+@import './layouts/topbar.css';
+@import './layouts/main-layout.css';
+@import './layouts/responsive.css';

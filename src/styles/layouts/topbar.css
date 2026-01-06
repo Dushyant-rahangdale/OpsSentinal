@@ -1,0 +1,81 @@
+/* ========================================
+   Topbar Layout Styles
+   Extracted from globals.css lines 719-794
+   ======================================== */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.625rem;
+    padding: 0.625rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.ops-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.625rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.ops-pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #16a34a;
+    box-shadow: 0 0 10px rgba(22, 163, 74, 0.6);
+}
+
+.ops-pulse.danger {
+    background: #b71c1c;
+    box-shadow: 0 0 10px rgba(183, 28, 28, 0.65);
+}
+
+.ops-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.ops-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.ops-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ops-detail {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
