@@ -60,8 +60,30 @@
     font-size: 0.9rem;
 }
 
-.btn-disabled {
-    background: #9ca3af;
-    border-color: #9ca3af;
-    color: #fff;
+
+/* Copy Button */
+.copy-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.copy-button:hover {
+    background: #f8fafc;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.copy-button svg {
+    flex-shrink: 0;
 }

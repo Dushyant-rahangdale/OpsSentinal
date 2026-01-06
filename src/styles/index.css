@@ -45,5 +45,8 @@
 /* Pages Layer - Page-specific styles */
 @import './pages/login.css';
 @import './pages/mobile.css';
+@import './pages/schedule.css';
 @import './pages/analytics.css';
 @import './pages/status-page.css';
+@import './pages/settings.css';
+@import './pages/users.css';

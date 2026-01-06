@@ -1,0 +1,802 @@
+﻿/* [MOVED] Fonts -> foundation/fonts.css */
+
+
+/* [MOVED] Variables -> foundation/variables.css */
+
+
+/* [MOVED] Dark Theme -> foundation/variables-dark.css */
+
+
+/* [MOVED] Utilities (Effects, Animations, Focus) -> utilities/effects.css, utilities/animations.css, utilities/typography.css */
+
+
+/* [MOVED] Status Page Styles (Part 1) -> pages/status-page.css */
+
+/* [MOVED] Skeleton Styles -> utilities/animations.css */
+
+
+/* [MOVED] Reset & Base styles -> foundation/reset.css, foundation/base.css */
+
+
+/* [MOVED] Topbar Container -> layouts/topbar.css */
+
+
+/* [MOVED] Layouts (Topbar) -> layouts/topbar.css */
+
+
+/* [MOVED] Login Shell & Orbs -> pages/login.css */
+
+
+/* Additional subtle grid pattern for depth */
+/* [MOVED] Login Animations & Content -> pages/login.css */
+
+
+/* [MOVED] Login Forms & Alerts -> pages/login.css */
+
+
+/* [MOVED] Login Inputs & Help -> pages/login.css */
+
+
+/* [MOVED] Login Media Queries -> pages/login.css */
+
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* [MOVED] Settings Page Styles -> pages/settings.css */
+
+
+.user-list-desktop {
+  display: block;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.user-table-wrap {
+  overflow-x: auto;
+}
+
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.user-actions form {
+  margin: 0;
+}
+
+.user-table th,
+.user-table td {
+  text-align: left;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.user-table thead th {
+  background: #f9f9f9;
+  font-weight: 600;
+  color: var(--text-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.user-table select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.user-slider {
+  display: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(320px, 360px);
+  gap: 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.user-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  min-height: 320px;
+  box-shadow: var(--shadow-sm);
+  scroll-snap-align: start;
+}
+
+.user-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.user-card-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.user-card-email {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.user-card-status {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.user-card-status.active {
+  background: #e6f4ea;
+  color: #1b5e20;
+}
+
+.user-card-status.invited {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.user-card-status.disabled {
+  background: var(--color-neutral-100);
+  color: var(--text-muted);
+}
+
+.user-card-select {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.user-card-row {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.user-card-row select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.user-card-teams {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.user-card-team {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-neutral-100);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.user-card-team-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.user-card-team-form select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.user-card-muted {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.user-card-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.user-card-danger {
+  background: var(--color-neutral-100);
+  color: var(--text-secondary);
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.users-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.users-title {
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+
+.users-subtitle {
+  color: var(--text-secondary);
+}
+
+.users-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.users-stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.users-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.users-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) 340px;
+  gap: 1rem;
+}
+
+.users-table-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.users-filter-wrap {
+  padding: 0.875rem;
+}
+
+.users-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.users-filter label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.users-filter input,
+.users-filter select {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.users-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.users-filter-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.users-sidebar {
+  display: grid;
+  gap: 1rem;
+}
+
+.users-sidebar .glass-panel {
+  padding: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* [MOVED] Users Page Styles -> pages/users.css */
+
+
+/* [MOVED] Sidebar Styles -> layouts/sidebar.css */
+
+
+/* [MOVED] Status Bar Styles -> layouts/topbar.css */
+
+
+.users-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.user-table-panel {
+  background: #fff;
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+/* [MOVED] Users Layout (Chunk 1) -> pages/users.css */
+
+
+/* [MOVED] Remaining Users & Components -> pages/users.css, components/*.css */
+
+.form-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.invite-link-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.invite-link-inline {
+  width: 100%;
+}
+
+.invite-link-feedback {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.invite-link-copy {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.invite-link-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.55rem;
+  border: 1px dashed rgba(17, 24, 39, 0.2);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.invite-link-button {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+}
+
+.bulk-actions-form {
+  width: 100%;
+}
+
+.muted-text {
+  color: var(--text-muted);
+}
+
+@media (max-width: 1100px) {
+  .hero-stats {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .users-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .users-hero {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .filters-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .role-form,
+  .assign-team-form {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 980px) {
+  .user-list-desktop {
+    display: none;
+  }
+
+  .user-slider {
+    display: grid;
+  }
+
+  .user-table-wrap {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .login-card {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  .login-brand {
+    padding: 2.2rem;
+    order: 2;
+  }
+
+  .login-form {
+    padding: 2.2rem;
+    order: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-shell {
+    padding: 1rem;
+  }
+
+  .login-brand {
+    padding: 1.5rem;
+  }
+
+  .login-brand h1 {
+    font-size: 1.7rem;
+  }
+
+  .login-form {
+    padding: 1.5rem;
+  }
+
+  .login-title {
+    font-size: 1.5rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .login-provider,
+  .login-submit {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  .login-input {
+    padding: 0.65rem 2.5rem 0.65rem 0.65rem;
+    font-size: 16px;
+    /* Prevents zoom on iOS */
+  }
+}
+
+.topbar-menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.topbar-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.6rem);
+  min-width: 180px;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.topbar-dropdown-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.topbar-dropdown-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.topbar-dropdown-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.topbar-dropdown-item {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.topbar-dropdown-item:hover {
+  background: #f8fafc;
+  color: var(--primary);
+}
+
+.topbar-dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin-bottom: 0.75rem;
+}
+
+.topbar-dropdown-action {
+  width: 100%;
+  border: none;
+  background: #fef2f2;
+  color: var(--danger);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-dropdown-action:hover {
+  background: var(--color-neutral-100);
+}
+
+.user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.75rem 0.4rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  text-align: left;
+}
+
+.user-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-role {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* [MOVED] User Menu Styles -> layouts/topbar.css */
+
+
+
+/* [MOVED] Settings Styles -> pages/settings.css */
+
+/* Utilities */
+.glass-panel {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Compact padding for glass panels - optimized for 14" laptops */
+/* Exclude login page from compact styling - handled by global compact styles below */
+
+/* Enhanced glass panel for dashboard widgets */
+.dashboard-sidebar .glass-panel,
+.dashboard-main-content .glass-panel {
+  background: #ffffff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-sidebar .glass-panel:hover,
+.dashboard-main-content .glass-panel:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  border-color: rgba(17, 24, 39, 0.12);
+  transform: translateY(-1px);
+}
+
+.analytics-shell .glass-panel {
+  background: #ffffff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+}
+
+.glass-button {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0.75rem 1.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.glass-button:hover {
+  background: #f8fafc;
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Primary Action Button style override - using enhanced styles defined above */
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-gradient {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: inherit;
+  text-shadow: none;
+}
+
+/* Sidebar Nav Item */
+.nav-item {
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  position: relative;
+  border-left: 4px solid transparent;
+}
+
+.nav-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid var(--accent);
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  opacity: 0.9;
+  position: relative;
+}
+
+.nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-item.active .nav-icon {
+  opacity: 1;
+}
+
+.empty-state {
+  border: 1px dashed var(--border);
+  background: var(--gradient-surface);
+}
+
+.glass-panel table thead th {
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  z-index: 1;
+}
+
+.glass-panel table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.glass-panel table tbody tr:hover {
+  background: rgba(148, 163, 184, 0.05);
+}
+
