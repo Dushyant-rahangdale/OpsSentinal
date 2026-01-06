@@ -18,7 +18,8 @@ export async function resetDatabase() {
     try {
       await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
     } catch (error: unknown) {
-      if ((error as { code?: string }).code === '40P01') { // Deadlock
+      if ((error as { code?: string }).code === '40P01') {
+        // Deadlock
         console.log('Deadlock detected during reset, retrying...');
         await new Promise(resolve => setTimeout(resolve, 100));
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
@@ -59,9 +60,11 @@ export async function createTestTeam(
   name: string,
   overrides: Partial<Prisma.TeamUncheckedCreateInput> = {}
 ) {
+  // Append random suffix to avoid unique constraint violations
+  const uniqueName = `${name}-${Math.random().toString(36).slice(2, 9)}`;
   return await prisma.team.create({
     data: {
-      name,
+      name: uniqueName,
       ...overrides,
     },
   });
@@ -72,9 +75,11 @@ export async function createTestService(
   teamId?: string | null,
   overrides: Partial<Prisma.ServiceUncheckedCreateInput> = {}
 ) {
+  // Append random suffix to avoid unique constraint violations
+  const uniqueName = `${name}-${Math.random().toString(36).slice(2, 9)}`;
   return await prisma.service.create({
     data: {
-      name,
+      name: uniqueName,
       ...overrides,
       ...(teamId ? { teamId } : {}),
     },
@@ -130,10 +135,18 @@ export async function createTestEscalationPolicy(
       name,
       steps: {
         create: steps.map(s => {
-          const { targetUserId, targetScheduleId, targetTeamId, targetUser, targetSchedule, targetTeam, ...rest } = s;
+          const {
+            targetUserId,
+            targetScheduleId,
+            targetTeamId,
+            targetUser,
+            targetSchedule,
+            targetTeam,
+            ...rest
+          } = s;
           const data: any = {
             notificationChannels: [],
-            ...rest
+            ...rest,
           };
 
           // Prioritize scalar IDs if provided, otherwise fallback to relations
@@ -155,16 +168,22 @@ export async function createTestEscalationPolicy(
 }
 
 export async function createTestStatusPage(overrides: Partial<Prisma.StatusPageCreateInput> = {}) {
+  // Use unique name to avoid constraint violations
+  const uniqueName = overrides.name || `Test Status Page ${Math.random().toString(36).slice(2, 9)}`;
   return await prisma.statusPage.create({
     data: {
-      name: 'Test Status Page',
+      name: uniqueName,
       enabled: true,
       ...overrides,
     },
   });
 }
 
-export async function linkServiceToStatusPage(statusPageId: string, serviceId: string, overrides: Partial<Prisma.StatusPageServiceUncheckedCreateInput> = {}) {
+export async function linkServiceToStatusPage(
+  statusPageId: string,
+  serviceId: string,
+  overrides: Partial<Prisma.StatusPageServiceUncheckedCreateInput> = {}
+) {
   return await prisma.statusPageService.create({
     data: {
       statusPageId,
@@ -175,7 +194,11 @@ export async function linkServiceToStatusPage(statusPageId: string, serviceId: s
   });
 }
 
-export async function createTestStatusPageSubscription(statusPageId: string, email: string, overrides: Partial<Prisma.StatusPageSubscriptionUncheckedCreateInput> = {}) {
+export async function createTestStatusPageSubscription(
+  statusPageId: string,
+  email: string,
+  overrides: Partial<Prisma.StatusPageSubscriptionUncheckedCreateInput> = {}
+) {
   return await prisma.statusPageSubscription.create({
     data: {
       statusPageId,
@@ -188,9 +211,11 @@ export async function createTestStatusPageSubscription(statusPageId: string, ema
 }
 
 export async function createTestOnCallSchedule(name: string, layers: any[] = []) {
+  // Append random suffix to avoid unique constraint violations
+  const uniqueName = `${name}-${Math.random().toString(36).slice(2, 9)}`;
   return await prisma.onCallSchedule.create({
     data: {
-      name,
+      name: uniqueName,
       layers: {
         create: layers.map((layer, index) => ({
           name: layer.name || `Layer ${index}`,
@@ -215,7 +240,13 @@ export async function createTestOnCallSchedule(name: string, layers: any[] = [])
   });
 }
 
-export async function createTestScheduleOverride(scheduleId: string, userId: string, start: Date, end: Date, replacesUserId?: string) {
+export async function createTestScheduleOverride(
+  scheduleId: string,
+  userId: string,
+  start: Date,
+  end: Date,
+  replacesUserId?: string
+) {
   return await prisma.onCallOverride.create({
     data: {
       scheduleId,
@@ -227,7 +258,11 @@ export async function createTestScheduleOverride(scheduleId: string, userId: str
   });
 }
 
-export async function createTestStatusPageWebhook(statusPageId: string, url: string, overrides: Partial<Prisma.StatusPageWebhookUncheckedCreateInput> = {}) {
+export async function createTestStatusPageWebhook(
+  statusPageId: string,
+  url: string,
+  overrides: Partial<Prisma.StatusPageWebhookUncheckedCreateInput> = {}
+) {
   return await prisma.statusPageWebhook.create({
     data: {
       statusPageId,
