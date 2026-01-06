@@ -1,7 +1,68 @@
 /* ========================================
-   Card Component Styles
-   Placeholder - to be populated with card styles
+   Card & Panel Component Styles
+   Extracted from globals.css lines 3472-3540
    ======================================== */
 
-/* Note: Card styles are scattered throughout globals.css
-   and will be consolidated here as discovered */
+.stats-card {
+   background: #fff;
+   border: 1px solid rgba(17, 24, 39, 0.08);
+   border-radius: 18px;
+   padding: 1rem 1.25rem;
+   box-shadow: var(--shadow-sm);
+   display: flex;
+   flex-direction: column;
+   gap: 0.35rem;
+}
+
+.stats-label {
+   font-size: 0.75rem;
+   letter-spacing: 0.12em;
+   text-transform: uppercase;
+   color: var(--text-muted);
+}
+
+.stats-value {
+   font-size: 1.85rem;
+   font-weight: 700;
+   color: var(--text-primary);
+}
+
+.panel {
+   background: #fff;
+   border-radius: 12px;
+   border: 1px solid rgba(17, 24, 39, 0.08);
+   padding: 0.875rem;
+   box-shadow: var(--shadow-sm);
+   display: flex;
+   flex-direction: column;
+   gap: 0.625rem;
+}
+
+.panel-compact {
+   padding: 1rem;
+   gap: 0.75rem;
+}
+
+.panel-heading.compact {
+   gap: 0.4rem;
+}
+
+.panel-heading.compact h2 {
+   font-size: 1.1rem;
+   margin: 0;
+}
+
+.hero-eyebrow,
+.panel-eyebrow {
+   font-size: 0.75rem;
+   letter-spacing: 0.2em;
+   text-transform: uppercase;
+   color: var(--text-muted);
+}
+
+.directory-panel {
+   background: #fff;
+   border-color: rgba(17, 24, 39, 0.08);
+   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+   padding: 0.85rem 1rem;
+}

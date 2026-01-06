@@ -1,7 +1,62 @@
 /* ========================================
-   Badge Component Styles
-   Placeholder - to be populated with badge styles
+   Badge & Status Indicator Styles
+   Extracted from globals.css
    ======================================== */
 
-/* Note: Badge styles are scattered throughout globals.css
-   and will be consolidated here as discovered */
+/* Badge color variables are in foundation/variables.css:
+   --badge-success-bg, --badge-success-text,
+   --badge-warning-bg, --badge-warning-text,
+   --badge-error-bg, --badge-error-text,
+   --badge-snoozed-bg, --badge-snoozed-text,
+   --badge-neutral-bg, --badge-neutral-text
+*/
+
+.status-page-preview-chip {
+   display: inline-flex;
+   align-items: center;
+   gap: 0.375rem;
+   padding: 0.25rem 0.625rem;
+   font-size: 0.75rem;
+   font-weight: 600;
+   border-radius: 999px;
+   background: var(--badge-neutral-bg);
+   color: var(--badge-neutral-text);
+}
+
+.status-page-preview-chip.success {
+   background: var(--badge-success-bg);
+   color: var(--badge-success-text);
+}
+
+.status-page-preview-chip.warning {
+   background: var(--badge-warning-bg);
+   color: var(--badge-warning-text);
+}
+
+.status-page-preview-chip.error {
+   background: var(--badge-error-bg);
+   color: var(--badge-error-text);
+}
+
+/* Status dot indicators */
+.status-dot {
+   width: 8px;
+   height: 8px;
+   border-radius: 50%;
+   flex-shrink: 0;
+}
+
+.status-dot.operational {
+   background: var(--color-success);
+   box-shadow: 0 0 6px rgba(5, 150, 105, 0.4);
+}
+
+.status-dot.degraded {
+   background: var(--color-warning);
+   box-shadow: 0 0 6px rgba(217, 119, 6, 0.4);
+}
+
+.status-dot.down {
+   background: var(--color-error);
+   box-shadow: 0 0 6px rgba(190, 18, 60, 0.4);
+}
