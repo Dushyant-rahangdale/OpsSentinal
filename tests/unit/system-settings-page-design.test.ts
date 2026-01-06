@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pagePath = path.resolve(__dirname, '../../src/app/(app)/settings/system/page.tsx');
-const cssPath = path.resolve(__dirname, '../../src/app/globals.css');
+const cssPath = path.resolve(__dirname, '../../src/styles/pages/settings.css');
 
 describe('system settings redesign', () => {
   it('adds system settings layout hooks', () => {
