@@ -20,7 +20,7 @@ CREATE INDEX IF NOT EXISTS "idx_shift_coverage" ON "OnCallShift"("start", "end")
 CREATE INDEX IF NOT EXISTS "idx_shift_user_load" ON "OnCallShift"("userId", "start", "end");
 
 -- Add SLAPerformanceLog table for real-time performance monitoring
-CREATE TABLE IF NOT EXISTS "SLAPerformanceLog" (
+CREATE TABLE IF NOT EXISTS "sla_performance_logs" (
     "id" TEXT NOT NULL,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "serviceId" TEXT,
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS "SLAPerformanceLog" (
     "durationMs" INTEGER NOT NULL,
     "incidentCount" INTEGER NOT NULL,
 
-    CONSTRAINT "SLAPerformanceLog_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "sla_performance_logs_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX IF NOT EXISTS "SLAPerformanceLog_timestamp_idx" ON "SLAPerformanceLog"("timestamp");
-CREATE INDEX IF NOT EXISTS "SLAPerformanceLog_durationMs_idx" ON "SLAPerformanceLog"("durationMs");
+CREATE INDEX IF NOT EXISTS "sla_performance_logs_timestamp_idx" ON "sla_performance_logs"("timestamp");
+CREATE INDEX IF NOT EXISTS "sla_performance_logs_durationMs_idx" ON "sla_performance_logs"("durationMs");
