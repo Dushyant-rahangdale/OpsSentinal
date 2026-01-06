@@ -1283,3 +1283,353 @@ a:hover {
         padding: clamp(1rem, 1.6vw, 1.4rem);
     }
 }
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.status-pill.status-active {
+    color: #0f5132;
+    background: #ecfdf3;
+}
+
+.status-pill.status-invited {
+    color: #b45309;
+    background: #fff7ed;
+}
+
+.status-pill.status-disabled {
+    color: var(--text-muted);
+    background: var(--color-neutral-100);
+}
+
+.team-pill-row {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+}
+
+.team-pill {
+    padding: 0.25rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.team-pill-owner {
+    background: var(--color-neutral-100);
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+
+.settings-status {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+}
+
+.settings-status.active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.settings-status.revoked {
+    background: var(--color-neutral-100);
+    color: #991b1b;
+}
+
+.settings-status.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.settings-subsection {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    overflow: hidden;
+    box-shadow: var(--shadow-xs);
+}
+
+.settings-subsection-header {
+    padding: var(--spacing-4) var(--spacing-5);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+}
+
+.settings-subsection-header h3 {
+    margin: 0 0 var(--spacing-1);
+    font-size: var(--font-size-lg);
+}
+
+.settings-subsection-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}/* ============================================
+   SYSTEM SETTINGS PAGE STYLES
+   ============================================ */
+
+.system-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6, 1.5rem);
+}
+
+.system-settings-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-6, 1.5rem);
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.system-settings-hero-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.system-settings-eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 0.5rem;
+}
+
+.system-settings-hero h2 {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary, #0f172a);
+}
+
+.system-settings-hero p {
+  color: var(--text-secondary, #475569);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.system-settings-hero-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 0.75rem);
+  flex: 0 0 auto;
+}
+
+.system-settings-meta-card {
+  background: #ffffff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-4, 1rem);
+  min-width: 200px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.system-settings-meta-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 0.35rem;
+}
+
+.system-settings-meta-card strong {
+  display: block;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 0.25rem;
+}
+
+.system-settings-meta-note {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.system-settings-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.system-settings-meta-row:last-child {
+  border-bottom: none;
+}
+
+.system-settings-meta-row > span:first-child {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #475569);
+}
+
+/* Status Pills */
+.system-settings-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.system-settings-pill.is-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.system-settings-pill.is-off {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.system-settings-pill.is-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Settings Grid and Stack */
+.system-settings-grid {
+  display: grid;
+  gap: var(--spacing-6, 1.5rem);
+}
+
+.system-settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5, 1.25rem);
+}
+
+/* Settings Card */
+.system-settings-card {
+  background: #ffffff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+/* Chips */
+.system-settings-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: var(--spacing-3, 0.75rem);
+}
+
+.system-settings-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* Helper Text */
+.system-settings-helper {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-3, 0.75rem);
+  margin-bottom: var(--spacing-4, 1rem);
+}
+
+.system-settings-helper strong {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 0.25rem;
+}
+
+.system-settings-helper p {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Empty State */
+.system-settings-empty {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-8, 2rem);
+}
+
+.system-settings-empty-card {
+  text-align: center;
+  max-width: 400px;
+  padding: var(--spacing-6, 1.5rem);
+  background: #ffffff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.system-settings-empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto var(--spacing-4, 1rem);
+  background: #fef3c7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #92400e;
+}
+
+.system-settings-empty h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.system-settings-empty p {
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.system-settings-empty-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: var(--spacing-4, 1rem);
+}
+
+.system-settings-empty-role {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+}

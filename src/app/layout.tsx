@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import '@/styles/index.css';
+import { Providers } from './providers';
 import VersionCheck from '@/components/VersionCheck';
 
 export const metadata: Metadata = {
@@ -32,9 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <VersionCheck />
-
-        {children}
+        <Providers>
+          <VersionCheck />
+          {children}
+        </Providers>
       </body>
     </html>
   );
