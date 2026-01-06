@@ -69,7 +69,8 @@ const eslintConfig = defineConfig([
     "scripts/**",
     "coverage/**",
     "reports/**",
-    "*.log"
+    "*.log",
+    "public/**"
   ]),
 ]);
 
