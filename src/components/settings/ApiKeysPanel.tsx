@@ -3,10 +3,18 @@
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createApiKey, revokeApiKey } from '@/app/(app)/settings/actions';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/card';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/shadcn/table';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { EmptyState } from './feedback/EmptyState';
 import CopyButton from './CopyButton';
 import ConfirmDialog from './ConfirmDialog';
-import SettingRow from '@/components/settings/SettingRow';
-import StickyActionBar from '@/components/settings/StickyActionBar';
+import { Key, CheckCircle2, XCircle, Loader2, Copy } from 'lucide-react';
 
 type ApiKey = {
     id: string;
@@ -27,9 +35,10 @@ type State = {
 function SubmitButton() {
     const { pending } = useFormStatus();
     return (
-        <button className="settings-primary-button" type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {pending ? 'Creating...' : 'Create API Key'}
-        </button>
+        </Button>
     );
 }
 
@@ -45,123 +54,180 @@ export default function ApiKeysPanel({ keys }: { keys: ApiKey[] }) {
         window.location.reload();
     };
 
+    const scopes = [
+        { value: 'events:write', title: 'Events Write', detail: 'Create and update events', defaultChecked: true },
+        { value: 'incidents:read', title: 'Incidents Read', detail: 'View incident data' },
+        { value: 'incidents:write', title: 'Incidents Write', detail: 'Create and update incidents' },
+        { value: 'services:read', title: 'Services Read', detail: 'View service information' },
+        { value: 'schedules:read', title: 'Schedules Read', detail: 'View on-call schedules' }
+    ];
+
     return (
-        <>
-            <form action={formAction} className="settings-form-stack">
-                <SettingRow
-                    label="Key name"
-                    description="Give your API key a descriptive name."
-                    helpText="Example: Production automation"
-                >
-                    <input name="name" placeholder="e.g., Production Automation" required />
-                </SettingRow>
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Create New API Key</CardTitle>
+                    <CardDescription>
+                        Generate a new API key for programmatic access to OpsSentinal
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form action={formAction} className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="key-name">Key Name</Label>
+                            <Input
+                                id="key-name"
+                                name="name"
+                                placeholder="e.g., Production Automation"
+                                required
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                Give your API key a descriptive name
+                            </p>
+                        </div>
 
-                <SettingRow
-                    label="Permissions"
-                    description="Choose the scopes this key can access."
-                >
-                    <div className="settings-scope-grid-v2">
-                        {[
-                            { value: 'events:write', title: 'Events Write', detail: 'Create and update events', defaultChecked: true },
-                            { value: 'incidents:read', title: 'Incidents Read', detail: 'View incident data' },
-                            { value: 'incidents:write', title: 'Incidents Write', detail: 'Create and update incidents' },
-                            { value: 'services:read', title: 'Services Read', detail: 'View service information' },
-                            { value: 'schedules:read', title: 'Schedules Read', detail: 'View on-call schedules' }
-                        ].map((scope) => (
-                            <label key={scope.value} className="settings-scope-pill">
-                                <input type="checkbox" name="scopes" value={scope.value} defaultChecked={scope.defaultChecked} />
-                                <span>
-                                    <strong>{scope.title}</strong>
-                                    <small>{scope.detail}</small>
-                                </span>
-                            </label>
-                        ))}
-                    </div>
-                </SettingRow>
+                        <div className="space-y-3">
+                            <Label>Permissions</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Choose the scopes this key can access
+                            </p>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {scopes.map((scope) => (
+                                    <div key={scope.value} className="flex items-start space-x-3 rounded-lg border p-4 hover:bg-accent">
+                                        <Checkbox
+                                            name="scopes"
+                                            value={scope.value}
+                                            defaultChecked={scope.defaultChecked}
+                                            id={scope.value}
+                                        />
+                                        <div className="flex-1 space-y-1">
+                                            <label
+                                                htmlFor={scope.value}
+                                                className="text-sm font-medium leading-none cursor-pointer"
+                                            >
+                                                {scope.title}
+                                            </label>
+                                            <p className="text-sm text-muted-foreground">
+                                                {scope.detail}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
-                {(state?.error || state?.token) && (
-                    <div className={`settings-alert ${state?.error ? 'error' : 'success'}`}>
-                        {state?.error ? state.error : 'API key created. Copy it now - it will not be shown again.'}
-                    </div>
-                )}
+                        {state?.error && (
+                            <Alert variant="destructive">
+                                <XCircle className="h-4 w-4" />
+                                <AlertDescription>{state.error}</AlertDescription>
+                            </Alert>
+                        )}
 
-                {state?.token && (
-                    <div className="settings-code-card">
-                        <code>{state.token}</code>
-                        <CopyButton text={state.token} />
-                    </div>
-                )}
+                        {state?.token && (
+                            <>
+                                <Alert className="bg-green-50 border-green-200">
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    <AlertDescription className="text-green-700">
+                                        API key created successfully! Copy it now - it will not be shown again.
+                                    </AlertDescription>
+                                </Alert>
+                                <div className="flex items-center gap-2 rounded-lg border bg-muted p-4">
+                                    <code className="flex-1 text-sm font-mono">{state.token}</code>
+                                    <CopyButton text={state.token} />
+                                </div>
+                            </>
+                        )}
 
-                <StickyActionBar>
-                    <SubmitButton />
-                </StickyActionBar>
-            </form>
+                        <div className="flex justify-end pt-4 border-t">
+                            <SubmitButton />
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
 
             {keys.length === 0 ? (
-                <div className="settings-empty-state-v2">
-                    <div className="settings-empty-icon">[key]</div>
-                    <h3>No API keys yet</h3>
-                    <p>Create your first API key to automate workflows.</p>
-                </div>
+                <EmptyState
+                    icon={Key}
+                    title="No API keys yet"
+                    description="Create your first API key to automate workflows and integrate with external systems."
+                />
             ) : (
-                <div className="settings-table-card">
-                    <div className="settings-table-header">
-                        <h3>Active API keys</h3>
-                        <p>{keys.length} {keys.length === 1 ? 'key' : 'keys'} configured</p>
-                    </div>
-                    <div className="settings-table-wrapper">
-                        <table className="settings-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Prefix</th>
-                                    <th>Scopes</th>
-                                    <th>Created</th>
-                                    <th>Status</th>
-                                    <th />
-                                </tr>
-                            </thead>
-                            <tbody>
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Active API Keys</CardTitle>
+                                <CardDescription>
+                                    {keys.length} {keys.length === 1 ? 'key' : 'keys'} configured
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Prefix</TableHead>
+                                    <TableHead>Scopes</TableHead>
+                                    <TableHead>Created</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="w-[100px]">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {keys.map((key) => (
-                                    <tr key={key.id}>
-                                        <td>{key.name}</td>
-                                        <td>
-                                            <code className="settings-code">{key.prefix}********</code>
-                                        </td>
-                                        <td>
-                                            <div className="settings-tag-list">
+                                    <TableRow key={key.id}>
+                                        <TableCell className="font-medium">{key.name}</TableCell>
+                                        <TableCell>
+                                            <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                                                {key.prefix}********
+                                            </code>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-1">
                                                 {key.scopes.length > 0 ? (
                                                     key.scopes.map((scope) => (
-                                                        <span key={scope} className="settings-tag">{scope}</span>
+                                                        <Badge key={scope} variant="secondary" className="text-xs">
+                                                            {scope}
+                                                        </Badge>
                                                     ))
                                                 ) : (
-                                                    <span className="settings-tag">No scopes</span>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        No scopes
+                                                    </Badge>
                                                 )}
                                             </div>
-                                        </td>
-                                        <td>{key.createdAt}</td>
-                                        <td>
-                                            <span className={`settings-status ${key.revokedAt ? 'revoked' : 'active'}`}>
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {key.createdAt}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={key.revokedAt ? "destructive" : "default"}
+                                                className="text-xs"
+                                            >
                                                 {key.revokedAt ? 'Revoked' : 'Active'}
-                                            </span>
-                                        </td>
-                                        <td>
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
                                             {!key.revokedAt && (
-                                                <button
-                                                    type="button"
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
                                                     onClick={() => setRevokeKeyId(key.id)}
-                                                    className="settings-link-button danger"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                 >
                                                     Revoke
-                                                </button>
+                                                </Button>
                                             )}
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             )}
 
             <ConfirmDialog
@@ -174,6 +240,6 @@ export default function ApiKeysPanel({ keys }: { keys: ApiKey[] }) {
                 onCancel={() => setRevokeKeyId(null)}
                 variant="danger"
             />
-        </>
+        </div>
     );
 }

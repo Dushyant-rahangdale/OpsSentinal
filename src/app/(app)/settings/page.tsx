@@ -1,91 +1,188 @@
-import { getUserPermissions } from '@/lib/rbac';
-import Link from 'next/link';
-import SettingsPage from '@/components/settings/SettingsPage';
-import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
-import SettingsSearch from '@/components/settings/SettingsSearch';
-import { SETTINGS_NAV_SECTIONS, SETTINGS_NAV_ITEMS } from '@/components/settings/navConfig';
+import { getUserPermissions } from '@/lib/rbac'
+import Link from 'next/link'
+import { SETTINGS_NAV_SECTIONS, SETTINGS_NAV_ITEMS } from '@/components/settings/navConfig'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/card'
+import { Input } from '@/components/ui/shadcn/input'
+import { Badge } from '@/components/ui/shadcn/badge'
+import {
+  User,
+  Settings,
+  Shield,
+  Building2,
+  Puzzle,
+  Bell,
+  Search,
+  ArrowRight,
+  Lock
+} from 'lucide-react'
+
+const sectionIcons: Record<string, any> = {
+  account: User,
+  workspace: Building2,
+  integrations: Puzzle,
+  advanced: Settings,
+}
+
+const itemIcons: Record<string, any> = {
+  profile: User,
+  preferences: Settings,
+  security: Shield,
+  'api-keys': Lock,
+  'notifications-admin': Bell,
+}
 
 export default async function SettingsOverviewPage() {
-    const permissions = await getUserPermissions();
+  const permissions = await getUserPermissions()
 
-    const canAccess = (item: { requiresAdmin?: boolean; requiresResponder?: boolean }) => {
-        if (item.requiresAdmin && !permissions.isAdmin) return false;
-        if (item.requiresResponder && !permissions.isResponderOrAbove) return false;
-        return true;
-    };
+  const canAccess = (item: { requiresAdmin?: boolean; requiresResponder?: boolean }) => {
+    if (item.requiresAdmin && !permissions.isAdmin) return false
+    if (item.requiresResponder && !permissions.isResponderOrAbove) return false
+    return true
+  }
 
-    const sectionGroups = SETTINGS_NAV_SECTIONS.filter((section) => section.id !== 'overview');
-    const popularLinks = SETTINGS_NAV_ITEMS.filter((item) => ['profile', 'preferences', 'security', 'api-keys', 'notifications-admin'].includes(item.id));
+  const sectionGroups = SETTINGS_NAV_SECTIONS.filter((section) => section.id !== 'overview')
+  const popularLinks = SETTINGS_NAV_ITEMS.filter((item) =>
+    ['profile', 'preferences', 'security', 'api-keys', 'notifications-admin'].includes(item.id)
+  )
 
-    return (
-        <SettingsPage
-            title="Settings"
-            description="Manage your account, workspace configuration, and integrations in one place."
-        >
-            <SettingsSectionCard
-                title="Search settings"
-                description="Quickly jump to the page you need."
-                className="settings-section--overview"
-            >
-                <SettingsSearch items={SETTINGS_NAV_ITEMS} placeholder="Search settings, integrations, billing..." />
-                <div className="settings-quick-links">
-                    {popularLinks.map((item) => {
-                        const disabled = !canAccess(item);
-                        const quickLinkClass = `settings-quick-link settings-quick-link--${item.id}`;
-                        return disabled ? (
-                            <div key={item.id} className={`${quickLinkClass} disabled`.trim()}>
-                                <span>{item.label}</span>
-                                <small>Restricted</small>
-                            </div>
-                        ) : (
-                            <Link key={item.id} href={item.href} className={quickLinkClass}>
-                                <span>{item.label}</span>
-                                <small>{item.description}</small>
-                            </Link>
-                        );
-                    })}
-                </div>
-            </SettingsSectionCard>
+  return (
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground text-lg">
+          Manage your account, workspace configuration, and integrations in one place.
+        </p>
+      </div>
 
-            {sectionGroups.map((section) => (
-                <SettingsSectionCard
-                    key={section.id}
-                    title={section.label}
-                    description="Quick access to frequently used configuration areas."
-                    className={`settings-section--${section.id}`}
-                >
-                    <div className={`settings-card-grid settings-card-grid--${section.id}`.trim()}>
-                        {section.items.map((item) => {
-                            const disabled = !canAccess(item);
-                            const cardClass = `settings-card-v2 settings-card--${section.id}`;
+      {/* Search Section */}
+      <Card className="border-border bg-card shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-xl">Search Settings</CardTitle>
+          <CardDescription>Quickly jump to the page you need</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search settings, integrations, billing..."
+              className="pl-10"
+            />
+          </div>
 
-                            if (disabled) {
-                                return (
-                                    <div key={item.id} className={`${cardClass} disabled`.trim()}>
-                                        <div>
-                                            <h3>{item.label}</h3>
-                                            <p>{item.description}</p>
-                                        </div>
-                                        <span className="settings-card-badge">
-                                            {item.requiresAdmin ? 'Admin only' : 'Responder+'}
-                                        </span>
-                                    </div>
-                                );
-                            }
+          {/* Quick Links */}
+          <div>
+            <h3 className="text-sm font-medium mb-3">Quick Access</h3>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {popularLinks.map((item) => {
+                const disabled = !canAccess(item)
+                const Icon = itemIcons[item.id] || Settings
 
-                            return (
-                                <Link key={item.id} href={item.href} className={cardClass}>
-                                    <div>
-                                        <h3>{item.label}</h3>
-                                        <p>{item.description}</p>
-                                    </div>
-                                    <span aria-hidden="true">&rarr;</span>
-                                </Link>
-                            );
-                        })}
+                if (disabled) {
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30 opacity-60 cursor-not-allowed"
+                    >
+                      <Icon className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{item.label}</p>
+                        <p className="text-xs text-muted-foreground">Restricted</p>
+                      </div>
                     </div>
-                </SettingsSectionCard>
-            ))}
-        </SettingsPage>
-    );
+                  )
+                }
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background hover:bg-accent hover:shadow-md transition-all duration-200 group"
+                  >
+                    <Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.description}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Settings Categories */}
+      {sectionGroups.map((section) => {
+        const SectionIcon = sectionIcons[section.id] || Settings
+
+        return (
+          <Card key={section.id} className="border-border bg-card shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <SectionIcon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">{section.label}</CardTitle>
+                  <CardDescription>
+                    Quick access to frequently used configuration areas
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {section.items.map((item) => {
+                  const disabled = !canAccess(item)
+
+                  if (disabled) {
+                    return (
+                      <div
+                        key={item.id}
+                        className="relative p-4 rounded-lg border border-border bg-muted/30 opacity-60 cursor-not-allowed"
+                      >
+                        <div className="space-y-2">
+                          <h3 className="font-semibold text-base">{item.label}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {item.description}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="absolute top-4 right-4 text-xs">
+                          {item.requiresAdmin ? 'Admin only' : 'Responder+'}
+                        </Badge>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      className="group relative p-4 rounded-lg border border-border bg-background hover:bg-accent hover:shadow-md hover:border-primary/20 transition-all duration-200"
+                    >
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-base group-hover:text-primary transition-colors">
+                          {item.label}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {item.description}
+                        </p>
+                      </div>
+                      <ArrowRight className="absolute top-4 right-4 h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                    </Link>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
+  )
 }

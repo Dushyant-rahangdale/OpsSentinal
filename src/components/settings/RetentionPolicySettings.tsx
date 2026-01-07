@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import SettingsHeader from '@/components/settings/SettingsHeader';
-import SettingRow from '@/components/settings/SettingRow';
-import StickyActionBar from '@/components/settings/StickyActionBar';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/card';
+import { Badge } from '@/components/ui/shadcn/badge';
 import ConfirmDialog from '@/components/settings/ConfirmDialog';
-import { Trash2, AlertTriangle, CheckCircle2, RotateCcw, Clock, BarChart3, Database, FileText, Bell } from 'lucide-react';
+import { Trash2, AlertTriangle, CheckCircle2, RotateCcw, Clock, BarChart3, Database, FileText, Bell, Loader2, XCircle } from 'lucide-react';
 
 interface RetentionPolicy {
   incidentRetentionDays: number;
@@ -240,200 +243,183 @@ export default function RetentionPolicySettings() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500">Loading settings...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Loading settings...</span>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <SettingsHeader
-        title="Data Retention"
-        description="Configure lifecycle policies and manage storage usage."
-      />
+    <div className="space-y-6">
+      {generalError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{generalError}</AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700">{success}</AlertDescription>
+        </Alert>
+      )}
 
-      <div className="settings-form-stack">
-        {generalError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative flex items-center gap-2 mb-4 text-sm animate-in fade-in slide-in-from-top-2">
-            <AlertTriangle className="w-4 h-4" />
-            <span>{generalError}</span>
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative flex items-center gap-2 mb-4 text-sm animate-in fade-in slide-in-from-top-2">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{success}</span>
-          </div>
-        )}
-
-        {/* Horizontal Stats Bar */}
-        {stats && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-            <CompactStatRowItem icon={<Database className="w-4 h-4 text-blue-600" />} label="Incidents" value={stats.incidents.total} oldest={stats.incidents.oldest} />
-            <CompactStatRowItem icon={<Bell className="w-4 h-4 text-orange-600" />} label="Alerts" value={stats.alerts.total} oldest={stats.alerts.oldest} />
-            <CompactStatRowItem icon={<FileText className="w-4 h-4 text-gray-600" />} label="Logs" value={stats.logs.total} oldest={stats.logs.oldest} />
-            <CompactStatRowItem icon={<BarChart3 className="w-4 h-4 text-purple-600" />} label="Metrics" value={stats.rollups.total} oldest={stats.rollups.oldest} />
-          </div>
-        )}
-
-        <section className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Retention Rules</h3>
+      {/* Horizontal Stats Bar */}
+      {stats && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 divide-y md:divide-y-0 md:divide-x">
+              <CompactStatRowItem icon={<Database className="w-4 h-4 text-blue-600" />} label="Incidents" value={stats.incidents.total} oldest={stats.incidents.oldest} />
+              <CompactStatRowItem icon={<Bell className="w-4 h-4 text-orange-600" />} label="Alerts" value={stats.alerts.total} oldest={stats.alerts.oldest} />
+              <CompactStatRowItem icon={<FileText className="w-4 h-4 text-muted-foreground" />} label="Logs" value={stats.logs.total} oldest={stats.logs.oldest} />
+              <CompactStatRowItem icon={<BarChart3 className="w-4 h-4 text-purple-600" />} label="Metrics" value={stats.rollups.total} oldest={stats.rollups.oldest} />
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader className="bg-muted/50">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Retention Rules</CardTitle>
             {/* Presets */}
-            <div className="flex bg-gray-100 p-0.5 rounded-md">
-              {presets.map(preset => (
-                <button
-                  key={preset.name}
-                  type="button"
-                  onClick={() => handlePresetClick(preset)}
-                  disabled={saving}
-                  className={`
-                                text-xs font-medium px-3 py-1.5 rounded-sm transition-all
-                                ${JSON.stringify({
-                    incidentRetentionDays: policy?.incidentRetentionDays,
-                    alertRetentionDays: policy?.alertRetentionDays,
-                    logRetentionDays: policy?.logRetentionDays,
-                    metricsRetentionDays: policy?.metricsRetentionDays,
-                    realTimeWindowDays: policy?.realTimeWindowDays
-                  }) === JSON.stringify({
-                    incidentRetentionDays: preset.incidentRetentionDays,
-                    alertRetentionDays: preset.alertRetentionDays,
-                    logRetentionDays: preset.logRetentionDays,
-                    metricsRetentionDays: preset.metricsRetentionDays,
-                    realTimeWindowDays: preset.realTimeWindowDays
-                  })
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-900'}
-                            `}
-                >
-                  {preset.name}
-                </button>
-              ))}
+            <div className="flex bg-muted p-1 rounded-md gap-1">
+              {presets.map(preset => {
+                const isActive = JSON.stringify({
+                  incidentRetentionDays: policy?.incidentRetentionDays,
+                  alertRetentionDays: policy?.alertRetentionDays,
+                  logRetentionDays: policy?.logRetentionDays,
+                  metricsRetentionDays: policy?.metricsRetentionDays,
+                  realTimeWindowDays: policy?.realTimeWindowDays
+                }) === JSON.stringify({
+                  incidentRetentionDays: preset.incidentRetentionDays,
+                  alertRetentionDays: preset.alertRetentionDays,
+                  logRetentionDays: preset.logRetentionDays,
+                  metricsRetentionDays: preset.metricsRetentionDays,
+                  realTimeWindowDays: preset.realTimeWindowDays
+                });
+
+                return (
+                  <Button
+                    key={preset.name}
+                    type="button"
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handlePresetClick(preset)}
+                    disabled={saving}
+                    className="text-xs"
+                  >
+                    {preset.name}
+                  </Button>
+                );
+              })}
             </div>
           </div>
+        </CardHeader>
 
-          <div className="divide-y divide-gray-100">
+        <CardContent className="p-6">
+          <div className="space-y-6">
             {policy && (
               <>
-                <SettingRow
+                <RetentionFieldRow
                   label="Incident History"
                   description="Resolved incidents and postmortems."
-                  className="!border-none"
+                  value={policy.incidentRetentionDays}
+                  onChange={(v) => handleInputChange('incidentRetentionDays', v)}
+                  min={30}
                   error={validationErrors.incidentRetentionDays}
-                >
-                  <CompactInput
-                    value={policy.incidentRetentionDays}
-                    onChange={(v) => handleInputChange('incidentRetentionDays', v)}
-                    unit="days"
-                    min={30}
-                    hasError={!!validationErrors.incidentRetentionDays}
-                  />
-                </SettingRow>
+                />
 
-                <SettingRow
+                <RetentionFieldRow
                   label="Alert Logs"
                   description="Raw alerts from integrations."
-                  className="!border-none"
+                  value={policy.alertRetentionDays}
+                  onChange={(v) => handleInputChange('alertRetentionDays', v)}
+                  min={7}
                   error={validationErrors.alertRetentionDays}
-                >
-                  <CompactInput
-                    value={policy.alertRetentionDays}
-                    onChange={(v) => handleInputChange('alertRetentionDays', v)}
-                    unit="days"
-                    min={7}
-                    hasError={!!validationErrors.alertRetentionDays}
-                  />
-                </SettingRow>
+                />
 
-                <SettingRow
+                <RetentionFieldRow
                   label="System Logs"
                   description="Audit trails and debug events."
-                  className="!border-none"
+                  value={policy.logRetentionDays}
+                  onChange={(v) => handleInputChange('logRetentionDays', v)}
+                  min={1}
                   error={validationErrors.logRetentionDays}
-                >
-                  <CompactInput
-                    value={policy.logRetentionDays}
-                    onChange={(v) => handleInputChange('logRetentionDays', v)}
-                    unit="days"
-                    min={1}
-                    hasError={!!validationErrors.logRetentionDays}
-                  />
-                </SettingRow>
+                />
 
-                <SettingRow
+                <RetentionFieldRow
                   label="Metric Rollups"
                   description="Aggregated performance data (hourly/daily)."
-                  className="!border-none"
+                  value={policy.metricsRetentionDays}
+                  onChange={(v) => handleInputChange('metricsRetentionDays', v)}
+                  min={30}
                   error={validationErrors.metricsRetentionDays}
-                >
-                  <CompactInput
-                    value={policy.metricsRetentionDays}
-                    onChange={(v) => handleInputChange('metricsRetentionDays', v)}
-                    unit="days"
-                    min={30}
-                    hasError={!!validationErrors.metricsRetentionDays}
-                  />
-                </SettingRow>
+                />
 
-                <SettingRow
+                <RetentionFieldRow
                   label="High-Precision Metrics"
                   description="Raw, real-time metric data points."
-                  className="!border-none"
+                  value={policy.realTimeWindowDays}
+                  onChange={(v) => handleInputChange('realTimeWindowDays', v)}
+                  min={1}
                   error={validationErrors.realTimeWindowDays}
-                >
-                  <CompactInput
-                    value={policy.realTimeWindowDays}
-                    onChange={(v) => handleInputChange('realTimeWindowDays', v)}
-                    unit="days"
-                    min={1}
-                    hasError={!!validationErrors.realTimeWindowDays}
-                  />
-                </SettingRow>
+                />
               </>
             )}
           </div>
-        </section>
+        </CardContent>
+      </Card>
 
-        <section className="mt-6 bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
-            <div className="bg-gray-100 p-1.5 rounded-full">
-              <Trash2 className="w-4 h-4 text-gray-600" />
+      <Card>
+        <CardHeader className="bg-muted/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-muted p-2 rounded-full">
+              <Trash2 className="w-4 h-4 text-muted-foreground" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900">Data Cleanup</h3>
+            <CardTitle className="text-base">Data Cleanup</CardTitle>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground max-w-xl">
+              Run the cleanup job to permanently delete data older than your configured retention policy.
+              We recommend running a <strong>Preview</strong> first.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCleanupClick(true)}
+                disabled={saving}
+              >
+                Preview
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleCleanupClick(false)}
+                disabled={saving}
+              >
+                Execute
+              </Button>
+            </div>
           </div>
 
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600 max-w-xl">
-                Run the cleanup job to permanently delete data older than your configured retention policy.
-                We recommend running a <strong>Preview</strong> first.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleCleanupClick(true)}
-                  disabled={saving}
-                  className="px-3 py-1.5 bg-white border border-gray-300 rounded text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 shadow-sm transition-all"
-                >
-                  Preview
-                </button>
-                <button
-                  onClick={() => handleCleanupClick(false)}
-                  disabled={saving}
-                  className="px-3 py-1.5 bg-red-600 border border-transparent rounded text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 shadow-sm transition-all"
-                >
-                  Execute
-                </button>
-              </div>
-            </div>
-
-            {cleanupResult && (
-              <div className={`mt-6 rounded border p-4 animate-in fade-in slide-in-from-top-2 ${cleanupResult.dryRun ? 'bg-blue-50 border-blue-100' : 'bg-green-50 border-green-100'}`}>
-                <div className="flex items-center justify-between mb-3 border-b border-black/5 pb-2">
+          {cleanupResult && (
+            <Alert className={`mt-6 ${cleanupResult.dryRun ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
+              <AlertDescription>
+                <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2">
                   <h5 className={`text-sm font-semibold flex items-center gap-2 ${cleanupResult.dryRun ? 'text-blue-800' : 'text-green-800'}`}>
                     {cleanupResult.dryRun ? 'Simulation Result' : 'Cleanup Complete'}
-                    <span className={`text-xs font-normal px-1.5 py-0.5 rounded ${cleanupResult.dryRun ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                    <Badge variant="secondary" className="text-xs">
                       {cleanupResult.executionTimeMs}ms
-                    </span>
+                    </Badge>
                   </h5>
                 </div>
                 <div className="flex gap-8 text-sm">
@@ -448,44 +434,52 @@ export default function RetentionPolicySettings() {
                     <span>No data was permanently deleted.</span>
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
-      <StickyActionBar>
+      <div className="flex items-center justify-end gap-3 pt-4 border-t">
+        {!isDirty && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleResetDefaults}
+            className="mr-auto"
+          >
+            <RotateCcw className="w-3 h-3 mr-2" />
+            Reset to Defaults
+          </Button>
+        )}
+
         {isDirty && (
-          <div className="flex items-center gap-2 mr-auto">
-            <span className="text-sm text-yellow-600 font-medium">Unsaved changes</span>
-            <button
+          <>
+            <div className="mr-auto flex items-center gap-2">
+              <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-yellow-700">
+                Unsaved changes
+              </Badge>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleResetChanges}
-              className="text-sm text-gray-500 hover:text-gray-900 underline decoration-dotted"
             >
               Discard
-            </button>
-          </div>
+            </Button>
+          </>
         )}
 
-        {!isDirty && (
-          <button
-            type="button"
-            onClick={handleResetDefaults}
-            className="text-sm text-gray-500 hover:text-gray-700 mr-auto flex items-center gap-1.5"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Reset Controls
-          </button>
-        )}
-
-        <button
+        <Button
           onClick={handleSave}
           disabled={saving || !isDirty}
-          className="settings-primary-button"
+          size="sm"
         >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </StickyActionBar>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Changes
+        </Button>
+      </div>
 
       <ConfirmDialog
         open={confirmOpen}
@@ -507,7 +501,43 @@ export default function RetentionPolicySettings() {
   );
 }
 
-// Compact Subcomponents
+// Subcomponents
+
+function RetentionFieldRow({ label, description, value, onChange, min, error }: {
+  label: string;
+  description: string;
+  value: number | string;
+  onChange: (val: string) => void;
+  min?: number;
+  error?: string;
+}) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-6 border-b last:border-0 last:pb-0">
+      <div className="flex-1">
+        <Label className="text-sm font-medium">{label}</Label>
+        <p className="text-sm text-muted-foreground mt-1">{description}</p>
+        {error && (
+          <p className="text-sm text-destructive mt-1 flex items-center gap-1">
+            <XCircle className="h-3 w-3" />
+            {error}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-0">
+        <Input
+          type="number"
+          min={min}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-24 rounded-r-none border-r-0 ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+        />
+        <div className={`inline-flex items-center px-3 h-10 rounded-r-md border bg-muted text-muted-foreground text-xs font-medium ${error ? 'border-destructive bg-destructive/10' : ''}`}>
+          days
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CompactStatRowItem({ icon, label, value, oldest }: { icon: React.ReactNode, label: string, value: number, oldest: string | null }) {
   const formatDate = (dateStr: string | null) => {
@@ -522,12 +552,12 @@ function CompactStatRowItem({ icon, label, value, oldest }: { icon: React.ReactN
     <div className="flex-1 px-4 py-2 md:py-0 flex items-center justify-between md:block">
       <div className="flex items-center gap-2 mb-0 md:mb-1">
         {icon}
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
       </div>
       <div className="text-right md:text-left">
-        <div className="text-lg font-semibold text-gray-900 leading-none">{value.toLocaleString()}</div>
+        <div className="text-lg font-semibold text-foreground leading-none">{value.toLocaleString()}</div>
         {oldest && (
-          <div className="text-[10px] text-gray-400 mt-1 flex items-center justify-end md:justify-start gap-1">
+          <div className="text-[10px] text-muted-foreground mt-1 flex items-center justify-end md:justify-start gap-1">
             <Clock className="w-3 h-3" />
             Oldest: {formatDate(oldest)}
           </div>
@@ -540,34 +570,8 @@ function CompactStatRowItem({ icon, label, value, oldest }: { icon: React.ReactN
 function StatItem({ label, value }: { label: string, value: number }) {
   return (
     <div className="flex flex-col">
-      <span className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">{label}</span>
-      <span className="font-mono font-medium text-gray-900">{value.toLocaleString()}</span>
-    </div>
-  )
-}
-
-
-interface CompactInputProps {
-  value: number | string;
-  onChange: (val: string) => void;
-  unit: string;
-  min?: number;
-  hasError?: boolean;
-}
-
-function CompactInput({ value, onChange, unit, min, hasError }: CompactInputProps) {
-  return (
-    <div className="flex rounded-md shadow-sm w-40">
-      <input
-        type="number"
-        min={min}
-        className={`settings-input block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 focus:ring-blue-500 focus:border-blue-500 h-9 ${hasError ? 'border-red-300 focus:border-red-500 text-red-900 placeholder-red-300' : ''}`}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <span className={`inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-xs font-medium h-9 ${hasError ? 'border-red-300 bg-red-50 text-red-700' : ''}`}>
-        {unit}
-      </span>
+      <span className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</span>
+      <span className="font-mono font-medium text-foreground">{value.toLocaleString()}</span>
     </div>
   )
 }

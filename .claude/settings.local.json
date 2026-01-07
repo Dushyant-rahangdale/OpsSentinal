@@ -7,7 +7,11 @@
       "Bash(wc:*)",
       "Bash(cat:*)",
       "Bash(npx prisma migrate:*)",
-      "Bash(npx prisma generate:*)"
+      "Bash(npx prisma generate:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx shadcn@latest add:*)"
     ]
   }
 }

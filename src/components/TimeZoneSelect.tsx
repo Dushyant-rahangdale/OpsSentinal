@@ -8,9 +8,10 @@ type TimeZoneSelectProps = {
     defaultValue?: string;
     id?: string;
     disabled?: boolean;
+    onChange?: (value: string) => void;
 };
 
-export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disabled }: TimeZoneSelectProps) {
+export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disabled, onChange }: TimeZoneSelectProps) {
     const [zones, setZones] = useState<Array<{ value: string; label: string }>>([]);
     const [selectedValue, setSelectedValue] = useState(defaultValue);
 
@@ -25,12 +26,20 @@ export default function TimeZoneSelect({ name, defaultValue = 'UTC', id, disable
         setSelectedValue(defaultValue);
     }, [defaultValue]);
 
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newValue = e.target.value;
+        setSelectedValue(newValue);
+        if (onChange) {
+            onChange(newValue);
+        }
+    };
+
     return (
-        <select 
-            name={name} 
-            value={selectedValue} 
-            onChange={(e) => setSelectedValue(e.target.value)}
-            id={id} 
+        <select
+            name={name}
+            value={selectedValue}
+            onChange={handleChange}
+            id={id}
             disabled={disabled}
         >
             {zones.map((zone) => (

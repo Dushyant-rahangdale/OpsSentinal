@@ -3,8 +3,11 @@
 import { useActionState, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateNotificationPreferences } from '@/app/(app)/settings/actions';
-import SettingRow from '@/components/settings/SettingRow';
-import StickyActionBar from '@/components/settings/StickyActionBar';
+import { SettingsRow } from '@/components/settings/layout/SettingsRow';
+import { Switch } from '@/components/ui/shadcn/switch';
+import { Input } from '@/components/ui/shadcn/input';
+import { Button } from '@/components/ui/shadcn/button';
+import { Label } from '@/components/ui/shadcn/label';
 
 type State = {
     error?: string | null;
@@ -19,18 +22,6 @@ type Props = {
     phoneNumber: string | null;
 };
 
-function SubmitButton({ pending }: { pending: boolean }) {
-    return (
-        <button
-            type="submit"
-            disabled={pending}
-            className="settings-primary-button"
-        >
-            {pending ? 'Saving...' : 'Save Notification Preferences'}
-        </button>
-    );
-}
-
 export default function NotificationPreferencesForm({
     emailEnabled,
     smsEnabled,
@@ -39,7 +30,9 @@ export default function NotificationPreferencesForm({
     phoneNumber
 }: Props) {
     const [state, formAction, isPending] = useActionState<State, FormData>(updateNotificationPreferences, { error: null, success: false });
+    const [emailChecked, setEmailChecked] = useState(emailEnabled);
     const [smsChecked, setSmsChecked] = useState(smsEnabled);
+    const [pushChecked, setPushChecked] = useState(pushEnabled);
     const [whatsappChecked, setWhatsappChecked] = useState(whatsappEnabled);
     const router = useRouter();
 
@@ -54,97 +47,113 @@ export default function NotificationPreferencesForm({
     }, [state?.success, router]);
 
     return (
-        <form action={formAction} className="settings-form-stack">
-            <SettingRow
+        <form action={formAction} className="space-y-1">
+            {/* Hidden inputs to submit switch values */}
+            <input type="hidden" name="emailNotificationsEnabled" value={emailChecked ? 'true' : 'false'} />
+            <input type="hidden" name="smsNotificationsEnabled" value={smsChecked ? 'true' : 'false'} />
+            <input type="hidden" name="pushNotificationsEnabled" value={pushChecked ? 'true' : 'false'} />
+            <input type="hidden" name="whatsappNotificationsEnabled" value={whatsappChecked ? 'true' : 'false'} />
+
+            <SettingsRow
                 label="Email notifications"
                 description="Receive incident alerts via email."
             >
-                <label className="settings-toggle">
-                    <input
-                        type="checkbox"
-                        name="emailNotificationsEnabled"
-                        defaultChecked={emailEnabled}
-                        key={emailEnabled ? 'email-checked' : 'email-unchecked'}
+                <div className="flex items-center gap-3">
+                    <Switch
+                        id="email-switch"
+                        checked={emailChecked}
+                        onCheckedChange={setEmailChecked}
                     />
-                    <span>Email alerts</span>
-                </label>
-            </SettingRow>
+                    <Label htmlFor="email-switch" className="text-sm">
+                        {emailChecked ? 'Enabled' : 'Disabled'}
+                    </Label>
+                </div>
+            </SettingsRow>
 
-            <SettingRow
+            <SettingsRow
                 label="SMS notifications"
                 description="Receive incident alerts via SMS. Requires phone number."
             >
-                <label className="settings-toggle">
-                    <input
-                        type="checkbox"
-                        name="smsNotificationsEnabled"
-                        defaultChecked={smsEnabled}
-                        onChange={(e) => setSmsChecked(e.target.checked)}
-                        key={smsEnabled ? 'sms-checked' : 'sms-unchecked'}
-                    />
-                    <span>SMS alerts</span>
-                </label>
-                {smsChecked && (
-                    <input
-                        type="tel"
-                        name="phoneNumber"
-                        placeholder="+1234567890"
-                        defaultValue={phoneNumber || ''}
-                        required={smsChecked}
-                    />
-                )}
-            </SettingRow>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <Switch
+                            id="sms-switch"
+                            checked={smsChecked}
+                            onCheckedChange={setSmsChecked}
+                        />
+                        <Label htmlFor="sms-switch" className="text-sm">
+                            {smsChecked ? 'Enabled' : 'Disabled'}
+                        </Label>
+                    </div>
+                    {smsChecked && (
+                        <Input
+                            type="tel"
+                            name="phoneNumber"
+                            placeholder="+1234567890"
+                            defaultValue={phoneNumber || ''}
+                            required={smsChecked}
+                            className="max-w-xs"
+                        />
+                    )}
+                </div>
+            </SettingsRow>
 
-            <SettingRow
+            <SettingsRow
                 label="Push notifications"
                 description="Send mobile push notifications. Requires provider configuration."
             >
-                <label className="settings-toggle">
-                    <input
-                        type="checkbox"
-                        name="pushNotificationsEnabled"
-                        defaultChecked={pushEnabled}
-                        key={pushEnabled ? 'push-checked' : 'push-unchecked'}
+                <div className="flex items-center gap-3">
+                    <Switch
+                        id="push-switch"
+                        checked={pushChecked}
+                        onCheckedChange={setPushChecked}
                     />
-                    <span>Push alerts</span>
-                </label>
-            </SettingRow>
+                    <Label htmlFor="push-switch" className="text-sm">
+                        {pushChecked ? 'Enabled' : 'Disabled'}
+                    </Label>
+                </div>
+            </SettingsRow>
 
-            <SettingRow
+            <SettingsRow
                 label="WhatsApp notifications"
                 description="Receive incident alerts via WhatsApp."
-                helpText="Enter phone number in E.164 format (e.g., +1234567890)."
+                tooltip="Enter phone number in E.164 format (e.g., +1234567890)."
             >
-                <label className="settings-toggle">
-                    <input
-                        type="checkbox"
-                        name="whatsappNotificationsEnabled"
-                        defaultChecked={whatsappEnabled}
-                        onChange={(e) => setWhatsappChecked(e.target.checked)}
-                        key={whatsappEnabled ? 'whatsapp-checked' : 'whatsapp-unchecked'}
-                    />
-                    <span>WhatsApp alerts</span>
-                </label>
-                {whatsappChecked && (
-                    <input
-                        type="tel"
-                        name="phoneNumberWhatsApp"
-                        placeholder="+1234567890"
-                        defaultValue={phoneNumber || ''}
-                        required={whatsappChecked}
-                    />
-                )}
-            </SettingRow>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <Switch
+                            id="whatsapp-switch"
+                            checked={whatsappChecked}
+                            onCheckedChange={setWhatsappChecked}
+                        />
+                        <Label htmlFor="whatsapp-switch" className="text-sm">
+                            {whatsappChecked ? 'Enabled' : 'Disabled'}
+                        </Label>
+                    </div>
+                    {whatsappChecked && (
+                        <Input
+                            type="tel"
+                            name="phoneNumberWhatsApp"
+                            placeholder="+1234567890"
+                            defaultValue={phoneNumber || ''}
+                            required={whatsappChecked}
+                            className="max-w-xs"
+                        />
+                    )}
+                </div>
+            </SettingsRow>
 
             {(state?.error || state?.success) && (
-                <div className={`settings-alert ${state?.error ? 'error' : 'success'}`}>
+                <div className={`p-3 rounded-lg text-sm ${state?.error ? 'bg-destructive/10 text-destructive' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'}`}>
                     {state?.error ? state.error : 'Notification preferences saved successfully'}
                 </div>
             )}
 
-            <StickyActionBar>
-                <SubmitButton pending={isPending} />
-            </StickyActionBar>
+            <div className="pt-4">
+                <Button type="submit" disabled={isPending}>
+                    {isPending ? 'Saving...' : 'Save Notification Preferences'}
+                </Button>
+            </div>
         </form>
     );
 }

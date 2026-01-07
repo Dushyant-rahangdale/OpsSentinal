@@ -3,8 +3,8 @@ import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import PreferencesForm from '@/components/settings/PreferencesForm';
 import NotificationPreferencesForm from '@/components/settings/NotificationPreferencesForm';
-import SettingsPage from '@/components/settings/SettingsPage';
-import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
+import { SettingsPageHeader } from '@/components/settings/layout/SettingsPageHeader';
+import { SettingsSection } from '@/components/settings/layout/SettingsSection';
 
 export default async function PreferencesSettingsPage() {
     const session = await getServerSession(await getAuthOptions());
@@ -26,13 +26,15 @@ export default async function PreferencesSettingsPage() {
         : null;
 
     return (
-        <SettingsPage
-            currentPageId="preferences"
-            backHref="/settings"
-            title="Preferences"
-            description="Personalize how OpsSentinal appears and notifies you."
-        >
-            <SettingsSectionCard
+        <div className="space-y-6">
+            <SettingsPageHeader
+                title="Preferences"
+                description="Personalize how OpsSentinal appears and notifies you."
+                backHref="/settings"
+                backLabel="Back to Settings"
+            />
+
+            <SettingsSection
                 title="General preferences"
                 description="Set your timezone and summary preferences."
             >
@@ -41,11 +43,16 @@ export default async function PreferencesSettingsPage() {
                     dailySummary={user?.dailySummary ?? true}
                     incidentDigest={(user?.incidentDigest as string) ?? 'HIGH'}
                 />
-            </SettingsSectionCard>
+            </SettingsSection>
 
-            <SettingsSectionCard
+            <SettingsSection
                 title="Notification preferences"
                 description="Choose how you want to receive incident notifications."
+                footer={
+                    <p className="text-sm text-muted-foreground">
+                        Preference updates apply to this workspace once saved.
+                    </p>
+                }
             >
                 <NotificationPreferencesForm
                     emailEnabled={user?.emailNotificationsEnabled ?? false}
@@ -54,12 +61,7 @@ export default async function PreferencesSettingsPage() {
                     whatsappEnabled={user?.whatsappNotificationsEnabled ?? false}
                     phoneNumber={user?.phoneNumber ?? null}
                 />
-                <div className="settings-inline-note">
-                    Preference updates apply to this workspace once saved.
-                </div>
-            </SettingsSectionCard>
-        </SettingsPage>
+            </SettingsSection>
+        </div>
     );
 }
-
-

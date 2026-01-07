@@ -1,785 +1,1258 @@
-# CSS Decoupling Plan for OpsSentinal
+# World-Class Settings Page Redesign - OpsSentinal
 
 ## Executive Summary
 
-**Problem:** The `globals.css` file is 354KB (17,490 lines) - a massive monolithic file containing everything from CSS variables to component-specific styles.
+**Goal**: Transform OpsSentinal settings pages into a world-class experience with modern design, smooth interactions, and professional polish comparable to Linear, Vercel, and Stripe.
 
-**Goal:** Refactor into a modular, maintainable CSS architecture following industry best practices.
+**Current State**:
+- 15+ settings pages with inconsistent design patterns
+- Mix of Tailwind, inline styles, and custom CSS
+- Basic form handling with manual save buttons
+- Outdated UI components (emoji icons, basic toggles)
+- No auto-save, limited feedback mechanisms
+- Cramped spacing and small typography
+
+**Target State**:
+- Unified design system with Shadcn/ui components
+- Auto-save forms with optimistic updates
+- Beautiful animations and transitions
+- Dark mode support
+- Generous spacing and modern typography
+- Toast notifications and skeleton loaders
+- Command palette for settings navigation
+- Accessibility-first approach
 
 ---
 
-## Current CSS Structure Diagram
+## Design Inspiration & Principles
+
+### Visual Inspiration
+**Linear + Vercel Hybrid**
+- **Linear**: Premium animations, command palette, smooth transitions, keyboard shortcuts
+- **Vercel**: Clean minimalism, inline editing, generous whitespace, subtle feedback
+
+### Design Principles
+1. **Clarity First**: Every element has clear purpose and hierarchy
+2. **Smooth Interactions**: 60fps animations, instant feedback, no jarring transitions
+3. **Progressive Disclosure**: Show what's needed, hide complexity
+4. **Consistency**: Same patterns everywhere
+5. **Accessibility**: Keyboard-first, screen reader friendly, WCAG 2.1 AA
+
+### Visual Standards
+- **Spacing Scale**: 4, 8, 12, 16, 24, 32, 48, 64, 96px
+- **Typography Scale**:
+  - h1: 2.5rem (40px) - Page titles
+  - h2: 1.875rem (30px) - Section headers
+  - h3: 1.5rem (24px) - Subsection titles
+  - body: 0.875rem (14px) - Base text
+  - small: 0.8125rem (13px) - Secondary text
+- **Border Radius**: 6px (sm), 8px (md), 12px (lg), 16px (xl)
+- **Elevation**: 5 levels of shadows (xs to 2xl)
+- **Animation Curves**: ease-out for entrances, ease-in-out for interactions
+
+---
+
+## Tech Stack
+
+### Design System
+```
+├── Shadcn/ui (v0.8+)          - Component library
+├── Radix UI                    - Accessible primitives
+├── CVA (Class Variance Auth)   - Type-safe variants
+├── Tailwind CSS 3.4+           - Utility-first styling
+└── Next-themes                 - Dark mode management
+```
+
+### Form Management
+```
+├── React Hook Form 7.5+        - Performance-optimized forms
+├── Zod 3.22+                   - Schema validation
+└── Next.js Server Actions      - Form submissions
+```
+
+### Feedback & Polish
+```
+├── Sonner                      - Beautiful toast notifications
+├── Framer Motion 11+           - Smooth animations
+├── React Hot Toast (backup)    - Alternative toast system
+└── Vaul                        - Mobile bottom sheets
+```
+
+### Developer Tools
+```
+├── TypeScript 5.3+             - Type safety
+├── ESLint + Prettier           - Code quality
+└── Husky (optional)            - Git hooks
+```
+
+---
+
+## Architecture Overview
 
 ```
-OpsSentinal/
-├── src/
-│   ├── app/
-│   │   ├── globals.css (354KB, 17,490 lines) ⚠️ CRITICAL ISSUE
-│   │   │   ├── Font imports
-│   │   │   ├── CSS Custom Properties (:root)
-│   │   │   ├── Dark theme overrides
-│   │   │   ├── Base styles
-│   │   │   ├── Utility classes
-│   │   │   ├── Component styles (50+ components)
-│   │   │   ├── Layout styles
-│   │   │   └── Animations
-│   │   │
-│   │   ├── layout.tsx (imports globals.css)
-│   │   │
-│   │   ├── (app)/
-│   │   │   ├── page.module.css
-│   │   │   └── analytics/
-│   │   │       └── analytics-v2.css (104KB, 4,153 lines) ⚠️
-│   │   │
-│   │   └── (mobile)/
-│   │       └── m/
-│   │           ├── mobile.css (64KB, 2,927 lines) ⚠️
-│   │           └── mobile-premium.css
+src/
+├── components/
+│   ├── ui/                     # Shadcn/ui components (NEW)
+│   │   ├── button.tsx
+│   │   ├── input.tsx
+│   │   ├── switch.tsx
+│   │   ├── select.tsx
+│   │   ├── toast.tsx
+│   │   ├── dialog.tsx
+│   │   ├── command.tsx
+│   │   ├── skeleton.tsx
+│   │   ├── card.tsx
+│   │   ├── tabs.tsx
+│   │   ├── separator.tsx
+│   │   ├── label.tsx
+│   │   ├── badge.tsx
+│   │   ├── alert.tsx
+│   │   └── ... (30+ components)
 │   │
-│   └── components/
-│       ├── dashboard/
-│       │   └── Dashboard.module.css (8KB)
-│       ├── incidents/
-│       │   └── IncidentTable.module.css (6.6KB)
-│       └── settings/
-│           ├── NotificationProviderTabs.css
-│           └── SettingsPageHeader.css
-│
-└── public/
-    └── status-page-templates/
-        └── [80+ themed CSS files] ⚠️
-```
-
-### Key Issues Identified
-
-1. **globals.css is 354KB** - Contains everything mixed together
-2. **No separation of concerns** - Variables, base styles, components all in one file
-3. **Inconsistent patterns** - Mix of global CSS, CSS modules, and page-specific CSS
-4. **No build optimization** - No PostCSS, no purging, no minification
-5. **Duplicate styles** - Status page templates have redundant code
-6. **Maintenance nightmare** - Hard to find and update specific styles
-
----
-
-## Proposed Decoupled Structure Diagram
-
-```
-OpsSentinal/
-├── src/
-│   ├── styles/
-│   │   ├── index.css (Main entry point - imports all core styles)
+│   ├── settings/
+│   │   ├── shared/             # Shared settings components (REFACTORED)
+│   │   │   ├── SettingsShell.tsx
+│   │   │   ├── SettingsLayout.tsx
+│   │   │   ├── SettingsNav.tsx
+│   │   │   ├── SettingsSidebar.tsx
+│   │   │   ├── SettingsHeader.tsx
+│   │   │   ├── SettingsSection.tsx
+│   │   │   ├── SettingsCard.tsx
+│   │   │   ├── SettingsRow.tsx (ENHANCED)
+│   │   │   └── SettingsCommandPalette.tsx (NEW)
 │   │   │
-│   │   ├── foundation/
-│   │   │   ├── fonts.css (Font imports)
-│   │   │   ├── variables.css (CSS custom properties)
-│   │   │   ├── variables-dark.css (Dark theme variables)
-│   │   │   ├── reset.css (CSS reset/normalize)
-│   │   │   └── base.css (Base HTML element styles)
+│   │   ├── forms/              # Form components (NEW)
+│   │   │   ├── AutosaveForm.tsx
+│   │   │   ├── FormField.tsx
+│   │   │   ├── FormSection.tsx
+│   │   │   ├── FormActions.tsx
+│   │   │   └── FieldLabel.tsx
 │   │   │
-│   │   ├── utilities/
-│   │   │   ├── spacing.css (Margin/padding utilities)
-│   │   │   ├── typography.css (Text utilities)
-│   │   │   ├── colors.css (Color utilities)
-│   │   │   ├── layout.css (Flex/grid utilities)
-│   │   │   ├── effects.css (Glass morphism, shadows)
-│   │   │   └── animations.css (Keyframes, transitions)
+│   │   ├── feedback/           # Feedback components (NEW)
+│   │   │   ├── SaveIndicator.tsx
+│   │   │   ├── LoadingState.tsx
+│   │   │   ├── ErrorState.tsx
+│   │   │   ├── EmptyState.tsx
+│   │   │   └── SuccessAnimation.tsx
 │   │   │
-│   │   ├── layouts/
-│   │   │   ├── sidebar.css (Sidebar navigation)
-│   │   │   ├── topbar.css (Top navigation)
-│   │   │   ├── main-layout.css (Page layouts)
-│   │   │   └── responsive.css (Responsive utilities)
-│   │   │
-│   │   ├── components/
-│   │   │   ├── buttons.css
-│   │   │   ├── badges.css
-│   │   │   ├── cards.css
-│   │   │   ├── forms.css
-│   │   │   ├── modals.css
-│   │   │   ├── tables.css
-│   │   │   ├── dropdowns.css
-│   │   │   ├── tooltips.css
-│   │   │   ├── skeletons.css
-│   │   │   ├── user-menu.css
-│   │   │   ├── dashboard-widgets.css
-│   │   │   ├── status-badges.css
-│   │   │   └── [other shared components]
-│   │   │
-│   │   └── pages/
-│   │       ├── analytics.css (Analytics page styles)
-│   │       ├── mobile.css (Mobile PWA styles)
-│   │       └── mobile-premium.css
+│   │   └── [page-specific]/   # Page-specific components (REFACTORED)
+│   │       ├── ProfileForm.tsx
+│   │       ├── PreferencesForm.tsx
+│   │       ├── SecurityForm.tsx
+│   │       └── ...
 │   │
-│   ├── app/
-│   │   ├── layout.tsx (imports @/styles/index.css)
-│   │   │
-│   │   └── (app)/
-│   │       └── analytics/
-│   │           └── page.tsx (imports @/styles/pages/analytics.css)
+│   └── providers/              # Context providers (NEW)
+│       ├── ThemeProvider.tsx
+│       ├── ToastProvider.tsx
+│       └── SettingsProvider.tsx
+│
+├── lib/
+│   ├── utils.ts                # Utility functions (cn, formatters)
+│   ├── validations/            # Zod schemas (NEW)
+│   │   ├── profile.ts
+│   │   ├── preferences.ts
+│   │   ├── security.ts
+│   │   └── ...
 │   │
-│   └── components/
-│       ├── dashboard/
-│       │   ├── Dashboard.tsx
-│       │   └── Dashboard.module.css (Component-specific overrides)
-│       │
-│       └── [other components with .module.css as needed]
+│   └── hooks/                  # Custom hooks (NEW)
+│       ├── use-autosave.ts
+│       ├── use-toast.ts
+│       ├── use-media-query.ts
+│       └── use-keyboard-shortcut.ts
 │
-├── public/
-│   └── themes/
-│       ├── status-page/
-│       │   ├── base.css (Shared template base)
-│       │   └── themes.css (All themes in one file with CSS variables)
-│       └── [consolidated theme files]
+├── styles/
+│   └── settings/               # Settings-specific styles (REFACTORED)
+│       ├── modern.css          # New modern styles
+│       └── animations.css      # Animation definitions
 │
-└── postcss.config.js (NEW - for optimization)
+└── app/(app)/settings/         # Settings pages (ALL REFACTORED)
+    ├── page.tsx                # Overview dashboard
+    ├── profile/page.tsx
+    ├── preferences/page.tsx
+    ├── security/page.tsx
+    ├── workspace/page.tsx
+    ├── custom-fields/page.tsx
+    ├── system/page.tsx
+    ├── notifications/page.tsx
+    ├── integrations/page.tsx
+    ├── api-keys/page.tsx
+    └── ... (all other pages)
 ```
 
 ---
 
-## Decoupling Strategy
-
-### Phase 1: Setup & Foundation (Priority: HIGH)
-
-**Objective:** Create the new structure and move CSS variables
-
-**Steps:**
-
-1. **Create directory structure**
-
-   ```bash
-   mkdir -p src/styles/foundation
-   mkdir -p src/styles/utilities
-   mkdir -p src/styles/layouts
-   mkdir -p src/styles/components
-   mkdir -p src/styles/pages
-   ```
-
-2. **Extract CSS Variables** (from globals.css → foundation/)
-
-   **Create `src/styles/foundation/fonts.css`:**
-   - Move Google Fonts import
-   - Estimated: 5 lines
-
-   **Create `src/styles/foundation/variables.css`:**
-   - Move all `:root { }` variables
-   - Color system
-   - Border radius scale
-   - Shadow system
-   - Spacing scale
-   - Typography scale
-   - Font weights, line heights
-   - Transitions
-   - Breakpoints
-   - Z-index scale
-   - Gradients
-   - Badge colors
-   - Layout variables
-   - Estimated: 400-500 lines
-
-   **Create `src/styles/foundation/variables-dark.css`:**
-   - Move all `[data-theme='dark'] { }` overrides
-   - Estimated: 100-150 lines
-
-   **Create `src/styles/foundation/reset.css`:**
-   - Move CSS reset rules
-   - Box sizing, margin reset
-   - Estimated: 50 lines
-
-   **Create `src/styles/foundation/base.css`:**
-   - Move base HTML element styles
-   - html, body, main
-   - Default typography
-   - Scroll behavior
-   - Estimated: 100 lines
-
-3. **Create Main Entry Point**
-
-   **Create `src/styles/index.css`:**
-
-   ```css
-   /* Foundation Layer - Load first */
-   @import './foundation/fonts.css';
-   @import './foundation/variables.css';
-   @import './foundation/variables-dark.css';
-   @import './foundation/reset.css';
-   @import './foundation/base.css';
-
-   /* Utilities Layer */
-   @import './utilities/spacing.css';
-   @import './utilities/typography.css';
-   @import './utilities/colors.css';
-   @import './utilities/layout.css';
-   @import './utilities/effects.css';
-   @import './utilities/animations.css';
-
-   /* Layouts Layer */
-   @import './layouts/sidebar.css';
-   @import './layouts/topbar.css';
-   @import './layouts/main-layout.css';
-   @import './layouts/responsive.css';
-
-   /* Components Layer */
-   @import './components/buttons.css';
-   @import './components/badges.css';
-   @import './components/cards.css';
-   @import './components/forms.css';
-   @import './components/modals.css';
-   @import './components/tables.css';
-   @import './components/dropdowns.css';
-   @import './components/tooltips.css';
-   @import './components/skeletons.css';
-   @import './components/user-menu.css';
-   @import './components/dashboard-widgets.css';
-   @import './components/status-badges.css';
-   /* Add more as you split */
-   ```
-
-4. **Update Root Layout**
-
-   **Edit `src/app/layout.tsx`:**
-
-   ```typescript
-   // Change from:
-   import './globals.css';
-
-   // To:
-   import '@/styles/index.css';
-   ```
-
-### Phase 2: Extract Utilities (Priority: HIGH)
-
-**Objective:** Move utility classes out of globals.css
-
-**Steps:**
-
-1. **Create `src/styles/utilities/effects.css`:**
-   - Glass morphism classes (.glass-card, .glass-panel, etc.)
-   - Shadow utilities
-   - Backdrop filters
-   - Estimated: 200 lines
-
-2. **Create `src/styles/utilities/animations.css`:**
-   - All @keyframes rules
-   - Animation utilities
-   - Micro-animations
-   - Transition utilities
-   - Estimated: 300 lines
-
-3. **Create `src/styles/utilities/spacing.css`:**
-   - Margin/padding utilities (if any)
-   - Gap utilities
-   - Estimated: 50 lines
-
-4. **Create `src/styles/utilities/typography.css`:**
-   - Text utilities (if any beyond variables)
-   - Font size classes
-   - Estimated: 50 lines
-
-5. **Create `src/styles/utilities/colors.css`:**
-   - Color utility classes (if any)
-   - Background colors
-   - Estimated: 50 lines
-
-6. **Create `src/styles/utilities/layout.css`:**
-   - Flexbox utilities
-   - Grid utilities
-   - Container utilities
-   - Estimated: 100 lines
-
-### Phase 3: Extract Layouts (Priority: MEDIUM)
-
-**Objective:** Move layout-specific styles
-
-**Steps:**
-
-1. **Create `src/styles/layouts/sidebar.css`:**
-   - All `.sidebar` styles
-   - Sidebar navigation
-   - Sidebar items
-   - Sidebar animations
-   - Estimated: 500-800 lines
-
-2. **Create `src/styles/layouts/topbar.css`:**
-   - All `.topbar` styles
-   - Top navigation
-   - Estimated: 300 lines
-
-3. **Create `src/styles/layouts/main-layout.css`:**
-   - Main container
-   - Content area
-   - Page wrapper
-   - Estimated: 200 lines
-
-4. **Create `src/styles/layouts/responsive.css`:**
-   - Media queries
-   - Responsive utilities
-   - Breakpoint-specific styles
-   - Estimated: 200 lines
-
-### Phase 4: Extract Components (Priority: MEDIUM)
-
-**Objective:** Move component styles from globals.css
-
-**Steps:**
-
-1. **Identify all component sections in globals.css:**
-   - Look for comment sections like `/* Component Name */`
-   - Buttons, badges, cards, forms, modals, etc.
-
-2. **Create individual component files:**
-
-   **`src/styles/components/buttons.css`:**
-   - All button styles
-   - Button variants
-   - Button states
-   - Estimated: 300 lines
-
-   **`src/styles/components/badges.css`:**
-   - Badge styles
-   - Status badges
-   - Badge variants
-   - Estimated: 200 lines
-
-   **`src/styles/components/cards.css`:**
-   - Card containers
-   - Card headers/footers
-   - Card variants
-   - Estimated: 200 lines
-
-   **`src/styles/components/forms.css`:**
-   - Form inputs
-   - Form groups
-   - Form validation
-   - Login/auth forms
-   - Estimated: 400-600 lines
-
-   **`src/styles/components/modals.css`:**
-   - Modal overlays
-   - Modal content
-   - Modal animations
-   - Estimated: 200 lines
-
-   **`src/styles/components/tables.css`:**
-   - Table styles
-   - Table rows/cells
-   - Table sorting
-   - Estimated: 300 lines
-
-   **`src/styles/components/dropdowns.css`:**
-   - Dropdown menus
-   - Dropdown items
-   - Dropdown animations
-   - Estimated: 200 lines
-
-   **`src/styles/components/user-menu.css`:**
-   - User menu specific styles
-   - Estimated: 200 lines
-
-   **`src/styles/components/dashboard-widgets.css`:**
-   - Dashboard widget styles
-   - Widget variants
-   - Estimated: 400 lines
-
-   **`src/styles/components/status-badges.css`:**
-   - Status indicators
-   - Status colors
-   - Estimated: 150 lines
-
-   **`src/styles/components/skeletons.css`:**
-   - Skeleton loaders
-   - Loading animations
-   - Estimated: 150 lines
-
-   **Continue for all other components found in globals.css**
-
-### Phase 5: Move Page-Specific Styles (Priority: LOW)
-
-**Objective:** Organize large page-specific CSS files
-
-**Steps:**
-
-1. **Move analytics styles:**
-
-   ```bash
-   mv src/app/(app)/analytics/analytics-v2.css src/styles/pages/analytics.css
-   ```
-
-   **Update import in `src/app/(app)/analytics/page.tsx`:**
-
-   ```typescript
-   // Change from:
-   import './analytics-v2.css';
-
-   // To:
-   import '@/styles/pages/analytics.css';
-   ```
-
-2. **Move mobile styles:**
-
-   ```bash
-   mv src/app/(mobile)/m/mobile.css src/styles/pages/mobile.css
-   mv src/app/(mobile)/m/mobile-premium.css src/styles/pages/mobile-premium.css
-   ```
-
-   **Update imports in `src/app/(mobile)/m/layout.tsx`:**
-
-   ```typescript
-   // Change from:
-   import './mobile.css';
-   import './mobile-premium.css';
-
-   // To:
-   import '@/styles/pages/mobile.css';
-   import '@/styles/pages/mobile-premium.css';
-   ```
-
-3. **Consider splitting large page files:**
-   - If analytics.css (104KB) is still too large:
-     - Create `src/styles/pages/analytics/` directory
-     - Split into: charts.css, filters.css, tables.css, etc.
-
-   - If mobile.css (64KB) is still too large:
-     - Create `src/styles/pages/mobile/` directory
-     - Split into: navigation.css, components.css, layouts.css, etc.
-
-### Phase 6: Consolidate Status Page Templates (Priority: LOW)
-
-**Objective:** Reduce 80+ template files to a manageable system
-
-**Current Problem:**
-
-- 80+ individual CSS files in `public/status-page-templates/`
-- Each template has similar structure with different color values
-- Lots of duplicate code
-
-**Solution: CSS Variables-Based Theme System**
-
-**Steps:**
-
-1. **Create base template:**
-
-   **`public/themes/status-page/base.css`:**
-
-   ```css
-   /* Core structure that all themes share */
-   .status-page {
-     /* Uses CSS variables defined by theme */
-     background-color: var(--status-bg);
-     color: var(--status-text);
-   }
-
-   .status-header {
-     background: var(--status-header-bg);
-     border-bottom: 1px solid var(--status-border);
-   }
-
-   /* ... all shared structural styles */
-   ```
-
-2. **Create consolidated themes file:**
-
-   **`public/themes/status-page/themes.css`:**
-
-   ```css
-   /* Each theme is now just CSS variables */
-   [data-status-theme='amber-slate'] {
-     --status-bg: #0f172a;
-     --status-text: #f59e0b;
-     /* ... all theme colors */
-   }
-
-   [data-status-theme='aurora-bright'] {
-     --status-bg: #ffffff;
-     --status-text: #6366f1;
-     /* ... all theme colors */
-   }
-
-   /* Repeat for all 80+ themes */
-   /* This consolidates 80 files into 1 */
-   ```
-
-3. **Update status page implementation:**
-   - Load base.css + themes.css
-   - Set `data-status-theme` attribute based on user selection
-   - Much easier to maintain and extend
-
-### Phase 7: Add Build Optimization (Priority: MEDIUM)
-
-**Objective:** Optimize CSS for production
-
-**Steps:**
-
-1. **Install PostCSS dependencies:**
-
-   ```bash
-   npm install -D postcss postcss-import postcss-preset-env cssnano
-   ```
-
-2. **Create `postcss.config.js`:**
-
-   ```javascript
-   module.exports = {
-     plugins: {
-       'postcss-import': {},
-       'postcss-preset-env': {
-         stage: 3,
-         features: {
-           'nesting-rules': true,
-           'custom-properties': false, // Preserve for runtime theming
-         },
-       },
-       ...(process.env.NODE_ENV === 'production'
-         ? {
-             cssnano: {
-               preset: [
-                 'default',
-                 {
-                   discardComments: { removeAll: true },
-                   normalizeWhitespace: true,
-                 },
-               ],
-             },
-           }
-         : {}),
-     },
-   };
-   ```
-
-3. **Benefits:**
-   - Minified CSS in production
-   - Vendor prefixing
-   - CSS nesting support
-   - Import inlining
-
-### Phase 8: Cleanup & Testing (Priority: HIGH)
-
-**Objective:** Remove old files and verify everything works
-
-**Steps:**
-
-1. **Verify all imports:**
-   - Check all pages still render correctly
-   - Check all components still have proper styling
-   - Test dark mode switching
-   - Test responsive layouts
-   - Test mobile PWA
-
-2. **Remove old globals.css:**
-
-   ```bash
-   # Only after everything is verified working!
-   mv src/app/globals.css src/app/globals.css.backup
-   ```
-
-3. **Update any remaining imports:**
-   - Search for any files still importing old paths
-   - Update to new paths
-
-4. **Run build:**
-
-   ```bash
-   npm run build
-   ```
-
-   - Verify no CSS errors
-   - Check bundle sizes
-   - Ensure all styles load correctly
-
-5. **Clean up backups:**
-   ```bash
-   # Once everything is confirmed working
-   rm src/app/globals.css.backup
-   ```
-
----
-
-## File-by-File Extraction Guide
-
-### How to Extract Styles from globals.css
-
-**Process for each new file:**
-
-1. **Open globals.css in editor**
-2. **Find the section** (look for comment markers)
-3. **Copy the entire section** including comments
-4. **Paste into new dedicated file**
-5. **Add a comment** at the original location noting where it moved:
-   ```css
-   /* Sidebar styles moved to src/styles/layouts/sidebar.css */
-   ```
-6. **Test that styles still work**
-7. **Delete the old section** from globals.css
-8. **Repeat**
-
-**Example Extraction:**
-
-```css
-/* In globals.css, find: */
-/* ========================================
-   Sidebar Navigation
-   ======================================== */
-.sidebar {
-  /* styles */
-}
-
-/* Cut this entire section */
-
-/* Create src/styles/layouts/sidebar.css with: */
-/* ========================================
-   Sidebar Navigation
-   Extracted from globals.css
-   ======================================== */
-.sidebar {
-  /* styles */
+## Implementation Plan
+
+### Phase 1: Foundation Setup (Days 1-2)
+
+#### Step 1.1: Install Dependencies
+
+```bash
+# Shadcn/ui setup
+npx shadcn-ui@latest init
+
+# Additional dependencies
+npm install react-hook-form @hookform/resolvers zod
+npm install sonner framer-motion vaul
+npm install next-themes
+npm install class-variance-authority clsx tailwind-merge
+npm install @radix-ui/react-icons lucide-react
+```
+
+**Configuration Files to Update:**
+- `tailwind.config.ts` - Add Shadcn theme tokens
+- `components.json` - Shadcn configuration
+- `tsconfig.json` - Path aliases
+
+#### Step 1.2: Configure Tailwind with Design Tokens
+
+**File**: `tailwind.config.ts`
+
+Add comprehensive design tokens:
+```typescript
+{
+  theme: {
+    extend: {
+      colors: {
+        // Base colors with dark mode variants
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: { ... },
+        secondary: { ... },
+        destructive: { ... },
+        muted: { ... },
+        accent: { ... },
+        // Custom semantic colors
+        success: { ... },
+        warning: { ... },
+        info: { ... }
+      },
+      spacing: {
+        // Consistent scale
+        '4.5': '1.125rem',  // 18px
+        '18': '4.5rem',     // 72px
+        '88': '22rem',      // 352px
+      },
+      fontSize: {
+        // Modern scale
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],      // 11px
+        'xs': ['0.8125rem', { lineHeight: '1.25rem' }],    // 13px
+        'sm': ['0.875rem', { lineHeight: '1.5rem' }],      // 14px
+        'base': ['1rem', { lineHeight: '1.75rem' }],       // 16px
+        'lg': ['1.125rem', { lineHeight: '1.75rem' }],     // 18px
+        'xl': ['1.25rem', { lineHeight: '2rem' }],         // 20px
+        '2xl': ['1.5rem', { lineHeight: '2.25rem' }],      // 24px
+        '3xl': ['1.875rem', { lineHeight: '2.5rem' }],     // 30px
+        '4xl': ['2.25rem', { lineHeight: '3rem' }],        // 36px
+        '5xl': ['2.5rem', { lineHeight: '3.5rem' }],       // 40px
+      },
+      borderRadius: {
+        'sm': '6px',
+        'md': '8px',
+        'lg': '12px',
+        'xl': '16px',
+        '2xl': '24px',
+      },
+      boxShadow: {
+        'xs': '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        'sm': '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        'md': '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        'lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        'xl': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+        '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+      },
+      keyframes: {
+        // Smooth animations
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' }
+        },
+        'slide-up': {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' }
+        },
+        'slide-down': {
+          '0%': { transform: 'translateY(-10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' }
+        },
+        'scale-in': {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' }
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.2s ease-out',
+        'slide-up': 'slide-up 0.3s ease-out',
+        'slide-down': 'slide-down 0.3s ease-out',
+        'scale-in': 'scale-in 0.2s ease-out',
+      }
+    }
+  }
 }
 ```
 
-### Section Markers to Look For in globals.css
+#### Step 1.3: Install Core Shadcn Components
 
-Based on typical large global CSS files, look for these section comments:
+```bash
+# Essential form components
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add input
+npx shadcn-ui@latest add label
+npx shadcn-ui@latest add select
+npx shadcn-ui@latest add switch
+npx shadcn-ui@latest add textarea
+npx shadcn-ui@latest add checkbox
+npx shadcn-ui@latest add radio-group
 
-- `/* Custom Properties */` or `/* CSS Variables */`
-- `/* Reset */` or `/* Base Styles */`
-- `/* Typography */`
-- `/* Layout */` or `/* Containers */`
-- `/* Sidebar */`
-- `/* Topbar */` or `/* Navigation */`
-- `/* Buttons */`
-- `/* Forms */` or `/* Inputs */`
-- `/* Cards */`
-- `/* Badges */` or `/* Status */`
-- `/* Modals */` or `/* Dialogs */`
-- `/* Tables */`
-- `/* Dashboard */` or `/* Widgets */`
-- `/* Animations */` or `/* Keyframes */`
-- `/* Utilities */`
-- `/* Responsive */` or `/* Media Queries */`
+# Layout components
+npx shadcn-ui@latest add card
+npx shadcn-ui@latest add separator
+npx shadcn-ui@latest add tabs
 
----
+# Feedback components
+npx shadcn-ui@latest add toast
+npx shadcn-ui@latest add alert
+npx shadcn-ui@latest add skeleton
+npx shadcn-ui@latest add badge
 
-## Critical Files to Modify
+# Interactive components
+npx shadcn-ui@latest add dialog
+npx shadcn-ui@latest add command
+npx shadcn-ui@latest add dropdown-menu
+npx shadcn-ui@latest add popover
+npx shadcn-ui@latest add tooltip
 
-### High Priority (Phase 1-2)
-
-1. `src/app/layout.tsx` - Update import path
-2. `src/app/globals.css` - Extract variables and utilities
-3. `src/styles/index.css` - NEW: Main entry point
-4. `src/styles/foundation/*` - NEW: Create all foundation files
-5. `src/styles/utilities/*` - NEW: Create all utility files
-
-### Medium Priority (Phase 3-4)
-
-6. `src/styles/layouts/*` - NEW: Create all layout files
-7. `src/styles/components/*` - NEW: Create all component files
-8. `src/app/(mobile)/m/layout.tsx` - Update import paths
-
-### Low Priority (Phase 5-6)
-
-9. `src/app/(app)/analytics/page.tsx` - Update import path
-10. `public/status-page-templates/*` - Consolidate into theme system
-
----
-
-## Expected Outcomes
-
-### Before Refactor:
-
-- **globals.css:** 354KB, 17,490 lines
-- **Structure:** Monolithic, hard to maintain
-- **Build time:** Slower (no optimization)
-- **Developer experience:** Difficult to find styles
-
-### After Refactor:
-
-- **Largest file:** ~500 lines max per file
-- **Structure:** Modular, organized by concern
-- **Build time:** Faster with PostCSS optimization
-- **Developer experience:** Easy to locate and modify styles
-- **Maintainability:** High - clear separation of concerns
-
-### File Size Breakdown (Estimated):
-
-```
-src/styles/
-├── index.css                    (~50 lines - just imports)
-├── foundation/
-│   ├── fonts.css                (~5 lines)
-│   ├── variables.css            (~500 lines)
-│   ├── variables-dark.css       (~150 lines)
-│   ├── reset.css                (~50 lines)
-│   └── base.css                 (~100 lines)
-├── utilities/
-│   ├── effects.css              (~200 lines)
-│   ├── animations.css           (~300 lines)
-│   ├── spacing.css              (~50 lines)
-│   ├── typography.css           (~50 lines)
-│   ├── colors.css               (~50 lines)
-│   └── layout.css               (~100 lines)
-├── layouts/
-│   ├── sidebar.css              (~800 lines)
-│   ├── topbar.css               (~300 lines)
-│   ├── main-layout.css          (~200 lines)
-│   └── responsive.css           (~200 lines)
-└── components/
-    ├── buttons.css              (~300 lines)
-    ├── badges.css               (~200 lines)
-    ├── cards.css                (~200 lines)
-    ├── forms.css                (~600 lines)
-    ├── modals.css               (~200 lines)
-    ├── tables.css               (~300 lines)
-    ├── dropdowns.css            (~200 lines)
-    ├── tooltips.css             (~150 lines)
-    ├── skeletons.css            (~150 lines)
-    ├── user-menu.css            (~200 lines)
-    ├── dashboard-widgets.css    (~400 lines)
-    ├── status-badges.css        (~150 lines)
-    └── [~30 more component files] (~200-400 lines each)
-
-Total: ~17,490 lines (same content, better organized)
+# Utility components
+npx shadcn-ui@latest add avatar
+npx shadcn-ui@latest add scroll-area
 ```
 
+**Result**: All components installed in `src/components/ui/`
+
+#### Step 1.4: Setup Theme Provider
+
+**File**: `src/components/providers/ThemeProvider.tsx` (NEW)
+
+```typescript
+'use client'
+
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
+import { type ThemeProviderProps } from 'next-themes/dist/types'
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+```
+
+**File**: `src/app/layout.tsx` (UPDATE)
+
+Wrap with theme provider:
+```typescript
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+#### Step 1.5: Setup Toast Provider
+
+**File**: `src/components/providers/ToastProvider.tsx` (NEW)
+
+```typescript
+'use client'
+
+import { Toaster } from 'sonner'
+
+export function ToastProvider() {
+  return (
+    <Toaster
+      position="top-right"
+      expand={false}
+      richColors
+      closeButton
+      theme="light"
+    />
+  )
+}
+```
+
+Add to root layout after ThemeProvider.
+
 ---
 
-## Best Practices Moving Forward
+### Phase 2: Core Design System Components (Days 3-4)
 
-### CSS Organization Rules:
+#### Step 2.1: Create AutosaveForm Component
 
-1. **One concern per file** - Don't mix utilities with components
-2. **Max 500-800 lines per file** - If larger, split further
-3. **Use CSS modules for component overrides** - Keep component-specific in .module.css
-4. **Keep CSS variables in foundation** - Single source of truth
-5. **Document complex styles** - Add comments explaining "why"
-6. **Use consistent naming** - BEM or utility-first approach
-7. **Test dark mode** - Always verify theme switching works
-8. **Mobile-first** - Write mobile styles first, then enhance
+**File**: `src/components/settings/forms/AutosaveForm.tsx` (NEW)
 
-### Naming Conventions:
+**Features**:
+- Debounced auto-save (500ms after last change)
+- Optimistic UI updates
+- "Saving..." → "Saved ✓" indicator
+- Error handling with toast notifications
+- Uses React Hook Form + Server Actions
 
-```css
-/* Foundation - CSS Variables */
---color-primary: #value;
---spacing-4: 1rem;
+**Props**:
+```typescript
+interface AutosaveFormProps<T extends FieldValues> {
+  defaultValues: T
+  onSave: (data: T) => Promise<{ success: boolean; error?: string }>
+  schema: ZodSchema<T>
+  children: React.ReactNode
+  className?: string
+}
+```
 
-/* Utilities - Single purpose */
-.text-center {
-}
-.glass-card {
-}
+**Implementation Pattern**:
+```typescript
+- useForm with Zod resolver
+- useWatch to track changes
+- useDebounce (500ms) for auto-save trigger
+- Show save status in UI (idle/saving/saved/error)
+- Toast on error, subtle checkmark on success
+```
 
-/* Components - BEM style */
-.button {
-}
-.button--primary {
-}
-.button--large {
-}
-.button__icon {
-}
+#### Step 2.2: Create FormField Wrapper
 
-/* Layouts - Descriptive */
-.sidebar {
-}
-.main-content {
+**File**: `src/components/settings/forms/FormField.tsx` (NEW)
+
+**Features**:
+- Consistent layout (label + input + error)
+- Integrates with React Hook Form
+- Accessible (proper ARIA attributes)
+- Supports help text and tooltips
+
+**Visual Structure**:
+```tsx
+<div className="space-y-2">
+  <Label>
+    {label}
+    {required && <span className="text-destructive">*</span>}
+    {tooltip && <TooltipIcon />}
+  </Label>
+  {description && <p className="text-sm text-muted-foreground">{description}</p>}
+  {children /* Input component */}
+  {error && <p className="text-sm text-destructive">{error.message}</p>}
+</div>
+```
+
+#### Step 2.3: Create SettingsRow Component (Enhanced)
+
+**File**: `src/components/settings/shared/SettingsRow.tsx` (REFACTOR)
+
+**New Design**:
+```
+┌────────────────────────────────────────────────────────┐
+│  Label                                      [Control]  │
+│  Secondary description text                            │
+└────────────────────────────────────────────────────────┘
+```
+
+**Features**:
+- Two-column grid (40% label, 60% control on desktop)
+- Stacks on mobile
+- Optional inline help text
+- Integration with FormField
+- Hover state for interactive rows
+
+#### Step 2.4: Create SettingsSection Card
+
+**File**: `src/components/settings/shared/SettingsSection.tsx` (REFACTOR)
+
+**New Design**:
+```
+┌────────────────────────────────────────────────────────┐
+│  Section Title                              [Action]   │
+│  Optional description explaining this section          │
+│  ─────────────────────────────────────────────────     │
+│  Content area with SettingsRow components              │
+│                                                         │
+└────────────────────────────────────────────────────────┘
+```
+
+**Features**:
+- Card-based design with subtle shadow
+- Header with title + optional action button
+- Separator between header and content
+- Consistent padding (24px on desktop, 16px mobile)
+- Optional footer for additional actions
+
+#### Step 2.5: Create Save Indicator
+
+**File**: `src/components/settings/feedback/SaveIndicator.tsx` (NEW)
+
+**States**:
+1. **Idle**: No indicator shown
+2. **Saving**: "Saving..." with spinner
+3. **Saved**: "Saved ✓" with checkmark (fades after 2s)
+4. **Error**: "Failed to save" with error icon
+
+**Visual Design**:
+- Small, unobtrusive indicator
+- Appears in top-right of form or inline
+- Smooth fade in/out animations
+- Color-coded (neutral/success/error)
+
+#### Step 2.6: Create Skeleton Loaders
+
+**File**: `src/components/settings/feedback/LoadingState.tsx` (NEW)
+
+**Purpose**: Replace "Loading..." text with skeleton UI
+
+**Patterns**:
+1. **Form Skeleton**: Mimics SettingsRow layout
+2. **Card Skeleton**: Mimics SettingsSection layout
+3. **List Skeleton**: For API keys, team members, etc.
+
+**Example**:
+```tsx
+<div className="space-y-6">
+  <Skeleton className="h-12 w-full" /> {/* Header */}
+  <Skeleton className="h-24 w-full" /> {/* Card 1 */}
+  <Skeleton className="h-24 w-full" /> {/* Card 2 */}
+</div>
+```
+
+#### Step 2.7: Create Empty States
+
+**File**: `src/components/settings/feedback/EmptyState.tsx` (NEW)
+
+**Use Cases**:
+- No API keys created yet
+- No team members
+- No integrations connected
+
+**Design**:
+- Icon (from Lucide)
+- Heading
+- Description text
+- Call-to-action button
+- Optional illustration
+
+---
+
+### Phase 3: Settings Layout Redesign (Days 5-6)
+
+#### Step 3.1: Redesign Settings Navigation
+
+**File**: `src/components/settings/shared/SettingsNav.tsx` (MAJOR REFACTOR)
+
+**New Features**:
+1. **Visual Improvements**:
+   - Larger icons (20px → 24px)
+   - Better spacing (12px → 16px gaps)
+   - Hover states with background color
+   - Active state with accent border + background
+   - Smooth transitions
+
+2. **Grouping**:
+   - Visual separators between groups
+   - Group headers with subtle text
+
+3. **Keyboard Navigation**:
+   - Arrow keys to navigate
+   - Enter to select
+   - / to focus search
+
+**New Visual Design**:
+```
+┌─ Settings ─────────────────────┐
+│                                 │
+│  ACCOUNT                        │
+│  👤  Profile             →      │
+│  ⚙️   Preferences        →      │
+│  🔒  Security            →      │
+│                                 │
+│  WORKSPACE                      │
+│  🏢  Organization        →      │
+│  📝  Custom Fields       →      │
+│  ⚡  System Settings     →      │
+│                                 │
+│  INTEGRATIONS                   │
+│  🔌  Integrations Hub    →      │
+│  💬  Slack               →      │
+│                                 │
+└─────────────────────────────────┘
+```
+
+#### Step 3.2: Implement Command Palette
+
+**File**: `src/components/settings/shared/SettingsCommandPalette.tsx` (NEW)
+
+**Trigger**: Cmd/Ctrl + K
+
+**Features**:
+- Fuzzy search all settings
+- Keyboard navigation
+- Recent pages
+- Grouped results
+- Quick actions (e.g., "Create API Key")
+
+**Implementation**: Use Shadcn Command component
+
+**Visual**:
+```
+┌─ Quick Settings ───────────────────────────┐
+│  🔍 Search settings...                     │
+├────────────────────────────────────────────┤
+│  ACCOUNT                                   │
+│  👤  Profile settings                      │
+│  🔒  Security settings                     │
+│                                            │
+│  WORKSPACE                                 │
+│  ⚡  System configuration                  │
+│  📝  Custom fields                         │
+│                                            │
+│  Press ↑↓ to navigate, ↵ to select, esc   │
+└────────────────────────────────────────────┘
+```
+
+#### Step 3.3: Redesign Settings Header
+
+**File**: `src/components/settings/shared/SettingsHeader.tsx` (REFACTOR)
+
+**New Layout**:
+```
+┌─────────────────────────────────────────────────────┐
+│  ← Back to settings                                  │
+│                                                      │
+│  Profile Settings                                    │
+│  Manage your personal information and preferences   │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+**Features**:
+- Optional back link
+- Large page title (40px)
+- Descriptive subtitle (14px, muted)
+- Optional action buttons in top-right
+- Breadcrumb navigation
+
+#### Step 3.4: Create Settings Container Layout
+
+**File**: `src/components/settings/shared/SettingsLayout.tsx` (REFACTOR)
+
+**New Structure**:
+```
+┌─ Sidebar ─┬─ Main Content ────────────────────────────────┐
+│           │  Header                                        │
+│ Nav Items │  ───────────────────────────────────────────  │
+│           │                                                │
+│           │  Section Card 1                                │
+│           │  Section Card 2                                │
+│           │  Section Card 3                                │
+│           │                                                │
+│           │                                                │
+└───────────┴────────────────────────────────────────────────┘
+```
+
+**Responsive**:
+- Desktop: Sidebar visible (280px wide, sticky)
+- Tablet: Collapsible sidebar with hamburger
+- Mobile: Bottom sheet navigation
+
+**Implementation**:
+- Use Shadcn Sheet component for mobile
+- CSS Grid for layout
+- Smooth transitions
+
+---
+
+### Phase 4: Page-by-Page Redesign (Days 7-12)
+
+#### General Approach for All Pages
+
+**Pattern**:
+1. Replace manual forms with AutosaveForm
+2. Use FormField for all inputs
+3. Replace custom components with Shadcn
+4. Add skeleton loading states
+5. Implement toast notifications
+6. Add proper error handling
+7. Improve spacing and typography
+
+#### Step 4.1: Profile Page Redesign
+
+**File**: `src/app/(app)/settings/profile/page.tsx` (REFACTOR)
+**Component**: `src/components/settings/ProfileForm.tsx` (REFACTOR)
+
+**Changes**:
+1. **Avatar Upload**:
+   - Large circular avatar (120px)
+   - Hover overlay with "Change photo"
+   - Drag & drop support
+   - Image cropper modal
+
+2. **Form Fields**:
+   - Auto-save on blur
+   - Replace emoji lock icons with proper Lock icons
+   - Disabled state styling for read-only fields
+   - Tooltip explaining "Synced from IdP"
+
+3. **Layout**:
+   ```tsx
+   <AutosaveForm onSave={updateProfile} schema={profileSchema}>
+     <SettingsSection title="Personal Information">
+       <FormField label="Display Name" name="name">
+         <Input />
+       </FormField>
+       <FormField label="Email" name="email">
+         <Input disabled />
+         <HelpText>Managed by your organization</HelpText>
+       </FormField>
+       {/* ... */}
+     </SettingsSection>
+
+     <SettingsSection title="Organization">
+       <FormField label="Role" name="role">
+         <Input disabled />
+       </FormField>
+       {/* ... */}
+     </SettingsSection>
+   </AutosaveForm>
+   ```
+
+**Visual Improvements**:
+- Increase spacing between fields (16px → 24px)
+- Larger input heights (36px → 40px)
+- Better typography hierarchy
+- Subtle hover states on editable fields
+
+#### Step 4.2: Preferences Page Redesign
+
+**File**: `src/app/(app)/settings/preferences/page.tsx` (REFACTOR)
+**Component**: `src/components/settings/PreferencesForm.tsx` (REFACTOR)
+
+**Changes**:
+1. **Timezone Select**:
+   - Replace basic select with Shadcn Combobox
+   - Search functionality
+   - Grouped by region
+   - Shows current time in preview
+
+2. **Toggle Switches**:
+   - Replace checkboxes with modern Switch
+   - Label on left, switch on right
+   - Description text below
+   - Auto-save on toggle
+
+3. **Layout**:
+   ```tsx
+   <AutosaveForm onSave={updatePreferences} schema={preferencesSchema}>
+     <SettingsSection title="Regional Settings">
+       <SettingsRow
+         label="Timezone"
+         description="Used for email digests and timestamps"
+       >
+         <TimezoneCombobox />
+       </SettingsRow>
+     </SettingsSection>
+
+     <SettingsSection title="Email Notifications">
+       <SettingsRow
+         label="Daily summary"
+         description="Receive a daily digest of incidents"
+       >
+         <Switch />
+       </SettingsRow>
+
+       <SettingsRow
+         label="Incident digest"
+         description="How often to receive incident updates"
+       >
+         <Select>
+           <option>High priority only</option>
+           <option>All incidents</option>
+           <option>None</option>
+         </Select>
+       </SettingsRow>
+     </SettingsSection>
+   </AutosaveForm>
+   ```
+
+#### Step 4.3: Security Page Redesign
+
+**File**: `src/app/(app)/settings/security/page.tsx` (REFACTOR)
+**Component**: `src/components/settings/SecurityForm.tsx` (REFACTOR)
+
+**Changes**:
+1. **Password Change**:
+   - Show/hide password toggle
+   - Real-time strength indicator (with visual bar)
+   - Requirements checklist
+   - Confirm password field
+   - Manual save button (security action)
+
+2. **SSO Status**:
+   - Card showing SSO provider
+   - Badge indicating status (Active/Inactive)
+   - Last login timestamp
+
+3. **Active Sessions**:
+   - Table of active sessions
+   - Device, location, last active
+   - Revoke action with confirmation dialog
+
+4. **Layout**:
+   ```tsx
+   <div className="space-y-6">
+     <SettingsSection title="Password">
+       <Form onSubmit={changePassword}>
+         <FormField label="Current password">
+           <PasswordInput />
+         </FormField>
+         <FormField label="New password">
+           <PasswordInput />
+           <PasswordStrength value={password} />
+         </FormField>
+         <FormField label="Confirm password">
+           <PasswordInput />
+         </FormField>
+         <Button type="submit">Update password</Button>
+       </Form>
+     </SettingsSection>
+
+     <SettingsSection title="Single Sign-On">
+       <div className="flex items-center justify-between">
+         <div>
+           <p className="font-medium">Google Workspace</p>
+           <p className="text-sm text-muted-foreground">
+             Last login: 2 hours ago
+           </p>
+         </div>
+         <Badge>Active</Badge>
+       </div>
+     </SettingsSection>
+
+     <SettingsSection title="Active Sessions">
+       <SessionsTable sessions={sessions} />
+     </SettingsSection>
+   </div>
+   ```
+
+#### Step 4.4: Workspace Page Redesign
+
+**File**: `src/app/(app)/settings/workspace/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **Organization Profile**:
+   - Logo upload (similar to avatar)
+   - Organization name (editable by admin)
+   - Domain/subdomain
+
+2. **Team Members**:
+   - Data table with columns: Name, Email, Role, Last Active
+   - Invite button (opens dialog)
+   - Row actions (Edit role, Remove)
+   - Search and filter
+
+3. **Layout**: Similar to Profile with auto-save sections
+
+#### Step 4.5: Custom Fields Page Redesign
+
+**File**: `src/app/(app)/settings/custom-fields/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **Fields List**:
+   - Card-based list of custom fields
+   - Drag-to-reorder (with Dnd Kit)
+   - Edit inline or in modal
+   - Delete with confirmation
+
+2. **Create Field**:
+   - Dialog form
+   - Field type selector (Text, Number, Select, Multi-select, Date)
+   - Validation rules
+   - Default value
+
+3. **Empty State**:
+   - Show when no fields exist
+   - Illustration + CTA
+
+#### Step 4.6: System Settings Page Redesign
+
+**File**: `src/app/(app)/settings/system/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **App URL**:
+   - Input with validation
+   - Preview showing how it looks in emails
+
+2. **SSO/OIDC Configuration**:
+   - Expandable section
+   - Multiple input fields
+   - Test connection button
+   - Status indicator
+
+3. **Encryption**:
+   - Danger zone for key rotation
+   - Confirmation dialogs
+
+4. **Layout**: Group related settings in collapsible sections
+
+#### Step 4.7: Notifications Page Redesign
+
+**File**: `src/app/(app)/settings/notifications/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **Provider Tabs**:
+   - Replace custom tabs with Shadcn Tabs
+   - SMS / Push / WhatsApp
+   - Badge showing configuration status
+
+2. **Provider Forms**:
+   - Auto-save configuration
+   - Test send button
+   - Clear visual feedback
+
+3. **Notification History**:
+   - Table with filters
+   - Delivery status badges
+   - Expand to see details
+
+#### Step 4.8: Integrations Page Redesign
+
+**File**: `src/app/(app)/settings/integrations/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **Integration Cards**:
+   - Grid layout (2-3 columns)
+   - Each card shows logo, name, description
+   - Status badge (Connected/Not connected)
+   - Configure/Connect button
+
+2. **Slack Integration**:
+   - Dedicated page with setup wizard
+   - Step-by-step progress indicator
+   - Channel selector with preview
+
+#### Step 4.9: API Keys Page Redesign
+
+**File**: `src/app/(app)/settings/api-keys/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **API Keys Table**:
+   - Columns: Name, Scopes, Created, Last Used, Actions
+   - Copy key button (only shows key once after creation)
+   - Revoke with confirmation
+
+2. **Create Key**:
+   - Dialog form
+   - Name field
+   - Scope selector (checkboxes)
+   - Expiry date picker
+   - Generate button
+
+3. **Empty State**: Guide to creating first key
+
+#### Step 4.10: Billing Page Redesign
+
+**File**: `src/app/(app)/settings/billing/page.tsx` (REFACTOR)
+
+**Changes**:
+1. **Current Plan**:
+   - Large card showing plan name
+   - Features list
+   - Usage stats with progress bars
+   - Upgrade CTA
+
+2. **Invoices**:
+   - Table with download links
+   - Filter by date
+
+3. **Payment Method**:
+   - Card ending in XXXX
+   - Update button
+
+---
+
+### Phase 5: Polish & Enhancements (Days 13-14)
+
+#### Step 5.1: Add Micro-interactions
+
+**Animations to Add**:
+1. **Form Field Focus**: Subtle scale on input focus
+2. **Button Hover**: Slight lift with shadow
+3. **Card Hover**: Gentle scale up (1.02)
+4. **Switch Toggle**: Smooth slide animation
+5. **Save Indicator**: Fade in/out, checkmark animation
+6. **Toast Notifications**: Slide in from top-right
+7. **Modal Open**: Scale in with backdrop fade
+8. **Skeleton Pulse**: Shimmer effect
+
+**Implementation**:
+- Use Framer Motion for complex animations
+- CSS transitions for simple hover/focus
+- Respect `prefers-reduced-motion`
+
+#### Step 5.2: Keyboard Shortcuts
+
+**Global Shortcuts**:
+- `Cmd/Ctrl + K`: Open command palette
+- `Cmd/Ctrl + S`: Save current form (if applicable)
+- `Escape`: Close modals/dialogs
+- `/`: Focus search
+
+**Navigation Shortcuts**:
+- `g + p`: Go to Profile
+- `g + s`: Go to Security
+- `g + i`: Go to Integrations
+- `g + a`: Go to API Keys
+
+**Implementation**:
+- Create `useKeyboardShortcut` hook
+- Show shortcuts in command palette
+- Add "?" button to show shortcut legend
+
+#### Step 5.3: Mobile Optimizations
+
+**Changes**:
+1. **Navigation**: Bottom sheet instead of sidebar
+2. **Forms**: Full-width inputs, larger touch targets (44px min)
+3. **Tables**: Horizontal scroll or card view
+4. **Modals**: Full-screen on mobile
+5. **Spacing**: Reduce padding on small screens
+
+**Breakpoints**:
+- Mobile: < 768px
+- Tablet: 768px - 1024px
+- Desktop: > 1024px
+
+#### Step 5.4: Accessibility Audit
+
+**Checklist**:
+- [ ] All interactive elements keyboard accessible
+- [ ] Focus visible on all form controls
+- [ ] ARIA labels on icon-only buttons
+- [ ] Error messages associated with fields
+- [ ] Skip links for main content
+- [ ] Color contrast ratio 4.5:1 minimum
+- [ ] Form validation errors announced
+- [ ] Loading states announced
+- [ ] Success confirmations announced
+
+**Tools**: Use aXe DevTools, Lighthouse
+
+#### Step 5.5: Performance Optimization
+
+**Optimizations**:
+1. **Code Splitting**: Dynamic import large components
+2. **Image Optimization**: Use Next.js Image for avatars/logos
+3. **Lazy Loading**: Load forms only when visible
+4. **Debouncing**: All auto-save operations
+5. **Memoization**: Expensive calculations
+6. **Skeleton Loaders**: Prevent layout shift
+
+**Metrics to Track**:
+- First Contentful Paint (FCP)
+- Largest Contentful Paint (LCP)
+- Time to Interactive (TTI)
+- Cumulative Layout Shift (CLS)
+
+---
+
+### Phase 6: Testing & Refinement (Days 15-16)
+
+#### Step 6.1: Visual Regression Testing
+
+**Process**:
+1. Take screenshots of all settings pages (before)
+2. Implement redesign
+3. Take screenshots (after)
+4. Compare side-by-side
+5. Fix inconsistencies
+
+**Tools**: Percy, Chromatic, or manual
+
+#### Step 6.2: User Acceptance Testing
+
+**Test Scenarios**:
+1. **Profile Update**: Change name, see auto-save, verify persistence
+2. **Password Change**: Update password, verify validation
+3. **API Key Creation**: Create, copy, verify in table
+4. **Integration Setup**: Connect Slack, configure, test
+5. **Dark Mode**: Toggle theme, verify all pages
+6. **Mobile**: Navigate settings on phone, verify usability
+7. **Keyboard**: Complete tasks with keyboard only
+
+#### Step 6.3: Bug Fixes & Polish
+
+**Common Issues to Check**:
+- Form validation edge cases
+- Auto-save race conditions
+- Toast notification overflow
+- Modal scroll behavior
+- Mobile navigation glitches
+- Dark mode color contrast
+- Loading state flickers
+
+---
+
+## File-by-File Implementation Checklist
+
+### Critical Files to Create
+
+**New Component Files** (Priority Order):
+
+1. ✓ `src/components/ui/button.tsx` (Shadcn install)
+2. ✓ `src/components/ui/input.tsx` (Shadcn install)
+3. ✓ `src/components/ui/switch.tsx` (Shadcn install)
+4. ✓ `src/components/ui/select.tsx` (Shadcn install)
+5. ✓ `src/components/ui/toast.tsx` (Shadcn install)
+6. ✓ `src/components/ui/skeleton.tsx` (Shadcn install)
+7. ✓ `src/components/ui/command.tsx` (Shadcn install)
+8. ⚠️ `src/components/settings/forms/AutosaveForm.tsx` (NEW)
+9. ⚠️ `src/components/settings/forms/FormField.tsx` (NEW)
+10. ⚠️ `src/components/settings/feedback/SaveIndicator.tsx` (NEW)
+11. ⚠️ `src/components/settings/feedback/LoadingState.tsx` (NEW)
+12. ⚠️ `src/components/settings/shared/SettingsCommandPalette.tsx` (NEW)
+13. ⚠️ `src/lib/hooks/use-autosave.ts` (NEW)
+14. ⚠️ `src/lib/validations/profile.ts` (NEW - Zod schemas)
+
+**Files to Refactor** (Priority Order):
+
+1. 🔄 `src/components/settings/ProfileForm.tsx` (HIGH PRIORITY)
+2. 🔄 `src/components/settings/PreferencesForm.tsx` (HIGH PRIORITY)
+3. 🔄 `src/components/settings/SecurityForm.tsx` (HIGH PRIORITY)
+4. 🔄 `src/components/settings/shared/SettingsNav.tsx` (HIGH PRIORITY)
+5. 🔄 `src/components/settings/shared/SettingsRow.tsx` (HIGH PRIORITY)
+6. 🔄 `src/components/settings/shared/SettingsSection.tsx` (MEDIUM)
+7. 🔄 `src/components/settings/shared/SettingsLayout.tsx` (MEDIUM)
+8. 🔄 `src/components/settings/NotificationProviderSettings.tsx` (MEDIUM)
+9. 🔄 `src/components/settings/ApiKeysPanel.tsx` (MEDIUM)
+10. 🔄 `src/app/(app)/settings/*/page.tsx` (ALL pages)
+
+**Configuration Files**:
+
+1. 🔧 `tailwind.config.ts` (UPDATE with design tokens)
+2. 🔧 `components.json` (CREATE for Shadcn)
+3. 🔧 `src/lib/utils.ts` (UPDATE with cn helper)
+
+---
+
+## Design Mockups & References
+
+### Typography Scale
+```
+h1: 2.5rem (40px)  - Page titles
+h2: 1.875rem (30px) - Section headers
+h3: 1.5rem (24px)  - Subsection titles
+body: 0.875rem (14px) - Base text
+small: 0.8125rem (13px) - Secondary text
+```
+
+### Spacing Scale
+```
+xs: 4px
+sm: 8px
+md: 12px
+lg: 16px
+xl: 24px
+2xl: 32px
+3xl: 48px
+4xl: 64px
+```
+
+### Color Palette (Light Mode)
+```
+Background: hsl(0 0% 100%)
+Foreground: hsl(222 47% 11%)
+Muted: hsl(210 40% 96%)
+Border: hsl(214 32% 91%)
+Primary: hsl(222 47% 11%)
+Success: hsl(142 76% 36%)
+Destructive: hsl(0 84% 60%)
+```
+
+### Component Heights
+```
+Input: 40px
+Button (sm): 32px
+Button (md): 36px
+Button (lg): 40px
+Switch: 24px
+```
+
+---
+
+## Success Metrics
+
+### User Experience
+- ✓ All forms auto-save within 500ms
+- ✓ Page transitions smooth (60fps)
+- ✓ Loading states shown for operations >200ms
+- ✓ Error messages clear and actionable
+- ✓ Zero accessibility violations (aXe)
+
+### Visual Quality
+- ✓ Consistent spacing (design tokens used everywhere)
+- ✓ Typography scale enforced
+- ✓ Dark mode parity with light mode
+- ✓ Responsive on all devices (320px - 4K)
+
+### Performance
+- ✓ LCP < 2.5s
+- ✓ FID < 100ms
+- ✓ CLS < 0.1
+- ✓ Bundle size < 200KB (settings pages)
+
+### Developer Experience
+- ✓ All forms use same pattern (AutosaveForm)
+- ✓ All inputs use same components (Shadcn)
+- ✓ Type-safe validation (Zod)
+- ✓ Reusable components documented
+
+---
+
+## Migration Strategy
+
+### Incremental Rollout
+
+**Week 1**: Foundation
+- Install Shadcn, setup providers, create core components
+
+**Week 2**: High-traffic pages
+- Profile, Preferences, Security (most used)
+
+**Week 3**: Admin pages
+- Workspace, System, Custom Fields
+
+**Week 4**: Integrations & Developer
+- Integrations, API Keys, Notifications
+
+**Week 5**: Polish
+- Animations, keyboard shortcuts, accessibility
+
+**Week 6**: Testing & Launch
+- Bug fixes, UAT, production deploy
+
+### Feature Flags (Optional)
+
+Use feature flags to test new design:
+```typescript
+if (featureFlags.newSettingsUI) {
+  return <NewProfilePage />
+} else {
+  return <OldProfilePage />
 }
 ```
 
@@ -787,80 +1260,67 @@ Total: ~17,490 lines (same content, better organized)
 
 ## Risk Mitigation
 
-### Potential Risks:
+### Potential Issues
 
-1. **Styles break during migration**
-   - Mitigation: Extract one section at a time, test immediately
-   - Keep globals.css.backup until 100% verified
+1. **Auto-save conflicts**: Race conditions with multiple rapid changes
+   - **Solution**: Debounce + cancel previous requests
 
-2. **Import order causes issues**
-   - Mitigation: Follow cascade order (foundation → utilities → layouts → components)
-   - CSS specificity might need adjustment
+2. **Bundle size increase**: Shadcn components add size
+   - **Solution**: Tree-shaking, dynamic imports
 
-3. **Performance regression**
-   - Mitigation: Monitor bundle sizes before/after
-   - Use PostCSS to optimize production build
+3. **Dark mode bugs**: Colors not defined for dark
+   - **Solution**: Test every page in dark mode, use CSS variables
 
-4. **Dark mode breaks**
-   - Mitigation: Test theme switching after each extraction
-   - Keep variables-dark.css separate but imported after variables.css
+4. **Breaking changes**: Server Actions API changes
+   - **Solution**: Maintain backward compatibility, feature flags
 
-5. **Responsive styles break**
-   - Mitigation: Test on multiple screen sizes
-   - Keep media queries organized in responsive.css
+5. **Mobile regressions**: Touch targets too small
+   - **Solution**: Min 44px touch targets, test on real devices
 
 ---
 
-## Timeline Recommendation
+## Post-Launch
 
-**Suggested Approach: Incremental Migration**
+### Monitoring
 
-- **Week 1:** Phase 1-2 (Foundation + Utilities) - 8-12 hours
-- **Week 2:** Phase 3 (Layouts) - 6-8 hours
-- **Week 3-4:** Phase 4 (Components - largest effort) - 16-20 hours
-- **Week 5:** Phase 5-6 (Pages + Templates) - 6-8 hours
-- **Week 6:** Phase 7-8 (Optimization + Testing) - 4-6 hours
+**Track**:
+- User engagement (time spent in settings)
+- Error rates (form submission failures)
+- Performance metrics (Core Web Vitals)
+- User feedback (support tickets)
 
-**Total Effort:** 40-54 hours
+### Iteration
 
-**Can be done faster if dedicated full-time:** 1-2 weeks
-
----
-
-## Success Criteria
-
-The refactor is complete when:
-
-- [ ] globals.css is deleted (or <100 lines for legacy compatibility)
-- [ ] All styles work identically to before
-- [ ] Dark mode works correctly
-- [ ] Mobile PWA styles work correctly
-- [ ] All pages render correctly
-- [ ] Production build succeeds without errors
-- [ ] Bundle size is optimized (should be smaller with minification)
-- [ ] No CSS-related console errors
-- [ ] Team can easily find and modify styles
+**Planned Enhancements**:
+1. Settings search (Cmd+K) with AI suggestions
+2. Recently changed settings widget
+3. Export settings as JSON
+4. Settings templates for teams
+5. Audit log for all changes
 
 ---
 
-## Questions to Consider
+## Conclusion
 
-Before starting, confirm:
+This redesign transforms OpsSentinal settings from functional but dated to **world-class and delightful**. By adopting modern tools (Shadcn, Radix, React Hook Form), implementing auto-save patterns, and focusing on polish, the settings experience will rival Linear, Vercel, and Stripe.
 
-1. **Do you want to keep CSS Modules for components?** (Recommended: Yes)
-2. **Do you want to add PostCSS optimization now or later?** (Recommended: Now)
-3. **Should we consolidate status page templates?** (Recommended: Yes, saves maintenance)
-4. **Do you want to split large page CSS files further?** (Recommended: Yes for analytics.css)
-5. **Any specific component styles that should stay in .module.css?** (Recommend: scoped overrides only)
+**Key Deliverables**:
+- ✓ 30+ reusable Shadcn components
+- ✓ Auto-save forms with optimistic updates
+- ✓ Command palette for navigation
+- ✓ Dark mode support
+- ✓ Keyboard shortcuts
+- ✓ Responsive design
+- ✓ Skeleton loaders
+- ✓ Toast notifications
+- ✓ Comprehensive accessibility
 
----
+**Estimated Timeline**: 16 days (3 weeks part-time)
 
-## Next Steps
+**Estimated Impact**:
+- 50% reduction in form errors
+- 30% faster settings changes
+- 90%+ user satisfaction
+- Professional brand perception
 
-1. **Review this plan** - Make sure you agree with the structure
-2. **Answer questions above** - Clarify any preferences
-3. **Start with Phase 1** - Create foundation files (lowest risk, highest impact)
-4. **Test frequently** - Don't extract everything at once
-5. **Commit incrementally** - Small commits make rollback easier
-
-Ready to proceed? Let's start with Phase 1!
+Ready to build the best settings experience in the industry! 🚀

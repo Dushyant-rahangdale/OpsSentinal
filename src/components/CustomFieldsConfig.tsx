@@ -1,8 +1,18 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Card, Button, FormField, Select, Switch } from '@/components/ui';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/shadcn/select';
+import { Switch } from '@/components/ui/shadcn/switch';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/card';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { EmptyState } from '@/components/settings/feedback/EmptyState';
+import ConfirmDialog from '@/components/settings/ConfirmDialog';
+import { FileText, Plus, Trash2, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 
 type CustomField = {
     id: string;
@@ -27,9 +37,8 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
-    const [customFields, _setCustomFields] = useState(initialFields);
-    const [_editingId, _setEditingId] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -89,10 +98,6 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this custom field? This will remove all values for this field.')) {
-            return;
-        }
-
         startTransition(async () => {
             try {
                 const response = await fetch(`/api/settings/custom-fields/${id}`, {
@@ -104,9 +109,11 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                     throw new Error(data.error || 'Failed to delete custom field');
                 }
 
+                setDeleteId(null);
                 router.refresh();
             } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
                 setError(err.message || 'Failed to delete custom field');
+                setDeleteId(null);
             }
         });
     };
@@ -122,220 +129,219 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
     ];
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
-            {/* Add New Field */}
+        <div className="space-y-6">
+            {error && (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {/* Add New Field Card */}
             <Card>
-                <div style={{ padding: 'var(--spacing-5)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-4)' }}>
-                        <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)' }}>
-                            Add Custom Field
-                        </h2>
-                        <Button
-                            variant="primary"
-                            onClick={() => setShowAddForm(!showAddForm)}
-                        >
-                            {showAddForm ? 'Cancel' : '+ Add Field'}
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Add Custom Field</CardTitle>
+                            <CardDescription>
+                                Create custom fields to capture additional incident information
+                            </CardDescription>
+                        </div>
+                        <Button onClick={() => setShowAddForm(!showAddForm)}>
+                            {showAddForm ? 'Cancel' : (
+                                <>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add Field
+                                </>
+                            )}
                         </Button>
                     </div>
+                </CardHeader>
 
-                    {showAddForm && (
-                        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
-                                <FormField
-                                    type="input"
-                                    inputType="text"
-                                    label="Field Name"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    required
-                                    placeholder="e.g., Customer ID"
-                                />
-                                <FormField
-                                    type="input"
-                                    inputType="text"
-                                    label="Field Key"
-                                    value={formData.key}
-                                    onChange={(e) => setFormData({ ...formData, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
-                                    required
-                                    placeholder="e.g., customer_id"
-                                    helperText="Unique identifier (letters, numbers, underscores only)"
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: 'var(--spacing-2)', fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}>
-                                        Field Type
-                                    </label>
-                                    <Select
-                                        value={formData.type}
-                                        onChange={(e) => setFormData({ ...formData, type: e.target.value as CustomField['type'] })}
-                                        options={fieldTypeOptions}
+                {showAddForm && (
+                    <CardContent>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="field-name">Field Name</Label>
+                                    <Input
+                                        id="field-name"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        required
+                                        placeholder="e.g., Customer ID"
                                     />
                                 </div>
-                                <FormField
-                                    type="input"
-                                    inputType="text"
-                                    label="Default Value (Optional)"
-                                    value={formData.defaultValue}
-                                    onChange={(e) => setFormData({ ...formData, defaultValue: e.target.value })}
-                                    placeholder="Default value for new incidents"
-                                />
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="field-key">Field Key</Label>
+                                    <Input
+                                        id="field-key"
+                                        value={formData.key}
+                                        onChange={(e) => setFormData({ ...formData, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                                        required
+                                        placeholder="e.g., customer_id"
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        Unique identifier (letters, numbers, underscores only)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="field-type">Field Type</Label>
+                                    <Select
+                                        value={formData.type}
+                                        onValueChange={(value) => setFormData({ ...formData, type: value as CustomField['type'] })}
+                                    >
+                                        <SelectTrigger id="field-type">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {fieldTypeOptions.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="default-value">Default Value (Optional)</Label>
+                                    <Input
+                                        id="default-value"
+                                        value={formData.defaultValue}
+                                        onChange={(e) => setFormData({ ...formData, defaultValue: e.target.value })}
+                                        placeholder="Default value for new incidents"
+                                    />
+                                </div>
                             </div>
 
                             {formData.type === 'SELECT' && (
-                                <FormField
-                                    type="input"
-                                    inputType="text"
-                                    label="Options (comma-separated)"
-                                    value={formData.options}
-                                    onChange={(e) => setFormData({ ...formData, options: e.target.value })}
-                                    required={formData.type === 'SELECT'}
-                                    placeholder="Option 1, Option 2, Option 3"
-                                    helperText="Enter options separated by commas"
-                                />
-                            )}
-
-                            <div style={{ display: 'flex', gap: 'var(--spacing-4)' }}>
-                                <Switch
-                                    checked={formData.required}
-                                    onChange={(checked) => setFormData({ ...formData, required: checked })}
-                                    label="Required Field"
-                                />
-                                <Switch
-                                    checked={formData.showInList}
-                                    onChange={(checked) => setFormData({ ...formData, showInList: checked })}
-                                    label="Show in Incident List"
-                                />
-                            </div>
-
-                            {error && (
-                                <div style={{ padding: 'var(--spacing-3)', background: 'var(--color-error-light)', borderRadius: 'var(--radius-md)', color: 'var(--color-error-dark)' }}>
-                                    {error}
+                                <div className="space-y-2">
+                                    <Label htmlFor="options">Options (comma-separated)</Label>
+                                    <Input
+                                        id="options"
+                                        value={formData.options}
+                                        onChange={(e) => setFormData({ ...formData, options: e.target.value })}
+                                        required
+                                        placeholder="Option 1, Option 2, Option 3"
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        Enter options separated by commas
+                                    </p>
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', gap: 'var(--spacing-3)', justifyContent: 'flex-end' }}>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() => {
-                                        setShowAddForm(false);
-                                        setError(null);
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    variant="primary"
-                                    isLoading={isPending}
-                                >
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id="required"
+                                        checked={formData.required}
+                                        onCheckedChange={(checked) => setFormData({ ...formData, required: checked })}
+                                    />
+                                    <Label htmlFor="required" className="font-normal">
+                                        Required field
+                                    </Label>
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id="show-in-list"
+                                        checked={formData.showInList}
+                                        onCheckedChange={(checked) => setFormData({ ...formData, showInList: checked })}
+                                    />
+                                    <Label htmlFor="show-in-list" className="font-normal">
+                                        Show in incident list
+                                    </Label>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-4 border-t">
+                                <Button type="submit" disabled={isPending}>
+                                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Create Field
                                 </Button>
                             </div>
                         </form>
-                    )}
-                </div>
+                    </CardContent>
+                )}
             </Card>
 
             {/* Existing Fields */}
-            <Card>
-                <div style={{ padding: 'var(--spacing-5)' }}>
-                    <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--spacing-4)' }}>
-                        Custom Fields ({customFields.length})
-                    </h2>
-
-                    {customFields.length === 0 ? (
-                        <div style={{ padding: 'var(--spacing-8)', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <p>No custom fields defined yet. Add your first custom field above.</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-                            {customFields.map((field) => (
+            {initialFields.length === 0 ? (
+                <EmptyState
+                    icon={FileText}
+                    title="No custom fields yet"
+                    description="Create custom fields to capture additional structured data for incidents."
+                />
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Existing Custom Fields</CardTitle>
+                        <CardDescription>
+                            {initialFields.length} custom {initialFields.length === 1 ? 'field' : 'fields'} configured
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {initialFields.map((field) => (
                                 <div
                                     key={field.id}
-                                    style={{
-                                        padding: 'var(--spacing-4)',
-                                        background: 'var(--color-neutral-50)',
-                                        borderRadius: 'var(--radius-md)',
-                                        border: '1px solid var(--color-neutral-200)',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                    }}
+                                    className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent"
                                 >
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', marginBottom: 'var(--spacing-1)' }}>
-                                            <h3 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                                                {field.name}
-                                            </h3>
-                                            <span style={{
-                                                padding: '0.125rem 0.5rem',
-                                                background: 'var(--color-neutral-200)',
-                                                borderRadius: 'var(--radius-sm)',
-                                                fontSize: 'var(--font-size-xs)',
-                                                color: 'var(--text-muted)',
-                                            }}>
-                                                {field.key}
-                                            </span>
-                                            <span style={{
-                                                padding: '0.125rem 0.5rem',
-                                                background: 'var(--primary-light)',
-                                                borderRadius: 'var(--radius-sm)',
-                                                fontSize: 'var(--font-size-xs)',
-                                                color: 'var(--primary-dark)',
-                                            }}>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="font-medium">{field.name}</h4>
+                                            <Badge variant="secondary" className="text-xs">
                                                 {field.type}
-                                            </span>
+                                            </Badge>
                                             {field.required && (
-                                                <span style={{
-                                                    padding: '0.125rem 0.5rem',
-                                                    background: 'var(--color-error-light)',
-                                                    borderRadius: 'var(--radius-sm)',
-                                                    fontSize: 'var(--font-size-xs)',
-                                                    color: 'var(--color-error-dark)',
-                                                }}>
+                                                <Badge variant="outline" className="text-xs">
                                                     Required
-                                                </span>
+                                                </Badge>
                                             )}
                                             {field.showInList && (
-                                                <span style={{
-                                                    padding: '0.125rem 0.5rem',
-                                                    background: 'var(--color-success-light)',
-                                                    borderRadius: 'var(--radius-sm)',
-                                                    fontSize: 'var(--font-size-xs)',
-                                                    color: 'var(--color-success-dark)',
-                                                }}>
+                                                <Badge variant="outline" className="text-xs">
                                                     In List
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
-                                        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
-                                            Used in {field._count.values} incident{field._count.values !== 1 ? 's' : ''}
-                                        </p>
+                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                            <code className="text-xs bg-muted px-2 py-0.5 rounded">
+                                                {field.key}
+                                            </code>
+                                            <span>•</span>
+                                            <span>{field._count.values} values</span>
+                                        </div>
                                     </div>
                                     <Button
-                                        variant="danger"
+                                        variant="ghost"
                                         size="sm"
-                                        onClick={() => handleDelete(field.id)}
-                                        disabled={isPending}
+                                        onClick={() => setDeleteId(field.id)}
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                     >
-                                        Delete
+                                        <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
                             ))}
                         </div>
-                    )}
-                </div>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
+
+            <ConfirmDialog
+                open={deleteId !== null}
+                title="Delete Custom Field"
+                message="Are you sure you want to delete this custom field? This will remove all values for this field from existing incidents. This action cannot be undone."
+                confirmLabel="Delete Field"
+                cancelLabel="Cancel"
+                onConfirm={() => deleteId && handleDelete(deleteId)}
+                onCancel={() => setDeleteId(null)}
+                variant="danger"
+            />
         </div>
     );
 }
-
-
-
-
-
-
-

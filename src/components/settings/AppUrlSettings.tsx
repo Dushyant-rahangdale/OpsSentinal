@@ -2,10 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ToastProvider';
-import SettingRow from '@/components/settings/SettingRow';
-import StickyActionBar from '@/components/settings/StickyActionBar';
+import { Input } from '@/components/ui/shadcn/input';
+import { Button } from '@/components/ui/shadcn/button';
+import { Label } from '@/components/ui/shadcn/label';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { CheckCircle2, XCircle, Info, Loader2 } from 'lucide-react';
 
 type Props = {
   appUrl: string | null;
@@ -30,7 +33,7 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
     }
   };
 
-  const urlStatus = value ? (isValidUrl(value) ? 'ok' : 'error') : null;
+  const urlStatus = value ? (isValidUrl(value) ? 'valid' : 'invalid') : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,67 +62,111 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="settings-form-stack">
-      <SettingRow
-        label="Application URL"
-        description="The base URL used in emails, webhooks, and RSS feeds."
-        helpText={!value ? `Using fallback: ${fallback}` : undefined}
-      >
-        <input
-          type="url"
-          value={value}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
-          placeholder={fallback}
-        />
-        {urlStatus && (
-          <div className={`settings-field-status ${urlStatus}`}>
-            {urlStatus === 'ok' ? 'URL looks valid' : 'Enter a valid URL'}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="app-url" className="text-sm font-medium">
+            Application URL
+          </Label>
+          <div className="space-y-3">
+            <Input
+              id="app-url"
+              type="url"
+              value={value}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
+              placeholder={fallback}
+              className="font-mono text-sm"
+            />
+
+            {urlStatus && (
+              <div className="flex items-center gap-2 text-sm">
+                {urlStatus === 'valid' ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600">URL looks valid</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 text-destructive" />
+                    <span className="text-destructive">Enter a valid URL</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {!value && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Using fallback: <code className="text-xs bg-muted px-1 py-0.5 rounded">{fallback}</code>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {value && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setValue('')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Clear (use fallback)
+              </Button>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            The base URL used in emails, webhooks, and RSS feeds.
+          </p>
+        </div>
+
+        <div className="border-t pt-4">
+          <div className="rounded-lg border bg-muted/50 p-4">
+            <h4 className="text-sm font-semibold mb-3">Priority order</h4>
+            <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
+              <li>Database configuration (this setting)</li>
+              <li>Environment variable (NEXT_PUBLIC_APP_URL)</li>
+              <li>Fallback to localhost (development only)</li>
+            </ol>
+          </div>
+        </div>
+
+        {lastSaved && (
+          <div className="flex items-center justify-between text-sm pt-4 border-t">
+            <span className="text-muted-foreground">Last updated</span>
+            <Badge variant="secondary">{lastSaved}</Badge>
           </div>
         )}
-        {value && (
-          <button type="button" className="settings-link-button" onClick={() => setValue('')}>
-            Clear (use fallback)
-          </button>
-        )}
-      </SettingRow>
-
-      <div className="settings-divider" />
-
-      <div className="settings-priority-card">
-        <strong>Priority order</strong>
-        <ol>
-          <li>Database configuration (this setting)</li>
-          <li>Environment variable (NEXT_PUBLIC_APP_URL)</li>
-          <li>Fallback to localhost (development only)</li>
-        </ol>
       </div>
 
-      <div className="settings-meta-row">
-        <span>Last updated</span>
-        <span>{lastSaved || 'Not saved yet'}</span>
-      </div>
+      {isDirty && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            You have unsaved changes
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <StickyActionBar>
-        {isDirty && <div className="settings-action-note">Unsaved changes</div>}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t">
         {isDirty && (
-          <button
+          <Button
             type="button"
-            className="settings-link-button"
+            variant="outline"
             onClick={() => setValue(initialValue)}
             disabled={isLoading}
           >
             Reset
-          </button>
+          </Button>
         )}
         <Button
           type="submit"
-          variant="primary"
-          isLoading={isLoading}
           disabled={isLoading || !isDirty}
         >
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save URL
         </Button>
-      </StickyActionBar>
+      </div>
     </form>
   );
 }

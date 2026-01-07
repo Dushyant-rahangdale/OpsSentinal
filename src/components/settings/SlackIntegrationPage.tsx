@@ -3,8 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
-import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
-import DangerZoneCard from '@/components/settings/DangerZoneCard';
+import { SettingsSection } from '@/components/settings/layout/SettingsSection';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
+import { Button } from '@/components/ui/shadcn/button';
+import { AlertTriangle } from 'lucide-react';
 import GuidedSlackSetup from '@/components/settings/GuidedSlackSetup';
 
 interface SlackIntegration {
@@ -283,8 +285,8 @@ export default function SlackIntegrationPage({
 
   return (
     <div className="space-y-6">
-      <SettingsSectionCard
-        title="Slack integration"
+      <SettingsSection
+        title="Slack Integration"
         description="Connect your Slack workspace to receive incident notifications. Once connected, configure channels per service."
       >
         {/* Guided Setup Wizard (Admin Only) */}
@@ -890,21 +892,27 @@ export default function SlackIntegrationPage({
             </div>
           )}
         </div>
-      </SettingsSectionCard>
+      </SettingsSection>
 
       {integration && (
-        <DangerZoneCard
-          title="Disconnect Slack"
-          description="Disconnecting prevents OpsSentinal from sending notifications to any channels."
+        <SettingsSection
+          title="Danger Zone"
+          description="Disconnecting prevents OpsSentinal from sending notifications to any channels"
         >
-          <button
-            type="button"
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Disconnect Slack Integration</AlertTitle>
+            <AlertDescription>
+              This action will remove OpsSentinal's access to your Slack workspace and disable all incident notifications.
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="destructive"
             onClick={handleDisconnect}
-            className="status-page-button hover:bg-red-50 hover:text-red-600 hover:border-red-200"
           >
             Disconnect Integration
-          </button>
-        </DangerZoneCard>
+          </Button>
+        </SettingsSection>
       )}
     </div>
   );
