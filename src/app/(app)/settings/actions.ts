@@ -92,21 +92,28 @@ export async function updateProfile(
 
     // Helper for default avatars based on gender
     const getDefaultAvatar = (g: string | null, userId: string): string | null => {
-      // Using DiceBear for high-quality default avatars
-      const baseUrl = 'https://api.dicebear.com/7.x/avataaars/svg';
-      const botUrl = 'https://api.dicebear.com/7.x/bottts/svg';
+      // Using DiceBear for high-quality, stylish default avatars
+      // lorelei-neutral: Modern, cool illustrated style
+      // notionists: Minimal, professional look
+      // fun-emoji: Colorful animated emojis
 
       switch (g?.toLowerCase()) {
         case 'male':
-          return `${baseUrl}?seed=Felix&backgroundColor=b6e3f4`;
+          // Cool illustrated male avatar with unique seed
+          return `https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=${userId}-male&backgroundColor=c0aede`;
         case 'female':
-          return `${baseUrl}?seed=Aneka&backgroundColor=ffdfbf`;
+          // Cool illustrated female avatar with unique seed
+          return `https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=${userId}-female&backgroundColor=ffd5dc`;
         case 'non-binary':
         case 'other':
-          return `${botUrl}?seed=${userId}`;
+          // Fun emoji style for non-binary/other
+          return `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${userId}`;
+        case 'prefer-not-to-say':
+          // Neutral professional look
+          return `https://api.dicebear.com/9.x/notionists/svg?seed=${userId}`;
         default:
-          // If no gender set, return null to show initials in UI
-          return null;
+          // If no gender set, use a fun neutral avatar
+          return `https://api.dicebear.com/9.x/thumbs/svg?seed=${userId}&backgroundColor=transparent`;
       }
     };
 
