@@ -30,7 +30,7 @@
 }
 
 .btn-primary {
-    background: var(--primary);
+    background: var(--primary-color);
     color: #fff;
 }
 
@@ -80,8 +80,8 @@
 
 .copy-button:hover {
     background: #f8fafc;
-    border-color: var(--primary);
-    color: var(--primary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .copy-button svg {

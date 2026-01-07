@@ -10,7 +10,7 @@
     --primary-dark: #020617;
     --secondary: #475569;
     --accent: #2563eb;
-    --status-primary: var(--primary);
+    --status-primary: var(--primary-color);
     --status-primary-hover: var(--primary-hover);
 
     /* Semantic Colors - Muted Professional */

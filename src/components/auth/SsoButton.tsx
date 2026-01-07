@@ -75,7 +75,7 @@ const providerStyles: Record<
     ),
   },
   custom: {
-    bg: 'var(--primary)',
+    bg: 'var(--primary-color)',
     hover: 'var(--primary-hover)',
     defaultLabel: 'SSO',
     icon: (
