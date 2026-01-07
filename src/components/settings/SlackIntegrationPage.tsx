@@ -3,10 +3,28 @@
 import { useState, useEffect, useMemo } from 'react';
 import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
+// Shadcn UI Components
 import { SettingsSection } from '@/components/settings/layout/SettingsSection';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
 import { Button } from '@/components/ui/shadcn/button';
-import { AlertTriangle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Skeleton } from '@/components/ui/shadcn/skeleton';
+
+// Lucide Icons
+import { AlertTriangle, CheckCircle, Slack, Info, ExternalLink } from 'lucide-react';
+
+// New Slack Components
+import {
+  SlackChannelCard,
+  SlackScopeList,
+  SlackWorkspaceHeader,
+  SlackChannelToolbar,
+  SlackChannelToolbarSkeleton,
+  type SlackChannel,
+  type ChannelFilter,
+} from '@/components/settings/slack';
 import GuidedSlackSetup from '@/components/settings/GuidedSlackSetup';
 
 interface SlackIntegration {
@@ -30,27 +48,17 @@ interface SlackIntegrationPageProps {
   isAdmin: boolean;
 }
 
-interface SlackChannel {
-  id: string;
-  name: string;
-  isPrivate: boolean;
-  isMember: boolean;
-}
-
 export default function SlackIntegrationPage({
   integration,
   isOAuthConfigured,
   isAdmin,
 }: SlackIntegrationPageProps) {
   const router = useRouter();
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [channels, setChannels] = useState<SlackChannel[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'connected' | 'invite' | 'auto'>('all');
+  const [filter, setFilter] = useState<ChannelFilter>('all');
   const [channelsError, setChannelsError] = useState<string | null>(null);
-  const [channelsErrorCode, setChannelsErrorCode] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [lastChannelsSync, setLastChannelsSync] = useState<Date | null>(null);
   const [visibleCount, setVisibleCount] = useState(50);
   const [joiningChannelId, setJoiningChannelId] = useState<string | null>(null);
@@ -62,6 +70,7 @@ export default function SlackIntegrationPage({
     success: boolean;
     message: string;
   } | null>(null);
+
   const requiredScopes = ['chat:write', 'channels:read', 'channels:join'];
   const optionalScopes = ['groups:read'];
   const scopeSet = useMemo(() => new Set(integration?.scopes ?? []), [integration]);
@@ -71,24 +80,40 @@ export default function SlackIntegrationPage({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('slack_connected') === 'true') {
-      setShowSuccessMessage(true);
+      toast.success('Successfully connected to Slack!', {
+        description: 'You can now configure channels for your services.',
+      });
       window.history.replaceState({}, '', window.location.pathname);
-      setTimeout(() => setShowSuccessMessage(false), 5000);
       setTimeout(() => router.refresh(), 1000);
     }
   }, [router]);
+
+  const getSlackChannelErrorMessage = (errorCode: string) => {
+    const normalized = errorCode.toLowerCase();
+    if (normalized === 'missing_scope') {
+      return 'Slack scopes are missing. Add required scopes and reconnect the app.';
+    }
+    if (normalized === 'token_revoked' || normalized === 'invalid_auth') {
+      return 'Slack token is invalid or revoked. Reconnect the app to refresh access.';
+    }
+    if (normalized === 'account_inactive') {
+      return 'Slack workspace is inactive. Reactivate the workspace or reconnect.';
+    }
+    if (normalized === 'not_authed') {
+      return 'Slack authorization failed. Reconnect the app to reauthorize.';
+    }
+    return `Slack error: ${errorCode.replace(/_/g, ' ')}`;
+  };
 
   const loadChannels = async () => {
     if (!integration) return;
     setLoadingChannels(true);
     setChannelsError(null);
-    setChannelsErrorCode(null);
     try {
       const response = await fetch('/api/slack/channels');
       const data = await response.json();
       if (!response.ok) {
         const errorCode = typeof data?.error === 'string' ? data.error : null;
-        setChannelsErrorCode(errorCode);
         const errorMessage = errorCode
           ? getSlackChannelErrorMessage(errorCode)
           : 'Failed to load Slack channels.';
@@ -101,6 +126,7 @@ export default function SlackIntegrationPage({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setChannelsError(errorMessage);
+      toast.error('Failed to load channels', { description: errorMessage });
       logger.error('Failed to fetch Slack channels', { error: errorMessage });
     } finally {
       setLoadingChannels(false);
@@ -112,43 +138,45 @@ export default function SlackIntegrationPage({
     if (integration) {
       void loadChannels();
     }
-  }, [integration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [integration?.id]);
 
   const handleDisconnect = async () => {
-    setActionError(null);
     if (
-      confirm(
+      !confirm(
         'Disconnect Slack integration? This will remove Slack notifications for all services.'
       )
     ) {
-      try {
-        const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
-        if (!response.ok) {
-          throw new Error('Failed to disconnect Slack. Try again.');
-        }
-        router.refresh();
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        setActionError(errorMessage);
+      return;
+    }
+    try {
+      const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('Failed to disconnect Slack. Try again.');
       }
+      toast.success('Slack disconnected', { description: 'Integration has been removed.' });
+      router.refresh();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('Disconnect failed', { description: errorMessage });
     }
   };
 
   const handleReplaceWorkspace = async () => {
-    setActionError(null);
     if (
-      confirm('Disconnect the current workspace and connect a new one? This affects all services.')
+      !confirm('Disconnect the current workspace and connect a new one? This affects all services.')
     ) {
-      try {
-        const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
-        if (!response.ok) {
-          throw new Error('Failed to disconnect Slack. Try again.');
-        }
-        window.location.href = '/api/slack/oauth';
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        setActionError(errorMessage);
+      return;
+    }
+    try {
+      const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('Failed to disconnect Slack. Try again.');
       }
+      window.location.href = '/api/slack/oauth';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error('Replace failed', { description: errorMessage });
     }
   };
 
@@ -160,7 +188,6 @@ export default function SlackIntegrationPage({
     if (channel.isMember || channel.isPrivate || joiningChannelId) return;
 
     setJoiningChannelId(channel.id);
-    setActionError(null);
 
     try {
       const response = await fetch('/api/slack/channels', {
@@ -181,21 +208,20 @@ export default function SlackIntegrationPage({
         throw new Error(friendlyMessage);
       }
 
-      // Update the channel list to reflect the bot is now a member
       setChannels(prev => prev.map(ch => (ch.id === channel.id ? { ...ch, isMember: true } : ch)));
+      toast.success(`Joined #${channel.name}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setActionError(errorMessage);
+      toast.error('Failed to join channel', { description: errorMessage });
       logger.error('Failed to join Slack channel', { error: errorMessage, channelId: channel.id });
     } finally {
       setJoiningChannelId(null);
     }
   };
 
-  const handleLeaveChannel = async (channel: { id: string; name: string }) => {
+  const handleLeaveChannel = async (channel: SlackChannel) => {
     if (!confirm(`Are you sure you want the bot to leave #${channel.name}?`)) return;
     setLeavingChannelId(channel.id);
-    setActionError(null);
     try {
       const response = await fetch('/api/slack/channels/leave', {
         method: 'POST',
@@ -207,10 +233,52 @@ export default function SlackIntegrationPage({
         throw new Error(data.error || 'Failed to leave channel');
       }
       setChannels(prev => prev.map(c => (c.id === channel.id ? { ...c, isMember: false } : c)));
+      toast.success(`Left #${channel.name}`);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Unknown error');
+      toast.error('Failed to leave channel', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
     } finally {
       setLeavingChannelId(null);
+    }
+  };
+
+  const handleTestChannel = async (channel: SlackChannel) => {
+    setTestingChannelId(channel.id);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/slack/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelId: channel.id,
+          channelName: channel.name,
+        }),
+      });
+      const data = await res.json();
+      const result = {
+        channelId: channel.id,
+        success: res.ok,
+        message: res.ok ? 'Test sent!' : data.error || 'Failed',
+      };
+      setTestResult(result);
+      if (res.ok) {
+        toast.success('Test notification sent', { description: `Check #${channel.name} in Slack` });
+      } else {
+        toast.error('Test failed', {
+          description: data.error || 'Failed to send test notification',
+        });
+      }
+    } catch {
+      setTestResult({
+        channelId: channel.id,
+        success: false,
+        message: 'Network error',
+      });
+      toast.error('Test failed', { description: 'Network error' });
+    } finally {
+      setTestingChannelId(null);
+      setTimeout(() => setTestResult(null), 3000);
     }
   };
 
@@ -219,7 +287,7 @@ export default function SlackIntegrationPage({
     if (publicDisconnected.length === 0 || bulkConnecting) return;
 
     setBulkConnecting(true);
-    setActionError(null);
+    let successCount = 0;
 
     for (const channel of publicDisconnected) {
       try {
@@ -233,6 +301,7 @@ export default function SlackIntegrationPage({
           setChannels(prev =>
             prev.map(ch => (ch.id === channel.id ? { ...ch, isMember: true } : ch))
           );
+          successCount++;
         }
       } catch (error) {
         logger.error('Bulk connect: failed to join channel', { channelId: channel.id });
@@ -240,23 +309,7 @@ export default function SlackIntegrationPage({
     }
 
     setBulkConnecting(false);
-  };
-
-  const getSlackChannelErrorMessage = (errorCode: string) => {
-    const normalized = errorCode.toLowerCase();
-    if (normalized === 'missing_scope') {
-      return 'Slack scopes are missing. Add required scopes and reconnect the app.';
-    }
-    if (normalized === 'token_revoked' || normalized === 'invalid_auth') {
-      return 'Slack token is invalid or revoked. Reconnect the app to refresh access.';
-    }
-    if (normalized === 'account_inactive') {
-      return 'Slack workspace is inactive. Reactivate the workspace or reconnect.';
-    }
-    if (normalized === 'not_authed') {
-      return 'Slack authorization failed. Reconnect the app to reauthorize.';
-    }
-    return `Slack error: ${errorCode.replace(/_/g, ' ')}`;
+    toast.success(`Connected to ${successCount} channels`);
   };
 
   const channelSummary = useMemo(() => {
@@ -295,7 +348,10 @@ export default function SlackIntegrationPage({
         {/* Configuration Actions */}
         {isOAuthConfigured && isAdmin && (
           <div className="flex justify-end mb-4">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
               onClick={async () => {
                 if (
                   confirm(
@@ -306,594 +362,220 @@ export default function SlackIntegrationPage({
                   window.location.reload();
                 }
               }}
-              className="text-xs text-red-500 hover:text-red-700 hover:underline"
             >
               Reset App Credentials
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Not Configured Warning (Non-Admin) */}
         {!isOAuthConfigured && !isAdmin && (
-          <div className="settings-slack-banner error">
-            <div className="settings-slack-icon" aria-hidden="true">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <h3>Setup Required</h3>
-            <p>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Setup Required</AlertTitle>
+            <AlertDescription>
               Slack integration needs to be configured by an administrator first. Please contact
               your admin to set up Slack OAuth credentials.
-            </p>
-          </div>
+            </AlertDescription>
+          </Alert>
         )}
+
         {!isOAuthConfigured && isAdmin && (
           <div className="flex justify-end mb-4">
-            <a
-              href="https://api.slack.com/apps?new_app=1"
-              target="_blank"
-              rel="noreferrer"
-              className="status-page-button"
-            >
-              Create Slack App
-            </a>
+            <Button asChild>
+              <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Create Slack App
+              </a>
+            </Button>
           </div>
         )}
 
         {/* Integration Status */}
-        <div className="settings-slack-card">
+        <div className="space-y-6">
           {integration ? (
             <>
-              {showSuccessMessage && (
-                <div className="settings-alert success mb-6">
-                  Successfully connected to Slack! You can now configure channels for your services.
-                </div>
-              )}
+              {/* Workspace Header */}
+              <SlackWorkspaceHeader
+                workspaceName={integration.workspaceName || 'Slack Workspace'}
+                installerName={integration.installer.name}
+                updatedAt={integration.updatedAt}
+                enabled={integration.enabled}
+                isAdmin={isAdmin}
+                onReconnect={() => {
+                  window.location.href = '/api/slack/oauth';
+                }}
+                onReplaceWorkspace={handleReplaceWorkspace}
+              />
 
-              <div className="settings-slack-status-header">
-                <div className="settings-slack-identity">
-                  <div className="settings-slack-logo large" aria-hidden="true">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-                      <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165V11.91h5.042v3.255zm1.271 0a2.527 2.527 0 0 1 2.521-2.523 2.527 2.527 0 0 1 2.52 2.523v6.745H6.313v-6.745zm2.521-5.306V5.841a2.528 2.528 0 0 1 2.52-2.523h2.522a2.528 2.528 0 0 1 2.521 2.523v4.018H10.355zm5.208 0V5.841a2.528 2.528 0 0 0-2.521-2.523h-2.522a2.528 2.528 0 0 0-2.52 2.523v4.018h7.563zm2.522 5.306V11.91H24v3.255a2.528 2.528 0 0 1-2.521 2.523 2.528 2.528 0 0 1-2.52-2.523zm-2.522-5.306V5.841A2.528 2.528 0 0 0 15.624 3.318h-2.522a2.528 2.528 0 0 0-2.521 2.523v4.018h7.563z" />
-                    </svg>
-                  </div>
-                  <div className="settings-slack-meta">
-                    <h3>{integration.workspaceName || 'Slack Workspace'}</h3>
-                    <p>
-                      Connected by {integration.installer.name} on{' '}
-                      {new Date(integration.updatedAt).toLocaleDateString()}
-                    </p>
-                    <p className="settings-muted">
-                      Last updated {new Date(integration.updatedAt).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`settings-slack-pill ${integration.enabled ? 'active' : 'disabled'}`}
-                  >
-                    {integration.enabled ? 'Active' : 'Disabled'}
-                  </span>
-                  {isAdmin && (
-                    <>
-                      <a href="/api/slack/oauth" className="status-page-button">
-                        Reconnect
-                      </a>
-                      <button
-                        type="button"
-                        onClick={handleReplaceWorkspace}
-                        className="status-page-button"
-                        style={{ borderColor: '#fca5a5', color: '#dc2626' }}
-                      >
-                        Replace workspace
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-              {actionError && (
-                <div className="settings-slack-banner error" style={{ marginTop: '1rem' }}>
-                  <div className="settings-slack-icon" aria-hidden="true">
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                  </div>
-                  <h3>Slack action failed</h3>
-                  <p>{actionError}</p>
-                </div>
-              )}
-              <p className="settings-muted" style={{ marginTop: '0.75rem' }}>
-                To connect a different workspace, disconnect Slack and connect again.
-              </p>
-
+              {/* Missing Scopes Alert */}
               {missingRequiredScopes.length > 0 && (
-                <div className="settings-slack-banner error" style={{ marginTop: '1rem' }}>
-                  <div className="settings-slack-icon" aria-hidden="true">
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                  </div>
-                  <h3>Missing Slack scopes</h3>
-                  <p>
-                    Add these scopes in Slack and reconnect the app:{' '}
-                    {missingRequiredScopes.join(', ')}.
-                  </p>
-                  {isAdmin && (
-                    <div style={{ marginTop: '0.75rem' }}>
-                      <a href="/api/slack/oauth" className="status-page-button">
-                        Reconnect to refresh scopes
-                      </a>
-                    </div>
-                  )}
-                </div>
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Missing Slack scopes</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      Add these scopes in Slack and reconnect the app:{' '}
+                      <strong>{missingRequiredScopes.join(', ')}</strong>
+                    </p>
+                    {isAdmin && (
+                      <Button size="sm" asChild>
+                        <a href="/api/slack/oauth">Reconnect to refresh scopes</a>
+                      </Button>
+                    )}
+                  </AlertDescription>
+                </Alert>
               )}
 
-              <details className="settings-slack-card" style={{ background: '#f8fafc' }}>
-                <summary className="settings-slack-summary">
-                  Scope checklist
-                  <span className="settings-slack-summary-meta">
-                    {missingRequiredScopes.length === 0
-                      ? 'All required scopes present'
-                      : `${missingRequiredScopes.length} missing`}
-                  </span>
-                </summary>
-                <div className="settings-slack-channel-list">
-                  {[...requiredScopes, ...optionalScopes].map(scope => {
-                    const isRequired = requiredScopes.includes(scope);
-                    const hasScope = scopeSet.has(scope);
-                    return (
-                      <div key={scope} className="settings-slack-channel-item">
-                        <span>{scope}</span>
-                        <span className="settings-muted" style={{ marginLeft: 'auto' }}>
-                          {hasScope ? 'enabled' : isRequired ? 'required' : 'optional'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="settings-muted">
-                  Scope changes only take effect after reconnecting Slack. Private channels need
-                  groups:read.
-                </p>
-              </details>
+              {/* Scope Checklist */}
+              <Card>
+                <SlackScopeList
+                  presentScopes={integration.scopes}
+                  requiredScopes={requiredScopes}
+                  optionalScopes={optionalScopes}
+                  isAdmin={isAdmin}
+                  onReconnect={() => {
+                    window.location.href = '/api/slack/oauth';
+                  }}
+                />
+              </Card>
 
-              {/* Available Channels */}
-              <div className="settings-slack-channel-section mt-8">
-                <div className="settings-slack-channel-toolbar">
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      Available Channels
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {channelSummary.total} channels in your workspace
-                    </p>
-                    <div className="settings-slack-channel-metrics">
-                      <span className="settings-slack-metric">
-                        {channelSummary.connected} connected
-                      </span>
-                      <span className="settings-slack-metric">
-                        {channelSummary.invite} invite bot
-                      </span>
-                      <span className="settings-slack-metric">
-                        {channelSummary.autoAdd} auto-add
-                      </span>
-                      <span
-                        className={`settings-slack-health ${missingRequiredScopes.length === 0 ? 'ok' : 'warn'}`}
-                      >
-                        {missingRequiredScopes.length === 0
-                          ? 'Scopes healthy'
-                          : `${missingRequiredScopes.length} scope${missingRequiredScopes.length === 1 ? '' : 's'} missing`}
-                      </span>
+              {/* Available Channels Section */}
+              <div className="space-y-4">
+                {loadingChannels && channels.length === 0 ? (
+                  <>
+                    <SlackChannelToolbarSkeleton />
+                    <div className="space-y-2">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                      ))}
                     </div>
-                  </div>
-                  <div className="settings-slack-channel-actions">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search channels..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="settings-slack-search"
-                      />
-                      <svg
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
-                    </div>
-                    <button
-                      type="button"
-                      className="status-page-button"
-                      onClick={() => void loadChannels()}
-                      disabled={loadingChannels}
-                    >
-                      {loadingChannels ? 'Refreshing...' : 'Refresh'}
-                    </button>
-                    {channelSummary.autoAdd > 0 && (
-                      <button
-                        type="button"
-                        className="status-page-button primary"
-                        onClick={() => void handleBulkConnect()}
-                        disabled={bulkConnecting || loadingChannels}
-                      >
-                        {bulkConnecting
-                          ? 'Connecting...'
-                          : `Connect ${channelSummary.autoAdd} public`}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="settings-slack-channel-filters">
-                  {[
-                    { id: 'all', label: 'All' },
-                    { id: 'connected', label: 'Connected' },
-                    { id: 'invite', label: 'Invite bot' },
-                    { id: 'auto', label: 'Auto-add' },
-                  ].map(option => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      className={`settings-slack-filter-button ${filter === option.id ? 'active' : ''}`}
-                      onClick={() => setFilter(option.id as typeof filter)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                  {lastChannelsSync && (
-                    <span className="settings-slack-legend-meta">
-                      Last sync {lastChannelsSync.toLocaleTimeString()}
-                    </span>
-                  )}
-                </div>
-
-                {channelsError && channels.length > 0 && (
-                  <div className="settings-slack-banner error" style={{ marginBottom: '0.75rem' }}>
-                    <div className="settings-slack-icon" aria-hidden="true">
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3>Channel sync issue</h3>
-                      <p>{channelsError} Showing last successful list.</p>
-                      {isAdmin && (
-                        <div className="settings-inline-actions" style={{ marginTop: '0.5rem' }}>
-                          <button
-                            type="button"
-                            className="status-page-button"
-                            onClick={() => void loadChannels()}
-                            disabled={loadingChannels}
-                          >
-                            {loadingChannels ? 'Retrying...' : 'Retry fetch'}
-                          </button>
-                          <a href="/api/slack/oauth" className="status-page-button">
-                            Reconnect Slack
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {loadingChannels ? (
-                  <div className="settings-slack-loading">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                    <span className="text-sm text-slate-500">Loading channels from Slack...</span>
-                  </div>
-                ) : channelsError && channels.length === 0 ? (
-                  <div className="settings-slack-empty-channels">
-                    <p className="text-slate-600 font-medium">Unable to load channels</p>
-                    <p className="text-slate-500 text-sm mt-1">{channelsError}</p>
-                    {isAdmin && (
-                      <div className="settings-inline-actions" style={{ marginTop: '0.75rem' }}>
-                        <button
-                          type="button"
-                          className="status-page-button"
-                          onClick={() => void loadChannels()}
-                          disabled={loadingChannels}
-                        >
-                          {loadingChannels ? 'Retrying...' : 'Retry fetch'}
-                        </button>
-                        <a href="/api/slack/oauth" className="status-page-button">
-                          Reconnect Slack
-                        </a>
-                      </div>
-                    )}
-                    <details className="settings-slack-troubleshoot">
-                      <summary className="settings-slack-summary">Troubleshooting tips</summary>
-                      <ul>
-                        <li>Confirm the workspace is connected and OAuth is enabled.</li>
-                        <li>Verify required scopes are added and reinstall the Slack app.</li>
-                        <li>Check that the bot token is valid and not revoked.</li>
-                      </ul>
-                    </details>
-                  </div>
-                ) : filteredChannels.length === 0 ? (
-                  <div className="settings-slack-empty-channels">
-                    <p className="text-slate-600 font-medium">
-                      {searchQuery ? 'No channels match your search' : 'No channels found'}
-                    </p>
-                    <p className="text-slate-500 text-sm mt-1">
-                      {searchQuery ? (
-                        <>No channels match "{searchQuery}". Try a different search term.</>
-                      ) : (
-                        <>
-                          Invite the bot to private channels or select a public channel in service
-                          settings to auto-add.
-                        </>
-                      )}
-                    </p>
-                  </div>
+                  </>
                 ) : (
-                  <div className="slack-channel-list">
-                    {visibleChannels.map(ch => {
-                      const isJoining = joiningChannelId === ch.id;
-                      return (
-                        <div
-                          key={ch.id}
-                          className={`slack-channel-item ${ch.isMember ? 'connected' : ''}`}
-                        >
-                          {/* Channel Info */}
-                          <div className="slack-channel-info">
-                            <div className="slack-channel-name">
-                              {ch.isPrivate && (
-                                <svg
-                                  className="slack-channel-lock"
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                  <path d="M7 11V7a5 5 0 0110 0v4" />
-                                </svg>
-                              )}
-                              <span className="slack-channel-hash">#</span>
-                              <span className="slack-channel-text" title={ch.name}>
-                                {ch.name}
-                              </span>
-                            </div>
-                            <span className="slack-channel-type">
-                              {ch.isPrivate ? 'Private' : 'Public'}
-                            </span>
-                          </div>
+                  <>
+                    <SlackChannelToolbar
+                      searchQuery={searchQuery}
+                      onSearchChange={setSearchQuery}
+                      filter={filter}
+                      onFilterChange={setFilter}
+                      summary={channelSummary}
+                      isLoading={loadingChannels}
+                      isBulkConnecting={bulkConnecting}
+                      lastSyncTime={lastChannelsSync}
+                      onRefresh={() => void loadChannels()}
+                      onBulkConnect={() => void handleBulkConnect()}
+                      scopeHealthy={missingRequiredScopes.length === 0}
+                    />
 
-                          {/* Status Badge / Action */}
-                          <div className="slack-channel-status">
-                            {ch.isMember ? (
-                              <div className="slack-channel-actions">
-                                <span className="slack-status-badge connected">
-                                  <svg
-                                    width="12"
-                                    height="12"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="3"
-                                  >
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                  Connected
-                                </span>
-                                <button
-                                  type="button"
-                                  className="slack-test-btn"
-                                  onClick={async () => {
-                                    setTestingChannelId(ch.id);
-                                    setTestResult(null);
-                                    try {
-                                      const res = await fetch('/api/slack/test', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                          channelId: ch.id,
-                                          channelName: ch.name,
-                                        }),
-                                      });
-                                      const data = await res.json();
-                                      setTestResult({
-                                        channelId: ch.id,
-                                        success: res.ok,
-                                        message: res.ok ? 'Test sent!' : data.error || 'Failed',
-                                      });
-                                    } catch {
-                                      setTestResult({
-                                        channelId: ch.id,
-                                        success: false,
-                                        message: 'Network error',
-                                      });
-                                    } finally {
-                                      setTestingChannelId(null);
-                                      setTimeout(() => setTestResult(null), 3000);
-                                    }
-                                  }}
-                                  disabled={testingChannelId === ch.id}
-                                  title="Send a test notification to this channel"
-                                >
-                                  {testingChannelId === ch.id ? (
-                                    <span className="slack-spinner" />
-                                  ) : testResult?.channelId === ch.id ? (
-                                    testResult.success ? (
-                                      '✓'
-                                    ) : (
-                                      '✗'
-                                    )
-                                  ) : (
-                                    'Test'
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="slack-disconnect-btn"
-                                  onClick={() => void handleLeaveChannel(ch)}
-                                  disabled={
-                                    leavingChannelId === ch.id || testingChannelId === ch.id
-                                  }
-                                  title="Disconnect bot from channel"
-                                >
-                                  {leavingChannelId === ch.id ? (
-                                    <span
-                                      className="slack-spinner"
-                                      style={{ width: 10, height: 10, borderTopColor: '#dc2626' }}
-                                    />
-                                  ) : (
-                                    <svg
-                                      width="12"
-                                      height="12"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                    >
-                                      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-                                      <line x1="12" y1="2" x2="12" y2="12" />
-                                    </svg>
-                                  )}
-                                </button>
-                              </div>
-                            ) : ch.isPrivate ? (
-                              <span
-                                className="slack-status-badge invite"
-                                title="Invite the bot in Slack: /invite @YourBotName"
-                              >
-                                <svg
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                  <path d="M7 11V7a5 5 0 0110 0v4" />
-                                </svg>
-                                Invite Required
-                              </span>
+                    {channelsError && channels.length === 0 ? (
+                      <Card className="border-destructive/50 bg-destructive/5">
+                        <CardContent className="p-6 text-center space-y-3">
+                          <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+                          <p className="font-medium">Unable to load channels</p>
+                          <p className="text-sm text-muted-foreground">{channelsError}</p>
+                          {isAdmin && (
+                            <div className="flex justify-center gap-2 pt-2">
+                              <Button variant="outline" onClick={() => void loadChannels()}>
+                                Retry fetch
+                              </Button>
+                              <Button asChild>
+                                <a href="/api/slack/oauth">Reconnect Slack</a>
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ) : filteredChannels.length === 0 ? (
+                      <Card className="border-dashed">
+                        <CardContent className="p-8 text-center">
+                          <Info className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                          <p className="font-medium">
+                            {searchQuery ? 'No channels match your search' : 'No channels found'}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {searchQuery ? (
+                              <>No channels match "{searchQuery}". Try a different search term.</>
                             ) : (
-                              <button
-                                type="button"
-                                className="slack-status-badge action"
-                                onClick={() => void handleJoinChannel(ch)}
-                                disabled={isJoining}
-                              >
-                                {isJoining ? (
-                                  <>
-                                    <span className="slack-spinner" />
-                                    Joining...
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg
-                                      width="12"
-                                      height="12"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                    >
-                                      <circle cx="12" cy="12" r="10" />
-                                      <line x1="12" y1="8" x2="12" y2="16" />
-                                      <line x1="8" y1="12" x2="16" y2="12" />
-                                    </svg>
-                                    Connect
-                                  </>
-                                )}
-                              </button>
+                              <>
+                                Invite the bot to private channels or select a public channel in
+                                service settings to auto-add.
+                              </>
                             )}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="space-y-2">
+                        {visibleChannels.map(ch => (
+                          <SlackChannelCard
+                            key={ch.id}
+                            channel={ch}
+                            onJoin={() => void handleJoinChannel(ch)}
+                            onLeave={() => void handleLeaveChannel(ch)}
+                            onTest={() => void handleTestChannel(ch)}
+                            isJoining={joiningChannelId === ch.id}
+                            isLeaving={leavingChannelId === ch.id}
+                            isTesting={testingChannelId === ch.id}
+                            testResult={testResult?.channelId === ch.id ? testResult : null}
+                          />
+                        ))}
+
+                        {!searchQuery && filteredChannels.length > visibleCount && (
+                          <div className="flex justify-center pt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => setVisibleCount(count => count + 50)}
+                            >
+                              Show next {Math.min(50, filteredChannels.length - visibleCount)}
+                            </Button>
                           </div>
-                        </div>
-                      );
-                    })}
-                    {!searchQuery && filteredChannels.length > visibleCount && (
-                      <div className="settings-slack-channel-more">
-                        <button
-                          type="button"
-                          className="settings-slack-more-button"
-                          onClick={() => setVisibleCount(count => count + 50)}
-                        >
-                          Show next {Math.min(50, filteredChannels.length - visibleCount)}
-                        </button>
+                        )}
                       </div>
                     )}
-                  </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Private channels require{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded">groups:read</code> and inviting
+                      the bot.
+                    </p>
+                  </>
                 )}
-                <p className="text-xs text-slate-500 mt-3">
-                  Private channels require <strong>groups:read</strong> and inviting the bot.
-                </p>
               </div>
             </>
           ) : (
-            <div className="settings-slack-center">
-              <div className="settings-slack-empty-icon" aria-hidden="true">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="#6b7280">
-                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165V11.91h5.042v3.255zm1.271 0a2.527 2.527 0 0 1 2.521-2.523 2.527 2.527 0 0 1 2.52 2.523v6.745H6.313v-6.745zm2.521-5.306V5.841a2.528 2.528 0 0 1 2.52-2.523h2.522a2.528 2.528 0 0 1 2.521 2.523v4.018H10.355zm5.208 0V5.841a2.528 2.528 0 0 0-2.521-2.523h-2.522a2.528 2.528 0 0 0-2.52 2.523v4.018h7.563zm2.522 5.306V11.91H24v3.255a2.528 2.528 0 0 1-2.521 2.523 2.528 2.528 0 0 1-2.52-2.523zm-2.522-5.306V5.841A2.528 2.528 0 0 0 15.624 3.318h-2.522a2.528 2.528 0 0 0-2.521 2.523v4.018h7.563z" />
-                </svg>
-              </div>
-              <h3>Connect Your Slack Workspace</h3>
-              <p>
-                Connect Slack to receive incident notifications. You&apos;ll be able to choose which
-                channels to use for each service.
-              </p>
-              {isOAuthConfigured ? (
-                <a href="/api/slack/oauth" className="status-page-button" data-variant="primary">
-                  {isAdmin ? 'Connect to Slack' : 'Ask admin to connect'}
-                </a>
-              ) : (
-                <p className="settings-muted">
-                  Slack OAuth must be configured first. Use the setup wizard above.
-                </p>
-              )}
-            </div>
+            <Card className="border-dashed">
+              <CardContent className="p-12 text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <Slack className="h-8 w-8 text-slate-500" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Connect Your Slack Workspace</h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                    Connect Slack to receive incident notifications. You'll be able to choose which
+                    channels to use for each service.
+                  </p>
+                </div>
+                {isOAuthConfigured ? (
+                  <Button size="lg" asChild>
+                    <a href="/api/slack/oauth">
+                      <Slack className="h-4 w-4 mr-2" />
+                      {isAdmin ? 'Connect to Slack' : 'Ask admin to connect'}
+                    </a>
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Slack OAuth must be configured first. Use the setup wizard above.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
       </SettingsSection>
 
+      {/* Danger Zone */}
       {integration && (
         <SettingsSection
           title="Danger Zone"
@@ -903,17 +585,16 @@ export default function SlackIntegrationPage({
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Disconnect Slack Integration</AlertTitle>
             <AlertDescription>
-              This action will remove OpsSentinal's access to your Slack workspace and disable all incident notifications.
+              This action will remove OpsSentinal's access to your Slack workspace and disable all
+              incident notifications.
             </AlertDescription>
           </Alert>
-          <Button
-            variant="destructive"
-            onClick={handleDisconnect}
-          >
+          <Button variant="destructive" onClick={handleDisconnect}>
             Disconnect Integration
           </Button>
-        </SettingsSection>
-      )}
-    </div>
+        </SettingsSection >
+      )
+      }
+    </div >
   );
 }
