@@ -90,32 +90,83 @@ export async function updateProfile(
       }
     }
 
+    // Helper for default avatars based on gender
+    const getDefaultAvatar = (g: string | null, userId: string): string | null => {
+      // Using DiceBear for high-quality default avatars
+      const baseUrl = 'https://api.dicebear.com/7.x/avataaars/svg';
+      const botUrl = 'https://api.dicebear.com/7.x/bottts/svg';
+
+      switch (g?.toLowerCase()) {
+        case 'male':
+          return `${baseUrl}?seed=Felix&backgroundColor=b6e3f4`;
+        case 'female':
+          return `${baseUrl}?seed=Aneka&backgroundColor=ffdfbf`;
+        case 'non-binary':
+        case 'other':
+          return `${botUrl}?seed=${userId}`;
+        default:
+          // If no gender set, return null to show initials in UI
+          return null;
+      }
+    };
+
+    const removeAvatar = formData.get('removeAvatar') === 'true';
+
     // Prepare update data
     const data: Partial<{
       name: string;
       gender: string | null;
       department: string | null;
       jobTitle: string | null;
-      avatarUrl: string;
+      avatarUrl: string | null;
     }> = {};
+
+    // Handle Name
     if (formData.has('name')) {
       const n = (formData.get('name') as string | null)?.trim();
       if (n && n.length >= 2) data.name = n;
     }
-    if (formData.has('gender')) {
-      data.gender = (formData.get('gender') as string | null)?.trim() || null;
-    }
+
+    // Handle Department & Job Title
     if (formData.has('department')) {
       data.department = (formData.get('department') as string | null)?.trim() || null;
     }
     if (formData.has('jobTitle')) {
       data.jobTitle = (formData.get('jobTitle') as string | null)?.trim() || null;
     }
-    if (avatarUrl !== undefined) {
-      data.avatarUrl = avatarUrl;
+
+    // Handle Gender & Smart Avatar Logic
+    let newGender = user.gender;
+    if (formData.has('gender')) {
+      const g = (formData.get('gender') as string | null)?.trim() || null;
+      data.gender = g;
+      newGender = g;
     }
 
-    // If no data to update, return early (unless we just did an avatar upload which sets avatarUrl)
+    // Avatar Logic
+    if (removeAvatar) {
+      // User explicitly requested removal - set to default based on gender
+      data.avatarUrl = getDefaultAvatar(newGender, user.id);
+    } else if (avatarUrl !== undefined) {
+      // User uploaded a NEW file
+      data.avatarUrl = avatarUrl;
+    } else if (data.gender !== undefined) {
+      // Gender changed, but no new file uploaded.
+      // Check if we should update the avatar to match the new gender.
+      // We only do this if the current avatar is:
+      // 1. null (no avatar)
+      // 2. OR one of our default DiceBear avatars (meaning user hasn't uploaded a custom one)
+      const isCurrentDefault = !user.avatarUrl || user.avatarUrl.includes('api.dicebear.com');
+
+      if (isCurrentDefault) {
+        const newDefault = getDefaultAvatar(newGender, user.id);
+        if (newDefault !== user.avatarUrl) {
+          data.avatarUrl = newDefault;
+        }
+      }
+    }
+
+    // If no data to update, return early
     if (Object.keys(data).length === 0) {
       return { success: true };
     }

@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/shadcn/select';
 import { FormField, FormItem, FormControl, FormMessage } from '@/components/ui/shadcn/form';
-import { Lock, RefreshCw, Info, Camera, Upload, Loader2, Check } from 'lucide-react';
+import { Lock, RefreshCw, Info, Camera, Upload, Loader2, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 import { updateProfile } from '@/app/(app)/settings/actions';
 import { useRouter } from 'next/navigation';
@@ -177,17 +177,44 @@ export default function ProfileForm({
           />
         </div>
 
-        <div className="flex flex-col items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="gap-2"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Change Photo
-          </Button>
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="gap-2"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Change Photo
+            </Button>
+            {avatarPreview && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  startTransition(async () => {
+                    const formData = new FormData();
+                    formData.append('removeAvatar', 'true');
+                    const result = await updateProfile({ error: null, success: false }, formData);
+                    if (result.success) {
+                      toast.success('Profile photo removed');
+                      setAvatarPreview(null);
+                      router.refresh();
+                    } else {
+                      toast.error(result.error || 'Failed to remove photo');
+                    }
+                  });
+                }}
+                disabled={isUploading}
+                className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </Button>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">JPG, GIF or PNG. Max 5MB.</p>
         </div>
       </div>
