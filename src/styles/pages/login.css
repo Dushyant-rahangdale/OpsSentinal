@@ -149,7 +149,7 @@
 .login-brand {
   padding: 2rem 2.5rem;
   background:
-    linear-gradient(135deg, var(--primary) 0%, #334155 50%, #475569 100%),
+    linear-gradient(135deg, var(--primary-color) 0%, #334155 50%, #475569 100%),
     radial-gradient(circle at top right, rgba(148, 163, 184, 0.1) 0%, transparent 60%),
     radial-gradient(circle at bottom left, rgba(148, 163, 184, 0.05) 0%, transparent 50%);
   color: var(--text-inverse);
@@ -558,7 +558,7 @@
 }
 
 .login-btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
   color: var(--text-inverse);
   box-shadow: var(--shadow-primary);
   margin-top: 0.5rem;
@@ -691,7 +691,7 @@
 
 .login-input:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--primary-color);
   box-shadow:
     0 0 0 4px rgba(15, 23, 42, 0.1),
     var(--shadow-sm);
@@ -747,7 +747,7 @@
 }
 
 .login-password-toggle:focus {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
