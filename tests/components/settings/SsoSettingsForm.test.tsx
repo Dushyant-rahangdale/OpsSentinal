@@ -55,13 +55,13 @@ describe('SsoSettingsForm', () => {
     render(<SsoSettingsForm {...defaultProps} />);
 
     // Check Section Headers
-    expect(screen.getByText(/Access & availability/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Identity provider/i })).toBeInTheDocument();
-    expect(screen.getByText(/Provisioning rules/i)).toBeInTheDocument();
-    expect(screen.getByText(/Advanced mapping/i)).toBeInTheDocument();
-    expect(screen.getByText(/Role mapping/i)).toBeInTheDocument();
-    expect(screen.getByText(/Profile attribute mapping/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Callback URL/i })).toBeInTheDocument();
+    expect(screen.getByText('Access & Availability')).toBeInTheDocument();
+    expect(screen.getByText('Identity Provider')).toBeInTheDocument();
+    expect(screen.getByText('Provisioning Rules')).toBeInTheDocument();
+    expect(screen.getByText('Advanced Mapping')).toBeInTheDocument();
+    expect(screen.getByText('Role Mapping')).toBeInTheDocument();
+    expect(screen.getByText('Profile Attribute Mapping')).toBeInTheDocument();
+    expect(screen.getByText('Callback URL')).toBeInTheDocument();
     expect(screen.getByText(/Provider presets/i)).toBeInTheDocument();
     expect(screen.getByText(/Setup checklist/i)).toBeInTheDocument();
     expect(screen.getByText(/SSO overview/i)).toBeInTheDocument();
