@@ -1,5 +1,7 @@
 'use server';
 
+import fs from 'fs';
+import path from 'path';
 import prisma from '@/lib/prisma';
 import { getAuthOptions, revokeUserSessions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
@@ -40,20 +42,87 @@ export async function updateProfile(
 ): Promise<ActionState> {
   try {
     const user = await getCurrentUser();
-    const name = (formData.get('name') as string | null)?.trim() ?? '';
 
-    if (name.length < 2) {
-      return { error: 'Name must be at least 2 characters.' };
+    // Debug logging
+    console.log('[updateProfile] Received formData:', {
+      name: formData.get('name'),
+      gender: formData.get('gender'),
+      department: formData.get('department'),
+      jobTitle: formData.get('jobTitle'),
+      hasGender: formData.has('gender'),
+      file: formData.get('avatar'),
+    });
+
+    const avatarFile = formData.get('avatar') as File | null;
+
+    let avatarUrl = undefined;
+    if (avatarFile && avatarFile.size > 0) {
+      // Validate file type
+      if (!avatarFile.type.startsWith('image/')) {
+        return { error: 'Invalid file type. Please upload an image.' };
+      }
+      if (avatarFile.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        return { error: 'File size too large. Max 5MB.' };
+      }
+
+      try {
+        const bytes = await avatarFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        // Ensure uploads directory exists
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        // Generate unique filename
+        const ext = path.extname(avatarFile.name) || '.jpg';
+        const filename = `${user.id}-${Date.now()}${ext}`;
+        const filepath = path.join(uploadDir, filename);
+
+        // Save file
+        fs.writeFileSync(filepath, buffer);
+        avatarUrl = `/uploads/avatars/${filename}`;
+      } catch (err) {
+        logger.error('Failed to save avatar', { error: err });
+        return { error: 'Failed to upload profile photo.' };
+      }
     }
 
-    // Don't update if name hasn't changed
-    if (user.name === name) {
+    // Prepare update data
+    const data: Partial<{
+      name: string;
+      gender: string | null;
+      department: string | null;
+      jobTitle: string | null;
+      avatarUrl: string;
+    }> = {};
+    if (formData.has('name')) {
+      const n = (formData.get('name') as string | null)?.trim();
+      if (n && n.length >= 2) data.name = n;
+    }
+    if (formData.has('gender')) {
+      data.gender = (formData.get('gender') as string | null)?.trim() || null;
+    }
+    if (formData.has('department')) {
+      data.department = (formData.get('department') as string | null)?.trim() || null;
+    }
+    if (formData.has('jobTitle')) {
+      data.jobTitle = (formData.get('jobTitle') as string | null)?.trim() || null;
+    }
+    if (avatarUrl !== undefined) {
+      data.avatarUrl = avatarUrl;
+    }
+
+    // If no data to update, return early (unless we just did an avatar upload which sets avatarUrl)
+    if (Object.keys(data).length === 0) {
       return { success: true };
     }
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { name },
+      data,
     });
 
     // Revalidate multiple paths to ensure UI updates everywhere

@@ -12,18 +12,19 @@ export default async function ProfileSettingsPage() {
   // Fetch user data from database to get the latest name
   const user = email
     ? await prisma.user.findUnique({
-      where: { email },
-      select: {
-        name: true,
-        role: true,
-        createdAt: true,
-        timeZone: true,
-        department: true,
-        jobTitle: true,
-        avatarUrl: true,
-        lastOidcSync: true,
-      },
-    })
+        where: { email },
+        select: {
+          name: true,
+          role: true,
+          createdAt: true,
+          timeZone: true,
+          department: true,
+          jobTitle: true,
+          avatarUrl: true,
+          gender: true,
+          lastOidcSync: true,
+        },
+      })
     : null;
 
   const name = user?.name || session?.user?.name || '';
@@ -54,6 +55,7 @@ export default async function ProfileSettingsPage() {
         jobTitle={user?.jobTitle}
         avatarUrl={user?.avatarUrl}
         lastOidcSync={lastOidcSync}
+        gender={user?.gender}
       />
     </div>
   );

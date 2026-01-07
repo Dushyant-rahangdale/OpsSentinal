@@ -119,6 +119,7 @@ model User {
   department                   String?
   jobTitle                     String?
   avatarUrl                    String?
+  gender                       String?
   lastOidcSync                 DateTime?
   invitedAt                    DateTime?
   deactivatedAt                DateTime?

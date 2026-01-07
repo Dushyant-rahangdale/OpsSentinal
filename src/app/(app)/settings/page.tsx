@@ -1,9 +1,15 @@
-import { getUserPermissions } from '@/lib/rbac'
-import Link from 'next/link'
-import { SETTINGS_NAV_SECTIONS, SETTINGS_NAV_ITEMS } from '@/components/settings/navConfig'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/card'
-import { Input } from '@/components/ui/shadcn/input'
-import { Badge } from '@/components/ui/shadcn/badge'
+import { getUserPermissions } from '@/lib/rbac';
+import Link from 'next/link';
+import { SETTINGS_NAV_SECTIONS, SETTINGS_NAV_ITEMS } from '@/components/settings/navConfig';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/shadcn/card';
+import { Input } from '@/components/ui/shadcn/input';
+import { Badge } from '@/components/ui/shadcn/badge';
 import {
   User,
   Settings,
@@ -13,15 +19,15 @@ import {
   Bell,
   Search,
   ArrowRight,
-  Lock
-} from 'lucide-react'
+  Lock,
+} from 'lucide-react';
 
 const sectionIcons: Record<string, any> = {
   account: User,
   workspace: Building2,
   integrations: Puzzle,
   advanced: Settings,
-}
+};
 
 const itemIcons: Record<string, any> = {
   profile: User,
@@ -29,24 +35,24 @@ const itemIcons: Record<string, any> = {
   security: Shield,
   'api-keys': Lock,
   'notifications-admin': Bell,
-}
+};
 
 export default async function SettingsOverviewPage() {
-  const permissions = await getUserPermissions()
+  const permissions = await getUserPermissions();
 
   const canAccess = (item: { requiresAdmin?: boolean; requiresResponder?: boolean }) => {
-    if (item.requiresAdmin && !permissions.isAdmin) return false
-    if (item.requiresResponder && !permissions.isResponderOrAbove) return false
-    return true
-  }
+    if (item.requiresAdmin && !permissions.isAdmin) return false;
+    if (item.requiresResponder && !permissions.isResponderOrAbove) return false;
+    return true;
+  };
 
-  const sectionGroups = SETTINGS_NAV_SECTIONS.filter((section) => section.id !== 'overview')
-  const popularLinks = SETTINGS_NAV_ITEMS.filter((item) =>
+  const sectionGroups = SETTINGS_NAV_SECTIONS.filter(section => section.id !== 'overview');
+  const popularLinks = SETTINGS_NAV_ITEMS.filter(item =>
     ['profile', 'preferences', 'security', 'api-keys', 'notifications-admin'].includes(item.id)
-  )
+  );
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
+    <div className="p-6 space-y-8">
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
@@ -76,9 +82,9 @@ export default async function SettingsOverviewPage() {
           <div>
             <h3 className="text-sm font-medium mb-3">Quick Access</h3>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {popularLinks.map((item) => {
-                const disabled = !canAccess(item)
-                const Icon = itemIcons[item.id] || Settings
+              {popularLinks.map(item => {
+                const disabled = !canAccess(item);
+                const Icon = itemIcons[item.id] || Settings;
 
                 if (disabled) {
                   return (
@@ -92,7 +98,7 @@ export default async function SettingsOverviewPage() {
                         <p className="text-xs text-muted-foreground">Restricted</p>
                       </div>
                     </div>
-                  )
+                  );
                 }
 
                 return (
@@ -104,13 +110,11 @@ export default async function SettingsOverviewPage() {
                     <Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.description}
-                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                     </div>
                     <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
                   </Link>
-                )
+                );
               })}
             </div>
           </div>
@@ -118,8 +122,8 @@ export default async function SettingsOverviewPage() {
       </Card>
 
       {/* Settings Categories */}
-      {sectionGroups.map((section) => {
-        const SectionIcon = sectionIcons[section.id] || Settings
+      {sectionGroups.map(section => {
+        const SectionIcon = sectionIcons[section.id] || Settings;
 
         return (
           <Card key={section.id} className="border-border bg-card shadow-sm">
@@ -138,8 +142,8 @@ export default async function SettingsOverviewPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {section.items.map((item) => {
-                  const disabled = !canAccess(item)
+                {section.items.map(item => {
+                  const disabled = !canAccess(item);
 
                   if (disabled) {
                     return (
@@ -157,7 +161,7 @@ export default async function SettingsOverviewPage() {
                           {item.requiresAdmin ? 'Admin only' : 'Responder+'}
                         </Badge>
                       </div>
-                    )
+                    );
                   }
 
                   return (
@@ -176,13 +180,13 @@ export default async function SettingsOverviewPage() {
                       </div>
                       <ArrowRight className="absolute top-4 right-4 h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                     </Link>
-                  )
+                  );
                 })}
               </div>
             </CardContent>
           </Card>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

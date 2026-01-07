@@ -1,9 +1,11 @@
-import { SettingsPageHeader } from '@/components/settings/layout/SettingsPageHeader'
-import { SettingsSection } from '@/components/settings/layout/SettingsSection'
-import { EmptyState } from '@/components/settings/feedback/EmptyState'
-import { Button } from '@/components/ui/shadcn/button'
-import Link from 'next/link'
-import { Slack, Puzzle, ArrowRight } from 'lucide-react'
+'use client';
+
+import { SettingsPageHeader } from '@/components/settings/layout/SettingsPageHeader';
+import { SettingsSection } from '@/components/settings/layout/SettingsSection';
+import { EmptyState } from '@/components/settings/feedback/EmptyState';
+import { Button } from '@/components/ui/shadcn/button';
+import Link from 'next/link';
+import { Slack, Puzzle, ArrowRight } from 'lucide-react';
 
 export default function IntegrationsSettingsPage() {
   return (
@@ -74,5 +76,5 @@ export default function IntegrationsSettingsPage() {
         />
       </SettingsSection>
     </div>
-  )
+  );
 }

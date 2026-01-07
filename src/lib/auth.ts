@@ -662,7 +662,11 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               // Sync avatar URL
               if (mapping.avatarUrl && oidcProfile[mapping.avatarUrl]) {
                 const avatar = String(oidcProfile[mapping.avatarUrl]);
-                if (avatar && avatar !== targetUser.avatarUrl) {
+                // Only sync if value changed AND the current value is NOT a locally uploaded file
+                // This prevents OIDC from overwriting a user's custom uploaded photo.
+                const isLocalUpload = targetUser.avatarUrl?.startsWith('/uploads/');
+
+                if (avatar && avatar !== targetUser.avatarUrl && !isLocalUpload) {
                   updateData.avatarUrl = avatar;
                   logger.debug('[Auth] Syncing avatar URL from OIDC', {
                     component: 'auth:signIn',
