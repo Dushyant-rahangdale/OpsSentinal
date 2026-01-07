@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
 
 // Lucide Icons
-import { AlertTriangle, CheckCircle, Slack, Info, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Slack, Info, ExternalLink } from 'lucide-react';
 
 // New Slack Components
 import {
@@ -26,6 +26,7 @@ import {
   type ChannelFilter,
 } from '@/components/settings/slack';
 import GuidedSlackSetup from '@/components/settings/GuidedSlackSetup';
+import { Badge } from '@/components/ui';
 
 interface SlackIntegration {
   id: string;
@@ -143,7 +144,8 @@ export default function SlackIntegrationPage({
 
   const handleDisconnect = async () => {
     if (
-      !confirm(
+      // eslint-disable-next-line no-alert
+      !window.confirm(
         'Disconnect Slack integration? This will remove Slack notifications for all services.'
       )
     ) {
@@ -164,7 +166,10 @@ export default function SlackIntegrationPage({
 
   const handleReplaceWorkspace = async () => {
     if (
-      !confirm('Disconnect the current workspace and connect a new one? This affects all services.')
+      // eslint-disable-next-line no-alert
+      !window.confirm(
+        'Disconnect the current workspace and connect a new one? This affects all services.'
+      )
     ) {
       return;
     }
@@ -220,7 +225,8 @@ export default function SlackIntegrationPage({
   };
 
   const handleLeaveChannel = async (channel: SlackChannel) => {
-    if (!confirm(`Are you sure you want the bot to leave #${channel.name}?`)) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Are you sure you want the bot to leave #${channel.name}?`)) return;
     setLeavingChannelId(channel.id);
     try {
       const response = await fetch('/api/slack/channels/leave', {
@@ -303,7 +309,7 @@ export default function SlackIntegrationPage({
           );
           successCount++;
         }
-      } catch (error) {
+      } catch (_error) {
         logger.error('Bulk connect: failed to join channel', { channelId: channel.id });
       }
     }
@@ -341,6 +347,12 @@ export default function SlackIntegrationPage({
       <SettingsSection
         title="Slack Integration"
         description="Connect your Slack workspace to receive incident notifications. Once connected, configure channels per service."
+        action={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Badge size="sm">Notifications</Badge>
+            <Badge size="sm">Real-time</Badge>
+          </div>
+        }
       >
         {/* Guided Setup Wizard (Admin Only) */}
         {!isOAuthConfigured && isAdmin && <GuidedSlackSetup />}
@@ -354,7 +366,8 @@ export default function SlackIntegrationPage({
               className="text-destructive hover:text-destructive"
               onClick={async () => {
                 if (
-                  confirm(
+                  // eslint-disable-next-line no-alert
+                  window.confirm(
                     'Are you sure you want to reset the Slack App configuration? This will require you to re-enter Client ID and Secret.'
                   )
                 ) {
@@ -494,7 +507,10 @@ export default function SlackIntegrationPage({
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
                             {searchQuery ? (
-                              <>No channels match "{searchQuery}". Try a different search term.</>
+                              <>
+                                No channels match &quot;{searchQuery}&quot;. Try a different search
+                                term.
+                              </>
                             ) : (
                               <>
                                 Invite the bot to private channels or select a public channel in
@@ -553,8 +569,8 @@ export default function SlackIntegrationPage({
                 <div>
                   <h3 className="text-lg font-semibold">Connect Your Slack Workspace</h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-                    Connect Slack to receive incident notifications. You'll be able to choose which
-                    channels to use for each service.
+                    Connect Slack to receive incident notifications. You&apos;ll be able to choose
+                    which channels to use for each service.
                   </p>
                 </div>
                 {isOAuthConfigured ? (
@@ -585,16 +601,15 @@ export default function SlackIntegrationPage({
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Disconnect Slack Integration</AlertTitle>
             <AlertDescription>
-              This action will remove OpsSentinal's access to your Slack workspace and disable all
-              incident notifications.
+              This action will remove OpsSentinal&apos;s access to your Slack workspace and disable
+              all incident notifications.
             </AlertDescription>
           </Alert>
           <Button variant="destructive" onClick={handleDisconnect}>
             Disconnect Integration
           </Button>
-        </SettingsSection >
-      )
-      }
-    </div >
+        </SettingsSection>
+      )}
+    </div>
   );
 }

@@ -7,68 +7,73 @@ import prisma from '@/lib/prisma';
 import SearchPresetManager from '@/components/SearchPresetManager';
 import SettingsPage from '@/components/settings/SettingsPage';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
+import { Badge } from '@/components/ui';
 
 export default async function SearchPresetsPage() {
-    const session = await getServerSession(await getAuthOptions());
-    if (!session) {
-        redirect('/login');
-    }
+  const session = await getServerSession(await getAuthOptions());
+  if (!session) {
+    redirect('/login');
+  }
 
-    try {
-        await assertResponderOrAbove();
-    } catch {
-        redirect('/');
-    }
+  try {
+    await assertResponderOrAbove();
+  } catch {
+    redirect('/');
+  }
 
-    const permissions = await getUserPermissions();
+  const permissions = await getUserPermissions();
 
-    // Get user's teams
-    const userTeams = await prisma.user.findUnique({
-        where: { id: permissions.id },
+  // Get user's teams
+  const userTeams = await prisma.user.findUnique({
+    where: { id: permissions.id },
+    select: {
+      teamMemberships: {
         select: {
-            teamMemberships: {
-                select: {
-                    teamId: true,
-                },
-            },
+          teamId: true,
         },
-    });
+      },
+    },
+  });
 
-    const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
+  const userTeamIds = userTeams?.teamMemberships.map(t => t.teamId) || [];
 
-    const [presets, services, users, teams] = await Promise.all([
-        getAccessiblePresets(permissions.id, userTeamIds),
-        prisma.service.findMany({ orderBy: { name: 'asc' } }),
-        prisma.user.findMany({
-            where: { status: 'ACTIVE' },
-            select: { id: true, name: true, email: true },
-            orderBy: { name: 'asc' },
-        }),
-        prisma.team.findMany({ orderBy: { name: 'asc' } }),
-    ]);
+  const [presets, services, users, teams] = await Promise.all([
+    getAccessiblePresets(permissions.id, userTeamIds),
+    prisma.service.findMany({ orderBy: { name: 'asc' } }),
+    prisma.user.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.team.findMany({ orderBy: { name: 'asc' } }),
+  ]);
 
-    return (
-        <SettingsPage
-            currentPageId="search-presets"
-            backHref="/settings"
-            title="Search Presets"
-            description="Create and manage saved search filters for quick access to incidents."
-        >
-            <SettingsSectionCard
-                title="Saved searches"
-                description="Build filters you can reuse across incident views."
-            >
-                <SearchPresetManager
-                    presets={presets}
-                    services={services}
-                    users={users}
-                    teams={teams}
-                    currentUserId={permissions.id}
-                    isAdmin={permissions.isAdmin}
-                />
-            </SettingsSectionCard>
-        </SettingsPage>
-    );
+  return (
+    <SettingsPage
+      currentPageId="search-presets"
+      backHref="/settings"
+      title="Search Presets"
+      description="Create and manage saved search filters for quick access to incidents."
+    >
+      <SettingsSectionCard
+        title="Saved searches"
+        description="Build filters you can reuse across incident views."
+        action={
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Badge size="sm">Personal</Badge>
+            <Badge size="sm">Team-shared</Badge>
+          </div>
+        }
+      >
+        <SearchPresetManager
+          presets={presets}
+          services={services}
+          users={users}
+          teams={teams}
+          currentUserId={permissions.id}
+          isAdmin={permissions.isAdmin}
+        />
+      </SettingsSectionCard>
+    </SettingsPage>
+  );
 }
-
-
