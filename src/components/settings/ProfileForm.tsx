@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useTransition } from 'react';
-import { AutosaveForm } from '@/components/settings/forms/AutosaveForm';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { SettingsSection } from '@/components/settings/layout/SettingsSection';
 import { SettingsRow } from '@/components/settings/layout/SettingsRow';
 import { Input } from '@/components/ui/shadcn/input';
@@ -17,12 +18,13 @@ import {
   SelectValue,
 } from '@/components/ui/shadcn/select';
 import { FormField, FormItem, FormControl, FormMessage } from '@/components/ui/shadcn/form';
-import { Lock, RefreshCw, Info, Camera, Upload, Loader2, Trash2 } from 'lucide-react';
+import { Lock, RefreshCw, Info, Camera, Upload, Loader2, Trash2, Save } from 'lucide-react';
 import { z } from 'zod';
 import { updateProfile } from '@/app/(app)/settings/actions';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AvatarPicker } from '@/components/settings/AvatarPicker';
 
 type Props = {
   name: string;
@@ -58,23 +60,33 @@ export default function ProfileForm({
 }: Props) {
   const router = useRouter();
   const [isUploading, startTransition] = useTransition();
+  const [isSaving, setIsSaving] = useState(false);
   const [currentGender, setCurrentGender] = useState<string | null | undefined>(gender);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper function to generate default avatar based on gender (matches backend logic)
+  // Helper function to generate default avatar based on gender - professional cartoon style
   const getDefaultAvatar = (g: string | null | undefined, userId: string = 'user'): string => {
+    // Using DiceBear big-smile for professional, friendly cartoon avatars
+    // Similar to the screenshot with colorful backgrounds and business-appropriate style
     switch (g?.toLowerCase()) {
       case 'male':
-        return `https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=${userId}-male&backgroundColor=c0aede`;
+        // Professional male avatar with red background
+        return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-male&backgroundColor=b91c1c&radius=50`;
       case 'female':
-        return `https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=${userId}-female&backgroundColor=ffd5dc`;
+        // Professional female avatar with green background
+        return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-female&backgroundColor=65a30d&radius=50`;
       case 'non-binary':
+        // Professional non-binary avatar with purple background
+        return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-nb&backgroundColor=7c3aed&radius=50`;
       case 'other':
-        return `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${userId}`;
+        // Professional avatar with teal background
+        return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-other&backgroundColor=0891b2&radius=50`;
       case 'prefer-not-to-say':
-        return `https://api.dicebear.com/9.x/notionists/svg?seed=${userId}`;
+        // Neutral professional avatar with blue background
+        return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-neutral&backgroundColor=6366f1&radius=50`;
       default:
-        return `https://api.dicebear.com/9.x/thumbs/svg?seed=${userId}&backgroundColor=transparent`;
+        // Default avatar with green background
+        return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}&backgroundColor=84cc16&radius=50`;
     }
   };
 
@@ -99,6 +111,30 @@ export default function ProfileForm({
     gender: gender ?? undefined,
     department: department ?? undefined,
     jobTitle: jobTitle ?? undefined,
+  };
+
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues,
+    mode: 'onChange',
+  });
+
+  // Handle avatar selection from picker
+  const handleAvatarSelect = async (selectedAvatarUrl: string) => {
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append('avatarUrl', selectedAvatarUrl);
+
+      const result = await updateProfile({ error: null, success: false }, formData);
+
+      if (result.success) {
+        toast.success('Avatar updated');
+        setAvatarPreview(selectedAvatarUrl);
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Failed to update avatar');
+      }
+    });
   };
 
   // Handle immediate avatar upload
@@ -141,7 +177,8 @@ export default function ProfileForm({
     }
   };
 
-  const handleAutosave = async (data: ProfileFormData) => {
+  const handleManualSave = async (data: ProfileFormData) => {
+    setIsSaving(true);
     const formData = new FormData();
     formData.append('name', data.name);
     // Always send gender field (even if empty) to allow clearing it
@@ -152,12 +189,13 @@ export default function ProfileForm({
     const result = await updateProfile({ error: null, success: false }, formData);
 
     if (result.success) {
-      // router.refresh() // Autosave usually feels smoother without full refresh, but we need it for deep updates.
-      // AutosaveForm component might handle visual feedback. We can debounce refresh.
-      // For now, let's trust the AutosaveForm's save indicator.
-      setTimeout(() => router.refresh(), 500);
+      toast.success('Profile updated successfully');
+      router.refresh();
+    } else {
+      toast.error(result.error || 'Failed to update profile');
     }
 
+    setIsSaving(false);
     return {
       success: result.success ?? false,
       error: result.error ?? undefined,
@@ -216,8 +254,13 @@ export default function ProfileForm({
           />
         </div>
 
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-3">
           <div className="flex gap-2">
+            <AvatarPicker
+              currentAvatarUrl={avatarPreview}
+              onSelect={handleAvatarSelect}
+              userName={name}
+            />
             <Button
               variant="outline"
               size="sm"
@@ -226,7 +269,7 @@ export default function ProfileForm({
               className="gap-2"
             >
               <Upload className="h-3.5 w-3.5" />
-              Change Photo
+              Upload Photo
             </Button>
             {avatarPreview && !isDefaultAvatar(avatarPreview) && (
               <Button
@@ -255,20 +298,19 @@ export default function ProfileForm({
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">JPG, GIF or PNG. Max 5MB.</p>
+          <p className="text-xs text-muted-foreground text-center">
+            Choose from preset avatars or upload your own (JPG, GIF, PNG. Max 5MB)
+          </p>
         </div>
       </div>
 
-      {/* Editable Section with Auto-save */}
-      <AutosaveForm
-        defaultValues={defaultValues}
-        schema={profileSchema}
-        onSave={handleAutosave}
-        showSaveIndicator={true}
-        saveIndicatorPosition="top-right"
-        delay={1000}
-      >
-        {form => (
+      {/* Editable Section with Manual Save */}
+      <FormProvider {...form}>
+        <form
+          onSubmit={form.handleSubmit(async data => {
+            await handleManualSave(data);
+          })}
+        >
           <SettingsSection
             title="Account Details"
             description="Manage your public profile and workspace preferences"
@@ -329,7 +371,11 @@ export default function ProfileForm({
                 />
               </SettingsRow>
 
-              <SettingsRow label="Job Title" description="Your professional role" htmlFor="jobTitle">
+              <SettingsRow
+                label="Job Title"
+                description="Your professional role"
+                htmlFor="jobTitle"
+              >
                 <div className="w-full space-y-1">
                   <Input
                     id="jobTitle"
@@ -345,7 +391,11 @@ export default function ProfileForm({
                 </div>
               </SettingsRow>
 
-              <SettingsRow label="Department" description="Your team or division" htmlFor="department">
+              <SettingsRow
+                label="Department"
+                description="Your team or division"
+                htmlFor="department"
+              >
                 <Input
                   id="department"
                   {...form.register('department')}
@@ -386,9 +436,26 @@ export default function ProfileForm({
                 </div>
               </SettingsRow>
             </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end pt-6 border-t">
+              <Button type="submit" disabled={isSaving || isUploading} className="gap-2">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
           </SettingsSection>
-        )}
-      </AutosaveForm>
+        </form>
+      </FormProvider>
 
       {/* Info Note */}
       <Alert className="bg-muted/30 border-none">

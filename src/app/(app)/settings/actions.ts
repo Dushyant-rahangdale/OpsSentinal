@@ -80,30 +80,30 @@ export async function updateProfile(
       }
     }
 
-    // Helper for default avatars based on gender
+    // Helper for default avatars based on gender - professional cartoon style
     const getDefaultAvatar = (g: string | null, userId: string): string | null => {
-      // Using DiceBear for high-quality, stylish default avatars
-      // lorelei-neutral: Modern, cool illustrated style
-      // notionists: Minimal, professional look
-      // fun-emoji: Colorful animated emojis
+      // Using DiceBear big-smile for professional, friendly cartoon avatars
+      // Similar to the screenshot with colorful backgrounds and business-appropriate style
 
       switch (g?.toLowerCase()) {
         case 'male':
-          // Cool illustrated male avatar with unique seed
-          return `https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=${userId}-male&backgroundColor=c0aede`;
+          // Professional male avatar with red background
+          return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-male&backgroundColor=b91c1c&radius=50`;
         case 'female':
-          // Cool illustrated female avatar with unique seed
-          return `https://api.dicebear.com/9.x/lorelei-neutral/svg?seed=${userId}-female&backgroundColor=ffd5dc`;
+          // Professional female avatar with green background
+          return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-female&backgroundColor=65a30d&radius=50`;
         case 'non-binary':
+          // Professional non-binary avatar with purple background
+          return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-nb&backgroundColor=7c3aed&radius=50`;
         case 'other':
-          // Fun emoji style for non-binary/other
-          return `https://api.dicebear.com/9.x/fun-emoji/svg?seed=${userId}`;
+          // Professional avatar with teal background
+          return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-other&backgroundColor=0891b2&radius=50`;
         case 'prefer-not-to-say':
-          // Neutral professional look
-          return `https://api.dicebear.com/9.x/notionists/svg?seed=${userId}`;
+          // Neutral professional avatar with blue background
+          return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}-neutral&backgroundColor=6366f1&radius=50`;
         default:
-          // If no gender set, use a fun neutral avatar
-          return `https://api.dicebear.com/9.x/thumbs/svg?seed=${userId}&backgroundColor=transparent`;
+          // Default avatar with green background
+          return `https://api.dicebear.com/9.x/big-smile/svg?seed=${userId}&backgroundColor=84cc16&radius=50`;
       }
     };
 
@@ -140,10 +140,16 @@ export async function updateProfile(
       newGender = g;
     }
 
+    // Handle direct avatarUrl (from avatar picker)
+    const directAvatarUrl = formData.get('avatarUrl') as string | null;
+
     // Avatar Logic
     if (removeAvatar) {
       // User explicitly requested removal - set to default based on gender
       data.avatarUrl = getDefaultAvatar(newGender, user.id);
+    } else if (directAvatarUrl) {
+      // User selected an avatar from the picker
+      data.avatarUrl = directAvatarUrl;
     } else if (avatarUrl !== undefined) {
       // User uploaded a NEW file
       data.avatarUrl = avatarUrl;
@@ -154,15 +160,17 @@ export async function updateProfile(
       // 1. null (no avatar)
       // 2. OR one of our default DiceBear avatars (meaning user hasn't uploaded a custom one)
 
-      const isCurrentDefault = !user.avatarUrl || (() => {
-        try {
-          const url = new URL(user.avatarUrl!);
-          return url.hostname === 'api.dicebear.com';
-        } catch {
-          // If the URL is invalid, treat it as non-default/custom.
-          return false;
-        }
-      })();
+      const isCurrentDefault =
+        !user.avatarUrl ||
+        (() => {
+          try {
+            const url = new URL(user.avatarUrl!);
+            return url.hostname === 'api.dicebear.com';
+          } catch {
+            // If the URL is invalid, treat it as non-default/custom.
+            return false;
+          }
+        })();
 
       if (isCurrentDefault) {
         const newDefault = getDefaultAvatar(newGender, user.id);
