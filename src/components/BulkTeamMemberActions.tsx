@@ -3,6 +3,17 @@
 import { useState, useTransition } from 'react';
 import { useToast } from './ToastProvider';
 import VirtualList from './ui/VirtualList';
+import { Button } from '@/components/ui/shadcn/button';
+import { Label } from '@/components/ui/shadcn/label';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/shadcn/collapsible';
+import { UserPlus, ChevronDown, ChevronUp, Loader2, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type User = {
   id: string;
@@ -29,9 +40,10 @@ export default function BulkTeamMemberActions({
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [role, setRole] = useState<string>('MEMBER');
   const [isPending, startTransition] = useTransition();
+  const [isOpen, setIsOpen] = useState(false);
   const { showToast } = useToast();
 
-  if (!canManageMembers) {
+  if (!canManageMembers || availableUsers.length === 0) {
     return null;
   }
 
@@ -94,226 +106,135 @@ export default function BulkTeamMemberActions({
     });
   };
 
-  if (availableUsers.length === 0) {
-    return null;
-  }
+  const renderUserItem = (user: User, index: number) => (
+    <label
+      key={user.id}
+      className={cn(
+        'flex items-center gap-3 p-3 cursor-pointer transition-colors border-b last:border-b-0',
+        selectedUsers.has(user.id) ? 'bg-blue-50' : 'hover:bg-muted/50'
+      )}
+    >
+      <Checkbox
+        checked={selectedUsers.has(user.id)}
+        onCheckedChange={() => handleToggleUser(user.id)}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm truncate">{user.name}</div>
+        <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+      </div>
+      {user.status === 'DISABLED' && (
+        <Badge
+          variant="outline"
+          className="text-[10px] px-1.5 py-0 bg-red-100 text-red-700 border-red-200"
+        >
+          Disabled
+        </Badge>
+      )}
+    </label>
+  );
 
   return (
-    <div
-      style={{
-        marginTop: '1.5rem',
-        padding: '1rem',
-        background: '#f8fafc',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1rem',
-        }}
-      >
-        <h5 style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-          Bulk Add Members
-        </h5>
-        {availableUsers.length > 0 && (
-          <button
-            type="button"
-            onClick={handleSelectAll}
-            style={{
-              padding: '0.3rem 0.6rem',
-              background: 'white',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              fontSize: '0.75rem',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            {selectedUsers.size === availableUsers.length ? 'Deselect All' : 'Select All'}
-          </button>
-        )}
-      </div>
-
-      <div style={{ marginBottom: '1rem' }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: '0.4rem',
-            fontSize: '0.85rem',
-            fontWeight: '500',
-          }}
-        >
-          Role for Selected Users
-        </label>
-        <select
-          value={role}
-          onChange={e => setRole(e.target.value)}
-          disabled={!canAssignOwnerAdmin && (role === 'OWNER' || role === 'ADMIN')}
-          style={{
-            width: '100%',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            background:
-              !canAssignOwnerAdmin && (role === 'OWNER' || role === 'ADMIN') ? '#f3f4f6' : 'white',
-            opacity: !canAssignOwnerAdmin && (role === 'OWNER' || role === 'ADMIN') ? 0.7 : 1,
-          }}
-        >
-          <option value="OWNER" disabled={!canAssignOwnerAdmin}>
-            Owner{!canAssignOwnerAdmin ? ' (Admin only)' : ''}
-          </option>
-          <option value="ADMIN" disabled={!canAssignOwnerAdmin}>
-            Admin{!canAssignOwnerAdmin ? ' (Admin only)' : ''}
-          </option>
-          <option value="MEMBER">Member</option>
-        </select>
-      </div>
-
-      <div
-        style={{
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          background: 'white',
-          marginBottom: '1rem',
-          overflow: 'hidden',
-        }}
-      >
-        {availableUsers.length > 10 ? (
-          // Use virtual scrolling for large lists
-          <VirtualList
-            items={availableUsers}
-            itemHeight={60}
-            containerHeight={200}
-            overscan={3}
-            style={{ border: 'none' }}
-            renderItem={(user, index) => (
-              <label
-                key={user.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.6rem 0.75rem',
-                  borderBottom: index < availableUsers.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s',
-                  background: selectedUsers.has(user.id) ? '#f0f9ff' : 'white',
-                }}
-                onMouseEnter={e => {
-                  if (!selectedUsers.has(user.id)) {
-                    e.currentTarget.style.background = '#f8fafc';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!selectedUsers.has(user.id)) {
-                    e.currentTarget.style.background = 'white';
-                  }
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedUsers.has(user.id)}
-                  onChange={() => handleToggleUser(user.id)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>{user.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</div>
-                </div>
-                {user.status === 'DISABLED' && (
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      padding: '0.2rem 0.4rem',
-                      borderRadius: '4px',
-                      background: '#fee2e2',
-                      color: '#991b1b',
-                      fontWeight: '600',
-                    }}
-                  >
-                    Disabled
-                  </span>
-                )}
-              </label>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg">
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              Bulk Add ({availableUsers.length} available)
+            </span>
+            {selectedUsers.size > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {selectedUsers.size} selected
+              </Badge>
             )}
-          />
-        ) : (
-          // Regular rendering for small lists
-          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-            {availableUsers.map((user, index) => (
-              <label
-                key={user.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.6rem 0.75rem',
-                  borderBottom: index < availableUsers.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  cursor: 'pointer',
-                  transition: 'background 0.2s',
-                  background: selectedUsers.has(user.id) ? '#f0f9ff' : 'white',
-                }}
-                onMouseEnter={e => {
-                  if (!selectedUsers.has(user.id)) {
-                    e.currentTarget.style.background = '#f8fafc';
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!selectedUsers.has(user.id)) {
-                    e.currentTarget.style.background = 'white';
-                  }
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedUsers.has(user.id)}
-                  onChange={() => handleToggleUser(user.id)}
-                  style={{ cursor: 'pointer' }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>{user.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</div>
-                </div>
-                {user.status === 'DISABLED' && (
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      padding: '0.2rem 0.4rem',
-                      borderRadius: '4px',
-                      background: '#fee2e2',
-                      color: '#991b1b',
-                      fontWeight: '600',
-                    }}
-                  >
-                    Disabled
-                  </span>
-                )}
-              </label>
-            ))}
           </div>
-        )}
-      </div>
+          {isOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </CollapsibleTrigger>
 
-      <button
-        type="button"
-        onClick={handleBulkAdd}
-        disabled={selectedUsers.size === 0 || isPending}
-        className="glass-button primary"
-        style={{
-          width: '100%',
-          opacity: selectedUsers.size === 0 || isPending ? 0.6 : 1,
-          cursor: selectedUsers.size === 0 || isPending ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {isPending
-          ? 'Adding...'
-          : `Add ${selectedUsers.size} Member${selectedUsers.size !== 1 ? 's' : ''}`}
-      </button>
-    </div>
+      <CollapsibleContent>
+        <div className="px-4 pb-4 space-y-4">
+          {/* Select All Button */}
+          <div className="flex justify-between items-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+              className="h-8 text-xs"
+            >
+              {selectedUsers.size === availableUsers.length ? 'Deselect All' : 'Select All'}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {selectedUsers.size} / {availableUsers.length} selected
+            </span>
+          </div>
+
+          {/* Role Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="bulk-role" className="text-xs">
+              Role for Selected Users
+            </Label>
+            <select
+              id="bulk-role"
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              disabled={!canAssignOwnerAdmin && (role === 'OWNER' || role === 'ADMIN')}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="OWNER" disabled={!canAssignOwnerAdmin}>
+                Owner{!canAssignOwnerAdmin ? ' (Admin only)' : ''}
+              </option>
+              <option value="ADMIN" disabled={!canAssignOwnerAdmin}>
+                Admin{!canAssignOwnerAdmin ? ' (Admin only)' : ''}
+              </option>
+              <option value="MEMBER">Member</option>
+            </select>
+          </div>
+
+          {/* User List */}
+          <div className="border rounded-md overflow-hidden bg-background">
+            {availableUsers.length > 10 ? (
+              <VirtualList
+                items={availableUsers}
+                itemHeight={60}
+                containerHeight={200}
+                overscan={3}
+                style={{ border: 'none' }}
+                renderItem={renderUserItem}
+              />
+            ) : (
+              <div className="max-h-[200px] overflow-y-auto">
+                {availableUsers.map((user, index) => renderUserItem(user, index))}
+              </div>
+            )}
+          </div>
+
+          {/* Add Button */}
+          <Button
+            type="button"
+            onClick={handleBulkAdd}
+            disabled={selectedUsers.size === 0 || isPending}
+            className="w-full gap-2"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Add {selectedUsers.size} Member{selectedUsers.size !== 1 ? 's' : ''}
+              </>
+            )}
+          </Button>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

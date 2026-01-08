@@ -3,10 +3,11 @@
 :root {
   /* Primary & Modern Palette: Muted Executive Slate */
   color-scheme: light;
-  /* Tailwind expects HSL numbers (no unit, no hsl wrapper) */
-  --primary: 222.2 47.4% 11.2% !important;
+  /* Tailwind expects HSL numbers (no unit, no hsl wrapper) - shadcn format */
+  /* Note: shadcn tokens at line 131 define --primary: 30 41 59 */
+  /* This is overridden by shadcn tokens below, so we don't define it here */
   /* Helper for raw CSS that needs a color value */
-  --primary-color: hsl(var(--primary-color));
+  --primary-color: #1e293b;
   --primary-hover: #0f172a;
   --primary-light: #334155;
   --primary-dark: #020617;
@@ -128,27 +129,27 @@
   /* --text-primary: #111827 */
   --popover: 255 255 255;
   --popover-foreground: 17 24 39;
-  --primary: 30 41 59;
-  /* --primary: #1e293b */
+  --primary: 215 28% 17%;
+  /* --primary: #1e293b (slate-800) */
   --primary-foreground: 255 255 255;
   --secondary: 243 244 246;
   /* --color-neutral-100 */
-  --secondary-foreground: 30 41 59;
+  --secondary-foreground: 215 28% 17%;
   --muted: 243 244 246;
   /* --color-neutral-100 */
   --muted-foreground: 107 114 128;
   /* --color-neutral-500 */
   --accent: 243 244 246;
   /* --color-neutral-100 */
-  --accent-foreground: 30 41 59;
+  --accent-foreground: 215 28% 17%;
   --destructive: 190 18 60;
   /* --color-error */
   --destructive-foreground: 255 255 255;
   --border: 229 231 235;
   /* --border: #e5e7eb */
   --input: 229 231 235;
-  --ring: 30 41 59;
-  /* --primary */
+  --ring: 215 28% 17%;
+  /* --primary (slate-800) */
   --radius: 0.875rem;
   /* 14px */
 

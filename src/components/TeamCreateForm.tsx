@@ -3,6 +3,11 @@
 import { useEffect, useRef, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { getUserFriendlyError } from '@/lib/user-friendly-errors';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { Plus, Loader2, AlertCircle } from 'lucide-react';
 
 type FormState = {
   error?: string | null;
@@ -16,23 +21,19 @@ type Props = {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      className="glass-button primary"
-      disabled={pending}
-      style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #020617 100%)',
-        color: '#ffffff',
-        padding: '0.75rem 1.5rem',
-        borderRadius: '8px',
-        border: 'none',
-        fontWeight: 600,
-        cursor: pending ? 'not-allowed' : 'pointer',
-        opacity: pending ? 0.6 : 1,
-      }}
-    >
-      {pending ? 'Creating...' : 'Create Team'}
-    </button>
+    <Button type="submit" disabled={pending} className="gap-2">
+      {pending ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Creating...
+        </>
+      ) : (
+        <>
+          <Plus className="h-4 w-4" />
+          Create Team
+        </>
+      )}
+    </Button>
   );
 }
 
@@ -47,65 +48,46 @@ export default function TeamCreateForm({ action }: Props) {
   }, [state?.success]);
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
-    >
-      <div>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: '0.4rem',
-            fontSize: '0.9rem',
-            fontWeight: '500',
-          }}
-        >
-          Team Name *
-        </label>
-        <input
-          name="name"
-          required
-          placeholder="e.g. Platform Operations"
-          maxLength={200}
-          style={{
-            width: '100%',
-            padding: '0.6rem',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-          }}
-        />
+    <form ref={formRef} action={formAction} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name" className="text-sm font-medium">
+            Team Name <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="name"
+            name="name"
+            required
+            placeholder="e.g. Platform Operations"
+            maxLength={200}
+            className="w-full"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="description" className="text-sm font-medium">
+            Description
+          </Label>
+          <Input
+            id="description"
+            name="description"
+            placeholder="What does this team own?"
+            maxLength={1000}
+            className="w-full"
+          />
+        </div>
       </div>
-      <div>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: '0.4rem',
-            fontSize: '0.9rem',
-            fontWeight: '500',
-          }}
-        >
-          Description
-        </label>
-        <input
-          name="description"
-          placeholder="What does this team own?"
-          maxLength={1000}
-          style={{
-            width: '100%',
-            padding: '0.6rem',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-          }}
-        />
-      </div>
-      <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <SubmitButton />
-        {state?.error ? (
-          <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
-            {getUserFriendlyError(state.error)}
-          </span>
-        ) : null}
+        {state?.error && (
+          <Alert variant="destructive" className="flex-1 py-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              {getUserFriendlyError(state.error)}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </form>
   );
