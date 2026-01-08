@@ -47,7 +47,7 @@
     background: rgba(255, 255, 255, 0.9);
     border: none;
     border-radius: 6px;
-    color: var(--primary);
+    color: var(--primary-color);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -90,7 +90,7 @@
     cursor: pointer;
     width: 18px;
     height: 18px;
-    accent-color: var(--primary);
+    accent-color: var(--primary-color);
     vertical-align: middle;
     margin: 0;
 }
@@ -112,7 +112,7 @@
 
 .sortIcon {
     font-size: 0.8rem;
-    color: var(--primary);
+    color: var(--primary-color);
 }
 
 .row {
@@ -130,7 +130,7 @@
 
 .rowSelected {
     background-color: rgba(59, 130, 246, 0.08);
-    border-left: 3px solid var(--primary);
+    border-left: 3px solid var(--primary-color);
 }
 
 .rowSelected:hover {
@@ -208,7 +208,7 @@
 /* Links and Text */
 .incidentLink {
     font-weight: 600;
-    color: var(--primary);
+    color: var(--primary-color);
     text-decoration: none;
 }
 
@@ -279,7 +279,7 @@
 
 .postmortemButton {
     padding: 0.35rem 0.75rem;
-    background: var(--primary);
+    background: var(--primary-color);
     color: white;
     text-decoration: none;
     border-radius: var(--radius-sm);

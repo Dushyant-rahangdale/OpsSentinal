@@ -1,20 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import _Spinner from '@/components/ui/Spinner';
+import { Button } from '@/components/ui/shadcn/button';
+import { Loader2, Key, Copy, Check, X, AlertCircle, Link as LinkIcon } from 'lucide-react';
 
 type Props = {
   userId: string;
   userName: string;
+  userStatus?: string;
   className?: string;
 };
 
-export default function GenerateResetLinkButton({ userId, userName, className }: Props) {
+export default function GenerateResetLinkButton({
+  userId,
+  userName,
+  userStatus = 'ACTIVE',
+  className,
+}: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [resetLink, setResetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(false);
+
+  const isInvite = userStatus === 'INVITED';
+  const buttonLabel = isInvite ? 'Get Invite Link' : 'Reset Password';
+  const confirmLabel = isInvite ? 'Generate Link?' : 'Reset Password?';
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -33,7 +44,6 @@ export default function GenerateResetLinkButton({ userId, userName, className }:
         setResetLink(data.link);
       } else {
         setError(data.error || 'Failed to generate link');
-        // Reset confirmation state after error
         setConfirming(false);
       }
     } catch (_err) {
@@ -54,81 +64,65 @@ export default function GenerateResetLinkButton({ userId, userName, className }:
 
   if (resetLink) {
     return (
-      <div style={{ position: 'relative', display: 'inline-block' }}>
-        <button
+      <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+        <Button
           onClick={copyToClipboard}
-          className="glass-button"
-          style={{
-            padding: '0.35rem 0.7rem',
-            fontSize: '0.7rem',
-            background: '#ecfdf5',
-            color: '#065f46',
-            border: '1px solid #a7f3d0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.3rem',
-            cursor: 'pointer',
-          }}
-          title="Click to copy reset link"
-          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800 gap-2"
+          title="Click to copy link"
         >
-          {copied ? 'Copied!' : 'Copy Link'}
-          <span
-            onClick={e => {
-              e.stopPropagation();
-              setResetLink(null);
-              setConfirming(false);
-            }}
-            style={{ marginLeft: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            ×
-          </span>
-        </button>
+          {copied ? (
+            <>
+              <Check className="h-3 w-3" /> Copied!
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" /> Copy Link
+            </>
+          )}
+        </Button>
+        <Button
+          onClick={() => {
+            setResetLink(null);
+            setConfirming(false);
+          }}
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          title="Close"
+        >
+          <X className="h-3 w-3" />
+        </Button>
       </div>
     );
   }
 
   if (confirming) {
     return (
-      <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
-        <button
-          type="button"
+      <div className="flex items-center gap-1 animate-in fade-in">
+        <Button
           onClick={handleGenerate}
-          className={`glass-button ${className || ''}`}
-          style={{
-            padding: '0.35rem 0.7rem',
-            fontSize: '0.7rem',
-            background: '#fee2e2',
-            color: '#b91c1c',
-            border: '1px solid #fecaca',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
           disabled={isLoading}
-          title="Confirm Generation (Invalidates old tokens)"
+          variant="destructive"
+          size="sm"
+          className="h-7 text-xs gap-1"
         >
-          {isLoading ? '...' : 'Confirm?'}
-        </button>
-        <button
-          type="button"
+          {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+          Confirm
+        </Button>
+        <Button
           onClick={() => setConfirming(false)}
-          className="glass-button"
-          style={{
-            padding: '0.35rem 0.5rem',
-            fontSize: '0.7rem',
-            background: '#f3f4f6',
-            color: '#6b7280',
-            border: '1px solid #e5e7eb',
-            cursor: 'pointer',
-          }}
           disabled={isLoading}
-          title="Cancel"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
         >
-          ×
-        </button>
+          <X className="h-3 w-3" />
+        </Button>
         {error && (
-          <span style={{ fontSize: '0.7rem', color: '#dc2626' }} title={error}>
-            !
+          <span className="text-xs text-red-500 ml-1" title={error}>
+            <AlertCircle className="h-3 w-3" />
           </span>
         )}
       </div>
@@ -136,25 +130,19 @@ export default function GenerateResetLinkButton({ userId, userName, className }:
   }
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <button
-        type="button"
+    <div className="flex items-center gap-1">
+      <Button
         onClick={() => setConfirming(true)}
-        className={`glass-button ${className || ''}`}
-        style={{
-          padding: '0.35rem 0.7rem',
-          fontSize: '0.7rem',
-          background: '#f0fdf4', // Light green hint
-          color: '#15803d',
-          border: '1px solid #dcfce7',
-          cursor: 'pointer',
-        }}
-        title="Generate Password Reset Link (Manual Fallback)"
+        variant="ghost"
+        size="sm"
+        className={`h-7 text-xs gap-1.5 ${isInvite ? 'text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100' : 'text-green-600 bg-green-50 border border-green-200 hover:bg-green-100'} ${className}`}
+        title={buttonLabel}
       >
-        Reset Pwd
-      </button>
+        {isInvite ? <LinkIcon className="h-3 w-3" /> : <Key className="h-3 w-3" />}
+        {buttonLabel}
+      </Button>
       {error && (
-        <span style={{ fontSize: '0.7rem', color: '#dc2626', marginLeft: '0.5rem' }} title={error}>
+        <span className="text-xs text-red-500" title={error}>
           !
         </span>
       )}

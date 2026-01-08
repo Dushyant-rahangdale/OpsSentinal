@@ -63,7 +63,7 @@ export default function Checkbox({
           style={{
             ...sizeStyles[size],
             cursor: props.disabled ? 'not-allowed' : 'pointer',
-            accentColor: hasError ? 'var(--color-error)' : 'var(--primary)',
+            accentColor: hasError ? 'var(--color-error)' : 'var(--primary-color)',
           }}
           aria-invalid={hasError}
           aria-describedby={

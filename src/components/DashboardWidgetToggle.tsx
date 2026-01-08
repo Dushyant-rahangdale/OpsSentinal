@@ -107,7 +107,7 @@ const DashboardWidgetToggle = memo(function DashboardWidgetToggle({
             onKeyDown={handleKeyDown}
             style={{
               padding: '0.4rem 0.8rem',
-              background: 'var(--primary)',
+              background: 'var(--primary-color)',
               color: 'white',
               border: 'none',
               borderRadius: '6px',

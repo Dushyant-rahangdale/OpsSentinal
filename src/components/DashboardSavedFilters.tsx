@@ -128,7 +128,7 @@ export default function DashboardSavedFilters() {
             }}
             onMouseEnter={e => {
               e.currentTarget.style.background = '#f9fafb';
-              e.currentTarget.style.borderColor = 'var(--primary)';
+              e.currentTarget.style.borderColor = 'var(--primary-color)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'white';
@@ -168,8 +168,8 @@ export default function DashboardSavedFilters() {
               padding: '0.35rem 0.75rem',
               borderRadius: '6px',
               fontSize: '0.8rem',
-              border: '1px solid var(--primary)',
-              background: 'var(--primary)',
+              border: '1px solid var(--primary-color)',
+              background: 'var(--primary-color)',
               color: 'white',
               cursor: 'pointer',
               fontWeight: '600',
@@ -262,7 +262,7 @@ export default function DashboardSavedFilters() {
                   padding: '0.5rem 1rem',
                   border: 'none',
                   borderRadius: '6px',
-                  background: filterName.trim() ? 'var(--primary)' : '#ccc',
+                  background: filterName.trim() ? 'var(--primary-color)' : '#ccc',
                   color: 'white',
                   cursor: filterName.trim() ? 'pointer' : 'not-allowed',
                   fontSize: '0.9rem',

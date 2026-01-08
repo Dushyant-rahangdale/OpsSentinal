@@ -113,7 +113,7 @@ export default function PolicyStepCard({
         style={{
           padding: '1.5rem',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '2px solid var(--primary)',
+          border: '2px solid var(--primary-color)',
           borderRadius: '12px',
         }}
       >
@@ -126,7 +126,7 @@ export default function PolicyStepCard({
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                background: 'var(--primary)',
+                background: 'var(--primary-color)',
                 color: 'white',
                 display: 'flex',
                 alignItems: 'center',
@@ -354,7 +354,7 @@ export default function PolicyStepCard({
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              background: 'var(--primary)',
+              background: 'var(--primary-color)',
               color: 'white',
               display: 'flex',
               alignItems: 'center',

@@ -9,6 +9,7 @@ import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import StatusBadge from '@/components/incident/StatusBadge';
 import { useToast } from '@/components/ToastProvider';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type Incident = {
   id: string;
@@ -16,7 +17,7 @@ type Incident = {
   status: string;
   urgency?: string;
   service: { name: string };
-  assignee: { name: string } | null;
+  assignee: { name: string; avatarUrl?: string | null; gender?: string | null } | null;
   createdAt: Date;
 };
 
@@ -198,7 +199,7 @@ export default memo(function IncidentTable({
         <div
           style={{
             padding: '0.75rem 1rem',
-            background: 'linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 100%)',
+            background: 'linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-color) 100%)',
             color: 'white',
             display: 'flex',
             justifyContent: 'space-between',
@@ -235,7 +236,7 @@ export default memo(function IncidentTable({
                 background: 'rgba(255,255,255,0.92)',
                 border: 'none',
                 borderRadius: '10px',
-                color: 'var(--primary)',
+                color: 'var(--primary-color)',
                 fontWeight: 750,
                 cursor: isPending ? 'not-allowed' : 'pointer',
                 opacity: isPending ? 0.6 : 1,
@@ -281,7 +282,7 @@ export default memo(function IncidentTable({
                   borderRadius: '9999px',
                   border: `1px solid ${active ? 'rgba(211, 47, 47, 0.25)' : 'var(--border)'}`,
                   background: active ? 'rgba(211, 47, 47, 0.08)' : 'white',
-                  color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                  color: active ? 'var(--primary-color)' : 'var(--text-secondary)',
                   fontSize: '0.75rem',
                   fontWeight: 750,
                   cursor: 'pointer',
@@ -291,7 +292,9 @@ export default memo(function IncidentTable({
                 }}
               >
                 {opt.label}
-                {active && <span style={{ color: 'var(--primary)' }}>{renderSortArrow()}</span>}
+                {active && (
+                  <span style={{ color: 'var(--primary-color)' }}>{renderSortArrow()}</span>
+                )}
               </button>
             );
           })}
@@ -498,7 +501,7 @@ export default memo(function IncidentTable({
                             onClick={e => e.stopPropagation()}
                             style={{
                               padding: '0.45rem 0.8rem',
-                              background: 'var(--primary)',
+                              background: 'var(--primary-color)',
                               border: 'none',
                               borderRadius: '10px',
                               fontSize: '0.8rem',
@@ -605,7 +608,7 @@ export default memo(function IncidentTable({
                                     cursor: isPending ? 'not-allowed' : 'pointer',
                                     fontSize: '0.85rem',
                                     fontWeight: 700,
-                                    color: 'var(--primary)',
+                                    color: 'var(--primary-color)',
                                   }}
                                   onMouseEnter={e => {
                                     e.currentTarget.style.background = 'var(--primary-light)';
@@ -697,7 +700,7 @@ export default memo(function IncidentTable({
                                     padding: '0.55rem 0.6rem',
                                     borderRadius: '10px',
                                     textDecoration: 'none',
-                                    color: 'var(--primary)',
+                                    color: 'var(--primary-color)',
                                     fontWeight: 700,
                                     fontSize: '0.85rem',
                                   }}
@@ -728,15 +731,42 @@ export default memo(function IncidentTable({
                         <StatusBadge status={incident.status as any} size="sm" showDot />
                         {urgencyChip}
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>•</span>
-                        <span
-                          style={{
-                            color: 'var(--text-secondary)',
-                            fontSize: '0.85rem',
-                            fontWeight: 650,
-                          }}
-                        >
-                          {incident.assignee ? incident.assignee.name : 'Unassigned'}
-                        </span>
+                        {incident.assignee ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <img
+                              src={
+                                incident.assignee.avatarUrl ||
+                                getDefaultAvatar(incident.assignee.gender, incident.assignee.name)
+                              }
+                              alt={incident.assignee.name}
+                              style={{
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                            <span
+                              style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.85rem',
+                                fontWeight: 650,
+                              }}
+                            >
+                              {incident.assignee.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              color: 'var(--text-secondary)',
+                              fontSize: '0.85rem',
+                              fontWeight: 650,
+                            }}
+                          >
+                            Unassigned
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

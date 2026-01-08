@@ -67,7 +67,7 @@ export default async function MobileIncidentDetailPage({ params }: PageProps) {
           display: 'flex',
           alignItems: 'center',
           gap: '0.375rem',
-          color: 'var(--primary)',
+          color: 'var(--primary-color)',
           textDecoration: 'none',
           fontSize: '0.85rem',
           fontWeight: '600',

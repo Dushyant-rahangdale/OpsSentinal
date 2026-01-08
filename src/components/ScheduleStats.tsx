@@ -1,67 +1,72 @@
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Calendar, Layers, Shield } from 'lucide-react';
+
 type ScheduleStatsProps = {
-    scheduleCount: number;
-    layerCount: number;
-    hasActiveCoverage: boolean;
+  scheduleCount: number;
+  layerCount: number;
+  hasActiveCoverage: boolean;
 };
 
-export default function ScheduleStats({ scheduleCount, layerCount, hasActiveCoverage }: ScheduleStatsProps) {
-    return (
-        <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '1rem',
-            marginBottom: '2rem'
-        }}>
-            <div className="glass-panel" style={{
-                padding: '1.25rem',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                textAlign: 'center'
-            }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '500' }}>
-                    Schedules
-                </div>
-                <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                    {scheduleCount}
-                </div>
+export default function ScheduleStats({
+  scheduleCount,
+  layerCount,
+  hasActiveCoverage,
+}: ScheduleStatsProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Schedules</p>
+              <p className="text-3xl font-bold">{scheduleCount}</p>
             </div>
-            <div className="glass-panel" style={{
-                padding: '1.25rem',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                textAlign: 'center'
-            }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '500' }}>
-                    Layers
-                </div>
-                <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                    {layerCount}
-                </div>
+            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+              <Calendar className="h-6 w-6 text-blue-600" />
             </div>
-            <div className="glass-panel" style={{
-                padding: '1.25rem',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                textAlign: 'center'
-            }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: '500' }}>
-                    Coverage Status
-                </div>
-                <div style={{ 
-                    fontSize: '1.75rem', 
-                    fontWeight: '700',
-                    color: hasActiveCoverage ? '#065f46' : '#991b1b'
-                }}>
-                    {hasActiveCoverage ? 'Healthy' : 'Needs setup'}
-                </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Layers</p>
+              <p className="text-3xl font-bold">{layerCount}</p>
             </div>
-        </div>
-    );
+            <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+              <Layers className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Coverage Status</p>
+              <p
+                className={`text-3xl font-bold ${
+                  hasActiveCoverage ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {hasActiveCoverage ? 'Healthy' : 'Needs setup'}
+              </p>
+            </div>
+            <div
+              className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                hasActiveCoverage ? 'bg-green-100' : 'bg-red-100'
+              }`}
+            >
+              <Shield
+                className={`h-6 w-6 ${hasActiveCoverage ? 'text-green-600' : 'text-red-600'}`}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
-
-
-
-

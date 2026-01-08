@@ -12,7 +12,7 @@ interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' 
 
 /**
  * Radio button component
- * 
+ *
  * @example
  * <Radio
  *   name="option"
@@ -43,7 +43,10 @@ export default function Radio({
   };
 
   return (
-    <div className={`ui-radio-wrapper ${fullWidth ? 'ui-radio-full-width' : ''}`} style={{ width: fullWidth ? '100%' : 'auto' }}>
+    <div
+      className={`ui-radio-wrapper ${fullWidth ? 'ui-radio-full-width' : ''}`}
+      style={{ width: fullWidth ? '100%' : 'auto' }}
+    >
       <label
         htmlFor={radioId}
         style={{
@@ -62,10 +65,12 @@ export default function Radio({
           style={{
             ...sizeStyles[size],
             cursor: props.disabled ? 'not-allowed' : 'pointer',
-            accentColor: hasError ? 'var(--color-error)' : 'var(--primary)',
+            accentColor: hasError ? 'var(--color-error)' : 'var(--primary-color)',
           }}
           aria-invalid={hasError}
-          aria-describedby={error ? `${radioId}-error` : helperText ? `${radioId}-helper` : undefined}
+          aria-describedby={
+            error ? `${radioId}-error` : helperText ? `${radioId}-helper` : undefined
+          }
           {...props}
         />
         {label && (
@@ -77,7 +82,9 @@ export default function Radio({
             }}
           >
             {label}
-            {props.required && <span style={{ color: 'var(--color-error)', marginLeft: 'var(--spacing-1)' }}>*</span>}
+            {props.required && (
+              <span style={{ color: 'var(--color-error)', marginLeft: 'var(--spacing-1)' }}>*</span>
+            )}
           </span>
         )}
       </label>
@@ -136,7 +143,11 @@ export function RadioGroup({
   const groupId = useId();
 
   return (
-    <div className={`ui-radio-group ${className}`} role="radiogroup" aria-labelledby={label ? `${groupId}-label` : undefined}>
+    <div
+      className={`ui-radio-group ${className}`}
+      role="radiogroup"
+      aria-labelledby={label ? `${groupId}-label` : undefined}
+    >
       {label && (
         <div
           id={`${groupId}-label`}
@@ -182,10 +193,3 @@ export function RadioGroup({
     </div>
   );
 }
-
-
-
-
-
-
-

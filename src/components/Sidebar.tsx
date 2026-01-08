@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import _KeyboardShortcuts from './KeyboardShortcuts';
 import { useModalState } from '@/hooks/useModalState';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type NavItem = {
   href: string;
@@ -175,23 +176,34 @@ type SidebarProps = {
   userName?: string | null;
   userEmail?: string | null;
   userRole?: string | null;
+  userAvatar?: string | null;
+  userGender?: string | null;
+  userId?: string;
 };
 
 export default function Sidebar(
-  { userName, userEmail, userRole }: SidebarProps = {
+  { userName, userEmail, userRole, userAvatar, userGender, userId }: SidebarProps = {
     userName: null,
     userEmail: null,
     userRole: null,
+    userAvatar: null,
+    userGender: null,
+    userId: 'user',
   }
 ) {
   const pathname = usePathname();
-  const [stats, setStats] = useState<{ count: number; isClipped?: boolean; retentionDays?: number } | null>(null);
+  const [stats, setStats] = useState<{
+    count: number;
+    isClipped?: boolean;
+    retentionDays?: number;
+  } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useModalState('sidebarMobileMenu');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const sidebarId = 'app-sidebar';
   const isDesktopCollapsed = !isMobile && isCollapsed;
   const actionButtonPadding = isDesktopCollapsed ? '0.45rem' : '0.5rem';
+  const finalAvatarUrl = userAvatar || getDefaultAvatar(userGender, userId || 'user');
 
   useEffect(() => {
     // Fetch active incidents count
@@ -287,8 +299,7 @@ export default function Sidebar(
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.href);
-    const showBadge =
-      item.href === '/incidents' && stats !== null && stats.count > 0;
+    const showBadge = item.href === '/incidents' && stats !== null && stats.count > 0;
 
     return (
       <Link
@@ -636,7 +647,7 @@ export default function Sidebar(
               style={{
                 width: '36px',
                 height: '36px',
-                borderRadius: '8px',
+                borderRadius: '50%',
                 background: 'rgba(255,255,255,0.15)',
                 display: 'flex',
                 alignItems: 'center',
@@ -649,16 +660,11 @@ export default function Sidebar(
               }}
               title={userName || userEmail || 'User'}
             >
-              {userName
-                ? userName
-                  .split(' ')
-                  .map(n => n[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()
-                : userEmail
-                  ? userEmail[0].toUpperCase()
-                  : 'U'}
+              <img
+                src={finalAvatarUrl}
+                alt={userName || 'User'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+              />
             </div>
             {!isDesktopCollapsed && (
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -924,7 +930,7 @@ const MobileMenuButton = ({ isMobile, isMobileMenuOpen, setIsMobileMenuOpen }: M
       width: '44px',
       height: '44px',
       borderRadius: 'var(--radius-md)',
-      background: 'var(--primary)',
+      background: 'var(--primary-color)',
       border: 'none',
       color: 'white',
       alignItems: 'center',

@@ -20,13 +20,13 @@ const sizeMap: Record<SpinnerSize, number> = {
 
 const colorMap: Record<SpinnerVariant, string> = {
   default: 'var(--text-muted)',
-  primary: 'var(--primary)',
+  primary: 'var(--primary-color)',
   white: '#ffffff',
 };
 
 /**
  * Spinner component for loading states
- * 
+ *
  * @example
  * <Spinner size="md" variant="primary" />
  */
@@ -62,10 +62,3 @@ export default function Spinner({
     </svg>
   );
 }
-
-
-
-
-
-
-

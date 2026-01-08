@@ -1,4 +1,4 @@
-﻿import prisma from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { Metadata } from 'next';
 import { getBaseUrl } from '@/lib/env-validation';
 import { getServerSession } from 'next-auth';
@@ -28,8 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const branding =
     statusPage.branding &&
-      typeof statusPage.branding === 'object' &&
-      !Array.isArray(statusPage.branding)
+    typeof statusPage.branding === 'object' &&
+    !Array.isArray(statusPage.branding)
       ? (statusPage.branding as Record<string, any>)
       : {};
   const metaTitle = (branding.metaTitle as string) || statusPage.name;
@@ -87,7 +87,7 @@ export default async function PublicStatusPage() {
       <div
         style={{ padding: '4rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}
       >
-        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚫</div>
+        <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>??</div>
         <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '1rem', color: '#111827' }}>
           Status Page Disabled
         </h1>
@@ -236,8 +236,8 @@ async function renderStatusPage(statusPage: any) {
   // Parse branding
   const branding =
     statusPage.branding &&
-      typeof statusPage.branding === 'object' &&
-      !Array.isArray(statusPage.branding)
+    typeof statusPage.branding === 'object' &&
+    !Array.isArray(statusPage.branding)
       ? (statusPage.branding as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
       : {};
 
@@ -302,27 +302,27 @@ async function renderStatusPage(statusPage: any) {
   const incidentServiceIds = serviceIds.length > 0 ? serviceIds : services.map(s => s.id);
   const recentIncidents = statusPage.showIncidents
     ? await prisma.incident.findMany({
-      where: {
-        serviceId: { in: incidentServiceIds },
-        createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
-      },
-      include: {
-        service: true,
-        events: {
-          orderBy: { createdAt: 'asc' },
-          take: 50, // Get recent events for timeline
+        where: {
+          serviceId: { in: incidentServiceIds },
+          createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
         },
-        postmortem: {
-          select: {
-            id: true,
-            status: true,
-            isPublic: true,
+        include: {
+          service: true,
+          events: {
+            orderBy: { createdAt: 'asc' },
+            take: 50, // Get recent events for timeline
+          },
+          postmortem: {
+            select: {
+              id: true,
+              status: true,
+              isPublic: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    })
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      })
     : [];
 
   // Calculate uptime metrics for last 30 and 90 days
@@ -394,17 +394,17 @@ async function renderStatusPage(statusPage: any) {
       ? { label: 'Major Outage', color: '#be123c', background: '#fef2f2', border: '#fecaca' }
       : overallStatus === 'degraded'
         ? {
-          label: 'Degraded Performance',
-          color: '#d97706',
-          background: '#fffbeb',
-          border: '#fde68a',
-        }
+            label: 'Degraded Performance',
+            color: '#d97706',
+            background: '#fffbeb',
+            border: '#fde68a',
+          }
         : {
-          label: 'All Systems Operational',
-          color: '#059669',
-          background: '#f0fdf4',
-          border: '#d1fae5',
-        };
+            label: 'All Systems Operational',
+            color: '#059669',
+            background: '#f0fdf4',
+            border: '#d1fae5',
+          };
   const lastUpdatedLabel = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 
   const serviceUptime90 = uptime90;
@@ -747,36 +747,36 @@ async function renderStatusPage(statusPage: any) {
                     const severityStyle =
                       region.severity >= 3
                         ? {
-                          label: 'Outage',
-                          color: '#be123c',
-                          background: '#fef2f2',
-                          border: '#fecaca',
-                        }
+                            label: 'Outage',
+                            color: '#be123c',
+                            background: '#fef2f2',
+                            border: '#fecaca',
+                          }
                         : region.severity >= 2
                           ? {
-                            label: 'Degraded',
-                            color: '#d97706',
-                            background: '#fffbeb',
-                            border: '#fde68a',
-                          }
+                              label: 'Degraded',
+                              color: '#d97706',
+                              background: '#fffbeb',
+                              border: '#fde68a',
+                            }
                           : region.severity >= 1
                             ? {
-                              label: 'Maintenance',
-                              color: 'var(--status-primary, #3b82f6)',
-                              background: 'rgba(59, 130, 246, 0.05)',
-                              border: 'rgba(59, 130, 246, 0.2)',
-                            }
+                                label: 'Maintenance',
+                                color: 'var(--status-primary, #3b82f6)',
+                                background: 'rgba(59, 130, 246, 0.05)',
+                                border: 'rgba(59, 130, 246, 0.2)',
+                              }
                             : {
-                              label: 'Operational',
-                              color: '#059669',
-                              background: '#f0fdf4',
-                              border: '#d1fae5',
-                            };
+                                label: 'Operational',
+                                color: '#059669',
+                                background: '#f0fdf4',
+                                border: '#d1fae5',
+                              };
                     const secondaryCounts =
                       region.maintenance > 0 && region.impacted === 0
                         ? `${region.maintenance} maintenance`
                         : region.maintenance > 0
-                          ? `${region.impacted} impacted • ${region.maintenance} maintenance`
+                          ? `${region.impacted} impacted � ${region.maintenance} maintenance`
                           : `${region.impacted} impacted`;
                     return (
                       <div
@@ -841,7 +841,7 @@ async function renderStatusPage(statusPage: any) {
                           <span>
                             {region.total} service{region.total !== 1 ? 's' : ''}
                           </span>
-                          <span>•</span>
+                          <span>�</span>
                           <span>{secondaryCounts}</span>
                         </div>
                       </div>
@@ -1098,7 +1098,7 @@ async function renderStatusPage(statusPage: any) {
                     overflow: 'hidden',
                     borderRadius: '0.875rem',
                     border: '1px solid var(--status-panel-border, #e5e7eb)',
-                    borderTop: '3px solid var(--status-primary, var(--primary))',
+                    borderTop: '3px solid var(--status-primary, var(--primary-color))',
                     background: 'var(--status-panel-bg, #ffffff)',
                     padding: 'clamp(1.5rem, 4vw, 2.5rem)',
                     boxShadow: 'var(--status-card-shadow, 0 6px 16px rgba(15, 23, 42, 0.05))',
@@ -1148,7 +1148,7 @@ async function renderStatusPage(statusPage: any) {
                           fontSize: '0.75rem',
                           letterSpacing: '0.12em',
                           textTransform: 'uppercase',
-                          color: 'var(--status-primary, var(--primary))',
+                          color: 'var(--status-primary, var(--primary-color))',
                           fontWeight: '700',
                           marginBottom: '0.5rem',
                         }}
@@ -1253,7 +1253,7 @@ async function renderStatusPage(statusPage: any) {
                     width: '56px',
                     height: '2px',
                     borderRadius: '999px',
-                    background: 'var(--status-primary, var(--primary))',
+                    background: 'var(--status-primary, var(--primary-color))',
                     opacity: 0.6,
                   }}
                 />
@@ -1297,7 +1297,7 @@ async function renderStatusPage(statusPage: any) {
                         aria-label={`Email ${statusPage.contactEmail}`}
                       >
                         <span aria-hidden="true" style={{ fontSize: '0.9rem' }}>
-                          ✉
+                          ?
                         </span>
                         {statusPage.contactEmail}
                       </a>
@@ -1320,7 +1320,7 @@ async function renderStatusPage(statusPage: any) {
                         aria-label={`Open ${contactUrlLabel || statusPage.contactUrl}`}
                       >
                         <span aria-hidden="true" style={{ fontSize: '0.9rem' }}>
-                          ↗
+                          ?
                         </span>
                         {contactUrlLabel || statusPage.contactUrl}
                       </a>
@@ -1350,7 +1350,7 @@ async function renderStatusPage(statusPage: any) {
                       </a>
                     )}
                     {showRssLink && showApiLink && (
-                      <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>•</span>
+                      <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>�</span>
                     )}
                     {showApiLink && (
                       <a
@@ -1368,7 +1368,7 @@ async function renderStatusPage(statusPage: any) {
                     {showUptimeExports && (
                       <>
                         {(showRssLink || showApiLink) && (
-                          <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>·</span>
+                          <span style={{ color: 'var(--status-text-subtle, #94a3b8)' }}>�</span>
                         )}
                         <a
                           href="/api/status/uptime-export?format=csv"

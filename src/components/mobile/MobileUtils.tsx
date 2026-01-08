@@ -234,7 +234,7 @@ export function MobileProgressBar({
   const barColor = (() => {
     switch (variant) {
       case 'primary':
-        return 'var(--primary)';
+        return 'var(--primary-color)';
       case 'success':
         return '#16a34a';
       case 'warning':

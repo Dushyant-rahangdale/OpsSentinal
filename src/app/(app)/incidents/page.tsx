@@ -417,8 +417,8 @@ export default async function IncidentsPage({
                 borderRadius: '9999px',
                 fontSize: '0.82rem',
                 textDecoration: 'none',
-                background: isActive ? 'var(--primary)' : 'rgba(211, 47, 47, 0.1)',
-                color: isActive ? 'white' : 'var(--primary)',
+                background: isActive ? '#1e293b' : 'rgba(211, 47, 47, 0.1)',
+                color: isActive ? 'white' : '#1e293b',
                 fontWeight: 700,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -432,7 +432,7 @@ export default async function IncidentsPage({
                   borderRadius: '9999px',
                   fontSize: '0.72rem',
                   background: isActive ? 'rgba(255,255,255,0.18)' : 'rgba(211, 47, 47, 0.12)',
-                  color: isActive ? 'white' : 'var(--primary)',
+                  color: isActive ? 'white' : '#1e293b',
                   fontWeight: 800,
                 }}
               >

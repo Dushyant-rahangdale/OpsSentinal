@@ -437,7 +437,7 @@ export default async function ServiceSettingsPage({
                       <Link
                         href="/policies"
                         style={{
-                          color: 'var(--primary)',
+                          color: 'var(--primary-color)',
                           textDecoration: 'none',
                           fontWeight: '500',
                         }}
@@ -451,7 +451,7 @@ export default async function ServiceSettingsPage({
                       <Link
                         href="/policies"
                         style={{
-                          color: 'var(--primary)',
+                          color: 'var(--primary-color)',
                           textDecoration: 'none',
                           fontWeight: '500',
                         }}

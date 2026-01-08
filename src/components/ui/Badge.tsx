@@ -16,7 +16,7 @@ interface BadgeProps {
 
 /**
  * Badge component for labels and status indicators
- * 
+ *
  * @example
  * <Badge variant="success" size="md" dot>Active</Badge>
  */
@@ -29,66 +29,78 @@ function Badge({
   style: customStyle = {},
 }: BadgeProps) {
   // Memoize styles to prevent recreation on every render
-  const baseStyles: React.CSSProperties = useMemo(() => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 'var(--spacing-1)',
-    borderRadius: 'var(--radius-full)',
-    fontWeight: 'var(--font-weight-medium)',
-    whiteSpace: 'nowrap',
-  }), []);
+  const baseStyles: React.CSSProperties = useMemo(
+    () => ({
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 'var(--spacing-1)',
+      borderRadius: 'var(--radius-full)',
+      fontWeight: 'var(--font-weight-medium)',
+      whiteSpace: 'nowrap',
+    }),
+    []
+  );
 
-  const sizeStyles: Record<BadgeSize, React.CSSProperties> = useMemo(() => ({
-    sm: {
-      padding: 'var(--spacing-1) var(--spacing-2)',
-      fontSize: 'var(--font-size-xs)',
-      height: '18px',
-    },
-    md: {
-      padding: 'var(--spacing-1) var(--spacing-3)',
-      fontSize: 'var(--font-size-sm)',
-      height: '22px',
-    },
-    lg: {
-      padding: 'var(--spacing-2) var(--spacing-4)',
-      fontSize: 'var(--font-size-base)',
-      height: '26px',
-    },
-  }), []);
+  const sizeStyles: Record<BadgeSize, React.CSSProperties> = useMemo(
+    () => ({
+      sm: {
+        padding: 'var(--spacing-1) var(--spacing-2)',
+        fontSize: 'var(--font-size-xs)',
+        height: '18px',
+      },
+      md: {
+        padding: 'var(--spacing-1) var(--spacing-3)',
+        fontSize: 'var(--font-size-sm)',
+        height: '22px',
+      },
+      lg: {
+        padding: 'var(--spacing-2) var(--spacing-4)',
+        fontSize: 'var(--font-size-base)',
+        height: '26px',
+      },
+    }),
+    []
+  );
 
-  const variantStyles: Record<BadgeVariant, React.CSSProperties> = useMemo(() => ({
-    default: {
-      background: 'var(--color-neutral-100)',
-      color: 'var(--text-primary)',
-    },
-    primary: {
-      background: 'var(--primary)',
-      color: 'var(--text-inverse)',
-    },
-    success: {
-      background: 'var(--color-success-light)',
-      color: 'var(--color-success-dark)',
-    },
-    warning: {
-      background: 'var(--color-warning-light)',
-      color: 'var(--color-warning-dark)',
-    },
-    error: {
-      background: 'var(--color-error-light)',
-      color: 'var(--color-error-dark)',
-    },
-    info: {
-      background: 'var(--color-info-light)',
-      color: 'var(--color-info-dark)',
-    },
-  }), []);
+  const variantStyles: Record<BadgeVariant, React.CSSProperties> = useMemo(
+    () => ({
+      default: {
+        background: 'var(--color-neutral-100)',
+        color: 'var(--text-primary)',
+      },
+      primary: {
+        background: 'var(--primary-color)',
+        color: 'var(--text-inverse)',
+      },
+      success: {
+        background: 'var(--color-success-light)',
+        color: 'var(--color-success-dark)',
+      },
+      warning: {
+        background: 'var(--color-warning-light)',
+        color: 'var(--color-warning-dark)',
+      },
+      error: {
+        background: 'var(--color-error-light)',
+        color: 'var(--color-error-dark)',
+      },
+      info: {
+        background: 'var(--color-info-light)',
+        color: 'var(--color-info-dark)',
+      },
+    }),
+    []
+  );
 
-  const dotStyles: React.CSSProperties = useMemo(() => ({
-    width: '6px',
-    height: '6px',
-    borderRadius: 'var(--radius-full)',
-    background: 'currentColor',
-  }), []);
+  const dotStyles: React.CSSProperties = useMemo(
+    () => ({
+      width: '6px',
+      height: '6px',
+      borderRadius: 'var(--radius-full)',
+      background: 'currentColor',
+    }),
+    []
+  );
 
   return (
     <span
@@ -108,10 +120,3 @@ function Badge({
 
 // Memoize Badge to prevent unnecessary re-renders (frequently used component)
 export default memo(Badge);
-
-
-
-
-
-
-

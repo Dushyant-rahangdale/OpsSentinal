@@ -4,215 +4,209 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import { DateTimeInput } from '@/components/ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Label } from '@/components/ui/shadcn/label';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { AlertCircle, Clock, Loader2, Plus } from 'lucide-react';
 
 type OverrideFormProps = {
-    scheduleId: string;
-    users: Array<{ id: string; name: string }>;
-    canManageSchedules: boolean;
-    createOverride: (scheduleId: string, formData: FormData) => Promise<{ error?: string } | undefined>;
+  scheduleId: string;
+  users: Array<{ id: string; name: string }>;
+  canManageSchedules: boolean;
+  createOverride: (
+    scheduleId: string,
+    formData: FormData
+  ) => Promise<{ error?: string } | undefined>;
 };
 
-export default function OverrideForm({ scheduleId, users, canManageSchedules, createOverride }: OverrideFormProps) {
-    const router = useRouter();
-    const { showToast } = useToast();
-    const [isPending, startTransition] = useTransition();
+export default function OverrideForm({
+  scheduleId,
+  users,
+  canManageSchedules,
+  createOverride,
+}: OverrideFormProps) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        startTransition(async () => {
-            try {
-                const result = await createOverride(scheduleId, formData);
-                if (result?.error) {
-                    showToast(result.error, 'error');
-                } else {
-                    const userId = formData.get('userId') as string;
-                    const userName = users.find(u => u.id === userId)?.name || 'User';
-                    showToast(`Override created for ${userName}`, 'success');
-                    router.refresh();
-                }
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                showToast(errorMessage || 'Failed to create override', 'error');
-            }
-        });
-    };
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      try {
+        const result = await createOverride(scheduleId, formData);
+        if (result?.error) {
+          showToast(result.error, 'error');
+        } else {
+          const userId = formData.get('userId') as string;
+          const userName = users.find(u => u.id === userId)?.name || 'User';
+          showToast(`Override created for ${userName}`, 'success');
+          router.refresh();
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        showToast(errorMessage || 'Failed to create override', 'error');
+      }
+    });
+  };
 
-    if (!canManageSchedules) {
-        return (
-            <div className="glass-panel" style={{
-                padding: '1.5rem',
-                background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                opacity: 0.8
-            }}>
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '1rem',
-                    paddingBottom: '1rem',
-                    borderBottom: '1px solid #e5e7eb'
-                }}>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0, color: 'var(--text-secondary)' }}>
-                        Overrides
-                    </h3>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', fontStyle: 'italic' }}>
-                    ⚠️ You don't have access to create overrides. Admin or Responder role required.
-                </p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem', fontStyle: 'italic' }}>
-                    Temporarily replace on-call coverage. Times use your browser local time.
-                </p>
-                <div style={{ opacity: 0.5, pointerEvents: 'none' }}>
-                    <form style={{ display: 'grid', gap: '0.75rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                                On-call user
-                            </label>
-                            <select name="userId" disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                                <option value="">Select a responder</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                                Replace (optional)
-                            </label>
-                            <select name="replacesUserId" disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                                <option value="">Any user</option>
-                            </select>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                                    Start
-                                </label>
-                                <input type="datetime-local" name="start" disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                                    End
-                                </label>
-                                <input type="datetime-local" name="end" disabled style={{ width: '100%', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                            </div>
-                        </div>
-                        <button type="button" disabled className="glass-button primary" style={{ opacity: 0.5 }}>
-                            Create override
-                        </button>
-                    </form>
-                </div>
-            </div>
-        );
-    }
-
+  if (!canManageSchedules) {
     return (
-        <div className="glass-panel" style={{
-            padding: '1.5rem',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: '12px',
-            marginBottom: '1.5rem'
-        }}>
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1rem',
-                paddingBottom: '1rem',
-                borderBottom: '1px solid #e2e8f0'
-            }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', margin: 0, color: 'var(--text-primary)' }}>
-                    Overrides
-                </h3>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', fontStyle: 'italic', lineHeight: 1.5 }}>
-                Temporarily replace on-call coverage. Times use your browser local time.
-            </p>
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                        On-call user
-                    </label>
-                    <select
-                        name="userId"
-                        required
-                        disabled={isPending}
-                        style={{
-                            width: '100%',
-                            padding: '0.6rem',
-                            border: '1px solid var(--border)',
-                            borderRadius: '8px',
-                            fontSize: '0.9rem',
-                            background: 'white'
-                        }}
-                    >
-                        <option value="">Select a responder</option>
-                        {users.map((user) => (
-                            <option key={user.id} value={user.id}>
-                                {user.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                        Replace (optional)
-                    </label>
-                    <select
-                        name="replacesUserId"
-                        disabled={isPending}
-                        style={{
-                            width: '100%',
-                            padding: '0.6rem',
-                            border: '1px solid var(--border)',
-                            borderRadius: '8px',
-                            fontSize: '0.9rem',
-                            background: 'white'
-                        }}
-                    >
-                        <option value="">Any user</option>
-                        {users.map((user) => (
-                            <option key={user.id} value={user.id}>
-                                {user.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                            Start
-                        </label>
-                        <DateTimeInput
-                            name="start"
-                            required
-                            fullWidth
-                            disabled={isPending}
-                        />
-                    </div>
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                            End
-                        </label>
-                        <DateTimeInput
-                            name="end"
-                            required
-                            fullWidth
-                            disabled={isPending}
-                        />
-                    </div>
-                </div>
-                <button
-                    type="submit"
-                    disabled={isPending}
-                    className="glass-button primary"
-                    style={{ width: '100%' }}
-                >
-                    {isPending ? 'Creating...' : 'Create Override'}
-                </button>
-            </form>
-        </div>
-    );
-}
+      <Card className="opacity-60">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            Overrides
+          </CardTitle>
+          <CardDescription>Admin or Responder role required</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pointer-events-none">
+          <Alert>
+            <Clock className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Temporarily replace on-call coverage. Times use your browser local time.
+            </AlertDescription>
+          </Alert>
 
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-sm">On-call user</Label>
+              <select
+                disabled
+                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+              >
+                <option>Select a responder</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Replace (optional)</Label>
+              <select
+                disabled
+                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+              >
+                <option>Any user</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Start</Label>
+                <input
+                  type="datetime-local"
+                  disabled
+                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">End</Label>
+                <input
+                  type="datetime-local"
+                  disabled
+                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <Button disabled className="w-full">
+              Create Override
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" />
+          Overrides
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Temporarily replace on-call coverage. Times use your browser local time.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="userId" className="text-sm">
+              On-call user <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="userId"
+              name="userId"
+              required
+              disabled={isPending}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Select a responder</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="replacesUserId" className="text-sm">
+              Replace (optional)
+            </Label>
+            <select
+              id="replacesUserId"
+              name="replacesUserId"
+              disabled={isPending}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Any user</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="start" className="text-sm">
+                Start <span className="text-red-500">*</span>
+              </Label>
+              <DateTimeInput name="start" required fullWidth disabled={isPending} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end" className="text-sm">
+                End <span className="text-red-500">*</span>
+              </Label>
+              <DateTimeInput name="end" required fullWidth disabled={isPending} />
+            </div>
+          </div>
+
+          <Button type="submit" disabled={isPending} className="w-full gap-2">
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Create Override
+              </>
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}

@@ -2551,7 +2551,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             rel="noopener noreferrer"
                             style={{
                               fontSize: 'var(--font-size-sm)',
-                              color: 'var(--primary)',
+                              color: 'var(--primary-color)',
                               textDecoration: 'none',
                               fontWeight: '600',
                             }}
@@ -3240,9 +3240,11 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                   style={{
                                     padding: '6px 12px',
                                     borderRadius: '999px',
-                                    border: `1px solid ${templateFilter === filter.id ? 'var(--primary)' : '#e5e7eb'}`,
+                                    border: `1px solid ${templateFilter === filter.id ? 'var(--primary-color)' : '#e5e7eb'}`,
                                     background:
-                                      templateFilter === filter.id ? 'var(--primary)' : 'white',
+                                      templateFilter === filter.id
+                                        ? 'var(--primary-color)'
+                                        : 'white',
                                     color:
                                       templateFilter === filter.id ? 'white' : 'var(--text-muted)',
                                     fontSize: 'var(--font-size-xs)',
@@ -3288,7 +3290,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                     borderRadius: 'var(--radius-lg)',
                                     overflow: 'hidden',
                                     border: isSelected
-                                      ? '2px solid var(--primary)'
+                                      ? '2px solid var(--primary-color)'
                                       : '1px solid #e2e8f0',
                                     background: 'white',
                                     boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
@@ -3306,7 +3308,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                                         right: '12px',
                                         padding: '4px 10px',
                                         borderRadius: '999px',
-                                        background: 'var(--primary)',
+                                        background: 'var(--primary-color)',
                                         color: 'white',
                                         fontSize: '10px',
                                         fontWeight: '700',
@@ -3522,7 +3524,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                           style={{
                             display: 'inline-block',
                             padding: 'var(--spacing-3) var(--spacing-5)',
-                            background: 'var(--primary)',
+                            background: 'var(--primary-color)',
                             color: 'white',
                             textDecoration: 'none',
                             borderRadius: 'var(--radius-md)',
@@ -3535,7 +3537,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             e.currentTarget.style.transform = 'translateY(-1px)';
                           }}
                           onMouseLeave={e => {
-                            e.currentTarget.style.background = 'var(--primary)';
+                            e.currentTarget.style.background = 'var(--primary-color)';
                             e.currentTarget.style.transform = 'translateY(0)';
                           }}
                         >

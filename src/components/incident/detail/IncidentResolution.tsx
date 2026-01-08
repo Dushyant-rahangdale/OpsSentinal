@@ -156,7 +156,7 @@ export default function IncidentResolution({
             transition: 'border-color 0.15s',
           }}
           onFocus={e => {
-            e.currentTarget.style.borderColor = 'var(--primary)';
+            e.currentTarget.style.borderColor = 'var(--primary-color)';
           }}
           onBlur={e => {
             e.currentTarget.style.borderColor = 'var(--border)';

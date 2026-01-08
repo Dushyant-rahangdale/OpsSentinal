@@ -3,6 +3,15 @@
 import { useTransition, memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from './ToastProvider';
+import { getDefaultAvatar } from '@/lib/avatar';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Button } from '@/components/ui/shadcn/button';
+import { Switch } from '@/components/ui/shadcn/switch';
+import { Label } from '@/components/ui/shadcn/label';
+import { Mail, AlertCircle, Bell, BellOff, Trash2, Loader2, ExternalLink } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type TeamMember = {
   id: string;
@@ -12,6 +21,8 @@ type TeamMember = {
     id: string;
     name: string;
     email: string;
+    avatarUrl?: string | null;
+    gender?: string | null;
     status?: string;
     emailNotificationsEnabled?: boolean;
     smsNotificationsEnabled?: boolean;
@@ -50,12 +61,12 @@ function TeamMemberCard({
   const [teamNotifyEnabled, setTeamNotifyEnabled] = useState(member.receiveTeamNotifications);
 
   const roleColors = {
-    OWNER: { bg: '#eef2ff', color: '#4338ca', border: '#c7d2fe' },
-    ADMIN: { bg: '#fef3c7', color: '#78350f', border: '#fde68a' },
-    MEMBER: { bg: '#ecfdf5', color: '#065f46', border: '#a7f3d0' },
+    OWNER: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    ADMIN: 'bg-amber-100 text-amber-800 border-amber-200',
+    MEMBER: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   };
 
-  const roleInfo = roleColors[member.role as keyof typeof roleColors] || roleColors.MEMBER;
+  const roleColor = roleColors[member.role as keyof typeof roleColors] || roleColors.MEMBER;
   const canEditRole =
     canManageMembers &&
     !isSoleOwner &&
@@ -97,271 +108,187 @@ function TeamMemberCard({
     });
   };
 
-  const handleNotificationToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextValue = e.target.checked;
-    setTeamNotifyEnabled(nextValue);
+  const handleNotificationToggle = (checked: boolean) => {
+    setTeamNotifyEnabled(checked);
     startNotifyTransition(async () => {
-      const result = await updateMemberNotifications(nextValue);
+      const result = await updateMemberNotifications(checked);
       if (result?.error) {
-        setTeamNotifyEnabled(!nextValue);
+        setTeamNotifyEnabled(!checked);
         showToast(result.error, 'error');
       } else {
         showToast(
-          nextValue ? 'Team notifications enabled' : 'Team notifications disabled',
+          checked ? 'Team notifications enabled' : 'Team notifications disabled',
           'success'
         );
       }
     });
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '1rem',
-        border: `1px solid ${roleInfo.border}`,
-        borderRadius: '12px',
-        background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-        transition: 'all 0.2s',
-        opacity: isPending || isRemoving ? 0.6 : 1,
-      }}
-      className="team-member-card"
+    <Card
+      className={cn(
+        'transition-all duration-200 hover:shadow-md',
+        (isPending || isRemoving) && 'opacity-60 pointer-events-none'
+      )}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-        {/* User Avatar */}
-        <Link
-          href={`/users?q=${encodeURIComponent(member.user.email)}`}
-          style={{ textDecoration: 'none' }}
-        >
-          <div
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              background: `linear-gradient(135deg, ${roleInfo.bg} 0%, ${roleInfo.border} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '0.9rem',
-              color: roleInfo.color,
-              border: `2px solid ${roleInfo.border}`,
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-            }}
-            title={`View ${member.user.name} in users directory`}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            {member.user.name.charAt(0).toUpperCase()}
-          </div>
-        </Link>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          {/* Avatar */}
+          <Link href={`/users?q=${encodeURIComponent(member.user.email)}`} className="shrink-0">
+            <Avatar className="h-12 w-12 ring-2 ring-background shadow-md hover:scale-110 transition-transform cursor-pointer">
+              <AvatarImage
+                src={member.user.avatarUrl || getDefaultAvatar(member.user.gender, member.user.id)}
+                alt={member.user.name}
+                className="object-cover"
+              />
+              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary/10 via-primary/5 to-background">
+                {getInitials(member.user.name)}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
 
-        {/* User Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.25rem',
-            }}
-          >
-            <Link
-              href={`/users?q=${encodeURIComponent(member.user.email)}`}
-              style={{
-                fontWeight: '600',
-                color: 'var(--text-primary)',
-                textDecoration: 'none',
-                fontSize: '0.95rem',
-              }}
-            >
-              {member.user.name}
-            </Link>
-            {member.user.status === 'DISABLED' && (
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  padding: '0.15rem 0.4rem',
-                  borderRadius: '999px',
-                  background: 'var(--color-neutral-100)',
-                  color: 'var(--text-muted)',
-                  fontWeight: '600',
-                }}
+          {/* User Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Link
+                href={`/users?q=${encodeURIComponent(member.user.email)}`}
+                className="font-semibold text-sm hover:text-primary transition-colors truncate"
               >
-                Disabled
-              </span>
-            )}
-            {!hasAnyNotificationEnabled && (
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  padding: '0.15rem 0.4rem',
-                  borderRadius: '999px',
-                  background: '#fff7ed',
-                  color: '#9a3412',
-                  fontWeight: '600',
-                  border: '1px solid #fed7aa',
-                }}
-              >
-                Set notification preferences
-              </span>
-            )}
+                {member.user.name}
+              </Link>
+              {member.user.status === 'DISABLED' && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 bg-gray-100 text-gray-600"
+                >
+                  Disabled
+                </Badge>
+              )}
+              {!hasAnyNotificationEnabled && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 border-orange-200 gap-1"
+                >
+                  <AlertCircle className="h-2.5 w-2.5" />
+                  No notifications
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Mail className="h-3 w-3 shrink-0" />
+              <span className="truncate">{member.user.email}</span>
+            </div>
           </div>
-          <div
-            style={{
-              fontSize: '0.8rem',
-              color: 'var(--text-muted)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {member.user.email}
+
+          {/* Role and Actions */}
+          <div className="flex items-center gap-3">
+            {/* Team Notifications Toggle */}
+            {canManageNotifications && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`notify-${member.id}`}
+                  checked={teamNotifyEnabled}
+                  onCheckedChange={handleNotificationToggle}
+                  disabled={!canManageNotifications || isNotifyPending}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+                <Label
+                  htmlFor={`notify-${member.id}`}
+                  className={cn(
+                    'text-xs font-medium cursor-pointer flex items-center gap-1',
+                    teamNotifyEnabled ? 'text-blue-700' : 'text-muted-foreground'
+                  )}
+                >
+                  {teamNotifyEnabled ? (
+                    <>
+                      <Bell className="h-3 w-3" />
+                      <span className="hidden md:inline">Notify</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="h-3 w-3" />
+                      <span className="hidden md:inline">Silent</span>
+                    </>
+                  )}
+                </Label>
+              </div>
+            )}
+
+            {/* Role Badge/Select */}
+            <div className="flex flex-col items-end gap-1">
+              {canEditRole ? (
+                <select
+                  name="role"
+                  defaultValue={member.role}
+                  onChange={handleRoleChange}
+                  disabled={isPending || isNotifyPending}
+                  className={cn(
+                    'h-7 text-[10px] font-semibold px-2 rounded border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary',
+                    roleColor,
+                    (isPending || isNotifyPending) && 'opacity-60 cursor-wait'
+                  )}
+                >
+                  <option value="OWNER">Owner</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="MEMBER">Member</option>
+                </select>
+              ) : (
+                <Badge variant="outline" className={cn('text-[10px] font-semibold', roleColor)}>
+                  {member.role}
+                </Badge>
+              )}
+              {isSoleOwner && <span className="text-[9px] text-muted-foreground">Last owner</span>}
+              {!canAssignOwnerAdmin &&
+                (member.role === 'OWNER' || member.role === 'ADMIN') &&
+                canManageMembers && (
+                  <span className="text-[9px] text-orange-600">Admin required</span>
+                )}
+            </div>
+
+            {/* Remove Button */}
+            {canManageMembers && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRemove}
+                disabled={isSoleOwner || isRemoving}
+                className={cn(
+                  'h-8 w-8 p-0',
+                  isSoleOwner
+                    ? 'text-muted-foreground cursor-not-allowed opacity-50'
+                    : 'text-muted-foreground hover:text-red-600 hover:bg-red-50'
+                )}
+                title={isSoleOwner ? 'Cannot remove last owner' : 'Remove member from team'}
+              >
+                {isRemoving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+
+            {!canManageMembers && (
+              <span className="text-[10px] text-muted-foreground italic opacity-60">No access</span>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Role and Actions */}
-      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* Role Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.3rem 0.5rem',
-              borderRadius: '8px',
-              background: teamNotifyEnabled ? '#e0f2fe' : '#f8fafc',
-              border: `1px solid ${teamNotifyEnabled ? '#3b82f6' : '#e2e8f0'}`,
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              color: teamNotifyEnabled ? '#1d4ed8' : '#64748b',
-              opacity: canManageNotifications ? 1 : 0.6,
-              cursor: canManageNotifications ? 'pointer' : 'not-allowed',
-            }}
-            title={
-              canManageNotifications
-                ? 'Toggle team notifications for this member'
-                : 'Admin or Team Owner access required'
-            }
-          >
-            <input
-              type="checkbox"
-              checked={teamNotifyEnabled}
-              onChange={handleNotificationToggle}
-              disabled={!canManageNotifications || isNotifyPending}
-              style={{ cursor: canManageNotifications ? 'pointer' : 'not-allowed' }}
-            />
-            Team notify
-          </label>
-          {canEditRole ? (
-            <select
-              name="role"
-              defaultValue={member.role}
-              onChange={handleRoleChange}
-              disabled={isPending || isNotifyPending}
-              style={{
-                padding: '0.4rem 0.75rem',
-                border: `1px solid ${roleInfo.border}`,
-                borderRadius: '8px',
-                background: roleInfo.bg,
-                color: roleInfo.color,
-                fontWeight: '600',
-                fontSize: '0.8rem',
-                cursor: isPending ? 'wait' : 'pointer',
-                opacity: isPending ? 0.6 : 1,
-              }}
-            >
-              <option value="OWNER">Owner</option>
-              <option value="ADMIN">Admin</option>
-              <option value="MEMBER">Member</option>
-            </select>
-          ) : (
-            <span
-              style={{
-                padding: '0.4rem 0.75rem',
-                borderRadius: '8px',
-                background: roleInfo.bg,
-                color: roleInfo.color,
-                fontWeight: '600',
-                fontSize: '0.8rem',
-                border: `1px solid ${roleInfo.border}`,
-                opacity: canManageMembers ? 1 : 0.6,
-              }}
-            >
-              {member.role}
-            </span>
-          )}
-
-          {isSoleOwner && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-              Last owner
-            </span>
-          )}
-          {!canAssignOwnerAdmin &&
-            (member.role === 'OWNER' || member.role === 'ADMIN') &&
-            canManageMembers && (
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-                Admin/Owner required
-              </span>
-            )}
-        </div>
-
-        {/* Remove Button */}
-        {canManageMembers ? (
-          <button
-            onClick={handleRemove}
-            disabled={isSoleOwner || isRemoving}
-            title={isSoleOwner ? 'Reassign owner before removing' : 'Remove member from team'}
-            style={{
-              background: isSoleOwner ? '#f3f4f6' : 'var(--color-neutral-100)',
-              color: isSoleOwner ? '#9ca3af' : 'var(--text-secondary)',
-              border: '1px solid var(--border)',
-              padding: '0.4rem 0.75rem',
-              borderRadius: '8px',
-              cursor: isSoleOwner || isRemoving ? 'not-allowed' : 'pointer',
-              fontWeight: '600',
-              fontSize: '0.75rem',
-              opacity: isSoleOwner || isRemoving ? 0.6 : 1,
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => {
-              if (!isSoleOwner && !isRemoving) {
-                e.currentTarget.style.background = 'var(--color-neutral-100)';
-              }
-            }}
-            onMouseLeave={e => {
-              if (!isSoleOwner && !isRemoving) {
-                e.currentTarget.style.background = 'var(--color-neutral-100)';
-              }
-            }}
-          >
-            {isRemoving ? 'Removing...' : 'Remove'}
-          </button>
-        ) : (
-          <span
-            style={{
-              fontSize: '0.7rem',
-              color: 'var(--text-muted)',
-              fontStyle: 'italic',
-              opacity: 0.6,
-            }}
-          >
-            ⚠️ No edit access
-          </span>
-        )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
 // Memoize TeamMemberCard to prevent unnecessary re-renders in team member lists
 export default memo(TeamMemberCard, (prevProps, nextProps) => {
-  // Custom comparison for better performance
   return (
     prevProps.member.id === nextProps.member.id &&
     prevProps.member.role === nextProps.member.role &&

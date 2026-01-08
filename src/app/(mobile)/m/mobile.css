@@ -575,7 +575,7 @@ body {
 }
 
 .mobile-nav-item.active {
-    color: var(--primary);
+    color: var(--primary-color);
     background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.05) 0%, transparent 100%);
 }
 
@@ -587,7 +587,7 @@ body {
     width: 30%;
     height: 3px;
     border-radius: 0 0 4px 4px;
-    background: var(--primary);
+    background: var(--primary-color);
     box-shadow: 0 1px 6px rgba(var(--primary-rgb), 0.4);
 }
 
@@ -736,7 +736,7 @@ body {
 .mobile-qs-cancel {
     border: none;
     background: none;
-    color: var(--primary);
+    color: var(--primary-color);
     font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
@@ -950,7 +950,7 @@ body {
 .mobile-section-link {
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--primary);
+    color: var(--primary-color);
     text-decoration: none;
 }
 
@@ -1137,7 +1137,7 @@ body {
     padding: 0.45rem 0.9rem;
     border-radius: 8px;
     border: none;
-    background: var(--primary);
+    background: var(--primary-color);
     color: white;
     font-size: 0.8rem;
     font-weight: 600;
@@ -1570,7 +1570,7 @@ body {
     margin-bottom: 0.75rem;
     background: none;
     border: none;
-    color: var(--primary);
+    color: var(--primary-color);
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
@@ -1746,7 +1746,7 @@ body {
     height: 18px;
     border-radius: 50%;
     border: 2px solid var(--border);
-    border-top-color: var(--primary);
+    border-top-color: var(--primary-color);
     animation: spin 1s linear infinite;
 }
 
@@ -1979,7 +1979,7 @@ body {
 }
 
 .mobile-empty-action.primary {
-    background: var(--primary);
+    background: var(--primary-color);
     border-color: transparent;
     color: #fff;
 }
@@ -2193,7 +2193,7 @@ body {
 }
 
 .mobile-quick-action {
-    background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, #8b5cf6 100%);
 }
 
 .mobile-quick-action:hover {
@@ -2245,7 +2245,7 @@ body {
 /* ========== EXTRA MOBILE UTILITY CLASSES ========== */
 
 .mobile-text-gradient {
-    background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, #8b5cf6 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -2316,8 +2316,8 @@ body {
 }
 
 .topbar-notifications-trigger.has-unread {
-    color: var(--primary);
-    border-color: var(--primary);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .topbar-notifications-badge {
@@ -2376,7 +2376,7 @@ body {
 
 .topbar-notifications-unread-count {
     font-size: 0.7rem;
-    color: var(--primary);
+    color: var(--primary-color);
     background: rgba(59, 130, 246, 0.1);
     padding: 2px 8px;
     border-radius: 99px;
@@ -2452,7 +2452,7 @@ body {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--primary);
+    background: var(--primary-color);
     margin-top: 0.5rem;
 }
 

@@ -380,7 +380,7 @@ export default function ActionItemsBoard({
                             📋{' '}
                             <Link
                               href={`/postmortems/${item.incidentId}`}
-                              style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                              style={{ color: 'var(--primary-color)', textDecoration: 'none' }}
                             >
                               {item.postmortemTitle}
                             </Link>
@@ -622,7 +622,7 @@ export default function ActionItemsBoard({
                     📋{' '}
                     <Link
                       href={`/postmortems/${item.incidentId}`}
-                      style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                      style={{ color: 'var(--primary-color)', textDecoration: 'none' }}
                     >
                       {item.postmortemTitle}
                     </Link>
@@ -631,7 +631,7 @@ export default function ActionItemsBoard({
                     🔗{' '}
                     <Link
                       href={`/incidents/${item.incidentId}`}
-                      style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                      style={{ color: 'var(--primary-color)', textDecoration: 'none' }}
                     >
                       {item.incidentTitle}
                     </Link>

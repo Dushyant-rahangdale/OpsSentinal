@@ -263,7 +263,7 @@ export default function DashboardTimeRange() {
                 padding: '0.5rem 1rem',
                 border: 'none',
                 borderRadius: '6px',
-                background: customStart && customEnd ? 'var(--primary)' : '#ccc',
+                background: customStart && customEnd ? 'var(--primary-color)' : '#ccc',
                 color: 'white',
                 cursor: customStart && customEnd ? 'pointer' : 'not-allowed',
                 fontSize: '0.85rem',

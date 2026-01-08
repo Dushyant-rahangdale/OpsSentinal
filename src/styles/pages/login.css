@@ -741,7 +741,7 @@
 }
 
 .login-password-toggle:hover {
-  color: var(--primary);
+  color: var(--primary-color);
   background: rgba(15, 23, 42, 0.05);
   transform: scale(1.1);
 }

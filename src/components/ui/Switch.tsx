@@ -92,7 +92,7 @@ export default function Switch({
             background: checked
               ? hasError
                 ? 'var(--color-error)'
-                : 'var(--primary)'
+                : 'var(--primary-color)'
               : 'var(--color-neutral-300)',
             transition: 'all var(--transition-base) var(--ease-out)',
             cursor: disabled ? 'not-allowed' : 'pointer',

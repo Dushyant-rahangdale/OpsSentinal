@@ -188,8 +188,8 @@
   border-radius: 7px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
-  color: rgba(255, 255, 255, 0.75);
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
   font-size: clamp(0.82rem, 1.05vw, 0.9rem);
   border: 1px solid transparent;
   min-width: 0;

@@ -456,7 +456,7 @@ export default function LoginClient({
                     href="/forgot-password"
                     style={{
                       fontSize: '0.8rem',
-                      color: 'var(--primary)',
+                      color: 'var(--primary-color)',
                       textDecoration: 'none',
                       fontWeight: 500,
                     }}

@@ -189,7 +189,7 @@ export default function UserTable({
                 >
                   User
                   {sortBy === 'name' && (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--primary)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)' }}>
                       {sortOrder === 'asc' ? '↑' : '↓'}
                     </span>
                   )}
@@ -239,7 +239,7 @@ export default function UserTable({
                 >
                   Status
                   {sortBy === 'status' && (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--primary)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)' }}>
                       {sortOrder === 'asc' ? '↑' : '↓'}
                     </span>
                   )}
@@ -288,7 +288,7 @@ export default function UserTable({
                 >
                   Created
                   {sortBy === 'createdAt' && (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--primary)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)' }}>
                       {sortOrder === 'asc' ? '↑' : '↓'}
                     </span>
                   )}

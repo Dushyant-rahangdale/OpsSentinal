@@ -2,265 +2,226 @@
 
 import { useEffect, useState } from 'react';
 import { formatDateTime } from '@/lib/timezone';
+import { getDefaultAvatar } from '@/lib/avatar';
+import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Clock, Users, UserX, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type CoverageBlock = {
-    id: string;
-    userName: string;
-    layerName: string;
-    start: Date | string; // Can be Date or ISO string from server
-    end: Date | string; // Can be Date or ISO string from server
+  id: string;
+  userName: string;
+  userAvatar?: string | null;
+  userGender?: string | null;
+  layerName: string;
+  start: Date | string; // Can be Date or ISO string from server
+  end: Date | string; // Can be Date or ISO string from server
 };
 
 type CurrentCoverageDisplayProps = {
-    initialBlocks: CoverageBlock[];
-    scheduleTimeZone: string;
+  initialBlocks: CoverageBlock[];
+  scheduleTimeZone: string;
 };
 
-export default function CurrentCoverageDisplay({ 
-    initialBlocks, 
-    scheduleTimeZone
+export default function CurrentCoverageDisplay({
+  initialBlocks,
+  scheduleTimeZone,
 }: CurrentCoverageDisplayProps) {
-    // Format date/time function using centralized utility
-    const formatDateTimeLocal = (date: Date) => {
-        // Ensure we're working with a proper Date object
-        const dateObj = date instanceof Date ? date : new Date(date);
-        
-        return formatDateTime(dateObj, scheduleTimeZone, { format: 'short', hour12: true });
-    };
-    // Convert initialBlocks to ensure all dates are Date objects
-    // Dates come as ISO strings from server, so we always convert them
-    const normalizedBlocks = initialBlocks.map(block => ({
+  // Format date/time function using centralized utility
+  const formatDateTimeLocal = (date: Date) => {
+    // Ensure we're working with a proper Date object
+    const dateObj = date instanceof Date ? date : new Date(date);
+
+    return formatDateTime(dateObj, scheduleTimeZone, { format: 'short', hour12: true });
+  };
+
+  // Convert initialBlocks to ensure all dates are Date objects
+  // Dates come as ISO strings from server, so we always convert them
+  const normalizedBlocks = initialBlocks.map(block => ({
+    ...block,
+    start: new Date(block.start),
+    end: new Date(block.end),
+  }));
+
+  const [activeBlocks, setActiveBlocks] = useState(normalizedBlocks);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Recalculate when initialBlocks prop changes (e.g., after layer update)
+  useEffect(() => {
+    const calculateActive = () => {
+      const now = new Date();
+      setCurrentTime(now);
+
+      // Recalculate active blocks based on current time
+      const nowTime = now.getTime();
+      const normalized = initialBlocks.map(block => ({
         ...block,
         start: new Date(block.start),
-        end: new Date(block.end)
-    }));
-    
-    const [activeBlocks, setActiveBlocks] = useState(normalizedBlocks);
-    const [currentTime, setCurrentTime] = useState(new Date());
+        end: new Date(block.end),
+      }));
+      const active = normalized.filter(block => {
+        const blockStartTime = block.start.getTime();
+        const blockEndTime = block.end.getTime();
+        return blockStartTime <= nowTime && blockEndTime > nowTime;
+      });
+      setActiveBlocks(active);
+    };
 
-    // Recalculate when initialBlocks prop changes (e.g., after layer update)
-    useEffect(() => {
-        const calculateActive = () => {
-            const now = new Date();
-            setCurrentTime(now);
-            
-            // Recalculate active blocks based on current time
-            const nowTime = now.getTime();
-            const normalized = initialBlocks.map(block => ({
-                ...block,
-                start: new Date(block.start),
-                end: new Date(block.end)
-            }));
-            const active = normalized.filter((block) => {
-                const blockStartTime = block.start.getTime();
-                const blockEndTime = block.end.getTime();
-                return blockStartTime <= nowTime && blockEndTime > nowTime;
-            });
-            setActiveBlocks(active);
-        };
-        
-        // Calculate immediately when initialBlocks changes
-        calculateActive();
-    }, [initialBlocks]);
+    // Calculate immediately when initialBlocks changes
+    calculateActive();
+  }, [initialBlocks]);
 
-    // Update current time every 30 seconds and recalculate active blocks
-    useEffect(() => {
-        const calculateActive = () => {
-            const now = new Date();
-            setCurrentTime(now);
-            
-            // Recalculate active blocks based on current time
-            const nowTime = now.getTime();
-            const normalized = initialBlocks.map(block => ({
-                ...block,
-                start: new Date(block.start),
-                end: new Date(block.end)
-            }));
-            const active = normalized.filter((block) => {
-                const blockStartTime = block.start.getTime();
-                const blockEndTime = block.end.getTime();
-                return blockStartTime <= nowTime && blockEndTime > nowTime;
-            });
-            setActiveBlocks(active);
-        };
-        
-        // Update every 30 seconds
-        const interval = setInterval(calculateActive, 30000);
+  // Update current time every 30 seconds and recalculate active blocks
+  useEffect(() => {
+    const calculateActive = () => {
+      const now = new Date();
+      setCurrentTime(now);
 
-        return () => clearInterval(interval);
-    }, [initialBlocks]);
+      // Recalculate active blocks based on current time
+      const nowTime = now.getTime();
+      const normalized = initialBlocks.map(block => ({
+        ...block,
+        start: new Date(block.start),
+        end: new Date(block.end),
+      }));
+      const active = normalized.filter(block => {
+        const blockStartTime = block.start.getTime();
+        const blockEndTime = block.end.getTime();
+        return blockStartTime <= nowTime && blockEndTime > nowTime;
+      });
+      setActiveBlocks(active);
+    };
 
-    const nextChange = activeBlocks.length
-        ? activeBlocks.reduce((earliest, block) => {
-            const blockEndTime = new Date(block.end).getTime();
-            const earliestTime = new Date(earliest).getTime();
-            return blockEndTime < earliestTime ? block.end : earliest;
-        }, activeBlocks[0].end)
-        : null;
+    // Update every 30 seconds
+    const interval = setInterval(calculateActive, 30000);
 
-    return (
-        <div className="glass-panel" style={{
-            padding: '2rem',
-            background: activeBlocks.length > 0 
-                ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)'
-                : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: activeBlocks.length > 0 
-                ? '2px solid #a7f3d0'
-                : '1px solid #e2e8f0',
-            borderRadius: '12px',
-            marginBottom: '1.5rem',
-            boxShadow: activeBlocks.length > 0 
-                ? '0 4px 12px rgba(16, 185, 129, 0.15)'
-                : '0 2px 8px rgba(0,0,0,0.04)'
-        }}>
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1rem',
-                paddingBottom: '1rem',
-                borderBottom: '1px solid #e2e8f0'
-            }}>
-                <div>
-                    <h3 style={{ 
-                        fontSize: '1.1rem', 
-                        fontWeight: '600', 
-                        color: 'var(--text-primary)', 
-                        margin: 0,
-                        marginBottom: '0.25rem'
-                    }}>
-                        Current Coverage
-                    </h3>
-                    <p style={{ 
-                        fontSize: '0.75rem', 
-                        color: 'var(--text-muted)',
-                        margin: 0
-                    }}>
-                        Updated: {formatDateTime(currentTime, scheduleTimeZone, { format: 'time' })}
-                    </p>
-                </div>
-                {activeBlocks.length > 0 && (
-                    <span style={{
-                        padding: '0.25rem 0.6rem',
-                        borderRadius: '6px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        background: 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)',
-                        color: '#065f46',
-                        border: '1px solid #a7f3d0'
-                    }}>
-                        {activeBlocks.length} {activeBlocks.length === 1 ? 'responder' : 'responders'}
-                    </span>
-                )}
-            </div>
-            {activeBlocks.length === 0 ? (
-                <div style={{
-                    padding: '2rem 1rem',
-                    textAlign: 'center',
-                    background: '#f8fafc',
-                    borderRadius: '8px'
-                }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>👤</div>
-                    <p style={{ 
-                        fontSize: '0.9rem', 
-                        color: 'var(--text-muted)',
-                        margin: 0,
-                        marginBottom: '0.5rem'
-                    }}>
-                        No one is currently assigned.
-                    </p>
-                    <p style={{ 
-                        fontSize: '0.75rem', 
-                        color: 'var(--text-muted)',
-                        fontStyle: 'italic',
-                        margin: 0
-                    }}>
-                        Check layer start times and ensure layers have responders assigned.
-                    </p>
-                </div>
-            ) : (
-                <>
-                    <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
-                        {activeBlocks.map((block) => (
-                            <div 
-                                key={block.id} 
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.75rem',
-                                    background: '#f8fafc',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <div style={{
-                                    width: '40px',
-                                    height: '40px',
-                                    borderRadius: '50%',
-                                    background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)',
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: '700',
-                                    fontSize: '1rem',
-                                    flexShrink: 0
-                                }}>
-                                    {block.userName.charAt(0).toUpperCase()}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ 
-                                        fontWeight: '600', 
-                                        fontSize: '0.9rem', 
-                                        color: 'var(--text-primary)',
-                                        marginBottom: '0.25rem'
-                                    }}>
-                                        {block.userName}
-                                    </div>
-                                    <div style={{ 
-                                        fontSize: '0.8rem', 
-                                        color: 'var(--text-muted)',
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: '0.25rem',
-                                        alignItems: 'center'
-                                    }}>
-                                        <span style={{
-                                            padding: '0.15rem 0.4rem',
-                                            borderRadius: '4px',
-                                            background: '#e0f2fe',
-                                            color: '#0c4a6e',
-                                            fontSize: '0.7rem',
-                                            fontWeight: '500'
-                                        }}>
-                                            {block.layerName}
-                                        </span>
-                                        <span>·</span>
-                                        <span>Until {formatDateTimeLocal(block.end)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    {nextChange && (
-                        <div style={{
-                            padding: '0.75rem',
-                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                            border: '1px solid #fde68a',
-                            borderRadius: '8px',
-                            fontSize: '0.85rem',
-                            color: '#78350f',
-                            fontWeight: '500',
-                            textAlign: 'center'
-                        }}>
-                            ⏰ Next change: {formatDateTimeLocal(nextChange)}
-                        </div>
-                    )}
-                </>
-            )}
+    return () => clearInterval(interval);
+  }, [initialBlocks]);
+
+  const nextChange = activeBlocks.length
+    ? activeBlocks.reduce((earliest, block) => {
+        const blockEndTime = new Date(block.end).getTime();
+        const earliestTime = new Date(earliest).getTime();
+        return blockEndTime < earliestTime ? block.end : earliest;
+      }, activeBlocks[0].end)
+    : null;
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const hasActiveCoverage = activeBlocks.length > 0;
+
+  return (
+    <Card
+      className={cn(
+        'mb-6 transition-all duration-300 border-2',
+        hasActiveCoverage
+          ? 'bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 border-emerald-300 shadow-lg shadow-emerald-100/50'
+          : 'bg-gradient-to-br from-slate-50 to-gray-50 border-slate-200 shadow-sm'
+      )}
+    >
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Users className="h-5 w-5 text-slate-600" />
+              Current Coverage
+            </h3>
+            <p className="text-xs text-slate-500 flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              Updated: {formatDateTime(currentTime, scheduleTimeZone, { format: 'time' })}
+            </p>
+          </div>
+          {hasActiveCoverage && (
+            <Badge
+              variant="outline"
+              className="bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border-emerald-300 font-semibold px-3 py-1 shadow-sm"
+            >
+              <Users className="h-3 w-3 mr-1" />
+              {activeBlocks.length} {activeBlocks.length === 1 ? 'responder' : 'responders'}
+            </Badge>
+          )}
         </div>
-    );
-}
+      </CardHeader>
 
+      <CardContent className="pt-0">
+        {!hasActiveCoverage ? (
+          <div className="rounded-lg bg-slate-100/80 border border-slate-200 p-8 text-center space-y-3">
+            <div className="flex justify-center">
+              <div className="rounded-full bg-slate-200 p-4">
+                <UserX className="h-8 w-8 text-slate-400" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">No one is currently assigned.</p>
+              <p className="text-xs text-slate-500 italic max-w-md mx-auto">
+                Check layer start times and ensure layers have responders assigned.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Active Coverage Blocks */}
+            <div className="space-y-3">
+              {activeBlocks.map(block => (
+                <div
+                  key={block.id}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-white/80 border border-slate-200 hover:shadow-md transition-all duration-200 hover:bg-white"
+                >
+                  {/* Avatar */}
+                  <Avatar className="h-11 w-11 ring-2 ring-emerald-200 shadow-md shrink-0">
+                    <AvatarImage
+                      src={block.userAvatar || getDefaultAvatar(block.userGender, block.userName)}
+                      alt={block.userName}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-emerald-100 via-green-50 to-teal-50 text-emerald-700">
+                      {getInitials(block.userName)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* User Info */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="font-semibold text-sm text-slate-900 truncate">
+                      {block.userName}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-0 text-[10px] font-medium"
+                      >
+                        {block.layerName}
+                      </Badge>
+                      <span className="text-slate-400">•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Until {formatDateTimeLocal(block.end)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Next Change Indicator */}
+            {nextChange && (
+              <div className="rounded-lg bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 p-3 shadow-sm">
+                <div className="flex items-center justify-center gap-2 text-sm text-amber-900 font-medium">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <span>Next change: {formatDateTimeLocal(nextChange)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

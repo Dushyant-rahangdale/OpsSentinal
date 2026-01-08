@@ -2,6 +2,10 @@
 
 import { useTransition } from 'react';
 import { useToast } from './ToastProvider';
+import { Button } from '@/components/ui/shadcn/button';
+import { Label } from '@/components/ui/shadcn/label';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { AlertTriangle, Loader2, UserPlus } from 'lucide-react';
 
 type User = {
   id: string;
@@ -30,7 +34,6 @@ export default function TeamMemberForm({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Capture the form element before the async transition so we don't rely on the event later
     const form = e.currentTarget;
     const formData = new FormData(form);
     const userId = formData.get('userId') as string;
@@ -50,76 +53,30 @@ export default function TeamMemberForm({
 
   if (!canManageMembers) {
     return (
-      <div
-        style={{
-          padding: '1rem',
-          background: '#f9fafb',
-          border: '1px solid #e5e7eb',
-          borderRadius: '12px',
-          opacity: 0.7,
-        }}
-      >
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-          ⚠️ You don't have access to add team members. Admin or Responder role required.
-        </p>
-        <div style={{ display: 'grid', gap: '0.75rem', opacity: 0.5, pointerEvents: 'none' }}>
-          <select
-            disabled
-            style={{
-              padding: '0.6rem',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              background: '#f3f4f6',
-            }}
-          >
-            <option value="">Select user</option>
-          </select>
-          <select
-            disabled
-            defaultValue="MEMBER"
-            style={{
-              padding: '0.6rem',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              background: '#f3f4f6',
-            }}
-          >
-            <option value="MEMBER">Member</option>
-          </select>
-          <button type="button" disabled className="glass-button primary" style={{ opacity: 0.5 }}>
-            Add to Team
-          </button>
-        </div>
-      </div>
+      <Card className="border-orange-200 bg-orange-50/50">
+        <CardContent className="pt-6 pb-4">
+          <div className="flex items-center gap-2 text-orange-900 mb-3">
+            <AlertTriangle className="h-4 w-4" />
+            <p className="text-xs font-medium">No permission to add members</p>
+          </div>
+          <p className="text-xs text-orange-700">Admin or Responder role required.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-      <div>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: '0.4rem',
-            fontSize: '0.85rem',
-            fontWeight: '500',
-          }}
-        >
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="userId" className="text-xs">
           Select User
-        </label>
+        </Label>
         <select
+          id="userId"
           name="userId"
           required
           disabled={isPending || availableUsers.length === 0}
-          style={{
-            width: '100%',
-            padding: '0.6rem',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            background: availableUsers.length === 0 ? '#f3f4f6' : 'white',
-            cursor: availableUsers.length === 0 ? 'not-allowed' : 'pointer',
-            opacity: isPending || availableUsers.length === 0 ? 0.6 : 1,
-          }}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <option value="">
             {availableUsers.length === 0 ? 'All users are members' : 'Choose a user...'}
@@ -132,30 +89,16 @@ export default function TeamMemberForm({
         </select>
       </div>
 
-      <div>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: '0.4rem',
-            fontSize: '0.85rem',
-            fontWeight: '500',
-          }}
-        >
+      <div className="space-y-2">
+        <Label htmlFor="role" className="text-xs">
           Role
-        </label>
+        </Label>
         <select
+          id="role"
           name="role"
           defaultValue="MEMBER"
           disabled={!canAssignOwnerAdmin || isPending}
-          style={{
-            width: '100%',
-            padding: '0.6rem',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            background: !canAssignOwnerAdmin ? '#f3f4f6' : 'white',
-            opacity: !canAssignOwnerAdmin ? 0.7 : 1,
-            cursor: !canAssignOwnerAdmin ? 'not-allowed' : 'pointer',
-          }}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           title={
             !canAssignOwnerAdmin
               ? 'Admin or Team Owner access required to assign OWNER or ADMIN roles'
@@ -171,30 +114,30 @@ export default function TeamMemberForm({
           <option value="MEMBER">Member</option>
         </select>
         {!canAssignOwnerAdmin && (
-          <p
-            style={{
-              fontSize: '0.75rem',
-              color: '#dc2626',
-              fontStyle: 'italic',
-              marginTop: '0.25rem',
-            }}
-          >
-            ⚠️ Admin or Team Owner access required to assign OWNER or ADMIN roles
+          <p className="text-xs text-orange-600 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Admin or Team Owner access required for elevated roles
           </p>
         )}
       </div>
 
-      <button
+      <Button
         type="submit"
-        className="glass-button primary"
+        className="w-full gap-2"
         disabled={availableUsers.length === 0 || isPending}
-        style={{
-          opacity: availableUsers.length === 0 || isPending ? 0.6 : 1,
-          cursor: availableUsers.length === 0 || isPending ? 'not-allowed' : 'pointer',
-        }}
       >
-        {isPending ? 'Adding...' : 'Add to Team'}
-      </button>
+        {isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Adding...
+          </>
+        ) : (
+          <>
+            <UserPlus className="h-4 w-4" />
+            Add to Team
+          </>
+        )}
+      </Button>
     </form>
   );
 }

@@ -154,7 +154,7 @@ const DashboardWidgetReorder = memo(function DashboardWidgetReorder({
         cursor: isDragging ? 'grabbing' : 'grab',
         opacity: isDragging ? 0.5 : 1,
         position: 'relative',
-        outline: isDropTarget ? '2px dashed var(--primary)' : 'none',
+        outline: isDropTarget ? '2px dashed var(--primary-color)' : 'none',
         outlineOffset: '2px',
         transition: 'outline 0.2s ease',
       }}

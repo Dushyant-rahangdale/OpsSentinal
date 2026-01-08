@@ -131,7 +131,7 @@
 
 .topbar-dropdown-item:hover {
   background: #f8fafc;
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .topbar-dropdown-divider {
@@ -176,7 +176,7 @@
   height: 32px;
   border-radius: 50%;
   background: rgba(148, 163, 184, 0.15);
-  color: var(--primary);
+  color: var(--primary-color);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -504,7 +504,7 @@
 }
 
 .user-menu-item:hover svg:first-of-type {
-  color: var(--primary);
+  color: var(--primary-color);
   transform: none;
 }
 
@@ -1310,7 +1310,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 .settings-row-control input:not([readonly]):focus,
 .settings-row-control select:focus,
 .settings-row-control textarea:focus {
-  border-color: var(--primary) !important;
+  border-color: var(--primary-color) !important;
   box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1) !important;
   outline: none !important;
   transition: all 0.2s var(--ease-out);
@@ -1457,7 +1457,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   bottom: var(--spacing-4);
   margin-top: var(--spacing-6);
   padding: var(--spacing-4) var(--spacing-5);
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--color-neutral-200);
@@ -1684,7 +1684,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .settings-scope-pill:hover {
   background: white;
-  border-color: var(--primary);
+  border-color: var(--primary-color);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -1694,7 +1694,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   height: 1rem;
   flex-shrink: 0;
   cursor: pointer;
-  accent-color: var(--primary);
+  accent-color: var(--primary-color);
 }
 
 .settings-scope-pill span {
@@ -1719,7 +1719,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 }
 
 .settings-scope-pill input[type="checkbox"]:checked~span strong {
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 /* Empty state v2 improvements */
@@ -1867,7 +1867,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 .settings-link-button {
   background: none;
   border: none;
-  color: var(--primary);
+  color: var(--primary-color);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
@@ -1998,7 +1998,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .search-trigger-btn:hover .search-trigger-icon {
   opacity: 1;
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .search-trigger-placeholder {
@@ -2124,7 +2124,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 /* Search Input Bar */
 .search-input-bar {
   background: #ffffff;
-  border: 2px solid var(--primary);
+  border: 2px solid var(--primary-color);
   border-radius: 14px;
   box-shadow:
     0 8px 32px rgba(220, 38, 38, 0.2),
@@ -2151,7 +2151,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .search-container:focus-within .search-input-icon {
   opacity: 1;
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .search-input {
@@ -2186,7 +2186,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   width: 16px;
   height: 16px;
   border: 2px solid rgba(220, 38, 38, 0.2);
-  border-top-color: var(--primary);
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -2195,7 +2195,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   width: 32px;
   height: 32px;
   border: 3px solid rgba(220, 38, 38, 0.1);
-  border-top-color: var(--primary);
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 1rem;
@@ -2268,13 +2268,13 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 .search-filter-chip:hover {
   background: rgba(220, 38, 38, 0.08);
   border-color: rgba(220, 38, 38, 0.2);
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .search-filter-chip.active {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.12) 0%, rgba(220, 38, 38, 0.08) 100%);
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
   box-shadow: 0 2px 4px rgba(220, 38, 38, 0.1);
 }
 
@@ -2398,7 +2398,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 }
 
 .search-section-action:hover {
-  color: var(--primary);
+  color: var(--primary-color);
   background: rgba(220, 38, 38, 0.05);
 }
 
@@ -2429,7 +2429,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--primary);
+  background: var(--primary-color);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -2496,7 +2496,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .search-result-icon.action {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(220, 38, 38, 0.06) 100%);
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .search-result-icon-emoji {
@@ -2565,7 +2565,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .search-highlight {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
-  color: var(--primary);
+  color: var(--primary-color);
   padding: 0 2px;
   border-radius: 3px;
   font-weight: 700;
@@ -2618,7 +2618,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   background: rgba(220, 38, 38, 0.08);
   border: 1px solid rgba(220, 38, 38, 0.15);
   border-radius: 6px;
-  color: var(--primary);
+  color: var(--primary-color);
   font-weight: 600;
   font-size: 0.8125rem;
   cursor: pointer;
@@ -2628,7 +2628,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .search-empty-link:hover {
   background: rgba(220, 38, 38, 0.12);
-  border-color: var(--primary);
+  border-color: var(--primary-color);
   transform: translateY(-1px);
 }
 
@@ -2770,16 +2770,16 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   min-width: 300px;
   max-width: 340px;
   background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.98) 0%,
-      rgba(255, 255, 255, 0.95) 100%);
+      rgba(255, 255, 255, 0.65) 0%,
+      rgba(255, 255, 255, 0.45) 100%);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(229, 231, 235, 0.6);
+  border: 1px solid rgba(229, 231, 235, 0.3);
   border-radius: 16px;
   box-shadow:
-    0 20px 60px rgba(148, 163, 184, 0.15),
-    0 8px 24px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 20px 60px rgba(148, 163, 184, 0.1),
+    0 8px 24px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   z-index: 999;
   overflow: hidden;
   animation: slideInDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2828,7 +2828,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 .quick-actions-item:hover {
   background: linear-gradient(90deg, rgba(148, 163, 184, 0.1) 0%, rgba(211, 47, 47, 0.03) 100%);
   transform: translateX(4px);
-  border-left: 3px solid var(--primary);
+  border-left: 3px solid var(--primary-color);
   padding-left: calc(0.75rem - 3px);
 }
 
@@ -2840,7 +2840,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   height: 36px;
   border-radius: 8px;
   background: rgba(148, 163, 184, 0.1);
-  color: var(--primary);
+  color: var(--primary-color);
   flex-shrink: 0;
 }
 
@@ -2871,8 +2871,10 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 .quick-actions-item:hover .quick-actions-item-arrow {
   opacity: 1;
-  color: var(--primary);
-}/* ============================================
+  color: var(--primary-color);
+}
+
+/* ============================================
    MODERN TOPBAR UI ENHANCEMENTS
    ============================================ */
 
@@ -2882,9 +2884,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   justify-content: space-between;
   gap: var(--topbar-gap);
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  background: #ffffff;
   border-bottom: 1px solid rgba(226, 232, 240, 0.95);
   position: sticky;
   top: 0;
@@ -2911,17 +2911,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   }
 }
 
-.topbar-new::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-      rgba(15, 23, 42, 0.03) 0%,
-      rgba(148, 163, 184, 0.06) 50%,
-      rgba(15, 23, 42, 0.03) 100%);
-  pointer-events: none;
-  z-index: 0;
-}
+/* Removed topbar-new::before to eliminate white fade glare */
 
 .topbar-new>* {
   position: relative;
@@ -2966,21 +2956,21 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
+  padding: 0.375rem 0.875rem;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   min-height: var(--topbar-control-height);
   cursor: default;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
   letter-spacing: 0.01em;
-  background: #f8fafc;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  border: 1.5px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Green state - No incidents */
@@ -2996,13 +2986,13 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
 
 /* Red state - Incidents present */
 .ops-status-pill.danger {
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.14) 0%, rgba(239, 68, 68, 0.04) 100%);
-  color: #991b1b;
-  border-color: rgba(239, 68, 68, 0.4);
+  background: #fff5f5;
+  color: #c53030;
+  border-color: #feb2b2;
 }
 
 .ops-status-pill.danger:hover {
-  border-color: rgba(239, 68, 68, 0.55);
+  border-color: #fc8181;
 }
 
 .ops-status-content {
@@ -3021,11 +3011,9 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   transition: all 0.3s ease;
   background: var(--ops-dot-color);
   box-shadow:
-    0 0 12px var(--ops-dot-glow),
-    0 0 24px var(--ops-dot-glow-soft),
-    0 0 36px var(--ops-dot-glow-dark),
-    0 0 48px var(--ops-dot-glow-deep);
-  animation: pulse 2s ease-in-out infinite;
+    0 0 6px var(--ops-dot-glow),
+    0 0 12px var(--ops-dot-glow-soft);
+  animation: pulse 2.5s ease-in-out infinite;
 }
 
 .ops-status-dot.ok {
@@ -3164,7 +3152,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   justify-content: center;
   background: rgba(148, 163, 184, 0.1);
   border-radius: 8px;
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .topbar-notification-content {
@@ -3233,7 +3221,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
       rgba(148, 163, 184, 0.08) 100%);
   border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: var(--radius-sm);
-  color: var(--primary);
+  color: var(--primary-color);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -3247,4 +3235,3 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   border-color: rgba(148, 163, 184, 0.6);
   transform: translateY(-1px);
 }
-

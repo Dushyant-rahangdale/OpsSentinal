@@ -40,7 +40,7 @@ export default function TimelineEvent({ message, createdAt, isLast = false }: Ti
           height: '12px',
           borderRadius: '50%',
           background: '#fff',
-          border: '2px solid var(--primary)',
+          border: '2px solid var(--primary-color)',
           boxShadow: '0 0 0 4px #f1f5f9',
           zIndex: 1,
         }}

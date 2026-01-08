@@ -4,127 +4,160 @@ import { useState, useEffect, useActionState, type CSSProperties } from 'react';
 import type { FormEvent } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
+import { Button } from '@/components/ui/shadcn/button';
+import { Loader2, Layers, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type FormState = {
-    error?: string | null;
-    success?: boolean;
+  error?: string | null;
+  success?: boolean;
 };
 
 type Props = {
-    action: (prevState: FormState, formData: FormData) => Promise<FormState>;
-    formId: string;
-    className?: string;
-    style?: CSSProperties;
-    disabled?: boolean;
+  action: (prevState: FormState, formData: FormData) => Promise<FormState>;
+  formId: string;
+  className?: string;
+  style?: CSSProperties;
+  disabled?: boolean;
 };
 
-function SubmitButton() {
-    const { pending } = useFormStatus();
-    return (
-        <button type="submit" className="glass-button bulk-actions-button" disabled={pending}>
-            {pending ? 'Applying...' : 'Apply'}
-        </button>
-    );
+function SubmitButton({ disabled }: { disabled?: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="sm" disabled={pending || disabled}>
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Applying...
+        </>
+      ) : (
+        'Apply'
+      )}
+    </Button>
+  );
 }
 
-export default function BulkUserActionsForm({ action, formId, className = '', style, disabled = false }: Props) {
-    const [state, formAction] = useActionState(action, { error: null, success: false });
-    const [localError, setLocalError] = useState<string | null>(null);
-    const [showRoleSelect, setShowRoleSelect] = useState(false);
-    const router = useRouter();
+export default function BulkUserActionsForm({
+  action,
+  formId,
+  className = '',
+  style,
+  disabled = false,
+}: Props) {
+  const [state, formAction] = useActionState(action, { error: null, success: false });
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [selectedAction, setSelectedAction] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  const router = useRouter();
 
-    useEffect(() => {
-        if (state?.success) {
-            router.refresh();
-        }
-    }, [state?.success, router]);
+  useEffect(() => {
+    if (state?.success) {
+      router.refresh();
+      setSelectedAction('');
+      setSelectedRole('');
+    }
+  }, [state?.success, router]);
 
-    useEffect(() => {
-        const actionSelect = document.getElementById(`${formId}-action`) as HTMLSelectElement;
-        const roleSelect = document.getElementById(`${formId}-role`) as HTMLSelectElement;
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    // We can't easily preventDefault and then submit the form action programmatically
+    // with standard server actions if we want to intercept for heavy validation/dialogs
+    // without using a client-side wrapper.
+    // For now, simple validation.
 
-        if (actionSelect && roleSelect) {
-            const handleChange = () => {
-                setShowRoleSelect(actionSelect.value === 'setRole');
-                if (actionSelect.value !== 'setRole') {
-                    roleSelect.value = '';
-                }
-            };
-            actionSelect.addEventListener('change', handleChange);
-            return () => actionSelect.removeEventListener('change', handleChange);
-        }
-    }, [formId]);
+    // Note: User IDs are collected from the form context (checkboxes must be within this form or associated via form attribute)
+    // The parent component UserList usually handles the "checkboxes form association".
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-        const formData = new FormData(event.currentTarget);
-        const userIds = formData.getAll('userIds');
-        const bulkAction = formData.get('bulkAction') as string;
+    if (!selectedAction) {
+      setLocalError('Choose a bulk action first.');
+      event.preventDefault();
+      return;
+    }
 
-        if (!bulkAction) {
-            setLocalError('Choose a bulk action first.');
-            event.preventDefault();
-            return;
-        }
+    if (selectedAction === 'setRole' && !selectedRole) {
+      setLocalError('Select a role.');
+      event.preventDefault();
+      return;
+    }
 
-        if (userIds.length === 0) {
-            setLocalError('Select at least one user.');
-            event.preventDefault();
-            return;
-        }
+    if (
+      selectedAction === 'delete' &&
+      !window.confirm('Delete selected users? This cannot be undone.')
+    ) {
+      event.preventDefault();
+      return;
+    }
 
-        if (bulkAction === 'setRole') {
-            const role = formData.get('role') as string;
-            if (!role) {
-                setLocalError('Select a role.');
-                event.preventDefault();
-                return;
-            }
-        }
+    setLocalError(null);
+  };
 
-        if (bulkAction === 'delete' && !window.confirm('Delete selected users? This cannot be undone.')) {
-            event.preventDefault();
-            return;
-        }
+  return (
+    <form
+      id={formId}
+      action={formAction}
+      onSubmit={handleSubmit}
+      className={cn('flex flex-wrap items-center gap-2', className)}
+      style={{ ...style, opacity: disabled ? 0.6 : 1 }}
+    >
+      <fieldset
+        disabled={disabled}
+        className="flex flex-wrap items-center gap-2 border-none p-0 m-0"
+      >
+        <input type="hidden" name="bulkAction" value={selectedAction} />
+        <Select value={selectedAction} onValueChange={setSelectedAction} disabled={disabled}>
+          <SelectTrigger className="w-[180px] h-9">
+            <SelectValue placeholder="Bulk Action" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="activate">Activate Selected</SelectItem>
+            <SelectItem value="deactivate">Deactivate Selected</SelectItem>
+            <SelectItem value="setRole">Change Role</SelectItem>
+            <SelectItem value="delete" className="text-red-600 focus:text-red-600">
+              Delete Selected
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
-        setLocalError(null);
-    };
+        {selectedAction === 'setRole' && (
+          <>
+            <input type="hidden" name="role" value={selectedRole} />
+            <Select
+              value={selectedRole}
+              onValueChange={setSelectedRole}
+              disabled={disabled}
+              required
+            >
+              <SelectTrigger className="w-[140px] h-9">
+                <SelectValue placeholder="Select Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="RESPONDER">Responder</SelectItem>
+                <SelectItem value="USER">User</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        )}
 
-    return (
-        <form
-            id={formId}
-            action={formAction}
-            onSubmit={handleSubmit}
-            className={`bulk-actions-form ${className}`.trim()}
-            style={{ ...style, opacity: disabled ? 0.6 : 1 }}
-        >
-            <fieldset disabled={disabled} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
-                <select name="bulkAction" defaultValue="" className="bulk-actions-select" id={`${formId}-action`}>
-                    <option value="" disabled>Bulk action</option>
-                    <option value="activate">Activate</option>
-                    <option value="deactivate">Deactivate</option>
-                    <option value="setRole">Change Role</option>
-                    <option value="delete">Delete</option>
-                </select>
-                {showRoleSelect && (
-                    <select name="role" defaultValue="" className="bulk-actions-select" id={`${formId}-role`} required>
-                        <option value="" disabled>Select role</option>
-                        <option value="ADMIN">Admin</option>
-                        <option value="RESPONDER">Responder</option>
-                        <option value="USER">User</option>
-                    </select>
-                )}
-                <SubmitButton />
-            </fieldset>
-            {disabled && (
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', marginLeft: '0.5rem' }}>
-                    Admin access required
-                </span>
-            )}
-            {(localError || state?.error) ? (
-                <span className="bulk-actions-error">
-                    {localError || state?.error}
-                </span>
-            ) : null}
-        </form>
-    );
+        <SubmitButton disabled={disabled || !selectedAction} />
+      </fieldset>
+
+      {disabled && (
+        <span className="text-[10px] text-muted-foreground italic ml-2">(Admin only)</span>
+      )}
+
+      {(localError || state?.error) && (
+        <span className="text-xs text-red-500 flex items-center gap-1 animate-in fade-in ml-2">
+          <AlertCircle className="h-3 w-3" />
+          {localError || state?.error}
+        </span>
+      )}
+    </form>
+  );
 }

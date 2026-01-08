@@ -4,179 +4,146 @@ import { createSchedule } from './actions';
 import ScheduleCard from '@/components/ScheduleCard';
 import ScheduleStats from '@/components/ScheduleStats';
 import ScheduleCreateForm from '@/components/ScheduleCreateForm';
+import { Calendar, AlertCircle, Plus } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/shadcn/card';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Button } from '@/components/ui/shadcn/button';
 
 export default async function SchedulesPage() {
-    const schedules = await prisma.onCallSchedule.findMany({
+  const schedules = await prisma.onCallSchedule.findMany({
+    include: {
+      layers: {
         include: {
-            layers: {
-                include: {
-                    users: {
-                        select: {
-                            userId: true
-                        }
-                    }
-                }
-            }
+          users: {
+            select: {
+              userId: true,
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
-    });
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
-    const totalLayers = schedules.reduce((sum, schedule) => sum + schedule.layers.length, 0);
-    const hasActiveCoverage = schedules.some((schedule) =>
-        schedule.layers.some((layer) => layer.users.length > 0)
-    );
+  const totalLayers = schedules.reduce((sum, schedule) => sum + schedule.layers.length, 0);
+  const hasActiveCoverage = schedules.some(schedule =>
+    schedule.layers.some(layer => layer.users.length > 0)
+  );
 
-    const permissions = await getUserPermissions();
-    const canManageSchedules = permissions.isAdminOrResponder;
+  const permissions = await getUserPermissions();
+  const canManageSchedules = permissions.isAdminOrResponder;
 
-    return (
-        <main style={{ padding: '1rem' }}>
-            {/* Header */}
-            <header style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '2rem',
-                paddingBottom: '1.5rem',
-                borderBottom: '2px solid var(--border)'
-            }}>
-                <div>
-                    <p style={{
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        color: 'var(--accent)',
-                        marginBottom: '0.5rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                    }}>
-                        On-call
-                    </p>
-                    <h1 style={{
-                        fontSize: '2rem',
-                        fontWeight: 'bold',
-                        color: 'var(--text-primary)',
-                        marginBottom: '0.5rem'
-                    }}>
-                        Schedules
-                    </h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                        Design rotations, monitor coverage, and keep responders aligned.
-                    </p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem 1rem',
-                        borderRadius: '20px',
-                        background: hasActiveCoverage
-                            ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)'
-                            : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-                        border: `1px solid ${hasActiveCoverage ? '#a7f3d0' : '#fecaca'}`,
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        color: hasActiveCoverage ? '#065f46' : '#991b1b'
-                    }}>
-                        <span style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: hasActiveCoverage ? '#10b981' : '#ef4444',
-                            display: 'inline-block'
-                        }} />
-                        {hasActiveCoverage ? 'Rotations active' : 'No active rotations'}
-                    </div>
-                    {canManageSchedules ? (
-                        <a
-                            href="#new-schedule"
-                            className="glass-button primary"
-                            style={{ textDecoration: 'none' }}
-                        >
-                            New Schedule
-                        </a>
-                    ) : (
-                        <button
-                            type="button"
-                            disabled
-                            className="glass-button primary"
-                            style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                            title="Admin or Responder role required to create schedules"
-                        >
-                            New Schedule
-                        </button>
-                    )}
-                </div>
-            </header>
-
-            {/* Statistics */}
-            <ScheduleStats
-                scheduleCount={schedules.length}
-                layerCount={totalLayers}
-                hasActiveCoverage={hasActiveCoverage}
-            />
-
-            {/* Main Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-                {/* Schedules List */}
-                <div>
-                    {schedules.length === 0 ? (
-                        <div className="glass-panel empty-state" style={{
-                            padding: '3rem',
-                            textAlign: 'center',
-                            color: 'var(--text-muted)',
-                            background: 'white',
-                            borderRadius: '12px'
-                        }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📅</div>
-                            <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem', fontWeight: '600' }}>No schedules yet</p>
-                            <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                                Create a schedule to start building your on-call coverage.
-                            </p>
-                            {canManageSchedules && (
-                                <a href="#new-schedule" className="glass-button primary" style={{ textDecoration: 'none' }}>
-                                    Create Your First Schedule
-                                </a>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '1rem' }}>
-                            {schedules.map((schedule) => (
-                                <ScheduleCard key={schedule.id} schedule={schedule} />
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Sidebar */}
-                <aside>
-                    <ScheduleCreateForm action={createSchedule} canCreate={canManageSchedules} />
-                    <div className="glass-panel" style={{
-                        marginTop: '1.5rem',
-                        padding: '1.5rem',
-                        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                        border: '1px solid #fde68a',
-                        borderRadius: '12px'
-                    }}>
-                        <h4 style={{
-                            fontSize: '1rem',
-                            fontWeight: '600',
-                            marginBottom: '0.5rem',
-                            color: '#78350f'
-                        }}>
-                            Next up
-                        </h4>
-                        <p style={{
-                            fontSize: '0.9rem',
-                            color: '#78350f',
-                            lineHeight: 1.5,
-                            margin: 0
-                        }}>
-                            Set a rotation and assign your responders to start tracking coverage.
-                        </p>
-                    </div>
-                </aside>
+  return (
+    <main className="w-full p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <header className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-6 w-6 text-primary" />
+              <Badge variant="secondary" className="text-xs uppercase tracking-wide">
+                On-call Management
+              </Badge>
             </div>
-        </main>
-    );
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Schedules</h1>
+            <p className="text-sm text-muted-foreground max-w-2xl">
+              Design rotations, monitor coverage, and keep responders aligned
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Badge
+              variant={hasActiveCoverage ? 'default' : 'destructive'}
+              className="gap-2 py-2 px-4"
+            >
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${
+                  hasActiveCoverage ? 'bg-green-500' : 'bg-red-500'
+                }`}
+              />
+              {hasActiveCoverage ? 'Rotations active' : 'No active rotations'}
+            </Badge>
+
+            {canManageSchedules ? (
+              <Button asChild>
+                <a href="#new-schedule" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Schedule
+                </a>
+              </Button>
+            ) : (
+              <Button disabled title="Admin or Responder role required to create schedules">
+                <Plus className="h-4 w-4" />
+                New Schedule
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Statistics */}
+      <ScheduleStats
+        scheduleCount={schedules.length}
+        layerCount={totalLayers}
+        hasActiveCoverage={hasActiveCoverage}
+      />
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6">
+        {/* Schedules List */}
+        <div className="xl:col-span-3 space-y-4">
+          {schedules.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <Calendar className="h-16 w-16 text-muted-foreground mb-4" />
+                <CardTitle className="text-xl mb-2">No schedules yet</CardTitle>
+                <CardDescription className="mb-6 max-w-md">
+                  Create a schedule to start building your on-call coverage
+                </CardDescription>
+                {canManageSchedules && (
+                  <Button asChild>
+                    <a href="#new-schedule" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Create Your First Schedule
+                    </a>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {schedules.map(schedule => (
+                <ScheduleCard key={schedule.id} schedule={schedule} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <aside className="space-y-4">
+          <ScheduleCreateForm action={createSchedule} canCreate={canManageSchedules} />
+
+          <Card className="bg-amber-50 border-amber-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-900">
+                <AlertCircle className="h-4 w-4" />
+                Next Steps
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-amber-800 leading-relaxed">
+                Set a rotation and assign your responders to start tracking coverage
+              </p>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
+    </main>
+  );
 }

@@ -5,237 +5,161 @@ import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
 import ConfirmDialog from './ConfirmDialog';
 import { formatDateTime } from '@/lib/timezone';
+import { Card } from '@/components/ui/shadcn/card';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Button } from '@/components/ui/shadcn/button';
+import { Avatar, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { ArrowRight, Trash2, User } from 'lucide-react';
 
 type Override = {
-    id: string;
-    start: Date;
-    end: Date;
-    userId: string;
-    replacesUserId: string | null;
-    user: { name: string };
-    replacesUser: { name: string } | null;
+  id: string;
+  start: Date;
+  end: Date;
+  userId: string;
+  replacesUserId: string | null;
+  user: { name: string };
+  replacesUser: { name: string } | null;
 };
 
 type OverrideListProps = {
-    overrides: Override[];
-    scheduleId: string;
-    canManageSchedules: boolean;
-    deleteOverride: (scheduleId: string, overrideId: string) => Promise<{ error?: string } | undefined>;
-    timeZone: string;
-    title: string;
-    emptyMessage: string;
+  overrides: Override[];
+  scheduleId: string;
+  canManageSchedules: boolean;
+  deleteOverride: (
+    scheduleId: string,
+    overrideId: string
+  ) => Promise<{ error?: string } | undefined>;
+  timeZone: string;
+  title: string;
+  emptyMessage: string;
 };
 
 export default function OverrideList({
-    overrides,
-    scheduleId,
-    canManageSchedules,
-    deleteOverride,
-    timeZone,
-    title,
-    emptyMessage
+  overrides,
+  scheduleId,
+  canManageSchedules,
+  deleteOverride,
+  timeZone,
+  title,
+  emptyMessage,
 }: OverrideListProps) {
-    const router = useRouter();
-    const { showToast } = useToast();
-    const [isPending, startTransition] = useTransition();
-    const [deleteOverrideId, setDeleteOverrideId] = useState<string | null>(null);
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [isPending, startTransition] = useTransition();
+  const [deleteOverrideId, setDeleteOverrideId] = useState<string | null>(null);
 
-    const handleDelete = async (overrideId: string) => {
-        setDeleteOverrideId(null);
-        startTransition(async () => {
-            const result = await deleteOverride(scheduleId, overrideId);
-            if (result?.error) {
-                showToast(result.error, 'error');
-            } else {
-                showToast('Override deleted successfully', 'success');
-                router.refresh();
-            }
-        });
-    };
+  const handleDelete = async (overrideId: string) => {
+    setDeleteOverrideId(null);
+    startTransition(async () => {
+      const result = await deleteOverride(scheduleId, overrideId);
+      if (result?.error) {
+        showToast(result.error, 'error');
+      } else {
+        showToast('Override deleted successfully', 'success');
+        router.refresh();
+      }
+    });
+  };
 
-    return (
-        <>
-            <div style={{ 
-                marginTop: '1.5rem', 
-                paddingTop: '1.5rem', 
-                borderTop: '2px solid #e2e8f0' 
-            }}>
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '1rem'
-                }}>
-                    <h4 style={{ 
-                        fontSize: '1rem', 
-                        fontWeight: '600', 
-                        margin: 0,
-                        color: 'var(--text-primary)' 
-                    }}>
-                        {title}
-                    </h4>
-                    {overrides.length > 0 && (
-                        <span style={{
-                            padding: '0.25rem 0.6rem',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-                            color: '#0c4a6e',
-                            border: '1px solid #bae6fd'
-                        }}>
-                            {overrides.length}
-                        </span>
-                    )}
-                </div>
-                {overrides.length === 0 ? (
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '1rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px' }}>
-                        {emptyMessage}
-                    </p>
-                ) : (
-                    <div style={{ display: 'grid', gap: '0.75rem' }}>
-                        {overrides.map((override) => (
-                            <div
-                                key={override.id}
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'flex-start',
-                                    padding: '0.875rem',
-                                    background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    transition: 'all 0.2s',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                                }}
-                            >
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ 
-                                        fontWeight: '600', 
-                                        fontSize: '0.9rem', 
-                                        marginBottom: '0.4rem', 
-                                        color: 'var(--text-primary)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem'
-                                    }}>
-                                        <span style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)',
-                                            color: 'white',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontWeight: '700',
-                                            fontSize: '0.85rem',
-                                            flexShrink: 0
-                                        }}>
-                                            {override.user.name.charAt(0).toUpperCase()}
-                                        </span>
-                                        <span>{override.user.name}</span>
-                                    </div>
-                                    <div style={{ 
-                                        fontSize: '0.8rem', 
-                                        color: 'var(--text-muted)', 
-                                        marginBottom: '0.25rem',
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: '0.5rem',
-                                        alignItems: 'center',
-                                        marginLeft: '42px'
-                                    }}>
-                                        <span style={{
-                                            padding: '0.2rem 0.5rem',
-                                            borderRadius: '4px',
-                                            background: '#e0f2fe',
-                                            color: '#0c4a6e',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '500'
-                                        }}>
-                                            {formatDateTime(override.start, timeZone, { format: 'short' })}
-                                        </span>
-                                        <span>→</span>
-                                        <span style={{
-                                            padding: '0.2rem 0.5rem',
-                                            borderRadius: '4px',
-                                            background: '#e0f2fe',
-                                            color: '#0c4a6e',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '500'
-                                        }}>
-                                            {formatDateTime(override.end, timeZone, { format: 'short' })}
-                                        </span>
-                                    </div>
-                                    {override.replacesUser && (
-                                        <div style={{ 
-                                            fontSize: '0.75rem', 
-                                            color: 'var(--text-muted)',
-                                            marginLeft: '42px',
-                                            marginTop: '0.25rem',
-                                            fontStyle: 'italic'
-                                        }}>
-                                            {title.includes('Upcoming') ? 'Replaces' : 'Replaced'} <strong>{override.replacesUser.name}</strong>
-                                        </div>
-                                    )}
-                                </div>
-                                {canManageSchedules ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setDeleteOverrideId(override.id)}
-                                        disabled={isPending}
-                                        style={{
-                                            padding: '0.4rem 0.75rem',
-                                            background: 'linear-gradient(180deg, #fee2e2 0%, #fecaca 100%)',
-                                            color: '#b91c1c',
-                                            border: '1px solid #fecaca',
-                                            borderRadius: '6px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '600',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Remove
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        disabled
-                                        style={{
-                                            padding: '0.4rem 0.75rem',
-                                            background: '#f3f4f6',
-                                            color: '#9ca3af',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            fontSize: '0.75rem',
-                                            opacity: 0.5,
-                                            cursor: 'not-allowed'
-                                        }}
-                                        title="Admin or Responder role required"
-                                    >
-                                        Remove
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  return (
+    <>
+      <div className="mt-6 pt-6 border-t-2">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-base font-semibold">{title}</h4>
+          {overrides.length > 0 && <Badge variant="secondary">{overrides.length}</Badge>}
+        </div>
+
+        {overrides.length === 0 ? (
+          <Card className="border-dashed">
+            <div className="p-6 text-center">
+              <p className="text-sm text-muted-foreground">{emptyMessage}</p>
             </div>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {overrides.map(override => (
+              <Card key={override.id} className="transition-all duration-200 hover:shadow-md">
+                <div className="p-4 flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 bg-gradient-to-br from-red-500 to-red-700">
+                        <AvatarFallback className="bg-gradient-to-br from-red-500 to-red-700 text-white text-xs font-semibold">
+                          {getInitials(override.user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-semibold text-sm">{override.user.name}</span>
+                    </div>
 
-            {deleteOverrideId && (
-                <ConfirmDialog
-                    isOpen={true}
-                    title="Delete Override"
-                    message="Are you sure you want to delete this override? This action cannot be undone."
-                    confirmText="Delete Override"
-                    cancelText="Cancel"
-                    variant="danger"
-                    onConfirm={() => handleDelete(deleteOverrideId)}
-                    onCancel={() => setDeleteOverrideId(null)}
-                />
-            )}
-        </>
-    );
+                    <div className="flex items-center gap-2 text-xs ml-11">
+                      <Badge variant="outline" className="font-normal">
+                        {formatDateTime(override.start, timeZone, { format: 'short' })}
+                      </Badge>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                      <Badge variant="outline" className="font-normal">
+                        {formatDateTime(override.end, timeZone, { format: 'short' })}
+                      </Badge>
+                    </div>
+
+                    {override.replacesUser && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-11">
+                        <User className="h-3 w-3" />
+                        <span className="italic">
+                          {title.includes('Upcoming') ? 'Replaces' : 'Replaced'}{' '}
+                          <strong>{override.replacesUser.name}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {canManageSchedules ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteOverrideId(override.id)}
+                      disabled={isPending}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled
+                      className="shrink-0"
+                      title="Admin or Responder role required"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {deleteOverrideId && (
+        <ConfirmDialog
+          isOpen={true}
+          title="Delete Override"
+          message="Are you sure you want to delete this override? This action cannot be undone."
+          confirmText="Delete Override"
+          cancelText="Cancel"
+          variant="danger"
+          onConfirm={() => handleDelete(deleteOverrideId)}
+          onCancel={() => setDeleteOverrideId(null)}
+        />
+      )}
+    </>
+  );
 }
-

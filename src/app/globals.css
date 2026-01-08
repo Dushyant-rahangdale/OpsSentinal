@@ -1,18 +1,19 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   /* Primary & Modern Palette: Muted Executive Slate */
   color-scheme: light;
-  /* Tailwind expects HSL numbers (no unit, no hsl wrapper) */
-  --primary: 222.2 47.4% 11.2% !important;
+  /* Tailwind expects HSL numbers (no unit, no hsl wrapper) - shadcn format */
+  /* Note: shadcn tokens at line 131 define --primary: 30 41 59 */
+  /* This is overridden by shadcn tokens below, so we don't define it here */
   /* Helper for raw CSS that needs a color value */
-  --primary-color: hsl(var(--primary));
+  --primary-color: #1e293b;
   --primary-hover: #0f172a;
   --primary-light: #334155;
   --primary-dark: #020617;
   --secondary: #475569;
   --accent: #2563eb;
-  --status-primary: var(--primary);
+  --status-primary: var(--primary-color);
   --status-primary-hover: var(--primary-hover);
 
   /* Semantic Colors - Muted Professional */
@@ -55,9 +56,9 @@
   --bg-overlay: rgba(0, 0, 0, 0.5);
 
   /* Glass Morphism */
-  --glass-bg: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(17, 24, 39, 0.12);
-  --glass-blur: blur(8px);
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(17, 24, 39, 0.08);
+  --glass-blur: blur(12px);
 
   /* Text Colors */
   --text-primary: #111827;
@@ -128,27 +129,27 @@
   /* --text-primary: #111827 */
   --popover: 255 255 255;
   --popover-foreground: 17 24 39;
-  --primary: 30 41 59;
-  /* --primary: #1e293b */
+  --primary: 215 28% 17%;
+  /* --primary: #1e293b (slate-800) */
   --primary-foreground: 255 255 255;
   --secondary: 243 244 246;
   /* --color-neutral-100 */
-  --secondary-foreground: 30 41 59;
+  --secondary-foreground: 215 28% 17%;
   --muted: 243 244 246;
   /* --color-neutral-100 */
   --muted-foreground: 107 114 128;
   /* --color-neutral-500 */
   --accent: 243 244 246;
   /* --color-neutral-100 */
-  --accent-foreground: 30 41 59;
+  --accent-foreground: 215 28% 17%;
   --destructive: 190 18 60;
   /* --color-error */
   --destructive-foreground: 255 255 255;
   --border: 229 231 235;
   /* --border: #e5e7eb */
   --input: 229 231 235;
-  --ring: 30 41 59;
-  /* --primary */
+  --ring: 215 28% 17%;
+  /* --primary (slate-800) */
   --radius: 0.875rem;
   /* 14px */
 
@@ -217,7 +218,7 @@
   /* Gradients - Professional Slate-to-Midnight Flow */
   --gradient-primary: linear-gradient(135deg, #334155 0%, var(--primary-color) 55%, #0f172a 100%);
   --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
+  --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 250, 252, 0.4) 100%);
   --gradient-surface: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 
   /* Layout */
@@ -346,13 +347,13 @@ textarea:focus-visible {
 .status-page-input:focus-visible,
 .status-page-select:focus,
 .status-page-select:focus-visible {
-  border-color: var(--status-primary, var(--primary));
+  border-color: var(--status-primary, var(--primary-color));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-primary, #2563eb) 18%, transparent);
   outline: none;
 }
 
 .status-page-container {
-  --primary: var(--status-primary, var(--primary));
+  --primary: var(--status-primary, var(--primary-color));
   --primary-hover: var(--status-primary-hover, var(--primary-hover));
   --status-text: var(--sp-ink, #111827);
   --status-text-strong: var(--sp-ink-strong, var(--sp-ink, #0f172a));
@@ -478,7 +479,7 @@ textarea:focus-visible {
   bottom: 12px;
   width: 3px;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--primary) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-hover) 100%);
   opacity: 0.12;
   /* UI: subtle accent rail on cards */
 }
@@ -505,7 +506,7 @@ textarea:focus-visible {
 }
 
 .status-page-template-card.is-selected {
-  border-color: var(--primary) !important;
+  border-color: var(--primary-color) !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18), 0 20px 40px rgba(15, 23, 42, 0.16) !important;
   /* UI: selection halo without heavy border weight */
 }
@@ -1450,7 +1451,7 @@ select option {
 
 .login-input:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--primary-color);
   box-shadow:
     0 0 0 4px rgba(15, 23, 42, 0.1),
     var(--shadow-sm);
@@ -1500,13 +1501,13 @@ select option {
 }
 
 .login-password-toggle:hover {
-  color: var(--primary);
+  color: var(--primary-color);
   background: rgba(15, 23, 42, 0.05);
   transform: scale(1.1);
 }
 
 .login-password-toggle:focus {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
@@ -2274,7 +2275,7 @@ select option {
 
 /* Enhanced button styles for settings */
 .glass-button.primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
   color: #ffffff;
   border: none;
   font-weight: 600;
@@ -3454,7 +3455,7 @@ select option {
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  background: var(--primary);
+  background: var(--primary-color);
   color: #ffffff;
 }
 
@@ -3469,7 +3470,7 @@ select option {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: var(--primary-color);
   color: #fff;
 }
 
@@ -3781,7 +3782,7 @@ select option {
 
 .topbar-dropdown-item:hover {
   background: #f8fafc;
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .topbar-dropdown-divider {
@@ -3826,7 +3827,7 @@ select option {
   height: 32px;
   border-radius: 50%;
   background: rgba(148, 163, 184, 0.15);
-  color: var(--primary);
+  color: var(--primary-color);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3868,9 +3869,7 @@ select option {
   padding: 0.3125rem 0.875rem 0.3125rem 0.3125rem;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(226, 232, 240, 0.9);
-  background: #f8fafc;
-  backdrop-filter: blur(8px) saturate(140%);
-  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  background: #ffffff;
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.08);
   cursor: pointer;
@@ -4154,7 +4153,7 @@ select option {
 }
 
 .user-menu-item:hover svg:first-of-type {
-  color: var(--primary);
+  color: var(--primary-color);
   transform: none;
 }
 

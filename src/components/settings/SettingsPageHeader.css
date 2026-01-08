@@ -101,7 +101,7 @@
 }
 
 .settings-dropdown-trigger:hover svg {
-  color: var(--primary);
+  color: var(--primary-color);
 }
 
 .settings-dropdown-trigger svg.rotate-180 {
@@ -242,7 +242,7 @@
 .settings-dropdown-item.active {
   background: var(--surface-active);
   /* Light Indigo bg */
-  color: var(--primary);
+  color: var(--primary-color);
   /* Indigo Text */
   font-weight: 600;
 }
@@ -256,7 +256,7 @@
   transform: translateY(-50%);
   width: 3px;
   height: 50%;
-  background: var(--primary);
+  background: var(--primary-color);
   border-radius: 0 4px 4px 0;
   display: none;
   /* Using checkmark instead, but option remains */
@@ -278,7 +278,7 @@
 }
 
 .settings-dropdown-item-check {
-  color: var(--primary);
+  color: var(--primary-color);
   font-weight: 700;
   font-size: 0.9rem;
 }

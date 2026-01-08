@@ -201,7 +201,7 @@ export default function StatusPagePrivacySettings({
                 style={{
                   padding: 'var(--spacing-4)',
                   border: '2px solid',
-                  borderColor: settings.privacyMode === key ? 'var(--primary)' : '#e5e7eb',
+                  borderColor: settings.privacyMode === key ? 'var(--primary-color)' : '#e5e7eb',
                   borderRadius: 'var(--radius-md)',
                   background: settings.privacyMode === key ? '#f0f9ff' : 'white',
                   cursor: 'pointer',
@@ -214,7 +214,8 @@ export default function StatusPagePrivacySettings({
                   style={{
                     fontWeight: '600',
                     marginBottom: 'var(--spacing-1)',
-                    color: settings.privacyMode === key ? 'var(--primary)' : 'var(--text-primary)',
+                    color:
+                      settings.privacyMode === key ? 'var(--primary-color)' : 'var(--text-primary)',
                   }}
                 >
                   {preset.label}

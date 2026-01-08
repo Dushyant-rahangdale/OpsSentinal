@@ -49,13 +49,22 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
     }
   };
 
-  const statusCounts = services.reduce((acc, service) => {
-    acc[service.status] = (acc[service.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const statusCounts = services.reduce(
+    (acc, service) => {
+      acc[service.status] = (acc[service.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   const sortedServices = [...services].sort((a, b) => {
-    const statusOrder = ['MAJOR_OUTAGE', 'PARTIAL_OUTAGE', 'DEGRADED', 'MAINTENANCE', 'OPERATIONAL'];
+    const statusOrder = [
+      'MAJOR_OUTAGE',
+      'PARTIAL_OUTAGE',
+      'DEGRADED',
+      'MAINTENANCE',
+      'OPERATIONAL',
+    ];
     const aIndex = statusOrder.indexOf(a.status);
     const bIndex = statusOrder.indexOf(b.status);
     if (aIndex !== bIndex) return aIndex - bIndex;
@@ -65,26 +74,32 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
   return (
     <div style={{ padding: '0' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-        <Link href="/services" className="dashboard-link-hover" style={{ 
-          fontSize: '0.85rem', 
-          color: 'var(--primary)', 
-          textDecoration: 'none', 
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.25rem'
-        }}>
+        <Link
+          href="/services"
+          className="dashboard-link-hover"
+          style={{
+            fontSize: '0.85rem',
+            color: 'var(--primary-color)',
+            textDecoration: 'none',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+          }}
+        >
           View All <span>→</span>
         </Link>
       </div>
 
       {/* Status Summary */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.5rem', 
-        marginBottom: '1rem', 
-        flexWrap: 'wrap' 
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+        }}
+      >
         {Object.entries(statusCounts).map(([status, count]) => {
           const colors = getStatusColor(status);
           return (
@@ -100,7 +115,7 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
                 color: colors.text,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem'
+                gap: '0.35rem',
               }}
             >
               <span>{getStatusIcon(status)}</span>
@@ -115,13 +130,25 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {sortedServices.length === 0 ? (
           <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3, margin: '0 auto 0.5rem' }}>
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              style={{ opacity: 0.3, margin: '0 auto 0.5rem' }}
+            >
+              <path
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             <p style={{ fontSize: '0.85rem', margin: 0 }}>No services found</p>
           </div>
         ) : (
-          sortedServices.slice(0, 5).map((service) => {
+          sortedServices.slice(0, 5).map(service => {
             const colors = getStatusColor(service.status);
             return (
               <Link
@@ -138,21 +165,36 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
                   border: `1px solid ${colors.border}`,
                   transition: 'all 0.2s ease',
                   textDecoration: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
                   <div
                     style={{
                       width: '10px',
                       height: '10px',
                       borderRadius: '50%',
                       background: colors.text,
-                      flexShrink: 0
+                      flexShrink: 0,
                     }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.15rem' }}>
+                    <div
+                      style={{
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        color: 'var(--text-primary)',
+                        marginBottom: '0.15rem',
+                      }}
+                    >
                       {service.name}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: colors.text, fontWeight: '600' }}>
@@ -170,7 +212,7 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
                           background: '#fee2e2',
                           color: '#dc2626',
                           fontSize: '0.7rem',
-                          fontWeight: '700'
+                          fontWeight: '700',
                         }}
                       >
                         {service.criticalIncidents} Critical
@@ -183,7 +225,7 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
                         background: '#f3f4f6',
                         color: 'var(--text-secondary)',
                         fontSize: '0.7rem',
-                        fontWeight: '600'
+                        fontWeight: '600',
                       }}
                     >
                       {service.activeIncidents} Active
@@ -198,4 +240,3 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
     </div>
   );
 }
-

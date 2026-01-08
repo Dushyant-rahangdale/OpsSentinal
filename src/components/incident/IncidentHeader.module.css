@@ -17,7 +17,7 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--primary) 100%);
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent) 50%, var(--primary-color) 100%);
     opacity: 0.8;
 }
 
@@ -48,7 +48,7 @@
 }
 
 .backLink:hover {
-    color: var(--primary);
+    color: var(--primary-color);
 }
 
 .tagsRow {
@@ -63,7 +63,7 @@
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-bold);
     letter-spacing: -0.02em;
-    color: var(--primary);
+    color: var(--primary-color);
     font-family: 'Space Grotesk', sans-serif;
 }
 
@@ -178,7 +178,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-light) 100%);
     opacity: 0.8;
 }
 
@@ -208,7 +208,7 @@
 }
 
 .link {
-    color: var(--primary);
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: var(--font-weight-bold);
     display: inline-flex;

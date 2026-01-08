@@ -166,7 +166,7 @@ export default function MobileLoginClient({
                 }
                 .input-focus:focus {
                     outline: none;
-                    border-color: var(--primary) !important;
+                    border-color: var(--primary-color) !important;
                     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
                 }
                 .btn-primary:active {

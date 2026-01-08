@@ -51,7 +51,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   try {
     dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, role: true, name: true, email: true, timeZone: true },
+      select: {
+        id: true,
+        role: true,
+        name: true,
+        email: true,
+        timeZone: true,
+        avatarUrl: true,
+        gender: true,
+      },
     });
   } catch (error) {
     dbError = error;
@@ -86,6 +94,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const userName = dbUser?.name || session?.user?.name || null;
   const userEmail = session?.user?.email ?? null;
   const userRole = dbUser?.role || (session?.user as any)?.role || null; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const userAvatar = dbUser?.avatarUrl || null;
+  const userGender = dbUser?.gender || null;
+  const userId = dbUser?.id || 'user';
 
   const canCreate = userRole === 'ADMIN' || userRole === 'RESPONDER';
 
@@ -107,7 +118,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <GlobalKeyboardHandlerWrapper />
           <SkipLinks />
           <div className="app-shell">
-            <Sidebar userName={userName} userEmail={userEmail} userRole={userRole} />
+            <Sidebar
+              userName={userName}
+              userEmail={userEmail}
+              userRole={userRole}
+              userAvatar={userAvatar}
+              userGender={userGender}
+              userId={userId}
+            />
             <div className="content-shell">
               <header className="topbar-new">
                 <div className="topbar-section topbar-section-left">
@@ -122,7 +140,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <div className="topbar-section topbar-section-right">
                   <TopbarNotifications />
                   <QuickActions canCreate={canCreate} />
-                  <TopbarUserMenu name={userName} email={userEmail} role={userRole} />
+                  <TopbarUserMenu
+                    name={userName}
+                    email={userEmail}
+                    role={userRole}
+                    avatarUrl={userAvatar}
+                    gender={userGender}
+                    userId={userId}
+                  />
                 </div>
               </header>
               <main id="main-content" className="page-shell">

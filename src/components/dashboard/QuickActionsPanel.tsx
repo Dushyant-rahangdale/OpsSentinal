@@ -49,10 +49,10 @@ export default function QuickActionsPanel({ greeting, userName }: QuickActionsPa
               padding: '0.625rem 0.875rem',
               borderRadius: 'var(--radius-sm)',
               background:
-                action.variant === 'primary' ? 'var(--primary)' : 'var(--color-neutral-50)',
+                action.variant === 'primary' ? 'var(--primary-color)' : 'var(--color-neutral-50)',
               color: action.variant === 'primary' ? 'white' : 'var(--text-secondary)',
               border: '1px solid',
-              borderColor: action.variant === 'primary' ? 'var(--primary)' : 'var(--border)',
+              borderColor: action.variant === 'primary' ? 'var(--primary-color)' : 'var(--border)',
               fontWeight: 'var(--font-weight-medium)',
               fontSize: 'var(--font-size-sm)',
               transition: 'all 0.15s ease',
@@ -68,7 +68,7 @@ export default function QuickActionsPanel({ greeting, userName }: QuickActionsPa
             }}
             onMouseLeave={e => {
               if (action.variant === 'primary') {
-                e.currentTarget.style.background = 'var(--primary)';
+                e.currentTarget.style.background = 'var(--primary-color)';
                 e.currentTarget.style.boxShadow = 'none';
               } else {
                 e.currentTarget.style.background = 'var(--color-neutral-50)';
