@@ -305,8 +305,12 @@ export function UserCard({
         {!isCurrentUser && isAdmin && (
           <div className="flex flex-col gap-1.5">
             {/* Password Reset Button */}
-            {user.status === 'ACTIVE' && (
-              <GenerateResetLinkButton userId={user.id} userName={user.name} />
+            {(user.status === 'ACTIVE' || user.status === 'INVITED') && (
+              <GenerateResetLinkButton
+                userId={user.id}
+                userName={user.name}
+                userStatus={user.status}
+              />
             )}
 
             {user.status === 'ACTIVE' && onDeactivate && (
