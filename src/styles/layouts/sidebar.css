@@ -141,6 +141,14 @@
   transform: scale(0.92);
 }
 
+.sidebar-brand-title {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: balance;
+}
+
 .sidebar-section {
   position: relative;
 }

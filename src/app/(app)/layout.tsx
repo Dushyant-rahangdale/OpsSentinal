@@ -5,6 +5,7 @@ import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 import Sidebar from '@/components/Sidebar';
+import SidebarTrigger from '@/components/SidebarTrigger';
 import TopbarUserMenu from '@/components/TopbarUserMenu';
 import SidebarSearch from '@/components/SidebarSearch';
 import QuickActions from '@/components/QuickActions';
@@ -15,6 +16,7 @@ import { ToastProvider } from '@/components/ToastProvider';
 import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
+import { SidebarProvider } from '@/contexts/SidebarContext';
 import { logger } from '@/lib/logger';
 
 const isNextRedirectError = (error: unknown) => {
@@ -115,46 +117,53 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppErrorBoundary>
       <ToastProvider>
         <TimezoneProvider initialTimeZone={userTimeZone}>
-          <GlobalKeyboardHandlerWrapper />
-          <SkipLinks />
-          <div className="app-shell">
-            <Sidebar
-              userName={userName}
-              userEmail={userEmail}
-              userRole={userRole}
-              userAvatar={userAvatar}
-              userGender={userGender}
-              userId={userId}
-            />
-            <div className="content-shell">
-              <header className="topbar-new">
-                <div className="topbar-section topbar-section-left">
-                  <OperationalStatus tone={statusTone} label={statusLabel} detail={statusDetail} />
-                  <TopbarBreadcrumbs />
-                </div>
-                <div className="topbar-section topbar-section-center">
-                  <div className="topbar-search-wrapper">
-                    <SidebarSearch />
+          <SidebarProvider>
+            <GlobalKeyboardHandlerWrapper />
+            <SkipLinks />
+            <div className="app-shell">
+              <Sidebar
+                userName={userName}
+                userEmail={userEmail}
+                userRole={userRole}
+                userAvatar={userAvatar}
+                userGender={userGender}
+                userId={userId}
+              />
+              <div className="content-shell">
+                <header className="topbar-new">
+                  <div className="topbar-section topbar-section-left">
+                    <SidebarTrigger />
+                    <OperationalStatus
+                      tone={statusTone}
+                      label={statusLabel}
+                      detail={statusDetail}
+                    />
+                    <TopbarBreadcrumbs />
                   </div>
-                </div>
-                <div className="topbar-section topbar-section-right">
-                  <TopbarNotifications />
-                  <QuickActions canCreate={canCreate} />
-                  <TopbarUserMenu
-                    name={userName}
-                    email={userEmail}
-                    role={userRole}
-                    avatarUrl={userAvatar}
-                    gender={userGender}
-                    userId={userId}
-                  />
-                </div>
-              </header>
-              <main id="main-content" className="page-shell">
-                {children}
-              </main>
+                  <div className="topbar-section topbar-section-center">
+                    <div className="topbar-search-wrapper">
+                      <SidebarSearch />
+                    </div>
+                  </div>
+                  <div className="topbar-section topbar-section-right">
+                    <TopbarNotifications />
+                    <QuickActions canCreate={canCreate} />
+                    <TopbarUserMenu
+                      name={userName}
+                      email={userEmail}
+                      role={userRole}
+                      avatarUrl={userAvatar}
+                      gender={userGender}
+                      userId={userId}
+                    />
+                  </div>
+                </header>
+                <main id="main-content" className="page-shell">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
+          </SidebarProvider>
         </TimezoneProvider>
       </ToastProvider>
     </AppErrorBoundary>

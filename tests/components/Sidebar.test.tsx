@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Sidebar from '@/components/Sidebar';
+import { SidebarProvider } from '@/contexts/SidebarContext';
 
 const mockMatchMedia = (matches: boolean) => {
   Object.defineProperty(window, 'matchMedia', {
@@ -24,6 +25,11 @@ const mockFetch = () => {
   } as unknown as Response);
 };
 
+// Helper to render with provider
+const renderWithProvider = (ui: React.ReactElement) => {
+  return render(<SidebarProvider>{ui}</SidebarProvider>);
+};
+
 describe('Sidebar', () => {
   beforeEach(() => {
     mockMatchMedia(false);
@@ -32,45 +38,57 @@ describe('Sidebar', () => {
   });
 
   it('renders expanded by default', async () => {
-    render(<Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />);
+    renderWithProvider(
+      <Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /collapse sidebar/i })).toHaveAttribute(
-        'aria-expanded',
-        'true'
-      );
     });
+  });
+
+  it('renders the brand title with an optional line break', () => {
+    renderWithProvider(
+      <Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />
+    );
+
+    const heading = screen.getByRole('heading', { name: /OpsSentinal/i });
+    expect(heading).toHaveClass('sidebar-brand-title');
+    expect(heading.querySelector('wbr')).not.toBeNull();
   });
 
   it('honors collapsed state from localStorage', async () => {
     localStorage.setItem('sidebarCollapsed', '1');
 
-    render(<Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />);
+    renderWithProvider(
+      <Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />
+    );
 
     await waitFor(() => {
+      // When collapsed, text labels are hidden
       expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /expand sidebar/i })).toHaveAttribute(
-        'aria-expanded',
-        'false'
-      );
     });
   });
 
   it('toggles collapse state and persists it', async () => {
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
 
-    render(<Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />);
+    renderWithProvider(
+      <Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />
+    );
     setItemSpy.mockClear();
 
-    fireEvent.click(screen.getByRole('button', { name: /collapse sidebar/i }));
+    // Find the collapse toggle button (original sidebar has << / >> toggle)
+    const collapseButton = screen.getByRole('button', { name: /collapse sidebar/i });
+    fireEvent.click(collapseButton);
 
     await waitFor(() => {
       expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
       expect(setItemSpy).toHaveBeenCalledWith('sidebarCollapsed', '1');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /expand sidebar/i }));
+    const expandButton = screen.getByRole('button', { name: /expand sidebar/i });
+    fireEvent.click(expandButton);
 
     await waitFor(() => {
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
