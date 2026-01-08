@@ -2,6 +2,8 @@
 # Skip certain checks that are either false positives or accepted risks for this project
 
 skip-check:
+  - CKV_SECRET_2: 'False positive in generated report files'
+  - CKV_SECRET_18: 'False positive in generated report files'
   # Terraform - EBS encryption (using default encryption, not CMK)
   - CKV_AWS_189
 
@@ -33,3 +35,7 @@ framework:
   - kubernetes
   - dockerfile
   - secrets
+
+exception:
+  - eslint_output.json
+  - reports/security.sarif

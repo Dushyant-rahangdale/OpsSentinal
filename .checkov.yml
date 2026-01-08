@@ -1,6 +1,0 @@
-skip-check:
-  - CKV_SECRET_2: 'False positive in generated report files'
-  - CKV_SECRET_18: 'False positive in generated report files'
-exception:
-  - eslint_output.json
-  - reports/security.sarif

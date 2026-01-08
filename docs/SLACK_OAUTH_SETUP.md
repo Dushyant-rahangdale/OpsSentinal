@@ -3,6 +3,7 @@
 ## Overview
 
 The Slack integration supports two methods:
+
 1. **OAuth Integration (Recommended)**: Connect Slack workspace via OAuth for full API access
 2. **Webhook (Legacy)**: Use incoming webhooks (limited functionality)
 
@@ -115,16 +116,19 @@ Add this to your `ENCRYPTION_KEY` environment variable.
 ## Troubleshooting
 
 ### "Slack bot token not configured"
+
 - Ensure OAuth integration is connected
 - Or set `SLACK_BOT_TOKEN` environment variable
 - Check that integration is enabled
 
 ### "Failed to decrypt token"
+
 - Ensure `ENCRYPTION_KEY` is set correctly
 - Key must be same across all instances
 - If changed, re-connect Slack integrations
 
 ### "Invalid OAuth state"
+
 - OAuth state expired (10 minutes)
 - Try connecting again
 - Clear cookies if issue persists
@@ -136,7 +140,3 @@ Add this to your `ENCRYPTION_KEY` environment variable.
 - `GET /api/slack/channels` - List available channels
 - `POST /api/slack/actions` - Handle interactive button clicks
 - `DELETE /api/slack/disconnect` - Disconnect integration
-
-
-
-

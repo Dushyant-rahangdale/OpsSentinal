@@ -58,12 +58,7 @@ verify_fix.ts
 /reports/
 /ci-artifacts/
 
-# build scripts
-build-docker.ps1
-cleanup-dev.ps1
-clear-cache.ps1
-recreate-db-*.ps1
-reset-prisma.ps1
+
 
 # debug API routes
 /src/app/api/debug/
