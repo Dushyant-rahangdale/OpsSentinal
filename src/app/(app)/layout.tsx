@@ -130,8 +130,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 userId={userId}
               />
               <div className="content-shell">
-                <header className="topbar-new">
-                  <div className="topbar-section topbar-section-left">
+                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <div className="flex items-center gap-4">
                     <SidebarTrigger />
                     <OperationalStatus
                       tone={statusTone}
@@ -140,12 +140,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     />
                     <TopbarBreadcrumbs />
                   </div>
-                  <div className="topbar-section topbar-section-center">
-                    <div className="topbar-search-wrapper">
-                      <SidebarSearch />
-                    </div>
+                  <div className="flex flex-1 items-center justify-center px-4">
+                    <SidebarSearch />
                   </div>
-                  <div className="topbar-section topbar-section-right">
+                  <div className="flex items-center gap-4 ml-auto">
                     <TopbarNotifications />
                     <QuickActions canCreate={canCreate} />
                     <TopbarUserMenu
