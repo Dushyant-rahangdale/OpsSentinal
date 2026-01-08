@@ -59,6 +59,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getDefaultAvatar, isDefaultAvatar } from '@/lib/avatar';
 
 type Team = {
   id: string;
@@ -103,36 +104,6 @@ const getInitials = (name: string) => {
     .join('')
     .toUpperCase()
     .slice(0, 2);
-};
-
-const getDefaultAvatar = (gender: string | null | undefined, userId: string): string => {
-  const genderLower = gender?.toLowerCase();
-  switch (genderLower) {
-    case 'male':
-      return `/api/avatar?style=big-smile&seed=${userId}-male&backgroundColor=b91c1c&radius=50`;
-    case 'female':
-      return `/api/avatar?style=big-smile&seed=${userId}-female&backgroundColor=65a30d&radius=50`;
-    case 'non-binary':
-      return `/api/avatar?style=big-smile&seed=${userId}-nb&backgroundColor=7c3aed&radius=50`;
-    case 'other':
-      return `/api/avatar?style=big-smile&seed=${userId}-other&backgroundColor=0891b2&radius=50`;
-    case 'prefer-not-to-say':
-      return `/api/avatar?style=big-smile&seed=${userId}-neutral&backgroundColor=6366f1&radius=50`;
-    default:
-      return `/api/avatar?style=big-smile&seed=${userId}&backgroundColor=84cc16&radius=50`;
-  }
-};
-
-const isDefaultAvatar = (url: string | null | undefined): boolean => {
-  if (!url) return true;
-  if (url.startsWith('/avatars/')) return true;
-  if (url.startsWith('/api/avatar')) return true;
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname === 'api.dicebear.com';
-  } catch {
-    return false;
-  }
 };
 
 const roleAccentColors = {

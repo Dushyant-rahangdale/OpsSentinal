@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AvatarPicker } from '@/components/settings/AvatarPicker';
+import { getDefaultAvatar, isDefaultAvatar } from '@/lib/avatar';
 
 type Props = {
   name: string;
@@ -63,48 +64,6 @@ export default function ProfileForm({
   const [isSaving, setIsSaving] = useState(false);
   const [currentGender, setCurrentGender] = useState<string | null | undefined>(gender);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Helper function to generate default avatar based on gender - professional cartoon style
-  const getDefaultAvatar = (g: string | null | undefined, userId: string = 'user'): string => {
-    // Using DiceBear big-smile for professional, friendly cartoon avatars
-    // Similar to the screenshot with colorful backgrounds and business-appropriate style
-    switch (g?.toLowerCase()) {
-      case 'male':
-        // Professional male avatar with red background
-        return `/api/avatar?style=big-smile&seed=${userId}-male&backgroundColor=b91c1c&radius=50`;
-      case 'female':
-        // Professional female avatar with green background
-        return `/api/avatar?style=big-smile&seed=${userId}-female&backgroundColor=65a30d&radius=50`;
-      case 'non-binary':
-        // Professional non-binary avatar with purple background
-        return `/api/avatar?style=big-smile&seed=${userId}-nb&backgroundColor=7c3aed&radius=50`;
-      case 'other':
-        // Professional avatar with teal background
-        return `/api/avatar?style=big-smile&seed=${userId}-other&backgroundColor=0891b2&radius=50`;
-      case 'prefer-not-to-say':
-        // Neutral professional avatar with blue background
-        return `/api/avatar?style=big-smile&seed=${userId}-neutral&backgroundColor=6366f1&radius=50`;
-      default:
-        // Default avatar with green background
-        return `/api/avatar?style=big-smile&seed=${userId}&backgroundColor=84cc16&radius=50`;
-    }
-  };
-
-  // Check if current avatar is a default DiceBear avatar (either via proxy, static, or direct URL)
-  const isDefaultAvatar = (url: string | null | undefined): boolean => {
-    if (!url) return true;
-    // Check if it's a static avatar
-    if (url.startsWith('/avatars/')) return true;
-    // Check if it's our proxy URL
-    if (url.startsWith('/api/avatar')) return true;
-    // Check if it's a direct DiceBear URL (legacy)
-    try {
-      const urlObj = new URL(url);
-      return urlObj.hostname === 'api.dicebear.com';
-    } catch {
-      return false;
-    }
-  };
 
   // Use local state for preview - show default avatar if no custom avatar
   const [avatarPreview, setAvatarPreview] = useState<string | null>(

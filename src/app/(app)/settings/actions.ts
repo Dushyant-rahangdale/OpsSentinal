@@ -16,6 +16,7 @@ import {
   getWhatsAppConfig,
 } from '@/lib/notification-providers';
 import { logger } from '@/lib/logger';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type ActionState = {
   error?: string | null;
@@ -80,33 +81,6 @@ export async function updateProfile(
       }
     }
 
-    // Helper for default avatars based on gender - professional cartoon style
-    const getDefaultAvatar = (g: string | null, userId: string): string | null => {
-      // Using DiceBear big-smile for professional, friendly cartoon avatars
-      // Similar to the screenshot with colorful backgrounds and business-appropriate style
-
-      switch (g?.toLowerCase()) {
-        case 'male':
-          // Professional male avatar with red background
-          return `/api/avatar?style=big-smile&seed=${userId}-male&backgroundColor=b91c1c&radius=50`;
-        case 'female':
-          // Professional female avatar with green background
-          return `/api/avatar?style=big-smile&seed=${userId}-female&backgroundColor=65a30d&radius=50`;
-        case 'non-binary':
-          // Professional non-binary avatar with purple background
-          return `/api/avatar?style=big-smile&seed=${userId}-nb&backgroundColor=7c3aed&radius=50`;
-        case 'other':
-          // Professional avatar with teal background
-          return `/api/avatar?style=big-smile&seed=${userId}-other&backgroundColor=0891b2&radius=50`;
-        case 'prefer-not-to-say':
-          // Neutral professional avatar with blue background
-          return `/api/avatar?style=big-smile&seed=${userId}-neutral&backgroundColor=6366f1&radius=50`;
-        default:
-          // Default avatar with green background
-          return `/api/avatar?style=big-smile&seed=${userId}&backgroundColor=84cc16&radius=50`;
-      }
-    };
-
     const removeAvatar = formData.get('removeAvatar') === 'true';
 
     // Prepare update data
@@ -162,7 +136,6 @@ export async function updateProfile(
 
       const isCurrentDefault =
         !user.avatarUrl ||
-        user.avatarUrl.startsWith('/avatars/') ||
         user.avatarUrl.startsWith('/api/avatar') ||
         (() => {
           try {
