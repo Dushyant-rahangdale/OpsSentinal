@@ -43,21 +43,25 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
     }
   };
 
-  const filteredIncidents = selectedService === 'all'
-    ? incidents
-    : incidents.filter(i => {
-        const service = services.find(s => s.name === i.serviceName);
-        return service?.id === selectedService;
-      });
+  const filteredIncidents =
+    selectedService === 'all'
+      ? incidents
+      : incidents.filter(i => {
+          const service = services.find(s => s.name === i.serviceName);
+          return service?.id === selectedService;
+        });
 
-  const grouped = filteredIncidents.reduce((acc, incident) => {
-    const key = getTimeKey(incident.createdAt);
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(incident);
-    return acc;
-  }, {} as Record<string, TimelineIncident[]>);
+  const grouped = filteredIncidents.reduce(
+    (acc, incident) => {
+      const key = getTimeKey(incident.createdAt);
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(incident);
+      return acc;
+    },
+    {} as Record<string, TimelineIncident[]>
+  );
 
   const sortedGroups = Object.entries(grouped)
     .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
@@ -65,10 +69,14 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'OPEN': return '#dc2626';
-      case 'ACKNOWLEDGED': return '#2563eb';
-      case 'RESOLVED': return '#16a34a';
-      default: return '#6b7280';
+      case 'OPEN':
+        return '#dc2626';
+      case 'ACKNOWLEDGED':
+        return '#2563eb';
+      case 'RESOLVED':
+        return '#16a34a';
+      default:
+        return '#6b7280';
     }
   };
 
@@ -88,7 +96,7 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
       const formatter = new Intl.DateTimeFormat('en-US', {
         month: 'long',
         year: 'numeric',
-        timeZone: userTimeZone
+        timeZone: userTimeZone,
       });
       return formatter.format(date);
     }
@@ -96,26 +104,43 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
 
   return (
     <div className="glass-panel" style={{ background: 'white', padding: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem',
+        }}
+      >
         <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Incident Timeline</h3>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <select
             value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
+            onChange={e => setSelectedService(e.target.value)}
             style={{
               padding: '0.4rem 0.8rem',
               border: '1px solid var(--border)',
               borderRadius: '6px',
               fontSize: '0.85rem',
-              background: 'white'
+              background: 'white',
             }}
           >
             <option value="all">All Services</option>
             {services.map(service => (
-              <option key={service.id} value={service.id}>{service.name}</option>
+              <option key={service.id} value={service.id}>
+                {service.name}
+              </option>
             ))}
           </select>
-          <div style={{ display: 'flex', gap: '0.25rem', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.25rem',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              overflow: 'hidden',
+            }}
+          >
             {(['day', 'week', 'month'] as const).map(level => (
               <button
                 key={level}
@@ -123,12 +148,12 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                 style={{
                   padding: '0.4rem 0.8rem',
                   border: 'none',
-                  background: zoomLevel === level ? 'var(--primary)' : 'white',
+                  background: zoomLevel === level ? 'var(--primary-color)' : 'white',
                   color: zoomLevel === level ? 'white' : 'var(--text-primary)',
                   cursor: 'pointer',
                   fontSize: '0.85rem',
                   fontWeight: '600',
-                  textTransform: 'capitalize'
+                  textTransform: 'capitalize',
                 }}
               >
                 {level}
@@ -152,7 +177,7 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                       top: '2rem',
                       bottom: '-2rem',
                       width: '2px',
-                      background: '#e5e7eb'
+                      background: '#e5e7eb',
                     }}
                   />
                 )}
@@ -165,14 +190,16 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                     width: '1rem',
                     height: '1rem',
                     borderRadius: '50%',
-                    background: 'var(--primary)',
+                    background: 'var(--primary-color)',
                     border: '2px solid white',
-                    zIndex: 2
+                    zIndex: 2,
                   }}
                 />
                 {/* Time label */}
                 <div style={{ marginLeft: '1.5rem', marginBottom: '0.5rem' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  <div
+                    style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-primary)' }}
+                  >
                     {formatTimeLabel(timeKey)}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -180,7 +207,14 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                   </div>
                 </div>
                 {/* Incidents */}
-                <div style={{ marginLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div
+                  style={{
+                    marginLeft: '1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                  }}
+                >
                   {groupIncidents.map(incident => (
                     <div
                       key={incident.id}
@@ -191,7 +225,7 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                         border: '1px solid #e5e7eb',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.75rem'
+                        gap: '0.75rem',
                       }}
                     >
                       <div
@@ -200,21 +234,36 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
                           height: '8px',
                           borderRadius: '50%',
                           background: getStatusColor(incident.status),
-                          flexShrink: 0
+                          flexShrink: 0,
                         }}
                       />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                        <div
+                          style={{
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            color: 'var(--text-primary)',
+                            marginBottom: '0.25rem',
+                          }}
+                        >
                           {incident.title}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            display: 'flex',
+                            gap: '0.75rem',
+                            flexWrap: 'wrap',
+                          }}
+                        >
                           <span>{incident.serviceName}</span>
                           {incident.assigneeName && <span>• {incident.assigneeName}</span>}
                           <span>• {incident.status}</span>
                           <span
                             style={{
                               color: getUrgencyColor(incident.urgency),
-                              fontWeight: '600'
+                              fontWeight: '600',
                             }}
                           >
                             {incident.urgency} urgency
@@ -231,7 +280,14 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
             ))}
           </div>
         ) : (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          <div
+            style={{
+              padding: '2rem',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontSize: '0.85rem',
+            }}
+          >
             No incidents in this period
           </div>
         )}
@@ -239,4 +295,3 @@ export default function DashboardTimelineView({ incidents, services }: Dashboard
     </div>
   );
 }
-

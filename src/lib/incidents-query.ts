@@ -117,6 +117,8 @@ export const incidentListSelect = {
       id: true,
       name: true,
       email: true,
+      avatarUrl: true,
+      gender: true,
     },
   },
 } satisfies Prisma.IncidentSelect;

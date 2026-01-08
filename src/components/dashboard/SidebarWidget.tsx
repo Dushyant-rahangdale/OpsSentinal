@@ -51,7 +51,7 @@ export default function SidebarWidget({
 
     const variantStyles = {
       primary: {
-        background: 'var(--primary)',
+        background: 'var(--primary-color)',
         color: 'var(--text-inverse)',
       },
       secondary: {

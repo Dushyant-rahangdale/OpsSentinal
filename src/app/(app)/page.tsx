@@ -494,7 +494,7 @@ export default async function Dashboard({
                   className="dashboard-view-all-link"
                   style={{
                     fontSize: 'var(--font-size-sm)',
-                    color: 'var(--primary)',
+                    color: 'var(--primary-color)',
                     textDecoration: 'none',
                     fontWeight: 'var(--font-weight-semibold)',
                     display: 'flex',

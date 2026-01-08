@@ -930,7 +930,7 @@ const MobileMenuButton = ({ isMobile, isMobileMenuOpen, setIsMobileMenuOpen }: M
       width: '44px',
       height: '44px',
       borderRadius: 'var(--radius-md)',
-      background: 'var(--primary)',
+      background: 'var(--primary-color)',
       border: 'none',
       color: 'white',
       alignItems: 'center',

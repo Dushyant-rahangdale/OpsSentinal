@@ -45,12 +45,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
       openIncidentCount: count,
       status: calculatedStatus,
     };
-  }, [
-    service.incidents,
-    service.dynamicStatus,
-    service.openIncidentCount,
-    service.hasCritical,
-  ]);
+  }, [service.incidents, service.dynamicStatus, service.openIncidentCount, service.hasCritical]);
 
   const displayStatus = status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
   const [compactHovered, setCompactHovered] = useState(false);
@@ -65,7 +60,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
           display: 'block',
           padding: '1rem',
           background: '#fff',
-          border: `1px solid ${compactHovered ? 'var(--primary)' : 'var(--border)'}`,
+          border: `1px solid ${compactHovered ? 'var(--primary-color)' : 'var(--border)'}`,
           borderRadius: '0px',
           cursor: 'pointer',
           transition: 'all 0.15s',
@@ -143,7 +138,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
     OPERATIONAL: {
       bg: 'linear-gradient(180deg, rgba(34,197,94,0.03) 0%, #ffffff 60%)',
       border: 'rgba(34,197,94,0.15)',
-      hoverBorder: 'var(--primary)',
+      hoverBorder: 'var(--primary-color)',
       hoverShadow: '0 8px 20px rgba(211, 47, 47, 0.12)',
     },
     DEGRADED: {
@@ -380,7 +375,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
             <button
               onClick={handlePolicyLinkClick}
               style={{
-                color: 'var(--primary)',
+                color: 'var(--primary-color)',
                 fontWeight: 600,
                 fontSize: '0.9rem',
                 textDecoration: 'none',
@@ -395,7 +390,7 @@ function ServiceCard({ service, compact = false }: ServiceCardProps) {
                 e.currentTarget.style.color = 'var(--primary-hover)';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.color = 'var(--primary)';
+                e.currentTarget.style.color = 'var(--primary-color)';
               }}
             >
               {service.policy.name}

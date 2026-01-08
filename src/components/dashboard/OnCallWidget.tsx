@@ -118,7 +118,7 @@ const OnCallWidget = memo(function OnCallWidget({ activeShifts }: OnCallWidgetPr
           className="dashboard-link-hover"
           style={{
             fontSize: '0.85rem',
-            color: 'var(--primary)',
+            color: 'var(--primary-color)',
             textDecoration: 'none',
             fontWeight: '600',
             display: 'flex',
@@ -194,7 +194,7 @@ const OnCallWidget = memo(function OnCallWidget({ activeShifts }: OnCallWidgetPr
                     height: '40px',
                     borderRadius: '10px',
                     background: 'rgba(51, 65, 85, 0.1)',
-                    color: 'var(--primary)',
+                    color: 'var(--primary-color)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

@@ -465,7 +465,7 @@ export default function ServiceNotificationSettings({
               Slack is managed centrally for your workspace. Configure it in{' '}
               <a
                 href="/settings/integrations/slack"
-                style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}
+                style={{ color: 'var(--primary-color)', fontWeight: 600, textDecoration: 'none' }}
               >
                 Settings &rarr; Integrations &rarr; Slack
               </a>

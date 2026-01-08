@@ -110,7 +110,7 @@ export default function DashboardQuickFilters() {
               borderRadius: '999px',
               fontSize: 'var(--font-size-xs)',
               textDecoration: 'none',
-              background: isActive ? 'var(--primary)' : 'var(--color-neutral-50)',
+              background: isActive ? 'var(--primary-color)' : 'var(--color-neutral-50)',
               color: isActive ? 'white' : 'var(--text-secondary)',
               fontWeight: 'var(--font-weight-medium)',
               display: 'flex',

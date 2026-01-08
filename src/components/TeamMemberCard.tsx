@@ -3,6 +3,7 @@
 import { useTransition, memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from './ToastProvider';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type TeamMember = {
   id: string;
@@ -12,6 +13,8 @@ type TeamMember = {
     id: string;
     name: string;
     email: string;
+    avatarUrl?: string | null;
+    gender?: string | null;
     status?: string;
     emailNotificationsEnabled?: boolean;
     smsNotificationsEnabled?: boolean;
@@ -150,12 +153,17 @@ function TeamMemberCard({
               border: `2px solid ${roleInfo.border}`,
               cursor: 'pointer',
               transition: 'transform 0.2s',
+              overflow: 'hidden',
             }}
             title={`View ${member.user.name} in users directory`}
             onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
             onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            {member.user.name.charAt(0).toUpperCase()}
+            <img
+              src={member.user.avatarUrl || getDefaultAvatar(member.user.gender, member.user.id)}
+              alt={member.user.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
         </Link>
 

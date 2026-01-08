@@ -75,7 +75,7 @@ export default function Button({
 
   const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
     primary: {
-      background: 'var(--primary)',
+      background: 'var(--primary-color)',
       color: 'var(--text-inverse)',
       boxShadow: 'var(--shadow-sm)',
     },
@@ -96,7 +96,7 @@ export default function Button({
     },
     link: {
       background: 'transparent',
-      color: 'var(--primary)',
+      color: 'var(--primary-color)',
       padding: 0,
       height: 'auto',
       textDecoration: 'underline',

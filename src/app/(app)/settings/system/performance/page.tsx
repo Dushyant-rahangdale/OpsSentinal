@@ -125,7 +125,7 @@ export default async function PerformancePage() {
         <div
           style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}
         >
-          <Database style={{ width: '20px', height: '20px', color: 'var(--primary)' }} />
+          <Database style={{ width: '20px', height: '20px', color: 'var(--primary-color)' }} />
           <h2 style={{ fontSize: '1.5rem', margin: 0, fontWeight: '600' }}>
             SLA Query Performance
           </h2>

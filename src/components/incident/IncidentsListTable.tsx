@@ -248,7 +248,7 @@ export default function IncidentsListTable({
         <div
           style={{
             padding: '0.75rem 1.25rem',
-            background: 'linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 100%)',
+            background: 'linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-color) 100%)',
             color: 'white',
             display: 'flex',
             justifyContent: 'space-between',
@@ -494,7 +494,7 @@ export default function IncidentsListTable({
                     background: 'rgba(255,255,255,0.9)',
                     border: 'none',
                     borderRadius: 'var(--radius-sm)',
-                    color: 'var(--primary)',
+                    color: 'var(--primary-color)',
                     fontWeight: '600',
                     cursor: isPending ? 'not-allowed' : 'pointer',
                     opacity: isPending ? 0.6 : 1,
@@ -831,7 +831,7 @@ export default function IncidentsListTable({
                               data-no-row-nav="true"
                               onClick={e => e.stopPropagation()}
                               style={{
-                                color: 'var(--primary)',
+                                color: 'var(--primary-color)',
                                 textDecoration: 'none',
                                 fontWeight: 650,
                                 fontSize: '0.85rem',
@@ -896,7 +896,7 @@ export default function IncidentsListTable({
                             onClick={e => e.stopPropagation()}
                             style={{
                               padding: '0.45rem 0.8rem',
-                              background: 'var(--primary)',
+                              background: 'var(--primary-color)',
                               border: 'none',
                               borderRadius: '10px',
                               fontSize: '0.8rem',
@@ -1005,7 +1005,7 @@ export default function IncidentsListTable({
                                       cursor: isPending ? 'not-allowed' : 'pointer',
                                       fontSize: '0.85rem',
                                       fontWeight: 700,
-                                      color: 'var(--primary)',
+                                      color: 'var(--primary-color)',
                                     }}
                                     onMouseEnter={e => {
                                       e.currentTarget.style.background = 'var(--primary-light)';

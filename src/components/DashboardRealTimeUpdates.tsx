@@ -7,7 +7,9 @@ type RealTimeUpdatesProps = {
   autoRefreshInterval?: number; // in seconds
 };
 
-export default function DashboardRealTimeUpdates({ autoRefreshInterval = 60 }: RealTimeUpdatesProps) {
+export default function DashboardRealTimeUpdates({
+  autoRefreshInterval = 60,
+}: RealTimeUpdatesProps) {
   const router = useRouter();
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -63,7 +65,7 @@ export default function DashboardRealTimeUpdates({ autoRefreshInterval = 60 }: R
         alignItems: 'center',
         gap: '0.75rem',
         fontSize: '0.85rem',
-        zIndex: 1000
+        zIndex: 1000,
       }}
     >
       {isRefreshing && (
@@ -74,7 +76,7 @@ export default function DashboardRealTimeUpdates({ autoRefreshInterval = 60 }: R
             borderRadius: '50%',
             border: '2px solid var(--primary)',
             borderTopColor: 'transparent',
-            animation: 'spin 1s linear infinite'
+            animation: 'spin 1s linear infinite',
           }}
         />
       )}
@@ -87,11 +89,11 @@ export default function DashboardRealTimeUpdates({ autoRefreshInterval = 60 }: R
           padding: '0.25rem 0.5rem',
           border: '1px solid var(--border)',
           borderRadius: '4px',
-          background: isEnabled ? 'var(--primary)' : 'white',
+          background: isEnabled ? 'var(--primary-color)' : 'white',
           color: isEnabled ? 'white' : 'var(--text-primary)',
           cursor: 'pointer',
           fontSize: '0.75rem',
-          fontWeight: '600'
+          fontWeight: '600',
         }}
         title={isEnabled ? 'Disable auto-refresh' : 'Enable auto-refresh'}
       >
@@ -99,10 +101,11 @@ export default function DashboardRealTimeUpdates({ autoRefreshInterval = 60 }: R
       </button>
       <style jsx>{`
         @keyframes spin {
-          to { transform: rotate(360deg); }
+          to {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
     </div>
   );
 }
-

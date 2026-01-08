@@ -414,7 +414,7 @@ export default function TeamCard({
                 href={`/users?teamId=${team.id}`}
                 style={{
                   fontSize: '0.85rem',
-                  color: 'var(--primary)',
+                  color: 'var(--primary-color)',
                   textDecoration: 'none',
                   fontWeight: '500',
                 }}
@@ -530,7 +530,7 @@ export default function TeamCard({
                           padding: '0.5rem 0.75rem',
                           borderRadius: '8px',
                           background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                          color: 'var(--primary)',
+                          color: 'var(--primary-color)',
                           textDecoration: 'none',
                           fontWeight: '500',
                           fontSize: '0.9rem',
