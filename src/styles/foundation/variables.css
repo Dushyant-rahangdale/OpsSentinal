@@ -53,9 +53,9 @@
     --bg-overlay: rgba(0, 0, 0, 0.5);
 
     /* Glass Morphism */
-    --glass-bg: rgba(255, 255, 255, 0.92);
-    --glass-border: rgba(17, 24, 39, 0.12);
-    --glass-blur: blur(8px);
+    --glass-bg: rgba(255, 255, 255, 0.45);
+    --glass-border: rgba(17, 24, 39, 0.08);
+    --glass-blur: blur(12px);
 
     /* Text Colors */
     --text-primary: #111827;
@@ -181,7 +181,7 @@
     /* Gradients - Professional Slate-to-Midnight Flow */
     --gradient-primary: linear-gradient(135deg, #334155 0%, #1e293b 55%, #0f172a 100%);
     --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
+    --gradient-glass: linear-gradient(145deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 250, 252, 0.4) 100%);
     --gradient-surface: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 
     /* Badge Colors */

@@ -966,7 +966,7 @@ a:hover {
     height: fit-content;
     padding: var(--spacing-4);
     border-radius: var(--radius-lg);
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--glass-bg);
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
 }

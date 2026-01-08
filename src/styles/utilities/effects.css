@@ -38,8 +38,9 @@
 /* Enhanced glass panel for dashboard widgets */
 .dashboard-sidebar .glass-panel,
 .dashboard-main-content .glass-panel {
-    background: #ffffff;
-    border: 1px solid rgba(17, 24, 39, 0.08);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
     border-radius: 14px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -53,7 +54,9 @@
 }
 
 .glass-button {
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--border);
     color: var(--text-primary);
     padding: 0.75rem 1.4rem;
