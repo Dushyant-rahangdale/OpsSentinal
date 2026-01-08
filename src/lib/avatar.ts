@@ -14,19 +14,19 @@ export const getDefaultAvatar = (
 
   switch (genderLower) {
     case 'male':
-      return `/api/avatar?style=big-smile&seed=${userId}-male&backgroundColor=b91c1c&radius=50`;
+      return `/api/avatar?style=big-smile&seed=${userId}-male&backgroundColor=b91c1c&radius=0`;
     case 'female':
-      return `/api/avatar?style=big-smile&seed=${userId}-female&backgroundColor=65a30d&radius=50`;
+      return `/api/avatar?style=big-smile&seed=${userId}-female&backgroundColor=65a30d&radius=0`;
     case 'non-binary':
-      return `/api/avatar?style=big-smile&seed=${userId}-nb&backgroundColor=7c3aed&radius=50`;
+      return `/api/avatar?style=big-smile&seed=${userId}-nb&backgroundColor=7c3aed&radius=0`;
     case 'other':
-      return `/api/avatar?style=bottts&seed=${userId}-other&backgroundColor=0891b2&radius=50`;
+      return `/api/avatar?style=bottts&seed=${userId}-other&backgroundColor=0891b2&radius=0`;
     case 'prefer-not-to-say':
       // Neutral robot
-      return `/api/avatar?style=bottts&seed=${userId}-neutral&backgroundColor=6366f1&radius=50`;
+      return `/api/avatar?style=bottts&seed=${userId}-neutral&backgroundColor=6366f1&radius=0`;
     default:
       // Fallback for no gender: Random Robot
-      return `/api/avatar?style=bottts&seed=${userId}&backgroundColor=84cc16&radius=50`;
+      return `/api/avatar?style=bottts&seed=${userId}&backgroundColor=84cc16&radius=0`;
   }
 };
 

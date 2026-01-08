@@ -5,22 +5,9 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useModalState } from '@/hooks/useModalState';
-import { getDefaultAvatar } from '@/lib/avatar';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Button } from '@/components/ui/shadcn/button';
-import { Badge } from '@/components/ui/shadcn/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  HelpCircle,
-  Settings,
-  LogOut,
-  Keyboard,
-  AlertCircle,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type NavItem = {
@@ -221,7 +208,6 @@ export default function Sidebar(
 
   const sidebarId = 'app-sidebar';
   const isDesktopCollapsed = !isMobile && isCollapsed;
-  const finalAvatarUrl = userAvatar || getDefaultAvatar(userGender, userId || 'user');
 
   useEffect(() => {
     fetch('/api/sidebar-stats')
@@ -477,112 +463,7 @@ export default function Sidebar(
           {Object.entries(groupedItems).map(([section, items]) => renderSection(section, items))}
         </nav>
 
-        {/* Compact Footer */}
-        <div
-          className={cn('shrink-0 border-t border-white/10', isDesktopCollapsed ? 'p-2' : 'p-2.5')}
-        >
-          <div
-            className={cn(
-              'relative flex items-center rounded-md bg-white/8',
-              isDesktopCollapsed ? 'p-1.5 justify-center' : 'p-2 gap-2'
-            )}
-          >
-            {stats?.isClipped && (
-              <div
-                title={`Data retention limit: ${stats.retentionDays} days`}
-                className="absolute right-1 top-1 h-5 w-5 rounded-full bg-amber-500 text-white flex items-center justify-center"
-              >
-                <AlertCircle className="h-3 w-3" />
-              </div>
-            )}
-
-            <Avatar className="h-7 w-7 shrink-0">
-              <AvatarImage src={finalAvatarUrl} alt={userName || 'User'} />
-              <AvatarFallback className="bg-white/15 text-white text-sm font-semibold uppercase">
-                {(userName || userEmail || 'U').slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-
-            {!isDesktopCollapsed && (
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">
-                  {userName || userEmail || 'User'}
-                </div>
-                <div className="text-xs text-white/65 capitalize">
-                  {userRole ? userRole.toLowerCase() : 'User'}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div
-            className={cn(
-              'mt-2',
-              isDesktopCollapsed ? 'flex flex-col gap-1.5' : 'grid grid-cols-3 gap-1.5'
-            )}
-          >
-            <Link
-              href="/help"
-              onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              aria-label="Documentation"
-              title="Documentation"
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 rounded-lg',
-                'bg-white/5 border border-white/10 text-white/85 hover:bg-white/12 hover:text-white transition-colors',
-                'p-2'
-              )}
-            >
-              <HelpCircle className="h-4 w-4" />
-              {!isDesktopCollapsed && <span className="text-[0.6rem] leading-none">Docs</span>}
-            </Link>
-
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('toggleKeyboardShortcuts'));
-                if (isMobile) setIsMobileMenuOpen(false);
-              }}
-              aria-label="Show keyboard shortcuts"
-              title="Keyboard Shortcuts"
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 rounded-lg cursor-pointer',
-                'bg-white/5 border border-white/10 text-white/85 hover:bg-white/12 hover:text-white transition-colors',
-                'p-2'
-              )}
-            >
-              <Keyboard className="h-4 w-4" />
-              {!isDesktopCollapsed && <span className="text-[0.6rem] leading-none">Keys</span>}
-            </button>
-
-            <Link
-              href="/settings"
-              onClick={() => isMobile && setIsMobileMenuOpen(false)}
-              aria-label="Settings"
-              title="Settings"
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 rounded-lg',
-                'bg-white/5 border border-white/10 text-white/85 hover:bg-white/12 hover:text-white transition-colors',
-                'p-2'
-              )}
-            >
-              <Settings className="h-4 w-4" />
-              {!isDesktopCollapsed && <span className="text-[0.6rem] leading-none">Settings</span>}
-            </Link>
-          </div>
-
-          <Button
-            variant="ghost"
-            onClick={() => (window.location.href = '/api/auth/signout')}
-            aria-label="Sign Out"
-            title="Sign Out"
-            className={cn(
-              'mt-2 w-full flex items-center justify-center gap-2 h-8',
-              'bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm'
-            )}
-          >
-            <LogOut className="h-4 w-4" />
-            {!isDesktopCollapsed && <span className="text-sm font-medium">Sign Out</span>}
-          </Button>
-        </div>
+        {/* Compact Footer - Removed as per new design (moved to TopBar) */}
       </aside>
     </>
   );

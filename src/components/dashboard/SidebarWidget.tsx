@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
@@ -38,6 +38,12 @@ export default function SidebarWidget({
   lastUpdated,
   onRefresh,
 }: SidebarWidgetProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <Card className="shadow-lg border-border/50 bg-card">
       <CardHeader className="pb-3">
@@ -88,8 +94,8 @@ export default function SidebarWidget({
           )}
         </div>
 
-        {/* Last Updated Indicator */}
-        {lastUpdated && (
+        {/* Last Updated Indicator - Client Only to prevent hydration mismatch */}
+        {mounted && lastUpdated && (
           <Badge
             variant="secondary"
             className="w-fit mt-2 flex items-center gap-2 text-xs font-medium"
