@@ -37,13 +37,13 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
         continue-on-error: true
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         continue-on-error: true
 
       - name: ESLint Security Scan (SARIF)
@@ -58,7 +58,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload ESLint SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: reports/eslint-security.sarif
@@ -180,7 +180,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'reports/trivy-results.sarif'
@@ -263,7 +263,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Checkov SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: reports/results_sarif.sarif
