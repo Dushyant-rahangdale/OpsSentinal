@@ -453,7 +453,7 @@ export default function Sidebar(
         <div
           className={cn(
             'mt-auto shrink-0 border-t border-white/5',
-            'bg-black/20 backdrop-blur-sm',
+            // Removed bg-black/20 to match sidebar theme seamlessly
             isDesktopCollapsed ? 'p-2' : 'p-3'
           )}
         >
@@ -490,10 +490,11 @@ export default function Sidebar(
             {!isDesktopCollapsed && (
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold text-white truncate group-hover:text-indigo-200 transition-colors">
-                  {userName || userEmail || 'User'}
+                  {userName || 'User'}
                 </div>
-                <div className="text-[10px] text-white/40 uppercase tracking-wider font-medium truncate">
-                  {userRole ? userRole.toLowerCase() : 'Admin'}
+                <div className="text-[10px] text-white/40 font-medium truncate">
+                  {/* Display Email as requested */}
+                  {userEmail || 'user@example.com'}
                 </div>
               </div>
             )}
