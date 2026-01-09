@@ -314,7 +314,7 @@ export default function StatusPagePrivacySettings({
               checked={settings.showIncidentUrgency}
               onChange={checked => updateSetting('showIncidentUrgency', checked)}
               label="Show Incident Urgency"
-              helperText="Display urgency level (High/Low) for incidents"
+              helperText="Display urgency level (High/Medium/Low) for incidents"
             />
             <Switch
               checked={settings.showIncidentAssignees}

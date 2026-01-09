@@ -1,78 +1,70 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, IncidentUrgency as PrismaIncidentUrgency } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
-// Configuration
-const TOTAL_INCIDENTS = 1000;
-const INCIDENT_HISTORY_DAYS = 730; // 2 Years
-const TEAMS_COUNT = 6;
-const USERS_PER_TEAM = 5;
-const SERVICES_PER_TEAM = 4;
+const seedConfig = {
+  teams: 6,
+  servicesPerTeam: 3,
+  incidents: 36,
+  usersPerTeam: 4,
+  incidentHistoryDays: 120,
+  slaSnapshotDays: 7,
+};
 
-// =============================================================================
-// DATA GENERATORS
-// =============================================================================
+const urgencyLevels = ['HIGH', 'MEDIUM', 'LOW'] as const;
+type IncidentUrgency = (typeof urgencyLevels)[number];
+
+const incidentStatuses = ['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED'] as const;
+type IncidentStatus = (typeof incidentStatuses)[number];
+
+const serviceStatuses = ['OPERATIONAL', 'DEGRADED', 'PARTIAL_OUTAGE', 'MAJOR_OUTAGE'] as const;
+type ServiceStatus = (typeof serviceStatuses)[number];
+
+const notificationChannels = ['EMAIL', 'SMS', 'PUSH', 'SLACK', 'WEBHOOK', 'WHATSAPP'] as const;
+type NotificationChannel = (typeof notificationChannels)[number];
 
 const firstNames = [
-  'James',
-  'Mary',
-  'Robert',
-  'Patricia',
-  'John',
-  'Jennifer',
-  'Michael',
-  'Linda',
-  'David',
-  'Elizabeth',
-  'William',
-  'Barbara',
-  'Richard',
-  'Susan',
-  'Joseph',
-  'Jessica',
-  'Thomas',
-  'Sarah',
-  'Charles',
-  'Karen',
+  'Ava',
+  'Noah',
+  'Maya',
+  'Leo',
+  'Zoe',
+  'Owen',
+  'Nina',
+  'Kai',
+  'Ivy',
+  'Jude',
+  'Riya',
+  'Miles',
 ];
+
 const lastNames = [
-  'Smith',
-  'Johnson',
-  'Williams',
-  'Brown',
-  'Jones',
+  'Patel',
+  'Nguyen',
   'Garcia',
-  'Miller',
-  'Davis',
-  'Rodriguez',
+  'Smith',
+  'Khan',
+  'Bose',
+  'Kim',
+  'Brown',
+  'Lee',
   'Martinez',
-  'Hernandez',
-  'Lopez',
-  'Gonzalez',
-  'Wilson',
-  'Anderson',
-  'Thomas',
-  'Taylor',
-  'Moore',
-  'Jackson',
-  'Martin',
 ];
-const domains = ['example.com', 'test.com', 'demo.org'];
 
 const teamNames = [
   'Platform Engineering',
-  'Core Infrastructure',
-  'Payment Gateway',
-  'Frontend Experience',
-  'Data Science',
-  'Customer Success',
   'Security Operations',
-  'Mobile Development',
+  'Payments',
+  'Customer Success',
+  'Data & AI',
+  'Mobile Reliability',
 ];
 
-const serviceTypes = [
+const serviceCatalog = [
   { name: 'API Gateway', tier: 'Gold' },
   { name: 'Auth Service', tier: 'Gold' },
   { name: 'Payment Processor', tier: 'Gold' },
@@ -89,29 +81,36 @@ const serviceTypes = [
 
 const incidentScenarios = [
   { title: 'High Latency', desc: 'Response times exceeding 500ms SLA' },
-  {
-    title: 'Database Connection Timeout',
-    desc: 'Connection pool exhausted, refusing new connections',
-  },
-  { title: '5xx Error Spike', desc: 'Elevated rate of 500/502 errors detected by load balancer' },
-  { title: 'Memory Leak', desc: 'Container memory usage > 90% causing OOM kills' },
-  { title: 'Certificate Expiration', desc: 'SSL certificate expiring in less than 24h' },
-  { title: 'Disk Space Low', desc: 'Root partition at 95% capacity' },
+  { title: 'Database Connection Timeout', desc: 'Connection pool exhausted' },
+  { title: '5xx Error Spike', desc: 'Elevated 500/502 errors detected' },
+  { title: 'Memory Leak', desc: 'Container memory usage > 90%' },
+  { title: 'Certificate Expiration', desc: 'SSL certificate expiring in 24h' },
+  { title: 'Disk Space Low', desc: 'Root partition above 95% capacity' },
   { title: 'Queue Backlog', desc: 'Message processing lag > 5 minutes' },
   { title: 'Third-party API Down', desc: 'Payment provider API returning 503' },
   { title: 'Frontend Crash', desc: 'JS error rate spike in production' },
   { title: 'Login Failure', desc: 'Users unable to authenticate via OAuth' },
 ];
 
-// =============================================================================
-// HELPERS
-// =============================================================================
+const tags = [
+  { name: 'network', color: '#2563eb' },
+  { name: 'database', color: '#16a34a' },
+  { name: 'latency', color: '#f59e0b' },
+  { name: 'security', color: '#dc2626' },
+  { name: 'third-party', color: '#7c3aed' },
+];
 
-function randomInt(max: number) {
-  return Math.floor(Math.random() * max);
+let seedState = 20250109;
+function seededRandom() {
+  seedState = (seedState * 48271) % 2147483647;
+  return seedState / 2147483647;
 }
 
-function randomPick<T>(items: T[]): T {
+function randomInt(max: number) {
+  return Math.floor(seededRandom() * max);
+}
+
+function randomPick<T>(items: readonly T[]): T {
   return items[randomInt(items.length)];
 }
 
@@ -121,12 +120,14 @@ function daysAgo(days: number) {
   return d;
 }
 
-function addMinutes(date: Date, minutes: number) {
-  return new Date(date.getTime() + minutes * 60000);
+function hoursAgo(hours: number) {
+  const d = new Date();
+  d.setHours(d.getHours() - hours);
+  return d;
 }
 
-function hoursFrom(date: Date, hours: number) {
-  return new Date(date.getTime() + hours * 3600000);
+function minutesFrom(date: Date, minutes: number) {
+  return new Date(date.getTime() + minutes * 60000);
 }
 
 function clampToNow(date: Date) {
@@ -135,150 +136,295 @@ function clampToNow(date: Date) {
   return date;
 }
 
-// =============================================================================
-// MAIN
-// =============================================================================
+function sha256(value: string) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
 
-async function main() {
-  console.log('🌱 Starting ULTIMATE seed...');
-
-  // 1. CLEANUP
-  console.log('🗑️ Cleaning database...');
-  await prisma.$transaction([
-    prisma.incidentEvent.deleteMany(),
-    prisma.incidentNote.deleteMany(),
-    prisma.alert.deleteMany(),
-    prisma.incidentTag.deleteMany(),
-    prisma.postmortem.deleteMany(),
-    prisma.notification.deleteMany(),
-    prisma.incidentWatcher.deleteMany(),
-    prisma.incident.deleteMany(),
-    prisma.onCallShift.deleteMany(),
+async function clearDatabase() {
+  const deleteOperations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.statusPageWebhook.deleteMany(),
+    prisma.statusPageSubscription.deleteMany(),
+    prisma.statusPageApiToken.deleteMany(),
+    prisma.statusPageAnnouncement.deleteMany(),
     prisma.statusPageService.deleteMany(),
     prisma.statusPage.deleteMany(),
+    prisma.sLASnapshot.deleteMany(),
+    prisma.sLADefinition.deleteMany(),
+    prisma.sLAPerformanceLog.deleteMany(),
+    prisma.incidentMetricRollup.deleteMany(),
+    prisma.metricRollup.deleteMany(),
+    prisma.logEntry.deleteMany(),
+    prisma.backgroundJob.deleteMany(),
+    prisma.customFieldValue.deleteMany(),
+    prisma.customField.deleteMany(),
+    prisma.searchPresetUsage.deleteMany(),
+    prisma.searchPreset.deleteMany(),
+    prisma.inAppNotification.deleteMany(),
+    prisma.notification.deleteMany(),
+    prisma.incidentWatcher.deleteMany(),
+    prisma.incidentTag.deleteMany(),
+    prisma.tag.deleteMany(),
+    prisma.incidentNote.deleteMany(),
+    prisma.incidentEvent.deleteMany(),
+    prisma.postmortem.deleteMany(),
+    prisma.alert.deleteMany(),
+    prisma.incident.deleteMany(),
     prisma.integration.deleteMany(),
+    prisma.webhookIntegration.deleteMany(),
+    prisma.slackIntegration.deleteMany(),
+    prisma.incidentTemplate.deleteMany(),
     prisma.service.deleteMany(),
+    prisma.escalationRule.deleteMany(),
+    prisma.escalationPolicy.deleteMany(),
+    prisma.onCallShift.deleteMany(),
+    prisma.onCallOverride.deleteMany(),
     prisma.onCallLayerUser.deleteMany(),
     prisma.onCallLayer.deleteMany(),
     prisma.onCallSchedule.deleteMany(),
-    prisma.escalationRule.deleteMany(),
-    prisma.escalationPolicy.deleteMany(),
     prisma.teamMember.deleteMany(),
     prisma.team.deleteMany(),
     prisma.apiKey.deleteMany(),
-
     prisma.userDevice.deleteMany(),
+    prisma.userToken.deleteMany(),
+    prisma.notificationProvider.deleteMany(),
+    prisma.auditLog.deleteMany(),
+    prisma.oidcIdentity.deleteMany(),
+    prisma.oidcConfig.deleteMany(),
+    prisma.slackOAuthConfig.deleteMany(),
+    prisma.systemSettings.deleteMany(),
+    prisma.systemConfig.deleteMany(),
     prisma.user.deleteMany(),
-  ]);
-  console.log('   ✓ Database cleared');
+  ];
+
+  await prisma.$transaction(deleteOperations);
+}
+
+async function main() {
+  process.stdout.write('Seeding OpsSentinal demo data...\n');
+
+  await clearDatabase();
 
   const passwordHash = await bcrypt.hash('Password123!', 10);
 
-  // 2. CREATE USERS & TEAMS
-  console.log('👥 Creating Organization Structure...');
-  const allUsers = [];
-  const allTeams = [];
-
-  for (let i = 0; i < TEAMS_COUNT; i++) {
-    // Create Team
-    const teamName = teamNames.find((_, index) => index === i) || `Team ${i + 1}`;
-    const team = await prisma.team.create({
-      data: {
-        name: teamName,
-        description: `Responsible for ${teamName} services`,
-      },
-    });
-    allTeams.push(team);
-
-    // Create Users for Team
-    const teamUsers = [];
-    for (let j = 0; j < USERS_PER_TEAM; j++) {
-      const firstName = randomPick(firstNames);
-      const lastName = randomPick(lastNames);
-      const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomInt(99)}@${randomPick(domains)}`;
-
-      const user = await prisma.user.create({
-        data: {
-          name: `${firstName} ${lastName}`,
-          email,
-          role: 'RESPONDER', // Mostly responders
-          status: 'ACTIVE',
-          passwordHash,
-        },
-      });
-      allUsers.push(user);
-      teamUsers.push(user);
-
-      // Add to Team
-      await prisma.teamMember.create({
-        data: {
-          teamId: team.id,
-          userId: user.id,
-          role: j === 0 ? 'OWNER' : 'MEMBER',
-        },
-      });
-    }
-  }
-
-  // Create Admin
-  const _admin = await prisma.user.create({
+  const admin = await prisma.user.create({
     data: {
       name: 'System Admin',
       email: 'admin@example.com',
       role: 'ADMIN',
       status: 'ACTIVE',
       passwordHash,
+      timeZone: 'UTC',
+      incidentDigest: 'HIGH',
+      emailNotificationsEnabled: true,
     },
   });
-  console.log(`   ✓ Created ${allTeams.length} teams and ${allUsers.length + 1} users`);
 
-  // 3. CREATE SCHEDULES & POLICIES
-  console.log('📅 Creating Schedules & Policies...');
-  const policies = [];
+  const seededUsers: Array<{ id: string; name: string; email: string }> = [admin];
 
-  for (const team of allTeams) {
-    // Get team members
-    const members = await prisma.teamMember.findMany({
-      where: { teamId: team.id },
-      include: { user: true },
+  for (let i = 0; i < seedConfig.teams * seedConfig.usersPerTeam; i++) {
+    const firstName = randomPick(firstNames);
+    const lastName = randomPick(lastNames);
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomInt(99)}@example.com`;
+
+    const user = await prisma.user.create({
+      data: {
+        name: `${firstName} ${lastName}`,
+        email,
+        role: i % 5 === 0 ? 'RESPONDER' : 'USER',
+        status: i % 9 === 0 ? 'INVITED' : 'ACTIVE',
+        passwordHash: i % 9 === 0 ? null : passwordHash,
+        timeZone: i % 2 === 0 ? 'UTC' : 'America/New_York',
+        incidentDigest: i % 3 === 0 ? 'ALL' : 'HIGH',
+        emailNotificationsEnabled: i % 2 === 0,
+        smsNotificationsEnabled: i % 4 === 0,
+        pushNotificationsEnabled: i % 3 === 0,
+        phoneNumber: i % 4 === 0 ? `+1555${randomInt(9000000) + 1000000}` : null,
+        dailySummary: i % 2 === 0,
+        department: i % 3 === 0 ? 'Engineering' : 'Operations',
+        jobTitle: i % 4 === 0 ? 'On-Call Lead' : 'SRE',
+        avatarUrl: i % 5 === 0 ? `https://i.pravatar.cc/150?img=${i + 1}` : null,
+      },
     });
-    const userIds = members.map(m => m.user.id);
 
-    // On-Call Schedule
+    seededUsers.push({ id: user.id, name: user.name, email: user.email });
+  }
+
+  await prisma.slackOAuthConfig.create({
+    data: {
+      clientId: '1234567890.1234567890',
+      clientSecret: sha256('slack-oauth-secret'),
+      redirectUri: 'https://localhost:3000/api/slack/callback',
+      enabled: true,
+      updatedBy: admin.id,
+    },
+  });
+
+  await prisma.oidcConfig.create({
+    data: {
+      issuer: 'https://login.example.com',
+      clientId: 'opssentinal-demo',
+      clientSecret: sha256('oidc-secret'),
+      enabled: true,
+      autoProvision: true,
+      allowedDomains: ['example.com'],
+      roleMapping: [{ claim: 'role', value: 'admin', role: 'ADMIN' }],
+      customScopes: 'openid profile email groups',
+      providerType: 'okta',
+      providerLabel: 'Example Okta',
+      profileMapping: { department: 'dept', jobTitle: 'title', avatarUrl: 'picture' },
+      updatedBy: admin.id,
+    },
+  });
+
+  await prisma.notificationProvider.createMany({
+    data: [
+      {
+        provider: 'resend',
+        enabled: true,
+        config: { apiKey: sha256('resend-key'), sender: 'OpsSentinal <noreply@example.com>' },
+        updatedBy: admin.id,
+      },
+      {
+        provider: 'twilio',
+        enabled: true,
+        config: { accountSid: 'ACXXXXX', authToken: sha256('twilio-token'), from: '+15551234567' },
+        updatedBy: admin.id,
+      },
+    ],
+  });
+
+  await prisma.systemSettings.create({
+    data: {
+      appUrl: 'https://opssentinal.local',
+      encryptionKey: sha256('seed-encryption-key').slice(0, 64),
+      incidentRetentionDays: 365,
+      alertRetentionDays: 180,
+      metricsRetentionDays: 180,
+      realTimeWindowDays: 60,
+    },
+  });
+
+  await prisma.systemConfig.createMany({
+    data: [
+      {
+        key: 'encryption_fingerprint',
+        value: { fingerprint: sha256('seed-key') },
+        updatedBy: admin.id,
+      },
+      {
+        key: 'feature_flags',
+        value: { statusPageV2: true, pagerRotation: true },
+        updatedBy: admin.id,
+      },
+    ],
+  });
+
+  const teams: Array<{ id: string; name: string; leadId: string }> = [];
+  const teamMembers: Array<{ teamId: string; userId: string }> = [];
+
+  for (let i = 0; i < seedConfig.teams; i++) {
+    const team = await prisma.team.create({
+      data: {
+        name: teamNames[i] ?? `Team ${i + 1}`,
+        description: `Responsible for ${teamNames[i] ?? `Team ${i + 1}`} services`,
+      },
+    });
+
+    const teamUsers = seededUsers.slice(
+      1 + i * seedConfig.usersPerTeam,
+      1 + (i + 1) * seedConfig.usersPerTeam
+    );
+    const lead = teamUsers[0];
+
+    for (const [index, member] of teamUsers.entries()) {
+      teamMembers.push({ teamId: team.id, userId: member.id });
+      await prisma.teamMember.create({
+        data: {
+          teamId: team.id,
+          userId: member.id,
+          role: index === 0 ? 'OWNER' : index === 1 ? 'ADMIN' : 'MEMBER',
+        },
+      });
+    }
+
+    await prisma.team.update({ where: { id: team.id }, data: { teamLeadId: lead.id } });
+    teams.push({ id: team.id, name: team.name, leadId: lead.id });
+  }
+
+  await prisma.oidcIdentity.create({
+    data: {
+      issuer: 'https://login.example.com',
+      subject: 'user-001',
+      email: seededUsers[1]?.email ?? 'user@example.com',
+      userId: seededUsers[1]?.id ?? admin.id,
+    },
+  });
+
+  const schedules: Array<{ id: string; teamId: string; layerUserIds: string[] }> = [];
+
+  for (const team of teams) {
+    const members = teamMembers
+      .filter(member => member.teamId === team.id)
+      .map(member => member.userId);
     const schedule = await prisma.onCallSchedule.create({
       data: {
-        name: `${team.name} On-Call`,
+        name: `${team.name} Primary On-Call`,
         timeZone: 'UTC',
         layers: {
           create: [
             {
-              name: 'Primary Rotation',
-              start: daysAgo(365), // Started a year ago
+              name: 'Primary',
+              start: daysAgo(30),
               rotationLengthHours: 24,
               users: {
-                create: userIds.map((uid, idx) => ({ userId: uid, position: idx })),
+                create: members.map((userId, index) => ({ userId, position: index })),
+              },
+            },
+            {
+              name: 'Secondary',
+              start: daysAgo(30),
+              rotationLengthHours: 24,
+              users: {
+                create: members.map((userId, index) => ({ userId, position: index })),
               },
             },
           ],
         },
       },
+      include: { layers: { include: { users: true } } },
     });
 
-    // Let's do simple loop for shifts: 60 days starting 30 days ago
-    const shiftStartBase = daysAgo(30);
-    for (let i = 0; i < 60; i++) {
-      const start = addMinutes(shiftStartBase, i * 24 * 60);
-      const end = addMinutes(start, 24 * 60);
-      const userId = userIds[i % userIds.length];
-      await prisma.onCallShift.create({
-        data: { scheduleId: schedule.id, userId, start, end },
-      });
+    const layerUserIds = schedule.layers.flatMap(layer => layer.users.map(user => user.userId));
+    schedules.push({ id: schedule.id, teamId: team.id, layerUserIds });
+
+    for (let day = 0; day < 14; day++) {
+      const start = minutesFrom(daysAgo(14 - day), 0);
+      const end = minutesFrom(start, 24 * 60);
+      const userId = members[day % members.length] ?? team.leadId;
+      await prisma.onCallShift.create({ data: { scheduleId: schedule.id, userId, start, end } });
     }
 
-    // Escalation Policy
+    await prisma.onCallOverride.create({
+      data: {
+        scheduleId: schedule.id,
+        userId: members[1] ?? team.leadId,
+        replacesUserId: members[0] ?? team.leadId,
+        start: hoursAgo(6),
+        end: hoursAgo(-6),
+      },
+    });
+  }
+
+  const policies: Array<{ id: string; teamId: string }> = [];
+
+  for (const schedule of schedules) {
+    const team = teams.find(item => item.id === schedule.teamId);
+    if (!team) continue;
+
     const policy = await prisma.escalationPolicy.create({
       data: {
-        name: `${team.name} Policy`,
+        name: `${team.name} Escalation Policy`,
+        description: `Standard escalation policy for ${team.name}`,
         steps: {
           create: [
             {
@@ -286,69 +432,193 @@ async function main() {
               delayMinutes: 0,
               targetType: 'SCHEDULE',
               targetScheduleId: schedule.id,
+              notificationChannels: ['SLACK', 'EMAIL'],
             },
-            { stepOrder: 1, delayMinutes: 15, targetType: 'USER', targetUserId: userIds[0] }, // Team lead
+            {
+              stepOrder: 1,
+              delayMinutes: 10,
+              targetType: 'USER',
+              targetUserId: team.leadId,
+              notificationChannels: ['SMS', 'PUSH'],
+            },
+            {
+              stepOrder: 2,
+              delayMinutes: 20,
+              targetType: 'TEAM',
+              targetTeamId: team.id,
+              notificationChannels: ['EMAIL'],
+              notifyOnlyTeamLead: false,
+            },
           ],
         },
       },
     });
-    policies.push({ teamId: team.id, policyId: policy.id });
+
+    policies.push({ id: policy.id, teamId: team.id });
   }
-  console.log('   ✓ Schedules & Policies ready');
 
-  // 4. CREATE SERVICES
-  console.log('🔧 Creating Services...');
-  const allServices = [];
+  const services: Array<{ id: string; name: string; teamId: string; status: ServiceStatus }> = [];
+  const slackIntegration = await prisma.slackIntegration.create({
+    data: {
+      workspaceId: 'T00000001',
+      workspaceName: 'OpsSentinal Demo',
+      botToken: sha256('xoxb-demo-token'),
+      signingSecret: sha256('slack-signing-secret'),
+      installedBy: admin.id,
+      scopes: ['chat:write', 'channels:read', 'users:read'],
+      enabled: true,
+    },
+  });
 
-  for (const team of allTeams) {
-    const policy = policies.find(p => p.teamId === team.id)!;
-
-    for (let k = 0; k < SERVICES_PER_TEAM; k++) {
-      const template = randomPick(serviceTypes);
-      const name = `${team.name.split(' ')[0]} ${template.name} ${k + 1}`;
-
+  let slackAttached = false;
+  for (const team of teams) {
+    const policy = policies.find(item => item.teamId === team.id);
+    for (let index = 0; index < seedConfig.servicesPerTeam; index++) {
+      const template = randomPick(serviceCatalog);
+      const name = `${team.name.split(' ')[0]} ${template.name} ${index + 1}`;
+      const status = randomPick(serviceStatuses);
+      const attachSlack = !slackAttached;
       const service = await prisma.service.create({
         data: {
           name,
           description: `Managed by ${team.name}`,
-          status: 'OPERATIONAL',
+          status,
           slaTier: template.tier,
           teamId: team.id,
-          escalationPolicyId: policy.policyId,
-          targetAckMinutes: template.tier === 'Gold' ? 15 : 60,
-          targetResolveMinutes: template.tier === 'Gold' ? 120 : 480,
+          escalationPolicyId: policy?.id,
+          targetAckMinutes: template.tier === 'Gold' ? 10 : 45,
+          targetResolveMinutes: template.tier === 'Gold' ? 90 : 240,
+          serviceNotificationChannels: ['EMAIL', 'SLACK'],
+          serviceNotifyOnTriggered: true,
+          serviceNotifyOnAck: true,
+          serviceNotifyOnResolved: true,
+          serviceNotifyOnSlaBreach: true,
+          slackIntegrationId: attachSlack ? slackIntegration.id : null,
+          slackChannel: attachSlack ? '#incidents' : null,
+          slackWebhookUrl: attachSlack ? 'https://hooks.slack.com/services/T000/B000/XXXX' : null,
+          webhookUrl: index === 1 ? 'https://webhook.site/opssentinal-demo' : null,
         },
       });
-      allServices.push(service);
+
+      services.push({ id: service.id, name: service.name, teamId: team.id, status });
+      if (attachSlack) slackAttached = true;
+
+      await prisma.integration.create({
+        data: {
+          name: `${service.name} Events API`,
+          type: 'EVENTS_API_V2',
+          key: `${service.name.toLowerCase().replace(/\s+/g, '-')}-key`,
+          serviceId: service.id,
+        },
+      });
+
+      await prisma.webhookIntegration.create({
+        data: {
+          serviceId: service.id,
+          name: `${service.name} Teams Webhook`,
+          type: 'TEAMS',
+          url: 'https://example.com/webhook/teams',
+          secret: sha256(`${service.id}-teams`),
+          channel: 'incident-room',
+          enabled: true,
+        },
+      });
+
+      await prisma.sLADefinition.create({
+        data: {
+          name: `${service.name} MTTA`,
+          description: `MTTA SLA for ${service.name}`,
+          targetAckTime: template.tier === 'Gold' ? 15 : 30,
+          targetResolveTime: template.tier === 'Gold' ? 120 : 360,
+          serviceId: service.id,
+          priority: template.tier === 'Gold' ? 'P1' : 'P2',
+          target: 99.5,
+          window: '30d',
+          metricType: 'MTTA',
+        },
+      });
     }
   }
-  console.log(`   ✓ ${allServices.length} Services active`);
 
-  // 5. INCIDENTS GENERATION
-  console.log(`🔥 Generating ${TOTAL_INCIDENTS} Incidents (2 Years History)...`);
+  for (const tag of tags) {
+    await prisma.tag.create({ data: tag });
+  }
 
-  let incidentCount = 0;
-  const now = new Date();
+  const templates = [
+    {
+      name: 'Database Incident',
+      description: 'Standard database degradation template',
+      title: 'Database latency elevated',
+      descriptionText: 'Database latency and error rates elevated across read replicas.',
+      defaultUrgency: PrismaIncidentUrgency.HIGH,
+      defaultPriority: 'P1',
+    },
+    {
+      name: 'API Performance',
+      description: 'API performance regression template',
+      title: 'API latency regression',
+      descriptionText: 'Latency regression detected in API Gateway.',
+      defaultUrgency: PrismaIncidentUrgency.MEDIUM,
+      defaultPriority: 'P2',
+    },
+  ] satisfies Array<{
+    name: string;
+    description: string;
+    title: string;
+    descriptionText: string;
+    defaultUrgency: PrismaIncidentUrgency;
+    defaultPriority: string;
+  }>;
 
-  for (let i = 0; i < TOTAL_INCIDENTS; i++) {
-    const service = randomPick(allServices);
+  for (const template of templates) {
+    await prisma.incidentTemplate.create({
+      data: {
+        name: template.name,
+        description: template.description,
+        title: template.title,
+        descriptionText: template.descriptionText,
+        defaultUrgency: template.defaultUrgency,
+        defaultPriority: template.defaultPriority,
+        defaultServiceId: services[0]?.id ?? null,
+        createdById: admin.id,
+        isPublic: true,
+      },
+    });
+  }
+
+  const incidents: Array<{
+    id: string;
+    urgency: IncidentUrgency;
+    status: IncidentStatus;
+    createdAt: Date;
+  }> = [];
+
+  for (let i = 0; i < seedConfig.incidents; i++) {
+    const service = services[i % services.length];
     const scenario = randomPick(incidentScenarios);
+    const urgency = urgencyLevels[i % urgencyLevels.length];
+    const status = incidentStatuses[i % incidentStatuses.length];
+    const daysBack = randomInt(seedConfig.incidentHistoryDays);
+    const createdAt = minutesFrom(daysAgo(daysBack), randomInt(1440));
 
-    // Date Distribution: 50% recent (last 30d), 50% old (31d - 730d)
-    const isRecent = Math.random() < 0.5;
-    const daysBack = isRecent ? randomInt(30) : randomInt(INCIDENT_HISTORY_DAYS - 30) + 30;
+    const ackDelay =
+      urgency === 'HIGH'
+        ? randomInt(15) + 1
+        : urgency === 'MEDIUM'
+          ? randomInt(45) + 5
+          : randomInt(90) + 10;
+    const resolveDelay =
+      urgency === 'HIGH'
+        ? randomInt(180) + 10
+        : urgency === 'MEDIUM'
+          ? randomInt(360) + 30
+          : randomInt(1440) + 60;
 
-    // Creation time
-    const createdAt = hoursFrom(daysAgo(daysBack), randomInt(24));
-    if (createdAt > now) createdAt.setTime(now.getTime() - 3600000);
-
-    // Lifecycle
-    let status: 'RESOLVED' | 'ACKNOWLEDGED' | 'OPEN' = 'RESOLVED';
-    const urgency: 'HIGH' | 'LOW' = Math.random() < 0.3 ? 'HIGH' : 'LOW';
-
-    // If very recent, might be OPEN
-    if (daysBack < 1 && Math.random() < 0.2) status = 'OPEN';
-    else if (daysBack < 2 && Math.random() < 0.3) status = 'ACKNOWLEDGED';
+    const acknowledgedAt = status === 'OPEN' ? null : clampToNow(minutesFrom(createdAt, ackDelay));
+    const resolvedAt =
+      status === 'RESOLVED'
+        ? clampToNow(minutesFrom(acknowledgedAt ?? createdAt, resolveDelay))
+        : null;
 
     const incident = await prisma.incident.create({
       data: {
@@ -356,110 +626,438 @@ async function main() {
         description: scenario.desc,
         status,
         urgency,
-        priority: urgency === 'HIGH' ? 'P1' : 'P3',
+        priority: urgency === 'HIGH' ? 'P1' : urgency === 'MEDIUM' ? 'P2' : 'P3',
         serviceId: service.id,
-        teamId: service.teamId, // Assign to team
-        dedupKey: `seed-mega-${i}`,
+        teamId: service.teamId,
+        assigneeId: i % 3 === 0 ? (seededUsers[1]?.id ?? admin.id) : null,
+        dedupKey: `seed-${service.id}-${i}`,
         createdAt,
-        updatedAt: createdAt, // will update below
+        updatedAt: resolvedAt ?? acknowledgedAt ?? createdAt,
+        acknowledgedAt,
+        resolvedAt,
+        snoozedUntil: status === 'SNOOZED' ? minutesFrom(createdAt, 90) : null,
+        snoozeReason: status === 'SNOOZED' ? 'Maintenance window' : null,
+        currentEscalationStep: status === 'OPEN' ? 1 : null,
+        escalationStatus: status === 'OPEN' ? 'ESCALATING' : null,
+        nextEscalationAt: status === 'OPEN' ? minutesFrom(createdAt, 20) : null,
       },
     });
 
-    // Events
+    incidents.push({ id: incident.id, urgency, status, createdAt });
+
     await prisma.incidentEvent.create({
-      data: { incidentId: incident.id, message: 'Triggered via API', createdAt },
+      data: { incidentId: incident.id, message: 'Incident triggered', createdAt },
     });
 
-    let lastEventTime = createdAt;
-    let acknowledgedAt: Date | null = null;
-    let resolvedAt: Date | null = null;
-
-    // Ack Logic
-    if (status !== 'OPEN') {
-      // Ack time: 1 min to 4 hours
-      const delay = urgency === 'HIGH' ? randomInt(15) + 1 : randomInt(240) + 5;
-      acknowledgedAt = addMinutes(createdAt, delay);
-      acknowledgedAt = clampToNow(acknowledgedAt);
-
+    if (acknowledgedAt) {
       await prisma.incidentEvent.create({
-        data: { incidentId: incident.id, message: 'Acknowledged', createdAt: acknowledgedAt },
-      });
-      lastEventTime = acknowledgedAt;
-
-      await prisma.incident.update({
-        where: { id: incident.id },
-        data: { acknowledgedAt, assigneeId: allUsers[0].id }, // Assign to random admin as placeholder or team member
+        data: {
+          incidentId: incident.id,
+          message: 'Incident acknowledged',
+          createdAt: acknowledgedAt,
+        },
       });
     }
 
-    // Resolve Logic
-    if (status === 'RESOLVED') {
-      // Resolve time: 10 mins to 2 days
-      const delay = urgency === 'HIGH' ? randomInt(120) + 10 : randomInt(2880) + 60;
-      resolvedAt = addMinutes(lastEventTime, delay);
-      resolvedAt = clampToNow(resolvedAt);
-
+    if (resolvedAt) {
       await prisma.incidentEvent.create({
-        data: { incidentId: incident.id, message: 'Resolved', createdAt: resolvedAt },
+        data: { incidentId: incident.id, message: 'Incident resolved', createdAt: resolvedAt },
       });
+    }
 
-      // Postmortem for severe ones
-      if (urgency === 'HIGH' && Math.random() < 0.2) {
-        await prisma.postmortem.create({
+    await prisma.incidentNote.create({
+      data: {
+        incidentId: incident.id,
+        userId: seededUsers[2]?.id ?? admin.id,
+        content: 'Investigating root cause and mitigations.',
+        createdAt: minutesFrom(createdAt, 15),
+      },
+    });
+
+    await prisma.incidentWatcher.create({
+      data: {
+        incidentId: incident.id,
+        userId: seededUsers[3]?.id ?? admin.id,
+        role: 'STAKEHOLDER',
+      },
+    });
+
+    const tagList = await prisma.tag.findMany({ take: 2, skip: i % 3 });
+    for (const tag of tagList) {
+      await prisma.incidentTag.create({
+        data: { incidentId: incident.id, tagId: tag.id },
+      });
+    }
+
+    await prisma.alert.create({
+      data: {
+        incidentId: incident.id,
+        serviceId: service.id,
+        status: resolvedAt ? 'RESOLVED' : 'TRIGGERED',
+        dedupKey: `alert-${incident.id}`,
+        payload: {
+          source: 'cloudwatch',
+          metric: 'latency',
+          thresholdMs: 500,
+          observedMs: 820,
+        },
+        createdAt,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        incidentId: incident.id,
+        userId: seededUsers[4]?.id ?? admin.id,
+        channel: randomPick(notificationChannels),
+        status: resolvedAt ? 'DELIVERED' : 'SENT',
+        message: `Incident update for ${service.name}`,
+        sentAt: minutesFrom(createdAt, 5),
+        deliveredAt: resolvedAt ? minutesFrom(createdAt, 8) : null,
+        attempts: 1,
+      },
+    });
+
+    if (resolvedAt && urgency !== 'LOW' && i % 3 === 0) {
+      await prisma.postmortem.create({
+        data: {
+          incidentId: incident.id,
+          title: `Postmortem: ${scenario.title}`,
+          summary: 'Summary of impact and recovery steps.',
+          rootCause: 'Capacity planning shortfall',
+          resolution: 'Scaled primary database cluster',
+          actionItems: [
+            { owner: 'Platform', action: 'Add capacity alerts', dueDate: '2025-03-01' },
+            { owner: 'SRE', action: 'Update runbook', dueDate: '2025-03-10' },
+          ],
+          status: 'PUBLISHED',
+          publishedAt: minutesFrom(resolvedAt, 10),
+          createdById: admin.id,
+        },
+      });
+    }
+  }
+
+  const customFields = await prisma.customField.createMany({
+    data: [
+      {
+        name: 'Customer Tier',
+        key: 'customer_tier',
+        type: 'SELECT',
+        required: false,
+        defaultValue: 'enterprise',
+        options: ['enterprise', 'mid-market', 'startup'],
+        order: 1,
+        showInList: true,
+      },
+      {
+        name: 'Region',
+        key: 'region',
+        type: 'TEXT',
+        required: false,
+        defaultValue: 'us-east-1',
+        order: 2,
+        showInList: true,
+      },
+    ],
+  });
+
+  if (customFields.count > 0) {
+    const fields = await prisma.customField.findMany();
+    for (const incident of incidents.slice(0, 6)) {
+      for (const field of fields) {
+        await prisma.customFieldValue.create({
           data: {
             incidentId: incident.id,
-            title: `Post-Mortem: ${scenario.title}`,
-            rootCause: 'Capacity planning failure',
-            status: 'PUBLISHED',
-            createdById: allUsers[0].id,
+            customFieldId: field.id,
+            value: field.key === 'customer_tier' ? 'enterprise' : 'us-east-1',
           },
         });
       }
-
-      await prisma.incident.update({
-        where: { id: incident.id },
-        data: { resolvedAt, updatedAt: resolvedAt },
-      });
     }
-
-    incidentCount++;
-    if (i % 100 === 0) process.stdout.write('.');
   }
-  console.log(`\n   ✓ ${incidentCount} incidents generated`);
 
-  // 6. STATUS PAGE
-  console.log('🌐 Configuring Status Page...');
-  const sp = await prisma.statusPage.create({
+  await prisma.inAppNotification.create({
     data: {
-      name: 'System Status',
-      subdomain: 'status',
-      enabled: true,
+      userId: admin.id,
+      type: 'INCIDENT',
+      title: 'Incident escalated',
+      message: 'Payment Processor latency has escalated to high urgency.',
+      entityType: 'incident',
+      entityId: incidents[0]?.id,
+      readAt: null,
     },
   });
 
-  // Add services
-  for (const [idx, svc] of allServices.slice(0, 10).entries()) {
+  await prisma.userDevice.create({
+    data: {
+      userId: admin.id,
+      deviceId: 'device-admin-1',
+      token: sha256('fcm-token-admin'),
+      platform: 'web',
+      userAgent: 'Seed Script',
+    },
+  });
+
+  const apiKeySeed = `admin-${Date.now()}`;
+  await prisma.apiKey.create({
+    data: {
+      name: 'Admin CLI Key',
+      prefix: apiKeySeed.slice(0, 8),
+      tokenHash: sha256(apiKeySeed),
+      scopes: ['incidents:read', 'incidents:write', 'services:read'],
+      userId: admin.id,
+    },
+  });
+
+  await prisma.userToken.create({
+    data: {
+      type: 'INVITE',
+      identifier: seededUsers[2]?.email ?? 'invite@example.com',
+      tokenHash: sha256('invite-token'),
+      expiresAt: minutesFrom(new Date(), 60 * 24),
+      metadata: { source: 'seed' },
+    },
+  });
+
+  await prisma.searchPreset.create({
+    data: {
+      name: 'High + Medium Urgency',
+      description: 'Track critical and elevated incidents',
+      createdById: admin.id,
+      isShared: true,
+      isDefault: true,
+      filterCriteria: {
+        status: ['OPEN', 'ACKNOWLEDGED'],
+        urgency: ['HIGH', 'MEDIUM'],
+        sort: 'createdAt:desc',
+      },
+      icon: 'alert-triangle',
+      color: '#dc2626',
+      order: 1,
+      sharedWithTeams: teams.slice(0, 2).map(team => team.id),
+    },
+  });
+
+  const preset = await prisma.searchPreset.findFirst({ where: { createdById: admin.id } });
+  if (preset) {
+    await prisma.searchPresetUsage.create({
+      data: { presetId: preset.id, userId: admin.id },
+    });
+  }
+
+  const statusPage = await prisma.statusPage.create({
+    data: {
+      name: 'OpsSentinal Public Status',
+      organizationName: 'OpsSentinal Labs',
+      subdomain: 'status-opssentinal',
+      enabled: true,
+      showServices: true,
+      showIncidents: true,
+      showMetrics: true,
+      showSubscribe: true,
+      showServiceDescriptions: true,
+      showServiceRegions: true,
+      showServiceSlaTier: true,
+      showIncidentUrgency: true,
+      showIncidentDetails: true,
+      showRecentIncidents: true,
+      footerText: 'All systems are actively monitored.',
+      contactEmail: 'status@example.com',
+      contactUrl: 'https://opssentinal.local/contact',
+      branding: { logo: '/logo.svg', primary: '#0f172a', accent: '#f59e0b' },
+    },
+  });
+
+  for (const [index, service] of services.slice(0, 8).entries()) {
     await prisma.statusPageService.create({
       data: {
-        statusPageId: sp.id,
-        serviceId: svc.id,
-        order: idx,
+        statusPageId: statusPage.id,
+        serviceId: service.id,
+        displayName: service.name,
+        order: index,
         showOnPage: true,
       },
     });
   }
-  console.log('   ✓ Status Page live');
 
-  console.log('\n✅ ULTIMATE SEED COMPLETE');
-  console.log(`Admin Login: admin@example.com / Password123!`);
+  await prisma.statusPageAnnouncement.create({
+    data: {
+      statusPageId: statusPage.id,
+      title: 'Planned maintenance',
+      message: 'Database maintenance scheduled for this weekend.',
+      type: 'MAINTENANCE',
+      incidentId: incidents[1]?.id ?? null,
+      affectedServiceIds: services.slice(0, 2).map(service => service.id),
+      startDate: hoursAgo(2),
+      endDate: hoursAgo(-6),
+      isActive: true,
+    },
+  });
+
+  const statusTokenRaw = `status-token-${Date.now()}`;
+  await prisma.statusPageApiToken.create({
+    data: {
+      statusPageId: statusPage.id,
+      name: 'Status API',
+      prefix: statusTokenRaw.slice(0, 8),
+      tokenHash: sha256(statusTokenRaw),
+    },
+  });
+
+  await prisma.statusPageSubscription.create({
+    data: {
+      statusPageId: statusPage.id,
+      email: 'status-updates@example.com',
+      token: sha256('status-subscription'),
+      verified: true,
+      verificationToken: sha256('status-verify'),
+      preferences: { incidents: 'all' },
+    },
+  });
+
+  await prisma.statusPageWebhook.create({
+    data: {
+      statusPageId: statusPage.id,
+      url: 'https://example.com/status/webhook',
+      secret: sha256('status-webhook-secret'),
+      events: ['incident.created', 'incident.updated', 'incident.resolved'],
+      enabled: true,
+    },
+  });
+
+  for (const service of services.slice(0, 4)) {
+    await prisma.metricRollup.create({
+      data: {
+        name: 'http.request.duration',
+        bucket: daysAgo(1),
+        serviceId: service.id,
+        count: 1200,
+        sum: 48000,
+        min: 80,
+        max: 900,
+        tags: { status: '200', method: 'GET' },
+      },
+    });
+  }
+
+  for (const team of teams.slice(0, 3)) {
+    await prisma.incidentMetricRollup.create({
+      data: {
+        date: daysAgo(1),
+        granularity: 'daily',
+        teamId: team.id,
+        totalIncidents: 5,
+        openIncidents: 1,
+        acknowledgedIncidents: 2,
+        resolvedIncidents: 2,
+        highUrgencyIncidents: 1,
+        mediumUrgencyIncidents: 2,
+        lowUrgencyIncidents: 2,
+        mttaSum: BigInt(360000),
+        mttaCount: 5,
+        mttrSum: BigInt(540000),
+        mttrCount: 5,
+        ackSlaMet: 4,
+        ackSlaBreached: 1,
+        resolveSlaMet: 4,
+        resolveSlaBreached: 1,
+        escalationCount: 1,
+        reopenCount: 0,
+        autoResolveCount: 0,
+        alertCount: 5,
+        afterHoursCount: 1,
+      },
+    });
+  }
+
+  for (let day = 0; day < seedConfig.slaSnapshotDays; day++) {
+    const snapshotDate = daysAgo(day);
+    const definition = await prisma.sLADefinition.findFirst();
+    if (definition) {
+      await prisma.sLASnapshot.create({
+        data: {
+          slaDefinitionId: definition.id,
+          date: snapshotDate,
+          totalIncidents: 12,
+          metAckTime: 10,
+          metResolveTime: 9,
+          complianceScore: 92.5,
+        },
+      });
+    }
+  }
+
+  await prisma.sLAPerformanceLog.create({
+    data: {
+      timestamp: new Date(),
+      serviceId: services[0]?.id ?? null,
+      teamId: teams[0]?.id ?? null,
+      windowDays: 30,
+      durationMs: 1200,
+      incidentCount: 42,
+    },
+  });
+
+  await prisma.backgroundJob.create({
+    data: {
+      type: 'ESCALATION',
+      status: 'PENDING',
+      scheduledAt: minutesFrom(new Date(), 30),
+      payload: {
+        incidentId: incidents[0]?.id,
+        step: 1,
+      },
+    },
+  });
+
+  await prisma.logEntry.create({
+    data: {
+      level: 'info',
+      message: 'Seeded log entry for observability demo',
+      timestamp: new Date(),
+      serviceId: services[0]?.id ?? null,
+      context: { requestId: 'seed-req-1', region: 'us-east-1' },
+    },
+  });
+
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        action: 'INCIDENT_CREATED',
+        entityType: 'SERVICE',
+        entityId: services[0]?.id,
+        actorId: admin.id,
+        details: { source: 'seed' },
+      },
+      {
+        action: 'SERVICE_UPDATED',
+        entityType: 'SERVICE',
+        entityId: services[0]?.id,
+        actorId: admin.id,
+        details: { status: services[0]?.status },
+      },
+      {
+        action: 'ESCALATION_POLICY_CREATED',
+        entityType: 'ESCALATION_POLICY',
+        entityId: policies[0]?.id,
+        actorId: admin.id,
+        details: { name: policies[0]?.id },
+      },
+    ],
+  });
+
+  process.stdout.write('Seed complete. Admin login: admin@example.com / Password123!\n');
 }
 
 main()
   .then(async () => {
     await prisma.$disconnect();
   })
-  .catch(async e => {
-    console.error(e);
+  .catch(async error => {
+    process.stderr.write(
+      `Seed failed: ${error instanceof Error ? error.message : 'Unknown error'}\n`
+    );
     await prisma.$disconnect();
     process.exit(1);
   });

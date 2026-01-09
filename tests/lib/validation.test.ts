@@ -48,6 +48,17 @@ describe('Validation Schemas', () => {
       const result = IncidentCreateSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
     });
+
+    it('should allow medium urgency', () => {
+      const validData = {
+        title: 'Test Incident',
+        serviceId: 'service-123',
+        urgency: 'MEDIUM' as const,
+      };
+
+      const result = IncidentCreateSchema.safeParse(validData);
+      expect(result.success).toBe(true);
+    });
   });
 
   describe('EventSchema', () => {
@@ -97,5 +108,3 @@ describe('Validation Schemas', () => {
     });
   });
 });
-
-

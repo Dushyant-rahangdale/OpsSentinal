@@ -456,7 +456,9 @@ export function generateIncidentEmailHTML(
         ? 'Incident Acknowledged'
         : incident.urgency === 'HIGH'
           ? 'Critical Incident Alert'
-          : 'Incident Notification';
+          : incident.urgency === 'MEDIUM'
+            ? 'Elevated Incident Alert'
+            : 'Incident Notification';
   const headerSubtitle = `Service: ${incident.service.name}`;
 
   const updateTitle =
@@ -466,7 +468,9 @@ export function generateIncidentEmailHTML(
         ? 'Acknowledged'
         : incident.urgency === 'HIGH'
           ? 'Critical Incident'
-          : 'New Incident';
+          : incident.urgency === 'MEDIUM'
+            ? 'Elevated Incident'
+            : 'New Incident';
   const updateMessage =
     normalizedEventType === 'resolved'
       ? 'This incident has been resolved. Review the summary and timeline below.'
@@ -502,14 +506,23 @@ export function generateIncidentEmailHTML(
               title: '#881337',
               text: '#991b1b',
             }
-          : {
-              badgeType: 'info' as const,
-              accent: '#2563eb',
-              background: '#eff6ff',
-              border: '#bfdbfe',
-              title: '#1e3a8a',
-              text: '#1d4ed8',
-            };
+          : incident.urgency === 'MEDIUM'
+            ? {
+                badgeType: 'warning' as const,
+                accent: '#d97706',
+                background: '#fffbeb',
+                border: '#fde68a',
+                title: '#78350f',
+                text: '#92400e',
+              }
+            : {
+                badgeType: 'info' as const,
+                accent: '#2563eb',
+                background: '#eff6ff',
+                border: '#bfdbfe',
+                title: '#1e3a8a',
+                text: '#1d4ed8',
+              };
 
   const formatDuration = (start: Date, end?: Date | null) => {
     if (!end) return 'N/A';
@@ -654,7 +667,9 @@ export async function sendIncidentEmail(
           ? 'ACKNOWLEDGED'
           : incident.urgency === 'HIGH'
             ? 'CRITICAL'
-            : 'NEW';
+            : incident.urgency === 'MEDIUM'
+              ? 'ELEVATED'
+              : 'NEW';
     const subject = `[${subjectTag}] ${incident.title}`;
     const userTimeZone = getUserTimeZone(user ?? undefined);
     const html = generateIncidentEmailHTML(

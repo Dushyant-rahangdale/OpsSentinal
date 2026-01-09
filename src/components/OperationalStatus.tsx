@@ -37,7 +37,7 @@ export default function OperationalStatus({
   if (!mounted) return null;
 
   // Determine state from backend data
-  const lowUrgencyCount = Math.max(0, activeCount - criticalCount);
+  const nonCriticalCount = Math.max(0, activeCount - criticalCount);
 
   // Logic:
   // - Danger: Critical count > 0
@@ -45,7 +45,7 @@ export default function OperationalStatus({
   // - OK: Active count == 0
 
   const isDanger = criticalCount > 0;
-  const isWarning = !isDanger && lowUrgencyCount > 0;
+  const isWarning = !isDanger && nonCriticalCount > 0;
   const isOk = !isDanger && !isWarning;
 
   // Derived Label/Detail
@@ -53,7 +53,7 @@ export default function OperationalStatus({
   const detail = isDanger
     ? `${criticalCount} critical incidents active`
     : isWarning
-      ? `${lowUrgencyCount} low urgency issues`
+      ? `${nonCriticalCount} non-critical issues`
       : 'Systems Normal';
 
   interface ThemeConfig {
@@ -101,7 +101,7 @@ export default function OperationalStatus({
       gradient: 'bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600',
       icon: <AlertCircle className="h-5 w-5 text-amber-100 fill-white/20" />,
       title: 'Yellow Alert',
-      desc: 'Non-critical issues reported. Monitoring low urgency alerts.',
+      desc: 'Non-critical issues reported. Monitoring medium and low urgency alerts.',
       lightBorder: 'border-amber-100/50',
     },
     ok: {
@@ -254,7 +254,7 @@ export default function OperationalStatus({
               )}
             >
               <span className="text-[10px] uppercase text-muted-foreground font-semibold">
-                Low Urgency
+                Non-critical
               </span>
               <div className="flex items-center justify-between">
                 <span
@@ -263,7 +263,7 @@ export default function OperationalStatus({
                     isWarning ? 'text-amber-600' : 'text-foreground'
                   )}
                 >
-                  {lowUrgencyCount}
+                  {nonCriticalCount}
                 </span>
                 <span
                   className={cn(

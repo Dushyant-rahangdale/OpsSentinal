@@ -383,7 +383,9 @@ async function renderStatusPage(statusPage: any) {
     ) => inc.status !== 'RESOLVED' && inc.status !== 'SNOOZED' && inc.status !== 'SUPPRESSED'
   );
   const hasOutage = activeIncidents.some((inc: any) => inc.urgency === 'HIGH'); // eslint-disable-line @typescript-eslint/no-explicit-any
-  const hasDegraded = activeIncidents.some((inc: any) => inc.urgency === 'LOW'); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const hasDegraded = activeIncidents.some(
+    (inc: any) => inc.urgency === 'MEDIUM' || inc.urgency === 'LOW'
+  );
   const overallStatus = hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
   const affectedServices = services.filter(
     service => service.status && service.status !== 'OPERATIONAL'

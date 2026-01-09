@@ -8,7 +8,7 @@ type Template = {
   description?: string | null;
   title: string;
   descriptionText?: string | null;
-  defaultUrgency: 'HIGH' | 'LOW';
+  defaultUrgency: 'HIGH' | 'MEDIUM' | 'LOW';
   defaultPriority?: string | null;
   defaultService?: { id: string; name: string } | null;
 };

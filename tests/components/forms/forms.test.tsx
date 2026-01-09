@@ -75,7 +75,6 @@ const IncidentForm = ({ onSubmit, initialData }: IncidentFormProps) => {
         <option value="LOW">Low</option>
         <option value="MEDIUM">Medium</option>
         <option value="HIGH">High</option>
-        <option value="CRITICAL">Critical</option>
       </select>
 
       <button type="submit">Create Incident</button>
@@ -185,7 +184,7 @@ describe('Form Components', () => {
       const initialData = {
         title: 'Existing Incident',
         description: 'Description here',
-        urgency: 'CRITICAL',
+        urgency: 'MEDIUM',
         serviceId: 'svc-123',
       };
 

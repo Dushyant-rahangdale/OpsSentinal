@@ -300,11 +300,17 @@ export async function sendIncidentSMS(
           : eventType === 'acknowledged'
             ? '⚠️'
             : '✅'
-        : eventType === 'triggered'
-          ? '⚠️'
-          : eventType === 'acknowledged'
+        : incident.urgency === 'MEDIUM'
+          ? eventType === 'triggered'
+            ? '⚠️'
+            : eventType === 'acknowledged'
+              ? 'ℹ️'
+              : '✅'
+          : eventType === 'triggered'
             ? 'ℹ️'
-            : '✅';
+            : eventType === 'acknowledged'
+              ? 'ℹ️'
+              : '✅';
 
     const _statusLabel =
       eventType === 'resolved'
@@ -313,7 +319,9 @@ export async function sendIncidentSMS(
           ? 'ACK'
           : incident.urgency === 'HIGH'
             ? 'CRITICAL'
-            : 'INCIDENT';
+            : incident.urgency === 'MEDIUM'
+              ? 'ELEVATED'
+              : 'INCIDENT';
 
     // Build professional OpsSentinal branded message (optimized for SMS)
     const titleMaxLength = 35;
@@ -339,7 +347,13 @@ export async function sendIncidentSMS(
         ? `[OpsSentinal] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
         : eventType === 'acknowledged'
           ? `[OpsSentinal] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
-          : `[OpsSentinal] ${eventEmoji} ${incident.urgency === 'HIGH' ? 'CRITICAL ALERT' : 'INCIDENT'}\n${title}\n⚠ ${service}\n${incidentUrl}`;
+          : `[OpsSentinal] ${eventEmoji} ${
+              incident.urgency === 'HIGH'
+                ? 'CRITICAL ALERT'
+                : incident.urgency === 'MEDIUM'
+                  ? 'ELEVATED INCIDENT'
+                  : 'INCIDENT'
+            }\n${title}\n⚠ ${service}\n${incidentUrl}`;
 
     // Format phone number to E.164 format if needed
     let phoneNumber = user.phoneNumber.trim();

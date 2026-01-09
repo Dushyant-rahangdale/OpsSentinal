@@ -233,8 +233,18 @@ export default async function TemplatesPage() {
                     <span
                       style={{
                         padding: '0.15rem 0.5rem',
-                        background: template.defaultUrgency === 'HIGH' ? '#feecec' : '#fff4cc',
-                        color: template.defaultUrgency === 'HIGH' ? '#dc2626' : '#b45309',
+                        background:
+                          template.defaultUrgency === 'HIGH'
+                            ? '#feecec'
+                            : template.defaultUrgency === 'MEDIUM'
+                              ? '#fef3c7'
+                              : '#dcfce7',
+                        color:
+                          template.defaultUrgency === 'HIGH'
+                            ? '#dc2626'
+                            : template.defaultUrgency === 'MEDIUM'
+                              ? '#b45309'
+                              : '#15803d',
                         borderRadius: '0px',
                         fontSize: '0.75rem',
                         fontWeight: 700,

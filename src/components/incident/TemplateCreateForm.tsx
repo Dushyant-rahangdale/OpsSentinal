@@ -147,6 +147,7 @@ export default function TemplateCreateForm({ services, action }: TemplateCreateF
             }}
           >
             <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
           </select>
         </div>
