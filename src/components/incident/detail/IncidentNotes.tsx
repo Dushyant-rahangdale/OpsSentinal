@@ -1,6 +1,10 @@
 'use client';
 
 import NoteCard from '../NoteCard';
+import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { MessageSquare, Send, AlertCircle } from 'lucide-react';
 
 type Note = {
   id: string;
@@ -17,172 +21,95 @@ type IncidentNotesProps = {
 
 export default function IncidentNotes({ notes, canManage, onAddNote }: IncidentNotesProps) {
   return (
-    <div
-      className="glass-panel"
-      style={{
-        padding: '1.5rem',
-        marginBottom: '2rem',
-        background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-        border: '1px solid #e6e8ef',
-        borderRadius: '0px',
-        boxShadow: '0 14px 34px rgba(15, 23, 42, 0.08)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1.5rem',
-        }}
-      >
-        <div>
-          <h3
-            style={{
-              fontSize: '1.25rem',
-              fontWeight: '700',
-              marginBottom: '0.35rem',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Notes
-          </h3>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Decision trail and responder context
-          </div>
-        </div>
-        <div
-          style={{
-            fontSize: '0.7rem',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-            fontWeight: 600,
-            padding: '0.35rem 0.75rem',
-            background: '#f9fafb',
-            border: '1px solid var(--border)',
-            borderRadius: '0px',
-          }}
-        >
-          Collaboration
-        </div>
-      </div>
-
-      {/* Notes List */}
-      <div
-        style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}
-      >
-        {notes.map(note => (
-          <NoteCard
-            key={note.id}
-            content={note.content}
-            userName={note.user.name}
-            createdAt={note.createdAt}
-            isResolution={note.content.startsWith('Resolution:')}
-          />
-        ))}
-        {notes.length === 0 && (
-          <div
-            style={{
-              padding: '2rem',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontStyle: 'italic',
-              background: '#f9fafb',
-              border: '1px dashed var(--border)',
-              borderRadius: '0px',
-            }}
-          >
-            No notes added yet. Start the conversation by adding a note.
-          </div>
-        )}
-      </div>
-
-      {/* Add Note Form */}
-      {canManage ? (
-        <form action={onAddNote} style={{ display: 'flex', gap: '0.75rem' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <textarea
-              name="content"
-              placeholder="Add a note... (supports **bold**, *italic*, `code`, links)"
-              required
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '0.875rem',
-                borderRadius: '0px',
-                border: '1px solid var(--border)',
-                background: '#fff',
-                fontSize: '0.9rem',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                outline: 'none',
-                transition: 'border-color 0.15s',
-              }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = 'var(--primary-color)';
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = 'var(--border)';
-              }}
-            />
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Supports Markdown formatting
+    <Card className="shadow-xl border-border/40 overflow-hidden bg-gradient-to-br from-card to-card/95">
+      <CardHeader className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white pb-5">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-lg">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold mb-0.5">Notes</h3>
+              <div className="text-sm text-white/90">Decision trail and responder context</div>
             </div>
           </div>
-          <button
-            className="glass-button primary"
-            type="submit"
-            style={{
-              alignSelf: 'flex-start',
-              padding: '0.875rem 1.5rem',
-              borderRadius: '0px',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Post Note
-          </button>
-        </form>
-      ) : (
-        <div
-          style={{
-            padding: '1rem',
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: '0px',
-            opacity: 0.7,
-          }}
-        >
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-            ⚠️ You don't have access to add notes. Responder role or above required.
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', opacity: 0.5, pointerEvents: 'none' }}>
-            <textarea
-              name="content"
-              placeholder="Add a note..."
-              disabled
-              rows={3}
-              style={{
-                flex: 1,
-                padding: '0.875rem',
-                borderRadius: '0px',
-                border: '1px solid #e2e8f0',
-                background: '#f3f4f6',
-                fontSize: '0.9rem',
-              }}
-            />
-            <button
-              className="glass-button primary"
-              disabled
-              style={{ opacity: 0.5, padding: '0.875rem 1.5rem', borderRadius: '0px' }}
-            >
-              Post Note
-            </button>
-          </div>
+          <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm text-xs uppercase tracking-wider">
+            Collaboration
+          </Badge>
         </div>
-      )}
-    </div>
+      </CardHeader>
+
+      <CardContent className="p-6">
+        {/* Notes List */}
+        <div className="space-y-4 mb-6">
+          {notes.map(note => (
+            <NoteCard
+              key={note.id}
+              content={note.content}
+              userName={note.user.name}
+              createdAt={note.createdAt}
+              isResolution={note.content.startsWith('Resolution:')}
+            />
+          ))}
+          {notes.length === 0 && (
+            <div className="py-12 px-8 text-center bg-neutral-50 border-2 border-dashed border-border rounded-lg">
+              <MessageSquare className="h-12 w-12 mx-auto mb-3 text-neutral-400" />
+              <p className="text-sm font-semibold text-muted-foreground mb-1">No notes yet</p>
+              <p className="text-xs text-muted-foreground">
+                Start the conversation by adding a note.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Add Note Form */}
+        {canManage ? (
+          <form action={onAddNote} className="space-y-3">
+            <div className="space-y-2">
+              <textarea
+                name="content"
+                placeholder="Add a note... (supports **bold**, *italic*, `code`, links)"
+                required
+                rows={4}
+                className="w-full px-4 py-3 rounded-lg border-2 border-border bg-white text-sm font-normal resize-vertical outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <MessageSquare className="h-3 w-3" />
+                Supports Markdown formatting
+              </p>
+            </div>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Post Note
+            </Button>
+          </form>
+        ) : (
+          <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
+            <div className="flex items-start gap-3 mb-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm font-semibold text-amber-800">
+                You don't have access to add notes. Responder role or above required.
+              </p>
+            </div>
+            <div className="space-y-2 opacity-50 pointer-events-none">
+              <textarea
+                name="content"
+                placeholder="Add a note..."
+                disabled
+                rows={4}
+                className="w-full px-4 py-3 rounded-lg border-2 border-neutral-200 bg-neutral-100 text-sm"
+              />
+              <Button disabled className="w-full sm:w-auto">
+                <Send className="mr-2 h-4 w-4" />
+                Post Note
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

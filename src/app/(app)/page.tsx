@@ -25,7 +25,8 @@ import SidebarWidget, {
 } from '@/components/dashboard/SidebarWidget';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
-import { FileText, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { FileText, ArrowRight, TrendingUp, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import CompactOnCallStatus from '@/components/dashboard/compact/CompactOnCallStatus';
 import CompactPerformanceMetrics from '@/components/dashboard/compact/CompactPerformanceMetrics';
 import CompactStatsOverview from '@/components/dashboard/compact/CompactStatsOverview';
@@ -392,96 +393,199 @@ export default async function Dashboard({
               </CardContent>
             </Card>
 
-            {/* Incidents Table Panel */}
-            <Card className="shadow-lg border-border/50 p-0 overflow-hidden animate-slide-up">
-              <CardHeader className="pb-4 border-b">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-sm bg-slate-600 flex items-center justify-center shadow-sm">
-                      <FileText className="h-4 w-4 text-white" />
+            {/* Incidents Table Panel - Redesigned */}
+            <Card className="shadow-xl border-border/40 overflow-hidden animate-slide-up bg-gradient-to-br from-card to-card/95">
+              {/* Enhanced Header with Gradient Background */}
+              <div className="relative bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700 px-6 py-5">
+                {/* Decorative Pattern Overlay */}
+                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,transparent)]" />
+
+                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  {/* Title Section */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-lg">
+                      <FileText className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-foreground tracking-tight mb-0.5">
+                      <h2 className="text-xl font-bold text-white tracking-tight mb-1 flex items-center gap-2">
                         Incident Directory
+                        {totalCount > 0 && (
+                          <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm font-semibold">
+                            {totalCount}
+                          </Badge>
+                        )}
                       </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Showing {skip + 1}-{Math.min(skip + INCIDENTS_PER_PAGE, totalCount)} of{' '}
-                        {totalCount} incidents
+                      <p className="text-sm text-white/80 font-medium">
+                        {totalCount === 0 ? (
+                          'No incidents to display'
+                        ) : (
+                          <>
+                            Displaying <span className="text-white font-semibold">{skip + 1}</span>{' '}
+                            to{' '}
+                            <span className="text-white font-semibold">
+                              {Math.min(skip + INCIDENTS_PER_PAGE, totalCount)}
+                            </span>{' '}
+                            of <span className="text-white font-semibold">{totalCount}</span> total
+                            incidents
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
+
+                  {/* View All Button */}
                   <Link href="/incidents">
-                    <Button variant="outline" size="sm" className="gap-2 shadow-xs">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="gap-2 shadow-lg bg-white/90 hover:bg-white text-slate-700 font-semibold border border-white/50"
+                    >
                       View All <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </Link>
                 </div>
-              </CardHeader>
 
-              <div className="overflow-hidden">
-                {incidents.length === 0 ? (
-                  <div className="py-16 px-8 text-center bg-card border-t border-b">
-                    <FileText className="h-16 w-16 mx-auto mb-4 opacity-30 text-muted-foreground" />
-                    <p className="text-base font-semibold mb-2 text-secondary-foreground">
-                      No incidents found
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Try adjusting your filters to see more results.
-                    </p>
+                {/* Quick Stats Bar - Only show if we have incidents */}
+                {incidents.length > 0 && (
+                  <div className="relative mt-4 flex flex-wrap gap-2">
+                    {(() => {
+                      const statusCounts = incidents.reduce(
+                        (acc, inc) => {
+                          acc[inc.status] = (acc[inc.status] || 0) + 1;
+                          return acc;
+                        },
+                        {} as Record<string, number>
+                      );
+
+                      return (
+                        <>
+                          {statusCounts['OPEN'] > 0 && (
+                            <Badge className="bg-red-500/90 text-white border-red-400/50 hover:bg-red-500 backdrop-blur-sm font-semibold px-3 py-1">
+                              <AlertCircle className="h-3 w-3 mr-1.5" />
+                              {statusCounts['OPEN']} Open
+                            </Badge>
+                          )}
+                          {statusCounts['ACKNOWLEDGED'] > 0 && (
+                            <Badge className="bg-amber-500/90 text-white border-amber-400/50 hover:bg-amber-500 backdrop-blur-sm font-semibold px-3 py-1">
+                              <Clock className="h-3 w-3 mr-1.5" />
+                              {statusCounts['ACKNOWLEDGED']} In Progress
+                            </Badge>
+                          )}
+                          {statusCounts['RESOLVED'] > 0 && (
+                            <Badge className="bg-green-500/90 text-white border-green-400/50 hover:bg-green-500 backdrop-blur-sm font-semibold px-3 py-1">
+                              <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                              {statusCounts['RESOLVED']} Resolved
+                            </Badge>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
-                ) : (
-                  <IncidentTable incidents={incidents} sortBy={sortBy} sortOrder={sortOrder} />
                 )}
               </div>
 
-              {/* Pagination */}
+              {/* Content Area */}
+              <div className="overflow-hidden bg-card">
+                {incidents.length === 0 ? (
+                  <div className="py-20 px-8 text-center bg-gradient-to-b from-neutral-50/50 to-card">
+                    <div className="max-w-md mx-auto">
+                      <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center shadow-inner">
+                        <FileText className="h-10 w-10 text-neutral-400" />
+                      </div>
+                      <h3 className="text-lg font-bold mb-2 text-foreground">No Incidents Found</h3>
+                      <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                        {status || service || assignee || urgency ? (
+                          <>
+                            No incidents match your current filters.
+                            <br />
+                            Try adjusting your search criteria to see more results.
+                          </>
+                        ) : (
+                          <>
+                            There are no incidents to display at this time.
+                            <br />
+                            New incidents will appear here when they are created.
+                          </>
+                        )}
+                      </p>
+                      {(status || service || assignee || urgency) && (
+                        <Link href="/">
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <TrendingUp className="h-3.5 w-3.5" />
+                            Clear All Filters
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-t border-border/50">
+                    <IncidentTable incidents={incidents} sortBy={sortBy} sortOrder={sortOrder} />
+                  </div>
+                )}
+              </div>
+
+              {/* Enhanced Pagination */}
               {totalPages > 1 && (
-                <div className="px-6 py-5 border-t bg-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <p className="text-sm text-secondary-foreground font-medium">
-                    Page <strong className="text-foreground">{page}</strong> of{' '}
-                    <strong className="text-foreground">{totalPages}</strong>
-                  </p>
-                  <div className="flex gap-2 items-center">
-                    <Link href={buildPaginationUrl(baseParams, 1)}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page === 1}
-                        className="text-xs font-semibold"
-                      >
-                        First
-                      </Button>
-                    </Link>
-                    <Link href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page === 1}
-                        className="text-xs font-semibold"
-                      >
-                        Previous
-                      </Button>
-                    </Link>
-                    <Link href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page === totalPages}
-                        className="text-xs font-semibold"
-                      >
-                        Next
-                      </Button>
-                    </Link>
-                    <Link href={buildPaginationUrl(baseParams, totalPages)}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page === totalPages}
-                        className="text-xs font-semibold"
-                      >
-                        Last
-                      </Button>
-                    </Link>
+                <div className="px-6 py-5 border-t bg-gradient-to-b from-neutral-50/50 to-card backdrop-blur-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    {/* Page Info */}
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-white font-semibold text-foreground">
+                        Page {page}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">of</span>
+                      <Badge variant="outline" className="bg-white font-semibold text-foreground">
+                        {totalPages}
+                      </Badge>
+                      <span className="hidden sm:inline text-sm text-muted-foreground ml-2">
+                        ({totalCount} total)
+                      </span>
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <div className="flex gap-2 items-center">
+                      <Link href={buildPaginationUrl(baseParams, 1)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page === 1}
+                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                        >
+                          First
+                        </Button>
+                      </Link>
+                      <Link href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page === 1}
+                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                        >
+                          Previous
+                        </Button>
+                      </Link>
+                      <Link href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page === totalPages}
+                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                        >
+                          Next
+                        </Button>
+                      </Link>
+                      <Link href={buildPaginationUrl(baseParams, totalPages)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page === totalPages}
+                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                        >
+                          Last
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               )}

@@ -1,7 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Badge } from '@/components/ui';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  AlertTriangle,
+  ArrowRight,
+  ListChecks,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DashboardActionItemsProps {
   stats: {
@@ -23,144 +33,137 @@ interface DashboardActionItemsProps {
   }>;
 }
 
-const STATUS_COLORS = {
-  OPEN: '#3b82f6',
-  IN_PROGRESS: '#f59e0b',
-  COMPLETED: '#22c55e',
-  BLOCKED: '#ef4444',
-};
-
-const PRIORITY_COLORS = {
-  HIGH: '#ef4444',
-  MEDIUM: '#f59e0b',
-  LOW: '#6b7280',
-};
-
 export default function DashboardActionItems({
   stats,
   recentItems = [],
 }: DashboardActionItemsProps) {
   const completionRate = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
 
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'OPEN':
+        return {
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          text: 'text-blue-700',
+          dot: 'bg-blue-500',
+        };
+      case 'IN_PROGRESS':
+        return {
+          bg: 'bg-amber-50',
+          border: 'border-amber-200',
+          text: 'text-amber-700',
+          dot: 'bg-amber-500',
+        };
+      case 'COMPLETED':
+        return {
+          bg: 'bg-green-50',
+          border: 'border-green-200',
+          text: 'text-green-700',
+          dot: 'bg-green-500',
+        };
+      case 'BLOCKED':
+        return {
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          text: 'text-red-700',
+          dot: 'bg-red-500',
+        };
+      default:
+        return {
+          bg: 'bg-neutral-50',
+          border: 'border-neutral-200',
+          text: 'text-neutral-700',
+          dot: 'bg-neutral-500',
+        };
+    }
+  };
+
+  const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+      case 'HIGH':
+        return 'bg-red-100 text-red-700 border-red-300';
+      case 'MEDIUM':
+        return 'bg-amber-100 text-amber-700 border-amber-300';
+      case 'LOW':
+        return 'bg-neutral-100 text-neutral-700 border-neutral-300';
+      default:
+        return 'bg-neutral-100 text-neutral-700 border-neutral-300';
+    }
+  };
+
   return (
-    <div
-      className="glass-panel"
-      style={{
-        padding: 'var(--spacing-5)',
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        border: '1px solid #e2e8f0',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--spacing-4)',
-        }}
-      >
+    <div className="p-5 bg-gradient-to-br from-white to-neutral-50/50 border border-border rounded-lg shadow-lg">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-5">
         <div>
-          <h3
-            style={{
-              fontSize: 'var(--font-size-lg)',
-              fontWeight: '700',
-              marginBottom: 'var(--spacing-1)',
-            }}
-          >
-            Action Items
-          </h3>
-          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
-            Track postmortem follow-ups
-          </p>
+          <div className="flex items-center gap-2 mb-1">
+            <ListChecks className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-bold text-foreground">Action Items</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">Track postmortem follow-ups</p>
         </div>
         <Link href="/action-items">
-          <Badge variant="default">{stats.total} Total</Badge>
+          <Badge className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
+            {stats.total} Total
+          </Badge>
         </Link>
       </div>
 
       {/* Stats Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 'var(--spacing-3)',
-          marginBottom: 'var(--spacing-4)',
-        }}
-      >
-        <Link href="/action-items?status=OPEN" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              padding: 'var(--spacing-3)',
-              background: 'white',
-              border: '1px solid #e2e8f0',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', color: '#3b82f6' }}>
-              {stats.open}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <Link href="/action-items?status=OPEN" className="no-underline">
+          <div className="p-4 bg-white border-2 border-blue-200 rounded-lg text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <div className="text-2xl font-bold text-blue-600">{stats.open}</div>
             </div>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Open</div>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Open
+            </div>
           </div>
         </Link>
-        <Link href="/action-items?status=IN_PROGRESS" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              padding: 'var(--spacing-3)',
-              background: 'white',
-              border: '1px solid #e2e8f0',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', color: '#f59e0b' }}>
-              {stats.inProgress}
+        <Link href="/action-items?status=IN_PROGRESS" className="no-underline">
+          <div className="p-4 bg-white border-2 border-amber-200 rounded-lg text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Clock className="h-4 w-4 text-amber-600" />
+              <div className="text-2xl font-bold text-amber-600">{stats.inProgress}</div>
             </div>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               In Progress
             </div>
           </div>
         </Link>
-        <Link href="/action-items?status=COMPLETED" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              padding: 'var(--spacing-3)',
-              background: 'white',
-              border: '1px solid #e2e8f0',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', color: '#22c55e' }}>
-              {stats.completed}
+        <Link href="/action-items?status=COMPLETED" className="no-underline">
+          <div className="p-4 bg-white border-2 border-green-200 rounded-lg text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
             </div>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Completed
             </div>
           </div>
         </Link>
-        <Link href="/action-items?status=OPEN" style={{ textDecoration: 'none' }}>
+        <Link href="/action-items?status=OPEN" className="no-underline">
           <div
-            style={{
-              padding: 'var(--spacing-3)',
-              background: stats.overdue > 0 ? '#ef444415' : 'white',
-              border: `1px solid ${stats.overdue > 0 ? '#ef4444' : '#e2e8f0'}`,
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
+            className={cn(
+              'p-4 border-2 rounded-lg text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5',
+              stats.overdue > 0 ? 'bg-red-50 border-red-300' : 'bg-white border-neutral-200'
+            )}
           >
-            <div
-              style={{
-                fontSize: 'var(--font-size-xl)',
-                fontWeight: '700',
-                color: stats.overdue > 0 ? '#ef4444' : '#6b7280',
-              }}
-            >
-              {stats.overdue}
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  stats.overdue > 0 ? 'text-red-600' : 'text-neutral-500'
+                )}
+              >
+                {stats.overdue}
+              </div>
             </div>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Overdue
             </div>
           </div>
@@ -168,145 +171,73 @@ export default function DashboardActionItems({
       </div>
 
       {/* Progress Bar */}
-      <div style={{ marginBottom: 'var(--spacing-4)' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: 'var(--spacing-2)',
-          }}
-        >
-          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
-            Completion Rate
-          </span>
-          <span
-            style={{
-              fontSize: 'var(--font-size-sm)',
-              fontWeight: '600',
-              color: 'var(--text-primary)',
-            }}
-          >
+      <div className="mb-5 p-4 bg-white rounded-lg border border-border">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-semibold text-foreground">Completion Rate</span>
+          <Badge variant="outline" className="font-bold">
             {completionRate.toFixed(0)}%
-          </span>
+          </Badge>
         </div>
-        <div
-          style={{
-            width: '100%',
-            height: '8px',
-            background: '#e2e8f0',
-            borderRadius: 'var(--radius-sm)',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="w-full h-3 bg-neutral-200 rounded-full overflow-hidden">
           <div
-            style={{
-              width: `${completionRate}%`,
-              height: '100%',
-              background: completionRate === 100 ? '#22c55e' : '#3b82f6',
-              transition: 'width 0.3s ease',
-            }}
+            className={cn(
+              'h-full transition-all duration-300 ease-out rounded-full',
+              completionRate === 100 ? 'bg-green-500' : 'bg-blue-500'
+            )}
+            style={{ width: `${completionRate}%` }}
           />
         </div>
       </div>
 
       {/* Recent Items */}
       {recentItems.length > 0 && (
-        <div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 'var(--spacing-3)',
-            }}
-          >
-            <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: '600' }}>Recent Items</h4>
+        <div className="mb-5">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-sm font-bold text-foreground">Recent Items</h4>
             <Link
               href="/action-items"
-              style={{
-                fontSize: 'var(--font-size-xs)',
-                color: 'var(--primary-color)',
-                textDecoration: 'none',
-              }}
+              className="text-xs text-primary font-semibold hover:underline"
             >
-              View All →
+              View All <ArrowRight className="inline h-3 w-3" />
             </Link>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+          <div className="space-y-2">
             {recentItems.slice(0, 5).map(item => {
               const isOverdue =
                 item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'COMPLETED';
+              const config = getStatusConfig(item.status);
               return (
                 <Link
                   key={item.id}
                   href={`/postmortems/${item.incidentId}`}
-                  style={{
-                    padding: 'var(--spacing-2) var(--spacing-3)',
-                    background: 'white',
-                    border: `1px solid ${STATUS_COLORS[item.status]}40`,
-                    borderRadius: 'var(--radius-sm)',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: 'var(--font-size-sm)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                    e.currentTarget.style.borderColor = STATUS_COLORS[item.status];
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateX(0)';
-                    e.currentTarget.style.borderColor = `${STATUS_COLORS[item.status]}40`;
-                  }}
+                  className={cn(
+                    'flex items-center justify-between p-3 bg-white rounded-lg border-2 transition-all duration-200',
+                    'hover:shadow-md hover:translate-x-1 no-underline',
+                    config.border
+                  )}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: '600',
-                        color: 'var(--text-primary)',
-                        marginBottom: 'var(--spacing-1)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
+                  <div className="flex-1 min-w-0 mr-3">
+                    <div className="text-sm font-semibold text-foreground mb-1 truncate">
                       {item.title}
                     </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 'var(--spacing-2)',
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      <span
-                        style={{
-                          padding: '0.125rem 0.5rem',
-                          borderRadius: 'var(--radius-sm)',
-                          background: `${PRIORITY_COLORS[item.priority]}20`,
-                          color: PRIORITY_COLORS[item.priority],
-                          fontWeight: '600',
-                        }}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-[0.7rem] font-bold px-2 py-0',
+                          getPriorityConfig(item.priority)
+                        )}
                       >
                         {item.priority}
-                      </span>
+                      </Badge>
                       {isOverdue && (
-                        <span style={{ color: '#ef4444', fontWeight: '600' }}>Overdue</span>
+                        <Badge className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200 text-[0.7rem] font-bold px-2 py-0">
+                          Overdue
+                        </Badge>
                       )}
                     </div>
                   </div>
-                  <div
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: STATUS_COLORS[item.status],
-                      flexShrink: 0,
-                    }}
-                  />
+                  <div className={cn('w-3 h-3 rounded-full shrink-0', config.dot)} />
                 </Link>
               );
             })}
@@ -315,38 +246,12 @@ export default function DashboardActionItems({
       )}
 
       {/* CTA */}
-      <div
-        style={{
-          marginTop: 'var(--spacing-4)',
-          paddingTop: 'var(--spacing-4)',
-          borderTop: '1px solid #e2e8f0',
-        }}
-      >
-        <Link
-          href="/action-items"
-          style={{
-            display: 'block',
-            textAlign: 'center',
-            padding: 'var(--spacing-2)',
-            background: 'var(--primary-color)',
-            color: 'white',
-            borderRadius: 'var(--radius-md)',
-            textDecoration: 'none',
-            fontSize: 'var(--font-size-sm)',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--primary-hover)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'var(--primary-color)';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          View All Action Items
-        </Link>
+      <div className="pt-5 border-t border-border">
+        <Button asChild className="w-full font-semibold shadow-md hover:shadow-lg transition-all">
+          <Link href="/action-items">
+            View All Action Items <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
       </div>
     </div>
   );

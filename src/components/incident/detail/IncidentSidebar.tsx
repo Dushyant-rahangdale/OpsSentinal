@@ -8,6 +8,10 @@ import IncidentQuickActions from '../IncidentQuickActions';
 import IncidentStatusActions from './IncidentStatusActions';
 import IncidentWatchers from './IncidentWatchers';
 import IncidentTags from './IncidentTags';
+import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Zap, FileText, Activity } from 'lucide-react';
 
 type IncidentSidebarProps = {
   incident: {
@@ -66,95 +70,55 @@ export default function IncidentSidebar({
   const serviceForSLA = incident.service as Service;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="space-y-6">
       {/* Status & Actions Card */}
-      <div
-        className="glass-panel"
-        style={{
-          padding: '1.5rem',
-          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid #e6e8ef',
-          borderRadius: '0px',
-          boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1rem',
-          }}
-        >
-          <h4 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Actions</h4>
-          <span
-            style={{
-              fontSize: '0.7rem',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}
-          >
-            Controls
-          </span>
-        </div>
-
-        {/* Status Display */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.75rem',
-            padding: '0.75rem',
-            borderRadius: '0px',
-            background: '#fff',
-            border: '1px solid #e6e8ef',
-            marginBottom: '1rem',
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-                marginBottom: '0.25rem',
-              }}
-            >
-              Status
+      <Card className="shadow-xl border-border/40 overflow-hidden bg-gradient-to-br from-card to-card/95">
+        <CardHeader className="bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600 text-white pb-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              <h4 className="font-bold text-lg">Actions</h4>
             </div>
-            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-              {incident.status}
-            </div>
+            <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm text-xs uppercase tracking-wider">
+              Controls
+            </Badge>
           </div>
-          <StatusBadge status={incidentStatus} size="md" showDot />
-        </div>
+        </CardHeader>
 
-        {/* Quick Actions */}
-        <div style={{ marginBottom: '1rem' }}>
-          <IncidentQuickActions incidentId={incident.id} serviceId={incident.service.id} />
-        </div>
+        <CardContent className="p-6 space-y-4">
+          {/* Status Display */}
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border-2 border-border shadow-sm">
+            <div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">
+                Status
+              </div>
+              <div className="font-bold text-foreground text-base">{incident.status}</div>
+            </div>
+            <StatusBadge status={incidentStatus} size="md" showDot />
+          </div>
 
-        {/* Status Actions */}
-        <IncidentStatusActions
-          incidentId={incident.id}
-          currentStatus={incident.status}
-          onAcknowledge={onAcknowledge}
-          onUnacknowledge={onUnacknowledge}
-          onSnooze={onSnooze}
-          onUnsnooze={onUnsnooze}
-          onSuppress={onSuppress}
-          onUnsuppress={onUnsuppress}
-          canManage={canManage}
-        />
-      </div>
+          {/* Quick Actions */}
+          <div>
+            <IncidentQuickActions incidentId={incident.id} serviceId={incident.service.id} />
+          </div>
+
+          {/* Status Actions */}
+          <IncidentStatusActions
+            incidentId={incident.id}
+            currentStatus={incident.status}
+            onAcknowledge={onAcknowledge}
+            onUnacknowledge={onUnacknowledge}
+            onSnooze={onSnooze}
+            onUnsnooze={onUnsnooze}
+            onSuppress={onSuppress}
+            onUnsuppress={onUnsuppress}
+            canManage={canManage}
+          />
+        </CardContent>
+      </Card>
 
       {/* SLA Indicator */}
-      <div style={{ marginBottom: '0.5rem' }}>
-        <SLAIndicator incident={incidentForSLA} service={serviceForSLA} showDetails={true} />
-      </div>
+      <SLAIndicator incident={incidentForSLA} service={serviceForSLA} showDetails={true} />
 
       {/* Watchers */}
       <IncidentWatchers
@@ -166,83 +130,39 @@ export default function IncidentSidebar({
       />
 
       {/* Tags */}
-      <div
-        className="glass-panel"
-        style={{
-          padding: '1.5rem',
-          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid #e6e8ef',
-          borderRadius: '0px',
-          boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
-        }}
-      >
-        <IncidentTags incidentId={incident.id} tags={tags} canManage={canManage} />
-      </div>
+      <Card className="shadow-xl border-border/40 overflow-hidden bg-gradient-to-br from-card to-card/95">
+        <CardContent className="p-6">
+          <IncidentTags incidentId={incident.id} tags={tags} canManage={canManage} />
+        </CardContent>
+      </Card>
 
       {/* Postmortem Section - Only show for resolved incidents */}
       {incident.status === 'RESOLVED' && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: '1.5rem',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e6e8ef',
-            borderRadius: '0px',
-            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1rem',
-            }}
-          >
-            <h4 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Postmortem</h4>
-            <span
-              style={{
-                fontSize: '0.7rem',
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-              }}
-            >
-              Learning
-            </span>
-          </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            Document what happened, why it happened, and how to prevent it in the future.
-          </p>
-          <Link
-            href={`/postmortems/${incident.id}`}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.75rem 1rem',
-              background: 'var(--primary-color)',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '0px',
-              textAlign: 'center',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--primary-dark)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'var(--primary-color)';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            {canManage ? 'Create Postmortem' : 'View Postmortem'}
-          </Link>
-        </div>
+        <Card className="shadow-xl border-border/40 overflow-hidden bg-gradient-to-br from-card to-card/95">
+          <CardHeader className="bg-gradient-to-r from-green-600 via-green-500 to-green-600 text-white pb-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                <h4 className="font-bold text-lg">Postmortem</h4>
+              </div>
+              <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm text-xs uppercase tracking-wider">
+                Learning
+              </Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+              Document what happened, why it happened, and how to prevent it in the future.
+            </p>
+            <Link href={`/postmortems/${incident.id}`}>
+              <Button className="w-full font-semibold shadow-md hover:shadow-lg transition-all">
+                <FileText className="mr-2 h-4 w-4" />
+                {canManage ? 'Create Postmortem' : 'View Postmortem'}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

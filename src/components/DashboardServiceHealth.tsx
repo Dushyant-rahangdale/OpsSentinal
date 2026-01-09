@@ -1,6 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  CheckCircle,
+  AlertTriangle,
+  AlertCircle,
+  XCircle,
+  Wrench,
+  ArrowRight,
+  Activity,
+  TrendingUp,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
 
 type ServiceHealthData = {
   id: string;
@@ -15,37 +28,62 @@ type DashboardServiceHealthProps = {
 };
 
 export default function DashboardServiceHealth({ services }: DashboardServiceHealthProps) {
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
       case 'OPERATIONAL':
-        return { bg: '#dcfce7', text: '#16a34a', border: '#86efac' };
+        return {
+          bg: 'bg-green-50',
+          text: 'text-green-700',
+          border: 'border-green-200',
+          dotBg: 'bg-green-500',
+          icon: <CheckCircle className="h-4 w-4" />,
+          label: 'Operational',
+        };
       case 'DEGRADED':
-        return { bg: '#fef3c7', text: '#d97706', border: '#fde68a' };
+        return {
+          bg: 'bg-amber-50',
+          text: 'text-amber-700',
+          border: 'border-amber-200',
+          dotBg: 'bg-amber-500',
+          icon: <AlertTriangle className="h-4 w-4" />,
+          label: 'Degraded',
+        };
       case 'PARTIAL_OUTAGE':
-        return { bg: '#fed7aa', text: '#ea580c', border: '#fdba74' };
+        return {
+          bg: 'bg-orange-50',
+          text: 'text-orange-700',
+          border: 'border-orange-200',
+          dotBg: 'bg-orange-500',
+          icon: <AlertCircle className="h-4 w-4" />,
+          label: 'Partial Outage',
+        };
       case 'MAJOR_OUTAGE':
-        return { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' };
+        return {
+          bg: 'bg-red-50',
+          text: 'text-red-700',
+          border: 'border-red-200',
+          dotBg: 'bg-red-500',
+          icon: <XCircle className="h-4 w-4" />,
+          label: 'Major Outage',
+        };
       case 'MAINTENANCE':
-        return { bg: '#e0e7ff', text: '#6366f1', border: '#a5b4fc' };
+        return {
+          bg: 'bg-indigo-50',
+          text: 'text-indigo-700',
+          border: 'border-indigo-200',
+          dotBg: 'bg-indigo-500',
+          icon: <Wrench className="h-4 w-4" />,
+          label: 'Maintenance',
+        };
       default:
-        return { bg: '#f3f4f6', text: '#6b7280', border: '#d1d5db' };
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'OPERATIONAL':
-        return '🟢';
-      case 'DEGRADED':
-        return '🟡';
-      case 'PARTIAL_OUTAGE':
-        return '🟠';
-      case 'MAJOR_OUTAGE':
-        return '🔴';
-      case 'MAINTENANCE':
-        return '🔵';
-      default:
-        return '⚪';
+        return {
+          bg: 'bg-neutral-50',
+          text: 'text-neutral-700',
+          border: 'border-neutral-200',
+          dotBg: 'bg-neutral-500',
+          icon: <Activity className="h-4 w-4" />,
+          label: 'Unknown',
+        };
     }
   };
 
@@ -72,164 +110,116 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
   });
 
   return (
-    <div style={{ padding: '0' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-        <Link
-          href="/services"
-          className="dashboard-link-hover"
-          style={{
-            fontSize: '0.85rem',
-            color: 'var(--primary-color)',
-            textDecoration: 'none',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.25rem',
-          }}
+    <div className="p-0">
+      {/* Header with View All */}
+      <div className="flex justify-between items-center mb-5">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-bold text-foreground">Service Health Overview</h3>
+          <Badge variant="outline" className="bg-white font-semibold text-foreground">
+            {services.length}
+          </Badge>
+        </div>
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="gap-2 text-primary font-semibold hover:bg-primary/10"
         >
-          View All <span>→</span>
-        </Link>
+          <Link href="/services">
+            View All <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
       </div>
 
-      {/* Status Summary */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          marginBottom: '1rem',
-          flexWrap: 'wrap',
-        }}
-      >
-        {Object.entries(statusCounts).map(([status, count]) => {
-          const colors = getStatusColor(status);
-          return (
-            <div
-              key={status}
-              style={{
-                padding: '0.4rem 0.75rem',
-                borderRadius: '6px',
-                background: colors.bg,
-                border: `1px solid ${colors.border}`,
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: colors.text,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-              }}
-            >
-              <span>{getStatusIcon(status)}</span>
-              <span>{status.replace('_', ' ')}</span>
-              <span style={{ opacity: 0.8 }}>({count})</span>
-            </div>
-          );
-        })}
-      </div>
+      {/* Status Summary Cards */}
+      {Object.entries(statusCounts).length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
+          {Object.entries(statusCounts).map(([status, count]) => {
+            const config = getStatusConfig(status);
+            return (
+              <div
+                key={status}
+                className={cn(
+                  'px-3 py-2.5 rounded-lg border-2 transition-all duration-200',
+                  'hover:shadow-sm hover:-translate-y-0.5',
+                  config.bg,
+                  config.border
+                )}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={cn('w-2 h-2 rounded-full', config.dotBg)} />
+                  <span className={cn('text-xs font-bold uppercase tracking-wide', config.text)}>
+                    {config.label}
+                  </span>
+                </div>
+                <div className={cn('text-2xl font-bold', config.text)}>{count}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Services List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div className="space-y-2.5">
         {sortedServices.length === 0 ? (
-          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              style={{ opacity: 0.3, margin: '0 auto 0.5rem' }}
-            >
-              <path
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <p style={{ fontSize: '0.85rem', margin: 0 }}>No services found</p>
+          <div className="py-12 px-6 text-center bg-gradient-to-b from-neutral-50/50 to-card rounded-lg border border-border">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center">
+              <Activity className="h-7 w-7 text-neutral-400" />
+            </div>
+            <p className="text-sm font-semibold text-foreground mb-1">No Services Found</p>
+            <p className="text-xs text-muted-foreground">
+              Services will appear here once they are added
+            </p>
           </div>
         ) : (
           sortedServices.slice(0, 5).map(service => {
-            const colors = getStatusColor(service.status);
+            const config = getStatusConfig(service.status);
             return (
               <Link
                 key={service.id}
                 href={`/services/${service.id}`}
-                className="dashboard-service-health-item"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.875rem',
-                  background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)',
-                  borderRadius: '10px',
-                  border: `1px solid ${colors.border}`,
-                  transition: 'all 0.2s ease',
-                  textDecoration: 'none',
-                  cursor: 'pointer',
-                }}
+                className={cn(
+                  'flex items-center justify-between p-4 rounded-lg',
+                  'bg-gradient-to-r from-white to-neutral-50/50',
+                  'border-2 transition-all duration-200',
+                  'hover:shadow-lg hover:scale-[1.02] no-underline group',
+                  config.border
+                )}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* Status Indicator */}
                   <div
-                    style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      background: colors.text,
-                      flexShrink: 0,
-                    }}
+                    className={cn(
+                      'w-3 h-3 rounded-full shrink-0 ring-2 ring-white shadow-sm',
+                      config.dotBg
+                    )}
                   />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: '0.9rem',
-                        fontWeight: '600',
-                        color: 'var(--text-primary)',
-                        marginBottom: '0.15rem',
-                      }}
-                    >
+
+                  {/* Service Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-foreground mb-1 truncate group-hover:text-primary transition-colors">
                       {service.name}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: colors.text, fontWeight: '600' }}>
-                      {service.status.replace('_', ' ')}
+                    <div className="flex items-center gap-1.5">
+                      {config.icon}
+                      <span className={cn('text-xs font-semibold', config.text)}>
+                        {config.label}
+                      </span>
                     </div>
                   </div>
                 </div>
+
+                {/* Incident Badges */}
                 {service.activeIncidents > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="flex items-center gap-2 ml-2">
                     {service.criticalIncidents > 0 && (
-                      <div
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '6px',
-                          background: '#fee2e2',
-                          color: '#dc2626',
-                          fontSize: '0.7rem',
-                          fontWeight: '700',
-                        }}
-                      >
+                      <Badge className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200 text-[0.7rem] font-bold px-2.5 py-0.5">
                         {service.criticalIncidents} Critical
-                      </div>
+                      </Badge>
                     )}
-                    <div
-                      style={{
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '6px',
-                        background: '#f3f4f6',
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.7rem',
-                        fontWeight: '600',
-                      }}
-                    >
+                    <Badge className="bg-neutral-100 text-neutral-700 border-neutral-300 hover:bg-neutral-200 text-[0.7rem] font-semibold px-2.5 py-0.5">
                       {service.activeIncidents} Active
-                    </div>
+                    </Badge>
                   </div>
                 )}
               </Link>
@@ -237,6 +227,18 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
           })
         )}
       </div>
+
+      {/* Show More Link */}
+      {sortedServices.length > 5 && (
+        <div className="mt-4 text-center">
+          <Button asChild variant="outline" size="sm" className="gap-2 font-semibold">
+            <Link href="/services">
+              <TrendingUp className="h-3.5 w-3.5" />
+              View {sortedServices.length - 5} More Services
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
