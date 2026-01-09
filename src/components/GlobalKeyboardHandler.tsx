@@ -4,108 +4,119 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 type KeyboardHandlerProps = {
-    onShortcutsToggle: () => void;
+  onShortcutsToggle: () => void;
 };
 
 export default function GlobalKeyboardHandler({ onShortcutsToggle }: KeyboardHandlerProps) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const [gPressed, setGPressed] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [gPressed, setGPressed] = useState(false);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if typing in input/textarea
-            const target = e.target as HTMLElement;
-            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-                return;
-            }
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
 
-            // G key for navigation (G+D, G+I, etc.)
-            if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                setGPressed(true);
-                return;
-            }
+      // G key for navigation (G+D, G+I, etc.)
+      if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setGPressed(true);
+        return;
+      }
 
-            // If G was pressed, handle navigation
-            if (gPressed && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                const key = e.key.toLowerCase();
-                switch (key) {
-                    case 'd':
-                        e.preventDefault();
-                        router.push('/');
-                        setGPressed(false);
-                        break;
-                    case 'i':
-                        e.preventDefault();
-                        router.push('/incidents');
-                        setGPressed(false);
-                        break;
-                    case 's':
-                        e.preventDefault();
-                        router.push('/services');
-                        setGPressed(false);
-                        break;
-                    case 't':
-                        e.preventDefault();
-                        router.push('/teams');
-                        setGPressed(false);
-                        break;
-                    case 'u':
-                        e.preventDefault();
-                        router.push('/users');
-                        setGPressed(false);
-                        break;
-                    case 'c':
-                        e.preventDefault();
-                        router.push('/schedules');
-                        setGPressed(false);
-                        break;
-                    case 'p':
-                        e.preventDefault();
-                        router.push('/policies');
-                        setGPressed(false);
-                        break;
-                    case 'a':
-                        e.preventDefault();
-                        router.push('/analytics');
-                        setGPressed(false);
-                        break;
-                    default:
-                        setGPressed(false);
-                }
-                return;
-            }
-
-            // Reset G state if another key is pressed
-            if (gPressed) {
-                setGPressed(false);
-            }
-
-            // ? key for shortcuts
-            if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                onShortcutsToggle();
-            }
-
-            // N key for new incident (when on incidents page)
-            if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && pathname?.startsWith('/incidents')) {
-                e.preventDefault();
-                router.push('/incidents/create');
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [router, pathname, gPressed, onShortcutsToggle]);
-
-    // Reset G state after timeout
-    useEffect(() => {
-        if (gPressed) {
-            const timeout = setTimeout(() => setGPressed(false), 1000);
-            return () => clearTimeout(timeout);
+      // If G was pressed, handle navigation
+      if (gPressed && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const key = e.key.toLowerCase();
+        switch (key) {
+          case 'd':
+            e.preventDefault();
+            router.push('/');
+            setGPressed(false);
+            break;
+          case 'i':
+            e.preventDefault();
+            router.push('/incidents');
+            setGPressed(false);
+            break;
+          case 's':
+            e.preventDefault();
+            router.push('/services');
+            setGPressed(false);
+            break;
+          case 't':
+            e.preventDefault();
+            router.push('/teams');
+            setGPressed(false);
+            break;
+          case 'u':
+            e.preventDefault();
+            router.push('/users');
+            setGPressed(false);
+            break;
+          case 'c':
+            e.preventDefault();
+            router.push('/schedules');
+            setGPressed(false);
+            break;
+          case 'p':
+            e.preventDefault();
+            router.push('/policies');
+            setGPressed(false);
+            break;
+          case 'a':
+            e.preventDefault();
+            router.push('/analytics');
+            setGPressed(false);
+            break;
+          default:
+            setGPressed(false);
         }
-    }, [gPressed]);
+        return;
+      }
 
-    return null;
+      // Reset G state if another key is pressed
+      if (gPressed) {
+        setGPressed(false);
+      }
+
+      // ? key for shortcuts
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        onShortcutsToggle();
+      }
+
+      // C key for Quick Create Menu
+      if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('openQuickCreate'));
+      }
+
+      // N key for new incident (when on incidents page)
+      if (
+        e.key.toLowerCase() === 'n' &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        pathname?.startsWith('/incidents')
+      ) {
+        e.preventDefault();
+        router.push('/incidents/create');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [router, pathname, gPressed, onShortcutsToggle]);
+
+  // Reset G state after timeout
+  useEffect(() => {
+    if (gPressed) {
+      const timeout = setTimeout(() => setGPressed(false), 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [gPressed]);
+
+  return null;
 }
-

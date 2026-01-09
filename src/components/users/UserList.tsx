@@ -4,6 +4,15 @@ import { useState, useCallback, useMemo } from 'react';
 import { UserCard } from './UserCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/shadcn/dropdown-menu';
+import { ChevronDown, Trash2, UserX, UserCheck, Shield, MoreHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 
 type User = {
   id: string;
@@ -39,7 +48,7 @@ type UserListProps = {
   deactivateUser: (userId: string, formData?: FormData) => Promise<{ error?: string } | undefined>;
   reactivateUser: (userId: string, formData?: FormData) => Promise<{ error?: string } | undefined>;
   deleteUser: (userId: string, formData?: FormData) => Promise<{ error?: string } | undefined>;
-  generateInvite: (userId: string, prevState: any, formData: FormData) => Promise<any>;
+  generateInvite: (userId: string, prevState: unknown, formData: FormData) => Promise<unknown>;
 };
 
 export default function UserList({
@@ -55,6 +64,7 @@ export default function UserList({
   generateInvite,
 }: UserListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkActionPending, setIsBulkActionPending] = useState(false);
 
   const toggleUser = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -83,19 +93,92 @@ export default function UserList({
     [users.length, selectedIds.size]
   );
 
+  const handleBulkAction = async (action: 'DEACTIVATE' | 'ACTIVATE' | 'DELETE') => {
+    if (selectedIds.size === 0) return;
+    setIsBulkActionPending(true);
+
+    try {
+      const promises = Array.from(selectedIds).map(async id => {
+        if (action === 'DEACTIVATE') await deactivateUser(id);
+        if (action === 'ACTIVATE') await reactivateUser(id);
+        if (action === 'DELETE') await deleteUser(id);
+      });
+
+      await Promise.all(promises);
+      toast.success(
+        `${action === 'DELETE' ? 'Deleted' : action === 'ACTIVATE' ? 'Activated' : 'Deactivated'} ${selectedIds.size} users`
+      );
+      setSelectedIds(new Set());
+    } catch {
+      toast.error('Failed to perform bulk action');
+    } finally {
+      setIsBulkActionPending(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Select All */}
-      {users.length > 0 && (
-        <div className="flex items-center gap-3 px-2">
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-0 z-10 flex items-center justify-between p-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-md shadow-sm">
+          <div className="flex items-center gap-3 px-2">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={toggleAll}
+              aria-label="Select all users"
+            />
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-2"
+                disabled={isBulkActionPending}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+                Actions
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[160px]">
+              <DropdownMenuItem onClick={() => handleBulkAction('ACTIVATE')}>
+                <UserCheck className="mr-2 h-4 w-4 text-green-500" />
+                <span>Activate</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleBulkAction('DEACTIVATE')}>
+                <UserX className="mr-2 h-4 w-4 text-orange-500" />
+                <span>Deactivate</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleBulkAction('DELETE')}
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {/* Select All (Only if no active selection bar to avoid duplication, mostly for empty state or consistent header? 
+          Actually, let's keep the standard header if nothing selected, or just merge them. 
+          The user requested "single line". Let's show the standard "Select All" bar when 0 selected, 
+          and swap it for the "Bulk Actions" bar when >0 selected. 
+          Or just keep one bar that transforms.
+      */}
+      {users.length > 0 && selectedIds.size === 0 && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-md border border-transparent">
           <Checkbox
             checked={allSelected}
             onCheckedChange={toggleAll}
             aria-label="Select all users"
           />
-          <span className="text-sm text-muted-foreground">
-            {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
-          </span>
+          <span className="text-sm text-muted-foreground">Select all</span>
         </div>
       )}
 

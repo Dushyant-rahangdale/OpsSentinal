@@ -176,15 +176,6 @@ export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
         icon: 'key',
         keywords: ['token', 'automation'],
       },
-      {
-        id: 'search-presets',
-        label: 'Search Presets',
-        description: 'Saved incident filters',
-        href: '/settings/search-presets',
-        icon: 'search',
-        requiresResponder: true,
-        keywords: ['filters', 'saved search'],
-      },
     ],
   },
   {

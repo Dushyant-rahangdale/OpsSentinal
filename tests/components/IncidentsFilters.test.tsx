@@ -6,51 +6,51 @@ const push = vi.fn();
 const searchParams = new URLSearchParams('priority=P1');
 
 vi.mock('next/navigation', () => ({
-    useRouter: () => ({
-        push,
-        replace: vi.fn(),
-        prefetch: vi.fn(),
-        back: vi.fn(),
-    }),
-    useSearchParams: () => searchParams,
+  useRouter: () => ({
+    push,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+  useSearchParams: () => searchParams,
 }));
 
 describe('IncidentsFilters', () => {
-    beforeEach(() => {
-        push.mockClear();
-    });
+  beforeEach(() => {
+    push.mockClear();
+  });
 
-    it('skips navigation when params are unchanged', () => {
-        render(
-            <IncidentsFilters
-                currentFilter="all_open"
-                currentPriority="P1"
-                currentUrgency="all"
-                currentSort="newest"
-                currentSearch=""
-            />
-        );
+  it('updates search params when search input changes', () => {
+    render(
+      <IncidentsFilters
+        currentFilter="all_open"
+        currentPriority="P1"
+        currentUrgency="all"
+        currentSort="newest"
+        currentSearch=""
+      />
+    );
 
-        const prioritySelect = screen.getByDisplayValue('P1 - Critical');
-        fireEvent.change(prioritySelect, { target: { value: 'P1' } });
+    const searchInput = screen.getByLabelText('Search');
+    fireEvent.change(searchInput, { target: { value: 'database' } });
 
-        expect(push).not.toHaveBeenCalled();
-    });
+    expect(push).toHaveBeenCalledWith('/incidents?priority=P1&search=database');
+  });
 
-    it('removes query string when all filters are reset', () => {
-        render(
-            <IncidentsFilters
-                currentFilter="all_open"
-                currentPriority="P1"
-                currentUrgency="all"
-                currentSort="newest"
-                currentSearch=""
-            />
-        );
+  it('clears all filters when Clear All is clicked', () => {
+    render(
+      <IncidentsFilters
+        currentFilter="all_open"
+        currentPriority="P1"
+        currentUrgency="all"
+        currentSort="newest"
+        currentSearch=""
+      />
+    );
 
-        const prioritySelect = screen.getByDisplayValue('P1 - Critical');
-        fireEvent.change(prioritySelect, { target: { value: 'all' } });
+    const clearButton = screen.getByRole('button', { name: /clear all/i });
+    fireEvent.click(clearButton);
 
-        expect(push).toHaveBeenCalledWith('/incidents');
-    });
+    expect(push).toHaveBeenCalledWith('/incidents');
+  });
 });

@@ -491,9 +491,27 @@ export default function Sidebar(
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div className="text-xs font-bold text-white truncate group-hover:text-indigo-200 transition-colors flex items-center gap-2">
                   <span>{userName || 'User'}</span>
-                  <span className="text-[9px] text-indigo-300 bg-indigo-500/10 px-1 rounded border border-indigo-500/20 font-medium uppercase tracking-wide">
-                    {userRole?.toLowerCase() || 'admin'}
-                  </span>
+                  {(() => {
+                    const roleKey = (userRole?.toLowerCase() || 'admin') as keyof typeof roleColors;
+                    const roleColors = {
+                      admin: 'text-rose-300 bg-rose-500/10 border-rose-500/20',
+                      responder: 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20',
+                      observer: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20',
+                      user: 'text-sky-300 bg-sky-500/10 border-sky-500/20',
+                    };
+                    const activeColor = roleColors[roleKey] || roleColors.user;
+
+                    return (
+                      <span
+                        className={cn(
+                          'text-[9px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide',
+                          activeColor
+                        )}
+                      >
+                        {userRole?.toLowerCase() || 'admin'}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="text-[10px] text-white/40 font-medium truncate">
                   {/* Display Email as requested */}

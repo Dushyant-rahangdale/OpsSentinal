@@ -60,7 +60,7 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-64 p-0 overflow-hidden border-2 border-border shadow-2xl bg-white/95 backdrop-blur-xl z-[1050]"
+        className="w-64 p-0 overflow-hidden border-2 border-border shadow-2xl bg-white/95 backdrop-blur-xl z-[1050] [zoom:0.8]"
         align="end"
         forceMount
       >
@@ -81,8 +81,28 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
               </p>
               <p className="text-[10px] text-white/70 font-medium truncate mb-1">{email}</p>
               {role && (
-                <div className="inline-flex self-start items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/20 border border-white/20 backdrop-blur-md uppercase tracking-wider shadow-sm">
-                  {role}
+                <div className="inline-flex self-start">
+                  {(() => {
+                    const roleKey = (role?.toLowerCase() || 'admin') as keyof typeof roleColors;
+                    const roleColors = {
+                      admin: 'text-rose-300 bg-rose-500/10 border-rose-500/20',
+                      responder: 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20',
+                      observer: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20',
+                      user: 'text-sky-300 bg-sky-500/10 border-sky-500/20',
+                    };
+                    const activeColor = roleColors[roleKey] || roleColors.user;
+
+                    return (
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider border shadow-sm backdrop-blur-md',
+                          activeColor
+                        )}
+                      >
+                        {role}
+                      </span>
+                    );
+                  })()}
                 </div>
               )}
             </div>

@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 type StatsResponse = {
   activeIncidentsCount: number;
   criticalIncidentsCount: number;
+  mediumIncidentsCount: number;
+  lowIncidentsCount: number;
   isClipped: boolean;
   retentionDays: number;
 };
@@ -47,6 +49,8 @@ export function useOperationalStats() {
   return {
     activeCount: stats?.activeIncidentsCount ?? 0,
     criticalCount: stats?.criticalIncidentsCount ?? 0,
+    mediumCount: stats?.mediumIncidentsCount ?? 0,
+    lowCount: stats?.lowIncidentsCount ?? 0,
     loading,
     error,
   };

@@ -50,13 +50,13 @@ function SubmitButton({ disabled }: { disabled?: boolean }) {
   return (
     <Button
       type="submit"
-      className="w-full h-11 font-semibold text-sm transition-all duration-200 mt-2"
+      className="w-full h-10 font-semibold text-sm transition-all duration-200 mt-2"
       disabled={pending || disabled}
       variant={disabled ? 'secondary' : 'default'}
     >
       {pending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
           Sending Invite...
         </>
       ) : (
@@ -103,8 +103,8 @@ export default function UserCreateForm({ action, className = '', disabled = fals
 
   return (
     <div className={cn('relative', className)}>
-      <form ref={formRef} action={formAction} className="space-y-5">
-        <fieldset disabled={disabled} className="space-y-5 border-none p-0 m-0 disabled:opacity-60">
+      <form ref={formRef} action={formAction} className="space-y-4">
+        <fieldset disabled={disabled} className="space-y-4 border-none p-0 m-0 disabled:opacity-60">
           {/* Name Field */}
           <div className="space-y-2">
             <Label
@@ -118,7 +118,7 @@ export default function UserCreateForm({ action, className = '', disabled = fals
               name="name"
               required
               placeholder="John Doe"
-              className="h-11 bg-background/50 border-input transition-colors focus:bg-background"
+              className="h-10 text-sm bg-background/50 border-input transition-colors focus:bg-background"
               maxLength={200}
             />
           </div>
@@ -134,7 +134,7 @@ export default function UserCreateForm({ action, className = '', disabled = fals
               </Label>
               {email && !emailError && (
                 <span className="text-[10px] text-green-600 flex items-center gap-1 font-medium animate-in fade-in slide-in-from-left-2">
-                  <CheckCircle2 className="h-3 w-3" /> Valid email
+                  <CheckCircle2 className="h-3 w-3" /> Valid
                 </span>
               )}
             </div>
@@ -145,7 +145,7 @@ export default function UserCreateForm({ action, className = '', disabled = fals
               type="email"
               placeholder="john@company.com"
               className={cn(
-                'h-11 bg-background/50 border-input transition-colors focus:bg-background',
+                'h-10 text-sm bg-background/50 border-input transition-colors focus:bg-background',
                 emailError && 'border-red-300 focus-visible:ring-red-200'
               )}
               maxLength={320}
@@ -169,62 +169,62 @@ export default function UserCreateForm({ action, className = '', disabled = fals
             </Label>
             <input type="hidden" name="role" value={selectedRole} />
             <Select value={selectedRole} onValueChange={setSelectedRole} disabled={disabled}>
-              <SelectTrigger className="h-auto py-3 pl-3 pr-4 w-full bg-background/50 items-start">
-                <div className="flex  items-start gap-3 text-left">
+              <SelectTrigger className="h-auto py-2.5 pl-3 pr-4 w-full bg-background/50 items-start">
+                <div className="flex items-center gap-3 text-left">
                   {selectedRole === 'ADMIN' ? (
-                    <div className="mt-1 p-1 bg-purple-100 rounded-md text-purple-600">
+                    <div className="p-1 bg-purple-100 rounded-md text-purple-600">
                       <ShieldAlert className="h-4 w-4" />
                     </div>
                   ) : selectedRole === 'RESPONDER' ? (
-                    <div className="mt-1 p-1 bg-blue-100 rounded-md text-blue-600">
+                    <div className="p-1 bg-blue-100 rounded-md text-blue-600">
                       <Shield className="h-4 w-4" />
                     </div>
                   ) : (
-                    <div className="mt-1 p-1 bg-gray-100 rounded-md text-gray-600">
+                    <div className="p-1 bg-gray-100 rounded-md text-gray-600">
                       <Users className="h-4 w-4" />
                     </div>
                   )}
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col">
                     <span className="font-semibold text-sm">
                       {selectedRole.charAt(0) + selectedRole.slice(1).toLowerCase()}
                     </span>
-                    <span className="text-xs text-muted-foreground line-clamp-1">
+                    <span className="text-[10px] text-muted-foreground line-clamp-1">
                       {ROLE_DESCRIPTIONS[selectedRole as keyof typeof ROLE_DESCRIPTIONS]}
                     </span>
                   </div>
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ADMIN" className="py-3">
+                <SelectItem value="ADMIN" className="py-2.5">
                   <div className="flex items-center gap-3">
                     <div className="p-1 bg-purple-100 rounded-md text-purple-600">
                       <ShieldAlert className="h-4 w-4" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium">Admin</span>
-                      <span className="text-xs text-muted-foreground">Full system control</span>
+                      <span className="font-medium text-sm">Admin</span>
+                      <span className="text-[10px] text-muted-foreground">Full system control</span>
                     </div>
                   </div>
                 </SelectItem>
-                <SelectItem value="RESPONDER" className="py-3">
+                <SelectItem value="RESPONDER" className="py-2.5">
                   <div className="flex items-center gap-3">
                     <div className="p-1 bg-blue-100 rounded-md text-blue-600">
                       <Shield className="h-4 w-4" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium">Responder</span>
-                      <span className="text-xs text-muted-foreground">Manage incidents</span>
+                      <span className="font-medium text-sm">Responder</span>
+                      <span className="text-[10px] text-muted-foreground">Manage incidents</span>
                     </div>
                   </div>
                 </SelectItem>
-                <SelectItem value="USER" className="py-3">
+                <SelectItem value="USER" className="py-2.5">
                   <div className="flex items-center gap-3">
                     <div className="p-1 bg-gray-100 rounded-md text-gray-600">
                       <Users className="h-4 w-4" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium">User</span>
-                      <span className="text-xs text-muted-foreground">View only access</span>
+                      <span className="font-medium text-sm">User</span>
+                      <span className="text-[10px] text-muted-foreground">View only access</span>
                     </div>
                   </div>
                 </SelectItem>

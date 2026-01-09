@@ -3,9 +3,6 @@ import Link from 'next/link';
 import { getUserPermissions } from '@/lib/rbac';
 import IncidentsListTable from '@/components/incident/IncidentsListTable';
 import IncidentsFilters from '@/components/incident/IncidentsFilters';
-import PresetSelector from '@/components/PresetSelector';
-import { getAccessiblePresets, searchParamsToCriteria } from '@/lib/search-presets';
-import { createDefaultPresetsForUser } from '@/lib/search-presets-defaults';
 import {
   buildIncidentOrderBy,
   buildIncidentWhere,
@@ -13,24 +10,13 @@ import {
   normalizeIncidentFilter,
   normalizeIncidentSort,
 } from '@/lib/incidents-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/shadcn/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { AlertTriangle } from 'lucide-react';
 
 export const revalidate = 30;
 
 const ITEMS_PER_PAGE = 50;
-
-function buildIncidentsUrl(params: URLSearchParams): string {
-  const query = params.toString();
-  return query ? `/incidents?${query}` : '/incidents';
-}
 
 export default async function IncidentsPage({
   searchParams,
@@ -42,6 +28,7 @@ export default async function IncidentsPage({
     urgency?: string;
     sort?: string;
     page?: string;
+    teamId?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -50,6 +37,7 @@ export default async function IncidentsPage({
   const currentPriority = params.priority || 'all';
   const currentUrgency = params.urgency || 'all';
   const currentSort = normalizeIncidentSort(params.sort);
+  const currentTeamId = params.teamId || 'all';
   const currentPage = parseInt(params.page || '1', 10);
   const skip = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -67,28 +55,26 @@ export default async function IncidentsPage({
   });
 
   const userTeamIds = currentUser?.teamMemberships.map(t => t.teamId) || [];
-
-  let presets = await getAccessiblePresets(permissions.id, userTeamIds);
-  if (presets.length === 0 && permissions.isResponderOrAbove) {
-    await createDefaultPresetsForUser(permissions.id);
-    presets = await getAccessiblePresets(permissions.id, userTeamIds);
-  }
-
-  const currentCriteria = searchParamsToCriteria({
-    filter: currentFilter,
-    search: currentSearch,
-    priority: currentPriority,
-    urgency: currentUrgency,
-    sort: currentSort,
-  });
+  const userTeams =
+    userTeamIds.length > 0
+      ? await prisma.team.findMany({
+          where: { id: { in: userTeamIds } },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        })
+      : [];
 
   const where = buildIncidentWhere({
     filter: currentFilter,
     search: currentSearch,
     priority: currentPriority,
     urgency: currentUrgency,
-    assigneeId: currentUser?.id,
+    assigneeId: currentUser?.id ?? permissions.id,
   });
+
+  if (currentTeamId !== 'all') {
+    where.teamId = currentTeamId === 'mine' ? { in: userTeamIds } : currentTeamId;
+  }
 
   const orderBy = buildIncidentOrderBy(currentSort);
 
@@ -110,7 +96,7 @@ export default async function IncidentsPage({
   const totalCount = await prisma.incident.count({ where });
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  let incidents = await prisma.incident.findMany({
+  const incidents = await prisma.incident.findMany({
     where,
     select: incidentListSelect,
     orderBy,
@@ -118,38 +104,13 @@ export default async function IncidentsPage({
     take: ITEMS_PER_PAGE,
   });
 
-  if (currentSort === 'priority') {
-    const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4, P5: 5, '': 6 };
-    incidents = incidents.sort((a, b) => {
-      const aKey = a.priority ?? '';
-      const bKey = b.priority ?? '';
-      const ap = priorityOrder[aKey as keyof typeof priorityOrder] || 6;
-      const bp = priorityOrder[bKey as keyof typeof priorityOrder] || 6;
-      if (ap !== bp) return ap - bp;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }
-
-  const users = await prisma.user.findMany({
-    where: { status: 'ACTIVE' },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: 'asc' },
-  });
-
-  const tabs = [
-    { id: 'all', label: 'All', count: totalCount },
-    { id: 'mine', label: 'Mine', count: mineCount },
-    { id: 'all_open', label: 'Open', count: openCount },
-    { id: 'resolved', label: 'Resolved', count: resolvedCount },
-    { id: 'snoozed', label: 'Snoozed', count: snoozedCount },
-    { id: 'suppressed', label: 'Suppressed', count: suppressedCount },
-  ];
-
-  const baseParams = new URLSearchParams();
-  if (currentSearch) baseParams.set('search', currentSearch);
-  if (currentPriority !== 'all') baseParams.set('priority', currentPriority);
-  if (currentUrgency !== 'all') baseParams.set('urgency', currentUrgency);
-  if (currentSort !== 'newest') baseParams.set('sort', currentSort);
+  const users = canCreateIncident
+    ? await prisma.user.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true, email: true },
+        orderBy: { name: 'asc' },
+      })
+    : [];
 
   const showingFrom = totalCount === 0 ? 0 : skip + 1;
   const showingTo = Math.min(skip + ITEMS_PER_PAGE, totalCount);
@@ -206,57 +167,17 @@ export default async function IncidentsPage({
 
       {/* Single-column layout with inline filters */}
       <div className="space-y-4 md:space-y-5">
-        {/* Compact Filters Panel */}
-        <Card className="bg-slate-50/50">
-          <CardContent className="p-3 md:p-4">
-            <IncidentsFilters
-              currentFilter={currentFilter}
-              currentSort={currentSort}
-              currentPriority={currentPriority}
-              currentUrgency={currentUrgency}
-              currentSearch={currentSearch}
-              currentCriteria={currentCriteria}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Tabs / Presets */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map(tab => {
-              const tabParams = new URLSearchParams(baseParams.toString());
-              // 'all' and 'all_open' are the default views so no filter param needed
-              if (tab.id === 'all' || tab.id === 'all_open') tabParams.delete('filter');
-              else tabParams.set('filter', tab.id);
-              tabParams.delete('page');
-              const isActive =
-                currentFilter === tab.id || (currentFilter === 'all_open' && tab.id === 'all_open');
-
-              return (
-                <Link key={tab.id} href={buildIncidentsUrl(tabParams)}>
-                  <Button variant={isActive ? 'default' : 'outline'} size="sm" className="gap-1.5">
-                    {tab.label}
-                    {tab.count > 0 && (
-                      <span
-                        className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-muted'}`}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-2">
-            <PresetSelector presets={presets} currentCriteria={currentCriteria} />
-            {canCreateIncident && (
-              <Link href="/incidents/create">
-                <Button size="sm">+ Create</Button>
-              </Link>
-            )}
-          </div>
-        </div>
+        {/* Filters Panel */}
+        <IncidentsFilters
+          currentFilter={currentFilter}
+          currentSort={currentSort}
+          currentPriority={currentPriority}
+          currentUrgency={currentUrgency}
+          currentSearch={currentSearch}
+          currentTeamId={currentTeamId}
+          teams={userTeams}
+          canCreateIncident={canCreateIncident}
+        />
 
         {/* List */}
         <Card>

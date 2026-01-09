@@ -25,31 +25,52 @@ export async function GET() {
       return jsonError('Unauthorized', 401);
     }
 
-    const { calculateSLAMetrics } = await import('@/lib/sla-server');
-    // Import type dynamically or just use inferred type if possible, but calculateSLAMetrics is dynamic import.
-    // Better to define the object with proper typing.
-    type SLAMetricsFilter = import('@/lib/sla-server').SLAMetricsFilter;
-
-    const slaFilters: SLAMetricsFilter = {
-      useOrScope: true,
+    // Build efficient Where clause for Active Incidents
+    const where: Prisma.IncidentWhereInput = {
+      status: { not: 'RESOLVED' },
     };
 
+    // Apply Scope Permissions
     if (user.role !== 'ADMIN' && user.role !== 'RESPONDER') {
       const teamIds = user.teamMemberships.map(membership => membership.teamId);
-      slaFilters.teamId = teamIds;
-      slaFilters.assigneeId = user.id;
+
+      // Use OR scope: Assigned to user OR Assigned to user's teams OR Service owned by user's teams
+      where.OR = [
+        { assigneeId: user.id },
+        { teamId: { in: teamIds } },
+        { service: { teamId: { in: teamIds } } },
+      ];
     }
 
-    const slaMetrics = await calculateSLAMetrics(slaFilters);
-    const activeIncidentsCount = slaMetrics.activeCount;
-    const criticalIncidentsCount = slaMetrics.criticalCount;
-    // Retention info
+    // Group by Urgency to get breakdown
+    const urgencyCounts = await prisma.incident.groupBy({
+      by: ['urgency'],
+      where,
+      _count: { _all: true },
+    });
+
+    const activeIncidentsCount = urgencyCounts.reduce((acc, curr) => acc + curr._count._all, 0);
+    const criticalIncidentsCount = urgencyCounts.find(u => u.urgency === 'HIGH')?._count._all || 0;
+    const mediumIncidentsCount = urgencyCounts.find(u => u.urgency === 'MEDIUM')?._count._all || 0;
+    const lowIncidentsCount = urgencyCounts.find(u => u.urgency === 'LOW')?._count._all || 0;
+
+    // Retention info (Mocking or fetching separately if needed, but sidebar usually doesn't need strict retention info)
+    // We'll return nulls or defaults as this is just for the badge
     const retentionInfo = {
-      isClipped: slaMetrics.isClipped,
-      retentionDays: slaMetrics.retentionDays,
+      isClipped: false,
+      retentionDays: 90, // Default assumption
     };
 
-    return jsonOk({ activeIncidentsCount, criticalIncidentsCount, ...retentionInfo }, 200);
+    return jsonOk(
+      {
+        activeIncidentsCount,
+        criticalIncidentsCount,
+        mediumIncidentsCount,
+        lowIncidentsCount,
+        ...retentionInfo,
+      },
+      200
+    );
   } catch (error) {
     logger.error('api.sidebar_stats.error', {
       error: error instanceof Error ? error.message : String(error),

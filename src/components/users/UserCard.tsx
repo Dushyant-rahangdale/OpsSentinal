@@ -107,9 +107,9 @@ const getInitials = (name: string) => {
 };
 
 const roleAccentColors = {
-  ADMIN: 'border-l-purple-500',
-  RESPONDER: 'border-l-blue-500',
-  USER: 'border-l-gray-400',
+  ADMIN: 'border-l-rose-500',
+  RESPONDER: 'border-l-indigo-500',
+  USER: 'border-l-sky-500',
 };
 
 export function UserCard({
@@ -178,9 +178,9 @@ export function UserCard({
   };
 
   const roleColors = {
-    ADMIN: 'bg-purple-100 text-purple-800 border-purple-200',
-    RESPONDER: 'bg-blue-100 text-blue-800 border-blue-200',
-    USER: 'bg-gray-100 text-gray-800 border-gray-200',
+    ADMIN: 'bg-rose-100 text-rose-800 border-rose-200',
+    RESPONDER: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    USER: 'bg-sky-100 text-sky-800 border-sky-200',
   };
 
   const handleDeactivate = () => {
@@ -304,19 +304,19 @@ export function UserCard({
                 <SelectContent>
                   <SelectItem value="ADMIN" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                       <span>Admin</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="RESPONDER" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                       <span>Responder</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="USER" className="text-xs">
                     <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-gray-500" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-sky-500" />
                       <span>User</span>
                     </div>
                   </SelectItem>

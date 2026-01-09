@@ -20,7 +20,18 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/shadcn/card';
-import { Filter, X, UserCheck, UserPlus, UserX, Users } from 'lucide-react';
+import {
+  Filter,
+  X,
+  UserCheck,
+  UserPlus,
+  UserX,
+  Users,
+  Search,
+  Shield,
+  Activity,
+  Briefcase,
+} from 'lucide-react';
 
 type Team = {
   id: string;
@@ -128,7 +139,7 @@ export default function UserFilters({ teams }: UserFiltersProps) {
           </Badge>
           <Badge
             variant={role === 'ADMIN' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-purple-100 hover:text-purple-800 transition-colors border-purple-200 text-purple-700 data-[variant=secondary]:bg-purple-100 data-[variant=secondary]:text-purple-800"
+            className="cursor-pointer hover:bg-rose-100 hover:text-rose-800 transition-colors border-rose-200 text-rose-700 data-[variant=secondary]:bg-rose-100 data-[variant=secondary]:text-rose-800"
             onClick={() => handleFilterChange('role', role === 'ADMIN' ? '' : 'ADMIN')}
           >
             <Users className="mr-1 h-3 w-3" /> Admins
@@ -141,13 +152,16 @@ export default function UserFilters({ teams }: UserFiltersProps) {
             <Label htmlFor="q" className="text-xs font-semibold uppercase text-muted-foreground">
               Search
             </Label>
-            <Input
-              id="q"
-              placeholder="Name or email..."
-              className="bg-muted/30 focus:bg-background transition-colors"
-              value={query}
-              onChange={e => handleFilterChange('q', e.target.value)}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="q"
+                placeholder="Name or email..."
+                className="h-10 pl-9 bg-muted/30 focus:bg-background transition-colors"
+                value={query}
+                onChange={e => handleFilterChange('q', e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -156,14 +170,32 @@ export default function UserFilters({ teams }: UserFiltersProps) {
               value={status}
               onValueChange={val => handleFilterChange('status', val === 'all' ? '' : val)}
             >
-              <SelectTrigger className="bg-muted/30 focus:bg-background transition-colors">
-                <SelectValue placeholder="All Statuses" />
+              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="All Statuses" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INVITED">Invited</SelectItem>
-                <SelectItem value="DISABLED">Disabled</SelectItem>
+                <SelectItem value="ACTIVE">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    <span>Active</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="INVITED">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                    <span>Invited</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="DISABLED">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-gray-500" />
+                    <span>Disabled</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -174,14 +206,32 @@ export default function UserFilters({ teams }: UserFiltersProps) {
               value={role}
               onValueChange={val => handleFilterChange('role', val === 'all' ? '' : val)}
             >
-              <SelectTrigger className="bg-muted/30 focus:bg-background transition-colors">
-                <SelectValue placeholder="All Roles" />
+              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="All Roles" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="RESPONDER">Responder</SelectItem>
-                <SelectItem value="USER">User</SelectItem>
+                <SelectItem value="ADMIN">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    <span>Admin</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="RESPONDER">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                    <span>Responder</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="USER">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                    <span>User</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -192,8 +242,11 @@ export default function UserFilters({ teams }: UserFiltersProps) {
               value={teamId}
               onValueChange={val => handleFilterChange('teamId', val === 'all' ? '' : val)}
             >
-              <SelectTrigger className="bg-muted/30 focus:bg-background transition-colors">
-                <SelectValue placeholder="All Teams" />
+              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="All Teams" />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Teams</SelectItem>

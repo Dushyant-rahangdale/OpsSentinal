@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,147 +11,171 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/shadcn/dropdown-menu';
 import { Button } from '@/components/ui/shadcn/button';
-import { Plus, ChevronDown } from 'lucide-react';
+import {
+  Plus,
+  ChevronDown,
+  Zap,
+  FileText,
+  Server,
+  Users,
+  Calendar,
+  Shield,
+  ArrowRight,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 type QuickAction = {
   label: string;
   href: string;
   icon: React.ReactNode;
   description?: string;
+  colorClass: string;
+  badge?: string;
 };
 
 type QuickActionsProps = {
   canCreate?: boolean;
 };
 
-const quickActions: QuickAction[] = [
-  {
-    label: 'New Incident',
-    href: '/incidents/create',
-    description: 'Create a new incident',
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        width="16"
-        height="16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Zm0 3v4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'New Postmortem',
-    href: '/postmortems/create',
-    description: 'Create postmortem for resolved incident',
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        width="16"
-        height="16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path
-          d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M14 2v6h6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16 13H8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16 17H8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M10 9H8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'New Service',
-    href: '/services',
-    description: 'Add a new service',
-    icon: (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Z" />
-      </svg>
-    ),
-  },
-  {
-    label: 'New Team',
-    href: '/teams',
-    description: 'Create a new team',
-    icon: (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M7 12a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm10 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19a4 4 0 0 1 8 0v1H3v-1Zm10 1v-1a4 4 0 0 1 8 0v1h-8Z" />
-      </svg>
-    ),
-  },
-  {
-    label: 'New Schedule',
-    href: '/schedules',
-    description: 'Set up on-call schedule',
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        width="16"
-        height="16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M7 3v3m10-3v3M4 9h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9Z" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'New Policy',
-    href: '/policies',
-    description: 'Create escalation policy',
-    icon: (
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z" />
-      </svg>
-    ),
-  },
-];
-
 export default function QuickActions({ canCreate = true }: QuickActionsProps) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpen = () => setOpen(true);
+    window.addEventListener('openQuickCreate', handleOpen);
+    return () => window.removeEventListener('openQuickCreate', handleOpen);
+  }, []);
 
   if (!canCreate) {
     return null;
   }
 
+  const quickActions: QuickAction[] = [
+    {
+      label: 'New Incident',
+      href: '/incidents/create',
+      description: 'Trigger a new incident response',
+      icon: <Zap className="h-4 w-4" />,
+      colorClass: 'bg-red-50 text-red-600 border-red-100 group-hover:bg-red-100',
+    },
+    {
+      label: 'New Postmortem',
+      href: '/postmortems/create',
+      description: 'Create retrospective report',
+      icon: <FileText className="h-4 w-4" />,
+      colorClass: 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-100',
+    },
+    {
+      label: 'New Service',
+      href: '/services',
+      description: 'Register a new microservice',
+      icon: <Server className="h-4 w-4" />,
+      colorClass: 'bg-blue-50 text-blue-600 border-blue-100 group-hover:bg-blue-100',
+    },
+    {
+      label: 'New Team',
+      href: '/teams',
+      description: 'Create a response team',
+      icon: <Users className="h-4 w-4" />,
+      colorClass: 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-100',
+    },
+    {
+      label: 'New Schedule',
+      href: '/schedules',
+      description: 'Set up on-call rotation',
+      icon: <Calendar className="h-4 w-4" />,
+      colorClass: 'bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-100',
+    },
+    {
+      label: 'New Policy',
+      href: '/policies',
+      description: 'Define escalation rules',
+      icon: <Shield className="h-4 w-4" />,
+      colorClass: 'bg-purple-50 text-purple-600 border-purple-100 group-hover:bg-purple-100',
+      badge: 'Admin',
+    },
+  ];
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button className="h-9 gap-1 font-semibold shadow-sm">
+        <Button
+          variant="default"
+          className="h-9 gap-1.5 font-semibold shadow-sm transition-all duration-300 active:scale-95"
+        >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Create</span>
-          <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
+          <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {quickActions.map(action => (
-          <DropdownMenuItem
-            key={action.href}
-            onClick={() => router.push(action.href)}
-            className="cursor-pointer py-2 focus:bg-muted"
-          >
+      <DropdownMenuContent
+        align="end"
+        className="w-64 p-0 overflow-hidden border-2 border-border shadow-2xl bg-white/95 backdrop-blur-xl z-[1050] [zoom:0.8]"
+      >
+        {/* Immersive Header */}
+        <div className="relative p-4 bg-gradient-to-br from-indigo-600 via-primary to-purple-700 text-white overflow-hidden border-b border-white/10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.05]" />
+
+          <div className="relative z-10 flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <span className="shrink-0 text-muted-foreground">{action.icon}</span>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">{action.label}</span>
+              <div className="flex items-center justify-center h-7 w-7 rounded-full bg-white/20 border border-white/20 shadow-sm backdrop-blur-md">
+                <Plus className="h-4 w-4 text-white" />
+              </div>
+              <h4 className="font-bold text-base tracking-tight shadow-sm">Create New</h4>
+            </div>
+            <p className="text-[10px] text-indigo-100 font-medium pl-9 opacity-90">
+              Select an resource to create
+            </p>
+          </div>
+        </div>
+
+        <div className="p-1 space-y-0.5 max-h-[60vh] overflow-y-auto">
+          {quickActions.map(action => (
+            <DropdownMenuItem
+              key={action.href}
+              onClick={() => router.push(action.href)}
+              className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-2 px-2 border border-transparent focus:border-border/50 transition-all"
+            >
+              <div
+                className={cn(
+                  'flex items-center justify-center w-8 h-8 rounded-full mr-3 shrink-0 transition-all shadow-sm border',
+                  action.colorClass,
+                  'group-hover:scale-105 group-hover:shadow'
+                )}
+              >
+                {action.icon}
+              </div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground tracking-tight">
+                    {action.label}
+                  </span>
+                  {action.badge && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground uppercase tracking-wider border">
+                      {action.badge}
+                    </span>
+                  )}
+                </div>
                 {action.description && (
-                  <span className="text-xs text-muted-foreground">{action.description}</span>
+                  <span className="text-[10px] text-muted-foreground group-hover:text-foreground/80 transition-colors truncate">
+                    {action.description}
+                  </span>
                 )}
               </div>
-            </div>
-          </DropdownMenuItem>
-        ))}
+              <ArrowRight className="h-3 w-3 text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-0.5 transition-all opacity-0 group-hover:opacity-100" />
+            </DropdownMenuItem>
+          ))}
+        </div>
+
+        <div className="p-2 bg-muted/30 border-t text-center">
+          <p className="text-[10px] text-muted-foreground">
+            Press <kbd className="font-mono bg-muted border px-1 rounded mx-1">C</kbd> anywhere to
+            create
+          </p>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

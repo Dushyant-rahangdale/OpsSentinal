@@ -157,8 +157,6 @@ async function clearDatabase() {
     prisma.backgroundJob.deleteMany(),
     prisma.customFieldValue.deleteMany(),
     prisma.customField.deleteMany(),
-    prisma.searchPresetUsage.deleteMany(),
-    prisma.searchPreset.deleteMany(),
     prisma.inAppNotification.deleteMany(),
     prisma.notification.deleteMany(),
     prisma.incidentWatcher.deleteMany(),
@@ -819,32 +817,6 @@ async function main() {
       metadata: { source: 'seed' },
     },
   });
-
-  await prisma.searchPreset.create({
-    data: {
-      name: 'High + Medium Urgency',
-      description: 'Track critical and elevated incidents',
-      createdById: admin.id,
-      isShared: true,
-      isDefault: true,
-      filterCriteria: {
-        status: ['OPEN', 'ACKNOWLEDGED'],
-        urgency: ['HIGH', 'MEDIUM'],
-        sort: 'createdAt:desc',
-      },
-      icon: 'alert-triangle',
-      color: '#dc2626',
-      order: 1,
-      sharedWithTeams: teams.slice(0, 2).map(team => team.id),
-    },
-  });
-
-  const preset = await prisma.searchPreset.findFirst({ where: { createdById: admin.id } });
-  if (preset) {
-    await prisma.searchPresetUsage.create({
-      data: { presetId: preset.id, userId: admin.id },
-    });
-  }
 
   const statusPage = await prisma.statusPage.create({
     data: {

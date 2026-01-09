@@ -177,26 +177,3 @@ export const IncidentCustomFieldSchema = z.object({
   customFieldId: z.string().min(1),
   value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional().nullable(),
 });
-
-export const SearchPresetCreateSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  description: z.string().trim().max(1000).optional().nullable(),
-  filterCriteria: z.record(z.unknown()),
-  isShared: z.boolean().optional(),
-  isPublic: z.boolean().optional(),
-  icon: z.string().trim().max(100).optional().nullable(),
-  color: z.string().trim().max(50).optional().nullable(),
-  sharedWithTeams: z.array(z.string()).optional(),
-});
-
-export const SearchPresetPatchSchema = z.object({
-  name: z.string().trim().min(1).max(100).optional(),
-  description: z.string().trim().max(1000).optional().nullable(),
-  filterCriteria: z.record(z.unknown()).optional(),
-  isShared: z.boolean().optional(),
-  isPublic: z.boolean().optional(),
-  icon: z.string().trim().max(100).optional().nullable(),
-  color: z.string().trim().max(50).optional().nullable(),
-  order: z.number().int().optional(),
-  sharedWithTeams: z.array(z.string()).optional(),
-});

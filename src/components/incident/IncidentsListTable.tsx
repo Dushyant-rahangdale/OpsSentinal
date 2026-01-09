@@ -270,7 +270,7 @@ export default function IncidentsListTable({
                     defaultValue=""
                   >
                     <option value="" disabled>
-                      Select assignee…
+                      Select assignee
                     </option>
                     {users.map(u => (
                       <option key={u.id} value={u.id}>
@@ -293,7 +293,7 @@ export default function IncidentsListTable({
                     defaultValue=""
                   >
                     <option value="" disabled>
-                      Select priority…
+                      Select priority
                     </option>
                     <option value="">Auto (Default)</option>
                     <option value="P1">P1 - Critical</option>
@@ -320,7 +320,7 @@ export default function IncidentsListTable({
                     defaultValue=""
                   >
                     <option value="" disabled>
-                      Snooze for…
+                      Snooze for
                     </option>
                     <option value="15">15 minutes</option>
                     <option value="30">30 minutes</option>
@@ -344,7 +344,7 @@ export default function IncidentsListTable({
                     defaultValue=""
                   >
                     <option value="" disabled>
-                      Urgency…
+                      Urgency
                     </option>
                     <option value="HIGH">HIGH</option>
                     <option value="MEDIUM">MEDIUM</option>
@@ -365,7 +365,7 @@ export default function IncidentsListTable({
                     defaultValue=""
                   >
                     <option value="" disabled>
-                      Status…
+                      Status
                     </option>
                     <option value="OPEN">OPEN</option>
                     <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
@@ -387,7 +387,7 @@ export default function IncidentsListTable({
                     disabled={isPending}
                     onClick={() => handleBulkAction('acknowledge')}
                   >
-                    ✓ Acknowledge
+                    Acknowledge
                   </Button>
 
                   <Button
@@ -396,33 +396,33 @@ export default function IncidentsListTable({
                     disabled={isPending}
                     onClick={() => handleBulkAction('resolve')}
                   >
-                    ✓ Resolve
+                    Resolve
                   </Button>
 
                   <Button size="sm" variant="secondary" onClick={() => setBulkAction('reassign')}>
-                    ↻ Reassign
+                    Reassign
                   </Button>
 
                   <Button size="sm" variant="secondary" onClick={() => setBulkAction('priority')}>
-                    ⚡ Priority
+                    Priority
                   </Button>
 
                   <Button size="sm" variant="secondary" onClick={() => setBulkAction('snooze')}>
-                    ⏰ Snooze
+                    Snooze
                   </Button>
 
                   <Button size="sm" variant="secondary" onClick={() => setBulkAction('urgency')}>
-                    ⚠ Urgency
+                    Urgency
                   </Button>
 
                   <Button size="sm" variant="secondary" onClick={() => setBulkAction('status')}>
-                    📊 Status
+                    Status
                   </Button>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button size="sm" variant="secondary">
-                        More ▾
+                        More
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-52">
@@ -432,7 +432,7 @@ export default function IncidentsListTable({
                           handleBulkAction('unsnooze');
                         }}
                       >
-                        🔔 Unsnooze
+                        Unsnooze
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -441,7 +441,7 @@ export default function IncidentsListTable({
                           handleBulkAction('suppress');
                         }}
                       >
-                        🔕 Suppress
+                        Suppress
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onSelect={e => {
@@ -449,7 +449,7 @@ export default function IncidentsListTable({
                           handleBulkAction('unsuppress');
                         }}
                       >
-                        🔊 Unsuppress
+                        Unsuppress
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -460,7 +460,7 @@ export default function IncidentsListTable({
                           setLastSelectedIndex(null);
                         }}
                       >
-                        ✕ Clear selection
+                        Clear selection
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -525,7 +525,7 @@ export default function IncidentsListTable({
       <div className="p-3 md:p-4 lg:p-5 bg-white">
         {incidents.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-gradient-to-br from-slate-50 to-white p-10 text-center">
-            <div className="text-4xl opacity-30 mb-3">📋</div>
+            <div className="text-4xl opacity-30 mb-3">!</div>
             <p className="text-base font-bold text-slate-700 mb-1">No incidents found</p>
             <p className="text-sm text-slate-500 m-0">Try adjusting filters to see more results.</p>
           </div>
@@ -612,13 +612,13 @@ export default function IncidentsListTable({
                               {incident.service.name}
                             </Link>
 
-                            <span className="opacity-50">•</span>
+                            <span className="opacity-50">&middot;</span>
 
                             <span className="font-mono">
                               #{incident.id.slice(-5).toUpperCase()}
                             </span>
 
-                            <span className="opacity-50">•</span>
+                            <span className="opacity-50">&middot;</span>
 
                             <span>
                               {formatDateTime(incident.createdAt, userTimeZone, {
@@ -682,7 +682,7 @@ export default function IncidentsListTable({
                                   onClick={e => e.stopPropagation()}
                                   aria-label="More actions"
                                 >
-                                  ⋯
+                                  ...
                                 </Button>
                               </DropdownMenuTrigger>
 
@@ -692,7 +692,7 @@ export default function IncidentsListTable({
                                     href={`/incidents/${incident.id}`}
                                     onClick={e => e.stopPropagation()}
                                   >
-                                    View details →
+                                    View details
                                   </Link>
                                 </DropdownMenuItem>
 
@@ -705,7 +705,7 @@ export default function IncidentsListTable({
                                       handleStatusChange(incident.id, 'RESOLVED');
                                     }}
                                   >
-                                    ✓ Resolve
+                                    Resolve
                                   </DropdownMenuItem>
                                 )}
 
@@ -718,7 +718,7 @@ export default function IncidentsListTable({
                                         handleStatusChange(incident.id, 'ACKNOWLEDGED');
                                       }}
                                     >
-                                      ✓ Acknowledge
+                                      Acknowledge
                                     </DropdownMenuItem>
                                   )}
 
@@ -729,7 +729,7 @@ export default function IncidentsListTable({
                                       handleStatusChange(incident.id, 'OPEN');
                                     }}
                                   >
-                                    ↩ Unacknowledge
+                                    Unacknowledge
                                   </DropdownMenuItem>
                                 )}
 
@@ -741,7 +741,7 @@ export default function IncidentsListTable({
                                         handleStatusChange(incident.id, 'SNOOZED');
                                       }}
                                     >
-                                      ⏰ Snooze
+                                      Snooze
                                     </DropdownMenuItem>
                                   )}
 
@@ -752,7 +752,7 @@ export default function IncidentsListTable({
                                       handleStatusChange(incident.id, 'OPEN');
                                     }}
                                   >
-                                    🔔 Unsnooze
+                                    Unsnooze
                                   </DropdownMenuItem>
                                 )}
 
@@ -764,7 +764,7 @@ export default function IncidentsListTable({
                                         handleStatusChange(incident.id, 'SUPPRESSED');
                                       }}
                                     >
-                                      🔕 Suppress
+                                      Suppress
                                     </DropdownMenuItem>
                                   )}
 
@@ -775,7 +775,7 @@ export default function IncidentsListTable({
                                       handleStatusChange(incident.id, 'OPEN');
                                     }}
                                   >
-                                    🔊 Unsuppress
+                                    Unsuppress
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
