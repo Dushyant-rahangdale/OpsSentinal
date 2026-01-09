@@ -83,7 +83,7 @@ export default async function ExecutiveReportPage() {
   const formatTrend = (val: number) => (val > 0 ? `+${val.toFixed(1)}%` : `${val.toFixed(1)}%`);
 
   return (
-    <main className="page-shell analytics-shell">
+    <main className="page-shell analytics-shell [zoom:0.8]">
       <div
         className="analytics-hero-redesigned"
         style={{

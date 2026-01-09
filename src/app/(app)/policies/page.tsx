@@ -52,7 +52,7 @@ export default async function PoliciesPage({
   const errorCode = resolvedSearchParams?.error;
 
   return (
-    <main style={{ padding: '1rem' }}>
+    <main className="[zoom:0.8]" style={{ padding: '1rem' }}>
       <header
         style={{
           display: 'flex',

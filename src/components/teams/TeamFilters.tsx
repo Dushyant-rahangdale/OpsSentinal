@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
-import { Search, X, Users, Briefcase } from 'lucide-react';
+import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -33,51 +33,41 @@ export default function TeamFilters() {
           {/* Search Bar */}
           <div className="space-y-2">
             <Label htmlFor="q">Search</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="q"
-                name="q"
-                type="text"
-                placeholder="Search by team name or description..."
-                defaultValue={query}
-                className="pl-9"
-              />
-            </div>
+            <Input
+              id="q"
+              name="q"
+              type="text"
+              placeholder="Search by team name or description..."
+              defaultValue={query}
+            />
           </div>
 
           {/* Filter Options */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="minMembers">Minimum Members</Label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  id="minMembers"
-                  name="minMembers"
-                  type="number"
-                  min="0"
-                  placeholder="e.g., 5"
-                  defaultValue={minMembers}
-                  className="pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
+              <Input
+                id="minMembers"
+                name="minMembers"
+                type="number"
+                min="0"
+                placeholder="e.g., 5"
+                defaultValue={minMembers}
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="minServices">Minimum Services</Label>
-              <div className="relative">
-                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  id="minServices"
-                  name="minServices"
-                  type="number"
-                  min="0"
-                  placeholder="e.g., 3"
-                  defaultValue={minServices}
-                  className="pl-9 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
+              <Input
+                id="minServices"
+                name="minServices"
+                type="number"
+                min="0"
+                placeholder="e.g., 3"
+                defaultValue={minServices}
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
           </div>
 

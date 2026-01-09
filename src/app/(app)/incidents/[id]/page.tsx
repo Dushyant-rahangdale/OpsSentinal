@@ -173,7 +173,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   };
 
   return (
-    <div className="w-full px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 xl:[zoom:0.75] 2xl:[zoom:1]">
+    <div className="w-full px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 [zoom:0.8]">
       {/* Modern Header - Clean and Compact */}
       <div
         className={`bg-gradient-to-r ${getStatusColor()} text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg`}

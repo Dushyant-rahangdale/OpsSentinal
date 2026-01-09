@@ -15,6 +15,7 @@ import TeamCreateForm from '@/components/TeamCreateForm';
 import TeamCard from '@/components/TeamCard';
 import TeamFilters from '@/components/teams/TeamFilters';
 import Link from 'next/link';
+import TeamSortDropdown from '@/components/teams/TeamSortDropdown';
 import {
   Card,
   CardContent,
@@ -281,7 +282,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
   };
 
   return (
-    <div className="w-full px-4 py-6 space-y-6">
+    <div className="w-full px-4 py-6 space-y-6 [zoom:0.7]">
       {/* Header with Stats */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -369,10 +370,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                     {adjustedTotalCount} teams
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm">
-                  <ArrowUpDown className="mr-2 h-4 w-4" />
-                  Sort: {sortBy}
-                </Button>
+                <TeamSortDropdown />
               </div>
             </CardHeader>
             <CardContent>
@@ -512,54 +510,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
           {/* Filters */}
           <TeamFilters />
 
-          {/* Sort Options */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Sort & Order</CardTitle>
-              <CardDescription className="text-xs">Organize team display</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form method="get" className="space-y-4">
-                {query && <input type="hidden" name="q" value={query} />}
-                {minMembers !== undefined && (
-                  <input type="hidden" name="minMembers" value={minMembers} />
-                )}
-                {minServices !== undefined && (
-                  <input type="hidden" name="minServices" value={minServices} />
-                )}
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">Sort By</label>
-                  <select
-                    name="sortBy"
-                    defaultValue={sortBy}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="createdAt">Created Date</option>
-                    <option value="name">Name</option>
-                    <option value="memberCount">Member Count</option>
-                    <option value="serviceCount">Service Count</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-medium">Order</label>
-                  <select
-                    name="sortOrder"
-                    defaultValue={sortOrder}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="desc">Descending</option>
-                    <option value="asc">Ascending</option>
-                  </select>
-                </div>
-
-                <Button type="submit" className="w-full">
-                  Apply Sorting
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          {/* Sort Options - Removed in favor of header dropdown */}
 
           {/* Quick Links */}
           <Card>

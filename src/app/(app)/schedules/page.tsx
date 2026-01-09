@@ -40,7 +40,7 @@ export default async function SchedulesPage() {
   const canManageSchedules = permissions.isAdminOrResponder;
 
   return (
-    <main className="w-full p-4 md:p-6 space-y-6">
+    <main className="w-full p-4 md:p-6 space-y-6 [zoom:0.8]">
       {/* Header */}
       <header className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

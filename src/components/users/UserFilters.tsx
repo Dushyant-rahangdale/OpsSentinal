@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/shadcn/card';
-import { Search, Filter, X, UserCheck, UserPlus, UserX, Users } from 'lucide-react';
+import { Filter, X, UserCheck, UserPlus, UserX, Users } from 'lucide-react';
 
 type Team = {
   id: string;
@@ -141,16 +141,13 @@ export default function UserFilters({ teams }: UserFiltersProps) {
             <Label htmlFor="q" className="text-xs font-semibold uppercase text-muted-foreground">
               Search
             </Label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="q"
-                placeholder="Name or email..."
-                className="pl-9 bg-muted/30 focus:bg-background transition-colors"
-                value={query}
-                onChange={e => handleFilterChange('q', e.target.value)}
-              />
-            </div>
+            <Input
+              id="q"
+              placeholder="Name or email..."
+              className="bg-muted/30 focus:bg-background transition-colors"
+              value={query}
+              onChange={e => handleFilterChange('q', e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">

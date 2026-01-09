@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/shadcn/select';
 import { Button } from '@/components/ui/shadcn/button';
 import {
-  User,
   Mail,
   Shield,
   CheckCircle2,
@@ -114,17 +113,14 @@ export default function UserCreateForm({ action, className = '', disabled = fals
             >
               Full Name
             </Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="name"
-                name="name"
-                required
-                placeholder="John Doe"
-                className="!pl-12 h-11 bg-background/50 border-input transition-colors focus:bg-background"
-                maxLength={200}
-              />
-            </div>
+            <Input
+              id="name"
+              name="name"
+              required
+              placeholder="John Doe"
+              className="h-11 bg-background/50 border-input transition-colors focus:bg-background"
+              maxLength={200}
+            />
           </div>
 
           {/* Email Field */}
@@ -142,23 +138,20 @@ export default function UserCreateForm({ action, className = '', disabled = fals
                 </span>
               )}
             </div>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="email"
-                name="email"
-                required
-                type="email"
-                placeholder="john@company.com"
-                className={cn(
-                  '!pl-12 h-11 bg-background/50 border-input transition-colors focus:bg-background',
-                  emailError && 'border-red-300 focus-visible:ring-red-200'
-                )}
-                maxLength={320}
-                value={email}
-                onChange={handleEmailChange}
-              />
-            </div>
+            <Input
+              id="email"
+              name="email"
+              required
+              type="email"
+              placeholder="john@company.com"
+              className={cn(
+                'h-11 bg-background/50 border-input transition-colors focus:bg-background',
+                emailError && 'border-red-300 focus-visible:ring-red-200'
+              )}
+              maxLength={320}
+              value={email}
+              onChange={handleEmailChange}
+            />
             {emailError && (
               <p className="text-xs text-red-500 font-medium flex items-center gap-1 mt-1 animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-3 w-3" /> {emailError}

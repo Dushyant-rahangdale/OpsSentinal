@@ -23,10 +23,7 @@ import SidebarWidget, {
   WIDGET_ICON_BG,
   WIDGET_ICON_COLOR,
 } from '@/components/dashboard/SidebarWidget';
-import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
-import { Button } from '@/components/ui/shadcn/button';
-import { Badge } from '@/components/ui/shadcn/badge';
-import { FileText, ArrowRight, TrendingUp, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import styles from '@/components/dashboard/Dashboard.module.css';
 import CompactOnCallStatus from '@/components/dashboard/compact/CompactOnCallStatus';
 import CompactPerformanceMetrics from '@/components/dashboard/compact/CompactPerformanceMetrics';
 import CompactStatsOverview from '@/components/dashboard/compact/CompactStatsOverview';
@@ -301,7 +298,7 @@ export default async function Dashboard({
 
   return (
     <DashboardRealtimeWrapper>
-      <main className="w-full p-4 md:p-6 pb-8">
+      <main className="[zoom:0.8]" style={{ paddingBottom: '2rem' }}>
         <DashboardCommandCenter
           systemStatus={systemStatus}
           allOpenIncidentsCount={allOpenIncidentsCount}
@@ -323,41 +320,69 @@ export default async function Dashboard({
           retentionDays={slaMetrics.retentionDays}
         />
 
-        {/* Main Content Grid - Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 md:gap-6">
+        {/* Main Content Grid - Two Column Layout (matching users page) */}
+        <div className={styles.mainGrid}>
           {/* Left Column - Filters and Table */}
-          <div className="flex flex-col gap-4 md:gap-6">
-            {/* Filters Panel */}
-            <Card className="shadow-lg border-border/50">
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-sm bg-slate-600 flex items-center justify-center shadow-sm">
-                    <span className="text-lg">🔍</span>
-                  </div>
-                  <h2 className="text-lg font-bold text-foreground tracking-tight">
-                    Filter Incidents
-                  </h2>
+          <div className={styles.leftColumn}>
+            {/* Filters Panel - Matches Sidebar Theme */}
+            <div className={`glass-panel ${styles.filtersPanel}`}>
+              <div className={styles.filtersHeader}>
+                <div className={styles.filtersIcon}>
+                  <span style={{ fontSize: '18px' }}>🔍</span>
                 </div>
-              </CardHeader>
+                <h2
+                  style={{
+                    fontSize: 'var(--font-size-lg)',
+                    fontWeight: 'var(--font-weight-bold)',
+                    margin: 0,
+                    color: 'var(--text-primary)',
+                    letterSpacing: '-0.3px',
+                  }}
+                >
+                  Filter Incidents
+                </h2>
+              </div>
 
-              <CardContent className="space-y-4">
-                {/* Saved Filters */}
+              {/* Saved Filters */}
+              <div style={{ marginBottom: '1rem' }}>
                 <Suspense
                   fallback={
-                    <div className="h-8 w-[200px] bg-neutral-200 rounded-md animate-pulse" />
+                    <div
+                      style={{
+                        height: '32px',
+                        background: 'var(--color-neutral-200)',
+                        borderRadius: 'var(--radius-md)',
+                        animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                        width: '200px',
+                      }}
+                    />
                   }
                 >
                   <DashboardSavedFilters />
                 </Suspense>
+              </div>
 
-                {/* Quick Filters */}
+              {/* Quick Filters */}
+              <div style={{ marginBottom: '1rem' }}>
                 <Suspense
                   fallback={
-                    <div className="flex gap-2 h-10">
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 'var(--spacing-2)',
+                        height: '40px',
+                      }}
+                    >
                       {[1, 2, 3, 4].map(i => (
                         <div
                           key={i}
-                          className="flex-1 h-10 bg-neutral-200 rounded-md animate-pulse"
+                          style={{
+                            flex: 1,
+                            height: '40px',
+                            background: 'var(--color-neutral-200)',
+                            borderRadius: 'var(--radius-md)',
+                            animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                          }}
                         />
                       ))}
                     </div>
@@ -365,24 +390,39 @@ export default async function Dashboard({
                 >
                   <DashboardQuickFilters />
                 </Suspense>
+              </div>
 
-                {/* Filter Chips */}
-                <Suspense
-                  fallback={
-                    <div className="flex gap-2 flex-wrap min-h-[40px]">
-                      {[1, 2, 3].map(i => (
-                        <div
-                          key={i}
-                          className="w-20 h-7 bg-neutral-200 rounded-full animate-pulse"
-                        />
-                      ))}
-                    </div>
-                  }
-                >
-                  <DashboardFilterChips services={services} users={users} />
-                </Suspense>
+              {/* Filter Chips */}
+              <Suspense
+                fallback={
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 'var(--spacing-2)',
+                      flexWrap: 'wrap',
+                      minHeight: '40px',
+                    }}
+                  >
+                    {[1, 2, 3].map(i => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '80px',
+                          height: '28px',
+                          background: 'var(--color-neutral-200)',
+                          borderRadius: 'var(--radius-full)',
+                          animation: 'skeleton-pulse 1.5s ease-in-out infinite',
+                        }}
+                      />
+                    ))}
+                  </div>
+                }
+              >
+                <DashboardFilterChips services={services} users={users} />
+              </Suspense>
 
-                {/* Dashboard Filters */}
+              {/* Dashboard Filters */}
+              <div style={{ marginTop: '1rem' }}>
                 <DashboardFilters
                   initialStatus={status}
                   initialService={service}
@@ -390,210 +430,230 @@ export default async function Dashboard({
                   services={services}
                   users={users}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* Incidents Table Panel - Redesigned */}
-            <Card className="shadow-xl border-border/40 overflow-hidden animate-slide-up bg-gradient-to-br from-card to-card/95">
-              {/* Enhanced Header with Gradient Background */}
-              <div className="relative bg-gradient-to-r from-slate-700 via-slate-600 to-slate-700 px-6 py-5">
-                {/* Decorative Pattern Overlay */}
-                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,transparent)]" />
-
-                <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  {/* Title Section */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-lg">
-                      <FileText className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-white tracking-tight mb-1 flex items-center gap-2">
-                        Incident Directory
-                        {totalCount > 0 && (
-                          <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm font-semibold">
-                            {totalCount}
-                          </Badge>
-                        )}
-                      </h2>
-                      <p className="text-sm text-white/80 font-medium">
-                        {totalCount === 0 ? (
-                          'No incidents to display'
-                        ) : (
-                          <>
-                            Displaying <span className="text-white font-semibold">{skip + 1}</span>{' '}
-                            to{' '}
-                            <span className="text-white font-semibold">
-                              {Math.min(skip + INCIDENTS_PER_PAGE, totalCount)}
-                            </span>{' '}
-                            of <span className="text-white font-semibold">{totalCount}</span> total
-                            incidents
-                          </>
-                        )}
-                      </p>
-                    </div>
+            {/* Incidents Table Panel - Matches Sidebar Theme */}
+            <div
+              className="glass-panel animate-slide-up"
+              style={{ padding: '0', overflow: 'hidden' }}
+            >
+              <div
+                style={{
+                  padding: 'var(--spacing-6)',
+                  borderBottom: '1px solid var(--glass-border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  background: 'var(--glass-bg)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: WIDGET_ICON_BG.slate,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: 'var(--shadow-xs)',
+                    }}
+                  >
+                    <span style={{ fontSize: '18px', color: 'white' }}>📋</span>
                   </div>
-
-                  {/* View All Button */}
-                  <Link href="/incidents">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-2 shadow-lg bg-white/90 hover:bg-white text-slate-700 font-semibold border border-white/50"
+                  <div>
+                    <h2
+                      style={{
+                        fontSize: 'var(--font-size-lg)',
+                        fontWeight: 'var(--font-weight-bold)',
+                        margin: '0 0 0.15rem 0',
+                        color: 'var(--text-primary)',
+                        letterSpacing: '-0.3px',
+                      }}
                     >
-                      View All <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </Link>
-                </div>
-
-                {/* Quick Stats Bar - Only show if we have incidents */}
-                {incidents.length > 0 && (
-                  <div className="relative mt-4 flex flex-wrap gap-2">
-                    {(() => {
-                      const statusCounts = incidents.reduce(
-                        (acc, inc) => {
-                          acc[inc.status] = (acc[inc.status] || 0) + 1;
-                          return acc;
-                        },
-                        {} as Record<string, number>
-                      );
-
-                      return (
-                        <>
-                          {statusCounts['OPEN'] > 0 && (
-                            <Badge className="bg-red-500/90 text-white border-red-400/50 hover:bg-red-500 backdrop-blur-sm font-semibold px-3 py-1">
-                              <AlertCircle className="h-3 w-3 mr-1.5" />
-                              {statusCounts['OPEN']} Open
-                            </Badge>
-                          )}
-                          {statusCounts['ACKNOWLEDGED'] > 0 && (
-                            <Badge className="bg-amber-500/90 text-white border-amber-400/50 hover:bg-amber-500 backdrop-blur-sm font-semibold px-3 py-1">
-                              <Clock className="h-3 w-3 mr-1.5" />
-                              {statusCounts['ACKNOWLEDGED']} In Progress
-                            </Badge>
-                          )}
-                          {statusCounts['RESOLVED'] > 0 && (
-                            <Badge className="bg-green-500/90 text-white border-green-400/50 hover:bg-green-500 backdrop-blur-sm font-semibold px-3 py-1">
-                              <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                              {statusCounts['RESOLVED']} Resolved
-                            </Badge>
-                          )}
-                        </>
-                      );
-                    })()}
+                      Incident Directory
+                    </h2>
+                    <p
+                      style={{
+                        fontSize: 'var(--font-size-sm)',
+                        color: 'var(--text-muted)',
+                        margin: 0,
+                      }}
+                    >
+                      Showing {skip + 1}-{Math.min(skip + INCIDENTS_PER_PAGE, totalCount)} of{' '}
+                      {totalCount} incidents
+                    </p>
                   </div>
-                )}
+                </div>
+                <Link
+                  href="/incidents"
+                  className="dashboard-view-all-link"
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--primary-color)',
+                    textDecoration: 'none',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 1rem',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--color-neutral-100)',
+                    border: '1px solid var(--border)',
+                    transition: 'all 0.2s ease',
+                    boxShadow: 'var(--shadow-xs)',
+                  }}
+                >
+                  View All <span>→</span>
+                </Link>
               </div>
 
-              {/* Content Area */}
-              <div className="overflow-hidden bg-card">
+              <div className="incident-table-scroll" style={{ overflow: 'hidden' }}>
                 {incidents.length === 0 ? (
-                  <div className="py-20 px-8 text-center bg-gradient-to-b from-neutral-50/50 to-card">
-                    <div className="max-w-md mx-auto">
-                      <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center shadow-inner">
-                        <FileText className="h-10 w-10 text-neutral-400" />
-                      </div>
-                      <h3 className="text-lg font-bold mb-2 text-foreground">No Incidents Found</h3>
-                      <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-                        {status || service || assignee || urgency ? (
-                          <>
-                            No incidents match your current filters.
-                            <br />
-                            Try adjusting your search criteria to see more results.
-                          </>
-                        ) : (
-                          <>
-                            There are no incidents to display at this time.
-                            <br />
-                            New incidents will appear here when they are created.
-                          </>
-                        )}
-                      </p>
-                      {(status || service || assignee || urgency) && (
-                        <Link href="/">
-                          <Button variant="outline" size="sm" className="gap-2">
-                            <TrendingUp className="h-3.5 w-3.5" />
-                            Clear All Filters
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
+                  <div
+                    style={{
+                      padding: '4rem 2rem',
+                      textAlign: 'center',
+                      color: 'var(--text-muted)',
+                      background: 'var(--glass-bg)',
+                      borderTop: '1px solid var(--glass-border)',
+                      borderBottom: '1px solid var(--glass-border)',
+                    }}
+                  >
+                    <svg
+                      width="64"
+                      height="64"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      style={{ opacity: 0.3, margin: '0 auto 1rem' }}
+                    >
+                      <path
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <p
+                      style={{
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      No incidents found
+                    </p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Try adjusting your filters to see more results.
+                    </p>
                   </div>
                 ) : (
-                  <div className="border-t border-border/50">
-                    <IncidentTable incidents={incidents} sortBy={sortBy} sortOrder={sortOrder} />
-                  </div>
+                  <IncidentTable incidents={incidents} sortBy={sortBy} sortOrder={sortOrder} />
                 )}
               </div>
 
-              {/* Enhanced Pagination */}
+              {/* Pagination - Enhanced style */}
               {totalPages > 1 && (
-                <div className="px-6 py-5 border-t bg-gradient-to-b from-neutral-50/50 to-card backdrop-blur-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* Page Info */}
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-white font-semibold text-foreground">
-                        Page {page}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">of</span>
-                      <Badge variant="outline" className="bg-white font-semibold text-foreground">
-                        {totalPages}
-                      </Badge>
-                      <span className="hidden sm:inline text-sm text-muted-foreground ml-2">
-                        ({totalCount} total)
-                      </span>
-                    </div>
-
-                    {/* Navigation Buttons */}
-                    <div className="flex gap-2 items-center">
-                      <Link href={buildPaginationUrl(baseParams, 1)}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={page === 1}
-                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                        >
-                          First
-                        </Button>
-                      </Link>
-                      <Link href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={page === 1}
-                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                        >
-                          Previous
-                        </Button>
-                      </Link>
-                      <Link href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={page === totalPages}
-                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                        >
-                          Next
-                        </Button>
-                      </Link>
-                      <Link href={buildPaginationUrl(baseParams, totalPages)}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={page === totalPages}
-                          className="font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-50"
-                        >
-                          Last
-                        </Button>
-                      </Link>
-                    </div>
+                <div
+                  style={{
+                    padding: 'var(--spacing-5) var(--spacing-6)',
+                    borderTop: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    flexWrap: 'wrap',
+                    background: 'var(--glass-bg)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '0.85rem',
+                      color: 'var(--text-secondary)',
+                      fontWeight: '500',
+                    }}
+                  >
+                    Page <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> of{' '}
+                    <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <Link
+                      href={buildPaginationUrl(baseParams, 1)}
+                      className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === 1 ? 0.4 : 1,
+                        pointerEvents: page === 1 ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      First
+                    </Link>
+                    <Link
+                      href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
+                      className={`glass-button ${page === 1 ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === 1 ? 0.4 : 1,
+                        pointerEvents: page === 1 ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Previous
+                    </Link>
+                    <Link
+                      href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
+                      className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === totalPages ? 0.4 : 1,
+                        pointerEvents: page === totalPages ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Next
+                    </Link>
+                    <Link
+                      href={buildPaginationUrl(baseParams, totalPages)}
+                      className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
+                      style={{
+                        padding: '0.5rem 0.9rem',
+                        fontSize: '0.8rem',
+                        textDecoration: 'none',
+                        opacity: page === totalPages ? 0.4 : 1,
+                        pointerEvents: page === totalPages ? 'none' : 'auto',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Last
+                    </Link>
                   </div>
                 </div>
               )}
-            </Card>
+            </div>
           </div>
 
           {/* Right Sidebar - Compact Modern Design */}
-          <aside className="flex flex-col gap-5 animate-slide-in-right">
+          <aside
+            className="dashboard-sidebar animate-slide-in-right"
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+          >
             {/* Quick Actions Panel */}
             <QuickActionsPanel greeting={greeting} userName={userName} />
 

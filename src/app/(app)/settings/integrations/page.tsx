@@ -9,7 +9,7 @@ import { Slack, Puzzle, ArrowRight } from 'lucide-react';
 
 export default function IntegrationsSettingsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [zoom:0.7]">
       <SettingsPageHeader
         title="Integrations"
         description="Connect OpsSentinal with the tools your team relies on."

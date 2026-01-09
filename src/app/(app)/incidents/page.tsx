@@ -155,7 +155,7 @@ export default async function IncidentsPage({
   const showingTo = Math.min(skip + ITEMS_PER_PAGE, totalCount);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6 [zoom:0.8]">
       {/* Metric panel: keep same */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">

@@ -13,9 +13,9 @@ export default async function SecuritySettingsPage() {
   const email = session?.user?.email ?? null;
   const user = email
     ? await prisma.user.findUnique({
-      where: { email },
-      select: { passwordHash: true, updatedAt: true, timeZone: true },
-    })
+        where: { email },
+        select: { passwordHash: true, updatedAt: true, timeZone: true },
+      })
     : null;
 
   const oidcConfig = await prisma.oidcConfig.findFirst({
@@ -39,7 +39,7 @@ export default async function SecuritySettingsPage() {
   const isAdmin = (session?.user as any)?.role === 'ADMIN'; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [zoom:0.7]">
       <SettingsPageHeader
         title="Security"
         description="Control how you sign in and monitor account activity."
@@ -55,12 +55,16 @@ export default async function SecuritySettingsPage() {
           <div className="p-4 rounded-lg border border-border bg-muted/30">
             <span className="text-sm text-muted-foreground">Single sign-on</span>
             <p className="text-lg font-semibold mt-1">{ssoEnabled ? 'Enabled' : 'Disabled'}</p>
-            <span className="text-xs text-muted-foreground">Authenticate with your identity provider.</span>
+            <span className="text-xs text-muted-foreground">
+              Authenticate with your identity provider.
+            </span>
           </div>
           <div className="p-4 rounded-lg border border-border bg-muted/30">
             <span className="text-sm text-muted-foreground">Password</span>
             <p className="text-lg font-semibold mt-1">{hasPassword ? 'Set' : 'Not set'}</p>
-            <span className="text-xs text-muted-foreground">Use a local password when SSO is unavailable.</span>
+            <span className="text-xs text-muted-foreground">
+              Use a local password when SSO is unavailable.
+            </span>
           </div>
           <div className="p-4 rounded-lg border border-border bg-muted/30">
             <span className="text-sm text-muted-foreground">Last updated</span>
@@ -69,7 +73,9 @@ export default async function SecuritySettingsPage() {
                 ? formatDateTime(user.updatedAt, timeZone, { format: 'datetime' })
                 : 'No recent changes'}
             </p>
-            <span className="text-xs text-muted-foreground">Recent credential change timestamp.</span>
+            <span className="text-xs text-muted-foreground">
+              Recent credential change timestamp.
+            </span>
           </div>
         </div>
       </SettingsSection>
@@ -77,7 +83,11 @@ export default async function SecuritySettingsPage() {
       <SettingsSection
         title="Single sign-on (OIDC)"
         description="SSO configuration has moved to System Settings."
-        action={<Badge variant={ssoEnabled ? 'default' : 'secondary'}>{ssoEnabled ? 'Active' : 'Inactive'}</Badge>}
+        action={
+          <Badge variant={ssoEnabled ? 'default' : 'secondary'}>
+            {ssoEnabled ? 'Active' : 'Inactive'}
+          </Badge>
+        }
       >
         <p className="text-sm text-muted-foreground">
           SSO settings are now managed in{' '}

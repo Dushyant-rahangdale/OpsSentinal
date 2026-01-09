@@ -91,11 +91,11 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
     AND: [
       searchQuery
         ? {
-          OR: [
-            { name: { contains: searchQuery, mode: 'insensitive' as const } },
-            { description: { contains: searchQuery, mode: 'insensitive' as const } },
-          ],
-        }
+            OR: [
+              { name: { contains: searchQuery, mode: 'insensitive' as const } },
+              { description: { contains: searchQuery, mode: 'insensitive' as const } },
+            ],
+          }
         : {},
       teamFilter ? { teamId: teamFilter } : {},
     ].filter(Boolean),
@@ -168,7 +168,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
   const canCreateService = permissions.isAdminOrResponder;
 
   return (
-    <main style={{ padding: '1.5rem' }}>
+    <main className="[zoom:0.8]" style={{ padding: '1.5rem' }}>
       <header
         style={{
           display: 'flex',

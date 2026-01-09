@@ -54,7 +54,7 @@ export default async function PostmortemsPage({
     : [];
 
   return (
-    <div style={{ padding: 'var(--spacing-6)' }}>
+    <div className="[zoom:0.8]" style={{ padding: 'var(--spacing-6)' }}>
       <div
         style={{
           marginBottom: 'var(--spacing-8)',
