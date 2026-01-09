@@ -35,7 +35,7 @@ import {
  * Extended SLA Metrics Filter
  * Supports all legacy analytics filters
  */
-type SLAMetricsFilter = {
+export type SLAMetricsFilter = {
   serviceId?: string | string[];
   teamId?: string | string[];
   assigneeId?: string | null;

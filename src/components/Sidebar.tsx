@@ -244,6 +244,7 @@ export default function Sidebar(
           if (!userRole || !item.requiresRole.includes(userRole)) return acc;
         }
         const section = item.section || 'MAIN';
+        // eslint-disable-next-line security/detect-object-injection
         if (!acc[section]) acc[section] = [];
         acc[section].push(item);
         return acc;
@@ -308,6 +309,7 @@ export default function Sidebar(
       INSIGHTS: { dotClass: 'bg-purple-500/80', textClass: 'text-white/75' },
     };
 
+    // eslint-disable-next-line security/detect-object-injection
     const colors = sectionColors[sectionName] || {
       dotClass: 'bg-white/50',
       textClass: 'text-white/75',
@@ -463,7 +465,13 @@ export default function Sidebar(
           {Object.entries(groupedItems).map(([section, items]) => renderSection(section, items))}
         </nav>
 
-        {/* Compact Footer - Removed as per new design (moved to TopBar) */}
+        {/* Sidebar Footer - Compact Version Info */}
+        <div className={cn('mt-auto px-3 py-4', isDesktopCollapsed && 'hidden')}>
+          <div className="flex items-center justify-between px-2 text-[10px] text-muted-foreground/50 font-medium tracking-tight">
+            <span>v1.0.0</span>
+            <span>OpsSentinel</span>
+          </div>
+        </div>
       </aside>
     </>
   );

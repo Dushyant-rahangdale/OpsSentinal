@@ -56,8 +56,24 @@ export default function OperationalStatus({
       ? `${lowUrgencyCount} low urgency issues`
       : 'Systems Normal';
 
+  interface ThemeConfig {
+    bg: string;
+    border: string;
+    text: string;
+    hoverBorder: string;
+    hoverBg: string;
+    hoverShadow: string;
+    dot: string;
+    dotBg: string;
+    gradient: string;
+    icon: React.ReactNode;
+    title: string;
+    desc: string;
+    lightBorder: string;
+  }
+
   // Dynamic Theme Configuration
-  const theme = {
+  const theme: Record<'danger' | 'warning' | 'ok', ThemeConfig> = {
     danger: {
       bg: 'bg-red-50/50',
       border: 'border-red-200/60',

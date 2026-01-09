@@ -26,8 +26,11 @@ export async function GET() {
     }
 
     const { calculateSLAMetrics } = await import('@/lib/sla-server');
+    // Import type dynamically or just use inferred type if possible, but calculateSLAMetrics is dynamic import.
+    // Better to define the object with proper typing.
+    type SLAMetricsFilter = import('@/lib/sla-server').SLAMetricsFilter;
 
-    const slaFilters: any = {
+    const slaFilters: SLAMetricsFilter = {
       useOrScope: true,
     };
 
