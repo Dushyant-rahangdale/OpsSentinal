@@ -2,25 +2,26 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import Button from './Button';
+import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
-    title: string;
-    description?: string;
-    icon?: ReactNode;
-    action?: {
-        label: string;
-        href?: string;
-        onClick?: () => void;
-    };
-    image?: ReactNode;
-    className?: string;
-    size?: 'sm' | 'md' | 'lg';
+  title: string;
+  description?: string;
+  icon?: ReactNode;
+  action?: {
+    label: string;
+    href?: string;
+    onClick?: () => void;
+  };
+  image?: ReactNode;
+  className?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 /**
  * Standardized EmptyState component for consistent empty states across the app
- * 
+ *
  * @example
  * <EmptyState
  *   title="No incidents found"
@@ -29,124 +30,80 @@ interface EmptyStateProps {
  *   action={{ label: "Create Incident", href: "/incidents/create" }}
  * />
  */
-export default function EmptyState({ 
-    title, 
-    description, 
-    icon, 
-    action,
-    image,
-    className = '',
-    size = 'md'
+export default function EmptyState({
+  title,
+  description,
+  icon,
+  action,
+  image,
+  className = '',
+  size = 'md',
 }: EmptyStateProps) {
-    const sizeStyles = {
-        sm: {
-            padding: 'var(--spacing-8)',
-            iconSize: '48px',
-            titleSize: 'var(--font-size-lg)',
-            minHeight: '200px'
-        },
-        md: {
-            padding: 'var(--spacing-12)',
-            iconSize: '64px',
-            titleSize: 'var(--font-size-xl)',
-            minHeight: '300px'
-        },
-        lg: {
-            padding: 'var(--spacing-16)',
-            iconSize: '80px',
-            titleSize: 'var(--font-size-2xl)',
-            minHeight: '400px'
-        }
-    };
+  const sizeClasses = {
+    sm: {
+      container: 'p-8 min-h-[200px]',
+      icon: 'w-12 h-12 text-5xl',
+      title: 'text-lg',
+    },
+    md: {
+      container: 'p-12 min-h-[300px]',
+      icon: 'w-16 h-16 text-6xl',
+      title: 'text-xl',
+    },
+    lg: {
+      container: 'p-16 min-h-[400px]',
+      icon: 'w-20 h-20 text-7xl',
+      title: 'text-2xl',
+    },
+  };
 
-    const styles = sizeStyles[size];
-
-    return (
-        <div 
-            className={`ui-empty-state ${className}`} 
-            style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: styles.padding,
-                textAlign: 'center',
-                minHeight: styles.minHeight,
-            }}
-            role="status"
-            aria-live="polite"
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center text-center',
+        sizeClasses[size].container,
+        className
+      )}
+      role="status"
+      aria-live="polite"
+    >
+      {image && <div className="mb-6">{image}</div>}
+      {icon && !image && (
+        <div
+          className={cn(
+            'flex items-center justify-center mb-4 opacity-40 text-muted-foreground',
+            sizeClasses[size].icon
+          )}
+          aria-hidden="true"
         >
-            {image && (
-                <div style={{ marginBottom: 'var(--spacing-6)' }}>
-                    {image}
-                </div>
-            )}
-            {icon && !image && (
-                <div 
-                    className="empty-state-icon"
-                    style={{
-                        width: styles.iconSize,
-                        height: styles.iconSize,
-                        marginBottom: 'var(--spacing-4)',
-                        opacity: 0.4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: styles.iconSize,
-                        color: 'var(--text-muted)'
-                    }}
-                    aria-hidden="true"
-                >
-                    {icon}
-                </div>
-            )}
-            <h3 
-                className="empty-state-title"
-                style={{
-                    fontSize: styles.titleSize,
-                    fontWeight: 'var(--font-weight-semibold)',
-                    color: 'var(--text-secondary)',
-                    marginBottom: description ? 'var(--spacing-2)' : (action ? 'var(--spacing-4)' : 0),
-                }}
-            >
-                {title}
-            </h3>
-            {description && (
-                <p 
-                    className="empty-state-description"
-                    style={{
-                        fontSize: 'var(--font-size-base)',
-                        color: 'var(--text-muted)',
-                        maxWidth: '400px',
-                        marginBottom: action ? 'var(--spacing-6)' : 0,
-                        lineHeight: 'var(--line-height-relaxed)',
-                    }}
-                >
-                    {description}
-                </p>
-            )}
-            {action && (
-                <div style={{ marginTop: 'var(--spacing-4)' }}>
-                    {action.href ? (
-                        <Link href={action.href}>
-                            <Button variant="primary" size="md">
-                                {action.label}
-                            </Button>
-                        </Link>
-                    ) : (
-                        <Button variant="primary" size="md" onClick={action.onClick}>
-                            {action.label}
-                        </Button>
-                    )}
-                </div>
-            )}
+          {icon}
         </div>
-    );
+      )}
+      <h3
+        className={cn(
+          'font-semibold text-secondary-foreground',
+          sizeClasses[size].title,
+          description ? 'mb-2' : action ? 'mb-4' : 'mb-0'
+        )}
+      >
+        {title}
+      </h3>
+      {description && (
+        <p className="text-base text-muted-foreground max-w-md mb-6 leading-relaxed">
+          {description}
+        </p>
+      )}
+      {action && (
+        <div className="mt-4">
+          {action.href ? (
+            <Button asChild>
+              <Link href={action.href}>{action.label}</Link>
+            </Button>
+          ) : (
+            <Button onClick={action.onClick}>{action.label}</Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
-
-
-
-
-
-
-

@@ -7,7 +7,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useModalState } from '@/hooks/useModalState';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Button } from '@/components/ui/shadcn/button';
-import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  HelpCircle,
+  Settings,
+  LogOut,
+  Keyboard,
+  AlertCircle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type NavItem = {
@@ -196,7 +208,7 @@ export default function Sidebar(
   }
 ) {
   const pathname = usePathname();
-  const { isCollapsed, isMobile } = useSidebar();
+  const { isCollapsed, isMobile, toggleSidebar } = useSidebar();
 
   const [stats, setStats] = useState<{
     count: number;
@@ -368,69 +380,89 @@ export default function Sidebar(
           isMobileMenuOpen && 'sidebar-mobile-open'
         )}
       >
-        {/* Compact Header */}
+        {/* Enhanced Header with Branding */}
         <div
           className={cn(
-            'relative shrink-0',
+            'relative shrink-0 border-b border-white/10',
             'bg-gradient-to-b from-white/5 to-transparent',
-            isDesktopCollapsed ? 'p-3' : 'p-4 md:p-5'
+            isDesktopCollapsed ? 'p-3.5 px-2.5 pb-3' : 'p-4 md:p-5 md:px-5 md:pb-5'
           )}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.05)_0%,transparent_55%)] pointer-events-none" />
 
-          <div
+          <Link
+            href="/"
             className={cn(
-              'relative z-10 min-w-0',
-              isDesktopCollapsed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-3'
+              'relative z-10 flex items-center no-underline transition-transform hover:translate-x-0.5',
+              isDesktopCollapsed
+                ? 'flex-col justify-center gap-2 w-full'
+                : 'flex-row justify-start gap-3'
             )}
           >
-            <Link
-              href="/"
+            <div
               className={cn(
-                'flex items-center gap-3 no-underline overflow-hidden',
-                isDesktopCollapsed ? 'flex-col justify-center gap-2' : 'flex-row'
+                'relative shrink-0 rounded-xl border border-white/12 bg-white/8',
+                'shadow-md flex items-center justify-center overflow-hidden',
+                'transition-transform hover:scale-105',
+                isDesktopCollapsed ? 'h-10 w-10' : 'h-12 w-12 md:h-13 md:w-13'
               )}
             >
-              <div
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2)_0%,transparent_70%)] pointer-events-none" />
+              <Image
+                src="/logo.svg"
+                alt="OpsSentinal logo"
+                width={48}
+                height={48}
                 className={cn(
-                  'relative shrink-0 rounded-xl border border-white/12 bg-white/8',
-                  'shadow-md flex items-center justify-center overflow-hidden',
-                  isDesktopCollapsed ? 'h-10 w-10' : 'h-11 w-11 md:h-12 md:w-12'
+                  'relative z-10 object-contain',
+                  isDesktopCollapsed ? 'h-6 w-6' : 'h-8 w-8 md:h-9 md:w-9'
                 )}
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2)_0%,transparent_70%)] pointer-events-none" />
-                <Image
-                  src="/logo.svg"
-                  alt="OpsSentinal logo"
-                  width={40}
-                  height={40}
-                  className={cn(
-                    'relative z-10 object-contain',
-                    isDesktopCollapsed ? 'h-6 w-6' : 'h-7 w-7 md:h-8 md:w-8'
-                  )}
-                />
-              </div>
+              />
+            </div>
 
-              {!isDesktopCollapsed && (
-                <h1
-                  className="sidebar-brand-title"
-                  style={{
-                    fontSize: 'clamp(0.95rem, 2.2vw, 1.35rem)',
-                    fontWeight: 800,
-                    color: 'white',
-                    margin: 0,
-                    lineHeight: 1.2,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
+            {!isDesktopCollapsed && (
+              <div className="flex flex-col gap-1 min-w-0">
+                <h1 className="text-lg md:text-xl lg:text-2xl font-extrabold text-white m-0 leading-tight tracking-tight">
                   Ops
                   <wbr />
                   Sentinal
                 </h1>
-              )}
-            </Link>
-          </div>
+                <Badge
+                  variant="secondary"
+                  className="w-fit px-2 py-0.5 text-[0.6rem] font-medium bg-white/10 text-white/80 border-white/20 rounded-full"
+                >
+                  Incident Response Platform
+                </Badge>
+              </div>
+            )}
+          </Link>
 
+          {/* World-Class Desktop Collapse Toggle Button */}
+          {!isMobile && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className={cn(
+                'absolute -right-3 top-1/2 -translate-y-1/2 z-20',
+                'w-6 h-6 rounded-full',
+                'bg-primary hover:bg-primary/90 text-white',
+                'border-2 border-white/20 shadow-lg hover:shadow-xl',
+                'transition-all duration-200 hover:scale-110',
+                'focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2'
+              )}
+            >
+              {isDesktopCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+
+          {/* Mobile Close Button */}
           {isMobile && isMobileMenuOpen && (
             <Button
               onClick={() => setIsMobileMenuOpen(false)}
@@ -465,12 +497,129 @@ export default function Sidebar(
           {Object.entries(groupedItems).map(([section, items]) => renderSection(section, items))}
         </nav>
 
-        {/* Sidebar Footer - Compact Version Info */}
-        <div className={cn('mt-auto px-3 py-4', isDesktopCollapsed && 'hidden')}>
-          <div className="flex items-center justify-between px-2 text-[10px] text-muted-foreground/50 font-medium tracking-tight">
-            <span>v1.0.0</span>
-            <span>OpsSentinel</span>
+        {/* Enhanced Footer with User Profile and Actions */}
+        <div
+          className={cn(
+            'mt-auto shrink-0 border-t border-white/10',
+            'bg-gradient-to-t from-white/5 to-transparent',
+            isDesktopCollapsed ? 'p-2.5' : 'p-4'
+          )}
+        >
+          {/* User Profile Section */}
+          <div
+            className={cn(
+              'flex items-center rounded-lg bg-white/8 backdrop-blur-sm relative transition-all',
+              'hover:bg-white/12',
+              isDesktopCollapsed ? 'p-2 justify-center' : 'p-3 gap-3 mb-3'
+            )}
+          >
+            {stats && stats.isClipped && (
+              <div className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-500 border border-white/20 flex items-center justify-center">
+                <AlertCircle className="h-2 w-2 text-white" />
+              </div>
+            )}
+
+            <Avatar className={cn('shrink-0', isDesktopCollapsed ? 'w-8 h-8' : 'w-9 h-9')}>
+              <AvatarImage
+                src={
+                  userAvatar ||
+                  (userGender === 'FEMALE'
+                    ? 'https://i.pravatar.cc/150?img=44'
+                    : 'https://i.pravatar.cc/150?img=68')
+                }
+                alt={userName || 'User'}
+              />
+              <AvatarFallback className="bg-white/15 text-white text-sm font-semibold uppercase">
+                {(userName || userEmail || 'U').slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+
+            {!isDesktopCollapsed && (
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-white truncate">
+                  {userName || userEmail || 'User'}
+                </div>
+                <div className="text-xs text-white/65 capitalize truncate">
+                  {userRole ? userRole.toLowerCase() : 'User'}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Action Buttons */}
+          <div className={cn('flex gap-1.5', isDesktopCollapsed ? 'flex-col' : 'grid grid-cols-3')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                'text-white/75 hover:text-white hover:bg-white/10',
+                isDesktopCollapsed ? 'w-full h-9 px-2' : 'h-8 px-2'
+              )}
+              title="Documentation"
+            >
+              <Link href="/docs">
+                <HelpCircle className="h-4 w-4" />
+                {!isDesktopCollapsed && <span className="ml-1.5 text-xs">Docs</span>}
+              </Link>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                'text-white/75 hover:text-white hover:bg-white/10',
+                isDesktopCollapsed ? 'w-full h-9 px-2' : 'h-8 px-2'
+              )}
+              title="Keyboard Shortcuts"
+            >
+              <Link href="/shortcuts">
+                <Keyboard className="h-4 w-4" />
+                {!isDesktopCollapsed && <span className="ml-1.5 text-xs">Keys</span>}
+              </Link>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className={cn(
+                'text-white/75 hover:text-white hover:bg-white/10',
+                isDesktopCollapsed ? 'w-full h-9 px-2' : 'h-8 px-2'
+              )}
+              title="Settings"
+            >
+              <Link href="/settings">
+                <Settings className="h-4 w-4" />
+                {!isDesktopCollapsed && <span className="ml-1.5 text-xs">Settings</span>}
+              </Link>
+            </Button>
+          </div>
+
+          {/* Logout Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              'w-full mt-2 text-red-400/80 hover:text-red-300 hover:bg-red-500/10',
+              isDesktopCollapsed ? 'h-9 px-2' : 'h-8 px-3'
+            )}
+          >
+            <a href="/api/auth/logout">
+              <LogOut className="h-4 w-4" />
+              {!isDesktopCollapsed && <span className="ml-2 text-xs font-medium">Sign Out</span>}
+            </a>
+          </Button>
+
+          {/* Version Info */}
+          {!isDesktopCollapsed && (
+            <div className="flex items-center justify-between px-2 pt-3 text-[10px] text-white/30 font-medium tracking-tight">
+              <span>v1.0.0</span>
+              <span>OpsSentinel</span>
+            </div>
+          )}
         </div>
       </aside>
     </>

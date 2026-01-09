@@ -1,152 +1,87 @@
 'use client';
 
 import { useEffect } from 'react';
+import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/shadcn/button';
 
 type ToastProps = {
-    message: string;
-    type: 'success' | 'error' | 'info' | 'warning';
-    onClose: () => void;
-    duration?: number;
-    icon?: React.ReactNode;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  onClose: () => void;
+  duration?: number;
+  icon?: React.ReactNode;
 };
 
 export default function Toast({ message, type, onClose, duration = 3000, icon }: ToastProps) {
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            onClose();
-        }, duration);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, duration);
 
-        return () => clearTimeout(timer);
-    }, [duration, onClose]);
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
 
-    const typeStyles = {
-        success: {
-            bg: 'var(--color-success-light)',
-            text: 'var(--color-success-dark)',
-            border: 'var(--color-success)',
-            iconBg: 'var(--color-success)',
-        },
-        error: {
-            bg: 'var(--color-error-light)',
-            text: 'var(--color-error-dark)',
-            border: 'var(--color-error)',
-            iconBg: 'var(--color-error)',
-        },
-        warning: {
-            bg: 'var(--color-warning-light)',
-            text: 'var(--color-warning-dark)',
-            border: 'var(--color-warning)',
-            iconBg: 'var(--color-warning)',
-        },
-        info: {
-            bg: 'var(--color-info-light)',
-            text: 'var(--color-info-dark)',
-            border: 'var(--color-info)',
-            iconBg: 'var(--color-info)',
-        },
-    };
+  const typeClasses = {
+    success: {
+      container: 'bg-green-50 text-green-900 border-green-200',
+      iconBg: 'bg-green-500',
+    },
+    error: {
+      container: 'bg-red-50 text-red-900 border-red-200',
+      iconBg: 'bg-red-500',
+    },
+    warning: {
+      container: 'bg-amber-50 text-amber-900 border-amber-200',
+      iconBg: 'bg-amber-500',
+    },
+    info: {
+      container: 'bg-blue-50 text-blue-900 border-blue-200',
+      iconBg: 'bg-blue-500',
+    },
+  };
 
-    const styles = typeStyles[type];
+  const defaultIcon =
+    icon ||
+    (type === 'success' ? (
+      <CheckCircle className="h-5 w-5" />
+    ) : type === 'error' ? (
+      <XCircle className="h-5 w-5" />
+    ) : type === 'warning' ? (
+      <AlertTriangle className="h-5 w-5" />
+    ) : (
+      <Info className="h-5 w-5" />
+    ));
 
-    const defaultIcon = icon || (
-        type === 'success' ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-        ) : type === 'error' ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-        ) : type === 'warning' ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-        ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-        )
-    );
-
-    return (
-        <div
-            className={`toast toast-${type}`}
-            style={{
-                padding: 'var(--spacing-3) var(--spacing-5)',
-                background: styles.bg,
-                color: styles.text,
-                border: `1px solid ${styles.border}`,
-                borderRadius: 'var(--radius-md)',
-                boxShadow: 'var(--shadow-lg)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--spacing-3)',
-                minWidth: '300px',
-                maxWidth: '500px',
-                pointerEvents: 'auto',
-                animation: 'slideIn 0.3s ease-out',
-            }}
-            role="alert"
-            aria-live="polite"
-        >
-            <div
-                style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: 'var(--radius-full)',
-                    background: styles.iconBg,
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                }}
-            >
-                {defaultIcon}
-            </div>
-            <span style={{ 
-                fontWeight: 'var(--font-weight-semibold)', 
-                fontSize: 'var(--font-size-sm)',
-                flex: 1,
-            }}>
-                {message}
-            </span>
-            <button
-                onClick={onClose}
-                style={{
-                    marginLeft: 'auto',
-                    background: 'transparent',
-                    border: 'none',
-                    color: styles.text,
-                    cursor: 'pointer',
-                    fontSize: '1.2rem',
-                    lineHeight: 1,
-                    padding: 'var(--spacing-1)',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 'var(--radius-sm)',
-                    transition: 'all var(--transition-base)',
-                }}
-                aria-label="Close"
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                }}
-            >
-                ×
-            </button>
-        </div>
-    );
+  return (
+    <div
+      className={cn(
+        'toast flex items-center gap-3 px-5 py-3 min-w-[300px] max-w-[500px]',
+        'rounded-md border shadow-lg pointer-events-auto',
+        'animate-in slide-in-from-top-5 duration-300',
+        typeClasses[type].container
+      )}
+      role="alert"
+      aria-live="polite"
+    >
+      <div
+        className={cn(
+          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white',
+          typeClasses[type].iconBg
+        )}
+      >
+        {defaultIcon}
+      </div>
+      <span className="flex-1 text-sm font-semibold">{message}</span>
+      <Button
+        onClick={onClose}
+        variant="ghost"
+        size="icon"
+        className="ml-auto h-6 w-6 rounded-sm hover:bg-black/10 transition-colors"
+        aria-label="Close"
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
-

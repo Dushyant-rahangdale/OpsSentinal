@@ -1,6 +1,13 @@
 'use client';
 
-import { ReactNode, HTMLAttributes, useCallback, useMemo } from 'react';
+import { ReactNode, HTMLAttributes } from 'react';
+import {
+  Card as ShadcnCard,
+  CardHeader,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/shadcn/card';
+import { cn } from '@/lib/utils';
 
 type CardVariant = 'default' | 'elevated' | 'outlined' | 'flat';
 
@@ -14,7 +21,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 /**
  * Card component with header, body, and footer sections
- * 
+ *
  * @example
  * <Card variant="elevated" header={<h3>Title</h3>} footer={<button>Action</button>}>
  *   Content here
@@ -27,108 +34,32 @@ export default function Card({
   hover = false,
   children,
   className = '',
-  style,
   ...props
 }: CardProps) {
-  // Memoize styles to prevent recreation on every render
-  const baseStyles: React.CSSProperties = useMemo(() => ({
-    background: 'var(--bg-secondary)',
-    borderRadius: 'var(--radius-lg)',
-    overflow: 'hidden',
-    transition: hover ? 'all var(--transition-base) var(--ease-out)' : undefined,
-  }), [hover]);
-
-  const variantStyles: Record<CardVariant, React.CSSProperties> = useMemo(() => ({
-    default: {
-      border: '1px solid var(--border)',
-      boxShadow: 'var(--shadow-sm)',
-    },
-    elevated: {
-      border: '1px solid var(--border)',
-      boxShadow: 'var(--shadow-lg)',
-    },
-    outlined: {
-      border: '2px solid var(--border)',
-      boxShadow: 'none',
-    },
-    flat: {
-      border: 'none',
-      boxShadow: 'none',
-      background: 'transparent',
-    },
-  }), []);
-
-  const hoverStyles: React.CSSProperties = useMemo(() => hover
-    ? {
-        boxShadow: 'var(--shadow-xl)',
-        transform: 'translateY(-2px)',
-      }
-    : {}, [hover]);
-
-  // Memoize event handlers to prevent unnecessary re-renders
-  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (hover) {
-      Object.assign(e.currentTarget.style, hoverStyles);
-    }
-  }, [hover, hoverStyles]);
-
-  const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (hover) {
-      Object.assign(e.currentTarget.style, variantStyles[variant]);
-    }
-  }, [hover, variant, variantStyles]);
+  const variantClasses = {
+    default: 'bg-card border border-border shadow-sm',
+    elevated: 'bg-card border border-border shadow-lg',
+    outlined: 'bg-card border-2 border-border shadow-none',
+    flat: 'bg-transparent border-0 shadow-none',
+  };
 
   return (
-    <div
-      className={`ui-card ui-card-${variant} ${hover ? 'ui-card-hover' : ''} ${className}`}
-      style={{
-        ...baseStyles,
-        ...variantStyles[variant],
-        ...style,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+    <ShadcnCard
+      className={cn(
+        'rounded-lg overflow-hidden transition-all duration-200',
+        variantClasses[variant],
+        hover && 'hover:shadow-xl hover:-translate-y-0.5 cursor-pointer',
+        className
+      )}
       {...props}
     >
       {header && (
-        <div
-          className="ui-card-header"
-          style={{
-            padding: 'var(--spacing-6)',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg-primary)',
-          }}
-        >
-          {header}
-        </div>
+        <CardHeader className="p-6 border-b border-border bg-background">{header}</CardHeader>
       )}
-      <div
-        className="ui-card-body"
-        style={{
-          padding: header || footer ? 'var(--spacing-6)' : 'var(--spacing-6)',
-        }}
-      >
-        {children}
-      </div>
+      <CardContent className="p-6">{children}</CardContent>
       {footer && (
-        <div
-          className="ui-card-footer"
-          style={{
-            padding: 'var(--spacing-6)',
-            borderTop: '1px solid var(--border)',
-            background: 'var(--bg-primary)',
-          }}
-        >
-          {footer}
-        </div>
+        <CardFooter className="p-6 border-t border-border bg-background">{footer}</CardFooter>
       )}
-    </div>
+    </ShadcnCard>
   );
 }
-
-
-
-
-
-
-

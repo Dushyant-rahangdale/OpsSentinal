@@ -1,6 +1,9 @@
 'use client';
 
 import { ReactNode, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
 
@@ -18,7 +21,7 @@ interface ModalProps {
 
 /**
  * Modal component for dialogs and overlays
- * 
+ *
  * @example
  * <Modal
  *   isOpen={isOpen}
@@ -61,8 +64,9 @@ export default function Modal({
   const getFocusableElements = (): HTMLElement[] => {
     if (!modalRef.current) return [];
     const selector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    return Array.from(modalRef.current.querySelectorAll<HTMLElement>(selector))
-      .filter(el => !el.hasAttribute('disabled') && !el.hasAttribute('aria-hidden'));
+    return Array.from(modalRef.current.querySelectorAll<HTMLElement>(selector)).filter(
+      el => !el.hasAttribute('disabled') && !el.hasAttribute('aria-hidden')
+    );
   };
 
   // Focus trap - keep focus within modal
@@ -96,7 +100,7 @@ export default function Modal({
     // Prevent focus from escaping modal - trap focus within modal
     const handleFocusIn = (e: FocusEvent) => {
       if (!modalRef.current) return;
-      
+
       // If focus moves outside modal, bring it back
       if (!modalRef.current.contains(e.target as Node)) {
         e.preventDefault();
@@ -120,7 +124,7 @@ export default function Modal({
     if (isOpen) {
       // Store previous active element
       previousActiveElement.current = document.activeElement as HTMLElement;
-      
+
       // Focus modal
       setTimeout(() => {
         const focusableElements = getFocusableElements();
@@ -134,7 +138,7 @@ export default function Modal({
     } else {
       // Restore body scroll
       document.body.style.overflow = '';
-      
+
       // Restore focus
       if (previousActiveElement.current) {
         previousActiveElement.current.focus();
@@ -159,7 +163,7 @@ export default function Modal({
 
     const handleMouseDown = (e: MouseEvent) => {
       if (!modalRef.current) return;
-      
+
       // If click is outside modal, prevent default to stop focus
       if (!modalRef.current.contains(e.target as Node)) {
         e.preventDefault();
@@ -180,139 +184,61 @@ export default function Modal({
 
   if (!isOpen) return null;
 
-  const sizeStyles: Record<ModalSize, React.CSSProperties> = {
-    sm: { maxWidth: '400px' },
-    md: { maxWidth: '600px' },
-    lg: { maxWidth: '800px' },
-    xl: { maxWidth: '1200px' },
-    fullscreen: { maxWidth: '100%', width: '100%', height: '100%', maxHeight: '100%' },
+  const sizeClasses = {
+    sm: 'max-w-md',
+    md: 'max-w-2xl',
+    lg: 'max-w-4xl',
+    xl: 'max-w-6xl',
+    fullscreen: 'max-w-full w-full h-full max-h-full',
   };
 
   return (
     <div
-      className="modal-backdrop"
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'var(--bg-overlay)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 'var(--z-modal)',
-        padding: 'var(--spacing-4)',
-        animation: 'fadeIn var(--transition-base) var(--ease-out)',
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
       <div
         ref={modalRef}
-        className={`modal-content modal-${size} ${className}`}
-        style={{
-          background: 'var(--bg-secondary)',
-          borderRadius: size === 'fullscreen' ? 0 : 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-2xl)',
-          width: '100%',
-          maxHeight: size === 'fullscreen' ? '100%' : '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          animation: 'slideUp var(--transition-slow) var(--ease-out)',
-          ...sizeStyles[size],
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className={cn(
+          'w-full max-h-[90vh] flex flex-col bg-card rounded-lg shadow-2xl',
+          'animate-in slide-in-from-bottom-4 duration-300',
+          size === 'fullscreen' && 'rounded-none',
+          sizeClasses[size],
+          className
+        )}
+        onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
       >
         {/* Header */}
         {(title || closeOnBackdropClick) && (
-          <div
-            className="modal-header"
-            style={{
-              padding: 'var(--spacing-6)',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexShrink: 0,
-            }}
-          >
+          <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
             {title && (
-              <h2
-                id="modal-title"
-                style={{
-                  fontSize: 'var(--font-size-xl)',
-                  fontWeight: 'var(--font-weight-bold)',
-                  color: 'var(--text-primary)',
-                  margin: 0,
-                }}
-              >
+              <h2 id="modal-title" className="text-xl font-bold text-foreground m-0">
                 {title}
               </h2>
             )}
             {closeOnBackdropClick && (
-              <button
+              <Button
                 onClick={onClose}
-                className="modal-close"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 'var(--spacing-2)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all var(--transition-base)',
-                }}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground"
                 aria-label="Close modal"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--color-neutral-100)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-muted)';
-                }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+                <X className="h-5 w-5" />
+              </Button>
             )}
           </div>
         )}
 
         {/* Body */}
-        <div
-          className="modal-body"
-          style={{
-            padding: 'var(--spacing-6)',
-            overflowY: 'auto',
-            flex: 1,
-          }}
-        >
-          {children}
-        </div>
+        <div className="flex-1 p-6 overflow-y-auto">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div
-            className="modal-footer"
-            style={{
-              padding: 'var(--spacing-6)',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 'var(--spacing-3)',
-              flexShrink: 0,
-            }}
-          >
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-border shrink-0">
             {footer}
           </div>
         )}
@@ -320,10 +246,3 @@ export default function Modal({
     </div>
   );
 }
-
-
-
-
-
-
-

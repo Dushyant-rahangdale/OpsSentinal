@@ -1,33 +1,38 @@
 'use client';
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { type ReactNode, type ButtonHTMLAttributes } from 'react';
+import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
 
-type HoverButtonProps = {
-    baseStyle: CSSProperties;
-    hoverStyle?: CSSProperties;
-    className?: string;
-    children: ReactNode;
-    type?: 'button' | 'submit' | 'reset';
+type HoverButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  children: ReactNode;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  hoverClassName?: string;
 };
 
 export default function HoverButton({
-    baseStyle,
-    hoverStyle,
-    className,
-    children,
-    type = 'button'
+  children,
+  className,
+  hoverClassName,
+  variant = 'default',
+  size = 'default',
+  type = 'button',
+  ...props
 }: HoverButtonProps) {
-    const [isHovered, setIsHovered] = useState(false);
-
-    return (
-        <button
-            type={type}
-            className={className}
-            style={isHovered && hoverStyle ? { ...baseStyle, ...hoverStyle } : baseStyle}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-        >
-            {children}
-        </button>
-    );
+  return (
+    <Button
+      type={type}
+      variant={variant}
+      size={size}
+      className={cn(
+        'transition-all duration-200',
+        hoverClassName && `hover:${hoverClassName}`,
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </Button>
+  );
 }
