@@ -55,14 +55,18 @@ export default function IncidentsFilters({
   };
 
   const clearFilters = () => {
+    setSearchQuery(''); // Reset search input
     startTransition(() => {
-      if (currentFilter && currentFilter !== 'all_open') {
-        router.push(`/incidents?filter=${encodeURIComponent(currentFilter)}`);
-      } else {
-        router.push('/incidents');
-      }
+      router.push('/incidents');
     });
   };
+
+  // Check if any filters are active
+  const hasActiveFilters =
+    currentSearch !== '' ||
+    currentPriority !== 'all' ||
+    currentUrgency !== 'all' ||
+    currentSort !== 'newest';
 
   const criteria: FilterCriteria = currentCriteria || {
     filter: currentFilter,
@@ -160,15 +164,17 @@ export default function IncidentsFilters({
       </div>
 
       <div className="flex gap-2 items-center mt-2 sm:mt-0 lg:ml-auto">
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors shadow-sm"
-          aria-label="Clear incident filters"
-          disabled={isPending}
-        >
-          Clear
-        </button>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="px-3 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors shadow-sm"
+            aria-label="Clear all incident filters"
+            disabled={isPending}
+          >
+            ✕ Clear All
+          </button>
+        )}
 
         {/* Save as Preset Button */}
         <CreatePresetFromCurrent currentCriteria={criteria} />
