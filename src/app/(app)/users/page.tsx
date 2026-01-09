@@ -291,7 +291,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                 deactivateUser={deactivateUser}
                 reactivateUser={reactivateUser}
                 deleteUser={deleteUser}
-                generateInvite={generateInvite}
+                generateInvite={generateInvite as any}
               />
 
               {/* Pagination */}
