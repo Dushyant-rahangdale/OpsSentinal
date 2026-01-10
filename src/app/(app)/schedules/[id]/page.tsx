@@ -198,7 +198,7 @@ export default async function ScheduleDetailPage({
     }).format(date);
 
   return (
-    <main style={{ padding: '1rem' }}>
+    <main className="[zoom:0.7]" style={{ padding: '1rem' }}>
       {/* Header */}
       <header
         style={{

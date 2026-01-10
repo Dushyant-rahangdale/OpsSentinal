@@ -2,403 +2,255 @@ import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import PolicyStepCard from '@/components/PolicyStepCard';
-import PolicyStepCreateForm from '@/components/PolicyStepCreateForm';
+import StepsList from '@/components/policies/StepsList';
 import PolicyDeleteButton from '@/components/PolicyDeleteButton';
 import {
-    updatePolicy,
-    addPolicyStep,
-    updatePolicyStep,
-    deletePolicyStep,
-    movePolicyStep
+  updatePolicy,
+  addPolicyStep,
+  updatePolicyStep,
+  deletePolicyStep,
+  movePolicyStep,
+  reorderPolicySteps,
 } from '../actions';
-import _ConfirmDialog from '@/components/ConfirmDialog';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { ArrowLeft, Clock, ShieldCheck, Settings, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
 
 export const revalidate = 30;
 
 export default async function PolicyDetailPage({
-    params,
-    searchParams
+  params,
+  searchParams,
 }: {
-    params: Promise<{ id: string }>;
-    searchParams?: Promise<{ error?: string }>;
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string }>;
 }) {
-    const { id } = await params;
-    const resolvedSearchParams = await searchParams;
-    const errorCode = resolvedSearchParams?.error;
+  const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const errorCode = resolvedSearchParams?.error;
 
-    const [policy, users, teams, schedules, services] = await Promise.all([
-        prisma.escalationPolicy.findUnique({
-            where: { id },
-            include: {
-                steps: {
-                    include: {
-                        targetUser: true,
-                        targetTeam: true, // teamLead will be included if Prisma client is regenerated
-                        targetSchedule: true
-                    },
-                    orderBy: { stepOrder: 'asc' }
-                },
-                services: {
-                    include: { team: true },
-                    orderBy: { name: 'asc' }
-                }
-            }
-        }),
-        prisma.user.findMany({
-            where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
-            select: { id: true, name: true, email: true },
-            orderBy: { name: 'asc' }
-        }),
-        prisma.team.findMany({
-            select: { id: true, name: true },
-            orderBy: { name: 'asc' }
-        }),
-        prisma.onCallSchedule.findMany({
-            select: { id: true, name: true },
-            orderBy: { name: 'asc' }
-        }),
-        prisma.service.findMany({
-            where: { escalationPolicyId: id },
-            include: { team: true },
-            orderBy: { name: 'asc' }
-        })
-    ]);
+  const [policy, users, teams, schedules, services] = await Promise.all([
+    prisma.escalationPolicy.findUnique({
+      where: { id },
+      include: {
+        steps: {
+          include: {
+            targetUser: true,
+            targetTeam: true,
+            targetSchedule: true,
+          },
+          orderBy: { stepOrder: 'asc' },
+        },
+        services: {
+          include: { team: true },
+          orderBy: { name: 'asc' },
+        },
+      },
+    }),
+    prisma.user.findMany({
+      where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.team.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.onCallSchedule.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.service.findMany({
+      where: { escalationPolicyId: id },
+      include: { team: true },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
 
-    if (!policy) notFound();
+  if (!policy) notFound();
 
-    const permissions = await getUserPermissions();
-    const canManagePolicies = permissions.isAdmin;
+  const permissions = await getUserPermissions();
+  const canManagePolicies = permissions.isAdmin;
 
-    return (
-        <main style={{ padding: '1rem' }}>
-            {/* Header */}
-            <header style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '2rem',
-                paddingBottom: '1.5rem',
-                borderBottom: '2px solid var(--border)'
-            }}>
-                <div style={{ flex: 1 }}>
-                    <Link
-                        href="/policies"
-                        className="schedule-back-link"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            fontSize: '0.9rem',
-                            color: 'var(--text-secondary)',
-                            textDecoration: 'none',
-                            marginBottom: '0.75rem',
-                            fontWeight: '500',
-                            transition: 'color 0.2s'
-                        }}
-                    >
-                        ← Back to policies
-                    </Link>
-                    <h1 style={{
-                        fontSize: '2rem',
-                        fontWeight: 'bold',
-                        color: 'var(--text-primary)',
-                        marginBottom: '0.5rem'
-                    }}>
-                        {policy.name}
-                    </h1>
-                    {policy.description && (
-                        <p style={{
-                            color: 'var(--text-secondary)',
-                            fontSize: '0.95rem',
-                            marginBottom: '0.5rem'
-                        }}>
-                            {policy.description}
-                        </p>
-                    )}
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{
-                            padding: '0.25rem 0.6rem',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-                            color: '#0c4a6e',
-                            border: '1px solid #bae6fd'
-                        }}>
-                            {policy.steps.length} {policy.steps.length === 1 ? 'step' : 'steps'}
-                        </span>
-                        <span style={{
-                            padding: '0.25rem 0.6rem',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: '600',
-                            background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-                            color: '#0c4a6e',
-                            border: '1px solid #bae6fd'
-                        }}>
-                            {services.length} {services.length === 1 ? 'service' : 'services'}
-                        </span>
-                    </div>
-                </div>
-            </header>
+  return (
+    <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6 [zoom:0.8]">
+      {/* Header */}
+      <div>
+        <Link href="/policies">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="pl-0 text-slate-500 mb-4 hover:text-slate-900"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Policies
+          </Button>
+        </Link>
 
-            {errorCode === 'duplicate-policy' && (
-                <div className="glass-panel" style={{
-                    padding: '0.75rem 1rem',
-                    marginBottom: '1.5rem',
-                    background: '#fee2e2',
-                    border: '1px solid #fecaca',
-                    color: '#991b1b',
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    borderRadius: '0px'
-                }}>
-                    An escalation policy with this name already exists. Please choose a unique name.
-                </div>
-            )}
-
-            {/* Main Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-                <div>
-                    {/* Escalation Steps Section */}
-                    <section className="glass-panel" style={{
-                        padding: '1.5rem',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        marginBottom: '2rem'
-                    }}>
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '1.5rem',
-                            paddingBottom: '1rem',
-                            borderBottom: '1px solid #e2e8f0'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
-                                    Escalation Steps
-                                </h3>
-                                <span
-                                    title="Escalation steps define who gets notified and when. Steps are executed in order with the specified delay between each step."
-                                    style={{
-                                        width: '20px',
-                                        height: '20px',
-                                        borderRadius: '50%',
-                                        background: '#e0f2fe',
-                                        color: '#0c4a6e',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '0.75rem',
-                                        fontWeight: '600',
-                                        cursor: 'help',
-                                        border: '1px solid #bae6fd'
-                                    }}
-                                >
-                                    ?
-                                </span>
-                            </div>
-                        </div>
-
-                        {policy.steps.length === 0 ? (
-                            <p style={{
-                                fontSize: '0.9rem',
-                                color: 'var(--text-muted)',
-                                padding: '2rem',
-                                textAlign: 'center',
-                                background: '#f8fafc',
-                                borderRadius: '8px'
-                            }}>
-                                No escalation steps yet. Add a step to define who gets notified.
-                            </p>
-                        ) : (
-                            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
-                                {policy.steps.map((step, index) => (
-                                    <PolicyStepCard
-                                        key={step.id}
-                                        step={{
-                                            id: step.id,
-                                            stepOrder: step.stepOrder,
-                                            delayMinutes: step.delayMinutes,
-                                            targetType: step.targetType,
-                                            notificationChannels: step.notificationChannels || [],
-                                            notifyOnlyTeamLead: step.notifyOnlyTeamLead || false,
-                                            targetUser: step.targetUser ? {
-                                                id: step.targetUser.id,
-                                                name: step.targetUser.name,
-                                                email: step.targetUser.email
-                                            } : null,
-                                            targetTeam: step.targetTeam ? {
-                                                id: step.targetTeam.id,
-                                                name: step.targetTeam.name,
-                                                // teamLead available after Prisma client regeneration
-                                                teamLead: (step.targetTeam as any).teamLead ? { // eslint-disable-line @typescript-eslint/no-explicit-any
-                                                    id: (step.targetTeam as any).teamLead.id, // eslint-disable-line @typescript-eslint/no-explicit-any
-                                                    name: (step.targetTeam as any).teamLead.name, // eslint-disable-line @typescript-eslint/no-explicit-any
-                                                    email: (step.targetTeam as any).teamLead.email // eslint-disable-line @typescript-eslint/no-explicit-any
-                                                } : null
-                                            } : null,
-                                            targetSchedule: step.targetSchedule ? {
-                                                id: step.targetSchedule.id,
-                                                name: step.targetSchedule.name
-                                            } : null
-                                        }}
-                                        policyId={policy.id}
-                                        canManagePolicies={canManagePolicies}
-                                        updateStep={updatePolicyStep}
-                                        deleteStep={deletePolicyStep}
-                                        moveStep={movePolicyStep}
-                                        isFirst={index === 0}
-                                        isLast={index === policy.steps.length - 1}
-                                    />
-                                ))}
-                            </div>
-                        )}
-
-                        {canManagePolicies && (
-                            <PolicyStepCreateForm
-                                policyId={policy.id}
-                                users={users}
-                                teams={teams}
-                                schedules={schedules}
-                                addStep={addPolicyStep}
-                            />
-                        )}
-                    </section>
-                </div>
-
-                <aside>
-                    {/* Policy Settings */}
-                    {canManagePolicies ? (
-                        <div className="glass-panel" style={{
-                            padding: '1.5rem',
-                            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '12px',
-                            marginBottom: '2rem'
-                        }}>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                                Policy Settings
-                            </h3>
-                            <form action={updatePolicy.bind(null, policy.id)} style={{ display: 'grid', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                                        Name
-                                    </label>
-                                    <input
-                                        name="name"
-                                        defaultValue={policy.name}
-                                        required
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.6rem',
-                                            border: '1px solid var(--border)',
-                                            borderRadius: '8px',
-                                            fontSize: '0.9rem',
-                                            background: 'white'
-                                        }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                                        Description
-                                    </label>
-                                    <textarea
-                                        name="description"
-                                        defaultValue={policy.description || ''}
-                                        rows={3}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.6rem',
-                                            border: '1px solid var(--border)',
-                                            borderRadius: '8px',
-                                            fontSize: '0.9rem',
-                                            background: 'white',
-                                            resize: 'vertical'
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    className="glass-button primary"
-                                    style={{ width: '100%' }}
-                                >
-                                    Save Changes
-                                </button>
-                            </form>
-                        </div>
-                    ) : (
-                        <div className="glass-panel" style={{
-                            padding: '1.5rem',
-                            background: '#f9fafb',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            marginBottom: '2rem',
-                            opacity: 0.7
-                        }}>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                ⚠️ You don't have access to edit policies. Admin role required.
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Services Using This Policy */}
-                    <div className="glass-panel" style={{
-                        padding: '1.5rem',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px'
-                    }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                            Services Using This Policy
-                        </h3>
-                        {services.length === 0 ? (
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                No services are using this policy yet.
-                            </p>
-                        ) : (
-                            <div style={{ display: 'grid', gap: '0.75rem' }}>
-                                {services.map((service) => (
-                                    <Link
-                                        key={service.id}
-                                        href={`/services/${service.id}`}
-                                        className="service-link-card"
-                                        style={{
-                                            display: 'block',
-                                            padding: '0.75rem',
-                                            background: '#f8fafc',
-                                            borderRadius: '8px',
-                                            border: '1px solid #e2e8f0',
-                                            textDecoration: 'none',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: '500', fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
-                                            {service.name}
-                                        </div>
-                                        {service.team && (
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                {service.team.name}
-                                            </div>
-                                        )}
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Delete Policy */}
-                    {canManagePolicies && (
-                        <PolicyDeleteButton
-                            policyId={policy.id}
-                            servicesUsingPolicy={services.map(s => ({ id: s.id, name: s.name }))}
-                        />
-                    )}
-                </aside>
+        <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-2xl md:text-3xl font-bold">{policy.name}</h1>
+              </div>
+              <p className="text-primary-foreground/80 text-sm max-w-2xl">
+                {policy.description || 'No description provided.'}
+              </p>
             </div>
-        </main>
-    );
+
+            <div className="grid grid-cols-2 gap-2 md:gap-4 w-full lg:w-auto">
+              <Card className="bg-white/10 border-white/20 backdrop-blur">
+                <CardContent className="p-3 md:p-4 text-center">
+                  <div className="text-xl md:text-2xl font-bold">{policy.steps.length}</div>
+                  <div className="text-[10px] md:text-xs opacity-90">Steps</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white/10 border-white/20 backdrop-blur">
+                <CardContent className="p-3 md:p-4 text-center">
+                  <div className="text-xl md:text-2xl font-bold text-green-200">
+                    {services.length}
+                  </div>
+                  <div className="text-[10px] md:text-xs opacity-90">Services</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {errorCode === 'duplicate-policy' && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          An escalation policy with this name already exists.
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main: Escalation Steps */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            {/* Header is inside StepsList or handled by it? 
+                            Ideally StepsList manages the card content for list, but the container Card might be here.
+                            Let's check StepsList... it HAS the Card Wrapper.
+                            Wait, StepsList includes <Card>...</Card>.
+                            So I should replace the entire Card block here with StepsList?
+                            StepsList definition: export default function StepsList(...) { return <Card>...
+                            Yes. So I should remove the <Card> wrapper here.
+                        */}
+            <StepsList
+              initialSteps={policy.steps.map(step => ({
+                ...step,
+                targetTeam: step.targetTeam
+                  ? {
+                      ...step.targetTeam,
+                      teamLead: (step.targetTeam as any).teamLead, // eslint-disable-line @typescript-eslint/no-explicit-any
+                    }
+                  : null,
+              }))}
+              policyId={policy.id}
+              canManage={canManagePolicies}
+              updateStep={updatePolicyStep}
+              deleteStep={deletePolicyStep}
+              moveStep={movePolicyStep}
+              reorderSteps={reorderPolicySteps}
+              addStep={addPolicyStep}
+              users={users}
+              teams={teams}
+              schedules={schedules}
+            />
+          </Card>
+        </div>
+
+        {/* Sidebar: Settings & Usage */}
+        <div className="space-y-6">
+          {/* Settings */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings className="h-4 w-4 text-slate-500" />
+                Policy Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {canManagePolicies ? (
+                <form action={updatePolicy.bind(null, policy.id)} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase text-slate-500">Name</label>
+                    <Input name="name" defaultValue={policy.name} required />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase text-slate-500">
+                      Description
+                    </label>
+                    <Textarea
+                      name="description"
+                      defaultValue={policy.description || ''}
+                      className="resize-none"
+                      rows={3}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Save Changes
+                  </Button>
+                </form>
+              ) : (
+                <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-500 italic">
+                  You do not have permission to edit this policy.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Services */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-slate-500" />
+                Linked Services ({services.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {services.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">No services are using this policy.</p>
+              ) : (
+                <div className="space-y-2">
+                  {services.map(service => (
+                    <Link key={service.id} href={`/services/${service.id}`} className="block">
+                      <div className="p-3 rounded-lg border border-slate-200 hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                        <div className="font-medium text-sm text-slate-900">{service.name}</div>
+                        {service.team && (
+                          <div className="text-xs text-slate-500 mt-0.5">{service.team.name}</div>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Delete */}
+          {canManagePolicies && (
+            <Card className="border-red-100 bg-red-50/30">
+              <CardContent className="p-4">
+                <h4 className="text-sm font-semibold text-red-900 mb-2">Danger Zone</h4>
+                <PolicyDeleteButton
+                  policyId={policy.id}
+                  servicesUsingPolicy={services.map(s => ({ id: s.id, name: s.name }))}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

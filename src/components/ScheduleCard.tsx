@@ -24,44 +24,37 @@ export default function ScheduleCard({ schedule }: ScheduleCardProps) {
 
   return (
     <Link href={`/schedules/${schedule.id}`} className="block group">
-      <Card className="transition-all duration-200 hover:shadow-lg hover:border-primary/50">
+      <Card className="transition-all duration-300 hover:shadow-md hover:-translate-y-[2px] border-slate-200 hover:border-primary/30 hover:bg-primary/5">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
-            <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
+            <CardTitle className="text-base font-semibold text-slate-900 group-hover:text-primary transition-colors">
               {schedule.name}
             </CardTitle>
-            <Badge variant="outline" size="xs" className="gap-1.5 shrink-0">
-              <Clock className="h-3 w-3" />
+            <Badge variant="outline" size="xs" className="gap-1.5 shrink-0 bg-white/50">
+              <Clock className="h-3 w-3 text-slate-500" />
               {schedule.timeZone}
             </Badge>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Layered rotations with overrides and handoffs
-          </p>
-
-          <div className="flex items-center justify-between pt-3 border-t">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <CardContent>
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <Layers className="h-4 w-4" />
+                <Layers className="h-4 w-4 text-slate-400" />
                 <span>
                   {schedule.layers.length} {schedule.layers.length === 1 ? 'layer' : 'layers'}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
+                <Users className="h-4 w-4 text-slate-400" />
                 <span>
                   {uniqueUsers.size} {uniqueUsers.size === 1 ? 'responder' : 'responders'}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-sm font-medium text-primary group-hover:gap-2 transition-all">
-              View schedule
-              <ArrowRight className="h-4 w-4" />
-            </div>
+            <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
           </div>
         </CardContent>
       </Card>

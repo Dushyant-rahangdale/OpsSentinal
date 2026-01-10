@@ -108,12 +108,15 @@ export default function ScheduleCreateForm({ action, canCreate }: ScheduleCreate
   }
 
   return (
-    <Card id="new-schedule">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">New Schedule</CardTitle>
+    <Card id="new-schedule" className="shadow-sm border-slate-200">
+      <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Plus className="h-4 w-4 text-primary" />
+          New Schedule
+        </CardTitle>
         <CardDescription>Create a rotation schedule for on-call coverage</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <form ref={formRef} action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm">
