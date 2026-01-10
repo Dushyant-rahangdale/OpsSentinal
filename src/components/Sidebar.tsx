@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import {
-  ChevronLeft,
-  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Menu,
   X,
   HelpCircle,
@@ -398,16 +398,18 @@ export default function Sidebar(
               className={cn(
                 'absolute -right-3 top-1/2 -translate-y-1/2 z-20',
                 'w-6 h-6 rounded-full',
-                'bg-primary hover:bg-primary/90 text-white',
-                'border-2 border-white/20 shadow-lg hover:shadow-xl',
-                'transition-all duration-200 hover:scale-110',
-                'focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2'
+                'bg-slate-900 text-white',
+                'border border-slate-700 shadow-[0_0_15px_rgba(0,0,0,0.3)]',
+                'hover:bg-slate-800 hover:scale-110 hover:shadow-[0_0_20px_rgba(56,189,248,0.3)]',
+                'transition-all duration-300 ease-out',
+                'focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2',
+                'flex items-center justify-center'
               )}
             >
               {isDesktopCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
+                <ChevronsRight className="h-3.5 w-3.5 stroke-[3]" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronsLeft className="h-3.5 w-3.5 stroke-[3]" />
               )}
             </Button>
           )}
