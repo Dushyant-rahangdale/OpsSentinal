@@ -193,7 +193,7 @@ export default function AssigneeSection({
             <ChevronsUpDown className="h-3 w-3" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[320px]" align="end">
+        <PopoverContent className="p-0 w-[320px]" align="end" style={{ zoom: 0.8 }}>
           {ReassignContent}
         </PopoverContent>
       </Popover>
@@ -205,6 +205,8 @@ export default function AssigneeSection({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={!canManage}>
         <div
+          data-no-row-nav="true"
+          onClick={e => e.stopPropagation()}
           className={cn(
             'flex items-center gap-2 px-2 py-1 -ml-2 rounded-md transition-colors',
             canManage ? 'cursor-pointer hover:bg-slate-100/50' : 'cursor-default'
@@ -247,7 +249,7 @@ export default function AssigneeSection({
         </div>
       </PopoverTrigger>
       {canManage && (
-        <PopoverContent className="p-0 w-[320px]" align="start">
+        <PopoverContent className="p-0 w-[320px]" align="start" style={{ zoom: 0.8 }}>
           {ReassignContent}
         </PopoverContent>
       )}

@@ -116,8 +116,8 @@ export default function IncidentCustomFields({
                 <span className="text-sm font-medium text-slate-700">{field.name}</span>
                 {field.required && (
                   <Badge
-                    variant="outline"
-                    className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-200 bg-amber-50"
+                    variant="warning"
+                    size="xs"
                   >
                     Required
                   </Badge>

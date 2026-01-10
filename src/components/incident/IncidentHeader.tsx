@@ -54,13 +54,20 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
   const { userTimeZone } = useTimezone();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const urgencyStyles: Record<'HIGH' | 'MEDIUM' | 'LOW', { text: string; dot: string }> = {
-    HIGH: { text: 'text-red-700', dot: 'bg-red-500 animate-pulse' },
-    MEDIUM: { text: 'text-amber-700', dot: 'bg-amber-500' },
-    LOW: { text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  const urgencyVariantMap: Record<'HIGH' | 'MEDIUM' | 'LOW', 'danger' | 'warning' | 'success'> = {
+    HIGH: 'danger',
+    MEDIUM: 'warning',
+    LOW: 'success',
   };
-  const urgencyStyle =
-    urgencyStyles[incident.urgency as 'HIGH' | 'MEDIUM' | 'LOW'] ?? urgencyStyles.LOW;
+  const urgencyDotMap: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
+    HIGH: 'bg-red-500 animate-pulse',
+    MEDIUM: 'bg-amber-500',
+    LOW: 'bg-emerald-500',
+  };
+  const urgencyVariant =
+    urgencyVariantMap[incident.urgency as 'HIGH' | 'MEDIUM' | 'LOW'] ?? 'success';
+  const urgencyDot =
+    urgencyDotMap[incident.urgency as 'HIGH' | 'MEDIUM' | 'LOW'] ?? urgencyDotMap.LOW;
 
   const handleUrgencyChange = (newUrgency: string) => {
     startTransition(async () => {
@@ -151,10 +158,10 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
                 </SelectContent>
               </Select>
             ) : (
-              <div className={`flex items-center gap-2 font-bold text-sm ${urgencyStyle.text}`}>
-                <div className={`w-2 h-2 rounded-full ${urgencyStyle.dot}`} />
+              <Badge variant={urgencyVariant} size="sm" className="gap-1.5 uppercase">
+                <span className={`h-2 w-2 rounded-full ${urgencyDot}`} />
                 {incident.urgency}
-              </div>
+              </Badge>
             )}
           </div>
 

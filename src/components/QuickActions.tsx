@@ -24,6 +24,7 @@ import {
   Command,
   ChevronDown,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/shadcn/badge';
 import { cn } from '@/lib/utils';
 
 type QuickAction = {
@@ -166,9 +167,9 @@ export default function QuickActions({ canCreate = true }: QuickActionsProps) {
                       {action.label}
                     </span>
                     {action.badge && (
-                      <span className="px-1 py-0 rounded text-[8px] font-bold bg-muted text-muted-foreground uppercase tracking-wider border">
+                      <Badge variant="neutral" size="xs" className="uppercase">
                         {action.badge}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   {/* Dense mode: Hide description or make it very small? Keeping it very small for now but checking if user wanted it gone. 'very compact' suggests small. */}

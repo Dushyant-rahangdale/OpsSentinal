@@ -5,7 +5,6 @@ import { IncidentStatus } from '@prisma/client';
 import SnoozeDurationDialog from './SnoozeDurationDialog';
 import { snoozeIncidentWithDuration } from '@/app/(app)/incidents/snooze-actions';
 import { Button } from '@/components/ui/shadcn/button';
-import { Badge } from '@/components/ui/shadcn/badge';
 import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Check, X, Clock, BellOff, Bell, Lock, CheckCircle2, Pause, Volume2 } from 'lucide-react';
 
@@ -133,10 +132,10 @@ export default function IncidentStatusActions({
             <Button
               type="button"
               variant="outline"
-              className="h-auto py-3 flex-col gap-1 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
+              className="h-auto py-3 flex-col gap-1 border-slate-200 hover:border-slate-300 force-light-surface"
               onClick={() => setShowSnoozeDialog(true)}
             >
-              <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center mb-1">
+              <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center mb-1 force-light-surface">
                 <Pause className="h-3.5 w-3.5 text-slate-600" />
               </div>
               <span className="text-xs font-medium text-slate-700">Snooze</span>

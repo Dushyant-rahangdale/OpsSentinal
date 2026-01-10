@@ -67,10 +67,23 @@ const config: Config = {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'ambient-move': {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        'breathing-glow': {
+          '0%, 100%': {
+            boxShadow:
+              '0 0 0 0 rgba(var(--status-color-rgb), 0), 0 0 0 0 rgba(var(--status-color-rgb), 0)',
+          },
+          '50%': { boxShadow: '0 0 8px 2px rgba(var(--status-color-rgb), 0.2)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'ambient-move': 'ambient-move 15s ease infinite',
+        'breathing-glow': 'breathing-glow 3s ease-in-out infinite',
       },
     },
   },

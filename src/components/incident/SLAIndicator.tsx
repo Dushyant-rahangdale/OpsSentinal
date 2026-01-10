@@ -110,21 +110,22 @@ function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorPr
     return (
       <div className="flex gap-2 flex-wrap">
         {incident.acknowledgedAt && (
-          <Badge variant={ackSlaMet ? 'default' : 'destructive'} className="gap-1 text-xs">
+          <Badge variant={ackSlaMet ? 'success' : 'danger'} size="xs" className="gap-1">
             {ackSlaMet ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
             Ack {ackSlaMet ? 'Met' : 'Breached'}
           </Badge>
         )}
         {incident.resolvedAt && (
-          <Badge variant={resolveSlaMet ? 'default' : 'destructive'} className="gap-1 text-xs">
+          <Badge variant={resolveSlaMet ? 'success' : 'danger'} size="xs" className="gap-1">
             {resolveSlaMet ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
             Resolve {resolveSlaMet ? 'Met' : 'Breached'}
           </Badge>
         )}
         {!incident.acknowledgedAt && !incident.resolvedAt && (
           <Badge
-            variant={ackTimeRemaining && ackTimeRemaining > 0 ? 'secondary' : 'destructive'}
-            className="gap-1 text-xs"
+            variant={ackTimeRemaining && ackTimeRemaining > 0 ? 'warning' : 'danger'}
+            size="xs"
+            className="gap-1"
           >
             <Timer className="h-3 w-3" />
             {ackTimeRemaining && ackTimeRemaining > 0
@@ -147,13 +148,14 @@ function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorPr
             <span className="text-sm font-medium">Acknowledgement</span>
           </div>
           {incident.acknowledgedAt ? (
-            <Badge variant={ackSlaMet ? 'default' : 'destructive'} className="gap-1">
+            <Badge variant={ackSlaMet ? 'success' : 'danger'} size="sm" className="gap-1">
               {ackSlaMet ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
               {ackSlaMet ? 'Met' : 'Breached'}
             </Badge>
           ) : (
             <Badge
-              variant={ackTimeRemaining && ackTimeRemaining > 0 ? 'secondary' : 'destructive'}
+              variant={ackTimeRemaining && ackTimeRemaining > 0 ? 'warning' : 'danger'}
+              size="sm"
               className="gap-1"
             >
               <Timer className="h-3 w-3" />
@@ -187,7 +189,7 @@ function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorPr
             <span className="text-sm font-medium">Resolution</span>
           </div>
           {incident.resolvedAt ? (
-            <Badge variant={resolveSlaMet ? 'default' : 'destructive'} className="gap-1">
+            <Badge variant={resolveSlaMet ? 'success' : 'danger'} size="sm" className="gap-1">
               {resolveSlaMet ? (
                 <CheckCircle2 className="h-3 w-3" />
               ) : (
@@ -197,9 +199,8 @@ function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorPr
             </Badge>
           ) : (
             <Badge
-              variant={
-                resolveTimeRemaining && resolveTimeRemaining > 0 ? 'secondary' : 'destructive'
-              }
+              variant={resolveTimeRemaining && resolveTimeRemaining > 0 ? 'warning' : 'danger'}
+              size="sm"
               className="gap-1"
             >
               <Timer className="h-3 w-3" />

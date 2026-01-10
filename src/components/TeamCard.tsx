@@ -290,7 +290,7 @@ export default function TeamCard({
                         <div className="flex items-center gap-2">
                           <Users className="h-5 w-5 text-primary" />
                           <CardTitle className="text-lg">Team Members</CardTitle>
-                          <Badge variant="secondary" className="ml-2">
+                          <Badge variant="secondary" size="xs" className="ml-2">
                             {filteredMembers.length}
                           </Badge>
                         </div>
@@ -365,7 +365,7 @@ export default function TeamCard({
                         <div className="flex items-center gap-2">
                           <Shield className="h-5 w-5 text-primary" />
                           <CardTitle className="text-lg">Owned Services</CardTitle>
-                          <Badge variant="secondary" className="ml-2">
+                          <Badge variant="secondary" size="xs" className="ml-2">
                             {team.services.length}
                           </Badge>
                         </div>
@@ -420,7 +420,7 @@ export default function TeamCard({
                           <div className="flex items-center gap-2">
                             <Activity className="h-5 w-5 text-primary" />
                             <CardTitle className="text-lg">Activity Log</CardTitle>
-                            <Badge variant="secondary" className="ml-2">
+                            <Badge variant="secondary" size="xs" className="ml-2">
                               {activityTotal}
                             </Badge>
                           </div>

@@ -188,12 +188,12 @@ export default function ApiKeysPanel({ keys }: { keys: ApiKey[] }) {
                                             <div className="flex flex-wrap gap-1">
                                                 {key.scopes.length > 0 ? (
                                                     key.scopes.map((scope) => (
-                                                        <Badge key={scope} variant="secondary" className="text-xs">
+                                                        <Badge key={scope} variant="secondary" size="xs">
                                                             {scope}
                                                         </Badge>
                                                     ))
                                                 ) : (
-                                                    <Badge variant="outline" className="text-xs">
+                                                    <Badge variant="outline" size="xs">
                                                         No scopes
                                                     </Badge>
                                                 )}

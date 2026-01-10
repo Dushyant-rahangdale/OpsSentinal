@@ -326,8 +326,9 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
                       <div className="flex flex-wrap items-center gap-2 min-w-0">
                         <Badge
                           variant="secondary"
+                          size="xs"
                           className={cn(
-                            'text-xs font-semibold shrink-0',
+                            'font-semibold shrink-0',
                             colors.badge,
                             colors.text
                           )}
@@ -355,8 +356,8 @@ export default function ScheduleTimeline({ shifts, timeZone, layers }: ScheduleT
 
                         {shift.source === 'override' && (
                           <Badge
-                            variant="outline"
-                            className="text-xs bg-amber-50 text-amber-800 border-amber-200"
+                            variant="warning"
+                            size="xs"
                           >
                             Override
                           </Badge>

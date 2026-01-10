@@ -171,16 +171,22 @@ export function UserCard({
 
   const avatarUrl = user.avatarUrl || getDefaultAvatar(user.gender, user.id);
 
-  const statusColors = {
-    ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-    INVITED: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    DISABLED: 'bg-gray-100 text-gray-800 border-gray-200',
-  };
+  const statusVariants = {
+    ACTIVE: 'success',
+    INVITED: 'warning',
+    DISABLED: 'neutral',
+  } as const;
 
-  const roleColors = {
-    ADMIN: 'bg-rose-100 text-rose-800 border-rose-200',
-    RESPONDER: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    USER: 'bg-sky-100 text-sky-800 border-sky-200',
+  const roleVariants = {
+    ADMIN: 'danger',
+    RESPONDER: 'warning',
+    USER: 'info',
+  } as const;
+
+  const roleTriggerColors = {
+    ADMIN: 'bg-red-100 text-red-800 border-red-200',
+    RESPONDER: 'bg-amber-100 text-amber-800 border-amber-200',
+    USER: 'bg-blue-100 text-blue-800 border-blue-200',
   };
 
   const handleDeactivate = () => {
@@ -234,7 +240,7 @@ export function UserCard({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-sm truncate">{user.name}</h3>
             {isCurrentUser && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              <Badge variant="neutral" size="xs">
                 You
               </Badge>
             )}
@@ -268,8 +274,9 @@ export function UserCard({
               {user.teamMemberships.map(member => (
                 <Badge
                   key={member.id}
-                  variant="secondary"
-                  className="text-[10px] px-1.5 py-0 h-5 font-normal text-muted-foreground bg-secondary/50 hover:bg-secondary"
+                  variant="neutral"
+                  size="xs"
+                  className="font-normal text-muted-foreground"
                   title={`${member.team.name} (${member.role})`}
                 >
                   {member.team.name}
@@ -289,7 +296,7 @@ export function UserCard({
                 <SelectTrigger
                   className={cn(
                     'h-6 w-auto gap-1 text-[10px] font-semibold px-2 rounded-full border border-transparent focus:ring-0 focus:ring-offset-0',
-                    roleColors[user.role as keyof typeof roleColors]
+                    roleTriggerColors[user.role as keyof typeof roleTriggerColors]
                   )}
                 >
                   {/* Manually render value to keep trigger simple while items vary */}
@@ -324,22 +331,18 @@ export function UserCard({
               </Select>
             ) : (
               <Badge
-                variant="outline"
-                className={cn(
-                  'text-[10px] font-semibold',
-                  roleColors[user.role as keyof typeof roleColors]
-                )}
+                variant={roleVariants[user.role as keyof typeof roleVariants] ?? 'neutral'}
+                size="xs"
+                className="font-semibold uppercase"
               >
                 {user.role}
               </Badge>
             )}
 
             <Badge
-              variant="outline"
-              className={cn(
-                'text-[10px] font-semibold',
-                statusColors[user.status as keyof typeof statusColors]
-              )}
+              variant={statusVariants[user.status as keyof typeof statusVariants] ?? 'neutral'}
+              size="xs"
+              className="font-semibold uppercase"
             >
               {user.status}
             </Badge>

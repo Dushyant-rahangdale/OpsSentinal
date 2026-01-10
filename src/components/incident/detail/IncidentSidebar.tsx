@@ -16,7 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/shadcn/card';
-import { Badge } from '@/components/ui/shadcn/badge';
 import { FileText, Zap, Activity, AlertCircle, ChevronRight, Eye, Tag } from 'lucide-react';
 
 type IncidentSidebarProps = {
@@ -83,101 +82,71 @@ export default function IncidentSidebar({
   const serviceForSLA = incident.service as Service;
 
   return (
-    <div className="space-y-4">
-      {/* Status & Actions Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Actions
-            </CardTitle>
-            <StatusBadge status={incidentStatus} size="sm" showDot />
-          </div>
-          <CardDescription>Manage incident status</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <IncidentStatusActions
-            incidentId={incident.id}
-            currentStatus={incident.status}
-            onAcknowledge={onAcknowledge}
-            onUnacknowledge={onUnacknowledge}
-            onSnooze={onSnooze}
-            onUnsnooze={onUnsnooze}
-            onSuppress={onSuppress}
-            onUnsuppress={onUnsuppress}
-            canManage={canManage}
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      {/* Actions Section */}
+      <div className="rounded-xl border border-slate-200/60 bg-white/50 shadow-sm p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <Zap className="h-3 w-3" /> Actions
+          </h3>
+          <StatusBadge status={incidentStatus} size="sm" showDot />
+        </div>
+        <IncidentStatusActions
+          incidentId={incident.id}
+          currentStatus={incident.status}
+          onAcknowledge={onAcknowledge}
+          onUnacknowledge={onUnacknowledge}
+          onSnooze={onSnooze}
+          onUnsnooze={onUnsnooze}
+          onSuppress={onSuppress}
+          onUnsuppress={onUnsuppress}
+          canManage={canManage}
+        />
+      </div>
 
-      {/* SLA Indicator Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            SLA Status
-          </CardTitle>
-          <CardDescription>Response time tracking</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SLAIndicator incident={incidentForSLA} service={serviceForSLA} showDetails={true} />
-        </CardContent>
-      </Card>
+      {/* SLA Section */}
+      <div className="rounded-xl border border-slate-200/60 bg-white/50 shadow-sm p-4">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-4">
+          <Activity className="h-3 w-3" /> SLA Status
+        </h3>
+        <SLAIndicator incident={incidentForSLA} service={serviceForSLA} showDetails={true} />
+      </div>
 
-      {/* Watchers Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Watchers
-          </CardTitle>
-          <CardDescription>People following this incident</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <IncidentWatchers
-            watchers={watchers}
-            users={users}
-            canManage={canManage}
-            onAddWatcher={onAddWatcher}
-            onRemoveWatcher={onRemoveWatcher}
-          />
-        </CardContent>
-      </Card>
+      {/* Watchers Section */}
+      <div className="rounded-xl border border-slate-200/60 bg-white/50 shadow-sm p-4">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-4">
+          <Eye className="h-3 w-3" /> Watchers
+        </h3>
+        <IncidentWatchers
+          watchers={watchers}
+          users={users}
+          canManage={canManage}
+          onAddWatcher={onAddWatcher}
+          onRemoveWatcher={onRemoveWatcher}
+        />
+      </div>
 
-      {/* Tags Card */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Tag className="h-4 w-4" />
-            Tags
-          </CardTitle>
-          <CardDescription>Categorize this incident</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <IncidentTags incidentId={incident.id} tags={tags} canManage={canManage} />
-        </CardContent>
-      </Card>
+      {/* Tags Section */}
+      <div className="rounded-xl border border-slate-200/60 bg-white/50 shadow-sm p-4">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-4">
+          <Tag className="h-3 w-3" /> Tags
+        </h3>
+        <IncidentTags incidentId={incident.id} tags={tags} canManage={canManage} />
+      </div>
 
       {/* Postmortem Section - Only show for resolved incidents */}
       {incident.status === 'RESOLVED' && (
-        <Card className="border-green-200 bg-green-50/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-green-900">
-              <FileText className="h-4 w-4" />
-              Postmortem
-            </CardTitle>
-            <CardDescription className="text-green-700">Document lessons learned</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/postmortems/${incident.id}`}>
-              <Button className="w-full justify-between group" variant="default">
-                <span>{canManage ? 'Create Postmortem' : 'View Postmortem'}</span>
-                <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+          <h3 className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-2 mb-3">
+            <FileText className="h-3 w-3" /> Postmortem
+          </h3>
+          <Link href={`/postmortems/${incident.id}`}>
+            <Button className="w-full justify-between group bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" variant="outline">
+              <span>{canManage ? 'Create Report' : 'View Report'}</span>
+              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </Link>
+        </div>
       )}
     </div>
   );

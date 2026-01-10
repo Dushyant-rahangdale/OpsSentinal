@@ -217,7 +217,7 @@ export default function LayerCard({
                     {formatShortTime(new Date(layer.start), timeZone)} {timeZone}
                   </span>
                 </div>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" size="xs">
                   {layer.rotationLengthHours}h rotation
                 </Badge>
                 {layer.end && (
@@ -369,7 +369,7 @@ export default function LayerCard({
                     <div className="flex items-center gap-2">
                       <Users className="h-5 w-5 text-primary" />
                       <CardTitle className="text-lg">Responders</CardTitle>
-                      <Badge variant="secondary" className="ml-2">
+                      <Badge variant="secondary" size="xs" className="ml-2">
                         {layer.users.length}
                       </Badge>
                     </div>
@@ -402,10 +402,7 @@ export default function LayerCard({
                           <CardContent className="p-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-blue-50 text-blue-700 border-blue-200 font-mono text-xs"
-                                >
+                                <Badge variant="info" size="xs" className="font-mono">
                                   #{index + 1}
                                 </Badge>
                                 <span className="font-medium text-sm">{layerUser.user.name}</span>

@@ -1,6 +1,8 @@
 'use client';
 
 import { memo } from 'react';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { cn } from '@/lib/utils';
 
 type EscalationStatusBadgeProps = {
   status: string | null | undefined;
@@ -19,12 +21,8 @@ function EscalationStatusBadge({
     return null;
   }
 
-  const sizeStyles = {
-    sm: { padding: '0.2rem 0.5rem', fontSize: '0.7rem' },
-    md: { padding: '0.25rem 0.6rem', fontSize: '0.75rem' },
-  };
-
-  const style = sizeStyles[size];
+  const badgeSize = size === 'sm' ? 'xs' : 'sm';
+  const variant = status === 'ESCALATING' ? 'warning' : 'neutral';
 
   const getTimeUntilNext = () => {
     if (!nextEscalationAt) return null;
@@ -52,43 +50,29 @@ function EscalationStatusBadge({
     stepText,
     timeText ? `Next: ${timeText}` : null,
   ].filter(Boolean);
+  const labelParts = [
+    status === 'ESCALATING' ? 'Escalating' : 'Escalation',
+    !compact ? stepText : null,
+    !compact && timeText ? timeText : null,
+  ].filter(Boolean);
 
   return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        ...style,
-        background:
-          status === 'ESCALATING'
-            ? 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)'
-            : 'linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%)',
-        color: status === 'ESCALATING' ? '#b45309' : '#6b7280',
-        border:
-          status === 'ESCALATING'
-            ? '1px solid rgba(180, 83, 9, 0.2)'
-            : '1px solid rgba(107, 114, 128, 0.2)',
-        borderRadius: '9999px',
-        fontWeight: 700,
-        letterSpacing: '0.02em',
-      }}
+    <Badge
+      variant={variant}
+      size={badgeSize}
+      className="gap-1.5"
+      title={titleParts.join(' - ')}
     >
       <span
-        style={{
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          background: status === 'ESCALATING' ? '#f59e0b' : '#9ca3af',
-          boxShadow: status === 'ESCALATING' ? '0 0 0 2px #f59e0b33' : '0 0 0 2px #9ca3af33',
-        }}
+        className={cn(
+          'h-1.5 w-1.5 rounded-full ring-2 ring-offset-0',
+          status === 'ESCALATING'
+            ? 'bg-amber-500 ring-amber-200/70 animate-pulse'
+            : 'bg-slate-400 ring-slate-200/70'
+        )}
       />
-      <span title={titleParts.join(' • ')}>
-        Escalating
-        {!compact && stepText && <span style={{ opacity: 0.8 }}>• {stepText}</span>}
-        {timeText && <span style={{ fontSize: '0.7em', opacity: 0.8 }}>• {timeText}</span>}
-      </span>
-    </div>
+      <span>{labelParts.join(' - ')}</span>
+    </Badge>
   );
 }
 

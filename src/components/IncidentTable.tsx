@@ -76,20 +76,13 @@ export default memo(function IncidentTable({
   const buildUrgencyChip = (urgency: string | null | undefined) => {
     if (!urgency) return null;
     const u = urgency.toUpperCase();
-    const variant =
-      u === 'HIGH'
-        ? 'bg-red-100 border-red-200 text-red-800'
-        : u === 'MEDIUM'
-          ? 'bg-amber-100 border-amber-200 text-amber-800'
-          : 'bg-green-100 border-green-200 text-green-800';
+    const variant = u === 'HIGH' ? 'danger' : u === 'MEDIUM' ? 'warning' : 'success';
 
     return (
       <Badge
-        variant="outline"
-        className={cn(
-          'px-2 py-0.5 text-[0.7rem] font-extrabold tracking-wide leading-none rounded-full',
-          variant
-        )}
+        variant={variant}
+        size="xs"
+        className="font-extrabold uppercase"
         title={`Urgency: ${u}`}
       >
         {u}

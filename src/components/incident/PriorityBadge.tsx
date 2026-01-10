@@ -15,60 +15,62 @@ type PriorityBadgeProps = {
 function PriorityBadge({ priority, size = 'md', showLabel = true, className }: PriorityBadgeProps) {
   if (!priority) return null;
 
-  const config: Record<string, { label: string; color: string; icon: any }> = {
+  const config: Record<
+    string,
+    { label: string; variant: 'danger' | 'warning' | 'info' | 'neutral'; icon: any }
+  > = {
     P1: {
       label: 'Crisis',
-      color: 'bg-red-100 text-red-700 hover:bg-red-200 border-red-200',
+      variant: 'danger',
       icon: Zap,
     },
     P2: {
       label: 'High',
-      color: 'bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200',
+      variant: 'warning',
       icon: ArrowUp,
     },
     P3: {
       label: 'Medium',
-      color: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200',
+      variant: 'warning',
       icon: AlertCircle,
     },
     P4: {
       label: 'Low',
-      color: 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200',
+      variant: 'info',
       icon: null,
     },
     P5: {
       label: 'Info',
-      color: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200',
+      variant: 'neutral',
       icon: null,
     },
   };
 
-  const {
-    label,
-    color,
-    icon: Icon,
-  } = config[priority] || {
+  const { label, variant, icon: Icon } = config[priority] || {
     label: priority,
-    color: 'bg-slate-100 text-slate-700 border-slate-200',
+    variant: 'neutral',
     icon: null,
   };
+  const toneClass =
+    variant === 'danger'
+      ? 'bg-red-200 text-red-900 border-red-300 hover:bg-red-200'
+      : variant === 'warning'
+        ? 'bg-amber-200 text-amber-900 border-amber-300 hover:bg-amber-200'
+        : variant === 'info'
+          ? 'bg-blue-200 text-blue-900 border-blue-300 hover:bg-blue-200'
+          : 'bg-slate-200 text-slate-900 border-slate-300 hover:bg-slate-200';
 
-  const textClass =
-    size === 'sm'
-      ? 'text-[10px] px-1.5 py-0.5'
-      : size === 'lg'
-        ? 'text-sm px-3 py-1'
-        : 'text-xs px-2.5 py-0.5';
+  const badgeSize = size === 'sm' ? 'xs' : size === 'lg' ? 'md' : 'sm';
   const displayLabel =
     size === 'sm' && !showLabel ? priority : showLabel ? `${priority} - ${label}` : priority;
 
   return (
     <Badge
-      variant="outline"
+      variant={variant}
+      size={badgeSize}
       className={cn(
-        'font-bold border shadow-sm flex items-center gap-1.5 shrink-0 transition-colors',
-        color,
-        textClass,
+        'font-bold shadow-sm flex items-center gap-1.5 shrink-0 transition-colors',
+        toneClass,
         className
       )}
     >

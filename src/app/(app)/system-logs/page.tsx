@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,11 +61,11 @@ export default async function SystemLogsPage({
         debug: allLogs.filter(l => l.level === 'debug').length
     };
 
-    const levelConfig: Record<LogLevel, { badge: string; border: string; emoji: string }> = {
-        error: { badge: 'bg-red-100 text-red-800', border: 'border-l-red-600', emoji: '❌' },
-        warn: { badge: 'bg-yellow-100 text-yellow-800', border: 'border-l-yellow-600', emoji: '⚠️' },
-        info: { badge: 'bg-blue-100 text-blue-800', border: 'border-l-blue-600', emoji: 'ℹ️' },
-        debug: { badge: 'bg-gray-100 text-gray-800', border: 'border-l-gray-600', emoji: '🔍' }
+    const levelConfig: Record<LogLevel, { variant: 'danger' | 'warning' | 'info' | 'neutral'; border: string; emoji: string }> = {
+        error: { variant: 'danger', border: 'border-l-red-600', emoji: '❌' },
+        warn: { variant: 'warning', border: 'border-l-yellow-600', emoji: '⚠️' },
+        info: { variant: 'info', border: 'border-l-blue-600', emoji: 'ℹ️' },
+        debug: { variant: 'neutral', border: 'border-l-gray-600', emoji: '🔍' }
     };
 
     return (
@@ -189,21 +190,21 @@ export default async function SystemLogsPage({
                                     <span className="text-base mt-0.5 flex-shrink-0">{config.emoji}</span>
                                     <div className="flex-1 min-w-0 overflow-hidden">
                                         <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${config.badge}`}>
+                                            <Badge variant={config.variant} size="xs" className="uppercase">
                                                 {log.level}
-                                            </span>
+                                            </Badge>
                                             <span className="text-xs text-muted-foreground font-mono">
                                                 {timestamp.toLocaleTimeString()}
                                             </span>
                                             {log.component && (
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium uppercase">
+                                                <Badge variant="outline" size="xs" className="uppercase">
                                                     {log.component}
-                                                </span>
+                                                </Badge>
                                             )}
                                             {log.duration !== undefined && (
-                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                <Badge variant="outline" size="xs" className="font-mono">
                                                     {log.duration}ms
-                                                </span>
+                                                </Badge>
                                             )}
                                         </div>
                                         <div className="text-sm font-medium leading-snug truncate">{log.message}</div>

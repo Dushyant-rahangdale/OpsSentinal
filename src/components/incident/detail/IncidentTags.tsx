@@ -110,7 +110,8 @@ export default function IncidentTags({ incidentId, tags, canManage }: IncidentTa
             <Badge
               key={tag.id}
               variant="outline"
-              className="rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all hover:shadow-sm"
+              size="xs"
+              className="transition-all hover:shadow-sm"
               style={{
                 backgroundColor: tagColors.bg,
                 color: tagColors.color,

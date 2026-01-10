@@ -30,7 +30,7 @@ export default function ScheduleCard({ schedule }: ScheduleCardProps) {
             <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
               {schedule.name}
             </CardTitle>
-            <Badge variant="outline" className="gap-1.5 text-xs shrink-0">
+            <Badge variant="outline" size="xs" className="gap-1.5 shrink-0">
               <Clock className="h-3 w-3" />
               {schedule.timeZone}
             </Badge>

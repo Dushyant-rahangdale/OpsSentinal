@@ -157,12 +157,12 @@ function FieldRow({
         <Label className="text-sm font-medium flex items-center gap-2">
           {label}
           {required && (
-            <Badge variant="destructive" className="text-xs">
+            <Badge variant="danger" size="xs">
               Required
             </Badge>
           )}
           {optional && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" size="xs">
               Optional
             </Badge>
           )}
@@ -372,13 +372,15 @@ export default function SsoSettingsForm({
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Status</span>
-            <Badge variant={enabled ? 'default' : 'secondary'}>{enabledLabel}</Badge>
+            <Badge variant={enabled ? 'success' : 'neutral'} size="sm">
+              {enabledLabel}
+            </Badge>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Last save</span>
             <Badge
-              variant={state?.success ? 'default' : state?.error ? 'destructive' : 'secondary'}
-              className="text-xs"
+              variant={state?.success ? 'success' : state?.error ? 'danger' : 'neutral'}
+              size="xs"
             >
               {saveStatus}
             </Badge>
@@ -398,7 +400,9 @@ export default function SsoSettingsForm({
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Badge variant={enabled ? 'default' : 'secondary'}>{enabledLabel}</Badge>
+                <Badge variant={enabled ? 'success' : 'neutral'} size="sm">
+                  {enabledLabel}
+                </Badge>
                 <span className="text-sm text-muted-foreground">
                   {enabled ? 'SSO sign-in is active.' : 'SSO sign-in is currently off.'}
                 </span>

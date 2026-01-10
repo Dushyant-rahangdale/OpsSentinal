@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 interface CompactStatsOverviewProps {
   totalIncidents: number;
@@ -36,25 +37,25 @@ const CompactStatsOverview = memo(function CompactStatsOverview({
       {
         label: 'Open',
         value: formatNumber(openIncidents),
-        color: 'var(--color-info)',
+        className: 'text-blue-600 dark:text-blue-400',
         description: 'Open incidents',
       },
       {
         label: 'Critical',
         value: formatNumber(criticalIncidents),
-        color: criticalIncidents > 0 ? 'var(--color-error)' : 'var(--text-muted)',
+        className: criticalIncidents > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
         description: 'Critical priority incidents',
       },
       {
         label: 'Unassigned',
         value: formatNumber(unassignedIncidents),
-        color: unassignedIncidents > 0 ? 'var(--color-warning)' : 'var(--text-muted)',
+        className: unassignedIncidents > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
         description: 'Unassigned incidents',
       },
       {
         label: 'Services',
         value: formatNumber(servicesCount),
-        color: 'var(--text-primary)',
+        className: 'text-foreground',
         description: 'Total services',
       },
     ],
@@ -66,12 +67,12 @@ const CompactStatsOverview = memo(function CompactStatsOverview({
       {stats.map((stat, idx) => (
         <div
           key={idx}
-          className="flex items-center justify-between p-2 px-3 rounded-sm bg-neutral-50 border border-border"
+          className="flex items-center justify-between p-2 px-3 rounded-md bg-muted/40 border border-border"
           role="listitem"
           aria-label={`${stat.description}: ${stat.value}`}
         >
-          <span className="text-sm font-medium text-secondary-foreground">{stat.label}</span>
-          <span className="text-base font-bold tabular-nums" style={{ color: stat.color }}>
+          <span className="text-sm font-medium text-muted-foreground">{stat.label}</span>
+          <span className={cn('text-base font-bold tabular-nums', stat.className)}>
             {stat.value}
           </span>
         </div>

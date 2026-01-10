@@ -130,8 +130,8 @@ export default async function ServiceIntegrationsPage({
                 <CardDescription>Endpoints currently connected to this service.</CardDescription>
               </div>
               <Badge
-                variant="secondary"
-                className="rounded-full px-2.5 bg-slate-100 text-slate-600"
+                variant="neutral"
+                size="sm"
               >
                 {service.integrations.length}
               </Badge>
@@ -179,8 +179,8 @@ export default async function ServiceIntegrationsPage({
                                 {integration.name}
                               </div>
                               <Badge
-                                variant="outline"
-                                className="text-[10px] h-5 px-1.5 bg-slate-50 text-slate-600 border-slate-200"
+                                variant="neutral"
+                                size="xs"
                               >
                                 {typeInfo.label}
                               </Badge>

@@ -19,14 +19,22 @@ export const KEYBOARD_SHORTCUTS = [
   { keys: ['Esc'], description: 'Close modal/dialog', category: 'Global' },
   { keys: ['/'], description: 'Focus search', category: 'Global' },
   { keys: ['?'], description: 'Show keyboard shortcuts', category: 'Global' },
+  { keys: ['r'], description: 'Refresh page', category: 'Global' },
 
-  // Navigation shortcuts
-  { keys: ['g', 'p'], description: 'Go to Profile', category: 'Navigation' },
-  { keys: ['g', 's'], description: 'Go to Security', category: 'Navigation' },
-  { keys: ['g', 'i'], description: 'Go to Integrations', category: 'Navigation' },
-  { keys: ['g', 'a'], description: 'Go to API Keys', category: 'Navigation' },
-  { keys: ['g', 'n'], description: 'Go to Notifications', category: 'Navigation' },
-  { keys: ['g', 'w'], description: 'Go to Workspace', category: 'Navigation' },
+  // Main Navigation shortcuts
+  { keys: ['g', 'h'], description: 'Go to Dashboard', category: 'Navigation' },
+  { keys: ['g', 'd'], description: 'Go to Dashboard', category: 'Navigation' },
+  { keys: ['g', 'i'], description: 'Go to Incidents', category: 'Navigation' },
+  { keys: ['g', 's'], description: 'Go to Services', category: 'Navigation' },
+  { keys: ['g', 'u'], description: 'Go to Users', category: 'Navigation' },
+  { keys: ['g', 't'], description: 'Go to Teams', category: 'Navigation' },
+
+  // Settings shortcuts
+  { keys: ['g', 'p'], description: 'Go to Profile', category: 'Settings' },
+  { keys: ['g', 'e'], description: 'Go to Security', category: 'Settings' },
+  { keys: ['g', 'a'], description: 'Go to API Keys', category: 'Settings' },
+  { keys: ['g', 'n'], description: 'Go to Notifications', category: 'Settings' },
+  { keys: ['g', 'w'], description: 'Go to Workspace', category: 'Settings' },
 ];
 
 interface KeyboardShortcutsContextValue {
@@ -64,10 +72,24 @@ export function KeyboardShortcutsProvider({ children }: KeyboardShortcutsProvide
     description: 'Show keyboard shortcuts',
   });
 
-  // Navigation shortcuts using sequences (g + letter)
+  // Refresh on "r" key
+  useKeyboardShortcut({
+    key: 'r',
+    callback: () => router.refresh(),
+    description: 'Refresh page',
+  });
+
+  // Main Navigation shortcuts
+  useSequenceShortcut(['g', 'h'], () => router.push('/'));
+  useSequenceShortcut(['g', 'd'], () => router.push('/'));
+  useSequenceShortcut(['g', 'i'], () => router.push('/incidents'));
+  useSequenceShortcut(['g', 's'], () => router.push('/services'));
+  useSequenceShortcut(['g', 'u'], () => router.push('/users'));
+  useSequenceShortcut(['g', 't'], () => router.push('/teams'));
+
+  // Settings shortcuts using sequences (g + letter)
   useSequenceShortcut(['g', 'p'], () => router.push('/settings/profile'));
-  useSequenceShortcut(['g', 's'], () => router.push('/settings/security'));
-  useSequenceShortcut(['g', 'i'], () => router.push('/settings/integrations'));
+  useSequenceShortcut(['g', 'e'], () => router.push('/settings/security'));
   useSequenceShortcut(['g', 'a'], () => router.push('/settings/api-keys'));
   useSequenceShortcut(['g', 'n'], () => router.push('/settings/notifications'));
   useSequenceShortcut(['g', 'w'], () => router.push('/settings/workspace'));

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback, memo } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 import { cn } from '@/lib/utils';
 
 type MetricCardProps = {
@@ -8,13 +8,11 @@ type MetricCardProps = {
   value: number | string;
   rangeLabel?: string;
   isDark?: boolean;
+  variant?: 'default' | 'hero';
 };
 
 /**
  * Optimized count-up hook with stable animation
- * - Uses ref to track animation state to prevent memory leaks
- * - Handles edge cases: NaN, negative, zero values
- * - Only re-animates when the target value actually changes
  */
 const useCountUp = (end: number, duration = 800) => {
   const [count, setCount] = useState(0);
@@ -84,6 +82,7 @@ const MetricCard = memo(function MetricCard({
   value,
   rangeLabel,
   isDark = false,
+  variant = 'default',
 }: MetricCardProps) {
   // Parse value and determine if we should animate
   const { shouldAnimate, numericEnd, displayString } = React.useMemo(() => {
@@ -119,39 +118,21 @@ const MetricCard = memo(function MetricCard({
   // Format the display value
   const formattedDisplay = shouldAnimate ? animatedValue.toLocaleString() : displayString;
 
-  // Memoized hover handlers
-  const handleMouseEnter = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!isDark) {
-        e.currentTarget.style.background = 'var(--color-neutral-100)';
-        e.currentTarget.style.transform = 'translateY(-2px)';
-      }
-    },
-    [isDark]
-  );
-
-  const handleMouseLeave = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!isDark) {
-        e.currentTarget.style.background = 'var(--color-neutral-50)';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }
-    },
-    [isDark]
-  );
+  const isHero = variant === 'hero';
 
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-md text-center transition-all duration-300',
-        'transform-gpu hover:shadow-lg',
+        'relative overflow-hidden text-center transition-all duration-300',
+        isHero ? 'rounded-lg' : 'rounded-md',
+        isHero ? 'transform-gpu' : 'transform-gpu hover:shadow-lg',
         isDark
           ? 'bg-white/[0.03] border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:bg-white/[0.08] hover:border-white/20'
-          : 'bg-neutral-50 border border-border hover:bg-neutral-100 hover:-translate-y-0.5',
-        'p-6 sm:p-4'
+          : isHero
+            ? 'bg-white/10 border border-white/20 backdrop-blur text-primary-foreground shadow-sm hover:bg-white/15'
+            : 'bg-neutral-50 border border-border hover:bg-neutral-100 hover:-translate-y-0.5',
+        isHero ? 'p-3 md:p-4' : 'p-6 sm:p-4'
       )}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       role="figure"
       aria-label={`${label}: ${formattedDisplay}${rangeLabel ? ` ${rangeLabel}` : ''}`}
     >
@@ -163,7 +144,7 @@ const MetricCard = memo(function MetricCard({
       <div
         className={cn(
           'text-3xl sm:text-2xl font-bold mb-1.5 leading-tight tabular-nums relative z-10',
-          isDark ? 'text-white' : 'text-foreground'
+          isDark ? 'text-white' : isHero ? 'text-primary-foreground' : 'text-foreground'
         )}
         aria-live="polite"
       >
@@ -172,7 +153,7 @@ const MetricCard = memo(function MetricCard({
       <div
         className={cn(
           'text-xs font-medium uppercase tracking-wide relative z-10',
-          isDark ? 'text-white/70' : 'text-muted-foreground'
+          isDark ? 'text-white/70' : isHero ? 'text-primary-foreground/80' : 'text-muted-foreground'
         )}
       >
         {label} {rangeLabel && <span className="opacity-80 text-[0.7rem]">{rangeLabel}</span>}
@@ -182,3 +163,4 @@ const MetricCard = memo(function MetricCard({
 });
 
 export default MetricCard;
+

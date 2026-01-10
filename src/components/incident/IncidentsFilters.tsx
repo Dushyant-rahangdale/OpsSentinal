@@ -104,20 +104,22 @@ export default function IncidentsFilters({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="h-4 w-4" /> Filter Incidents
             </CardTitle>
-            <CardDescription>Search, sort, and save the views you use daily</CardDescription>
+            <CardDescription className="text-xs">
+              Quick filters and sorting for the incident list
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             {hasActiveFilters && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground"
                 onClick={clearFilters}
                 disabled={isPending}
               >
@@ -128,6 +130,7 @@ export default function IncidentsFilters({
               <Button
                 variant="default"
                 size="sm"
+                className="h-7 px-3 text-xs"
                 onClick={() => {
                   router.push('/incidents/create');
                 }}
@@ -138,18 +141,20 @@ export default function IncidentsFilters({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
+      <CardContent className="space-y-3 pt-0">
+        <div className="flex flex-wrap gap-1.5">
           <Badge
             variant={currentFilter === 'all' && currentTeamId === 'all' ? 'default' : 'outline'}
-            className="cursor-pointer hover:bg-primary/90 hover:text-primary-foreground transition-colors"
+            size="sm"
+            className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-primary/90 hover:text-primary-foreground transition-colors"
             onClick={() => updateParams({ filter: 'all', teamId: 'all' })}
           >
             All incidents
           </Badge>
           <Badge
-            variant={currentFilter === 'mine' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-blue-100 hover:text-blue-800 transition-colors border-blue-200 text-blue-700 data-[variant=secondary]:bg-blue-100 data-[variant=secondary]:text-blue-800"
+            variant={currentFilter === 'mine' ? 'info' : 'outline'}
+            size="sm"
+            className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-blue-100 hover:text-blue-800 transition-colors"
             onClick={() =>
               updateParams({ filter: currentFilter === 'mine' ? 'all' : 'mine', teamId: 'all' })
             }
@@ -158,8 +163,9 @@ export default function IncidentsFilters({
           </Badge>
           {teams.length > 0 && (
             <Badge
-              variant={currentTeamId === 'mine' ? 'secondary' : 'outline'}
-              className="cursor-pointer hover:bg-indigo-100 hover:text-indigo-800 transition-colors border-indigo-200 text-indigo-700 data-[variant=secondary]:bg-indigo-100 data-[variant=secondary]:text-indigo-800"
+              variant={currentTeamId === 'mine' ? 'info' : 'outline'}
+              size="sm"
+              className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
               onClick={() => updateParams({ teamId: currentTeamId === 'mine' ? 'all' : 'mine' })}
             >
               My teams
@@ -167,21 +173,24 @@ export default function IncidentsFilters({
           )}
           <Badge
             variant={currentUrgency === 'all' ? 'default' : 'outline'}
-            className="cursor-pointer hover:bg-primary/90 hover:text-primary-foreground transition-colors"
+            size="sm"
+            className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-primary/90 hover:text-primary-foreground transition-colors"
             onClick={() => updateParams({ urgency: 'all' })}
           >
             All urgency
           </Badge>
           <Badge
-            variant={currentUrgency === 'HIGH' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-red-100 hover:text-red-800 transition-colors border-red-200 text-red-700 data-[variant=secondary]:bg-red-100 data-[variant=secondary]:text-red-800"
+            variant={currentUrgency === 'HIGH' ? 'danger' : 'outline'}
+            size="sm"
+            className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-red-100 hover:text-red-800 transition-colors"
             onClick={() => updateParams({ urgency: currentUrgency === 'HIGH' ? 'all' : 'HIGH' })}
           >
             <Flame className="mr-1 h-3 w-3" /> High urgency
           </Badge>
           <Badge
-            variant={currentUrgency === 'MEDIUM' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-amber-100 hover:text-amber-800 transition-colors border-amber-200 text-amber-700 data-[variant=secondary]:bg-amber-100 data-[variant=secondary]:text-amber-800"
+            variant={currentUrgency === 'MEDIUM' ? 'warning' : 'outline'}
+            size="sm"
+            className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-amber-100 hover:text-amber-800 transition-colors"
             onClick={() =>
               updateParams({ urgency: currentUrgency === 'MEDIUM' ? 'all' : 'MEDIUM' })
             }
@@ -189,19 +198,20 @@ export default function IncidentsFilters({
             <AlertCircle className="mr-1 h-3 w-3" /> Medium urgency
           </Badge>
           <Badge
-            variant={currentUrgency === 'LOW' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-emerald-100 hover:text-emerald-800 transition-colors border-emerald-200 text-emerald-700 data-[variant=secondary]:bg-emerald-100 data-[variant=secondary]:text-emerald-800"
+            variant={currentUrgency === 'LOW' ? 'success' : 'outline'}
+            size="sm"
+            className="h-7 px-2 text-[11px] cursor-pointer rounded-md hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
             onClick={() => updateParams({ urgency: currentUrgency === 'LOW' ? 'all' : 'LOW' })}
           >
             <MinusCircle className="mr-1 h-3 w-3" /> Low urgency
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="space-y-1.5">
             <Label
               htmlFor="incident-search"
-              className="text-xs font-semibold uppercase text-muted-foreground"
+              className="text-[11px] font-semibold uppercase text-muted-foreground"
             >
               Search
             </Label>
@@ -210,22 +220,22 @@ export default function IncidentsFilters({
               <Input
                 id="incident-search"
                 placeholder="Title, description, or ID"
-                className="h-10 pl-9 bg-muted/30 focus:bg-background transition-colors"
+                className="h-9 pl-8 text-sm bg-muted/30 focus:bg-background transition-colors"
                 value={currentSearch}
                 onChange={e => updateParams({ search: e.target.value.trim() })}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase text-muted-foreground">
               Priority
             </Label>
             <Select
               value={currentPriority}
               onValueChange={val => updateParams({ priority: val === 'all' ? 'all' : val })}
             >
-              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+              <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="All priorities" />
@@ -267,10 +277,10 @@ export default function IncidentsFilters({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Status</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase text-muted-foreground">Status</Label>
             <Select value={currentFilter} onValueChange={val => updateParams({ filter: val })}>
-              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+              <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="All statuses" />
@@ -312,10 +322,10 @@ export default function IncidentsFilters({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Team</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase text-muted-foreground">Team</Label>
             <Select value={currentTeamId} onValueChange={val => updateParams({ teamId: val })}>
-              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+              <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="All teams" />
@@ -333,13 +343,13 @@ export default function IncidentsFilters({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Urgency</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase text-muted-foreground">Urgency</Label>
             <Select
               value={currentUrgency}
               onValueChange={val => updateParams({ urgency: val === 'all' ? 'all' : val })}
             >
-              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+              <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
                   <Flame className="h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="All urgency" />
@@ -369,13 +379,13 @@ export default function IncidentsFilters({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Sort</Label>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase text-muted-foreground">Sort</Label>
             <Select
               value={currentSort}
               onValueChange={val => updateParams({ sort: val === 'newest' ? 'newest' : val })}
             >
-              <SelectTrigger className="h-10 bg-muted/30 focus:bg-background transition-colors text-sm">
+              <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
                   <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="Sort" />
@@ -392,7 +402,9 @@ export default function IncidentsFilters({
           </div>
         </div>
 
-        {isPending && <div className="text-xs text-muted-foreground animate-pulse">Loading...</div>}
+        {isPending && (
+          <div className="text-[11px] text-muted-foreground animate-pulse">Loading...</div>
+        )}
       </CardContent>
     </Card>
   );

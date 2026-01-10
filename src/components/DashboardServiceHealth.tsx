@@ -116,7 +116,7 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-base font-bold text-foreground">Service Health Overview</h3>
-            <Badge variant="outline" className="bg-white font-semibold text-foreground">
+            <Badge variant="neutral" size="sm">
               {services.length}
             </Badge>
           </div>
@@ -218,11 +218,11 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
                 {service.activeIncidents > 0 && (
                   <div className="flex items-center gap-2 ml-2">
                     {service.criticalIncidents > 0 && (
-                      <Badge className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200 text-[0.7rem] font-bold px-2.5 py-0.5">
+                      <Badge variant="danger" size="xs">
                         {service.criticalIncidents} Critical
                       </Badge>
                     )}
-                    <Badge className="bg-neutral-100 text-neutral-700 border-neutral-300 hover:bg-neutral-200 text-[0.7rem] font-semibold px-2.5 py-0.5">
+                    <Badge variant="neutral" size="xs">
                       {service.activeIncidents} Active
                     </Badge>
                   </div>

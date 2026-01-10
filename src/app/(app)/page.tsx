@@ -2,62 +2,53 @@ import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
-import DashboardFilters from '@/components/DashboardFilters';
-import IncidentTable from '@/components/IncidentTable';
-import DashboardPerformanceMetrics from '@/components/DashboardPerformanceMetrics';
-import DashboardQuickFilters from '@/components/DashboardQuickFilters';
-import DashboardFilterChips from '@/components/DashboardFilterChips';
-import DashboardAdvancedMetrics from '@/components/DashboardAdvancedMetrics';
-import DashboardSavedFilters from '@/components/DashboardSavedFilters';
-import DashboardPeriodComparison from '@/components/DashboardPeriodComparison';
-import DashboardServiceHealth from '@/components/DashboardServiceHealth';
-import DashboardUrgencyDistribution from '@/components/DashboardUrgencyDistribution';
-
 import { calculateSLAMetrics } from '@/lib/sla-server';
-import { Suspense } from 'react';
 import DashboardRealtimeWrapper from '@/components/DashboardRealtimeWrapper';
 import DashboardCommandCenter from '@/components/dashboard/DashboardCommandCenter';
+import DashboardIncidentFilters from '@/components/dashboard/DashboardIncidentFilters';
+import IncidentsListTable from '@/components/incident/IncidentsListTable';
 import QuickActionsPanel from '@/components/dashboard/QuickActionsPanel';
 import OnCallWidget from '@/components/dashboard/OnCallWidget';
 import SidebarWidget, {
   WIDGET_ICON_BG,
-  WIDGET_ICON_COLOR,
 } from '@/components/dashboard/SidebarWidget';
-import styles from '@/components/dashboard/Dashboard.module.css';
-import CompactOnCallStatus from '@/components/dashboard/compact/CompactOnCallStatus';
 import CompactPerformanceMetrics from '@/components/dashboard/compact/CompactPerformanceMetrics';
-import CompactStatsOverview from '@/components/dashboard/compact/CompactStatsOverview';
-import CompactServiceHealth from '@/components/dashboard/compact/CompactServiceHealth';
-import CompactRecentActivity from '@/components/dashboard/compact/CompactRecentActivity';
 import CompactTeamLoad from '@/components/dashboard/compact/CompactTeamLoad';
+import SmartInsightsBanner from '@/components/dashboard/SmartInsightsBanner';
 import {
   buildDateFilter,
   buildIncidentWhere,
   buildIncidentOrderBy,
-  getDaysFromRange,
   getRangeLabel,
   type DashboardFilters as DashboardFilterParams,
 } from '@/lib/dashboard-utils';
+import { IncidentListItem } from '@/types/incident-list';
 
 // New Imports for SLA Breach Widget
 import { getWidgetData } from '@/lib/widget-data-provider';
 import { WidgetProvider } from '@/components/dashboard/WidgetProvider';
 import SLABreachAlertsWidget from '@/components/dashboard/widgets/SLABreachAlertsWidget';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { formatDateTime } from '@/lib/timezone';
+import {
+  Activity,
+  AlertTriangle,
+  List,
+  ShieldAlert,
+  Siren,
+  UserRound,
+  UsersRound,
+  CheckCircle2,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import { IncidentHeatmapWidget } from '@/components/dashboard/widgets/IncidentHeatmapWidget';
+import { IncidentStatus, IncidentUrgency } from '@prisma/client';
 
 export const revalidate = 30;
 
-const INCIDENTS_PER_PAGE = 30;
-
-function buildPaginationUrl(baseParams: URLSearchParams, page: number): string {
-  const params = new URLSearchParams(baseParams.toString());
-  if (page === 1) {
-    params.delete('page');
-  } else {
-    params.set('page', page.toString());
-  }
-  const queryString = params.toString();
-  return queryString ? `/?${queryString}` : '/';
-}
+const INCIDENTS_PREVIEW_LIMIT = 20;
+const DASHBOARD_RECENT_INCIDENTS_LIMIT = 15;
 
 export default async function Dashboard({
   searchParams,
@@ -68,38 +59,52 @@ export default async function Dashboard({
   const awaitedSearchParams = await searchParams;
 
   // Extract search params
-  const status =
+  const statusParam =
     typeof awaitedSearchParams.status === 'string' ? awaitedSearchParams.status : undefined;
-  const assignee =
+  const status = statusParam && ['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED'].includes(statusParam)
+    ? statusParam
+    : undefined;
+  const assigneeParam =
     typeof awaitedSearchParams.assignee === 'string' ? awaitedSearchParams.assignee : undefined;
-  const service =
+  const assignee = assigneeParam === undefined || assigneeParam === 'all' ? undefined : assigneeParam;
+  const serviceParam =
     typeof awaitedSearchParams.service === 'string' ? awaitedSearchParams.service : undefined;
+  const service = serviceParam && serviceParam !== 'all' ? serviceParam : undefined;
+  const search =
+    typeof awaitedSearchParams.search === 'string' ? awaitedSearchParams.search : '';
   const urgencyParam =
     typeof awaitedSearchParams.urgency === 'string' ? awaitedSearchParams.urgency : undefined;
   const urgency = (
     ['HIGH', 'MEDIUM', 'LOW'].includes(urgencyParam || '') ? urgencyParam : undefined
   ) as 'HIGH' | 'MEDIUM' | 'LOW' | undefined;
-  const page =
-    typeof awaitedSearchParams.page === 'string' ? parseInt(awaitedSearchParams.page) || 1 : 1;
   const sortBy =
-    typeof awaitedSearchParams.sortBy === 'string' ? awaitedSearchParams.sortBy : 'createdAt';
-  const sortOrder =
-    typeof awaitedSearchParams.sortOrder === 'string'
-      ? (awaitedSearchParams.sortOrder as 'asc' | 'desc')
-      : 'desc';
+    typeof awaitedSearchParams.sortBy === 'string' ? awaitedSearchParams.sortBy : undefined;
+  const sortOrderParam =
+    typeof awaitedSearchParams.sortOrder === 'string' ? awaitedSearchParams.sortOrder : undefined;
+  const sortOrder = sortOrderParam === 'asc' || sortOrderParam === 'desc' ? sortOrderParam : 'desc';
   const range = typeof awaitedSearchParams.range === 'string' ? awaitedSearchParams.range : '30';
   const customStart =
     typeof awaitedSearchParams.startDate === 'string' ? awaitedSearchParams.startDate : undefined;
   const customEnd =
     typeof awaitedSearchParams.endDate === 'string' ? awaitedSearchParams.endDate : undefined;
+  const currentSort =
+    sortBy === 'createdAt' && sortOrder === 'asc'
+      ? 'oldest'
+      : sortBy === 'status'
+        ? 'status'
+        : sortBy === 'urgency'
+          ? 'urgency'
+          : sortBy === 'title'
+            ? 'title'
+            : 'newest';
 
   // Get user name for greeting
   const email = session?.user?.email ?? null;
   const user = email
     ? await prisma.user.findUnique({
-        where: { email },
-        select: { id: true, name: true, timeZone: true },
-      })
+      where: { email },
+      select: { id: true, name: true, timeZone: true },
+    })
     : null;
   const userName = user?.name || 'there';
   const userTimeZone = user?.timeZone || 'UTC';
@@ -110,6 +115,7 @@ export default async function Dashboard({
     service,
     assignee,
     urgency,
+    search,
     range,
     customStart,
     customEnd,
@@ -118,58 +124,52 @@ export default async function Dashboard({
   // Main query where clause (includes status filter)
   const where = buildIncidentWhere(filterParams);
 
-  // Metrics where clause (excludes status filter for aggregate counts)
-  const metricsWhere = buildIncidentWhere(filterParams, { includeStatus: false });
-
-  // Chart where clause (excludes urgency for distribution charts)
-  const chartWhere = buildIncidentWhere(filterParams, {
-    includeStatus: false,
-    includeUrgency: false,
-  });
-
-  // MTTA where clause
-  const mttaWhere = { ...metricsWhere, acknowledgedAt: { not: null } };
-
   // Date filter for SLA calculations
   const dateFilter = buildDateFilter(range, customStart, customEnd);
   const metricsStartDate = dateFilter.createdAt?.gte;
   const metricsEndDate = dateFilter.createdAt?.lte;
   const assigneeFilter = assignee !== undefined ? (assignee === '' ? null : assignee) : undefined;
-
-  // Build orderBy using utility function
-  const orderBy = buildIncidentOrderBy(sortBy, sortOrder);
-
-  const skip = (page - 1) * INCIDENTS_PER_PAGE;
-
-  // Fetch Data in Parallel
-  const [incidents, totalCount, services, users, slaMetrics, widgetData] = await Promise.all([
-    prisma.incident.findMany({
-      where,
+  const incidentSelect = {
+    id: true,
+    title: true,
+    status: true,
+    urgency: true,
+    priority: true,
+    createdAt: true,
+    assigneeId: true,
+    escalationStatus: true,
+    currentEscalationStep: true,
+    nextEscalationAt: true,
+    service: {
       select: {
         id: true,
-        title: true,
-        status: true,
-        urgency: true,
-        createdAt: true,
-        service: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        name: true,
       },
-      orderBy,
-      skip,
-      take: INCIDENTS_PER_PAGE,
+    },
+    assignee: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+      },
+    },
+  };
+
+  // Fetch Data in Parallel
+  const [incidents, recentIncidents, services, users, slaMetrics, widgetData] = await Promise.all([
+    prisma.incident.findMany({
+      where,
+      select: incidentSelect,
+      orderBy: buildIncidentOrderBy(sortBy, sortOrder),
+      take: INCIDENTS_PREVIEW_LIMIT,
     }),
-    prisma.incident.count({ where }),
-    // Optimized: Only fetch id and name for services (used in filters and service health)
+    prisma.incident.findMany({
+      where,
+      select: incidentSelect,
+      orderBy: { createdAt: 'desc' },
+      take: DASHBOARD_RECENT_INCIDENTS_LIMIT,
+    }),
     prisma.service.findMany({
       select: {
         id: true,
@@ -177,28 +177,53 @@ export default async function Dashboard({
         status: true,
       },
     }),
-    // Optimized: Only fetch id and name for users (used in filters)
     prisma.user.findMany({
       select: {
         id: true,
         name: true,
+        email: true,
+        status: true,
+        role: true,
       },
+      orderBy: { name: 'asc' },
     }),
     calculateSLAMetrics({
       serviceId: service,
       assigneeId: assigneeFilter,
       urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
+      status: status as IncidentStatus | undefined,
       startDate: metricsStartDate,
       endDate: metricsEndDate,
       includeAllTime: range === 'all',
       includeIncidents: true,
+      includeActiveIncidents: true,
       incidentLimit: 5,
     }),
-    // Fetch widget data specifically for the active incident summaries
-    user ? getWidgetData(user.id, 'user') : Promise.resolve(null),
+    user
+      ? getWidgetData(user.id, 'user', {
+        serviceId: service,
+        assigneeId: assigneeFilter,
+        urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
+        status: status as IncidentStatus | undefined,
+        startDate: metricsStartDate,
+        endDate: metricsEndDate,
+        includeAllTime: range === 'all',
+      })
+      : Promise.resolve(null),
   ]);
 
-  // Calculate MTTA
+  // Transform incidents for the list table
+  const incidentListItems: IncidentListItem[] = incidents.map(inc => ({
+    ...inc,
+    status: inc.status as IncidentStatus,
+    urgency: inc.urgency as IncidentUrgency,
+  }));
+  const recentIncidentListItems: IncidentListItem[] = recentIncidents.map(inc => ({
+    ...inc,
+    status: inc.status as IncidentStatus,
+    urgency: inc.urgency as IncidentUrgency,
+  }));
+
   // Map SLA Server metrics to Dashboard variables
   const activeShifts = slaMetrics.currentShifts;
   const metricsTotalCount = slaMetrics.totalIncidents;
@@ -208,97 +233,121 @@ export default async function Dashboard({
 
   const allOpenIncidentsCount = slaMetrics.openCount;
   const allAcknowledgedCount = slaMetrics.acknowledgedCount;
-  const allCriticalIncidentsCount = slaMetrics.criticalCount;
   const currentCriticalActive = slaMetrics.criticalCount;
-
   const currentPeriodAcknowledged = allAcknowledgedCount;
-  const currentPeriodCritical = slaMetrics.criticalCount;
   const mttaMinutes = slaMetrics.mttd;
-  const allIncidentsCount = metricsTotalCount;
-  const allResolvedCountAllTime = metricsResolvedCount;
-
-  // Previous Period Stats
-  const prevTotal = slaMetrics.previousPeriod.totalIncidents;
-  const prevOpen = 0; // Point-in-time snapshot not available in history
-  const prevResolved = Math.round(prevTotal * (slaMetrics.previousPeriod.resolveRate / 100));
-  const prevAcknowledged = Math.round(prevTotal * (slaMetrics.previousPeriod.ackRate / 100));
-  const prevCritical = slaMetrics.previousPeriod.highUrgencyCount;
-
-  // Urgency Distribution
-  const urgencyCounts = slaMetrics.urgencyMix.reduce(
-    (acc, item) => {
-      acc[item.urgency] = item.count;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
-  const urgencyDistribution = [
-    { label: 'High', value: urgencyCounts['HIGH'] || 0, color: 'var(--color-danger)' },
-    { label: 'Medium', value: urgencyCounts['MEDIUM'] || 0, color: '#f59e0b' },
-    { label: 'Low', value: urgencyCounts['LOW'] || 0, color: '#22c55e' },
-  ].filter(item => item.value > 0);
-
-  // Service Health
-  const servicesWithIncidents = slaMetrics.serviceMetrics.map(s => ({
-    id: s.id,
-    name: s.name,
-    status: s.dynamicStatus as
-      | 'OPERATIONAL'
-      | 'DEGRADED'
-      | 'PARTIAL_OUTAGE'
-      | 'MAJOR_OUTAGE'
-      | 'MAINTENANCE',
-    activeIncidents: s.activeCount,
-    criticalIncidents: s.criticalCount,
-  }));
-
-  // Helper functions for period labels
-  const getPeriodLabels = () => {
-    if (range === 'all') return { current: 'All Time', previous: 'All Time' };
-    const days = getDaysFromRange(range);
-    if (days === 0) return { current: 'All Time', previous: 'All Time' };
-
-    return {
-      current: `Last ${days} days`,
-      previous: `Previous ${days} days`,
-    };
-  };
-
-  const periodLabels = getPeriodLabels();
 
   // Calculate system status
   const systemStatus =
     currentCriticalActive > 0
       ? { label: 'CRITICAL', color: 'var(--color-danger)', bg: 'rgba(239, 68, 68, 0.1)' }
-      : metricsOpenCount > 0
+      : (slaMetrics.mediumUrgencyCount > 0 || slaMetrics.lowUrgencyCount > 0)
         ? { label: 'DEGRADED', color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.1)' }
         : { label: 'OPERATIONAL', color: 'var(--color-success)', bg: 'rgba(34, 197, 94, 0.1)' };
 
-  const totalPages = Math.ceil(totalCount / INCIDENTS_PER_PAGE);
-  const baseParams = new URLSearchParams();
-  if (status && status !== 'ALL') baseParams.set('status', status);
-  if (assignee !== undefined) baseParams.set('assignee', assignee);
-  if (service) baseParams.set('service', service);
-  if (urgency) baseParams.set('urgency', urgency);
-  if (range && range !== 'all') baseParams.set('range', range);
-  if (customStart) baseParams.set('startDate', customStart);
-  if (customEnd) baseParams.set('endDate', customEnd);
-  if (sortBy !== 'createdAt' || sortOrder !== 'desc') {
-    baseParams.set('sortBy', sortBy);
-    baseParams.set('sortOrder', sortOrder);
-  }
 
-  // Get greeting based on time
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
-
-  // Calculate total incidents for the selected range
   const totalInRange = metricsTotalCount;
+  const rangeBadgeLabel =
+    range === 'all' ? 'All time' : range === 'custom' ? 'Custom range' : `Last ${range} days`;
+  // Heatmap: Force 1 Year (365 Days) Data Source (Rollup-Backed)
+  const heatmapRangeEnd = new Date();
+  const heatmapRangeStart = new Date();
+  heatmapRangeStart.setDate(heatmapRangeEnd.getDate() - 365);
+  const heatmapLabel = 'Activity over last year';
+
+  // Use rawHeatmapData which comes from calculateSLAMetrics (which uses rollups for long ranges)
+  const heatmapData = slaMetrics.heatmapData ?? [];
+  const heatmapStartIso = heatmapRangeStart.toISOString();
+  const heatmapEndIso = heatmapRangeEnd.toISOString();
+
+  const activeIncidentSource = (slaMetrics.activeIncidentSummaries || []).map(incident => ({
+    id: incident.id,
+    title: incident.title,
+    status: incident.status as IncidentStatus,
+    urgency: incident.urgency as IncidentUrgency,
+    createdAt: incident.createdAt,
+    assigneeId: incident.assigneeId,
+  }));
+
+  const activeIncidentFallback = incidentListItems.map(incident => ({
+    id: incident.id,
+    title: incident.title,
+    status: incident.status,
+    urgency: incident.urgency,
+    createdAt: incident.createdAt,
+    assigneeId: incident.assigneeId,
+  }));
+
+  const activeIncidentCandidates =
+    activeIncidentSource.length > 0 ? activeIncidentSource : activeIncidentFallback;
+
+  const activeIncidents = activeIncidentCandidates.filter(
+    incident =>
+      incident.status !== 'RESOLVED' &&
+      incident.status !== 'SNOOZED' &&
+      incident.status !== 'SUPPRESSED'
+  );
+  const criticalIncidents = activeIncidents
+    .filter(incident => incident.urgency === 'HIGH')
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const criticalFocus = criticalIncidents.slice(0, 3);
+  const myQueueItems = user
+    ? activeIncidents
+      .filter(incident => incident.assigneeId === user.id)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 3)
+    : [];
+  const servicesAtRisk = slaMetrics.serviceMetrics
+    .filter(serviceMetric => (serviceMetric.activeCount ?? 0) > 0)
+    .sort((a, b) => (b.activeCount ?? 0) - (a.activeCount ?? 0))
+    .slice(0, 4)
+    .map(serviceMetric => ({
+      id: serviceMetric.id,
+      name: serviceMetric.name,
+      activeCount: serviceMetric.activeCount ?? 0,
+      criticalCount: serviceMetric.criticalCount ?? 0,
+    }));
+
+  const teamLoad = slaMetrics.assigneeLoad
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
+
+  const urgencyVariant: Record<IncidentUrgency, 'danger' | 'warning' | 'info'> = {
+    HIGH: 'danger',
+    MEDIUM: 'warning',
+    LOW: 'info',
+  };
+  const statusVariant: Record<
+    IncidentStatus,
+    'success' | 'warning' | 'neutral'
+  > = {
+    OPEN: 'success',
+    ACKNOWLEDGED: 'warning',
+    RESOLVED: 'neutral',
+    SNOOZED: 'neutral',
+    SUPPRESSED: 'neutral',
+  };
+
+  const urgencyStyles: Record<string, string> = {
+    HIGH: 'bg-red-100/50 text-red-700 border-red-200/50',
+    MEDIUM: 'bg-amber-100/50 text-amber-700 border-amber-200/50',
+    LOW: 'bg-emerald-100/50 text-emerald-700 border-emerald-200/50',
+  };
+
+  const statusStyles: Record<string, string> = {
+    OPEN: 'bg-emerald-100/50 text-emerald-700 border-emerald-200/50',
+    ACKNOWLEDGED: 'bg-amber-100/50 text-amber-700 border-amber-200/50',
+    RESOLVED: 'bg-slate-100/50 text-slate-500 border-slate-200/50',
+    SNOOZED: 'bg-blue-50/50 text-blue-600 border-blue-200/50',
+    SUPPRESSED: 'bg-slate-50/50 text-slate-500 border-slate-200/50',
+  };
 
   return (
     <DashboardRealtimeWrapper>
-      <main className="[zoom:0.8]" style={{ paddingBottom: '2rem' }}>
+      <div className="mx-auto w-full px-4 md:px-6 lg:px-8 py-6 min-h-screen space-y-6 [zoom:0.75]">
         <DashboardCommandCenter
           systemStatus={systemStatus}
           allOpenIncidentsCount={allOpenIncidentsCount}
@@ -311,8 +360,12 @@ export default async function Dashboard({
           filters={{
             status: status || undefined,
             service: service || undefined,
-            assignee: assignee || undefined,
-            range: range !== 'all' ? range : undefined,
+            assignee: assignee !== undefined ? assignee : undefined,
+            urgency: urgency || undefined,
+            search: search || undefined,
+            range,
+            startDate: customStart,
+            endDate: customEnd,
           }}
           currentPeriodAcknowledged={currentPeriodAcknowledged}
           userTimeZone={userTimeZone}
@@ -320,358 +373,272 @@ export default async function Dashboard({
           retentionDays={slaMetrics.retentionDays}
         />
 
-        {/* Main Content Grid - Two Column Layout (matching users page) */}
-        <div className={styles.mainGrid}>
-          {/* Left Column - Filters and Table */}
-          <div className={styles.leftColumn}>
-            {/* Filters Panel - Matches Sidebar Theme */}
-            <div className={`glass-panel ${styles.filtersPanel}`}>
-              <div className={styles.filtersHeader}>
-                <div className={styles.filtersIcon}>
-                  <span style={{ fontSize: '18px' }}>🔍</span>
-                </div>
-                <h2
-                  style={{
-                    fontSize: 'var(--font-size-lg)',
-                    fontWeight: 'var(--font-weight-bold)',
-                    margin: 0,
-                    color: 'var(--text-primary)',
-                    letterSpacing: '-0.3px',
-                  }}
-                >
-                  Filter Incidents
-                </h2>
-              </div>
+        {/* Smart Insights Banner - Auto-generated alerts */}
+        <SmartInsightsBanner
+          totalIncidents={totalInRange}
+          openIncidents={metricsOpenCount}
+          criticalIncidents={currentCriticalActive}
+          unassignedIncidents={unassignedCount}
+          topServiceName={servicesAtRisk[0]?.name}
+          topServiceCount={servicesAtRisk[0]?.activeCount}
+        />
 
-              {/* Saved Filters */}
-              <div style={{ marginBottom: '1rem' }}>
-                <Suspense
-                  fallback={
-                    <div
-                      style={{
-                        height: '32px',
-                        background: 'var(--color-neutral-200)',
-                        borderRadius: 'var(--radius-md)',
-                        animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                        width: '200px',
-                      }}
-                    />
-                  }
-                >
-                  <DashboardSavedFilters />
-                </Suspense>
-              </div>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <div className="xl:col-span-8 space-y-6">
+            <DashboardIncidentFilters
+              services={services}
+              users={users}
+              currentStatus={status ?? 'all'}
+              currentUrgency={urgency ?? 'all'}
+              currentService={service ?? 'all'}
+              currentAssignee={
+                assignee === undefined ? 'all' : assignee === '' ? 'unassigned' : assignee
+              }
+              currentSearch={search}
+              currentSort={currentSort}
+              currentRange={range}
+              currentCustomStart={customStart}
+              currentCustomEnd={customEnd}
+              userId={user?.id ?? null}
+            />
 
-              {/* Quick Filters */}
-              <div style={{ marginBottom: '1rem' }}>
-                <Suspense
-                  fallback={
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 'var(--spacing-2)',
-                        height: '40px',
-                      }}
-                    >
-                      {[1, 2, 3, 4].map(i => (
-                        <div
-                          key={i}
-                          style={{
-                            flex: 1,
-                            height: '40px',
-                            background: 'var(--color-neutral-200)',
-                            borderRadius: 'var(--radius-md)',
-                            animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                          }}
-                        />
-                      ))}
+
+
+            {/* Ops Pulse Panel - Unified Container */}
+            <div className="group relative rounded-2xl border border-border/60 bg-white shadow-sm overflow-hidden">
+
+              {/* Header */}
+              <div className="p-4 pb-3 border-b border-border/60">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                        <Activity className="w-5 h-5 text-emerald-600" />
+                      </div>
                     </div>
-                  }
-                >
-                  <DashboardQuickFilters />
-                </Suspense>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Ops Pulse</h3>
+                      <p className="text-[10px] text-slate-500 font-medium">Signals that need attention right now</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" size="xs">
+                      {rangeBadgeLabel}
+                    </Badge>
+                  </div>
+                </div>
               </div>
 
-              {/* Filter Chips */}
-              <Suspense
-                fallback={
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 'var(--spacing-2)',
-                      flexWrap: 'wrap',
-                      minHeight: '40px',
-                    }}
-                  >
-                    {[1, 2, 3].map(i => (
-                      <div
-                        key={i}
-                        style={{
-                          width: '80px',
-                          height: '28px',
-                          background: 'var(--color-neutral-200)',
-                          borderRadius: 'var(--radius-full)',
-                          animation: 'skeleton-pulse 1.5s ease-in-out infinite',
-                        }}
-                      />
-                    ))}
-                  </div>
-                }
-              >
-                <DashboardFilterChips services={services} users={users} />
-              </Suspense>
+              {/* Content Grid */}
+              <div className="p-4">
+                <div className="grid gap-5 md:grid-cols-3">
+                  <div className="group/card relative rounded-xl border border-border/60 bg-white shadow-sm hover:shadow transition-colors">
+                    {/* Header */}
+                    <div className="p-4 pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                            <UserRound className="w-4 h-4" />
+                          </div>
+                          {myQueueItems.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+                              {myQueueItems.length}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">My Queue</h4>
+                          <p className="text-[9px] text-slate-500 font-medium">Assigned to you</p>
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Dashboard Filters */}
-              <div style={{ marginTop: '1rem' }}>
-                <DashboardFilters
-                  initialStatus={status}
-                  initialService={service}
-                  initialAssignee={assignee}
-                  services={services}
-                  users={users}
-                />
+                    {/* Content */}
+                    <div className="px-4 pb-4 space-y-2">
+                      {myQueueItems.length === 0 ? (
+                        <div className="py-4 text-center">
+                          <p className="text-xs text-slate-500 font-medium">Queue is clear!</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {myQueueItems.slice(0, 3).map(item => (
+                            <Link
+                              key={item.id}
+                              href={`/incidents/${item.id}`}
+                              className="block p-2 rounded-lg bg-slate-50/40 border border-border/60 hover:border-emerald-200/50 hover:bg-white transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                <p className="text-xs font-medium text-slate-700 truncate">
+                                  {item.title}
+                                </p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      <Link
+                        href={user ? `/?status=OPEN&assignee=${user.id}` : '/incidents?status=OPEN'}
+                        className="flex items-center justify-center gap-1 mt-2 py-1.5 text-[10px] font-semibold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/50 rounded-md transition-colors"
+                      >
+                        View my queue &rarr;
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Critical Focus Card */}
+                  <div className="group/card relative rounded-xl border border-border/60 bg-white shadow-sm hover:shadow transition-colors">
+                    {/* Header */}
+                    <div className="p-4 pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-600">
+                            <Siren className="w-4 h-4" />
+                          </div>
+                          {currentCriticalActive > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+                              {currentCriticalActive}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">Critical Focus</h4>
+                          <p className="text-[9px] text-slate-500 font-medium">Immediate attention</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="px-4 pb-4 space-y-2">
+                      {criticalFocus.length === 0 ? (
+                        <div className="py-4 text-center">
+                          <p className="text-xs text-slate-500 font-medium">All systems stable</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {criticalFocus.slice(0, 3).map(incident => (
+                            <Link
+                              key={incident.id}
+                              href={`/incidents/${incident.id}`}
+                              className="block p-2 rounded-lg bg-slate-50/40 border border-border/60 hover:border-red-200/50 hover:bg-white transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                                <p className="text-xs font-medium text-slate-700 truncate">
+                                  {incident.title}
+                                </p>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      <Link
+                        href="/incidents?status=OPEN&urgency=HIGH"
+                        className="flex items-center justify-center gap-1 mt-2 py-1.5 text-[10px] font-semibold text-red-700 hover:text-red-800 hover:bg-red-100/50 rounded-md transition-colors"
+                      >
+                        View critical &rarr;
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Services at Risk Card */}
+                  <div className="group/card relative rounded-xl border border-border/60 bg-white shadow-sm hover:shadow transition-colors">
+                    {/* Header */}
+                    <div className="p-4 pb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+                            <AlertTriangle className="w-4 h-4" />
+                          </div>
+                          {servicesAtRisk.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+                              {servicesAtRisk.length}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-800">Services at Risk</h4>
+                          <p className="text-[9px] text-slate-500 font-medium">Active by service</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="px-4 pb-4 space-y-2">
+                      {servicesAtRisk.length === 0 ? (
+                        <div className="py-4 text-center">
+                          <p className="text-xs text-slate-500 font-medium">All services healthy</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {servicesAtRisk.slice(0, 4).map(serviceItem => (
+                            <Link
+                              key={serviceItem.id}
+                              href={`/services/${serviceItem.id}`}
+                              className="flex items-center justify-between p-2 rounded-lg bg-slate-50/40 border border-border/60 hover:border-amber-200/50 hover:bg-white transition-colors"
+                            >
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                <p className="text-xs font-medium text-slate-700 truncate">
+                                  {serviceItem.name}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-slate-500">
+                                  {serviceItem.activeCount}
+                                </span>
+                                {serviceItem.criticalCount > 0 && (
+                                  <span className="text-[9px] font-bold text-red-500 ml-1">
+                                    {serviceItem.criticalCount} !
+                                  </span>
+                                )}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                      <Link
+                        href="/services"
+                        className="flex items-center justify-center gap-1 mt-2 py-1.5 text-[10px] font-semibold text-amber-700 hover:text-amber-800 hover:bg-amber-100/50 rounded-md transition-colors"
+                      >
+                        View services &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Incidents Table Panel - Matches Sidebar Theme */}
-            <div
-              className="glass-panel animate-slide-up"
-              style={{ padding: '0', overflow: 'hidden' }}
-            >
-              <div
-                style={{
-                  padding: 'var(--spacing-6)',
-                  borderBottom: '1px solid var(--glass-border)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '1rem',
-                  background: 'var(--glass-bg)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: 'var(--radius-sm)',
-                      background: WIDGET_ICON_BG.slate,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: 'var(--shadow-xs)',
-                    }}
-                  >
-                    <span style={{ fontSize: '18px', color: 'white' }}>📋</span>
-                  </div>
-                  <div>
-                    <h2
-                      style={{
-                        fontSize: 'var(--font-size-lg)',
-                        fontWeight: 'var(--font-weight-bold)',
-                        margin: '0 0 0.15rem 0',
-                        color: 'var(--text-primary)',
-                        letterSpacing: '-0.3px',
-                      }}
-                    >
-                      Incident Directory
-                    </h2>
-                    <p
-                      style={{
-                        fontSize: 'var(--font-size-sm)',
-                        color: 'var(--text-muted)',
-                        margin: 0,
-                      }}
-                    >
-                      Showing {skip + 1}-{Math.min(skip + INCIDENTS_PER_PAGE, totalCount)} of{' '}
-                      {totalCount} incidents
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href="/incidents"
-                  className="dashboard-view-all-link"
-                  style={{
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--primary-color)',
-                    textDecoration: 'none',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--color-neutral-100)',
-                    border: '1px solid var(--border)',
-                    transition: 'all 0.2s ease',
-                    boxShadow: 'var(--shadow-xs)',
-                  }}
-                >
-                  View All <span>→</span>
-                </Link>
-              </div>
+            {/* Incident Heatmap (Heartmap - User Requested) */}
+            <IncidentHeatmapWidget
+              data={heatmapData}
+              rangeLabel={heatmapLabel}
+              startDate={heatmapStartIso}
+              endDate={heatmapEndIso}
+            />
 
-              <div className="incident-table-scroll" style={{ overflow: 'hidden' }}>
-                {incidents.length === 0 ? (
-                  <div
-                    style={{
-                      padding: '4rem 2rem',
-                      textAlign: 'center',
-                      color: 'var(--text-muted)',
-                      background: 'var(--glass-bg)',
-                      borderTop: '1px solid var(--glass-border)',
-                      borderBottom: '1px solid var(--glass-border)',
-                    }}
-                  >
-                    <svg
-                      width="64"
-                      height="64"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      style={{ opacity: 0.3, margin: '0 auto 1rem' }}
-                    >
-                      <path
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <p
-                      style={{
-                        fontSize: '1rem',
-                        fontWeight: '600',
-                        marginBottom: '0.5rem',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      No incidents found
-                    </p>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Try adjusting your filters to see more results.
-                    </p>
-                  </div>
-                ) : (
-                  <IncidentTable incidents={incidents} sortBy={sortBy} sortOrder={sortOrder} />
-                )}
-              </div>
-
-              {/* Pagination - Enhanced style */}
-              {totalPages > 1 && (
-                <div
-                  style={{
-                    padding: 'var(--spacing-5) var(--spacing-6)',
-                    borderTop: '1px solid var(--glass-border)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    flexWrap: 'wrap',
-                    background: 'var(--glass-bg)',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '0.85rem',
-                      color: 'var(--text-secondary)',
-                      fontWeight: '500',
-                    }}
-                  >
-                    Page <strong style={{ color: 'var(--text-primary)' }}>{page}</strong> of{' '}
-                    <strong style={{ color: 'var(--text-primary)' }}>{totalPages}</strong>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <Link
-                      href={buildPaginationUrl(baseParams, 1)}
-                      className={`glass-button ${page === 1 ? 'disabled' : ''}`}
-                      style={{
-                        padding: '0.5rem 0.9rem',
-                        fontSize: '0.8rem',
-                        textDecoration: 'none',
-                        opacity: page === 1 ? 0.4 : 1,
-                        pointerEvents: page === 1 ? 'none' : 'auto',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      First
-                    </Link>
-                    <Link
-                      href={buildPaginationUrl(baseParams, Math.max(1, page - 1))}
-                      className={`glass-button ${page === 1 ? 'disabled' : ''}`}
-                      style={{
-                        padding: '0.5rem 0.9rem',
-                        fontSize: '0.8rem',
-                        textDecoration: 'none',
-                        opacity: page === 1 ? 0.4 : 1,
-                        pointerEvents: page === 1 ? 'none' : 'auto',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      Previous
-                    </Link>
-                    <Link
-                      href={buildPaginationUrl(baseParams, Math.min(totalPages, page + 1))}
-                      className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
-                      style={{
-                        padding: '0.5rem 0.9rem',
-                        fontSize: '0.8rem',
-                        textDecoration: 'none',
-                        opacity: page === totalPages ? 0.4 : 1,
-                        pointerEvents: page === totalPages ? 'none' : 'auto',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      Next
-                    </Link>
-                    <Link
-                      href={buildPaginationUrl(baseParams, totalPages)}
-                      className={`glass-button ${page === totalPages ? 'disabled' : ''}`}
-                      style={{
-                        padding: '0.5rem 0.9rem',
-                        fontSize: '0.8rem',
-                        textDecoration: 'none',
-                        opacity: page === totalPages ? 0.4 : 1,
-                        pointerEvents: page === totalPages ? 'none' : 'auto',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      Last
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+            <IncidentsListTable
+              incidents={recentIncidentListItems}
+              users={users}
+              canManageIncidents={false}
+              title="Latest incidents"
+              showExport={false}
+            />
           </div>
 
-          {/* Right Sidebar - Compact Modern Design */}
-          <aside
-            className="dashboard-sidebar animate-slide-in-right"
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
-          >
-            {/* Quick Actions Panel */}
+          <aside className="xl:col-span-4 space-y-6 xl:sticky xl:top-6">
             <QuickActionsPanel greeting={greeting} userName={userName} />
-
-            {/* SLA Breach Alerts - New Real-time Widget */}
             {widgetData && (
               <WidgetProvider initialData={widgetData}>
                 <SLABreachAlertsWidget />
               </WidgetProvider>
             )}
 
-            {/* On-Call Widget - Full Featured */}
             <OnCallWidget activeShifts={activeShifts} />
-
-            {/* Performance Metrics - Compact */}
             <SidebarWidget
               title="Performance"
               iconBg={WIDGET_ICON_BG.blue}
-              icon={<span style={{ fontSize: '20px', color: 'white' }}>⚡</span>}
+              icon={<TrendingUp className="h-4 w-4" />}
             >
               <CompactPerformanceMetrics
                 mtta={mttaMinutes}
@@ -680,52 +647,16 @@ export default async function Dashboard({
                 resolveSlaRate={slaMetrics.resolveCompliance}
               />
             </SidebarWidget>
-
-            {/* Quick Stats - Compact */}
-            <SidebarWidget
-              title="Overview"
-              iconBg={WIDGET_ICON_BG.purple}
-              icon={<span style={{ fontSize: '20px', color: 'white' }}>📊</span>}
-            >
-              <CompactStatsOverview
-                totalIncidents={allIncidentsCount}
-                openIncidents={allOpenIncidentsCount}
-                resolvedIncidents={allResolvedCountAllTime}
-                criticalIncidents={allCriticalIncidentsCount}
-                unassignedIncidents={unassignedCount}
-                servicesCount={services.length}
-              />
-            </SidebarWidget>
-
-            {/* Service Health - Compact */}
-            <SidebarWidget
-              title="Services"
-              iconBg={WIDGET_ICON_BG.green}
-              icon={<span style={{ fontSize: '20px', color: 'white' }}>🔧</span>}
-            >
-              <CompactServiceHealth services={servicesWithIncidents} />
-            </SidebarWidget>
-
-            {/* Recent Activity - Compact */}
-            <SidebarWidget
-              title="Activity"
-              iconBg={WIDGET_ICON_BG.purple}
-              icon={<span style={{ fontSize: '20px', color: 'white' }}>📋</span>}
-            >
-              <CompactRecentActivity incidents={slaMetrics.recentIncidents || []} />
-            </SidebarWidget>
-
-            {/* Team Load - Compact */}
             <SidebarWidget
               title="Team Load"
-              iconBg={WIDGET_ICON_BG.blue}
-              icon={<span style={{ fontSize: '20px', color: 'white' }}>👥</span>}
+              iconBg={WIDGET_ICON_BG.green}
+              icon={<Users className="h-4 w-4" />}
             >
-              <CompactTeamLoad assigneeLoad={slaMetrics.assigneeLoad} />
+              <CompactTeamLoad assigneeLoad={teamLoad} />
             </SidebarWidget>
           </aside>
         </div>
-      </main>
-    </DashboardRealtimeWrapper>
+      </div>
+    </DashboardRealtimeWrapper >
   );
 }

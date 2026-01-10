@@ -19,5 +19,6 @@ export interface IncidentListItem {
     id: string;
     name: string;
     email: string;
+    avatarUrl: string | null;
   } | null;
 }

@@ -417,7 +417,7 @@ export default function RetentionPolicySettings() {
                 <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2">
                   <h5 className={`text-sm font-semibold flex items-center gap-2 ${cleanupResult.dryRun ? 'text-blue-800' : 'text-green-800'}`}>
                     {cleanupResult.dryRun ? 'Simulation Result' : 'Cleanup Complete'}
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" size="xs">
                       {cleanupResult.executionTimeMs}ms
                     </Badge>
                   </h5>
@@ -457,7 +457,7 @@ export default function RetentionPolicySettings() {
         {isDirty && (
           <>
             <div className="mr-auto flex items-center gap-2">
-              <Badge variant="outline" className="bg-yellow-50 border-yellow-200 text-yellow-700">
+              <Badge variant="warning" size="sm">
                 Unsaved changes
               </Badge>
             </div>

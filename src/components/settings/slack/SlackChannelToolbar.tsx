@@ -107,31 +107,25 @@ export function SlackChannelToolbar({
           <TabsList>
             <TabsTrigger value="all" className="gap-1.5">
               All
-              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+              <Badge variant="secondary" size="xs">
                 {summary.total}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="connected" className="gap-1.5">
               Connected
-              <Badge
-                variant="secondary"
-                className="text-xs px-1.5 py-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
-              >
+              <Badge variant="success" size="xs">
                 {summary.connected}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="invite" className="gap-1.5">
               Invite
-              <Badge
-                variant="secondary"
-                className="text-xs px-1.5 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
-              >
+              <Badge variant="warning" size="xs">
                 {summary.invite}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="auto" className="gap-1.5">
               Auto-add
-              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+              <Badge variant="secondary" size="xs">
                 {summary.autoAdd}
               </Badge>
             </TabsTrigger>

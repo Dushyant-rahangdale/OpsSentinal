@@ -6,6 +6,7 @@ export interface DashboardFilters {
   service?: string;
   assignee?: string;
   urgency?: string;
+  search?: string;
   range?: string;
   customStart?: string;
   customEnd?: string;
@@ -82,6 +83,14 @@ export function buildIncidentWhere(
     where.urgency = filters.urgency as Prisma.EnumIncidentUrgencyFilter;
   }
 
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+      { id: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
   return where;
 }
 
@@ -120,6 +129,7 @@ export function getDaysFromRange(range?: string): number {
 export function getRangeLabel(range?: string): string {
   if (!range || range === 'all') return '(All Time)';
   if (range === 'custom') return '(Custom)';
+  if (range === '3') return '(3d)';
   if (range === '7') return '(7d)';
   if (range === '30') return '(30d)';
   if (range === '90') return '(90d)';

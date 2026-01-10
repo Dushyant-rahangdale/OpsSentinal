@@ -78,25 +78,23 @@ const statusAccentClass: Record<string, string> = {
 function UrgencyBadge({ urgency }: { urgency: string }) {
   if (urgency === 'HIGH') {
     return (
-      <Badge
-        variant="outline"
-        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors h-5 px-1.5 text-[10px] font-bold tracking-tight uppercase"
-      >
+      <Badge variant="danger" size="xs" className="uppercase">
         High
       </Badge>
     );
   }
   if (urgency === 'MEDIUM') {
     return (
-      <Badge
-        variant="outline"
-        className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-colors h-5 px-1.5 text-[10px] font-bold tracking-tight uppercase"
-      >
+      <Badge variant="warning" size="xs" className="uppercase">
         Med
       </Badge>
     );
   }
-  return <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">Low</span>;
+  return (
+    <Badge variant="neutral" size="xs" className="uppercase">
+      Low
+    </Badge>
+  );
 }
 
 // Priority Badge Component
@@ -104,20 +102,17 @@ function PriorityBadge({ priority }: { priority: string | null }) {
   if (!priority) return null;
 
   const colors = {
-    P1: 'bg-red-100 text-red-700 border-red-200',
-    P2: 'bg-orange-100 text-orange-700 border-orange-200',
-    P3: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    P4: 'bg-blue-100 text-blue-700 border-blue-200',
+    P1: 'danger',
+    P2: 'warning',
+    P3: 'warning',
+    P4: 'info',
   };
 
-  const colorClass =
-    colors[priority as keyof typeof colors] || 'bg-slate-100 text-slate-700 border-slate-200';
+  const badgeVariant =
+    (colors[priority as keyof typeof colors] || 'neutral') as any;
 
   return (
-    <Badge
-      variant="outline"
-      className={cn('h-5 px-1.5 text-[10px] font-bold tracking-tight', colorClass)}
-    >
+    <Badge variant={badgeVariant} size="xs" className="tracking-tight">
       {priority}
     </Badge>
   );

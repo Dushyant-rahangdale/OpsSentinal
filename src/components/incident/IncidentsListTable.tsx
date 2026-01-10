@@ -35,6 +35,7 @@ import StatusBadge from './StatusBadge';
 import EscalationStatusBadge from './EscalationStatusBadge';
 import PriorityBadge from './PriorityBadge';
 import AssigneeSection from './AssigneeSection';
+import { Badge } from '@/components/ui/shadcn/badge';
 import {
   CheckCircle2,
   MoreHorizontal,
@@ -66,6 +67,8 @@ type IncidentsListTableProps = {
     totalItems: number;
     itemsPerPage: number;
   };
+  title?: string;
+  showExport?: boolean;
 };
 
 type IncidentStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED' | 'SUPPRESSED';
@@ -84,6 +87,8 @@ export default function IncidentsListTable({
   users,
   canManageIncidents,
   pagination,
+  title,
+  showExport = true,
 }: IncidentsListTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -277,29 +282,20 @@ export default function IncidentsListTable({
   const buildUrgencyChip = (urgency: string | null | undefined) => {
     if (!urgency) return null;
     const u = urgency.toUpperCase();
-    const classes =
-      u === 'HIGH'
-        ? 'bg-red-500/10 text-red-700 ring-red-500/20'
-        : u === 'MEDIUM'
-          ? 'bg-amber-500/10 text-amber-700 ring-amber-500/20'
-          : 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20';
+    const variant = u === 'HIGH' ? 'danger' : u === 'MEDIUM' ? 'warning' : 'success';
 
     return (
-      <span
-        className={cn(
-          'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wider ring-1',
-          classes
-        )}
-        title={`Urgency: ${u}`}
-      >
+      <Badge variant={variant} size="xs" className="uppercase" title={`Urgency: ${u}`}>
         {u}
-      </span>
+      </Badge>
     );
   };
 
   const rowPad = 'p-3.5 md:p-4';
   const metaText = 'text-xs';
   const titleText = 'text-sm';
+
+  const headerTitle = title ?? 'Incident list';
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm overflow-hidden">
@@ -536,7 +532,7 @@ export default function IncidentsListTable({
       <div className="px-4 md:px-5 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
         <div className="min-w-[220px]">
           <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500 font-extrabold">
-            Incident list
+            {headerTitle}
           </div>
           <div className="text-sm text-slate-600 mt-0.5">
             Showing{' '}
@@ -570,29 +566,31 @@ export default function IncidentsListTable({
             </Button>
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label="Export incidents"
-                className="bg-white shadow-sm hover:bg-slate-50"
-              >
-                <Download className="mr-2 h-4 w-4 text-slate-600" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => handleExport('csv')}>
-                <Download className="mr-2 h-4 w-4 text-slate-500" />
-                CSV (.csv)
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => handleExport('xlsx')}>
-                <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
-                Excel (.xlsx)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {showExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Export incidents"
+                  className="bg-white shadow-sm hover:bg-slate-50"
+                >
+                  <Download className="mr-2 h-4 w-4 text-slate-600" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onSelect={() => handleExport('csv')}>
+                  <Download className="mr-2 h-4 w-4 text-slate-500" />
+                  CSV (.csv)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('xlsx')}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

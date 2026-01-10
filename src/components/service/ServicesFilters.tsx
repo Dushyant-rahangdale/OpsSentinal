@@ -116,14 +116,16 @@ export default function ServicesFilters({
         <div className="flex flex-wrap gap-2">
           <Badge
             variant={currentStatus === 'all' ? 'default' : 'outline'}
+            size="sm"
             className="cursor-pointer hover:bg-primary/90 hover:text-primary-foreground transition-colors"
             onClick={() => updateParams({ status: 'all' })}
           >
             All services
           </Badge>
           <Badge
-            variant={currentStatus === 'OPERATIONAL' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-emerald-100 hover:text-emerald-800 transition-colors border-emerald-200 text-emerald-700 data-[variant=secondary]:bg-emerald-100 data-[variant=secondary]:text-emerald-800"
+            variant={currentStatus === 'OPERATIONAL' ? 'success' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
             onClick={() =>
               updateParams({ status: currentStatus === 'OPERATIONAL' ? 'all' : 'OPERATIONAL' })
             }
@@ -131,8 +133,9 @@ export default function ServicesFilters({
             <CheckCircle2 className="mr-1 h-3 w-3" /> Operational
           </Badge>
           <Badge
-            variant={currentStatus === 'DEGRADED' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-yellow-100 hover:text-yellow-800 transition-colors border-yellow-200 text-yellow-700 data-[variant=secondary]:bg-yellow-100 data-[variant=secondary]:text-yellow-800"
+            variant={currentStatus === 'DEGRADED' ? 'warning' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-yellow-100 hover:text-yellow-800 transition-colors"
             onClick={() =>
               updateParams({ status: currentStatus === 'DEGRADED' ? 'all' : 'DEGRADED' })
             }
@@ -140,8 +143,9 @@ export default function ServicesFilters({
             <AlertTriangle className="mr-1 h-3 w-3" /> Degraded
           </Badge>
           <Badge
-            variant={currentStatus === 'CRITICAL' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-red-100 hover:text-red-800 transition-colors border-red-200 text-red-700 data-[variant=secondary]:bg-red-100 data-[variant=secondary]:text-red-800"
+            variant={currentStatus === 'CRITICAL' ? 'danger' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-red-100 hover:text-red-800 transition-colors"
             onClick={() =>
               updateParams({ status: currentStatus === 'CRITICAL' ? 'all' : 'CRITICAL' })
             }

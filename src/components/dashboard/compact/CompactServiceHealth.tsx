@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * Compact Service Health Widget
@@ -19,22 +20,22 @@ interface CompactServiceHealthProps {
 }
 
 /**
- * Gets the status indicator color based on service status
+ * Gets the status indicator color class based on service status
  */
-function getStatusColor(status: string | null | undefined): string {
+function getStatusClass(status: string | null | undefined): string {
   switch (status) {
     case 'OPERATIONAL':
-      return 'var(--color-success)';
+      return 'bg-emerald-500 shadow-[0_0_6px_-1px_rgba(16,185,129,0.5)]';
     case 'DEGRADED':
-      return 'var(--color-warning)';
+      return 'bg-amber-500 shadow-[0_0_6px_-1px_rgba(245,158,11,0.5)]';
     case 'PARTIAL_OUTAGE':
     case 'MAJOR_OUTAGE':
     case 'CRITICAL':
-      return 'var(--color-error)';
+      return 'bg-red-500 shadow-[0_0_6px_-1px_rgba(239,68,68,0.5)]';
     case 'MAINTENANCE':
-      return 'var(--color-info)';
+      return 'bg-blue-500 shadow-[0_0_6px_-1px_rgba(59,130,246,0.5)]';
     default:
-      return 'var(--text-muted)';
+      return 'bg-muted-foreground';
   }
 }
 
@@ -99,30 +100,29 @@ const CompactServiceHealth = memo(function CompactServiceHealth({
 
   return (
     <div className="flex flex-col gap-2" role="list" aria-label="Service health status">
-      <div className="text-[11px] text-muted-foreground">
-        Active counts exclude snoozed and suppressed incidents.
+      <div className="text-[11px] text-muted-foreground italic mb-1">
+        Active counts exclude snoozed/suppressed.
       </div>
       {displayServices.map(service => {
-        const statusColor = getStatusColor(service.status);
+        const statusClass = getStatusClass(service.status);
         const statusLabel = getStatusLabel(service.status);
         const incidentCount = Math.max(0, service.activeIncidents);
 
         return (
           <div
             key={service.id}
-            className="flex items-center justify-between p-2 px-3 rounded-sm bg-neutral-50 border border-border"
+            className="flex items-center justify-between p-2 px-3 rounded-md bg-muted/40 border border-border"
             role="listitem"
             aria-label={`${service.name}: ${statusLabel}${incidentCount > 0 ? `, ${incidentCount} active incidents` : ''}`}
           >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
               <div
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: statusColor }}
+                className={cn("w-2 h-2 rounded-full shrink-0", statusClass)}
                 aria-hidden="true"
                 title={statusLabel}
               />
               <span
-                className="text-sm font-medium text-secondary-foreground overflow-hidden overflow-ellipsis whitespace-nowrap"
+                className="text-sm font-medium text-foreground overflow-hidden overflow-ellipsis whitespace-nowrap"
                 title={service.name}
               >
                 {service.name}
@@ -130,7 +130,7 @@ const CompactServiceHealth = memo(function CompactServiceHealth({
             </div>
             {incidentCount > 0 && (
               <span
-                className="text-xs font-semibold text-red-600 py-0.5 px-1.5 rounded-full bg-red-100 shrink-0 tabular-nums"
+                className="text-xs font-bold text-red-600 dark:text-red-400 py-0.5 px-2 rounded-full bg-red-100 dark:bg-red-900/30 shrink-0 tabular-nums border border-red-200 dark:border-red-800"
                 aria-label={`${incidentCount} active incidents`}
               >
                 {incidentCount}

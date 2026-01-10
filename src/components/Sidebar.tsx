@@ -241,19 +241,26 @@ export default function Sidebar(
 
         {!isDesktopCollapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
 
-        {showBadge && (
-          <span
-            aria-label={`${stats!.count} active incidents`}
-            className={cn(
-              'shrink-0 inline-flex items-center justify-center font-bold bg-red-500 text-white',
-              isDesktopCollapsed
-                ? 'absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full'
-                : 'ml-auto h-5 min-w-5 rounded-full px-1.5 text-[0.65rem]'
-            )}
-          >
-            {isDesktopCollapsed ? '' : stats!.count > 99 ? '99+' : stats!.count}
-          </span>
-        )}
+        {showBadge &&
+          (isDesktopCollapsed ? (
+            <Badge
+              variant="danger"
+              size="xs"
+              aria-label={`${stats!.count} active incidents`}
+              className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full p-0"
+            >
+              <span className="sr-only">{stats!.count > 99 ? '99+' : stats!.count}</span>
+            </Badge>
+          ) : (
+            <Badge
+              variant="danger"
+              size="xs"
+              aria-label={`${stats!.count} active incidents`}
+              className="ml-auto h-5 min-w-5 rounded-full px-1.5"
+            >
+              {stats!.count > 99 ? '99+' : stats!.count}
+            </Badge>
+          ))}
       </Link>
     );
   };
@@ -371,14 +378,11 @@ export default function Sidebar(
                   OpsSentinel
                 </h1>
                 <Badge
-                  variant="secondary"
+                  variant="info"
+                  size="xs"
                   className={cn(
-                    'w-fit px-2 py-0.5 mt-1',
-                    'text-[0.6rem] font-semibold uppercase tracking-wider',
-                    'bg-indigo-500/15 text-indigo-300',
-                    'border border-indigo-500/20',
-                    'rounded-full', // Ensure pill shape
-                    'backdrop-blur-sm transition-colors hover:bg-indigo-500/25'
+                    'w-fit mt-1 uppercase tracking-wider',
+                    'backdrop-blur-sm transition-colors'
                   )}
                 >
                   Incident Response
@@ -492,24 +496,28 @@ export default function Sidebar(
                 <div className="text-xs font-bold text-white truncate group-hover:text-indigo-200 transition-colors flex items-center gap-2">
                   <span>{userName || 'User'}</span>
                   {(() => {
-                    const roleKey = (userRole?.toLowerCase() || 'admin') as keyof typeof roleColors;
-                    const roleColors = {
-                      admin: 'text-rose-300 bg-rose-500/10 border-rose-500/20',
-                      responder: 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20',
-                      observer: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20',
-                      user: 'text-sky-300 bg-sky-500/10 border-sky-500/20',
-                    };
-                    const activeColor = roleColors[roleKey] || roleColors.user;
+                    const roleKey = (userRole?.toLowerCase() || 'admin') as
+                      | 'admin'
+                      | 'responder'
+                      | 'observer'
+                      | 'user';
 
                     return (
-                      <span
-                        className={cn(
-                          'text-[9px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide',
-                          activeColor
-                        )}
+                      <Badge
+                        variant={
+                          roleKey === 'admin'
+                            ? 'danger'
+                            : roleKey === 'responder'
+                              ? 'info'
+                              : roleKey === 'observer'
+                                ? 'success'
+                                : 'neutral'
+                        }
+                        size="xs"
+                        className="uppercase"
                       >
                         {userRole?.toLowerCase() || 'admin'}
-                      </span>
+                      </Badge>
                     );
                   })()}
                 </div>

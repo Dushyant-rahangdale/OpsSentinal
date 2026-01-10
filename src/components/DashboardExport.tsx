@@ -10,7 +10,11 @@ type ExportProps = {
     status?: string;
     service?: string;
     assignee?: string;
+    urgency?: string;
+    search?: string;
     range?: string;
+    startDate?: string;
+    endDate?: string;
   };
   metrics: {
     totalOpen: number;
@@ -38,8 +42,26 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
     csvRows.push('Active Filters:');
     if (filters.status) csvRows.push(`Status: ${filters.status}`);
     if (filters.service) csvRows.push(`Service: ${filters.service}`);
-    if (filters.assignee) csvRows.push(`Assignee: ${filters.assignee}`);
-    if (filters.range) csvRows.push(`Time Range: ${filters.range} days`);
+    if (filters.assignee !== undefined) {
+      csvRows.push(`Assignee: ${filters.assignee === '' ? 'Unassigned' : filters.assignee}`);
+    }
+    if (filters.urgency) csvRows.push(`Urgency: ${filters.urgency}`);
+    if (filters.search) csvRows.push(`Search: ${filters.search}`);
+    if (filters.range) {
+      if (filters.range === 'all') {
+        csvRows.push('Time Range: All time');
+      } else if (filters.range === 'custom') {
+        const start = filters.startDate
+          ? formatDateTime(filters.startDate, userTimeZone, { format: 'date' })
+          : 'N/A';
+        const end = filters.endDate
+          ? formatDateTime(filters.endDate, userTimeZone, { format: 'date' })
+          : 'N/A';
+        csvRows.push(`Time Range: Custom (${start} - ${end})`);
+      } else {
+        csvRows.push(`Time Range: ${filters.range} days`);
+      }
+    }
     csvRows.push('');
 
     // Metrics Summary

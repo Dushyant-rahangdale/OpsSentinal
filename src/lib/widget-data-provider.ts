@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { calculateSLAMetrics } from '@/lib/sla-server';
+import type { SLAMetricsFilter } from '@/lib/sla-server';
 import type { SLAMetrics as SLAServerMetrics } from '@/lib/sla';
 
 /**
@@ -102,18 +103,27 @@ function determineTrend(current: number, previous: number): 'up' | 'down' | 'sta
  * Get all widget data using sla-server as the single source of truth
  * This function delegates all metric calculations to calculateSLAMetrics
  */
-export async function getWidgetData(userId: string, _userRole: string): Promise<WidgetDataContext> {
+export async function getWidgetData(
+  userId: string,
+  _userRole: string,
+  filters: SLAMetricsFilter = {}
+): Promise<WidgetDataContext> {
   const now = new Date();
 
-  // Single source of truth: Get ALL metrics from sla-server
-  // This includes incidents, SLA compliance, service health, team workload, etc.
-  const slaMetricsRaw: SLAServerMetrics = await calculateSLAMetrics({
-    useOrScope: true,
+  const metricsFilters: SLAMetricsFilter = {
+    ...filters,
     includeIncidents: true,
     includeActiveIncidents: true,
     incidentLimit: 100,
-    windowDays: 7,
-  });
+  };
+
+  if (!metricsFilters.startDate && !metricsFilters.includeAllTime && !metricsFilters.windowDays) {
+    metricsFilters.windowDays = 7;
+  }
+
+  // Single source of truth: Get ALL metrics from sla-server
+  // This includes incidents, SLA compliance, service health, team workload, etc.
+  const slaMetricsRaw: SLAServerMetrics = await calculateSLAMetrics(metricsFilters);
 
   // Transform sla-server data to widget format
   // Active incidents from recentIncidents that aren't resolved

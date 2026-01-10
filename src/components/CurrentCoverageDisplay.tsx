@@ -141,8 +141,9 @@ export default function CurrentCoverageDisplay({
           </div>
           {hasActiveCoverage && (
             <Badge
-              variant="outline"
-              className="bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border-emerald-300 font-semibold px-3 py-1 shadow-sm"
+              variant="success"
+              size="sm"
+              className="gap-1.5"
             >
               <Users className="h-3 w-3 mr-1" />
               {activeBlocks.length} {activeBlocks.length === 1 ? 'responder' : 'responders'}
@@ -194,8 +195,8 @@ export default function CurrentCoverageDisplay({
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
                       <Badge
-                        variant="outline"
-                        className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-0 text-[10px] font-medium"
+                        variant="info"
+                        size="xs"
                       >
                         {block.layerName}
                       </Badge>

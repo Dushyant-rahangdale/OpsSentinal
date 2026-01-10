@@ -112,27 +112,31 @@ export default function NotificationHistory() {
     switch (status) {
       case 'SENT':
         return (
-          <Badge variant="default" className="bg-green-600">
+          <Badge variant="success" size="xs">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Sent
           </Badge>
         );
       case 'PENDING':
         return (
-          <Badge variant="secondary">
+          <Badge variant="warning" size="xs">
             <Clock className="h-3 w-3 mr-1" />
             Pending
           </Badge>
         );
       case 'FAILED':
         return (
-          <Badge variant="destructive">
+          <Badge variant="danger" size="xs">
             <XCircle className="h-3 w-3 mr-1" />
             Failed
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return (
+          <Badge variant="outline" size="xs">
+            {status}
+          </Badge>
+        );
     }
   };
 

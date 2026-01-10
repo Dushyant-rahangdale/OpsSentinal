@@ -16,6 +16,7 @@ import StatusPagePrivacySettings, {
 import StatusPageWebhooksSettings from '@/components/status-page/StatusPageWebhooksSettings';
 import StatusPageSubscribers from '@/components/status-page/StatusPageSubscribers';
 import StatusPageEmailConfig from '@/components/status-page/StatusPageEmailConfig';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 type StatusPageConfigProps = {
   statusPage: {
@@ -1478,9 +1479,13 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                   {item.icon && <span className="status-page-config-tab-icon">{item.icon}</span>}
                   {item.label}
                   {item.badge ? (
-                    <span className={`status-page-config-tab-badge ${isActive ? 'is-active' : ''}`}>
+                    <Badge
+                      variant={isActive ? 'info' : 'neutral'}
+                      size="xs"
+                      className="ml-auto"
+                    >
                       {item.badge}
-                    </span>
+                    </Badge>
                   ) : null}
                 </ItemComponent>
               );

@@ -185,16 +185,18 @@
     --gradient-surface: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 
     /* Badge Colors */
-    --badge-success-bg: #dcfce7;
-    --badge-success-text: #16a34a;
-    --badge-warning-bg: #fef3c7;
-    --badge-warning-text: #d97706;
-    --badge-error-bg: #fee2e2;
-    --badge-error-text: #dc2626;
+    --badge-success-bg: #bbf7d0;
+    --badge-success-text: #15803d;
+    --badge-warning-bg: #fde68a;
+    --badge-warning-text: #b45309;
+    --badge-info-bg: #bfdbfe;
+    --badge-info-text: #1d4ed8;
+    --badge-error-bg: #fecaca;
+    --badge-error-text: #b91c1c;
     --badge-snoozed-bg: #e0e7ff;
     --badge-snoozed-text: #4f46e5;
-    --badge-neutral-bg: #f3f4f6;
-    --badge-neutral-text: #6b7280;
+    --badge-neutral-bg: #e2e8f0;
+    --badge-neutral-text: #334155;
 
     /* Layout */
     --sidebar-width: clamp(220px, 18vw, 264px);

@@ -45,10 +45,7 @@ export default function DashboardRealtimeMetrics({
 
   if (error) {
     return (
-      <Badge
-        variant="outline"
-        className="px-2 py-1 text-xs bg-amber-50 text-amber-900 border-amber-200"
-      >
+      <Badge variant="warning" size="xs">
         <AlertCircle className="h-3 w-3 mr-1.5" />
         Real-time updates unavailable
       </Badge>

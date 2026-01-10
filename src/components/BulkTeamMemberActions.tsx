@@ -123,10 +123,7 @@ export default function BulkTeamMemberActions({
         <div className="text-xs text-muted-foreground truncate">{user.email}</div>
       </div>
       {user.status === 'DISABLED' && (
-        <Badge
-          variant="outline"
-          className="text-[10px] px-1.5 py-0 bg-red-100 text-red-700 border-red-200"
-        >
+        <Badge variant="danger" size="xs">
           Disabled
         </Badge>
       )}
@@ -143,7 +140,7 @@ export default function BulkTeamMemberActions({
               Bulk Add ({availableUsers.length} available)
             </span>
             {selectedUsers.size > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" size="xs" className="ml-2">
                 {selectedUsers.size} selected
               </Badge>
             )}

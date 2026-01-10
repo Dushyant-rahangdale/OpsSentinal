@@ -111,35 +111,40 @@ export default function UserFilters({ teams }: UserFiltersProps) {
         <div className="flex flex-wrap gap-2">
           <Badge
             variant={!status && !role && !teamId && !query ? 'default' : 'outline'}
+            size="sm"
             className="cursor-pointer hover:bg-primary/90 hover:text-primary-foreground transition-colors"
             onClick={() => clearFilters()}
           >
             All Users
           </Badge>
           <Badge
-            variant={status === 'ACTIVE' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-green-100 hover:text-green-800 transition-colors border-green-200 text-green-700 data-[variant=secondary]:bg-green-100 data-[variant=secondary]:text-green-800"
+            variant={status === 'ACTIVE' ? 'success' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-green-100 hover:text-green-800 transition-colors"
             onClick={() => handleFilterChange('status', status === 'ACTIVE' ? '' : 'ACTIVE')}
           >
             <UserCheck className="mr-1 h-3 w-3" /> Active
           </Badge>
           <Badge
-            variant={status === 'INVITED' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-yellow-100 hover:text-yellow-800 transition-colors border-yellow-200 text-yellow-700 data-[variant=secondary]:bg-yellow-100 data-[variant=secondary]:text-yellow-800"
+            variant={status === 'INVITED' ? 'warning' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-yellow-100 hover:text-yellow-800 transition-colors"
             onClick={() => handleFilterChange('status', status === 'INVITED' ? '' : 'INVITED')}
           >
             <UserPlus className="mr-1 h-3 w-3" /> Invited
           </Badge>
           <Badge
-            variant={status === 'DISABLED' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-gray-100 hover:text-gray-800 transition-colors border-gray-200 text-gray-700 data-[variant=secondary]:bg-gray-100 data-[variant=secondary]:text-gray-800"
+            variant={status === 'DISABLED' ? 'neutral' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-gray-100 hover:text-gray-800 transition-colors"
             onClick={() => handleFilterChange('status', status === 'DISABLED' ? '' : 'DISABLED')}
           >
             <UserX className="mr-1 h-3 w-3" /> Disabled
           </Badge>
           <Badge
-            variant={role === 'ADMIN' ? 'secondary' : 'outline'}
-            className="cursor-pointer hover:bg-rose-100 hover:text-rose-800 transition-colors border-rose-200 text-rose-700 data-[variant=secondary]:bg-rose-100 data-[variant=secondary]:text-rose-800"
+            variant={role === 'ADMIN' ? 'danger' : 'outline'}
+            size="sm"
+            className="cursor-pointer hover:bg-rose-100 hover:text-rose-800 transition-colors"
             onClick={() => handleFilterChange('role', role === 'ADMIN' ? '' : 'ADMIN')}
           >
             <Users className="mr-1 h-3 w-3" /> Admins

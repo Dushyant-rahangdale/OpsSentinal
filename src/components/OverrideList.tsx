@@ -75,7 +75,11 @@ export default function OverrideList({
       <div className="mt-6 pt-6 border-t-2">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-base font-semibold">{title}</h4>
-          {overrides.length > 0 && <Badge variant="secondary">{overrides.length}</Badge>}
+          {overrides.length > 0 && (
+            <Badge variant="secondary" size="xs">
+              {overrides.length}
+            </Badge>
+          )}
         </div>
 
         {overrides.length === 0 ? (
@@ -100,11 +104,11 @@ export default function OverrideList({
                     </div>
 
                     <div className="flex items-center gap-2 text-xs ml-11">
-                      <Badge variant="outline" className="font-normal">
+                      <Badge variant="outline" size="xs">
                         {formatDateTime(override.start, timeZone, { format: 'short' })}
                       </Badge>
                       <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                      <Badge variant="outline" className="font-normal">
+                      <Badge variant="outline" size="xs">
                         {formatDateTime(override.end, timeZone, { format: 'short' })}
                       </Badge>
                     </div>
