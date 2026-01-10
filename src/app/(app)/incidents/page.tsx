@@ -107,7 +107,7 @@ export default async function IncidentsPage({
   const users = canCreateIncident
     ? await prisma.user.findMany({
         where: { status: 'ACTIVE' },
-        select: { id: true, name: true, email: true },
+        select: { id: true, name: true, email: true, avatarUrl: true, gender: true },
         orderBy: { name: 'asc' },
       })
     : [];

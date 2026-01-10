@@ -1,31 +1,32 @@
-import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { getUserPermissions } from '@/lib/rbac';
 import { deleteTemplate, getAllTemplates } from '../template-actions';
 import { revalidatePath } from 'next/cache';
 import ConfirmSubmitButton from '@/components/ConfirmSubmitButton';
-import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
-import { getAuthOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth';
+import { Plus, Trash2, ArrowUpRight, Copy, MoreHorizontal, LayoutTemplate } from 'lucide-react';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/shadcn/dropdown-menu';
 
 export const revalidate = 30;
+
+const urgencyColorMap: Record<string, string> = {
+  HIGH: 'border-l-red-500',
+  MEDIUM: 'border-l-amber-500',
+  LOW: 'border-l-emerald-500',
+};
 
 export default async function TemplatesPage() {
   const permissions = await getUserPermissions();
   const canManageTemplates = permissions.isResponderOrAbove;
 
   const templates = await getAllTemplates(permissions.id);
-
-  // Get user timezone for date formatting
-  const session = await getServerSession(await getAuthOptions());
-  const email = session?.user?.email ?? null;
-  const user = email
-    ? await prisma.user.findUnique({
-        where: { email },
-        select: { timeZone: true },
-      })
-    : null;
-  const userTimeZone = getUserTimeZone(user ?? undefined);
 
   async function handleDelete(formData: FormData) {
     'use server';
@@ -39,310 +40,213 @@ export default async function TemplatesPage() {
   }
 
   return (
-    <main>
-      <header
-        style={{
-          marginBottom: '2rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: '1.5rem',
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Link
-            href="/incidents"
-            style={{
-              color: 'var(--text-muted)',
-              marginBottom: '0.5rem',
-              display: 'inline-block',
-              textDecoration: 'none',
-              fontSize: '0.9rem',
-            }}
-          >
-            ← Back to Incidents
-          </Link>
-          <h1 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '0.35rem' }}>
-            Incident Templates
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Pre-configured templates for common incident types. Create incidents faster with
-            templates.
-          </p>
-        </div>
-        {canManageTemplates && (
-          <Link
-            href="/incidents/templates/create"
-            className="glass-button primary"
-            style={{ textDecoration: 'none', borderRadius: '0px', whiteSpace: 'nowrap' }}
-          >
-            + Create Template
-          </Link>
-        )}
-      </header>
-
-      {templates.length === 0 ? (
-        <div
-          className="glass-panel"
-          style={{
-            padding: '3rem',
-            textAlign: 'center',
-            background: '#f9fafb',
-            border: '1px solid var(--border)',
-            borderRadius: '0px',
-          }}
-        >
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
-          <h2
-            style={{
-              fontSize: '1.5rem',
-              fontWeight: 700,
-              marginBottom: '0.5rem',
-              color: 'var(--text-primary)',
-            }}
-          >
-            No Templates Yet
-          </h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-            Create your first incident template to speed up incident creation.
-          </p>
+    <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6 [zoom:0.9]">
+      {/* Header Banner - Matches IncidentsPage style */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-lg p-4 md:p-6 shadow-lg">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <LayoutTemplate className="h-6 w-6 md:h-8 md:w-8 text-indigo-400" />
+              Incident Templates
+            </h1>
+            <p className="text-xs md:text-sm opacity-80 mt-1 max-w-xl">
+              Standardize your incident response with pre-configured templates.
+            </p>
+          </div>
           {canManageTemplates && (
-            <Link
-              href="/incidents/templates/create"
-              className="glass-button primary"
-              style={{ textDecoration: 'none', borderRadius: '0px' }}
-            >
-              Create Your First Template
+            <Link href="/incidents/templates/create">
+              <Button className="bg-white text-slate-900 hover:bg-slate-100 font-semibold shadow-xl border border-white/20">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Template
+              </Button>
             </Link>
           )}
         </div>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-            gap: '1.5rem',
-          }}
-        >
-          {templates.map(template => (
-            <div
-              key={template.id}
-              className="glass-panel"
-              style={{
-                padding: '1.5rem',
-                background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid var(--border)',
-                borderRadius: '0px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                transition: 'all 0.15s',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '1rem',
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <h3
-                    style={{
-                      fontSize: '1.25rem',
-                      fontWeight: 700,
-                      marginBottom: '0.5rem',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {template.name}
-                  </h3>
-                  {template.description && (
-                    <p
-                      style={{
-                        fontSize: '0.9rem',
-                        color: 'var(--text-secondary)',
-                        marginBottom: '0.75rem',
-                      }}
-                    >
-                      {template.description}
-                    </p>
-                  )}
-                </div>
-                {template.isPublic ? (
-                  <span
-                    style={{
-                      padding: '0.25rem 0.75rem',
-                      background: '#eaf7ef',
-                      color: '#16a34a',
-                      border: '1px solid #a7f3d0',
-                      borderRadius: '0px',
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Public
-                  </span>
-                ) : (
-                  <span
-                    style={{
-                      padding: '0.25rem 0.75rem',
-                      background: '#f3f4f6',
-                      color: '#6b7280',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '0px',
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Private
-                  </span>
-                )}
-              </div>
+      </div>
 
-              <div
-                style={{
-                  padding: '0.75rem',
-                  background: '#f9fafb',
-                  border: '1px solid var(--border)',
-                  borderRadius: '0px',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <strong style={{ color: 'var(--text-muted)' }}>Title:</strong>{' '}
-                  <span style={{ color: 'var(--text-primary)' }}>{template.title}</span>
-                </div>
-                {template.descriptionText && (
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <strong style={{ color: 'var(--text-muted)' }}>Description:</strong>{' '}
-                    <span style={{ color: 'var(--text-primary)' }}>{template.descriptionText}</span>
-                  </div>
-                )}
-                <div
-                  style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}
-                >
-                  <div>
-                    <strong style={{ color: 'var(--text-muted)' }}>Urgency:</strong>{' '}
-                    <span
-                      style={{
-                        padding: '0.15rem 0.5rem',
-                        background:
-                          template.defaultUrgency === 'HIGH'
-                            ? '#feecec'
-                            : template.defaultUrgency === 'MEDIUM'
-                              ? '#fef3c7'
-                              : '#dcfce7',
-                        color:
-                          template.defaultUrgency === 'HIGH'
-                            ? '#dc2626'
-                            : template.defaultUrgency === 'MEDIUM'
-                              ? '#b45309'
-                              : '#15803d',
-                        borderRadius: '0px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {template.defaultUrgency}
-                    </span>
-                  </div>
-                  {template.defaultPriority && (
-                    <div>
-                      <strong style={{ color: 'var(--text-muted)' }}>Priority:</strong>{' '}
-                      <span
-                        style={{
-                          padding: '0.15rem 0.5rem',
-                          background: '#f3f4f6',
-                          color: '#6b7280',
-                          borderRadius: '0px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {template.defaultPriority}
-                      </span>
-                    </div>
-                  )}
-                  {template.defaultService && (
-                    <div>
-                      <strong style={{ color: 'var(--text-muted)' }}>Service:</strong>{' '}
-                      <span style={{ color: 'var(--primary-color)', fontWeight: 600 }}>
-                        {template.defaultService.name}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+      {/* Premium List Container */}
+      <div className="group relative rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-50 shadow-sm overflow-hidden min-h-[400px]">
+        {/* Decorative Accent Bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-slate-900 to-indigo-600 opacity-80" />
 
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '0.75rem',
-                  marginTop: 'auto',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid var(--border)',
-                }}
-              >
-                <Link
-                  href={`/incidents/create?template=${template.id}`}
-                  className="glass-button"
-                  style={{
-                    flex: 1,
-                    textDecoration: 'none',
-                    borderRadius: '0px',
-                    background: 'var(--primary-color)',
-                    color: 'white',
-                    textAlign: 'center',
-                    padding: '0.625rem 1rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  Use Template
-                </Link>
-                {canManageTemplates && template.createdById === permissions.id && (
-                  <form action={handleDelete} style={{ display: 'inline' }}>
-                    <input type="hidden" name="templateId" value={template.id} />
-                    <ConfirmSubmitButton
-                      confirmMessage="Are you sure you want to delete this template?"
-                      className="glass-button"
-                      style={{
-                        padding: '0.625rem 1rem',
-                        background: '#feecec',
-                        color: '#dc2626',
-                        border: '1px solid rgba(220, 38, 38, 0.3)',
-                        borderRadius: '0px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Delete
-                    </ConfirmSubmitButton>
-                  </form>
-                )}
-              </div>
-
-              <div
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <span>Created by {template.createdBy.name}</span>
-                <span>{formatDateTime(template.createdAt, userTimeZone, { format: 'date' })}</span>
-              </div>
-            </div>
-          ))}
+        {/* Header Strip */}
+        <div className="px-4 md:px-5 py-3.5 border-b border-slate-200/60 flex flex-wrap justify-between items-center gap-3 bg-white/50 backdrop-blur-sm">
+          <div className="text-[11px] uppercase tracking-[0.14em] text-slate-500 font-extrabold">
+            Available Templates
+          </div>
+          <div className="text-sm text-slate-500">
+            Total: <span className="font-semibold text-slate-900">{templates.length}</span>
+          </div>
         </div>
-      )}
+
+        {/* List Content */}
+        <div className="p-3 md:p-4 lg:p-5 flex flex-col gap-3">
+          {templates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <LayoutTemplate className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-xl font-semibold mb-1 text-slate-900">No Templates Found</h3>
+              <p className="text-sm text-slate-500 max-w-xs mx-auto mb-6">
+                Create your first template to speed up incident creation.
+              </p>
+              {canManageTemplates && (
+                <Link href="/incidents/templates/create">
+                  <Button variant="outline">Create First Template</Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            templates.map(template => (
+              <div
+                key={template.id}
+                className={cn(
+                  'group/row relative rounded-xl border bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-all duration-200',
+                  'hover:shadow-md hover:-translate-y-[1px] hover:border-slate-300',
+                  'border-slate-200',
+                  'border-l-4',
+                  urgencyColorMap[template.defaultUrgency] || 'border-l-slate-300'
+                )}
+              >
+                <div className="flex gap-3 items-start p-3.5 md:p-4">
+                  {/* Content Section */}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-base font-bold text-slate-900 leading-tight">
+                          {template.name}
+                        </h3>
+                        {template.isPublic ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-[10px] font-bold uppercase tracking-wider h-5"
+                          >
+                            Public
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-slate-500 border-slate-200 text-[10px] font-bold uppercase tracking-wider h-5"
+                          >
+                            Private
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Indicators */}
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'font-mono text-[10px] uppercase border',
+                            template.defaultUrgency === 'HIGH'
+                              ? 'text-red-600 border-red-200 bg-red-50'
+                              : template.defaultUrgency === 'MEDIUM'
+                                ? 'text-amber-600 border-amber-200 bg-amber-50'
+                                : 'text-emerald-600 border-emerald-200 bg-emerald-50'
+                          )}
+                        >
+                          {template.defaultUrgency}
+                        </Badge>
+                        {template.defaultPriority ? (
+                          <Badge
+                            variant="secondary"
+                            className="bg-slate-100 text-slate-600 border-slate-200 font-bold text-[10px]"
+                          >
+                            {template.defaultPriority}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className="bg-slate-100 text-slate-400 border-slate-200 font-bold text-[10px]"
+                          >
+                            No Priority
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-slate-500">
+                      {template.description ? (
+                        <p className="line-clamp-1 flex-1">{template.description}</p>
+                      ) : (
+                        <p className="italic opacity-50 flex-1">No description</p>
+                      )}
+
+                      <div className="flex items-center gap-4 text-xs font-medium shrink-0 opacity-80">
+                        {template.defaultService && (
+                          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                            <span className="uppercase tracking-wider text-[10px] font-bold text-slate-400">
+                              Service
+                            </span>
+                            <span className="text-slate-700">{template.defaultService.name}</span>
+                          </div>
+                        )}
+                        <div className="hidden sm:flex items-center gap-1.5">
+                          <span className="uppercase tracking-wider text-[10px] font-bold text-slate-400">
+                            Default Title
+                          </span>
+                          <span
+                            className="text-slate-700 max-w-[150px] truncate"
+                            title={template.title}
+                          >
+                            {template.title}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons (Right Side) */}
+                  <div className="flex items-center gap-1 self-start sm:self-center pl-2 border-l border-slate-100 ml-1">
+                    <Link href={`/incidents/create?template=${template.id}`}>
+                      <Button
+                        size="sm"
+                        className="h-8 shadow-sm bg-slate-900 text-white hover:bg-indigo-600 transition-colors"
+                      >
+                        Use Template
+                        <ArrowUpRight className="w-3.5 h-3.5 ml-1.5 opacity-70" />
+                      </Button>
+                    </Link>
+
+                    {canManageTemplates && template.createdById === permissions.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-full hover:bg-slate-100"
+                          >
+                            <MoreHorizontal className="w-4 h-4 text-slate-500" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <Link href={`/incidents/create?template=${template.id}`}>
+                            <DropdownMenuItem>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Use Template
+                            </DropdownMenuItem>
+                          </Link>
+                          <form action={handleDelete}>
+                            <input type="hidden" name="templateId" value={template.id} />
+                            <ConfirmSubmitButton
+                              confirmMessage="Are you sure you want to delete this template?"
+                              className="w-full relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-red-50 hover:text-red-600 focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Template
+                            </ConfirmSubmitButton>
+                          </form>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </main>
   );
 }

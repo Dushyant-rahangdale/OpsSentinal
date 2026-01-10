@@ -33,6 +33,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type NavItem = {
   href: string;
@@ -476,12 +477,7 @@ export default function Sidebar(
                 )}
               >
                 <AvatarImage
-                  src={
-                    userAvatar ||
-                    (userGender === 'FEMALE'
-                      ? 'https://i.pravatar.cc/150?img=44'
-                      : 'https://i.pravatar.cc/150?img=68')
-                  }
+                  src={userAvatar || getDefaultAvatar(userGender, userId)}
                   alt={userName || 'User'}
                 />
                 <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-[10px] font-bold uppercase backdrop-blur-md">

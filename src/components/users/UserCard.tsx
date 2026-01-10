@@ -169,7 +169,7 @@ export function UserCard({
     }
   };
 
-  const avatarUrl = user.avatarUrl || getDefaultAvatar(user.gender, user.id);
+  const avatarUrl = user.avatarUrl || getDefaultAvatar(user.gender, user.name);
 
   const statusVariants = {
     ACTIVE: 'success',

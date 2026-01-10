@@ -93,7 +93,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           where: incidentWhere as any,
           include: {
             assignee: {
-              select: { id: true, name: true, email: true },
+              select: { id: true, name: true, email: true, avatarUrl: true, gender: true },
             },
           },
           orderBy: { createdAt: 'desc' },

@@ -22,6 +22,7 @@ import IncidentCustomFields from '@/components/IncidentCustomFields';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
+import { getDefaultAvatar } from '@/lib/avatar';
 import {
   Card,
   CardContent,
@@ -74,7 +75,16 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   if (!incident) notFound();
 
   const [users, teams, customFields] = await Promise.all([
-    prisma.user.findMany(),
+    prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        gender: true,
+        role: true,
+      },
+    }),
     prisma.team.findMany(),
     prisma.customField.findMany({ orderBy: { order: 'asc' } }),
   ]);
@@ -186,10 +196,14 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       {/* Premium Header - Glassmorphic with Accent Bar */}
       <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/80 shadow-xl backdrop-blur-xl transition-all hover:shadow-2xl">
         {/* Animated Accent Bar */}
-        <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${getStatusColor()} animate-[pulse_3s_ease-in-out_infinite]`} />
+        <div
+          className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${getStatusColor()} animate-[pulse_3s_ease-in-out_infinite]`}
+        />
 
         {/* Subtle Background Tint */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${getStatusColor()} opacity-[0.03] pointer-events-none`} />
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${getStatusColor()} opacity-[0.03] pointer-events-none`}
+        />
 
         <div className="relative p-6 md:p-8">
           {/* Breadcrumb & Actions */}
@@ -222,7 +236,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
 
           <div className="flex flex-col md:flex-row md:items-start gap-6">
             {/* Large Status Icon */}
-            <div className={`shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${getStatusColor()} flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform duration-300`}>
+            <div
+              className={`shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${getStatusColor()} flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform duration-300`}
+            >
               <AlertCircle className="h-8 w-8 text-white" />
             </div>
 
@@ -239,7 +255,6 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                   {incident.status}
                 </Badge>
               </div>
-
             </div>
           </div>
         </div>
@@ -255,7 +270,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                 <Activity className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Priority</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Priority
+              </span>
             </div>
             <PrioritySelector
               incidentId={incident.id}
@@ -273,10 +290,16 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
                 <AlertCircle className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Urgency</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Urgency
+              </span>
             </div>
             <div className="flex items-center">
-              <Badge variant={urgencyVariant} size="sm" className="uppercase font-bold tracking-wide">
+              <Badge
+                variant={urgencyVariant}
+                size="sm"
+                className="uppercase font-bold tracking-wide"
+              >
                 {incident.urgency}
               </Badge>
             </div>
@@ -291,13 +314,20 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600">
                 <User className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assignee</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Assignee
+              </span>
             </div>
             <div className="flex items-center gap-2">
               {incident.assignee ? (
                 <>
                   <Avatar className="h-6 w-6 border border-slate-200">
-                    <AvatarImage src={incident.assignee.avatarUrl || undefined} />
+                    <AvatarImage
+                      src={
+                        incident.assignee.avatarUrl ||
+                        getDefaultAvatar(incident.assignee.gender, incident.assignee.name)
+                      }
+                    />
                     <AvatarFallback className="text-[9px] bg-slate-100 text-slate-600">
                       {incident.assignee.name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
@@ -321,7 +351,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
                 <Zap className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Service</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Service
+              </span>
             </div>
             <div className="font-semibold text-sm truncate text-slate-900 pl-1">
               {incident.service.name}
@@ -331,21 +363,19 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       </div>
 
       {/* Description Section - Enhanced with Better Styling */}
-      {
-        incident.description && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
-              <FileText className="h-4 w-4 text-slate-500" />
-              Description
-            </h3>
-            <div className="prose prose-sm prose-slate max-w-none">
-              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words m-0">
-                {incident.description}
-              </p>
-            </div>
+      {incident.description && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-slate-500" />
+            Description
+          </h3>
+          <div className="prose prose-sm prose-slate max-w-none">
+            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words m-0">
+              {incident.description}
+            </p>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* Main Grid - Like Teams Page */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6">
@@ -542,16 +572,24 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
 
           {/* Quick Links - Like Teams Page */}
           <div className="rounded-xl border border-slate-200/60 bg-white/50 shadow-sm p-5">
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-4">Quick Links</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-4">
+              Quick Links
+            </h3>
             <div className="space-y-2">
               <Link href={`/services/${incident.serviceId}`}>
-                <Button variant="outline" className="w-full justify-start gap-2 bg-white hover:bg-slate-50 h-9 text-sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2 bg-white hover:bg-slate-50 h-9 text-sm"
+                >
                   <Zap className="h-4 w-4" />
                   View Service
                 </Button>
               </Link>
               <Link href={`/analytics?incident=${incident.id}`}>
-                <Button variant="outline" className="w-full justify-start gap-2 bg-white hover:bg-slate-50 h-9 text-sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2 bg-white hover:bg-slate-50 h-9 text-sm"
+                >
                   <Clock className="h-4 w-4" />
                   View in Analytics
                 </Button>
@@ -560,6 +598,6 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
           </div>
         </aside>
       </div>
-    </div >
+    </div>
   );
 }

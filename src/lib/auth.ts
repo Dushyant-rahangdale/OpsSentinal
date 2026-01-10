@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { getOidcConfig } from '@/lib/oidc-config';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 function getJwtUserRefreshTtlMs() {
   const raw = process.env.JWT_USER_REFRESH_TTL_MS ?? '60000';
@@ -164,9 +165,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
         signOut: '/auth/signout',
       },
       callbacks: {
-        async jwt({ token, user, account }) {
+        async jwt({ token, user, account, trigger, session }) {
           // Initial sign in
           if (user && account) {
+            // ... (keep existing initial sign-in logic)
             // For OIDC, we must look up the user in the DB to get the internal CUID and current role
             // The 'user' object from OIDC is just the profile, so 'user.id' is the OIDC 'sub' (not our DB ID)
             if (account.provider === 'oidc' && user.email) {
@@ -240,6 +242,19 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             token.email = (user as any).email; // eslint-disable-line @typescript-eslint/no-explicit-any
           }
 
+          // Handle client-side update() calls
+          // If trigger is "update", we can accept partial updates from the client if needed,
+          // OR simply force a refresh (which is safer/better).
+          // We'll treat trigger="update" as a signal to bypass cache.
+          if (trigger === 'update') {
+            logger.debug('[Auth] JWT callback - update triggered', {
+              component: 'auth:jwt',
+              userId: token.sub,
+              sessionUpdates: session,
+            });
+            // If the client passed data, we COULD update token here, but we prefer fetching fresh from DB.
+          }
+
           // Fetch latest user data from database on each request to ensure name is up-to-date
           // This ensures name changes reflect immediately without requiring re-login
           if (token.sub && typeof token.sub === 'string') {
@@ -247,7 +262,9 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             const currentTokenVersion = (token as any).tokenVersion as number | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
             const lastFetchedAt = (token as any).userFetchedAt as number | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
             const ttlMs = getJwtUserRefreshTtlMs();
-            if (lastFetchedAt && Date.now() - lastFetchedAt < ttlMs) {
+
+            // Skip DB fetch if cached AND NOT forced by update trigger
+            if (trigger !== 'update' && lastFetchedAt && Date.now() - lastFetchedAt < ttlMs) {
               logger.debug('[Auth] JWT callback - skipping user refresh (cached)', {
                 component: 'auth:jwt',
                 userId: token.sub,
@@ -262,7 +279,15 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
 
                 const dbUser = await prisma.user.findUnique({
                   where: { id: token.sub },
-                  select: { name: true, email: true, role: true, tokenVersion: true, status: true },
+                  select: {
+                    name: true,
+                    email: true,
+                    role: true,
+                    tokenVersion: true,
+                    status: true,
+                    avatarUrl: true,
+                    gender: true,
+                  },
                 });
 
                 if (dbUser) {
@@ -293,6 +318,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   token.name = dbUser.name;
                   token.email = dbUser.email;
                   token.role = dbUser.role;
+                  token.avatarUrl = dbUser.avatarUrl;
+                  token.gender = dbUser.gender;
                   (token as any).tokenVersion = dbTokenVersion; // eslint-disable-line @typescript-eslint/no-explicit-any
 
                   logger.debug('[Auth] JWT callback - user data updated', {
@@ -345,6 +372,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             // Always use the latest name from token (which is fetched from DB)
             session.user.name = (token.name as string) || session.user.name;
             session.user.email = (token.email as string) || session.user.email;
+            session.user.avatarUrl = token.avatarUrl;
+            session.user.gender = token.gender;
+            // Map to standard image field as well for compatibility
+            session.user.image = token.avatarUrl || getDefaultAvatar(token.gender, token.sub);
 
             logger.debug('[Auth] Session callback - user data set', {
               component: 'auth:session',

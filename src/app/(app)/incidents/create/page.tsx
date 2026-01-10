@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
 import { getAllTemplates } from '../template-actions';
 import Link from 'next/link';
-import TemplateFormWrapper from '@/components/incident/TemplateFormWrapper';
+import CreateIncidentFormModern from '@/components/incident/CreateIncidentFormModern';
 
 export default async function CreateIncidentPage({
   searchParams,
@@ -12,15 +12,16 @@ export default async function CreateIncidentPage({
   const params = await searchParams;
   const templateId = params.template || null;
 
-  const [services, users, permissions, customFields] = await Promise.all([
+  const [services, users, permissions, customFields, teams] = await Promise.all([
     prisma.service.findMany({ orderBy: { name: 'asc' } }),
     prisma.user.findMany({
-      where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
-      select: { id: true, name: true, email: true },
+      where: { status: 'ACTIVE' },
+      select: { id: true, name: true, email: true, avatarUrl: true },
       orderBy: { name: 'asc' },
     }),
     getUserPermissions(),
     prisma.customField.findMany({ orderBy: { order: 'asc' } }),
+    prisma.team.findMany({ orderBy: { name: 'asc' } }),
   ]);
 
   const templates = await getAllTemplates(permissions.id);
@@ -101,90 +102,41 @@ export default async function CreateIncidentPage({
   }
 
   return (
-    <main>
-      <Link
-        href="/incidents"
-        style={{
-          color: 'var(--text-muted)',
-          marginBottom: '2rem',
-          display: 'inline-block',
-          textDecoration: 'none',
-          fontWeight: 500,
-        }}
-      >
-        ← Back to Incidents
-      </Link>
-
-      <div
-        className="glass-panel"
-        style={{
-          padding: '2.5rem',
-          maxWidth: '980px',
-          margin: '0 auto',
-          background: 'white',
-          border: '1px solid var(--border)',
-          borderRadius: '0px',
-        }}
-      >
-        <div
-          style={{
-            marginBottom: '2rem',
-            paddingBottom: '2rem',
-            borderBottom: '2px solid var(--border)',
-          }}
+    <main className="container mx-auto py-8 max-w-4xl [zoom:0.85]">
+      <div className="mb-8">
+        <Link
+          href="/incidents"
+          className="text-muted-foreground hover:text-foreground transition-colors mb-4 inline-flex items-center gap-2 text-sm font-medium"
         >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '1rem',
-              marginBottom: '0.5rem',
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <h1
-                style={{
-                  fontSize: '2.25rem',
-                  fontWeight: '800',
-                  marginBottom: '0.5rem',
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                Create Incident
-              </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-                Capture details and route to the appropriate team for response.
-              </p>
-            </div>
-            <Link
-              href="/incidents/templates"
-              style={{
-                padding: '0.625rem 1rem',
-                background: '#f9fafb',
-                border: '1px solid var(--border)',
-                borderRadius: '0px',
-                color: 'var(--primary-color)',
-                textDecoration: 'none',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📋 Templates
-            </Link>
-          </div>
-        </div>
+          ← Back to Incidents
+        </Link>
 
-        {/* Template Selector and Form */}
-        <TemplateFormWrapper
-          templates={templates as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-          services={services}
-          users={users}
-          selectedTemplateId={templateId}
-          customFields={customFields}
-        />
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-2">
+              Create Incident
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Log a new incident and trigger response workflows.
+            </p>
+          </div>
+          <Link
+            href="/incidents/templates"
+            className="hidden sm:inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+          >
+            Use Template
+          </Link>
+        </div>
       </div>
+
+      <CreateIncidentFormModern
+        templates={templates as any}
+        services={services}
+        users={users}
+        selectedTemplateId={templateId}
+        customFields={customFields}
+        teams={teams}
+      />
     </main>
   );
 }

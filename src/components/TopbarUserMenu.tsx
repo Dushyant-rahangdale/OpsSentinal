@@ -27,7 +27,7 @@ type Props = {
 };
 
 export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, userId }: Props) {
-  const finalAvatarUrl = avatarUrl || getDefaultAvatar(gender, userId);
+  const finalAvatarUrl = avatarUrl || getDefaultAvatar(gender, name || email || 'User');
   const initials = (name || email || 'U').slice(0, 2).toUpperCase();
 
   return (

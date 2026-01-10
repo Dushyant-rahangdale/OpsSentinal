@@ -152,6 +152,7 @@ export default async function Dashboard({
         name: true,
         email: true,
         avatarUrl: true,
+        gender: true,
       },
     },
   };
@@ -184,6 +185,8 @@ export default async function Dashboard({
         email: true,
         status: true,
         role: true,
+        avatarUrl: true,
+        gender: true,
       },
       orderBy: { name: 'asc' },
     }),

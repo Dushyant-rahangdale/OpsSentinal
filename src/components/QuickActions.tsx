@@ -23,6 +23,7 @@ import {
   Sparkles,
   Command,
   ChevronDown,
+  LayoutTemplate,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { cn } from '@/lib/utils';
@@ -63,6 +64,13 @@ export default function QuickActions({ canCreate = true }: QuickActionsProps) {
       icon: <Zap className="h-4 w-4" />,
       colorClass: 'bg-red-50 text-red-600 border-red-100 group-hover:bg-red-100',
       shortcut: 'I',
+    },
+    {
+      label: 'New Template',
+      href: '/incidents/templates/create',
+      description: 'Create incident template',
+      icon: <LayoutTemplate className="h-4 w-4" />,
+      colorClass: 'bg-slate-50 text-slate-600 border-slate-100 group-hover:bg-slate-100',
     },
     {
       label: 'New Postmortem',

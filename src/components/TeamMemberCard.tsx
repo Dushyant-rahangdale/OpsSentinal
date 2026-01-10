@@ -152,7 +152,9 @@ function TeamMemberCard({
           <Link href={`/users?q=${encodeURIComponent(member.user.email)}`} className="shrink-0">
             <Avatar className="h-12 w-12 ring-2 ring-background shadow-md hover:scale-110 transition-transform cursor-pointer">
               <AvatarImage
-                src={member.user.avatarUrl || getDefaultAvatar(member.user.gender, member.user.id)}
+                src={
+                  member.user.avatarUrl || getDefaultAvatar(member.user.gender, member.user.name)
+                }
                 alt={member.user.name}
                 className="object-cover"
               />

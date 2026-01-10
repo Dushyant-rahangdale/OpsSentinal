@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useTransition } from 'react';
+import { useSession } from 'next-auth/react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SettingsSection } from '@/components/settings/layout/SettingsSection';
@@ -60,6 +61,7 @@ export default function ProfileForm({
   gender,
 }: Props) {
   const router = useRouter();
+  const { update } = useSession();
   const [isUploading, startTransition] = useTransition();
   const [isSaving, setIsSaving] = useState(false);
   const [currentGender, setCurrentGender] = useState<string | null | undefined>(gender);
@@ -67,7 +69,7 @@ export default function ProfileForm({
 
   // Use local state for preview - show default avatar if no custom avatar
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
-    avatarUrl || getDefaultAvatar(gender, email || 'user')
+    avatarUrl || getDefaultAvatar(gender, name)
   );
 
   const defaultValues: ProfileFormData = {
@@ -94,6 +96,7 @@ export default function ProfileForm({
       if (result.success) {
         toast.success('Avatar updated');
         setAvatarPreview(selectedAvatarUrl);
+        await update(); // Trigger session refresh
         router.refresh();
       } else {
         toast.error(result.error || 'Failed to update avatar');
@@ -127,6 +130,7 @@ export default function ProfileForm({
 
         if (result.success) {
           toast.success('Profile photo updated');
+          await update(); // Trigger session refresh
           router.refresh();
         } else {
           toast.error(result.error || 'Failed to upload photo');
@@ -154,6 +158,7 @@ export default function ProfileForm({
 
     if (result.success) {
       toast.success('Profile updated successfully');
+      await update(); // Trigger session refresh
       router.refresh();
     } else {
       toast.error(result.error || 'Failed to update profile');
@@ -248,6 +253,7 @@ export default function ProfileForm({
                       toast.success('Profile photo removed');
                       // Set preview to gender-based default avatar
                       setAvatarPreview(getDefaultAvatar(currentGender, email || 'user'));
+                      await update(); // Trigger session refresh
                       router.refresh();
                     } else {
                       toast.error(result.error || 'Failed to remove photo');

@@ -435,6 +435,8 @@ export async function createIncident(formData: FormData) {
     }
   }
 
+  const teamId = formData.get('teamId') as string | null;
+
   const incident = await prisma.$transaction(async tx => {
     let assigneeName: string | null = null;
     if (assigneeId && assigneeId.length) {
@@ -443,6 +445,78 @@ export async function createIncident(formData: FormData) {
         select: { name: true },
       });
       assigneeName = assignee?.name || null;
+    }
+
+    // Intelligent Deduplication & Merging Logic
+    if (dedupKey && dedupKey.length > 0) {
+      // 1. Check for existing OPEN/ACKNOWLEDGED incident
+      const existingOpenIncident = await tx.incident.findFirst({
+        where: {
+          dedupKey,
+          serviceId,
+          status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] },
+        },
+      });
+
+      if (existingOpenIncident) {
+        // MERGE: Add as a note to the existing incident
+        await tx.incidentNote.create({
+          data: {
+            incidentId: existingOpenIncident.id,
+            userId: (await getCurrentUser())!.id, // Safe bang as assertResponderOrAbove checks user
+            content: `[Manual Report Merged] User reported recurrence.\n\nTitle: ${title}\nDescription: ${description}`,
+          },
+        });
+
+        await tx.incidentEvent.create({
+          data: {
+            incidentId: existingOpenIncident.id,
+            message: `Manual report merged from user.`,
+          },
+        });
+
+        return existingOpenIncident; // Redirect user to the existing incident
+      }
+
+      // 2. Check for RECENTLY RESOLVED incident (Re-open window: 30 mins)
+      const REOPEN_WINDOW_MS = 30 * 60 * 1000;
+      const recentResolvedIncident = await tx.incident.findFirst({
+        where: {
+          dedupKey,
+          serviceId,
+          status: 'RESOLVED',
+          resolvedAt: {
+            gt: new Date(Date.now() - REOPEN_WINDOW_MS),
+          },
+        },
+        orderBy: { resolvedAt: 'desc' }, // Get the most recently resolved one
+      });
+
+      if (recentResolvedIncident) {
+        // RE-OPEN: Update status to OPEN
+        const reOpenedIncident = await tx.incident.update({
+          where: { id: recentResolvedIncident.id },
+          data: {
+            status: 'OPEN',
+            resolvedAt: null, // Clear resolution time
+            events: {
+              create: {
+                message: `Incident re-opened due to manual report within 30m window.\nSummary: ${title}`,
+              },
+            },
+          },
+        });
+
+        await tx.incidentNote.create({
+          data: {
+            incidentId: reOpenedIncident.id,
+            userId: (await getCurrentUser())!.id,
+            content: `[Re-opened] User reported recurrence.\n\nTitle: ${title}\nDescription: ${description}`,
+          },
+        });
+
+        return reOpenedIncident;
+      }
     }
 
     const createdIncident = await tx.incident.create({
@@ -454,11 +528,14 @@ export async function createIncident(formData: FormData) {
         priority: priority && priority.length ? priority : null,
         dedupKey: dedupKey && dedupKey.length ? dedupKey : null,
         assigneeId: assigneeId && assigneeId.length ? assigneeId : null,
+        teamId: teamId && teamId.length ? teamId : null,
         events: {
           create: {
             message: assigneeId
               ? `Incident created with ${urgency} urgency and assigned to ${assigneeName || 'user'}`
-              : `Incident created with ${urgency} urgency`,
+              : teamId
+                ? `Incident created with ${urgency} urgency and assigned to team`
+                : `Incident created with ${urgency} urgency`,
           },
         },
         // Create custom field values

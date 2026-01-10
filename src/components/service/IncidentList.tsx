@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import { getDefaultAvatar } from '@/lib/avatar';
 import StatusBadge from '../incident/StatusBadge';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
@@ -58,7 +59,13 @@ type Incident = {
   priority: string | null;
   createdAt: Date;
   resolvedAt: Date | null;
-  assignee: { id: string; name: string; email: string } | null;
+  assignee: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+    gender?: string | null;
+  } | null;
 };
 
 type IncidentListProps = {
@@ -108,8 +115,7 @@ function PriorityBadge({ priority }: { priority: string | null }) {
     P4: 'info',
   };
 
-  const badgeVariant =
-    (colors[priority as keyof typeof colors] || 'neutral') as any;
+  const badgeVariant = (colors[priority as keyof typeof colors] || 'neutral') as any;
 
   return (
     <Badge variant={badgeVariant} size="xs" className="tracking-tight">
@@ -210,7 +216,10 @@ function IncidentList({ incidents, serviceId }: IncidentListProps) {
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-100">
                           <Avatar className="h-4 w-4">
                             <AvatarImage
-                              src={`https://api.dicebear.com/7.x/initials/svg?seed=${incident.assignee.name}`}
+                              src={
+                                incident.assignee.avatarUrl ||
+                                getDefaultAvatar(incident.assignee.gender, incident.assignee.name)
+                              }
                             />
                             <AvatarFallback className="text-[9px]">
                               {incident.assignee.name.slice(0, 2).toUpperCase()}

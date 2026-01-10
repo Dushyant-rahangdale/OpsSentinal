@@ -9,7 +9,7 @@ import { MessageSquare, Send, Lock, User } from 'lucide-react';
 type Note = {
   id: string;
   content: string;
-  user: { name: string; email: string };
+  user: { name: string; email: string; avatarUrl?: string | null; gender?: string | null };
   createdAt: Date;
 };
 
@@ -36,7 +36,9 @@ export default function IncidentNotes({ notes, canManage, onAddNote }: IncidentN
               />
               <div className="flex items-center justify-between bg-slate-50/50 px-3 py-2 border-t border-slate-100">
                 <div className="flex gap-2">
-                  <span className="text-[10px] text-slate-400 font-medium">**bold** *italic* `code`</span>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    **bold** *italic* `code`
+                  </span>
                 </div>
                 <Button type="submit" size="sm" className="h-8 rounded-lg px-4 gap-2">
                   <Send className="h-3.5 w-3.5" />
@@ -53,7 +55,9 @@ export default function IncidentNotes({ notes, canManage, onAddNote }: IncidentN
           </div>
           <div>
             <p className="text-sm font-bold text-slate-700">Read Only</p>
-            <p className="text-xs text-slate-500">Only responders can add notes to this incident.</p>
+            <p className="text-xs text-slate-500">
+              Only responders can add notes to this incident.
+            </p>
           </div>
         </div>
       )}
@@ -74,6 +78,8 @@ export default function IncidentNotes({ notes, canManage, onAddNote }: IncidentN
               key={note.id}
               content={note.content}
               userName={note.user.name}
+              userAvatar={note.user.avatarUrl}
+              userGender={note.user.gender}
               createdAt={note.createdAt}
               isResolution={note.content.startsWith('Resolution:')}
             />
