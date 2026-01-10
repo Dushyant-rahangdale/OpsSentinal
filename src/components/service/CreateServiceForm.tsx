@@ -2,6 +2,26 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/shadcn/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
+import { Plus, X, Lightbulb, Zap } from 'lucide-react';
 
 type CreateServiceFormProps = {
   teams: Array<{ id: string; name: string }>;
@@ -15,432 +35,203 @@ export default function CreateServiceForm({
   createAction,
 }: CreateServiceFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [teamId, setTeamId] = useState('');
+  const [slaTier, setSlaTier] = useState('');
+  const [escalationPolicyId, setEscalationPolicyId] = useState('');
 
   if (!isOpen) {
     return (
-      <div
-        className="glass-panel"
-        style={{
-          padding: '1.25rem',
-          marginBottom: '1.5rem',
-          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid var(--border)',
-          borderRadius: '0px',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-        }}
+      <Button
+        variant="outline"
+        className="w-full h-auto py-8 border-dashed border-2 hover:border-primary hover:bg-primary/5 flex flex-col gap-2 group transition-all"
         onClick={() => setIsOpen(true)}
-        onMouseEnter={e => {
-          e.currentTarget.style.borderColor = 'var(--primary-color)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(211, 47, 47, 0.08)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.borderColor = 'var(--border)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: 'var(--primary-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '1.2rem',
-                fontWeight: 'bold',
-              }}
-            >
-              +
-            </div>
-            <div>
-              <h2
-                style={{
-                  fontSize: '1.1rem',
-                  fontWeight: '600',
-                  marginBottom: '0.25rem',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                Create New Service
-              </h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Add a new service to monitor and manage incidents
-              </p>
-            </div>
-          </div>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            style={{ color: 'var(--text-muted)', transition: 'transform 0.2s' }}
-          >
-            <path d="M19 9l-7 7-7-7" />
-          </svg>
+        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+          <Plus className="h-6 w-6" />
         </div>
-      </div>
+        <div className="text-center">
+          <h3 className="font-semibold text-lg">Create New Service</h3>
+          <p className="text-muted-foreground text-sm">
+            Add a new service to monitor and manage incidents
+          </p>
+        </div>
+      </Button>
     );
   }
 
   return (
-    <div
-      className="glass-panel"
-      style={{
-        padding: '1.5rem',
-        marginBottom: '1.5rem',
-        background: 'white',
-        border: '1px solid var(--border)',
-        borderRadius: '0px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '1.25rem',
-        }}
-      >
-        <h2 style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-          Create New Service
-        </h2>
-        <button
-          onClick={e => {
-            e.stopPropagation();
-            setIsOpen(false);
-          }}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '0.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            color: 'var(--text-muted)',
-            borderRadius: '4px',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#f3f4f6')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
+    <Card className="border-primary/20 shadow-lg relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/40 to-primary" />
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <CardTitle>Create New Service</CardTitle>
+            <CardDescription>
+              Configure basic settings for your new service. Additional options available after
+              creation.
+            </CardDescription>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="h-8 w-8">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
 
-      <form
-        action={createAction}
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}
-      >
-        <div>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Service Name *
-          </label>
-          <input
-            name="name"
-            required
-            placeholder="e.g. API Gateway"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              fontSize: '0.9rem',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          />
-        </div>
-        <div>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Description
-          </label>
-          <input
-            name="description"
-            placeholder="Brief description of the service"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              fontSize: '0.9rem',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          />
-        </div>
-        <div>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Region
-          </label>
-          <input
-            name="region"
-            placeholder="e.g. US-East, EU-West"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              fontSize: '0.9rem',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          />
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-            Optional. Used to display impacted regions on the public status page.
-          </p>
-        </div>
-        <div>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: 'var(--text-primary)',
-            }}
-          >
-            SLA Tier
-          </label>
-          <input
-            name="slaTier"
-            placeholder="e.g. Gold, Silver, Bronze"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              fontSize: '0.9rem',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          />
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-            Optional. Displayed on the public status page when enabled.
-          </p>
-        </div>
-        <div>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Owner Team
-          </label>
-          <select
-            name="teamId"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              outline: 'none',
-              background: 'white',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          >
-            <option value="">Unassigned</option>
-            {teams.map(team => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Escalation Policy
-            <span
-              title="Defines who gets notified when incidents occur and in what order. You can create policies in the Policies section."
-              style={{
-                marginLeft: '0.5rem',
-                width: '18px',
-                height: '18px',
-                borderRadius: '50%',
-                background: '#e0f2fe',
-                color: '#0c4a6e',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                cursor: 'help',
-                border: '1px solid #bae6fd',
-              }}
-            >
-              ?
-            </span>
-          </label>
-          <select
-            name="escalationPolicyId"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              outline: 'none',
-              background: 'white',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-          >
-            <option value="">No escalation policy</option>
-            {policies.map(policy => (
-              <option key={policy.id} value={policy.id}>
-                {policy.name}
-              </option>
-            ))}
-          </select>
-          <p
-            style={{
-              fontSize: '0.75rem',
-              color: 'var(--text-muted)',
-              marginTop: '0.5rem',
-              lineHeight: 1.5,
-            }}
-          >
-            Select an escalation policy to define incident notification workflow.{' '}
-            <Link
-              href="/policies"
-              style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: '500' }}
-            >
-              Manage policies →
-            </Link>
-          </p>
-        </div>
-        <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-          <div
-            style={{
-              padding: '1rem 1.25rem',
-              background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-              border: '2px solid #fbbf24',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'start',
-              gap: '0.75rem',
-            }}
-          >
-            <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>💡</span>
-            <div>
-              <p
-                style={{
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  color: '#78350f',
-                  marginBottom: '0.25rem',
-                  lineHeight: 1.4,
-                }}
-              >
-                Configure Service-Level Notifications After Creation
-              </p>
-              <p
-                style={{
-                  fontSize: '0.8rem',
-                  color: '#92400e',
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                Once your service is created, navigate to the service settings to set up advanced
-                notification channels including Slack, Microsoft Teams, webhooks, and more.
+      <form action={createAction}>
+        <input type="hidden" name="teamId" value={teamId === 'unassigned' ? '' : teamId} />
+        <input type="hidden" name="slaTier" value={slaTier} />
+        <input
+          type="hidden"
+          name="escalationPolicyId"
+          value={escalationPolicyId === 'none' ? '' : escalationPolicyId}
+        />
+        <CardContent className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                Service Name <span className="text-destructive">*</span>
+              </Label>
+              <Input id="name" name="name" required placeholder="e.g. API Gateway" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teamId">Owner Team</Label>
+              <Select value={teamId} onValueChange={setTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {teams.map(team => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                name="description"
+                placeholder="Brief description of the service"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="region">Region</Label>
+              <Input
+                id="region"
+                name="region"
+                list="regions-list"
+                placeholder="Select or enter region"
+              />
+              <datalist id="regions-list">
+                <option value="Global" />
+                <option value="US" />
+                <option value="US-East (N. Virginia)" />
+                <option value="US-East (Ohio)" />
+                <option value="US-West (Oregon)" />
+                <option value="US-West (N. California)" />
+                <option value="US-Central" />
+                <option value="CA (Canada)" />
+                <option value="EU" />
+                <option value="EU-West (Ireland)" />
+                <option value="EU-West (London)" />
+                <option value="EU-West (Paris)" />
+                <option value="EU-Central (Frankfurt)" />
+                <option value="EU-North (Stockholm)" />
+                <option value="EU-South (Milan)" />
+                <option value="APAC" />
+                <option value="Asia Pacific (Tokyo)" />
+                <option value="Asia Pacific (Singapore)" />
+                <option value="Asia Pacific (Sydney)" />
+                <option value="Asia Pacific (Seoul)" />
+                <option value="Asia Pacific (Mumbai)" />
+                <option value="Asia Pacific (Hong Kong)" />
+                <option value="SA (South America)" />
+                <option value="SA-East (Sao Paulo)" />
+                <option value="ME (Middle East)" />
+                <option value="AF (Africa)" />
+              </datalist>
+              <p className="text-[0.8rem] text-muted-foreground">
+                Optional. Used to display impacted regions.
               </p>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="slaTier">SLA Tier</Label>
+              <Select value={slaTier} onValueChange={setSlaTier}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Platinum">Platinum (99.99%)</SelectItem>
+                  <SelectItem value="Gold">Gold (99.9%)</SelectItem>
+                  <SelectItem value="Silver">Silver (99.5%)</SelectItem>
+                  <SelectItem value="Bronze">Bronze (99.0%)</SelectItem>
+                  <SelectItem value="Internal">Internal (Best Effort)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[0.8rem] text-muted-foreground">
+                Optional. Defines availability expectations.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="escalationPolicyId" className="flex items-center gap-2">
+                Escalation Policy
+                <span
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground cursor-help"
+                  title="Defines who gets notified when incidents occur"
+                >
+                  ?
+                </span>
+              </Label>
+              <Select value={escalationPolicyId} onValueChange={setEscalationPolicyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No escalation policy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No escalation policy</SelectItem>
+                  {policies.map(policy => (
+                    <SelectItem key={policy.id} value={policy.id}>
+                      {policy.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-[0.8rem] text-muted-foreground">
+                <Link href="/policies" className="text-primary hover:underline font-medium">
+                  Manage policies
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
-        <div
-          style={{
-            gridColumn: '1 / -1',
-            marginTop: '0.5rem',
-            display: 'flex',
-            gap: '0.75rem',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="glass-button"
-            style={{ padding: '0.75rem 1.5rem' }}
-          >
+
+          <Alert className="bg-amber-50 border-amber-200 text-amber-900">
+            <Lightbulb className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800 font-semibold flex items-center gap-2">
+              Pro Tip: Notifications
+            </AlertTitle>
+            <AlertDescription className="text-amber-800/90 mt-1">
+              Once created, navigate to service settings to configure Slack, Microsoft Teams, and
+              webhook notifications.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+
+        <CardFooter className="flex justify-end gap-3 bg-muted/40 p-4">
+          <Button variant="ghost" onClick={() => setIsOpen(false)} type="button">
             Cancel
-          </button>
-          <button
-            type="submit"
-            className="glass-button primary"
-            style={{ padding: '0.75rem 1.5rem' }}
-          >
-            Create Service
-          </button>
-        </div>
+          </Button>
+          <Button type="submit">
+            <Zap className="mr-2 h-4 w-4" /> Create Service
+          </Button>
+        </CardFooter>
       </form>
-    </div>
+    </Card>
   );
 }

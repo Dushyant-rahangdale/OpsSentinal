@@ -23,7 +23,7 @@ type ScheduleCreateFormProps = {
   action: (
     prevState: any,
     formData: FormData
-  ) => Promise<{ error?: string } | { success?: boolean }>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  ) => Promise<{ error?: string } | { success?: boolean }>;
   canCreate: boolean;
 };
 

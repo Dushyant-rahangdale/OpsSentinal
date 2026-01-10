@@ -1,12 +1,41 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useTransition } from 'react';
+import { IncidentStatus } from '@prisma/client';
 import Link from 'next/link';
-import StatusBadge from '../incident/StatusBadge';
+import { useRouter } from 'next/navigation';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import StatusBadge from '../incident/StatusBadge';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
+import {
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  User as UserIcon,
+  Search,
+  ArrowRight,
+  MoreHorizontal,
+  Eye,
+  Circle,
+  PauseCircle,
+  ShieldOff,
+  ShieldCheck,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/shadcn/dropdown-menu';
+import { updateIncidentStatus } from '@/app/(app)/incidents/actions';
+import { useToast } from '@/components/ToastProvider';
 
-// Simple date formatting helper - moved outside component to prevent recreation
+// Helper to format relative time
 function formatDistanceToNow(date: Date, timeZone: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -24,7 +53,7 @@ function formatDistanceToNow(date: Date, timeZone: string): string {
 type Incident = {
   id: string;
   title: string;
-  status: string;
+  status: IncidentStatus;
   urgency: string;
   priority: string | null;
   createdAt: Date;
@@ -37,179 +66,236 @@ type IncidentListProps = {
   serviceId: string;
 };
 
+const statusAccentClass: Record<string, string> = {
+  OPEN: 'border-l-red-500',
+  ACKNOWLEDGED: 'border-l-amber-500',
+  RESOLVED: 'border-l-emerald-500',
+  SNOOZED: 'border-l-slate-400',
+  SUPPRESSED: 'border-l-slate-400',
+};
+
+// Urgency Badge Component
+function UrgencyBadge({ urgency }: { urgency: string }) {
+  if (urgency === 'HIGH') {
+    return (
+      <Badge
+        variant="outline"
+        className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors h-5 px-1.5 text-[10px] font-bold tracking-tight uppercase"
+      >
+        High
+      </Badge>
+    );
+  }
+  if (urgency === 'MEDIUM') {
+    return (
+      <Badge
+        variant="outline"
+        className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-colors h-5 px-1.5 text-[10px] font-bold tracking-tight uppercase"
+      >
+        Med
+      </Badge>
+    );
+  }
+  return <span className="text-slate-400 text-[10px] uppercase font-bold tracking-tight">Low</span>;
+}
+
+// Priority Badge Component
+function PriorityBadge({ priority }: { priority: string | null }) {
+  if (!priority) return null;
+
+  const colors = {
+    P1: 'bg-red-100 text-red-700 border-red-200',
+    P2: 'bg-orange-100 text-orange-700 border-orange-200',
+    P3: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    P4: 'bg-blue-100 text-blue-700 border-blue-200',
+  };
+
+  const colorClass =
+    colors[priority as keyof typeof colors] || 'bg-slate-100 text-slate-700 border-slate-200';
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn('h-5 px-1.5 text-[10px] font-bold tracking-tight', colorClass)}
+    >
+      {priority}
+    </Badge>
+  );
+}
+
 function IncidentList({ incidents, serviceId }: IncidentListProps) {
   const { userTimeZone } = useTimezone();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const { showToast } = useToast();
+
+  const handleStatusChange = (incidentId: string, newStatus: IncidentStatus) => {
+    startTransition(async () => {
+      try {
+        await updateIncidentStatus(incidentId, newStatus);
+        showToast(`Incident ${newStatus.toLowerCase()} successfully`, 'success');
+        router.refresh();
+      } catch (error) {
+        showToast('Failed to update status', 'error');
+      }
+    });
+  };
 
   if (incidents.length === 0) {
     return (
-      <div
-        style={{
-          padding: '3rem 2rem',
-          textAlign: 'center',
-          background: 'white',
-          border: '1px solid var(--border)',
-          borderRadius: '0px',
-        }}
-      >
-        <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✅</div>
-        <h3
-          style={{
-            fontSize: '1.1rem',
-            fontWeight: '600',
-            marginBottom: '0.5rem',
-            color: 'var(--text-primary)',
-          }}
-        >
-          No incidents recorded
-        </h3>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-          This service has no recorded incidents.
+      <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-white">
+        <div className="bg-slate-50 p-4 rounded-full mb-4 ring-1 ring-slate-100">
+          <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-1">No incidents recorded</h3>
+        <p className="text-slate-500 max-w-sm mb-6">
+          This service is running smoothly with no recorded incidents.
         </p>
-        <Link
-          href={`/incidents/create?serviceId=${serviceId}`}
-          className="glass-button primary"
-          style={{ display: 'inline-block' }}
-        >
-          Create First Incident
-        </Link>
+        <Button asChild>
+          <Link href={`/incidents/create?serviceId=${serviceId}`}>Create Incident</Link>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        background: 'white',
-        border: '1px solid var(--border)',
-        borderRadius: '0px',
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-          gap: '1rem',
-          padding: '1rem 1.5rem',
-          background: '#f8fafc',
-          borderBottom: '1px solid var(--border)',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          color: 'var(--text-muted)',
-        }}
-      >
-        <div>Incident</div>
-        <div>Status</div>
-        <div>Priority</div>
-        <div>Assignee</div>
-        <div>Created</div>
-      </div>
-      <div>
+    <div className="p-3 md:p-4 bg-white">
+      <div className="flex flex-col gap-3">
         {incidents.map(incident => {
-          const incidentStatus = incident.status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+          const incidentStatus = incident.status;
+
           return (
-            <Link
+            <div
               key={incident.id}
-              href={`/incidents/${incident.id}`}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-                gap: '1rem',
-                padding: '1rem 1.5rem',
-                borderBottom: '1px solid var(--border)',
-                textDecoration: 'none',
-                color: 'inherit',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#f8fafc';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+              className={cn(
+                'group relative rounded-xl border bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-all',
+                'hover:shadow-md hover:-translate-y-[1px]',
+                'border-slate-200',
+                statusAccentClass[incidentStatus] ?? 'border-l-slate-300',
+                'border-l-4'
+              )}
             >
-              <div>
-                <div
-                  style={{
-                    fontWeight: '600',
-                    color: 'var(--text-primary)',
-                    marginBottom: '0.25rem',
-                    fontSize: '0.95rem',
-                  }}
-                >
-                  {incident.title}
-                </div>
-                {incident.urgency === 'HIGH' && (
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.15rem 0.5rem',
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      color: 'var(--danger)',
-                      borderRadius: '4px',
-                      fontWeight: '600',
-                    }}
-                  >
-                    High Urgency
-                  </span>
-                )}
-                {incident.urgency === 'MEDIUM' && (
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.15rem 0.5rem',
-                      background: 'rgba(245, 158, 11, 0.12)',
-                      color: '#b45309',
-                      borderRadius: '4px',
-                      fontWeight: '600',
-                    }}
-                  >
-                    Medium Urgency
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <StatusBadge status={incidentStatus} size="sm" showDot />
-              </div>
-              <div>
-                {incident.priority ? (
-                  <span
-                    style={{
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      color:
-                        incident.priority === 'P1'
-                          ? 'var(--danger)'
-                          : incident.priority === 'P2'
-                            ? '#f97316'
-                            : incident.priority === 'P3'
-                              ? 'var(--warning)'
-                              : 'var(--text-muted)',
-                    }}
-                  >
-                    {incident.priority}
-                  </span>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>
-                )}
-              </div>
-              <div>
-                {incident.assignee ? (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                    {incident.assignee.name}
+              <Link
+                href={`/incidents/${incident.id}`}
+                className="absolute inset-0 z-0"
+                aria-label={`View incident ${incident.title}`}
+              />
+
+              <div className="relative z-10 p-3 md:p-3.5 flex items-start gap-3 md:gap-4">
+                <div className="min-w-0 flex-1 space-y-2">
+                  {/* Header Row: Title & Badges */}
+                  <div className="flex flex-wrap items-start justify-between gap-y-2 gap-x-4">
+                    <h3 className="text-sm font-extrabold text-slate-900 leading-tight group-hover:text-primary transition-colors pr-2">
+                      {incident.title}
+                    </h3>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={incidentStatus} size="sm" showDot />
+                      <PriorityBadge priority={incident.priority} />
+                      <UrgencyBadge urgency={incident.urgency} />
+                    </div>
                   </div>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    Unassigned
-                  </span>
-                )}
+
+                  {/* Meta Row */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                      <span className="font-mono text-slate-400">
+                        #{incident.id.slice(-5).toUpperCase()}
+                      </span>
+                      <span className="opacity-30">&middot;</span>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3 w-3 opacity-70" />
+                        {formatDistanceToNow(new Date(incident.createdAt), userTimeZone)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Assignee */}
+                      {incident.assignee ? (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-100">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage
+                              src={`https://api.dicebear.com/7.x/initials/svg?seed=${incident.assignee.name}`}
+                            />
+                            <AvatarFallback className="text-[9px]">
+                              {incident.assignee.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-slate-700 font-medium max-w-[100px] truncate">
+                            {incident.assignee.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic px-2">Unassigned</span>
+                      )}
+
+                      {/* Actions Menu */}
+                      <div className="relative z-20">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-full hover:bg-slate-100 -mr-2 focus:ring-1 focus:ring-slate-300"
+                              onClick={e => {
+                                e.stopPropagation(); // Stop link navigation
+                              }}
+                            >
+                              <MoreHorizontal className="h-4 w-4 text-slate-400" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/incidents/${incident.id}`}
+                                className="flex items-center gap-2"
+                              >
+                                <Eye className="h-4 w-4 text-slate-500" />
+                                View details
+                              </Link>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            {incident.status !== 'RESOLVED' && (
+                              <DropdownMenuItem
+                                onSelect={() => handleStatusChange(incident.id, 'RESOLVED')}
+                                className="flex items-center gap-2"
+                              >
+                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                Resolve
+                              </DropdownMenuItem>
+                            )}
+
+                            {incident.status !== 'ACKNOWLEDGED' &&
+                              incident.status !== 'RESOLVED' && (
+                                <DropdownMenuItem
+                                  onSelect={() => handleStatusChange(incident.id, 'ACKNOWLEDGED')}
+                                  className="flex items-center gap-2"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-amber-600" />
+                                  Acknowledge
+                                </DropdownMenuItem>
+                              )}
+
+                            {incident.status === 'ACKNOWLEDGED' && (
+                              <DropdownMenuItem
+                                onSelect={() => handleStatusChange(incident.id, 'OPEN')}
+                                className="flex items-center gap-2"
+                              >
+                                <Circle className="h-4 w-4 text-slate-500" />
+                                Unacknowledge
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {formatDistanceToNow(new Date(incident.createdAt), userTimeZone)}
-              </div>
-            </Link>
+            </div>
           );
         })}
       </div>

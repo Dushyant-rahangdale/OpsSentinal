@@ -64,22 +64,22 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
         align="end"
         forceMount
       >
-        {/* Immersive Header */}
-        <div className="relative p-6 bg-gradient-to-br from-primary/90 via-primary to-primary/90 text-primary-foreground overflow-hidden border-b border-white/10">
+        {/* Compact Header */}
+        <div className="relative p-3 bg-gradient-to-br from-primary/90 via-primary to-primary/90 text-primary-foreground overflow-hidden border-b border-white/10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_50%)]" />
 
-          <div className="relative z-10 flex items-center gap-3">
-            <Avatar className="h-12 w-12 border-2 border-white/20 shadow-md ring-2 ring-white/10">
+          <div className="relative z-10 flex items-center gap-2.5">
+            <Avatar className="h-8 w-8 border-2 border-white/20 shadow-md ring-2 ring-white/10">
               <AvatarImage src={finalAvatarUrl} />
-              <AvatarFallback className="bg-white/10 text-white backdrop-blur-md">
+              <AvatarFallback className="bg-white/10 text-white backdrop-blur-md text-xs">
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0">
-              <p className="text-sm font-bold truncate leading-none mb-1 text-white">
+              <p className="text-sm font-bold truncate leading-none mb-0.5 text-white">
                 {name || 'User'}
               </p>
-              <p className="text-[10px] text-white/70 font-medium truncate mb-1">{email}</p>
+              <p className="text-[9px] text-white/70 font-medium truncate mb-0.5">{email}</p>
               {role && (
                 <div className="inline-flex self-start">
                   {(() => {
@@ -95,7 +95,7 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
                     return (
                       <span
                         className={cn(
-                          'px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider border shadow-sm backdrop-blur-md',
+                          'px-1 py-0 rounded text-[8px] font-medium uppercase tracking-wider border shadow-sm backdrop-blur-md',
                           activeColor
                         )}
                       >
@@ -109,23 +109,23 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
           </div>
         </div>
 
-        <div className="p-2 space-y-1">
+        <div className="p-1 space-y-0.5">
           <DropdownMenuGroup>
             <DropdownMenuItem
               asChild
-              className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-2.5 border border-transparent focus:border-border/50 transition-all"
+              className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-1.5 border border-transparent focus:border-border/50 transition-all font-medium"
             >
-              <Link href="/settings/profile" className="flex items-center w-full">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-blue-600 mr-3 group-hover:bg-blue-100 group-hover:scale-105 transition-all shadow-sm border border-blue-100">
-                  <User className="h-4 w-4" />
+              <Link href="/settings/profile" className="flex items-center w-full px-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-600 mr-2.5 group-hover:bg-blue-100 group-hover:scale-105 transition-all shadow-sm border border-blue-100">
+                  <User className="h-3.5 w-3.5" />
                 </div>
                 <div className="flex flex-col flex-1">
-                  <span className="text-sm font-medium text-foreground">My Profile</span>
-                  <span className="text-[10px] text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                  <span className="text-xs font-semibold text-foreground">My Profile</span>
+                  <span className="text-[9px] text-muted-foreground group-hover:text-foreground/80 transition-colors leading-tight">
                     Details & preferences
                   </span>
                 </div>
-                <DropdownMenuShortcut className="text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border/50">
+                <DropdownMenuShortcut className="text-[9px] bg-muted px-1 py-0 rounded border border-border/50">
                   ⇧⌘P
                 </DropdownMenuShortcut>
               </Link>
@@ -133,61 +133,61 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
 
             <DropdownMenuItem
               asChild
-              className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-2.5 mt-1 border border-transparent focus:border-border/50 transition-all"
+              className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-1.5 mt-0.5 border border-transparent focus:border-border/50 transition-all font-medium"
             >
-              <Link href="/settings" className="flex items-center w-full">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-50 text-purple-600 mr-3 group-hover:bg-purple-100 group-hover:scale-105 transition-all shadow-sm border border-purple-100">
-                  <Settings className="h-4 w-4" />
+              <Link href="/settings" className="flex items-center w-full px-2">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-50 text-purple-600 mr-2.5 group-hover:bg-purple-100 group-hover:scale-105 transition-all shadow-sm border border-purple-100">
+                  <Settings className="h-3.5 w-3.5" />
                 </div>
                 <div className="flex flex-col flex-1">
-                  <span className="text-sm font-medium text-foreground">Settings</span>
-                  <span className="text-[10px] text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                  <span className="text-xs font-semibold text-foreground">Settings</span>
+                  <span className="text-[9px] text-muted-foreground group-hover:text-foreground/80 transition-colors leading-tight">
                     System configuration
                   </span>
                 </div>
-                <DropdownMenuShortcut className="text-[10px] bg-muted px-1.5 py-0.5 rounded border border-border/50">
+                <DropdownMenuShortcut className="text-[9px] bg-muted px-1 py-0 rounded border border-border/50">
                   ⌘S
                 </DropdownMenuShortcut>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <div className="px-2 py-1">
+          <div className="px-1 py-0.5">
             <DropdownMenuSeparator className="bg-border/60" />
           </div>
 
           <DropdownMenuGroup>
             <DropdownMenuItem
               onClick={() => window.dispatchEvent(new CustomEvent('toggleKeyboardShortcuts'))}
-              className="group cursor-pointer focus:bg-muted/60 rounded-md py-2"
+              className="group cursor-pointer focus:bg-muted/60 rounded-md py-1.5 px-2 font-medium"
             >
-              <Keyboard className="mr-3 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              <span className="text-sm font-medium">Keyboard Shortcuts</span>
+              <Keyboard className="mr-2.5 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              <span className="text-xs">Keyboard Shortcuts</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               asChild
-              className="group cursor-pointer focus:bg-muted/60 rounded-md py-2"
+              className="group cursor-pointer focus:bg-muted/60 rounded-md py-1.5 px-2 font-medium"
             >
               <Link href="/help" className="flex items-center w-full">
-                <HelpCircle className="mr-3 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-sm font-medium">Help & Documentation</span>
+                <HelpCircle className="mr-2.5 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="text-xs">Help & Documentation</span>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <div className="px-2 py-1">
+          <div className="px-1 py-0.5">
             <DropdownMenuSeparator className="bg-border/60" />
           </div>
 
           <DropdownMenuItem
-            className="group cursor-pointer focus:bg-red-50 focus:text-red-600 rounded-md py-2.5 text-red-600 mt-1 border border-transparent focus:border-red-100 transition-all"
+            className="group cursor-pointer focus:bg-red-50 focus:text-red-600 rounded-md py-1.5 text-red-600 mt-0.5 border border-transparent focus:border-red-100 transition-all font-medium px-2"
             onClick={() => (window.location.href = '/api/auth/signout')}
           >
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-50 text-red-500 mr-3 group-hover:bg-red-100 group-hover:scale-105 transition-all shadow-sm border border-red-100">
-              <LogOut className="h-4 w-4" />
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-50 text-red-500 mr-2.5 group-hover:bg-red-100 group-hover:scale-105 transition-all shadow-sm border border-red-100">
+              <LogOut className="h-3.5 w-3.5" />
             </div>
-            <span className="font-medium">Sign Out</span>
-            <DropdownMenuShortcut className="text-[10px] bg-red-100/50 text-red-600 px-1.5 py-0.5 rounded border border-red-200">
+            <span className="font-medium text-xs">Sign Out</span>
+            <DropdownMenuShortcut className="text-[9px] bg-red-100/50 text-red-600 px-1 py-0 rounded border border-red-200">
               ⇧⌘Q
             </DropdownMenuShortcut>
           </DropdownMenuItem>

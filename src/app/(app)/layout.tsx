@@ -5,7 +5,7 @@ import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 import Sidebar from '@/components/Sidebar';
-import SidebarTrigger from '@/components/SidebarTrigger';
+
 import TopbarUserMenu from '@/components/TopbarUserMenu';
 import SidebarSearch from '@/components/SidebarSearch';
 import QuickActions from '@/components/QuickActions';
@@ -105,11 +105,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { calculateSLAMetrics } = await import('@/lib/sla-server');
   const slaMetrics = await calculateSLAMetrics();
   const criticalOpenCount = slaMetrics.criticalCount;
+  const mediumOpenCount = slaMetrics.mediumUrgencyCount;
+  const lowOpenCount = slaMetrics.lowUrgencyCount;
 
-  const statusTone = criticalOpenCount > 0 ? 'danger' : 'ok';
-  const statusLabel = criticalOpenCount > 0 ? 'Red Alert' : 'Green Corridor';
-  const statusDetail =
-    criticalOpenCount > 0 ? `${criticalOpenCount} critical open` : 'No critical incidents';
+  // Status Logic
+  let statusTone: 'ok' | 'warning' | 'danger' = 'ok';
+  let statusLabel = 'Green Corridor';
+  let statusDetail = 'All systems fully operational';
+
+  if (criticalOpenCount > 0) {
+    statusTone = 'danger';
+    statusLabel = 'Red Alert';
+    statusDetail = `${criticalOpenCount} critical incidents active`;
+  } else if (mediumOpenCount > 0) {
+    statusTone = 'warning';
+    statusLabel = 'Yellow Alert';
+    statusDetail = `${mediumOpenCount} warning signs detected`;
+  } else if (lowOpenCount > 0) {
+    statusTone = 'ok'; // Keep green for low, but maybe detailed
+    statusLabel = 'Systems Normal';
+    statusDetail = `${lowOpenCount} low urgency items`;
+  }
 
   const userTimeZone = dbUser?.timeZone || 'UTC';
 
@@ -132,11 +148,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <div className="content-shell">
                 <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 [zoom:0.8]">
                   <div className="flex items-center gap-4">
-                    <SidebarTrigger />
                     <OperationalStatus
                       tone={statusTone}
                       label={statusLabel}
                       detail={statusDetail}
+                      criticalCount={criticalOpenCount}
+                      mediumCount={mediumOpenCount}
+                      lowCount={lowOpenCount}
                     />
                     <TopbarBreadcrumbs />
                   </div>

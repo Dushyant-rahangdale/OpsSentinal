@@ -422,7 +422,7 @@ export default async function AnalyticsV2Page({
           </div>
         </MetricCard>
         <MetricCard
-          label="Active Incidents"
+          label="Active Incidents (excludes snoozed/suppressed)"
           value={metrics.activeIncidents.toLocaleString()}
           detail="Current backlog"
           variant={metrics.activeIncidents > 5 ? 'danger' : 'default'}

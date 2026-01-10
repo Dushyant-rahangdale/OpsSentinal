@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 type ServiceTabsProps = {
   serviceId: string;
@@ -10,6 +11,13 @@ type ServiceTabsProps = {
 export default function ServiceTabs({ serviceId }: ServiceTabsProps) {
   const pathname = usePathname();
 
+  const basePath = `/services/${serviceId}`;
+  const activeHref = pathname.startsWith(`${basePath}/integrations`)
+    ? `${basePath}/integrations`
+    : pathname.startsWith(`${basePath}/settings`) || pathname.startsWith(`${basePath}/webhooks`)
+      ? `${basePath}/settings`
+      : basePath;
+
   const tabs = [
     { href: `/services/${serviceId}`, label: 'Overview' },
     { href: `/services/${serviceId}/integrations`, label: 'Integrations' },
@@ -17,30 +25,19 @@ export default function ServiceTabs({ serviceId }: ServiceTabsProps) {
   ];
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: '0.5rem',
-        borderBottom: '1px solid var(--border)',
-        marginTop: '1rem',
-      }}
-    >
+    <div className="flex items-center gap-6 border-b border-slate-200 mb-8">
       {tabs.map(tab => {
-        const isActive = pathname === tab.href;
+        const isActive = activeHref === tab.href;
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            style={{
-              padding: '0.75rem 1.5rem',
-              textDecoration: 'none',
-              color: isActive ? 'var(--primary-color)' : 'var(--text-primary)',
-              fontWeight: '500',
-              fontSize: '0.95rem',
-              borderBottom: `2px solid ${isActive ? 'var(--primary-color)' : 'transparent'}`,
-              marginBottom: '-1px',
-              transition: 'all 0.2s',
-            }}
+            className={cn(
+              'pb-3 pt-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+              isActive
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+            )}
           >
             {tab.label}
           </Link>

@@ -51,7 +51,7 @@ export function buildIncidentWhere({
 
   if (filter === 'mine') {
     where.assigneeId = assigneeId ?? undefined;
-    where.status = { notIn: ['RESOLVED'] };
+    where.status = { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] };
   } else if (filter === 'all_open') {
     where.status = { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] };
   } else if (filter === 'resolved') {

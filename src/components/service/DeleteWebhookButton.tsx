@@ -1,55 +1,90 @@
 'use client';
 
-import { logger } from '@/lib/logger';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/shadcn/alert-dialog';
+import { Trash2, Loader2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { useToast } from '@/components/ToastProvider';
 
 type Props = {
-    deleteAction: () => Promise<void>;
-    redirectTo?: string;
+  deleteAction: () => Promise<void>;
+  redirectTo?: string;
 };
 
 export default function DeleteWebhookButton({ deleteAction, redirectTo }: Props) {
-    const [isDeleting, setIsDeleting] = useState(false);
-    const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const { showToast } = useToast();
 
-    const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this webhook integration?')) {
-            return;
-        }
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAction();
+      showToast('Webhook deleted successfully', 'success');
+      if (redirectTo) {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
+        setOpen(false);
+        setIsDeleting(false);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Failed to delete webhook', { error: errorMessage });
+      showToast('Failed to delete webhook', 'error');
+      setIsDeleting(false);
+      setOpen(false);
+    }
+  };
 
-        setIsDeleting(true);
-        try {
-            await deleteAction();
-            if (redirectTo) {
-                router.push(redirectTo);
-                router.refresh();
-            }
-        } catch (error) {
-            if (error instanceof Error) {
-                logger.error('Failed to delete webhook', { error: error.message });
-            } else {
-                logger.error('Failed to delete webhook', { error: String(error) });
-            }
-            alert('Failed to delete webhook');
-            setIsDeleting(false);
-        }
-    };
-
-    return (
-        <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="glass-button"
-            style={{
-                color: 'var(--danger)',
-                borderColor: 'var(--danger)',
-                opacity: isDeleting ? 0.7 : 1,
-                cursor: isDeleting ? 'not-allowed' : 'pointer'
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" type="button" disabled={isDeleting}>
+          {isDeleting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="mr-2 h-4 w-4" />
+          )}
+          Delete
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the webhook integration and
+            stop any notifications sent to it.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={e => {
+              e.preventDefault();
+              handleDelete();
             }}
-        >
-            {isDeleting ? 'Deleting...' : 'Delete'}
-        </button>
-    );
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Yes, Delete Webhook
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }

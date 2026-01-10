@@ -1,79 +1,72 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import ConfirmDialog from '../ConfirmDialog';
+import { useState } from 'react';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/shadcn/alert-dialog';
+import { Trash2 } from 'lucide-react';
 
 type DeleteIntegrationButtonProps = {
-    action: (formData: FormData) => void;
-    integrationName: string;
+  action: (formData: FormData) => void;
+  integrationName: string;
 };
 
-export default function DeleteIntegrationButton({ 
-    action, 
-    integrationName 
+export default function DeleteIntegrationButton({
+  action,
+  integrationName,
 }: DeleteIntegrationButtonProps) {
-    const [showConfirm, setShowConfirm] = useState(false);
+  const [open, setOpen] = useState(false);
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setShowConfirm(true);
-    };
+  const handleConfirm = () => {
+    const formData = new FormData();
+    action(formData);
+    setOpen(false);
+  };
 
-    const handleConfirm = () => {
-        const formData = new FormData();
-        action(formData);
-        setShowConfirm(false);
-    };
-
-    return (
-        <>
-            <form onSubmit={handleSubmit} style={{ display: 'inline' }}>
-                <button 
-                    type="submit"
-                    style={{
-                        padding: '0.5rem 1rem',
-                        background: 'transparent',
-                        border: '1px solid var(--border)',
-                        borderRadius: '0px',
-                        color: 'var(--danger)',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        fontWeight: '500',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'var(--danger)';
-                        e.currentTarget.style.color = 'white';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = 'var(--danger)';
-                    }}
-                >
-                    Delete
-                </button>
-            </form>
-
-            <ConfirmDialog
-                isOpen={showConfirm}
-                title="Delete Integration"
-                message={`⚠️ WARNING: Are you sure you want to delete the integration "${integrationName}"? This will stop receiving alerts from this source. This action CANNOT be undone.`}
-                confirmText="Yes, Delete Integration"
-                cancelText="Cancel"
-                variant="danger"
-                onConfirm={handleConfirm}
-                onCancel={() => setShowConfirm(false)}
-            />
-        </>
-    );
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Integration</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete the integration{' '}
+            <span className="font-semibold text-foreground">"{integrationName}"</span>?
+            <br />
+            This will stop receiving alerts from this source. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={e => {
+              e.preventDefault();
+              handleConfirm();
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Yes, Delete Integration
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
-
-
-
-
-
-
-
-
-
-

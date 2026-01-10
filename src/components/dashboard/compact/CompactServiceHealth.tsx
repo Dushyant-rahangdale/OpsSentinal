@@ -99,6 +99,9 @@ const CompactServiceHealth = memo(function CompactServiceHealth({
 
   return (
     <div className="flex flex-col gap-2" role="list" aria-label="Service health status">
+      <div className="text-[11px] text-muted-foreground">
+        Active counts exclude snoozed and suppressed incidents.
+      </div>
       {displayServices.map(service => {
         const statusColor = getStatusColor(service.status);
         const statusLabel = getStatusLabel(service.status);

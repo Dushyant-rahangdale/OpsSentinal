@@ -25,7 +25,7 @@ describe('incidents-query helpers', () => {
 
     expect(where).toEqual({
       assigneeId: 'user-1',
-      status: { notIn: ['RESOLVED'] },
+      status: { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] },
     });
   });
 

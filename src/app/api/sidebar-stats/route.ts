@@ -27,7 +27,7 @@ export async function GET() {
 
     // Build efficient Where clause for Active Incidents
     const where: Prisma.IncidentWhereInput = {
-      status: { not: 'RESOLVED' },
+      status: { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] },
     };
 
     // Apply Scope Permissions

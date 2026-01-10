@@ -35,6 +35,19 @@ import StatusBadge from './StatusBadge';
 import EscalationStatusBadge from './EscalationStatusBadge';
 import PriorityBadge from './PriorityBadge';
 import AssigneeSection from './AssigneeSection';
+import {
+  CheckCircle2,
+  MoreHorizontal,
+  PauseCircle,
+  ShieldOff,
+  ShieldCheck,
+  Eye,
+  Circle,
+  Download,
+  CheckSquare,
+  XCircle,
+  FileSpreadsheet,
+} from 'lucide-react';
 
 type IncidentsListTableProps = {
   incidents: IncidentListItem[];
@@ -213,13 +226,52 @@ export default function IncidentsListTable({
     });
   };
 
-  const handleExport = () => {
+  const handleExport = async (format: 'csv' | 'xlsx' = 'csv') => {
     const params = new URLSearchParams();
     searchParams.forEach((value, key) => {
       // Exclude page parameter - export should export all matching incidents
       if (key !== 'page') params.append(key, value);
     });
-    window.open(`/api/incidents/export?${params.toString()}`, '_blank');
+    params.set('format', format);
+
+    try {
+      const response = await fetch(`/api/incidents/export?${params.toString()}`);
+      if (!response.ok) {
+        showToast('Failed to export incidents', 'error');
+        return;
+      }
+
+      if (response.redirected && response.url.includes('/login')) {
+        showToast('Export failed: session expired. Please sign in again.', 'error');
+        return;
+      }
+
+      const contentType = response.headers.get('Content-Type') || '';
+      if (contentType.includes('text/html')) {
+        showToast('Export failed: unauthorized response', 'error');
+        return;
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^";\n]+)"?/i);
+      const filename =
+        match?.[1]?.trim() || `incidents-${new Date().toISOString().split('T')[0]}.${format}`;
+
+      // Create a blob URL and trigger download using anchor element
+      // This approach works more reliably across all browsers, especially Chrome
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const { getUserFriendlyError } = await import('@/lib/user-friendly-errors');
+      showToast(getUserFriendlyError(error) || 'Failed to export incidents', 'error');
+    }
   };
 
   const buildUrgencyChip = (urgency: string | null | undefined) => {
@@ -497,27 +549,50 @@ export default function IncidentsListTable({
 
         <div className="flex flex-wrap items-center gap-2">
           {canManageIncidents && (
-            <button
+            <Button
               type="button"
               onClick={toggleSelectAllOnPage}
               className="glass-button"
               style={{ padding: '0.45rem 0.75rem', whiteSpace: 'nowrap' }}
               aria-label="Select all incidents on page"
             >
-              {selectedIds.size === incidents.length && incidents.length > 0
-                ? 'Clear selection'
-                : 'Select page'}
-            </button>
+              {selectedIds.size === incidents.length && incidents.length > 0 ? (
+                <>
+                  <XCircle className="mr-2 h-4 w-4 text-slate-500" />
+                  Clear selection
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="mr-2 h-4 w-4 text-slate-500" />
+                  Select page
+                </>
+              )}
+            </Button>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            aria-label="Export incidents to CSV"
-          >
-            Export CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Export incidents"
+                className="bg-white shadow-sm hover:bg-slate-50"
+              >
+                <Download className="mr-2 h-4 w-4 text-slate-600" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={() => handleExport('csv')}>
+                <Download className="mr-2 h-4 w-4 text-slate-500" />
+                CSV (.csv)
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExport('xlsx')}>
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                Excel (.xlsx)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -580,57 +655,22 @@ export default function IncidentsListTable({
                       </div>
                     )}
 
-                    {/* Main layout: fluid for 14", structured for large screens */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-                        <div className="min-w-0">
-                          <Link
-                            href={`/incidents/${incident.id}`}
-                            data-no-row-nav="true"
-                            onClick={e => e.stopPropagation()}
-                            className={cn(
-                              'block font-extrabold text-slate-900 leading-tight truncate',
-                              titleText,
-                              'group-hover:text-primary transition-colors'
-                            )}
-                          >
-                            {incident.title}
-                          </Link>
+                    {/* Main layout: compact, scannable rows */}
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <Link
+                          href={`/incidents/${incident.id}`}
+                          data-no-row-nav="true"
+                          onClick={e => e.stopPropagation()}
+                          className={cn(
+                            'block font-extrabold text-slate-900 leading-tight truncate',
+                            titleText,
+                            'group-hover:text-primary transition-colors'
+                          )}
+                        >
+                          {incident.title}
+                        </Link>
 
-                          <div
-                            className={cn(
-                              'mt-1 flex flex-wrap items-center gap-2 text-slate-500',
-                              metaText
-                            )}
-                          >
-                            <Link
-                              href={`/services/${incident.service.id}`}
-                              data-no-row-nav="true"
-                              onClick={e => e.stopPropagation()}
-                              className="text-primary font-semibold hover:underline truncate max-w-[240px]"
-                            >
-                              {incident.service.name}
-                            </Link>
-
-                            <span className="opacity-50">&middot;</span>
-
-                            <span className="font-mono">
-                              #{incident.id.slice(-5).toUpperCase()}
-                            </span>
-
-                            <span className="opacity-50">&middot;</span>
-
-                            <span>
-                              {formatDateTime(incident.createdAt, userTimeZone, {
-                                format: 'short',
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bottom row: Badges + Actions on same line */}
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <StatusBadge status={incidentStatus as any} size="sm" showDot />
                           <PriorityBadge priority={incident.priority} size="sm" />
@@ -644,145 +684,174 @@ export default function IncidentsListTable({
                             />
                           )}
                         </div>
+                      </div>
 
-                        <div data-no-row-nav="true" className="flex items-center gap-2">
-                          <AssigneeSection
-                            assignee={incident.assignee}
-                            assigneeId={incident.assigneeId}
-                            team={null}
-                            teamId={null}
-                            users={users}
-                            teams={[]}
-                            incidentId={incident.id}
-                            canManage={canManageIncidents}
-                            variant="list"
-                          />
-
-                          <Button
-                            asChild
-                            size="sm"
-                            className="h-7 text-xs font-bold"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <Link
-                              href={`/incidents/${incident.id}`}
-                              aria-label={`Open incident ${incident.title}`}
-                            >
-                              Open
-                            </Link>
-                          </Button>
-
-                          {canManageIncidents && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={e => e.stopPropagation()}
-                                  aria-label="More actions"
-                                >
-                                  ...
-                                </Button>
-                              </DropdownMenuTrigger>
-
-                              <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem asChild>
-                                  <Link
-                                    href={`/incidents/${incident.id}`}
-                                    onClick={e => e.stopPropagation()}
-                                  >
-                                    View details
-                                  </Link>
-                                </DropdownMenuItem>
-
-                                <DropdownMenuSeparator />
-
-                                {incident.status !== 'RESOLVED' && (
-                                  <DropdownMenuItem
-                                    onSelect={e => {
-                                      e.preventDefault();
-                                      handleStatusChange(incident.id, 'RESOLVED');
-                                    }}
-                                  >
-                                    Resolve
-                                  </DropdownMenuItem>
-                                )}
-
-                                {incident.status !== 'ACKNOWLEDGED' &&
-                                  incident.status !== 'RESOLVED' &&
-                                  incident.status !== 'SUPPRESSED' && (
-                                    <DropdownMenuItem
-                                      onSelect={e => {
-                                        e.preventDefault();
-                                        handleStatusChange(incident.id, 'ACKNOWLEDGED');
-                                      }}
-                                    >
-                                      Acknowledge
-                                    </DropdownMenuItem>
-                                  )}
-
-                                {incident.status === 'ACKNOWLEDGED' && (
-                                  <DropdownMenuItem
-                                    onSelect={e => {
-                                      e.preventDefault();
-                                      handleStatusChange(incident.id, 'OPEN');
-                                    }}
-                                  >
-                                    Unacknowledge
-                                  </DropdownMenuItem>
-                                )}
-
-                                {incident.status !== 'SNOOZED' &&
-                                  incident.status !== 'RESOLVED' && (
-                                    <DropdownMenuItem
-                                      onSelect={e => {
-                                        e.preventDefault();
-                                        handleStatusChange(incident.id, 'SNOOZED');
-                                      }}
-                                    >
-                                      Snooze
-                                    </DropdownMenuItem>
-                                  )}
-
-                                {incident.status === 'SNOOZED' && (
-                                  <DropdownMenuItem
-                                    onSelect={e => {
-                                      e.preventDefault();
-                                      handleStatusChange(incident.id, 'OPEN');
-                                    }}
-                                  >
-                                    Unsnooze
-                                  </DropdownMenuItem>
-                                )}
-
-                                {incident.status !== 'SUPPRESSED' &&
-                                  incident.status !== 'RESOLVED' && (
-                                    <DropdownMenuItem
-                                      onSelect={e => {
-                                        e.preventDefault();
-                                        handleStatusChange(incident.id, 'SUPPRESSED');
-                                      }}
-                                    >
-                                      Suppress
-                                    </DropdownMenuItem>
-                                  )}
-
-                                {incident.status === 'SUPPRESSED' && (
-                                  <DropdownMenuItem
-                                    onSelect={e => {
-                                      e.preventDefault();
-                                      handleStatusChange(incident.id, 'OPEN');
-                                    }}
-                                  >
-                                    Unsuppress
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div
+                          className={cn(
+                            'flex flex-wrap items-center gap-2 text-slate-500',
+                            metaText
                           )}
+                        >
+                          <Link
+                            href={`/services/${incident.service.id}`}
+                            data-no-row-nav="true"
+                            onClick={e => e.stopPropagation()}
+                            className="text-primary font-semibold hover:underline truncate max-w-[240px]"
+                          >
+                            {incident.service.name}
+                          </Link>
+
+                          <span className="opacity-50">&middot;</span>
+
+                          <span className="font-mono">#{incident.id.slice(-5).toUpperCase()}</span>
+
+                          <span className="opacity-50">&middot;</span>
+
+                          <span>
+                            {formatDateTime(incident.createdAt, userTimeZone, {
+                              format: 'short',
+                            })}
+                          </span>
                         </div>
                       </div>
+                    </div>
+
+                    <AssigneeSection
+                      assignee={incident.assignee}
+                      incidentId={incident.id}
+                      canManage={canManageIncidents}
+                      users={users}
+                      teams={[]}
+                      team={null}
+                      assigneeId={null}
+                      teamId={null}
+                    />
+
+                    <div className="self-start sm:self-center" data-no-row-nav="true">
+                      {canManageIncidents && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200"
+                              onClick={e => e.stopPropagation()}
+                              aria-label="Incident actions"
+                            >
+                              <MoreHorizontal className="h-4 w-4 text-slate-600" />
+                            </Button>
+                          </DropdownMenuTrigger>
+
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/incidents/${incident.id}`}
+                                onClick={e => e.stopPropagation()}
+                                className="flex items-center gap-2"
+                              >
+                                <Eye className="h-4 w-4 text-slate-500" />
+                                View details
+                              </Link>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            {incident.status !== 'RESOLVED' && (
+                              <DropdownMenuItem
+                                onSelect={e => {
+                                  e.preventDefault();
+                                  handleStatusChange(incident.id, 'RESOLVED');
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                Resolve
+                              </DropdownMenuItem>
+                            )}
+
+                            {incident.status !== 'ACKNOWLEDGED' &&
+                              incident.status !== 'RESOLVED' &&
+                              incident.status !== 'SUPPRESSED' && (
+                                <DropdownMenuItem
+                                  onSelect={e => {
+                                    e.preventDefault();
+                                    handleStatusChange(incident.id, 'ACKNOWLEDGED');
+                                  }}
+                                  className="flex items-center gap-2"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-amber-600" />
+                                  Acknowledge
+                                </DropdownMenuItem>
+                              )}
+
+                            {incident.status === 'ACKNOWLEDGED' && (
+                              <DropdownMenuItem
+                                onSelect={e => {
+                                  e.preventDefault();
+                                  handleStatusChange(incident.id, 'OPEN');
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <Circle className="h-4 w-4 text-slate-500" />
+                                Unacknowledge
+                              </DropdownMenuItem>
+                            )}
+
+                            {incident.status !== 'SNOOZED' && incident.status !== 'RESOLVED' && (
+                              <DropdownMenuItem
+                                onSelect={e => {
+                                  e.preventDefault();
+                                  handleStatusChange(incident.id, 'SNOOZED');
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <PauseCircle className="h-4 w-4 text-slate-600" />
+                                Snooze
+                              </DropdownMenuItem>
+                            )}
+
+                            {incident.status === 'SNOOZED' && (
+                              <DropdownMenuItem
+                                onSelect={e => {
+                                  e.preventDefault();
+                                  handleStatusChange(incident.id, 'OPEN');
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <CheckCircle2 className="h-4 w-4 text-slate-600" />
+                                Unsnooze
+                              </DropdownMenuItem>
+                            )}
+
+                            {incident.status !== 'SUPPRESSED' && incident.status !== 'RESOLVED' && (
+                              <DropdownMenuItem
+                                onSelect={e => {
+                                  e.preventDefault();
+                                  handleStatusChange(incident.id, 'SUPPRESSED');
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <ShieldOff className="h-4 w-4 text-rose-600" />
+                                Suppress
+                              </DropdownMenuItem>
+                            )}
+
+                            {incident.status === 'SUPPRESSED' && (
+                              <DropdownMenuItem
+                                onSelect={e => {
+                                  e.preventDefault();
+                                  handleStatusChange(incident.id, 'OPEN');
+                                }}
+                                className="flex items-center gap-2"
+                              >
+                                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                                Unsuppress
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 </div>

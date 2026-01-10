@@ -1,280 +1,222 @@
 import prisma from '@/lib/prisma';
-import { createIntegration, deleteIntegration } from '../../actions';
-import HoverLink from '@/components/service/HoverLink';
+import { deleteIntegration } from '../../actions';
+import Link from 'next/link';
 import ServiceTabs from '@/components/service/ServiceTabs';
 import CopyButton from '@/components/service/CopyButton';
 import DeleteIntegrationButton from '@/components/service/DeleteIntegrationButton';
+import AddIntegrationGrid from '@/components/service/AddIntegrationGrid';
 import { getUserPermissions } from '@/lib/rbac';
-
-type IntegrationType = 'EVENTS_API_V2' | 'CLOUDWATCH' | 'AZURE' | 'DATADOG' | 'WEBHOOK' | 'PAGERDUTY' | 'GRAFANA' | 'PROMETHEUS' | 'NEWRELIC' | 'SENTRY' | 'OPSGENIE' | 'GITHUB';
-
-const INTEGRATION_TYPES: Array<{ value: IntegrationType; label: string; description: string; icon: string }> = [
-    {
-        value: 'EVENTS_API_V2',
-        label: 'Events API',
-        description: 'Standard API integration using authentication tokens',
-        icon: '🔑'
-    },
-    {
-        value: 'CLOUDWATCH',
-        label: 'AWS CloudWatch',
-        description: 'Receive alerts from AWS CloudWatch alarms via SNS',
-        icon: '☁️'
-    },
-    {
-        value: 'AZURE',
-        label: 'Azure Monitor',
-        description: 'Receive alerts from Azure Monitor alert rules',
-        icon: '🔷'
-    },
-    {
-        value: 'DATADOG',
-        label: 'Datadog',
-        description: 'Receive alerts from Datadog monitors and events',
-        icon: '📊'
-    },
-    {
-        value: 'PAGERDUTY',
-        label: 'PagerDuty',
-        description: 'Receive incidents from PagerDuty webhooks',
-        icon: '📞'
-    },
-    {
-        value: 'GRAFANA',
-        label: 'Grafana',
-        description: 'Receive alerts from Grafana alerting rules',
-        icon: '📈'
-    },
-    {
-        value: 'PROMETHEUS',
-        label: 'Prometheus Alertmanager',
-        description: 'Receive alerts from Prometheus Alertmanager webhooks',
-        icon: '🔥'
-    },
-    {
-        value: 'NEWRELIC',
-        label: 'New Relic',
-        description: 'Receive alerts from New Relic APM and infrastructure',
-        icon: '🆕'
-    },
-    {
-        value: 'SENTRY',
-        label: 'Sentry',
-        description: 'Receive error events from Sentry issue tracking',
-        icon: '🚨'
-    },
-    {
-        value: 'OPSGENIE',
-        label: 'Opsgenie',
-        description: 'Receive alerts from Opsgenie incident management',
-        icon: '⚡'
-    },
-    {
-        value: 'GITHUB',
-        label: 'GitHub/GitLab',
-        description: 'Receive alerts from GitHub Actions and GitLab CI/CD pipelines',
-        icon: '🐙'
-    },
-    {
-        value: 'WEBHOOK',
-        label: 'Generic Webhook',
-        description: 'Custom webhook integration for any monitoring tool',
-        icon: '🔗'
-    }
-];
+import { INTEGRATION_TYPES, IntegrationType } from '@/components/service/integration-types';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { ChevronLeft, Key, Terminal, Zap } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
 
 function getWebhookUrl(integrationType: IntegrationType, integrationId: string): string {
-    // In production, this should use the actual domain from environment variables
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    switch (integrationType) {
-        case 'CLOUDWATCH':
-            return `${baseUrl}/api/integrations/cloudwatch?integrationId=${integrationId}`;
-        case 'AZURE':
-            return `${baseUrl}/api/integrations/azure?integrationId=${integrationId}`;
-        case 'DATADOG':
-            return `${baseUrl}/api/integrations/datadog?integrationId=${integrationId}`;
-        case 'PAGERDUTY':
-            return `${baseUrl}/api/integrations/pagerduty?integrationId=${integrationId}`;
-        case 'GRAFANA':
-            return `${baseUrl}/api/integrations/grafana?integrationId=${integrationId}`;
-        case 'PROMETHEUS':
-            return `${baseUrl}/api/integrations/prometheus?integrationId=${integrationId}`;
-        case 'NEWRELIC':
-            return `${baseUrl}/api/integrations/newrelic?integrationId=${integrationId}`;
-        case 'SENTRY':
-            return `${baseUrl}/api/integrations/sentry?integrationId=${integrationId}`;
-        case 'OPSGENIE':
-            return `${baseUrl}/api/integrations/opsgenie?integrationId=${integrationId}`;
-        case 'GITHUB':
-            return `${baseUrl}/api/integrations/github?integrationId=${integrationId}`;
-        case 'WEBHOOK':
-            return `${baseUrl}/api/integrations/webhook?integrationId=${integrationId}`;
-        case 'EVENTS_API_V2':
-        default:
-            return `${baseUrl}/api/events`;
-    }
+  switch (integrationType) {
+    case 'CLOUDWATCH':
+      return `${baseUrl}/api/integrations/cloudwatch?integrationId=${integrationId}`;
+    case 'AZURE':
+      return `${baseUrl}/api/integrations/azure?integrationId=${integrationId}`;
+    case 'DATADOG':
+      return `${baseUrl}/api/integrations/datadog?integrationId=${integrationId}`;
+    case 'PAGERDUTY':
+      return `${baseUrl}/api/integrations/pagerduty?integrationId=${integrationId}`;
+    case 'GRAFANA':
+      return `${baseUrl}/api/integrations/grafana?integrationId=${integrationId}`;
+    case 'PROMETHEUS':
+      return `${baseUrl}/api/integrations/prometheus?integrationId=${integrationId}`;
+    case 'NEWRELIC':
+      return `${baseUrl}/api/integrations/newrelic?integrationId=${integrationId}`;
+    case 'SENTRY':
+      return `${baseUrl}/api/integrations/sentry?integrationId=${integrationId}`;
+    case 'OPSGENIE':
+      return `${baseUrl}/api/integrations/opsgenie?integrationId=${integrationId}`;
+    case 'GITHUB':
+      return `${baseUrl}/api/integrations/github?integrationId=${integrationId}`;
+    case 'WEBHOOK':
+      return `${baseUrl}/api/integrations/webhook?integrationId=${integrationId}`;
+    case 'EVENTS_API_V2':
+    default:
+      return `${baseUrl}/api/events`;
+  }
 }
 
-export default async function ServiceIntegrationsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
+export default async function ServiceIntegrationsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-    const [service, permissions] = await Promise.all([
-        prisma.service.findUnique({
-            where: { id },
-            include: { integrations: { orderBy: { createdAt: 'desc' } } }
-        }),
-        getUserPermissions()
-    ]);
+  const [service, permissions] = await Promise.all([
+    prisma.service.findUnique({
+      where: { id },
+      include: { integrations: { orderBy: { createdAt: 'desc' } } },
+    }),
+    getUserPermissions(),
+  ]);
 
-    if (!service) {
-        return (
-            <main style={{ padding: '2rem' }}>
-                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-                    <h2>Service Not Found</h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>The service you're looking for doesn't exist.</p>
-                    <HoverLink href="/services" className="glass-button primary">Back to Services</HoverLink>
-                </div>
-            </main>
-        );
-    }
-
-    const canManageIntegrations = permissions.isAdminOrResponder;
-
+  if (!service) {
     return (
-        <main style={{ padding: '2rem 1.5rem' }}>
-            {/* Header */}
-            <HoverLink
-                href={`/services/${id}`}
-                style={{
-                    marginBottom: '2rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    textDecoration: 'none',
-                    fontSize: '0.9rem',
-                    fontWeight: '500'
-                }}
-            >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-                Back to {service.name}
-            </HoverLink>
+      <main className="p-8 max-w-4xl mx-auto">
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center justify-center p-6">
+            <h2 className="text-2xl font-semibold mb-2">Service Not Found</h2>
+            <p className="text-slate-500 mb-6">The service you're looking for doesn't exist.</p>
+            <Button asChild>
+              <Link href="/services">Back to Services</Link>
+            </Button>
+          </div>
+        </Card>
+      </main>
+    );
+  }
 
-            <div style={{
-                marginBottom: '2rem',
-                paddingBottom: '1.5rem',
-                borderBottom: '2px solid var(--border)'
-            }}>
-                <div style={{ marginBottom: '1rem' }}>
-                    <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
-                        Integrations
-                    </h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-                        Configure alert sources to send incidents to {service.name}
-                    </p>
-                </div>
-                <ServiceTabs serviceId={id} />
+  const canManageIntegrations = permissions.isAdminOrResponder;
+
+  return (
+    <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6 [zoom:0.8]">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Link
+          href="/services"
+          className="hover:text-primary transition-colors flex items-center gap-1"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Services
+        </Link>
+        <span className="opacity-30">/</span>
+        <Link href={`/services/${id}`} className="hover:text-primary transition-colors">
+          {service.name}
+        </Link>
+        <span className="opacity-30">/</span>
+        <span className="font-medium text-foreground">Integrations</span>
+      </div>
+
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Service Integrations</h1>
+            <p className="text-xs md:text-sm opacity-90 mt-1">
+              Configure alert sources to send incidents to {service.name}
+            </p>
+          </div>
+          <Card className="bg-white/10 border-white/20 backdrop-blur">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="text-xl md:text-2xl font-bold">{service.integrations.length}</div>
+              <div className="text-[10px] md:text-xs opacity-90">Active Integrations</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <ServiceTabs serviceId={id} />
+
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Active Integrations</CardTitle>
+                <CardDescription>Endpoints currently connected to this service.</CardDescription>
+              </div>
+              <Badge
+                variant="secondary"
+                className="rounded-full px-2.5 bg-slate-100 text-slate-600"
+              >
+                {service.integrations.length}
+              </Badge>
             </div>
+          </CardHeader>
+          <CardContent>
+            {service.integrations.length === 0 ? (
+              <div className="text-center py-10 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                <div className="mx-auto h-12 w-12 text-slate-300 mb-3 bg-white rounded-full flex items-center justify-center shadow-sm">
+                  <Zap className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-900">No Integrations Connected</h3>
+                <p className="text-slate-500 max-w-sm mx-auto mt-1">
+                  Connect external tools to automatically trigger incidents for this service.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {service.integrations.map(integration => {
+                  const integrationType = integration.type as IntegrationType;
+                  const typeInfo =
+                    INTEGRATION_TYPES.find(t => t.value === integrationType) ||
+                    INTEGRATION_TYPES[0];
+                  const webhookUrl = getWebhookUrl(integrationType, integration.id);
 
-            {/* Existing Integrations */}
-            {service.integrations.length > 0 && (
-                <div style={{ marginBottom: '3rem' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
-                        Active Integrations ({service.integrations.length})
-                    </h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {service.integrations.map(integration => {
-                            const integrationType = integration.type as IntegrationType;
-                            const typeInfo = INTEGRATION_TYPES.find(t => t.value === integrationType) || INTEGRATION_TYPES[0];
-                            const webhookUrl = getWebhookUrl(integrationType, integration.id);
-
-                            return (
-                                <div
-                                    key={integration.id}
-                                    style={{
-                                        padding: '1.5rem',
-                                        background: 'white',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '0px',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                                                <span style={{ fontSize: '1.5rem' }}>{typeInfo.icon}</span>
-                                                <div>
-                                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
-                                                        {integration.name}
-                                                    </h3>
-                                                    <span style={{
-                                                        fontSize: '0.8rem',
-                                                        padding: '0.25rem 0.75rem',
-                                                        background: '#e0f2fe',
-                                                        color: '#0c4a6e',
-                                                        borderRadius: '12px',
-                                                        fontWeight: '500'
-                                                    }}>
-                                                        {typeInfo.label}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '2.25rem' }}>
-                                                {typeInfo.description}
-                                            </p>
-                                        </div>
-                                        {canManageIntegrations && (
-                                            <DeleteIntegrationButton
-                                                action={deleteIntegration.bind(null, integration.id, service.id)}
-                                                integrationName={integration.name}
-                                            />
-                                        )}
-                                    </div>
-
-                                    {/* Integration Details */}
-                                    <div style={{
-                                        marginTop: '1rem',
-                                        padding: '1rem',
-                                        background: '#f8fafc',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '0px'
-                                    }}>
-                                        {integrationType === 'EVENTS_API_V2' ? (
-                                            <>
-                                                <div style={{ marginBottom: '0.75rem' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                        API Key
-                                                    </div>
-                                                    <div style={{
-                                                        fontFamily: 'monospace',
-                                                        padding: '0.75rem',
-                                                        background: 'white',
-                                                        border: '1px solid var(--border)',
-                                                        borderRadius: '0px',
-                                                        fontSize: '0.85rem',
-                                                        wordBreak: 'break-all'
-                                                    }}>
-                                                        {integration.key}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                        Usage Example
-                                                    </div>
-                                                    <pre style={{
-                                                        background: '#1e293b',
-                                                        color: '#e2e8f0',
-                                                        padding: '1rem',
-                                                        borderRadius: '0px',
-                                                        overflowX: 'auto',
-                                                        fontSize: '0.8rem',
-                                                        margin: 0
-                                                    }}>
-                                                        {`curl -X POST ${webhookUrl} \\
-  -H "Content-Type: application/json" \\
-  -H "Authorization: Token token=${integration.key}" \\
+                  return (
+                    <Card
+                      key={integration.id}
+                      className="overflow-hidden flex flex-col border-slate-200"
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 flex items-center justify-center rounded-lg border border-white/30 shadow-sm"
+                              style={{ backgroundColor: typeInfo.iconBg }}
+                            >
+                              {typeInfo.icon}
+                            </div>
+                            <div>
+                              <div
+                                className="font-semibold text-sm text-slate-900 truncate max-w-[140px]"
+                                title={integration.name}
+                              >
+                                {integration.name}
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-5 px-1.5 bg-slate-50 text-slate-600 border-slate-200"
+                              >
+                                {typeInfo.label}
+                              </Badge>
+                            </div>
+                          </div>
+                          {canManageIntegrations && (
+                            <DeleteIntegrationButton
+                              action={deleteIntegration.bind(null, integration.id, service.id)}
+                              integrationName={integration.name}
+                            />
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-xs text-slate-500 mb-4 line-clamp-2 min-h-[2.5em]">
+                          {typeInfo.description}
+                        </p>
+                        <div className="bg-slate-50 rounded border p-3 space-y-3">
+                          {integrationType === 'EVENTS_API_V2' ? (
+                            <div className="space-y-3">
+                              <div>
+                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                  <Key className="h-3 w-3" /> API Key
+                                </div>
+                                <div className="bg-white border rounded px-2 py-1.5 font-mono text-xs break-all shadow-sm">
+                                  {integration.key}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                  <Terminal className="h-3 w-3" /> Usage Example
+                                </div>
+                                <pre className="bg-slate-900 text-slate-50 p-3 rounded-md overflow-x-auto text-[10px] font-mono leading-relaxed">
+                                  {`curl -X POST ${webhookUrl} \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Token token=${integration.key}" \
   -d '{
     "event_action": "trigger",
     "dedup_key": "alert_123",
@@ -284,162 +226,47 @@ export default async function ServiceIntegrationsPage({ params }: { params: Prom
       "severity": "critical"
     }
   }'`}
-                                                    </pre>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div style={{ marginBottom: '0.75rem' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                        Webhook URL
-                                                    </div>
-                                                    <div style={{
-                                                        fontFamily: 'monospace',
-                                                        padding: '0.75rem',
-                                                        background: 'white',
-                                                        border: '1px solid var(--border)',
-                                                        borderRadius: '0px',
-                                                        fontSize: '0.85rem',
-                                                        wordBreak: 'break-all',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        gap: '0.5rem'
-                                                    }}>
-                                                        <span style={{ flex: 1 }}>{webhookUrl}</span>
-                                                        <CopyButton text={webhookUrl} />
-                                                    </div>
-                                                </div>
-                                                <div style={{
-                                                    padding: '0.75rem',
-                                                    background: '#fef3c7',
-                                                    border: '1px solid #fbbf24',
-                                                    borderRadius: '0px',
-                                                    fontSize: '0.85rem',
-                                                    color: '#92400e'
-                                                }}>
-                                                    <strong>Setup Instructions:</strong> Configure your {typeInfo.label} to send webhooks to the URL above.
-                                                    The integration will automatically create incidents when alerts are received.
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* Create New Integration */}
-            {canManageIntegrations ? (
-                <div style={{
-                    padding: '2rem',
-                    background: 'white',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px'
-                }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
-                        Add New Integration
-                    </h2>
-                    <form action={createIntegration} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <input type="hidden" name="serviceId" value={service.id} />
-
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-                                Integration Name
-                            </label>
-                            <input
-                                type="text"
-                                name="name"
-                                placeholder="e.g. Production CloudWatch, Staging Datadog"
-                                required
-                                className="focus-border"
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '0px',
-                                    fontSize: '0.95rem',
-                                    outline: 'none',
-                                    transition: 'border-color 0.2s'
-                                }}
-                            />
-                        </div>
-
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-                                Integration Type
-                            </label>
-                            <select
-                                name="type"
-                                required
-                                className="focus-border"
-                                style={{
-                                    width: '100%',
-                                    padding: '0.75rem',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '0px',
-                                    fontSize: '0.95rem',
-                                    background: 'white',
-                                    cursor: 'pointer',
-                                    outline: 'none',
-                                    transition: 'border-color 0.2s'
-                                }}
-                            >
-                                {INTEGRATION_TYPES.map(type => (
-                                    <option key={type.value} value={type.value}>
-                                        {type.icon} {type.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                {INTEGRATION_TYPES.map(type => (
-                                    <div
-                                        key={type.value}
-                                        style={{
-                                            padding: '0.75rem',
-                                            background: '#f8fafc',
-                                            border: '1px solid var(--border)',
-                                            borderRadius: '0px',
-                                            fontSize: '0.85rem'
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-                                            {type.icon} {type.label}
-                                        </div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                                            {type.description}
-                                        </div>
-                                    </div>
-                                ))}
+                                </pre>
+                              </div>
                             </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div>
+                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                                  Webhook URL
+                                </div>
+                                <div className="bg-white border rounded px-2 py-1.5 font-mono text-xs flex items-center justify-between gap-2 shadow-sm">
+                                  <span className="truncate">{webhookUrl}</span>
+                                  <CopyButton text={webhookUrl} />
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-
-                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                            <button
-                                type="submit"
-                                className="glass-button primary"
-                                style={{ padding: '0.75rem 2rem', fontSize: '1rem', fontWeight: '600' }}
-                            >
-                                Create Integration
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            ) : (
-                <div style={{
-                    padding: '2rem',
-                    background: '#f9fafb',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    textAlign: 'center'
-                }}>
-                    <p style={{ color: 'var(--text-muted)' }}>
-                        You don't have permission to manage integrations. Admin or Responder role required.
-                    </p>
-                </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             )}
-        </main>
-    );
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            {canManageIntegrations ? (
+              <AddIntegrationGrid serviceId={service.id} />
+            ) : (
+              <Alert>
+                <AlertDescription>
+                  You don't have permission to manage integrations. Admin or Responder role
+                  required.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
 }

@@ -288,7 +288,6 @@ export async function GET(req: NextRequest) {
         priority: 7,
       })),
       ...postmortems.map((pm: any) => ({
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         type: 'postmortem' as const,
         id: pm.id,
         title: pm.title,
@@ -311,7 +310,6 @@ export async function GET(req: NextRequest) {
 
     return jsonOk({ results }, 200);
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.search.error', {
       error: error instanceof Error ? error.message : String(error),
     });

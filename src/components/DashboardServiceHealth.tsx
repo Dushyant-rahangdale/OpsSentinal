@@ -113,11 +113,16 @@ export default function DashboardServiceHealth({ services }: DashboardServiceHea
     <div className="p-0">
       {/* Header with View All */}
       <div className="flex justify-between items-center mb-5">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-foreground">Service Health Overview</h3>
-          <Badge variant="outline" className="bg-white font-semibold text-foreground">
-            {services.length}
-          </Badge>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-foreground">Service Health Overview</h3>
+            <Badge variant="outline" className="bg-white font-semibold text-foreground">
+              {services.length}
+            </Badge>
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-1">
+            Active incident counts exclude snoozed and suppressed incidents.
+          </div>
         </div>
         <Button
           asChild

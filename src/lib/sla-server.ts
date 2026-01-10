@@ -301,14 +301,15 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const statusWhere = filters.status ? { status: filters.status } : null;
   const urgencyWhere = filters.urgency ? { urgency: filters.urgency } : null;
 
+  const mutedStatusList = ['SNOOZED', 'SUPPRESSED'] as const;
   const activeStatusWhere = filters.status
     ? { status: filters.status }
-    : { status: { not: 'RESOLVED' as const } };
+    : { status: { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] as const } };
 
   let activeWhere: Prisma.IncidentWhereInput = {
     ...activeStatusWhere,
     ...(urgencyWhere ?? {}),
-  };
+  } as any;
 
   const hasServiceFilter = Object.keys(serviceWhere).length > 0;
   const hasTeamFilter = Object.keys(teamWhere).length > 0;
@@ -328,11 +329,37 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     };
   }
 
+  const shouldIncludeMutedCounts =
+    !filters.status || mutedStatusList.includes(filters.status as any);
+  const mutedStatusFilter =
+    filters.status && mutedStatusList.includes(filters.status as any)
+      ? [filters.status]
+      : mutedStatusList;
+  let mutedWhere: Prisma.IncidentWhereInput = {
+    status: { in: mutedStatusFilter },
+    ...(urgencyWhere ?? {}),
+  } as any;
+
+  if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
+    mutedWhere.OR = [
+      ...(hasServiceFilter ? [serviceWhere] : []),
+      ...(hasTeamFilter ? [{ service: teamWhere }] : []),
+      ...(assigneeWhere ? [assigneeWhere] : []),
+    ];
+  } else {
+    mutedWhere = {
+      ...mutedWhere,
+      ...(hasServiceFilter ? serviceWhere : {}),
+      ...(hasTeamFilter ? { service: teamWhere } : {}),
+      ...(assigneeWhere ?? {}),
+    };
+  }
+
   const recentIncidentWhere: Prisma.IncidentWhereInput = {
     createdAt: { gte: finalStart, lte: finalEnd },
     ...(urgencyWhere ?? {}),
     ...(statusWhere ?? {}),
-  };
+  } as any;
 
   if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
     recentIncidentWhere.OR = [
@@ -355,7 +382,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const heatmapWhere: Prisma.IncidentWhereInput = {
     ...recentIncidentWhere,
     createdAt: { gte: heatmapStart, lte: now },
-  };
+  } as any;
 
   // Previous Period Query - FIX: Use actual window duration, not fixed windowDays
   const previousStart = new Date(finalStart.getTime() - actualWindowMs);
@@ -363,13 +390,14 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const previousWhere: Prisma.IncidentWhereInput = {
     ...recentIncidentWhere,
     createdAt: { gte: previousStart, lt: previousEnd },
-  };
+  } as any;
 
   // 3. Parallel Data Fetching
   // FIX: Fetch ALL incidents for metrics (up to MAX_INCIDENTS_FOR_METRICS)
   // Only limit the returned incidents for UI display
   const [
     activeIncidentsData,
+    mutedStatusCounts,
     alertsCount,
     futureShifts,
     windowShifts,
@@ -400,6 +428,14 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
         acknowledgedAt: true,
       },
     }),
+    // Muted status counts (snoozed/suppressed)
+    shouldIncludeMutedCounts
+      ? prisma.incident.groupBy({
+          by: ['status'],
+          where: mutedWhere,
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
     // FIX: alertsCount now uses both start AND end date
     prisma.alert.count({
       where: {
@@ -530,6 +566,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const activeIncidents = activeIncidentsData.length;
   const unassignedActive = activeIncidentsData.filter(i => !i.assigneeId).length;
   const criticalActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'HIGH').length;
+  const mediumActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'MEDIUM').length;
+  const lowActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'LOW').length;
 
   const activeStatusCountMap = new Map<string, number>();
   activeIncidentsData.forEach(i => {
@@ -728,9 +766,13 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     let resolveSum = 0,
       resolveCount = 0;
     let highUrg = 0;
+    let mediumUrg = 0;
+    let lowUrg = 0;
 
     for (const inc of incidents) {
       if (inc.urgency === 'HIGH') highUrg++;
+      if (inc.urgency === 'MEDIUM') mediumUrg++;
+      if (inc.urgency === 'LOW') lowUrg++;
 
       // Ack
       const ackAt = inc.acknowledgedAt || eventsMap.get(inc.id);
@@ -757,6 +799,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     return {
       count: incidents.length,
       highUrg,
+      mediumUrg,
+      lowUrg,
       mtta: ackCount ? ackSum / ackCount : 0,
       mttr: resolveCount ? resolveSum / resolveCount : 0,
       ackRate: incidents.length ? (ackCount / incidents.length) * 100 : 0,
@@ -1188,6 +1232,12 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const onCallUsersCount = onCallUserIds.length;
 
   const activeStatusFinalMap = new Map(activeStatusBreakdown.map(e => [e.status, e._count._all]));
+  const mutedStatusFinalMap = new Map(
+    (mutedStatusCounts as Array<{ status: string; _count: { _all: number } }>).map(e => [
+      e.status,
+      e._count._all,
+    ])
+  );
 
   const hasCritical = criticalActiveIncidents > 0;
   const hasDegraded = activeIncidents > 0 && !hasCritical;
@@ -1321,11 +1371,13 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     activeIncidents,
     unassignedActive,
     highUrgencyCount: currentStats.highUrg,
+    mediumUrgencyCount: mediumActiveIncidents,
+    lowUrgencyCount: lowActiveIncidents,
     alertsCount,
     openCount: activeStatusFinalMap.get('OPEN') ?? 0,
     acknowledgedCount: activeStatusFinalMap.get('ACKNOWLEDGED') ?? 0,
-    snoozedCount: activeStatusFinalMap.get('SNOOZED') ?? 0,
-    suppressedCount: activeStatusFinalMap.get('SUPPRESSED') ?? 0,
+    snoozedCount: mutedStatusFinalMap.get('SNOOZED') ?? 0,
+    suppressedCount: mutedStatusFinalMap.get('SUPPRESSED') ?? 0,
     resolved24h: resolved24hCount,
     dynamicStatus: hasCritical ? 'CRITICAL' : hasDegraded ? 'DEGRADED' : 'OPERATIONAL',
     activeCount: activeIncidents,
@@ -1838,6 +1890,8 @@ export async function calculateSLAMetricsFromRollups(
     resolved24h: 0, // Not available in rollups
     unassignedActive: 0, // Not available
     highUrgencyCount: 0, // Not available
+    mediumUrgencyCount: 0, // Not available
+    lowUrgencyCount: 0, // Not available
     alertsCount: 0, // Not available
     snoozedCount: 0, // Not available
     suppressedCount: 0, // Not available

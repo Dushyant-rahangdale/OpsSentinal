@@ -420,8 +420,8 @@ export default function StatusPageServices({
 
   if (visibleServices.length === 0) return null;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderServiceCard = (service: any, index: number) => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     const serviceStatus = service.status || 'OPERATIONAL';
     const statusConfig = STATUS_CONFIG[serviceStatus as keyof typeof STATUS_CONFIG] || {
       color: '#475569',

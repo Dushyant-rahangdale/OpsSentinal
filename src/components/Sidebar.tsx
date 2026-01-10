@@ -10,15 +10,14 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import {
-  ChevronLeft,
-  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Menu,
   X,
   HelpCircle,
   Settings,
   LogOut,
   Keyboard,
-  AlertCircle,
   LayoutDashboard,
   AlertTriangle,
   Server,
@@ -72,7 +71,6 @@ const navigationItems: NavItem[] = [
     href: '/users',
     label: 'Users',
     icon: <User />,
-    section: 'OPERATIONS',
   },
   {
     href: '/schedules',
@@ -399,17 +397,19 @@ export default function Sidebar(
               aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               className={cn(
                 'absolute -right-3 top-1/2 -translate-y-1/2 z-20',
-                'w-6 h-6 rounded-full',
-                'bg-primary hover:bg-primary/90 text-white',
-                'border-2 border-white/20 shadow-lg hover:shadow-xl',
-                'transition-all duration-200 hover:scale-110',
-                'focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2'
+                'w-6 h-6 rounded-full group',
+                'bg-black/40 backdrop-blur-md text-white/90',
+                'border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.2)]',
+                'hover:bg-black/60 hover:text-white hover:scale-110 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]',
+                'transition-all duration-300 ease-out',
+                'focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2',
+                'flex items-center justify-center'
               )}
             >
               {isDesktopCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
+                <ChevronsRight className="h-3.5 w-3.5 stroke-[3] transition-transform duration-300 group-hover:translate-x-0.5" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronsLeft className="h-3.5 w-3.5 stroke-[3] transition-transform duration-300 group-hover:-translate-x-0.5" />
               )}
             </Button>
           )}

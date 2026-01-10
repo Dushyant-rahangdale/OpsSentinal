@@ -1,7 +1,35 @@
 'use client';
 
+import { useCallback, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/shadcn/card';
+import {
+  Filter,
+  X,
+  Search,
+  Activity,
+  Users,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 
 type ServicesFiltersProps = {
   currentSearch?: string;
@@ -14,335 +42,200 @@ type ServicesFiltersProps = {
 export default function ServicesFilters({
   currentSearch = '',
   currentStatus = 'all',
-  currentTeam = '',
+  currentTeam = 'all',
   currentSort = 'name_asc',
   teams,
 }: ServicesFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(currentSearch);
   const [isPending, startTransition] = useTransition();
 
-  const updateParams = (updates: Record<string, string>) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === 'all' || value === '' || value === 'name_asc') {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-    });
-    startTransition(() => {
-      router.push(`/services?${params.toString()}`);
-    });
-  };
+  const updateParams = useCallback(
+    (updates: Record<string, string>) => {
+      const currentQuery = searchParams.toString();
+      const params = new URLSearchParams(currentQuery);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateParams({ search: searchQuery.trim() });
-  };
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === 'all' || value === '' || value === 'name_asc') {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      });
+
+      const nextQuery = params.toString();
+      if (nextQuery === currentQuery) return;
+
+      startTransition(() => {
+        const nextUrl = nextQuery ? `/services?${nextQuery}` : '/services';
+        router.push(nextUrl);
+      });
+    },
+    [router, searchParams]
+  );
 
   const clearFilters = () => {
-    setSearchQuery('');
-    router.push('/services');
+    startTransition(() => {
+      router.push('/services');
+    });
   };
 
   const hasActiveFilters =
-    currentSearch || currentStatus !== 'all' || currentTeam || currentSort !== 'name_asc';
+    currentSearch !== '' ||
+    currentStatus !== 'all' ||
+    currentTeam !== 'all' ||
+    currentSort !== 'name_asc';
 
   return (
-    <div
-      style={{
-        padding: '1.25rem',
-        background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-        border: '1px solid var(--border)',
-        borderRadius: '0px',
-        marginBottom: '1.5rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          alignItems: 'flex-end',
-        }}
-      >
-        {/* Search */}
-        <form onSubmit={handleSearch} style={{ flex: '1', minWidth: '250px', maxWidth: '400px' }}>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search services by name or description..."
-              style={{
-                width: '100%',
-                padding: '0.625rem 2.5rem 0.625rem 0.875rem',
-                border: '1px solid var(--border)',
-                borderRadius: '0px',
-                background: '#fff',
-                fontSize: '0.9rem',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={e => (e.target.style.borderColor = 'var(--primary-color)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-            />
-            <button
-              type="submit"
-              style={{
-                position: 'absolute',
-                right: '0.5rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '0.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-            </button>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-4 w-4" /> Filter Services
+            </CardTitle>
+            <CardDescription>Find services by name, team, status, or tier</CardDescription>
           </div>
-        </form>
-
-        {/* Status Filter */}
-        <div style={{ minWidth: '140px' }}>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.4rem',
-              fontSize: '0.8rem',
-              fontWeight: '500',
-              color: 'var(--text-secondary)',
-            }}
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                onClick={clearFilters}
+                disabled={isPending}
+              >
+                <X className="mr-1 h-3 w-3" /> Clear All
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Quick Filters */}
+        <div className="flex flex-wrap gap-2">
+          <Badge
+            variant={currentStatus === 'all' ? 'default' : 'outline'}
+            className="cursor-pointer hover:bg-primary/90 hover:text-primary-foreground transition-colors"
+            onClick={() => updateParams({ status: 'all' })}
           >
-            Status
-          </label>
-          <select
-            value={currentStatus}
-            onChange={e => updateParams({ status: e.target.value })}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              background: '#fff',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
+            All services
+          </Badge>
+          <Badge
+            variant={currentStatus === 'OPERATIONAL' ? 'secondary' : 'outline'}
+            className="cursor-pointer hover:bg-emerald-100 hover:text-emerald-800 transition-colors border-emerald-200 text-emerald-700 data-[variant=secondary]:bg-emerald-100 data-[variant=secondary]:text-emerald-800"
+            onClick={() =>
+              updateParams({ status: currentStatus === 'OPERATIONAL' ? 'all' : 'OPERATIONAL' })
+            }
           >
-            <option value="all">All Statuses</option>
-            <option value="OPERATIONAL">Operational</option>
-            <option value="DEGRADED">Degraded</option>
-            <option value="CRITICAL">Critical</option>
-          </select>
+            <CheckCircle2 className="mr-1 h-3 w-3" /> Operational
+          </Badge>
+          <Badge
+            variant={currentStatus === 'DEGRADED' ? 'secondary' : 'outline'}
+            className="cursor-pointer hover:bg-yellow-100 hover:text-yellow-800 transition-colors border-yellow-200 text-yellow-700 data-[variant=secondary]:bg-yellow-100 data-[variant=secondary]:text-yellow-800"
+            onClick={() =>
+              updateParams({ status: currentStatus === 'DEGRADED' ? 'all' : 'DEGRADED' })
+            }
+          >
+            <AlertTriangle className="mr-1 h-3 w-3" /> Degraded
+          </Badge>
+          <Badge
+            variant={currentStatus === 'CRITICAL' ? 'secondary' : 'outline'}
+            className="cursor-pointer hover:bg-red-100 hover:text-red-800 transition-colors border-red-200 text-red-700 data-[variant=secondary]:bg-red-100 data-[variant=secondary]:text-red-800"
+            onClick={() =>
+              updateParams({ status: currentStatus === 'CRITICAL' ? 'all' : 'CRITICAL' })
+            }
+          >
+            <XCircle className="mr-1 h-3 w-3" /> Critical
+          </Badge>
         </div>
 
-        {/* Team Filter */}
-        <div style={{ minWidth: '160px' }}>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.4rem',
-              fontSize: '0.8rem',
-              fontWeight: '500',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            Team
-          </label>
-          <select
-            value={currentTeam}
-            onChange={e => updateParams({ team: e.target.value })}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              background: '#fff',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="">All Teams</option>
-            {teams.map(team => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Search */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase">Search</Label>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={currentSearch}
+                onChange={e => updateParams({ search: e.target.value })}
+                className="pl-8"
+              />
+            </div>
+          </div>
+
+          {/* Team Filter */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+              <Users className="h-3 w-3" /> Team
+            </Label>
+            <Select value={currentTeam} onValueChange={value => updateParams({ team: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Teams" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teams</SelectItem>
+                {teams.map(team => (
+                  <SelectItem key={team.id} value={team.id}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Filter (Dropdown backup) */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+              <Activity className="h-3 w-3" /> Status
+            </Label>
+            <Select value={currentStatus} onValueChange={value => updateParams({ status: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="OPERATIONAL">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Operational
+                  </div>
+                </SelectItem>
+                <SelectItem value="DEGRADED">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                    Degraded
+                  </div>
+                </SelectItem>
+                <SelectItem value="CRITICAL">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-red-500" />
+                    Critical
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sort */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase">Sort By</Label>
+            <Select value={currentSort} onValueChange={value => updateParams({ sort: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sort order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+                <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+                <SelectItem value="status">Status Health</SelectItem>
+                <SelectItem value="incidents_desc">Most Incidents</SelectItem>
+                <SelectItem value="incidents_asc">Least Incidents</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-
-        {/* Sort */}
-        <div style={{ minWidth: '160px' }}>
-          <label
-            style={{
-              display: 'block',
-              marginBottom: '0.4rem',
-              fontSize: '0.8rem',
-              fontWeight: '500',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            Sort By
-          </label>
-          <select
-            value={currentSort}
-            onChange={e => updateParams({ sort: e.target.value })}
-            style={{
-              width: '100%',
-              padding: '0.625rem 0.875rem',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              background: '#fff',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            <option value="name_asc">Name (A-Z)</option>
-            <option value="name_desc">Name (Z-A)</option>
-            <option value="status">Status</option>
-            <option value="incidents_desc">Most Incidents</option>
-            <option value="incidents_asc">Least Incidents</option>
-          </select>
-        </div>
-
-        {/* Clear Filters */}
-        {hasActiveFilters && (
-          <button
-            onClick={clearFilters}
-            style={{
-              padding: '0.625rem 1rem',
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              borderRadius: '0px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              color: 'var(--text-secondary)',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'var(--danger)';
-              e.currentTarget.style.color = 'var(--danger)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'var(--border)';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }}
-          >
-            Clear Filters
-          </button>
-        )}
-
-        {isPending && (
-          <span
-            style={{
-              fontSize: '0.85rem',
-              color: 'var(--text-muted)',
-              padding: '0.625rem 0',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <svg
-              style={{
-                animation: 'spin 1s linear infinite',
-                marginRight: '0.5rem',
-                width: '14px',
-                height: '14px',
-              }}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 12a9 9 0 11-6.219-8.56" />
-            </svg>
-            Loading...
-          </span>
-        )}
-      </div>
-
-      {/* Active Filters Display */}
-      {hasActiveFilters && (
-        <div
-          style={{
-            marginTop: '1rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-            Active filters:
-          </span>
-          {currentSearch && (
-            <span
-              style={{
-                padding: '0.25rem 0.75rem',
-                background: '#e0f2fe',
-                color: '#0c4a6e',
-                borderRadius: '12px',
-                fontSize: '0.8rem',
-                fontWeight: '500',
-              }}
-            >
-              Search: "{currentSearch}"
-            </span>
-          )}
-          {currentStatus !== 'all' && (
-            <span
-              style={{
-                padding: '0.25rem 0.75rem',
-                background: '#fef3c7',
-                color: '#92400e',
-                borderRadius: '12px',
-                fontSize: '0.8rem',
-                fontWeight: '500',
-              }}
-            >
-              Status: {currentStatus}
-            </span>
-          )}
-          {currentTeam && (
-            <span
-              style={{
-                padding: '0.25rem 0.75rem',
-                background: '#dbeafe',
-                color: '#1e40af',
-                borderRadius: '12px',
-                fontSize: '0.8rem',
-                fontWeight: '500',
-              }}
-            >
-              Team: {teams.find(t => t.id === currentTeam)?.name || 'Unknown'}
-            </span>
-          )}
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }

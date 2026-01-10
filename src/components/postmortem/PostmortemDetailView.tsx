@@ -61,10 +61,8 @@ export default function PostmortemDetailView({
 
   // Parse data
   const parseTimeline = (timeline: any): TimelineEvent[] => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!timeline || !Array.isArray(timeline)) return [];
     return timeline.map((e: any) => ({
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       id: e.id || `event-${Date.now()}`,
       timestamp: e.timestamp || new Date().toISOString(),
       type: e.type || 'DETECTION',
@@ -75,7 +73,6 @@ export default function PostmortemDetailView({
   };
 
   const parseImpact = (impact: any): ImpactMetrics => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!impact || typeof impact !== 'object') return {};
     return {
       usersAffected: impact.usersAffected,
@@ -90,10 +87,8 @@ export default function PostmortemDetailView({
   };
 
   const parseActionItems = (actionItems: any): ActionItem[] => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!actionItems || !Array.isArray(actionItems)) return [];
     return actionItems.map((item: any) => ({
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       id: item.id || `action-${Date.now()}`,
       title: item.title || '',
       description: item.description || '',

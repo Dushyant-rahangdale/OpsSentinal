@@ -1,9 +1,29 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
-import HoverLink from '@/components/service/HoverLink';
 import ServiceTabs from '@/components/service/ServiceTabs';
 import ServiceNotificationSettings from '@/components/service/ServiceNotificationSettings';
 import { updateService } from '../../actions';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Label } from '@/components/ui/shadcn/label';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import {
+  ChevronLeft,
+  Save,
+  AlertCircle,
+  CheckCircle2,
+  Settings,
+  Shield,
+  Users,
+} from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
 
 export default async function ServiceSettingsPage({
   params,
@@ -16,6 +36,7 @@ export default async function ServiceSettingsPage({
   const resolvedSearchParams = await searchParams;
   const showSaved = resolvedSearchParams?.saved === '1';
   const errorCode = resolvedSearchParams?.error;
+
   const [service, teams, policies, globalSlackIntegration] = await Promise.all([
     prisma.service.findUnique({
       where: { id: id },
@@ -54,21 +75,16 @@ export default async function ServiceSettingsPage({
 
   if (!service) {
     return (
-      <main style={{ padding: '2rem' }}>
-        <div
-          className="glass-panel"
-          style={{ padding: '2rem', textAlign: 'center', background: 'white' }}
-        >
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-            Service Not Found
-          </h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-            The service you're looking for doesn't exist.
-          </p>
-          <Link href="/services" className="glass-button primary">
-            Back to Services
-          </Link>
-        </div>
+      <main className="p-8 max-w-4xl mx-auto">
+        <Card className="text-center py-12">
+          <div className="flex flex-col items-center justify-center p-6">
+            <h2 className="text-2xl font-semibold mb-2">Service Not Found</h2>
+            <p className="text-slate-500 mb-6">The service you're looking for doesn't exist.</p>
+            <Button asChild>
+              <Link href="/services">Back to Services</Link>
+            </Button>
+          </div>
+        </Card>
       </main>
     );
   }
@@ -76,451 +92,232 @@ export default async function ServiceSettingsPage({
   const updateServiceWithId = updateService.bind(null, id);
 
   return (
-    <main style={{ padding: '1.5rem' }}>
-      <HoverLink
-        href={`/services/${id}`}
-        style={{
-          marginBottom: '1.5rem',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          textDecoration: 'none',
-          fontSize: '0.9rem',
-          fontWeight: '500',
-        }}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
+    <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6 [zoom:0.8]">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link
+          href="/services"
+          className="hover:text-primary transition-colors flex items-center gap-1"
         >
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Back to {service.name}
-      </HoverLink>
-
-      <div
-        style={{
-          marginBottom: '2rem',
-          paddingBottom: '1.5rem',
-          borderBottom: '2px solid var(--border)',
-        }}
-      >
-        <div style={{ marginBottom: '1rem' }}>
-          <h1
-            style={{
-              fontSize: '2rem',
-              fontWeight: '700',
-              marginBottom: '0.5rem',
-              color: 'var(--text-primary)',
-            }}
-          >
-            Service Settings
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-            Manage your service configuration, ownership, and integrations
-          </p>
-        </div>
-        <ServiceTabs serviceId={id} />
+          <ChevronLeft className="h-4 w-4" />
+          Services
+        </Link>
+        <span className="opacity-30">/</span>
+        <Link href={`/services/${id}`} className="hover:text-primary transition-colors">
+          {service.name}
+        </Link>
+        <span className="opacity-30">/</span>
+        <span className="font-medium text-foreground">Settings</span>
       </div>
 
-      <div
-        className="glass-panel"
-        style={{
-          padding: '2rem',
-          background: 'white',
-          borderRadius: '0px',
-          border: '1px solid var(--border)',
-        }}
-      >
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Service Settings</h1>
+            <p className="text-xs md:text-sm opacity-90 mt-1">
+              Manage configuration, ownership, and notifications for {service.name}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <ServiceTabs serviceId={id} />
+
+      <div className="space-y-6">
+        {/* Alerts */}
         {showSaved && (
-          <div
-            style={{
-              marginBottom: '1.5rem',
-              padding: '0.75rem 1rem',
-              borderRadius: '0.5rem',
-              background: '#dcfce7',
-              border: '1px solid #86efac',
-              color: '#166534',
-              fontSize: '0.9rem',
-              fontWeight: '600',
-            }}
-          >
-            Service settings saved successfully.
-          </div>
+          <Alert className="bg-emerald-50 border-emerald-200 text-emerald-800">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <AlertTitle className="text-emerald-900 font-medium">Success</AlertTitle>
+            <AlertDescription>Service settings saved successfully.</AlertDescription>
+          </Alert>
         )}
+
         {errorCode === 'duplicate-service' && (
-          <div
-            style={{
-              marginBottom: '1.5rem',
-              padding: '0.75rem 1rem',
-              borderRadius: '0.5rem',
-              background: '#fee2e2',
-              border: '1px solid #fecaca',
-              color: '#991b1b',
-              fontSize: '0.9rem',
-              fontWeight: '600',
-            }}
-          >
-            A service with this name already exists. Please choose a unique name.
-          </div>
+          <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertTitle className="text-red-900 font-medium">Error</AlertTitle>
+            <AlertDescription>
+              A service with this name already exists. Please choose a unique name.
+            </AlertDescription>
+          </Alert>
         )}
-        <form action={updateServiceWithId} style={{ display: 'grid', gap: '2rem' }}>
-          {/* Basic Information Section */}
-          <div>
-            <h3
-              style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '1rem',
-                color: 'var(--text-primary)',
-                paddingBottom: '0.75rem',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              Basic Information
-            </h3>
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '0.5rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  Service Name <span style={{ color: 'var(--danger)' }}>*</span>
-                </label>
-                <input
-                  name="name"
-                  defaultValue={service.name}
-                  required
-                  className="focus-border"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    fontSize: '0.95rem',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-              </div>
 
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '0.5rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  defaultValue={service.description || ''}
-                  rows={4}
-                  placeholder="Describe what this service does and its purpose..."
-                  className="focus-border"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    resize: 'vertical',
-                    fontSize: '0.95rem',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-              </div>
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '0.5rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  Region
-                </label>
-                <input
-                  name="region"
-                  defaultValue={service.region || ''}
-                  placeholder="e.g. US-East, EU-West"
-                  className="focus-border"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    fontSize: '0.95rem',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  Optional. This region is shown on the public status page.
-                </p>
-              </div>
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '0.5rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  SLA Tier
-                </label>
-                <input
-                  name="slaTier"
-                  defaultValue={service.slaTier || ''}
-                  placeholder="e.g. Gold, Silver, Bronze"
-                  className="focus-border"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    fontSize: '0.95rem',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                />
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  Optional. Displayed on the public status page when enabled.
-                </p>
-              </div>
-            </div>
+        <form action={updateServiceWithId} className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* General Configuration Card */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-slate-500" /> General Configuration
+                </CardTitle>
+                <CardDescription>Basic information about your service</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">
+                    Service Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input id="name" name="name" defaultValue={service.name} required />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    defaultValue={service.description || ''}
+                    rows={3}
+                    placeholder="Describe what this service does..."
+                    className="resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="region">Region</Label>
+                    <Input
+                      id="region"
+                      name="region"
+                      defaultValue={service.region || ''}
+                      placeholder="Select or enter region"
+                      list="regions-list"
+                    />
+                    <datalist id="regions-list">
+                      <option value="Global" />
+                      <option value="US" />
+                      <option value="US-East (N. Virginia)" />
+                      <option value="US-East (Ohio)" />
+                      <option value="US-West (Oregon)" />
+                      <option value="US-West (N. California)" />
+                      <option value="US-Central" />
+                      <option value="CA (Canada)" />
+                      <option value="EU" />
+                      <option value="EU-West (Ireland)" />
+                      <option value="EU-West (London)" />
+                      <option value="EU-West (Paris)" />
+                      <option value="EU-Central (Frankfurt)" />
+                      <option value="EU-North (Stockholm)" />
+                      <option value="EU-South (Milan)" />
+                      <option value="APAC" />
+                      <option value="Asia Pacific (Tokyo)" />
+                      <option value="Asia Pacific (Singapore)" />
+                      <option value="Asia Pacific (Sydney)" />
+                      <option value="Asia Pacific (Seoul)" />
+                      <option value="Asia Pacific (Mumbai)" />
+                      <option value="Asia Pacific (Hong Kong)" />
+                      <option value="SA (South America)" />
+                      <option value="SA-East (Sao Paulo)" />
+                      <option value="ME (Middle East)" />
+                      <option value="AF (Africa)" />
+                    </datalist>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="slaTier">SLA Tier</Label>
+                    <div className="relative">
+                      <select
+                        id="slaTier"
+                        name="slaTier"
+                        defaultValue={service.slaTier || ''}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">-- Select Tier --</option>
+                        <option value="Platinum">Platinum (99.99%)</option>
+                        <option value="Gold">Gold (99.9%)</option>
+                        <option value="Silver">Silver (99.5%)</option>
+                        <option value="Bronze">Bronze (99.0%)</option>
+                        <option value="Internal">Internal (Best Effort)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Ownership Card */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-4 w-4 text-slate-500" /> Ownership & Escalation
+                </CardTitle>
+                <CardDescription>
+                  Define who owns this service and how incidents are escalated
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="teamId">Owning Team</Label>
+                  <div className="relative">
+                    <select
+                      id="teamId"
+                      name="teamId"
+                      defaultValue={service.teamId || ''}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">-- Select a Team --</option>
+                      {teams.map(team => (
+                        <option key={team.id} value={team.id}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="escalationPolicyId">Escalation Policy</Label>
+                  <div className="relative">
+                    <select
+                      id="escalationPolicyId"
+                      name="escalationPolicyId"
+                      defaultValue={service.escalationPolicyId || ''}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">-- No Policy (Manual Paging Only) --</option>
+                      {policies.map(policy => (
+                        <option key={policy.id} value={policy.id}>
+                          {policy.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border rounded-md p-4 text-sm text-slate-600">
+                  <div className="flex items-center gap-2 mb-1 font-medium text-slate-900">
+                    <Shield className="h-3.5 w-3.5" /> Policy Impact
+                  </div>
+                  Changes to escalation policies take effect immediately for new incidents. Existing
+                  incidents verify policies at each step.
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Ownership & Policy Section */}
-          <div>
-            <h3
-              style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '1rem',
-                color: 'var(--text-primary)',
-                paddingBottom: '0.75rem',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              Ownership & Escalation
-            </h3>
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '0.5rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  Owner Team
-                </label>
-                <select
-                  name="teamId"
-                  defaultValue={service.teamId || ''}
-                  className="focus-border"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    fontSize: '0.95rem',
-                    background: 'white',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                >
-                  <option value="">Unassigned</option>
-                  {teams.map(team => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-                  The team responsible for maintaining this service
-                </p>
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    marginBottom: '0.5rem',
-                    fontWeight: '500',
-                    fontSize: '0.9rem',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  Escalation Policy
-                  <span
-                    title="Defines who gets notified when incidents occur and in what order."
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      background: '#e0f2fe',
-                      color: '#0c4a6e',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      cursor: 'help',
-                      border: '1px solid #bae6fd',
-                    }}
-                  >
-                    ?
-                  </span>
-                </label>
-                <select
-                  name="escalationPolicyId"
-                  defaultValue={service.escalationPolicyId || ''}
-                  className="focus-border"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: '0px',
-                    fontSize: '0.95rem',
-                    background: 'white',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
-                >
-                  <option value="">No escalation policy</option>
-                  {policies.map(policy => (
-                    <option key={policy.id} value={policy.id}>
-                      {policy.name}
-                    </option>
-                  ))}
-                </select>
-                <p
-                  style={{
-                    fontSize: '0.8rem',
-                    color: 'var(--text-secondary)',
-                    marginTop: '0.5rem',
-                  }}
-                >
-                  {service.policy ? (
-                    <>
-                      Current policy:{' '}
-                      <strong style={{ color: 'var(--text-primary)' }}>
-                        {service.policy.name}
-                      </strong>
-                      .{' '}
-                      <Link
-                        href="/policies"
-                        style={{
-                          color: 'var(--primary-color)',
-                          textDecoration: 'none',
-                          fontWeight: '500',
-                        }}
-                      >
-                        Manage policies →
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      No escalation policy assigned.{' '}
-                      <Link
-                        href="/policies"
-                        style={{
-                          color: 'var(--primary-color)',
-                          textDecoration: 'none',
-                          fontWeight: '500',
-                        }}
-                      >
-                        Create one →
-                      </Link>
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Service Notifications Section (ISOLATED) */}
-          <div>
-            <h3
-              style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '1rem',
-                color: 'var(--text-primary)',
-                paddingBottom: '0.75rem',
-                borderBottom: '1px solid var(--border)',
-              }}
-            >
-              Service Notifications (Isolated)
-            </h3>
+          {/* Notification Settings (Client Component) */}
+          <div className="mt-6">
             <ServiceNotificationSettings
-              serviceId={id}
-              serviceNotificationChannels={service.serviceNotificationChannels || []}
-              slackChannel={service.slackChannel}
-              slackWebhookUrl={service.slackWebhookUrl}
-              slackIntegration={globalSlackIntegration || null}
-              webhookIntegrations={webhookIntegrations}
+              serviceId={service.id}
+              serviceNotificationChannels={service.serviceNotificationChannels}
               serviceNotifyOnTriggered={service.serviceNotifyOnTriggered}
               serviceNotifyOnAck={service.serviceNotifyOnAck}
               serviceNotifyOnResolved={service.serviceNotifyOnResolved}
               serviceNotifyOnSlaBreach={service.serviceNotifyOnSlaBreach}
+              slackChannel={service.slackChannel || null}
+              slackWebhookUrl={service.slackWebhookUrl}
+              slackIntegration={globalSlackIntegration}
+              webhookIntegrations={webhookIntegrations}
             />
           </div>
 
-          {/* Form Actions */}
-          <div
-            style={{
-              paddingTop: '1rem',
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Link
-              href={`/services/${id}`}
-              className="glass-button"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              className="glass-button primary"
-              style={{
-                padding: '0.75rem 2rem',
-                fontSize: '1rem',
-                fontWeight: '600',
-              }}
-            >
+          <div className="flex items-center justify-end pt-4 gap-4 border-t mt-8">
+            <Button variant="outline" asChild>
+              <Link href={`/services/${id}`}>Cancel</Link>
+            </Button>
+            <Button type="submit" className="min-w-[120px]">
+              <Save className="mr-2 h-4 w-4" />
               Save Changes
-            </button>
+            </Button>
           </div>
         </form>
       </div>

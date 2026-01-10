@@ -283,6 +283,9 @@ export default async function middleware(req: NextRequest) {
         );
       }
     }
+
+    // Let API routes handle auth/authorization; avoid login redirects for API calls.
+    return response;
   }
 
   // ===== DOMAIN CONFIG (STATUS PAGE) =====

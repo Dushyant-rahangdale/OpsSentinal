@@ -1,13 +1,16 @@
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getDefaultActorId, logAudit } from '@/lib/audit';
 import { getUserPermissions, assertAdminOrResponder } from '@/lib/rbac';
 import { assertServiceNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
-import { getServiceDynamicStatus } from '@/lib/service-status';
-import ServiceCard from '@/components/service/ServiceCard';
+import ServicesListTable from '@/components/service/ServicesListTable';
 import ServicesFilters from '@/components/service/ServicesFilters';
 import CreateServiceForm from '@/components/service/CreateServiceForm';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Server, AlertTriangle, XCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
 
 export const revalidate = 30;
 
@@ -60,6 +63,8 @@ async function createService(formData: FormData) {
   }
 }
 
+const ITEMS_PER_PAGE = 20;
+
 type ServicesPageProps = {
   searchParams: Promise<{
     search?: string;
@@ -67,6 +72,7 @@ type ServicesPageProps = {
     team?: string;
     sort?: string;
     error?: string;
+    page?: string;
   }>;
 };
 
@@ -77,6 +83,10 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
   const teamFilter = typeof params?.team === 'string' ? params.team : '';
   const sortBy = typeof params?.sort === 'string' ? params.sort : 'name_asc';
   const errorCode = typeof params?.error === 'string' ? params.error : '';
+  const currentPage = Math.max(
+    1,
+    parseInt(typeof params?.page === 'string' ? params.page : '1', 10)
+  );
 
   const [teams, policies] = await Promise.all([
     prisma.team.findMany({ orderBy: { name: 'asc' } }),
@@ -87,7 +97,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
   ]);
 
   // Build where clause for filtering
-  const where: any = {
+  const where: Prisma.ServiceWhereInput = {
     AND: [
       searchQuery
         ? {
@@ -101,16 +111,10 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
     ].filter(Boolean),
   };
 
-  // Build orderBy clause
-  let orderBy: any = { name: 'asc' }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  // Build orderBy clause (SLA metrics handle incident-based sorting)
+  let orderBy: Prisma.ServiceOrderByWithRelationInput = { name: 'asc' };
   if (sortBy === 'name_desc') {
     orderBy = { name: 'desc' };
-  } else if (sortBy === 'name_asc') {
-    orderBy = { name: 'asc' };
-  } else if (sortBy === 'incidents_desc') {
-    orderBy = { incidents: { _count: 'desc' } };
-  } else if (sortBy === 'incidents_asc') {
-    orderBy = { incidents: { _count: 'asc' } };
   }
 
   const services = await prisma.service.findMany({
@@ -120,33 +124,49 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
       name: true,
       description: true,
       region: true,
+      slaTier: true,
       status: true,
       team: true,
       policy: {
         select: { id: true, name: true },
       },
-      _count: { select: { incidents: true } },
     },
     orderBy,
   });
 
   const { calculateSLAMetrics } = await import('@/lib/sla-server');
-  const slaMetrics = await calculateSLAMetrics({ includeAllTime: true });
+  const slaWindowDays = 30;
+  // SLA server is the source of truth for service metrics/status (30-day window avoids rollup-only data)
+  const slaMetrics = await calculateSLAMetrics({
+    windowDays: slaWindowDays,
+    includeActiveIncidents: true,
+  });
   const slaServiceMap = new Map(slaMetrics.serviceMetrics.map(s => [s.id, s]));
 
   const servicesWithStatus = services.map(service => {
     const slaData = slaServiceMap.get(service.id);
+    const dynamicStatus = (slaData?.dynamicStatus || 'OPERATIONAL') as
+      | 'OPERATIONAL'
+      | 'DEGRADED'
+      | 'CRITICAL';
     const openIncidentCount = slaData?.activeCount ?? 0;
     const hasCritical = (slaData?.criticalCount ?? 0) > 0;
-    const dynamicStatus = slaData?.dynamicStatus ?? 'OPERATIONAL';
+    const incidentCount = slaData?.count ?? 0;
 
     return {
       ...service,
+      dynamicStatus,
       openIncidentCount,
       hasCritical,
-      dynamicStatus,
+      incidentCount,
     };
   });
+
+  // Calculate high-level stats
+  const totalServices = servicesWithStatus.length;
+  const operationalCount = servicesWithStatus.filter(s => s.dynamicStatus === 'OPERATIONAL').length;
+  const degradedCount = servicesWithStatus.filter(s => s.dynamicStatus === 'DEGRADED').length;
+  const criticalCount = servicesWithStatus.filter(s => s.dynamicStatus === 'CRITICAL').length;
 
   // Apply status filter (client-side since status is calculated)
   const filteredServices =
@@ -154,7 +174,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
       ? servicesWithStatus
       : servicesWithStatus.filter(service => service.dynamicStatus === statusFilter);
 
-  // Apply sorting by status if needed (client-side)
+  // Apply sorting by SLA metrics (client-side)
   if (sortBy === 'status') {
     const statusOrder = { CRITICAL: 0, DEGRADED: 1, OPERATIONAL: 2 };
     filteredServices.sort((a, b) => {
@@ -162,171 +182,126 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
       const bOrder = statusOrder[b.dynamicStatus as keyof typeof statusOrder] ?? 3;
       return aOrder - bOrder;
     });
+  } else if (sortBy === 'incidents_desc') {
+    filteredServices.sort((a, b) => (b.incidentCount ?? 0) - (a.incidentCount ?? 0));
+  } else if (sortBy === 'incidents_asc') {
+    filteredServices.sort((a, b) => (a.incidentCount ?? 0) - (b.incidentCount ?? 0));
   }
+
+  // Pagination Logic
+  const totalFilteredItems = filteredServices.length;
+  const totalPages = Math.ceil(totalFilteredItems / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedServices = filteredServices.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
   const permissions = await getUserPermissions();
   const canCreateService = permissions.isAdminOrResponder;
 
   return (
-    <main className="[zoom:0.8]" style={{ padding: '1.5rem' }}>
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '2rem',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: '2rem',
-              fontWeight: '800',
-              marginBottom: '0.5rem',
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Service Directory
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-            Manage your services and monitor their health status
-          </p>
-          {slaMetrics.isClipped && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              (Note: Data retention limited to {slaMetrics.retentionDays} days)
+    <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 2xl:px-8 py-6 space-y-6 [zoom:0.8]">
+      {/* Metric panel */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <Server className="h-6 w-6 md:h-8 md:w-8" />
+              Service Directory
+            </h1>
+            <p className="text-xs md:text-sm opacity-90 mt-1">
+              Manage your services and monitor their health status
             </p>
-          )}
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'center',
-            padding: '0.75rem 1rem',
-            background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
-            border: '1px solid var(--border)',
-            borderRadius: '0px',
-          }}
-        >
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-            Total Services:
-          </span>
-          <span style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-            {filteredServices.length}
-          </span>
-        </div>
-      </header>
+            <p className="text-[11px] md:text-xs opacity-80 mt-1">
+              Metrics shown for the last 30 days.
+            </p>
+            <p className="text-[11px] md:text-xs opacity-80">
+              Active incident counts exclude snoozed and suppressed incidents.
+            </p>
+          </div>
 
-      {/* Create Service Form */}
-      {errorCode === 'duplicate-service' && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            background: '#fee2e2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            borderRadius: '0px',
-          }}
-        >
-          A service with this name already exists. Please choose a unique name.
-        </div>
-      )}
-      {canCreateService ? (
-        <CreateServiceForm teams={teams} policies={policies} createAction={createService} />
-      ) : (
-        <div
-          className="glass-panel"
-          style={{
-            padding: '1.25rem',
-            marginBottom: '1.5rem',
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            opacity: 0.7,
-            borderRadius: '0px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '1.2rem' }}>!</span>
-            <div>
-              <h2
-                style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  marginBottom: '0.25rem',
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                Create New Service
-              </h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                You do not have access to create services. Admin or Responder role required.
-              </p>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 w-full lg:w-auto">
+            <Card className="bg-white/10 border-white/20 backdrop-blur">
+              <CardContent className="p-3 md:p-4 text-center">
+                <div className="text-xl md:text-2xl font-bold">{totalServices}</div>
+                <div className="text-[10px] md:text-xs opacity-90">Total Services</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/10 border-white/20 backdrop-blur">
+              <CardContent className="p-3 md:p-4 text-center">
+                <div className="text-xl md:text-2xl font-bold text-emerald-200">
+                  {operationalCount}
+                </div>
+                <div className="text-[10px] md:text-xs opacity-90">Operational</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/10 border-white/20 backdrop-blur">
+              <CardContent className="p-3 md:p-4 text-center">
+                <div className="text-xl md:text-2xl font-bold text-yellow-200">{degradedCount}</div>
+                <div className="text-[10px] md:text-xs opacity-90">Degraded</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/10 border-white/20 backdrop-blur">
+              <CardContent className="p-3 md:p-4 text-center">
+                <div className="text-xl md:text-2xl font-bold text-red-200">{criticalCount}</div>
+                <div className="text-[10px] md:text-xs opacity-90">Critical</div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Filters */}
-      <ServicesFilters
-        currentSearch={searchQuery}
-        currentStatus={statusFilter}
-        currentTeam={teamFilter}
-        currentSort={sortBy}
-        teams={teams}
-      />
+      <div className="space-y-4 md:space-y-5">
+        {/* Error Alert */}
+        {errorCode === 'duplicate-service' && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              A service with this name already exists. Please choose a unique name.
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* Services Grid */}
-      {filteredServices.length === 0 ? (
-        <div
-          className="glass-panel empty-state"
-          style={{
-            padding: '4rem 2rem',
-            textAlign: 'center',
-            color: 'var(--text-muted)',
-            background: 'white',
-            borderRadius: '0px',
-            border: '1px solid var(--border)',
+        {/* Create Service */}
+        {canCreateService ? (
+          <CreateServiceForm teams={teams} policies={policies} createAction={createService} />
+        ) : (
+          <Alert className="bg-muted/50">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Access Restricted</AlertTitle>
+            <AlertDescription>
+              You do not have access to create services. Admin or Responder role required.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Filters */}
+        <ServicesFilters
+          currentSearch={searchQuery}
+          currentStatus={statusFilter}
+          currentTeam={teamFilter}
+          currentSort={sortBy}
+          teams={teams}
+        />
+
+        {/* Services List Table */}
+        <ServicesListTable
+          services={paginatedServices}
+          canManageServices={canCreateService}
+          pagination={{
+            currentPage,
+            totalPages,
+            totalItems: totalFilteredItems,
+            itemsPerPage: ITEMS_PER_PAGE,
           }}
-        >
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>!</div>
-          <h3
-            style={{
-              fontSize: '1.25rem',
-              fontWeight: '600',
-              marginBottom: '0.5rem',
-              color: 'var(--text-primary)',
-            }}
-          >
-            No services found
-          </h3>
-          <p style={{ fontSize: '0.95rem', marginBottom: '1.5rem' }}>
-            {searchQuery || statusFilter !== 'all' || teamFilter
-              ? 'Try adjusting your filters or search query.'
-              : 'Create your first service to get started.'}
-          </p>
-        </div>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-            gap: '1.5rem',
-          }}
-        >
-          {filteredServices.map(
-            (
-              service: any // eslint-disable-line @typescript-eslint/no-explicit-any
-            ) => (
-              <ServiceCard key={service.id} service={service} compact={false} />
-            )
-          )}
-        </div>
-      )}
-    </main>
+        />
+
+        <Card className="bg-muted/40 border-dashed">
+          <CardContent className="p-5 text-sm text-muted-foreground">
+            Service health reflects real-time monitoring and incident activity. Active counts
+            exclude snoozed and suppressed incidents.
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

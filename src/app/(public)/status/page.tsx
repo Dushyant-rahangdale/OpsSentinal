@@ -695,6 +695,9 @@ async function renderStatusPage(statusPage: any) {
                   {activeIncidentCount}
                 </div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--status-text-muted, #6b7280)' }}>
+                  Excludes snoozed/suppressed incidents.
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--status-text-muted, #6b7280)' }}>
                   Last 90 days: {recentIncidents.length}
                 </div>
               </div>
