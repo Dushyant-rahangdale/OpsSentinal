@@ -11,12 +11,7 @@ import {
 } from './analytics-metrics';
 import { getServiceDynamicStatus } from './service-status';
 import { logger } from './logger';
-import {
-  getRetentionPolicy,
-  getQueryDateBounds,
-  shouldUseRollups,
-  type RetentionPolicy,
-} from './retention-policy';
+import { getRetentionPolicy, getQueryDateBounds, shouldUseRollups } from './retention-policy';
 
 /**
  * SLA Server - World-Class SLA Metrics Calculation
@@ -40,6 +35,7 @@ export type SLAMetricsFilter = {
   teamId?: string | string[];
   assigneeId?: string | null;
   urgency?: 'HIGH' | 'MEDIUM' | 'LOW';
+  priority?: string | string[];
   status?: 'OPEN' | 'ACKNOWLEDGED' | 'SNOOZED' | 'SUPPRESSED' | 'RESOLVED';
   startDate?: Date;
   endDate?: Date;
@@ -248,20 +244,29 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       teamId: teamIdFilter,
     });
 
-    // Return metrics from rollups
-    const totalQueryDuration = Date.now() - queryStartTime;
-    logger.info('[SLA] Query performance (rollups)', {
-      duration: totalQueryDuration,
-      incidentCount: rollupMetrics.totalIncidents,
-      dataSource: 'rollup',
-    });
+    // Check if we actually got data from rollups
+    if (rollupMetrics.totalIncidents > 0) {
+      // Return metrics from rollups
+      const totalQueryDuration = Date.now() - queryStartTime;
+      logger.info('[SLA] Query performance (rollups)', {
+        duration: totalQueryDuration,
+        incidentCount: rollupMetrics.totalIncidents,
+        dataSource: 'rollup',
+      });
 
-    return {
-      ...rollupMetrics,
-      requestedStart: requestedStart || start,
-      requestedEnd: requestedEnd,
-      isClipped: isClipped,
-    };
+      return {
+        ...rollupMetrics,
+        requestedStart: requestedStart || start,
+        requestedEnd: requestedEnd,
+        isClipped: isClipped,
+      };
+    }
+
+    // Fallback: If rollups are empty (e.g. not generated yet), use standard calculation
+    logger.warn('[SLA] Rollup data empty for window, falling back to real-time calculation', {
+      start: finalStart.toISOString(),
+      end: finalEnd.toISOString(),
+    });
   }
 
   // Calculate actual window duration for previous period comparison
@@ -300,6 +305,9 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const assigneeWhere = filters.assigneeId ? { assigneeId: filters.assigneeId } : null;
   const statusWhere = filters.status ? { status: filters.status } : null;
   const urgencyWhere = filters.urgency ? { urgency: filters.urgency } : null;
+  const priorityWhere = filters.priority
+    ? { priority: Array.isArray(filters.priority) ? { in: filters.priority } : filters.priority }
+    : null;
 
   const mutedStatusList = ['SNOOZED', 'SUPPRESSED'] as const;
   const activeStatusWhere = filters.status
@@ -309,7 +317,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   let activeWhere: Prisma.IncidentWhereInput = {
     ...activeStatusWhere,
     ...(urgencyWhere ?? {}),
-  } as any;
+    ...(priorityWhere ?? {}),
+  } as unknown as Prisma.IncidentWhereInput;
 
   const hasServiceFilter = Object.keys(serviceWhere).length > 0;
   const hasTeamFilter = Object.keys(teamWhere).length > 0;
@@ -338,7 +347,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   let mutedWhere: Prisma.IncidentWhereInput = {
     status: { in: mutedStatusFilter },
     ...(urgencyWhere ?? {}),
-  } as any;
+    ...(priorityWhere ?? {}),
+  } as unknown as Prisma.IncidentWhereInput;
 
   if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
     mutedWhere.OR = [
@@ -359,7 +369,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     createdAt: { gte: finalStart, lte: finalEnd },
     ...(urgencyWhere ?? {}),
     ...(statusWhere ?? {}),
-  } as any;
+    ...(priorityWhere ?? {}),
+  } as unknown as Prisma.IncidentWhereInput;
 
   if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
     recentIncidentWhere.OR = [
@@ -382,7 +393,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const heatmapWhere: Prisma.IncidentWhereInput = {
     ...recentIncidentWhere,
     createdAt: { gte: heatmapStart, lte: now },
-  } as any;
+  } as unknown as Prisma.IncidentWhereInput;
 
   // Previous Period Query - FIX: Use actual window duration, not fixed windowDays
   const previousStart = new Date(finalStart.getTime() - actualWindowMs);
@@ -390,7 +401,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const previousWhere: Prisma.IncidentWhereInput = {
     ...recentIncidentWhere,
     createdAt: { gte: previousStart, lt: previousEnd },
-  } as any;
+  } as unknown as Prisma.IncidentWhereInput;
 
   // 3. Parallel Data Fetching
   // FIX: Fetch ALL incidents for metrics (up to MAX_INCIDENTS_FOR_METRICS)
@@ -619,6 +630,31 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
         resolveMinutes: incident.service.targetResolveMinutes ?? DEFAULT_RESOLVE_TARGET_MINUTES,
       });
     }
+  }
+
+  // FIX: Fetch historical SLA definitions for "Time Traveler" fix
+  // This allows us to use the SLA rules that were active at the time of the incident
+  const serviceIdsForHistory = services.map(s => s.id);
+  // Also include services from incidents that weren't in the main services list
+  for (const incident of recentIncidents) {
+    if (!serviceIdsForHistory.includes(incident.serviceId)) {
+      serviceIdsForHistory.push(incident.serviceId);
+    }
+  }
+
+  const slaDefinitions = await prisma.sLADefinition.findMany({
+    where: {
+      serviceId: { in: serviceIdsForHistory },
+    },
+    orderBy: { activeFrom: 'desc' },
+  });
+
+  const serviceSlaHistory = new Map<string, typeof slaDefinitions>();
+  for (const def of slaDefinitions) {
+    if (!def.serviceId) continue;
+    const list = serviceSlaHistory.get(def.serviceId) || [];
+    list.push(def);
+    serviceSlaHistory.set(def.serviceId, list);
   }
 
   // 4. Fetch Incident Events
@@ -864,8 +900,28 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       ackMinutes: DEFAULT_ACK_TARGET_MINUTES,
       resolveMinutes: DEFAULT_RESOLVE_TARGET_MINUTES,
     };
-    const ackTarget = targets.ackMinutes;
-    const resolveTarget = targets.resolveMinutes;
+
+    // FIX: Time Traveler - Override current targets with historical SLA definition if found
+    const history = serviceSlaHistory.get(incident.serviceId);
+    let ackTarget = targets.ackMinutes;
+    let resolveTarget = targets.resolveMinutes;
+
+    if (history) {
+      const incidentDate = incident.createdAt;
+      // Find the version active at the time of incident creation
+      const matchedDef = history.find(
+        def => def.activeFrom <= incidentDate && (!def.activeTo || def.activeTo > incidentDate)
+      );
+
+      if (matchedDef) {
+        if (matchedDef.targetAckTime !== null && matchedDef.targetAckTime !== undefined) {
+          ackTarget = matchedDef.targetAckTime;
+        }
+        if (matchedDef.targetResolveTime !== null && matchedDef.targetResolveTime !== undefined) {
+          resolveTarget = matchedDef.targetResolveTime;
+        }
+      }
+    }
 
     // ACK SLA
     const ackedAt = ackMap.get(incident.id);
@@ -876,7 +932,11 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
       } else {
         ackSlaBreached++;
       }
-    } else if (incident.status !== 'RESOLVED') {
+    } else if (
+      incident.status !== 'RESOLVED' &&
+      incident.status !== 'SNOOZED' &&
+      incident.status !== 'SUPPRESSED'
+    ) {
       // FIX: Check if unacked incident is overdue
       const elapsedMin = (now.getTime() - incident.createdAt.getTime()) / 60000;
       if (elapsedMin > ackTarget) {
@@ -897,6 +957,10 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
         }
       }
     } else {
+      // If SNOOZED or SUPPRESSED, incident is effectively paused/ignored
+      if (incident.status === 'SNOOZED' || incident.status === 'SUPPRESSED') {
+        continue;
+      }
       // FIX: Check if unresolved incident is overdue
       const elapsedMin = (now.getTime() - incident.createdAt.getTime()) / 60000;
       if (elapsedMin > resolveTarget) {
@@ -1491,6 +1555,19 @@ export async function generateDailySnapshot(definitionId: string, date: Date): P
     return;
   }
 
+  // FIX: Don't generate snapshots for data that has already been purged
+  // This prevents "false positive" 100% scores for periods with no data
+  const retentionPolicy = await getRetentionPolicy();
+  const retentionStart = new Date();
+  retentionStart.setDate(retentionStart.getDate() - retentionPolicy.incidentRetentionDays);
+
+  if (date < retentionStart) {
+    logger.warn(
+      `[SLA] Skipping snapshot for ${date.toISOString()} as it is outside retention policy`
+    );
+    return;
+  }
+
   const start = new Date(date);
   start.setUTCHours(0, 0, 0, 0);
   const end = new Date(date);
@@ -1500,6 +1577,8 @@ export async function generateDailySnapshot(definitionId: string, date: Date): P
   const whereClause: Prisma.IncidentWhereInput = {
     createdAt: { gte: start, lte: end },
     ...(definition.serviceId ? { serviceId: definition.serviceId } : {}),
+    // FIX: Respect priority scope (The "Ignored Filter" fix)
+    ...(definition.priority ? { priority: definition.priority } : {}),
   };
 
   const incidents = await prisma.incident.findMany({
@@ -1530,7 +1609,11 @@ export async function generateDailySnapshot(definitionId: string, date: Date): P
         const ackMinutes =
           (incident.acknowledgedAt.getTime() - incident.createdAt.getTime()) / 60000;
         if (ackMinutes <= targetAckTime) metAck++;
-      } else if (incident.status !== 'RESOLVED') {
+      } else if (
+        incident.status !== 'RESOLVED' &&
+        incident.status !== 'SNOOZED' &&
+        incident.status !== 'SUPPRESSED'
+      ) {
         // Check if overdue
         const elapsedMin = (evaluationTime.getTime() - incident.createdAt.getTime()) / 60000;
         if (elapsedMin > targetAckTime) {
@@ -1546,7 +1629,11 @@ export async function generateDailySnapshot(definitionId: string, date: Date): P
         const resolveMinutes =
           (incident.resolvedAt.getTime() - incident.createdAt.getTime()) / 60000;
         if (resolveMinutes <= targetResolveTime) metResolve++;
-      } else if (incident.status !== 'RESOLVED') {
+      } else if (
+        incident.status !== 'RESOLVED' &&
+        incident.status !== 'SNOOZED' &&
+        incident.status !== 'SUPPRESSED'
+      ) {
         // Check if overdue
         const elapsedMin = (evaluationTime.getTime() - incident.createdAt.getTime()) / 60000;
         if (elapsedMin > targetResolveTime) {
@@ -1616,7 +1703,11 @@ export async function checkIncidentSLA(incidentId: string): Promise<IncidentSLAR
   if (incident.acknowledgedAt) {
     const ackTime = (incident.acknowledgedAt.getTime() - createdAt) / 60000;
     ackBreached = ackTime > targetAckMinutes;
-  } else if (incident.status !== 'RESOLVED') {
+  } else if (
+    incident.status !== 'RESOLVED' &&
+    incident.status !== 'SNOOZED' &&
+    incident.status !== 'SUPPRESSED'
+  ) {
     ackBreached = elapsedMinutes > targetAckMinutes;
     ackTimeRemaining = Math.max(0, targetAckMinutes - elapsedMinutes);
   }
@@ -1626,7 +1717,11 @@ export async function checkIncidentSLA(incidentId: string): Promise<IncidentSLAR
   if (incident.resolvedAt) {
     const resolveTime = (incident.resolvedAt.getTime() - createdAt) / 60000;
     resolveBreached = resolveTime > targetResolveMinutes;
-  } else if (incident.status !== 'RESOLVED') {
+  } else if (
+    incident.status !== 'RESOLVED' &&
+    incident.status !== 'SNOOZED' &&
+    incident.status !== 'SUPPRESSED'
+  ) {
     resolveBreached = elapsedMinutes > targetResolveMinutes;
     resolveTimeRemaining = Math.max(0, targetResolveMinutes - elapsedMinutes);
   }
@@ -1862,7 +1957,6 @@ export async function calculateSLAMetricsFromRollups(
   const autoResolveRate = totalIncidents > 0 ? (autoResolveCount / totalIncidents) * 100 : 0;
 
   const actualWindowMs = end.getTime() - start.getTime();
-  const actualWindowDays = Math.max(1, Math.ceil(actualWindowMs / (24 * 60 * 60 * 1000)));
 
   logger.info('[SLA] Calculated metrics from rollups', {
     dateRange: { start: start.toISOString(), end: end.toISOString() },

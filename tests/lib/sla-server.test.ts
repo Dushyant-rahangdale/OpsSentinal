@@ -35,6 +35,9 @@ vi.mock('@/lib/prisma', () => ({
       findUnique: vi.fn().mockResolvedValue(null),
       upsert: vi.fn().mockResolvedValue({}),
     },
+    sLADefinition: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     $executeRaw: vi.fn().mockResolvedValue(0),
     $queryRaw: vi.fn().mockResolvedValue([]),
   },
@@ -71,19 +74,24 @@ type PrismaMock = {
     findUnique: ReturnType<typeof vi.fn>;
     upsert: ReturnType<typeof vi.fn>;
   };
+  sLADefinition: {
+    findMany: ReturnType<typeof vi.fn>;
+  };
 };
 
 const prismaMock = prisma as unknown as PrismaMock & {
   alert?: PrismaMock['alert'];
   incident?: PrismaMock['incident'] & { groupBy?: ReturnType<typeof vi.fn> };
   incidentNote?: PrismaMock['incidentNote'];
-  $executeRaw: ReturnType<typeof vi.fn>;
   $queryRaw: ReturnType<typeof vi.fn>;
   systemSettings?: PrismaMock['systemSettings'];
+  sLADefinition?: PrismaMock['sLADefinition'];
 };
 
 // Initialize the new mock functions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (prismaMock as any).$executeRaw = vi.fn();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (prismaMock as any).$queryRaw = vi.fn();
 
 const setupBaseMocks = ({
@@ -137,6 +145,9 @@ const setupBaseMocks = ({
   if (!prismaMock.incident.groupBy) {
     prismaMock.incident.groupBy = vi.fn();
   }
+  if (!prismaMock.sLADefinition) {
+    prismaMock.sLADefinition = { findMany: vi.fn() };
+  }
   // systemSettings is now in the global mock - just call mockResolvedValue
   prismaMock.systemSettings.findUnique.mockResolvedValue({
     incidentRetentionDays: 30,
@@ -179,6 +190,7 @@ const setupBaseMocks = ({
     .mockResolvedValueOnce([]);
   prismaMock.$executeRaw.mockResolvedValue(0);
   prismaMock.$queryRaw.mockResolvedValue([]);
+  prismaMock.sLADefinition.findMany.mockResolvedValue([]);
 };
 
 const toHourKey = (date: Date) => {
