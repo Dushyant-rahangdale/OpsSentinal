@@ -183,7 +183,7 @@ export default function ScheduleCalendar({ shifts, timeZone }: ScheduleCalendarP
               Shows all active layers. Multiple layers can be active simultaneously.
             </p>
           </div>
-          <Badge variant="secondary" className="gap-1.5 text-xs font-semibold shrink-0">
+          <Badge variant="secondary" size="xs" className="gap-1.5 shrink-0">
             <Clock className="h-3 w-3" />
             {monthLabel}
           </Badge>
@@ -293,7 +293,8 @@ export default function ScheduleCalendar({ shifts, timeZone }: ScheduleCalendarP
                             {isMultiDay && (
                               <Badge
                                 variant="outline"
-                                className="mt-1 h-4 text-[10px] px-1 py-0 border-primary/30"
+                                size="xs"
+                                className="mt-1 h-4 border-primary/30"
                               >
                                 multi-day
                               </Badge>

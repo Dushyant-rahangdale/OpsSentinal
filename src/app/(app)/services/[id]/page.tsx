@@ -37,10 +37,7 @@ type ServiceDetailPageProps = {
 function StatusBadge({ status }: { status: string }) {
   if (status === 'OPERATIONAL') {
     return (
-      <Badge
-        variant="outline"
-        className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 pl-1 pr-2 py-1"
-      >
+      <Badge variant="success" size="sm" className="gap-1 pl-1 pr-2">
         <CheckCircle2 className="h-4 w-4 fill-emerald-500 text-white" />
         Operational
       </Badge>
@@ -48,10 +45,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === 'DEGRADED') {
     return (
-      <Badge
-        variant="outline"
-        className="bg-yellow-50 text-yellow-700 border-yellow-200 gap-1 pl-1 pr-2 py-1"
-      >
+      <Badge variant="warning" size="sm" className="gap-1 pl-1 pr-2">
         <AlertTriangle className="h-4 w-4 fill-yellow-500 text-white" />
         Degraded
       </Badge>
@@ -59,17 +53,14 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === 'CRITICAL') {
     return (
-      <Badge
-        variant="outline"
-        className="bg-red-50 text-red-700 border-red-200 gap-1 pl-1 pr-2 py-1"
-      >
+      <Badge variant="danger" size="sm" className="gap-1 pl-1 pr-2">
         <XCircle className="h-4 w-4 fill-red-500 text-white" />
         Critical
       </Badge>
     );
   }
   return (
-    <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">
+    <Badge variant="neutral" size="sm">
       Unknown
     </Badge>
   );
@@ -199,17 +190,17 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={dynamicStatus} />
               {service.team && (
-                <Badge variant="secondary" className="gap-1.5 font-normal">
+                <Badge variant="secondary" size="xs" className="gap-1.5">
                   {service.team.name}
                 </Badge>
               )}
               {service.slaTier && (
-                <Badge variant="secondary" className="gap-1.5 font-normal">
+                <Badge variant="secondary" size="xs" className="gap-1.5">
                   SLA {service.slaTier}
                 </Badge>
               )}
               {service.region && (
-                <Badge variant="secondary" className="gap-1.5 font-normal">
+                <Badge variant="secondary" size="xs" className="gap-1.5">
                   <Globe className="h-3.5 w-3.5 opacity-70" />
                   {service.region}
                 </Badge>

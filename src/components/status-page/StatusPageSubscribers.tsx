@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Mail, CheckCircle2, XCircle, Trash2, Search } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 interface Subscriber {
     id: string;
@@ -395,20 +396,20 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
                                     </td>
                                     <td>
                                         {subscriber.unsubscribedAt ? (
-                                            <span className="status-badge status-unsubscribed">
-                                                <XCircle size={14} />
+                                            <Badge variant="neutral" size="xs" className="gap-1">
+                                                <XCircle className="h-3 w-3" />
                                                 Unsubscribed
-                                            </span>
+                                            </Badge>
                                         ) : subscriber.verified ? (
-                                            <span className="status-badge status-verified">
-                                                <CheckCircle2 size={14} />
+                                            <Badge variant="success" size="xs" className="gap-1">
+                                                <CheckCircle2 className="h-3 w-3" />
                                                 Verified
-                                            </span>
+                                            </Badge>
                                         ) : (
-                                            <span className="status-badge status-unverified">
-                                                <XCircle size={14} />
+                                            <Badge variant="danger" size="xs" className="gap-1">
+                                                <XCircle className="h-3 w-3" />
                                                 Unverified
-                                            </span>
+                                            </Badge>
                                         )}
                                     </td>
                                     <td>

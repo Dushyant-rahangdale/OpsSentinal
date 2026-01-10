@@ -73,10 +73,7 @@ export default function IncidentWatchers({
         <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
           Watchers
         </h4>
-        <Badge
-          variant="outline"
-          className="text-[10px] font-normal text-muted-foreground border-border bg-transparent"
-        >
+        <Badge variant="outline" size="xs" className="text-muted-foreground">
           Visibility
         </Badge>
       </div>

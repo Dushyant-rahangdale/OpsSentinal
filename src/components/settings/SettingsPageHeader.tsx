@@ -6,6 +6,7 @@ import _Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Search } from 'lucide-react';
 import { SETTINGS_NAV_SECTIONS, type SettingsNavItem } from './navConfig';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 type Props = {
     currentPageId: string;
@@ -126,9 +127,9 @@ export default function SettingsPageHeader({ currentPageId, isAdmin = false, isR
                                                                     <span className="settings-dropdown-item-label">
                                                                         {item.label}
                                                                     </span>
-                                                                    <span className="settings-dropdown-item-badge">
+                                                                    <Badge variant="neutral" size="xs">
                                                                         {item.requiresAdmin ? 'Admin' : 'Responder+'}
-                                                                    </span>
+                                                                    </Badge>
                                                                 </div>
                                                             );
                                                         }

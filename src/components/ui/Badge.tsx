@@ -2,8 +2,8 @@
 
 import { ReactNode, memo, useMemo } from 'react';
 
-type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info';
-type BadgeSize = 'sm' | 'md' | 'lg';
+type BadgeVariant = 'default' | 'primary' | 'success' | 'warning' | 'error' | 'danger' | 'info';
+type BadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -43,6 +43,11 @@ function Badge({
 
   const sizeStyles: Record<BadgeSize, React.CSSProperties> = useMemo(
     () => ({
+      xs: {
+        padding: '2px 6px',
+        fontSize: '10px',
+        height: '16px',
+      },
       sm: {
         padding: 'var(--spacing-1) var(--spacing-2)',
         fontSize: 'var(--font-size-xs)',
@@ -65,28 +70,32 @@ function Badge({
   const variantStyles: Record<BadgeVariant, React.CSSProperties> = useMemo(
     () => ({
       default: {
-        background: 'var(--color-neutral-100)',
-        color: 'var(--text-primary)',
+        background: 'var(--badge-neutral-bg)',
+        color: 'var(--badge-neutral-text)',
       },
       primary: {
         background: 'var(--primary-color)',
         color: 'var(--text-inverse)',
       },
       success: {
-        background: 'var(--color-success-light)',
-        color: 'var(--color-success-dark)',
+        background: 'var(--badge-success-bg)',
+        color: 'var(--badge-success-text)',
       },
       warning: {
-        background: 'var(--color-warning-light)',
-        color: 'var(--color-warning-dark)',
+        background: 'var(--badge-warning-bg)',
+        color: 'var(--badge-warning-text)',
       },
       error: {
-        background: 'var(--color-error-light)',
-        color: 'var(--color-error-dark)',
+        background: 'var(--badge-error-bg)',
+        color: 'var(--badge-error-text)',
+      },
+      danger: {
+        background: 'var(--badge-error-bg)',
+        color: 'var(--badge-error-text)',
       },
       info: {
-        background: 'var(--color-info-light)',
-        color: 'var(--color-info-dark)',
+        background: 'var(--badge-info-bg)',
+        color: 'var(--badge-info-text)',
       },
     }),
     []
@@ -104,6 +113,7 @@ function Badge({
 
   return (
     <span
+      data-badge="true"
       className={`ui-badge ui-badge-${variant} ui-badge-${size} ${className}`}
       style={{
         ...baseStyles,

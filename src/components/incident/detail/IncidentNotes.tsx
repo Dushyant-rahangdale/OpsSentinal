@@ -4,7 +4,6 @@ import NoteCard from '../NoteCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { Badge } from '@/components/ui/shadcn/badge';
 import { MessageSquare, Send, Lock, User } from 'lucide-react';
 
 type Note = {
@@ -25,41 +24,36 @@ export default function IncidentNotes({ notes, canManage, onAddNote }: IncidentN
     <div className="space-y-6">
       {/* Add Note Form */}
       {canManage ? (
-        <div className="p-4 bg-muted/30 rounded-lg border">
-          <form action={onAddNote} className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Avatar className="h-8 w-8 bg-primary/10">
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <Textarea
-                  name="content"
-                  placeholder="Add a note... (supports Markdown)"
-                  required
-                  rows={3}
-                  className="resize-none bg-background"
-                />
+        <div className="group relative">
+          <form action={onAddNote} className="space-y-3">
+            <div className="relative rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow focus-within:shadow-md focus-within:border-primary/50 overflow-hidden">
+              <Textarea
+                name="content"
+                placeholder="Type a note (Markdown supported)..."
+                required
+                rows={3}
+                className="resize-none border-0 bg-transparent focus-visible:ring-0 p-4 text-sm"
+              />
+              <div className="flex items-center justify-between bg-slate-50/50 px-3 py-2 border-t border-slate-100">
+                <div className="flex gap-2">
+                  <span className="text-[10px] text-slate-400 font-medium">**bold** *italic* `code`</span>
+                </div>
+                <Button type="submit" size="sm" className="h-8 rounded-lg px-4 gap-2">
+                  <Send className="h-3.5 w-3.5" />
+                  Post
+                </Button>
               </div>
-            </div>
-            <div className="flex items-center justify-between gap-4 pl-11">
-              <p className="text-xs text-muted-foreground">Supports **bold**, *italic*, `code`</p>
-              <Button type="submit" size="sm">
-                <Send className="mr-2 h-4 w-4" />
-                Post Note
-              </Button>
             </div>
           </form>
         </div>
       ) : (
-        <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-            <Lock className="h-4 w-4 text-orange-600" />
+        <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+            <Lock className="h-4 w-4 text-slate-500" />
           </div>
           <div>
-            <p className="text-sm font-medium text-orange-900">Notes Restricted</p>
-            <p className="text-xs text-orange-700">Responder role required to add notes</p>
+            <p className="text-sm font-bold text-slate-700">Read Only</p>
+            <p className="text-xs text-slate-500">Only responders can add notes to this incident.</p>
           </div>
         </div>
       )}

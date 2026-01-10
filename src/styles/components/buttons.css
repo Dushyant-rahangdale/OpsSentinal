@@ -87,3 +87,18 @@
 .copy-button svg {
     flex-shrink: 0;
 }
+
+/* Force light surfaces under browser dark templates */
+.force-light-surface {
+    color-scheme: light;
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+
+.force-light-surface:hover {
+    background: #cbd5e1 !important;
+    border-color: #94a3b8 !important;
+}

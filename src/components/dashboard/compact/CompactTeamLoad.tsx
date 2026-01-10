@@ -92,33 +92,45 @@ const CompactTeamLoad = memo(function CompactTeamLoad({ assigneeLoad }: CompactT
         return (
           <div
             key={assignee.id}
-            className="flex items-center justify-between p-2 px-2.5 rounded-sm bg-neutral-50 border border-border"
+            className="flex flex-col gap-1.5 p-2.5 rounded-md bg-muted/40 border border-border"
             role="listitem"
             aria-label={`${displayName}: ${assignee.count} incidents, ${loadLabel}`}
           >
-            {/* Name */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {/* Avatar placeholder */}
-              <div
-                className="w-6 h-6 rounded-full bg-neutral-200 flex items-center justify-center text-xs font-semibold text-secondary-foreground shrink-0"
-                aria-hidden="true"
-              >
-                {initials}
+            <div className="flex items-center justify-between">
+              {/* Name */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {/* Avatar placeholder */}
+                <div
+                  className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0"
+                  aria-hidden="true"
+                >
+                  {initials}
+                </div>
+                <span
+                  className="text-sm font-medium text-foreground whitespace-nowrap overflow-hidden overflow-ellipsis"
+                  title={displayName}
+                >
+                  {displayName}
+                </span>
               </div>
-              <span
-                className="text-sm font-medium text-foreground whitespace-nowrap overflow-hidden overflow-ellipsis"
-                title={displayName}
+              {/* Count badge */}
+              <div
+                className="py-0.5 px-2 rounded-full text-white text-xs font-semibold min-w-[20px] text-center tabular-nums"
+                style={{ background: loadColor }}
+                aria-label={`${assignee.count} incidents`}
               >
-                {displayName}
-              </span>
+                {assignee.count}
+              </div>
             </div>
-            {/* Count badge */}
-            <div
-              className="py-0.5 px-2 rounded-full text-white text-xs font-semibold min-w-[20px] text-center tabular-nums"
-              style={{ background: loadColor }}
-              aria-label={`${assignee.count} incidents`}
-            >
-              {assignee.count}
+            {/* Progress bar */}
+            <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(100, (assignee.count / 5) * 100)}%`,
+                  background: loadColor,
+                }}
+              />
             </div>
           </div>
         );

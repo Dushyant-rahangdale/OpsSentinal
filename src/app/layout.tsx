@@ -31,7 +31,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="light" data-theme="light">
+      <head>
+        <meta name="color-scheme" content="light only" />
+        <meta name="darkreader-lock" />
+      </head>
       <body>
         <Providers>
           <VersionCheck />

@@ -243,14 +243,11 @@ export default function ActionItemsBoard({
                       status === 'COMPLETED'
                         ? 'success'
                         : status === 'BLOCKED'
-                          ? 'error'
-                          : 'default'
+                          ? 'danger'
+                          : 'info'
                     }
-                    style={{
-                      background: `${STATUS_COLORS[status as keyof typeof STATUS_COLORS]}20`,
-                      color: STATUS_COLORS[status as keyof typeof STATUS_COLORS],
-                      fontWeight: '700',
-                    }}
+                    size="sm"
+                    className="font-bold"
                   >
                     {items.length}
                   </Badge>
@@ -546,9 +543,11 @@ export default function ActionItemsBoard({
                           item.status === 'COMPLETED'
                             ? 'success'
                             : item.status === 'BLOCKED'
-                              ? 'error'
-                              : 'default'
+                              ? 'danger'
+                              : 'info'
                         }
+                        size="xs"
+                        className="font-semibold"
                       >
                         {STATUS_LABELS[item.status]}
                       </Badge>

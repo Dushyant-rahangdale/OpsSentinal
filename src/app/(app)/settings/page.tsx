@@ -157,7 +157,7 @@ export default async function SettingsOverviewPage() {
                             {item.description}
                           </p>
                         </div>
-                        <Badge variant="secondary" className="absolute top-4 right-4 text-xs">
+                        <Badge variant="secondary" size="xs" className="absolute top-4 right-4">
                           {item.requiresAdmin ? 'Admin only' : 'Responder+'}
                         </Badge>
                       </div>

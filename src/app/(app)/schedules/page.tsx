@@ -47,7 +47,7 @@ export default async function SchedulesPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Calendar className="h-6 w-6 text-primary" />
-              <Badge variant="secondary" className="text-xs uppercase tracking-wide">
+              <Badge variant="secondary" size="xs" className="uppercase tracking-wide">
                 On-call Management
               </Badge>
             </div>
@@ -59,8 +59,9 @@ export default async function SchedulesPage() {
 
           <div className="flex items-center gap-3">
             <Badge
-              variant={hasActiveCoverage ? 'default' : 'destructive'}
-              className="gap-2 py-2 px-4"
+              variant={hasActiveCoverage ? 'success' : 'danger'}
+              size="md"
+              className="gap-2"
             >
               <span
                 className={`inline-block w-2 h-2 rounded-full ${

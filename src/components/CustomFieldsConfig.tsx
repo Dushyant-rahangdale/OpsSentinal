@@ -295,16 +295,16 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <h4 className="font-medium">{field.name}</h4>
-                                            <Badge variant="secondary" className="text-xs">
+                                            <Badge variant="secondary" size="xs">
                                                 {field.type}
                                             </Badge>
                                             {field.required && (
-                                                <Badge variant="outline" className="text-xs">
+                                                <Badge variant="outline" size="xs">
                                                     Required
                                                 </Badge>
                                             )}
                                             {field.showInList && (
-                                                <Badge variant="outline" className="text-xs">
+                                                <Badge variant="outline" size="xs">
                                                     In List
                                                 </Badge>
                                             )}

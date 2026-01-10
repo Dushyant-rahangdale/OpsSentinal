@@ -34,7 +34,7 @@ export default function PrioritySelector({
     return priority ? (
       <PriorityBadge priority={priority} size="md" />
     ) : (
-      <Badge variant="outline" className="border-dashed text-slate-500 font-medium bg-transparent">
+      <Badge variant="neutral" size="sm" className="border-dashed bg-transparent">
         Unassigned
       </Badge>
     );

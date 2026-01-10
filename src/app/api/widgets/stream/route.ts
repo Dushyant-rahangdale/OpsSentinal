@@ -3,6 +3,7 @@ import { getAuthOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { getWidgetData } from '@/lib/widget-data-provider';
 import prisma from '@/lib/prisma';
+import { buildDateFilter } from '@/lib/dashboard-utils';
 
 /**
  * Server-Sent Events (SSE) Stream for Real-time Widget Updates
@@ -28,12 +29,36 @@ export async function GET(request: Request) {
     }
 
     const encoder = new TextEncoder();
+    const searchParams = new URL(request.url).searchParams;
+    const range = searchParams.get('range') || '30';
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
+    const assigneeParam = searchParams.get('assignee');
+    const serviceParam = searchParams.get('service');
+
+    const dateFilter = buildDateFilter(range, startDate, endDate);
+    const widgetFilters = {
+      serviceId: serviceParam && serviceParam !== 'all' ? serviceParam : undefined,
+      assigneeId:
+        assigneeParam === null ? undefined : assigneeParam === '' ? null : assigneeParam,
+      urgency: (searchParams.get('urgency') as 'HIGH' | 'MEDIUM' | 'LOW' | null) || undefined,
+      status: (searchParams.get('status') as
+        | 'OPEN'
+        | 'ACKNOWLEDGED'
+        | 'SNOOZED'
+        | 'SUPPRESSED'
+        | 'RESOLVED'
+        | null) || undefined,
+      startDate: dateFilter.createdAt?.gte,
+      endDate: dateFilter.createdAt?.lte,
+      includeAllTime: range === 'all',
+    };
 
     const stream = new ReadableStream({
       async start(controller) {
         // Send initial data immediately
         try {
-          const initialData = await getWidgetData(user.id, user.role);
+          const initialData = await getWidgetData(user.id, user.role, widgetFilters);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialData)}\n\n`));
         } catch (error) {
           logger.error('sse.widgets.initial_error', {
@@ -44,7 +69,7 @@ export async function GET(request: Request) {
         // Set up interval for periodic updates
         const intervalId = setInterval(async () => {
           try {
-            const data = await getWidgetData(user.id, user.role);
+            const data = await getWidgetData(user.id, user.role, widgetFilters);
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
           } catch (error) {
             logger.error('sse.widgets.update_error', {

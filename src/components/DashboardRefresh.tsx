@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import { Button } from '@/components/ui/shadcn/button';
+import { RefreshCw, RotateCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type DashboardRefreshProps = {
   autoRefreshInterval?: number; // in seconds, default 60
@@ -20,7 +23,7 @@ export default function DashboardRefresh({ autoRefreshInterval = 60 }: Dashboard
 
   // Only set time after component mounts on client
   useEffect(() => {
-    setMounted(true); // eslint-disable-line react-hooks/set-state-in-effect
+    setMounted(true);
     setLastUpdated(new Date());
   }, []);
 
@@ -28,35 +31,23 @@ export default function DashboardRefresh({ autoRefreshInterval = 60 }: Dashboard
   useEffect(() => {
     const saved = localStorage.getItem('dashboard-auto-refresh');
     if (saved !== null) {
-      setAutoRefreshEnabled(saved === 'true'); // eslint-disable-line react-hooks/set-state-in-effect
+      setAutoRefreshEnabled(saved === 'true');
     }
   }, []);
 
   // Auto-refresh timer
   useEffect(() => {
     if (!autoRefreshEnabled) {
-      setTimeUntilRefresh(autoRefreshInterval); // eslint-disable-line react-hooks/set-state-in-effect
+      setTimeUntilRefresh(autoRefreshInterval);
       return;
     }
 
-    // Countdown timer
     const countdownInterval = setInterval(() => {
-      setTimeUntilRefresh((prev) => {
-        if (prev <= 1) {
-          return autoRefreshInterval;
-        }
-        return prev - 1;
-      });
+      setTimeUntilRefresh((prev) => (prev <= 1 ? autoRefreshInterval : prev - 1));
     }, 1000);
 
-    // Auto-refresh interval
     const refreshInterval = setInterval(() => {
-      setIsRefreshing(true);
-      router.refresh();
-      setLastUpdated(new Date());
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 500);
+      handleRefresh();
     }, autoRefreshInterval * 1000);
 
     return () => {
@@ -69,29 +60,25 @@ export default function DashboardRefresh({ autoRefreshInterval = 60 }: Dashboard
     setIsRefreshing(true);
     router.refresh();
     setLastUpdated(new Date());
-    setTimeUntilRefresh(autoRefreshInterval); // Reset countdown
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 500);
+    setTimeUntilRefresh(autoRefreshInterval);
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   const toggleAutoRefresh = () => {
     const newValue = !autoRefreshEnabled;
     setAutoRefreshEnabled(newValue);
     localStorage.setItem('dashboard-auto-refresh', String(newValue));
-    if (newValue) {
-      setTimeUntilRefresh(autoRefreshInterval);
-    }
+    if (newValue) setTimeUntilRefresh(autoRefreshInterval);
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.9)', fontWeight: '500' }}>
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="text-sm font-medium text-white/90">
         {mounted && lastUpdated ? (
           <>
             Updated: {formatDateTime(lastUpdated, userTimeZone, { format: 'time' })}
             {autoRefreshEnabled && (
-              <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', opacity: 0.8 }}>
+              <span className="ml-2 text-xs opacity-80 font-mono">
                 (Auto: {timeUntilRefresh}s)
               </span>
             )}
@@ -100,67 +87,34 @@ export default function DashboardRefresh({ autoRefreshInterval = 60 }: Dashboard
           <span>Updated: --:--</span>
         )}
       </div>
-      <button
-        onClick={handleRefresh}
-        disabled={isRefreshing}
-        className="command-button"
-        style={{
-          padding: '0.5rem 1rem',
-          borderRadius: '8px',
-          fontSize: '0.85rem',
-          border: 'none',
-          background: 'white',
-          cursor: isRefreshing ? 'not-allowed' : 'pointer',
-          color: '#1f2937',
-          fontWeight: '600',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          opacity: isRefreshing ? 0.6 : 1,
-          transition: 'all 0.2s ease',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-        }}
-        title="Refresh dashboard data"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{
-          animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
-          transformOrigin: 'center'
-        }}>
-          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M21 3v5h-5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M3 21v-5h5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        {isRefreshing ? 'Refreshing...' : 'Refresh'}
-        <style jsx>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </button>
-      <button
-        onClick={toggleAutoRefresh}
-        style={{
-          padding: '0.4rem 0.75rem',
-          borderRadius: '8px',
-          fontSize: '0.75rem',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          background: autoRefreshEnabled ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-          color: 'white',
-          cursor: 'pointer',
-          fontWeight: '600',
-          transition: 'all 0.2s ease',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.35rem'
-        }}
-        title={autoRefreshEnabled ? 'Disable auto-refresh' : 'Enable auto-refresh'}
-      >
-        <span style={{ fontSize: '0.7rem' }}>🔄</span>
-        {autoRefreshEnabled ? 'Auto ON' : 'Auto OFF'}
-      </button>
+
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          variant="secondary"
+          size="sm"
+          className="h-8 gap-2 bg-white text-slate-800 hover:bg-white/90 font-semibold shadow-sm"
+          title="Refresh dashboard data"
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+
+        <Button
+          onClick={toggleAutoRefresh}
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-8 gap-1.5 border-white/20 text-white hover:bg-white/10 hover:text-white transition-all",
+            autoRefreshEnabled ? "bg-white/20" : "bg-transparent"
+          )}
+          title={autoRefreshEnabled ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+        >
+          <RotateCw className="h-3.5 w-3.5" />
+          {autoRefreshEnabled ? 'Auto ON' : 'Auto OFF'}
+        </Button>
+      </div>
     </div>
   );
 }
-

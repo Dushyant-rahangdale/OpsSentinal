@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
+import { cn } from '@/lib/utils';
 
 type LiveClockProps = {
   timeZone?: string;
@@ -21,7 +22,7 @@ function isValidTimeZone(tz: string): boolean {
 /**
  * LiveClock Component
  * Displays a live-updating clock with timezone support
- * Handles hydration mismatch by showing placeholder during SSR
+ * Redesigned to match dark-themed "hacker" aesthetic
  */
 const LiveClock = memo(function LiveClock({ timeZone = 'UTC' }: LiveClockProps) {
   const [time, setTime] = useState<string | null>(null);
@@ -66,35 +67,36 @@ const LiveClock = memo(function LiveClock({ timeZone = 'UTC' }: LiveClockProps) 
     };
   }, [formatTime]);
 
-  // During SSR or before hydration, show a placeholder with consistent dimensions
+  // Loading state
   if (!isMounted || time === null) {
     return (
       <div
-        className="font-mono text-sm text-white/60 bg-black/20 px-2 py-1 rounded border border-white/5 tracking-wide flex items-center gap-2 min-w-[100px]"
+        className="font-mono text-sm bg-slate-900 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-md flex items-center gap-3 shadow-inner shadow-black/20"
         aria-label="Loading clock"
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-white/30 shrink-0" aria-hidden="true" />
-        <span className="opacity-50">--:--:--</span>
+        <span className="w-2 h-2 rounded-full bg-slate-600 shrink-0" aria-hidden="true" />
+        <span className="opacity-50 tracking-widest">--:--:--</span>
       </div>
     );
   }
 
-  const displayTimeZone = validTimeZone === 'UTC' ? 'UTC' : '';
-
   return (
     <div
-      className="font-mono text-sm text-white/60 bg-black/20 px-2 py-1 rounded border border-white/5 tracking-wide flex items-center gap-2 min-w-[100px]"
+      className={cn(
+        "font-mono text-base bg-[#1a1f2e] border border-slate-800/60 text-slate-200 px-4 py-2 rounded-lg flex items-center gap-3 shadow-lg shadow-black/10 select-none",
+        "bg-gradient-to-b from-[#1e2336] to-[#151926]"
+      )}
       role="timer"
-      aria-label={`Current time: ${time} ${displayTimeZone}`.trim()}
-      aria-live="off"
+      aria-label={`Current time: ${time}`}
     >
-      <span
-        className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e] shrink-0"
-        aria-hidden="true"
-      />
-      <span>
+      <div className="relative flex items-center justify-center">
+        <span
+          className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"
+          aria-hidden="true"
+        />
+      </div>
+      <span className="tracking-[0.1em] font-medium opacity-90 text-lg">
         {time}
-        {displayTimeZone && ` ${displayTimeZone}`}
       </span>
     </div>
   );

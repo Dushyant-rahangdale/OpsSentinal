@@ -3,7 +3,20 @@
    Extracted from globals.css
    ======================================== */
 
+:root {
+    color-scheme: light only;
+}
+
+html {
+    color-scheme: light only;
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+
 body {
+    color-scheme: light only;
+    filter: none !important;
+    -webkit-filter: none !important;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
@@ -13,6 +26,13 @@ body {
     background-image:
         radial-gradient(circle at 10% 10%, rgba(148, 163, 184, 0.1) 0%, transparent 40%),
         radial-gradient(circle at 80% 0%, rgba(148, 163, 184, 0.05) 0%, transparent 35%);
+}
+
+.dark body,
+[data-theme='dark'] body {
+    background-image:
+        radial-gradient(circle at 10% 10%, rgba(15, 23, 42, 0.35) 0%, transparent 45%),
+        radial-gradient(circle at 80% 0%, rgba(15, 23, 42, 0.25) 0%, transparent 40%);
 }
 
 /* Fix dropdown text cutoff issue - ensure text is fully visible */
@@ -63,6 +83,13 @@ select option {
         radial-gradient(circle at 85% 10%, rgba(148, 163, 184, 0.05), transparent 40%);
     pointer-events: none;
     z-index: 0;
+}
+
+.dark .page-shell::before,
+[data-theme='dark'] .page-shell::before {
+    background:
+        radial-gradient(circle at 15% 0%, rgba(15, 23, 42, 0.4), transparent 55%),
+        radial-gradient(circle at 85% 10%, rgba(2, 6, 23, 0.35), transparent 50%);
 }
 
 .page-shell>* {

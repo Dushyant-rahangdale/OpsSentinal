@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { IncidentStatus } from '@prisma/client';
-import { AlertCircle, CheckCircle2, Clock, EyeOff, MinusCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 type StatusBadgeProps = {
   status: IncidentStatus;
@@ -13,97 +13,57 @@ type StatusBadgeProps = {
 };
 
 function StatusBadge({ status, size = 'md', showDot = false, className }: StatusBadgeProps) {
-  const sizeStyles = {
-    sm: { padding: '0.22rem 0.55rem', fontSize: '0.7rem' },
-    md: { padding: '0.25rem 0.75rem', fontSize: '0.8rem' },
-    lg: { padding: '0.4rem 1rem', fontSize: '0.9rem' },
+  const sizeMap: Record<NonNullable<StatusBadgeProps['size']>, 'xs' | 'sm' | 'md'> = {
+    sm: 'xs',
+    md: 'sm',
+    lg: 'md',
   };
 
-  const statusConfig: Record<string, { bg: string; color: string; border: string; dot: string }> = {
-    OPEN: {
-      bg: 'linear-gradient(180deg, #feecec 0%, #fddddd 100%)',
-      color: '#dc2626',
-      border: '1px solid rgba(220, 38, 38, 0.2)',
-      dot: '#ef4444',
-    },
-    ACKNOWLEDGED: {
-      bg: 'linear-gradient(180deg, #fff7e0 0%, #fff0c2 100%)',
-      color: '#b45309',
-      border: '1px solid rgba(180, 83, 9, 0.2)',
-      dot: '#f59e0b',
-    },
-    RESOLVED: {
-      bg: 'linear-gradient(180deg, #eaf7ef 0%, #dff3e7 100%)',
-      color: '#16a34a',
-      border: '1px solid rgba(22, 163, 74, 0.2)',
-      dot: '#22c55e',
-    },
-    SNOOZED: {
-      bg: 'linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%)',
-      color: '#6b7280',
-      border: '1px solid rgba(107, 114, 128, 0.2)',
-      dot: '#9ca3af',
-    },
-    SUPPRESSED: {
-      bg: 'linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%)',
-      color: '#6b7280',
-      border: '1px solid rgba(107, 114, 128, 0.2)',
-      dot: '#9ca3af',
-    },
-    OPERATIONAL: {
-      bg: 'linear-gradient(180deg, #eaf7ef 0%, #dff3e7 100%)',
-      color: '#16a34a',
-      border: '1px solid rgba(22, 163, 74, 0.2)',
-      dot: '#22c55e',
-    },
-    DEGRADED: {
-      bg: 'linear-gradient(180deg, #fff7e0 0%, #fff0c2 100%)',
-      color: '#b45309',
-      border: '1px solid rgba(180, 83, 9, 0.2)',
-      dot: '#f59e0b',
-    },
-    CRITICAL: {
-      bg: 'linear-gradient(180deg, #feecec 0%, #fddddd 100%)',
-      color: '#dc2626',
-      border: '1px solid rgba(220, 38, 38, 0.2)',
-      dot: '#ef4444',
-    },
+  const statusVariantMap: Record<
+    string,
+    'success' | 'warning' | 'danger' | 'neutral' | 'info'
+  > = {
+    OPEN: 'danger',
+    ACKNOWLEDGED: 'warning',
+    RESOLVED: 'success',
+    SNOOZED: 'neutral',
+    SUPPRESSED: 'neutral',
+    OPERATIONAL: 'success',
+    DEGRADED: 'warning',
+    CRITICAL: 'danger',
   };
 
-  const config = statusConfig[status] || statusConfig.OPEN;
-  const style = sizeStyles[size];
+  const variant = statusVariantMap[status] ?? 'info';
+  const toneClass =
+    variant === 'danger'
+      ? 'bg-red-200 text-red-900 border-red-300 hover:bg-red-200'
+      : variant === 'warning'
+        ? 'bg-amber-200 text-amber-900 border-amber-300 hover:bg-amber-200'
+        : variant === 'success'
+          ? 'bg-emerald-200 text-emerald-900 border-emerald-300 hover:bg-emerald-200'
+          : variant === 'info'
+            ? 'bg-blue-200 text-blue-900 border-blue-300 hover:bg-blue-200'
+            : 'bg-slate-200 text-slate-900 border-slate-300 hover:bg-slate-200';
+  const dotColor =
+    variant === 'danger'
+      ? 'bg-red-500'
+      : variant === 'warning'
+        ? 'bg-amber-500'
+        : variant === 'success'
+          ? 'bg-emerald-500'
+          : variant === 'info'
+            ? 'bg-blue-500'
+            : 'bg-slate-400';
 
   return (
-    <span
-      className={cn(className)}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        ...style,
-        background: config.bg,
-        color: config.color,
-        border: config.border,
-        borderRadius: '9999px',
-        fontWeight: 700,
-        lineHeight: 1,
-        whiteSpace: 'nowrap',
-        letterSpacing: '0.02em',
-      }}
+    <Badge
+      variant={variant}
+      size={sizeMap[size]}
+      className={cn('uppercase', toneClass, className)}
     >
-      {showDot && (
-        <span
-          style={{
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: config.dot,
-            boxShadow: `0 0 0 2px ${config.dot}33`,
-          }}
-        />
-      )}
+      {showDot && <span className={cn('h-2 w-2 rounded-full', dotColor)} />}
       {status}
-    </span>
+    </Badge>
   );
 }
 

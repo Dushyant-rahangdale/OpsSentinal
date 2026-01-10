@@ -34,6 +34,7 @@ import PrioritySelector from '@/components/incident/PrioritySelector';
 import CopyButton from '@/components/common/CopyButton';
 import {
   AlertCircle,
+  Activity,
   ArrowLeft,
   CheckCircle2,
   Clock,
@@ -42,6 +43,7 @@ import {
   MessageSquare,
   Settings2,
   Timer,
+  User,
   Zap,
 } from 'lucide-react';
 
@@ -171,145 +173,179 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
         return 'from-red-600 to-rose-700';
     }
   };
-  const urgencyBadgeStyles: Record<'HIGH' | 'MEDIUM' | 'LOW', string> = {
-    HIGH: 'bg-red-50 text-red-700',
-    MEDIUM: 'bg-amber-50 text-amber-700',
-    LOW: 'bg-emerald-50 text-emerald-700',
+  const urgencyVariantMap: Record<'HIGH' | 'MEDIUM' | 'LOW', 'danger' | 'warning' | 'success'> = {
+    HIGH: 'danger',
+    MEDIUM: 'warning',
+    LOW: 'success',
   };
-  const urgencyBadgeClass =
-    urgencyBadgeStyles[incident.urgency as 'HIGH' | 'MEDIUM' | 'LOW'] ?? urgencyBadgeStyles.LOW;
+  const urgencyVariant =
+    urgencyVariantMap[incident.urgency as 'HIGH' | 'MEDIUM' | 'LOW'] ?? 'success';
 
   return (
     <div className="w-full px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 [zoom:0.8]">
-      {/* Modern Header - Clean and Compact */}
-      <div
-        className={`bg-gradient-to-r ${getStatusColor()} text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg`}
-      >
-        {/* Title Row - Allow wrapping */}
-        <div className="mb-4">
-          {/* Breadcrumb */}
-          <div className="flex items-center justify-between mb-2">
+      {/* Premium Header - Glassmorphic with Accent Bar */}
+      <div className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white/80 shadow-xl backdrop-blur-xl transition-all hover:shadow-2xl">
+        {/* Animated Accent Bar */}
+        <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${getStatusColor()} animate-[pulse_3s_ease-in-out_infinite]`} />
+
+        {/* Subtle Background Tint */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${getStatusColor()} opacity-[0.03] pointer-events-none`} />
+
+        <div className="relative p-6 md:p-8">
+          {/* Breadcrumb & Actions */}
+          <div className="flex items-center justify-between mb-6">
             <Link
               href="/incidents"
-              className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors group"
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors group/back"
             >
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover/back:-translate-x-0.5" />
               Back to Incidents
             </Link>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="font-mono text-xs text-slate-500 bg-slate-50">
+                #{id.slice(0, 8)}
+              </Badge>
+              <div className="h-4 w-px bg-slate-200 mx-1" />
               <CopyButton
                 text={id}
-                label="Copy Incident ID"
-                className="text-white/70 hover:text-white hover:bg-white/10"
+                label="ID"
+                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               />
               <CopyButton
                 text={`${typeof window !== 'undefined' ? window.location.origin : ''}/incidents/${id}`}
                 icon="link"
-                label="Copy Link"
-                className="text-white/70 hover:text-white hover:bg-white/10"
+                label="Link"
+                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100"
               />
             </div>
           </div>
 
-          <h1 className="text-lg md:text-xl lg:text-2xl font-bold flex items-start gap-2 leading-tight">
-            <AlertCircle className="h-5 w-5 md:h-6 md:w-6 shrink-0 mt-0.5" />
-            <span className="break-words mr-2">{incident.title}</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-sm bg-white/20 text-white border border-white/20 font-mono">
-              #{id.slice(0, 8)}
-            </span>
-          </h1>
+          <div className="flex flex-col md:flex-row md:items-start gap-6">
+            {/* Large Status Icon */}
+            <div className={`shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${getStatusColor()} flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform duration-300`}>
+              <AlertCircle className="h-8 w-8 text-white" />
+            </div>
+
+            {/* Title and Status */}
+            <div className="space-y-3 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+                  {incident.title}
+                </h1>
+                <Badge
+                  variant="outline"
+                  className={`px-3 py-1 rounded-full border-0 font-bold tracking-wide shadow-sm bg-gradient-to-r ${getStatusColor()} text-white`}
+                >
+                  {incident.status}
+                </Badge>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid - Priority, Urgency, Assignee, Service */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+        {/* Priority Card */}
+        <div className="group relative rounded-xl border border-slate-200/60 bg-white/50 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                <Activity className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Priority</span>
+            </div>
+            <PrioritySelector
+              incidentId={incident.id}
+              priority={incident.priority}
+              canManage={canManageIncident}
+            />
+          </div>
         </div>
 
-        {/* Stats Grid - Priority, Urgency, Assignee, Service */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-8">
-          {/* Priority Card */}
-          <Card className="bg-white/95 border-none shadow-sm backdrop-blur overflow-hidden group hover:shadow-md transition-all">
-            <CardContent className="p-3">
-              <PrioritySelector
-                incidentId={incident.id}
-                priority={incident.priority}
-                canManage={canManageIncident}
-              />
-            </CardContent>
-          </Card>
+        {/* Urgency Card */}
+        <div className="group relative rounded-xl border border-slate-200/60 bg-white/50 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-red-400 to-rose-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Urgency</span>
+            </div>
+            <div className="flex items-center">
+              <Badge variant={urgencyVariant} size="sm" className="uppercase font-bold tracking-wide">
+                {incident.urgency}
+              </Badge>
+            </div>
+          </div>
+        </div>
 
-          {/* Urgency Card */}
-          <Card className="bg-white/95 border-none shadow-sm backdrop-blur overflow-hidden hover:shadow-md transition-all">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-1.5 text-muted-foreground">
-                <AlertCircle className="h-3.5 w-3.5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Urgency</span>
+        {/* Assignee Card */}
+        <div className="group relative rounded-xl border border-slate-200/60 bg-white/50 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-violet-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600">
+                <User className="w-4 h-4" />
               </div>
-              <div className="flex items-center justify-between">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${urgencyBadgeClass}`}
-                >
-                  {incident.urgency}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assignee</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {incident.assignee ? (
+                <>
+                  <Avatar className="h-6 w-6 border border-slate-200">
+                    <AvatarImage src={incident.assignee.avatarUrl || undefined} />
+                    <AvatarFallback className="text-[9px] bg-slate-100 text-slate-600">
+                      {incident.assignee.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-semibold text-sm truncate text-slate-900">
+                    {incident.assignee.name}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-slate-400 italic">Unassigned</span>
+              )}
+            </div>
+          </div>
+        </div>
 
-          {/* Assignee Card */}
-          <Card className="bg-white/95 border-none shadow-sm backdrop-blur overflow-hidden hover:shadow-md transition-all">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-1.5 text-muted-foreground">
-                <span className="h-3.5 w-3.5 flex items-center justify-center">👤</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Assignee</span>
+        {/* Service Card */}
+        <div className="group relative rounded-xl border border-slate-200/60 bg-white/50 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-amber-400 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                <Zap className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2">
-                {incident.assignee ? (
-                  <>
-                    <Avatar className="h-5 w-5 border border-slate-200">
-                      <AvatarImage src={incident.assignee.avatarUrl || undefined} />
-                      <AvatarFallback className="text-[8px]">
-                        {incident.assignee.name.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-semibold text-sm truncate text-slate-900">
-                      {incident.assignee.name}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-sm text-slate-400 italic">Unassigned</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Service Card */}
-          <Card className="bg-white/95 border-none shadow-sm backdrop-blur overflow-hidden hover:shadow-md transition-all">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-1.5 text-muted-foreground">
-                <Zap className="h-3.5 w-3.5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Service</span>
-              </div>
-              <div className="font-semibold text-sm truncate text-slate-900">
-                {incident.service.name}
-              </div>
-            </CardContent>
-          </Card>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Service</span>
+            </div>
+            <div className="font-semibold text-sm truncate text-slate-900 pl-1">
+              {incident.service.name}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Description Section - Enhanced with Better Styling */}
-      {incident.description && (
-        <Card className="border-l-4 border-l-primary bg-gradient-to-r from-primary/5 to-transparent">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
+      {
+        incident.description && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-3">
+              <FileText className="h-4 w-4 text-slate-500" />
               Description
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
             <div className="prose prose-sm prose-slate max-w-none">
               <p className="text-slate-700 leading-relaxed whitespace-pre-wrap break-words m-0">
                 {incident.description}
               </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )
+      }
 
       {/* Main Grid - Like Teams Page */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6">
@@ -324,20 +360,18 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
           />
 
           {/* Tabbed Content */}
-          <Card>
-            <CardHeader className="pb-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Incident Details</CardTitle>
-                  <CardDescription>View timeline, notes, and resolution details</CardDescription>
-                </div>
-                <Badge variant="outline" className="gap-1">
-                  <Zap className="h-3 w-3" />
-                  {incident.events.length} Events
-                </Badge>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Incident Details</h2>
+                <p className="text-sm text-slate-500">Timeline, notes, and resolution</p>
               </div>
-            </CardHeader>
-            <CardContent>
+              <Badge variant="outline" className="gap-1.5 py-1 px-2 border-slate-300 bg-white">
+                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                <span className="font-medium">{incident.events.length} Events</span>
+              </Badge>
+            </div>
+            <div className="bg-transparent">
               <Tabs defaultValue="overview" className="w-full mt-4">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="overview" className="gap-2">
@@ -426,7 +460,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                           <MessageSquare className="h-4 w-4" />
                           Notes & Updates
                           {incident.notes.length > 0 && (
-                            <Badge variant="secondary" className="ml-auto">
+                            <Badge variant="secondary" size="xs" className="ml-auto">
                               {incident.notes.length}
                             </Badge>
                           )}
@@ -464,8 +498,8 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                   </TabsContent>
                 </div>
               </Tabs>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Sidebar - 1 column */}
@@ -507,27 +541,25 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
           />
 
           {/* Quick Links - Like Teams Page */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Quick Links</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+          <div className="rounded-xl border border-slate-200/60 bg-white/50 shadow-sm p-5">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-4">Quick Links</h3>
+            <div className="space-y-2">
               <Link href={`/services/${incident.serviceId}`}>
-                <Button variant="outline" className="w-full justify-start gap-2">
+                <Button variant="outline" className="w-full justify-start gap-2 bg-white hover:bg-slate-50 h-9 text-sm">
                   <Zap className="h-4 w-4" />
                   View Service
                 </Button>
               </Link>
               <Link href={`/analytics?incident=${incident.id}`}>
-                <Button variant="outline" className="w-full justify-start gap-2">
+                <Button variant="outline" className="w-full justify-start gap-2 bg-white hover:bg-slate-50 h-9 text-sm">
                   <Clock className="h-4 w-4" />
                   View in Analytics
                 </Button>
               </Link>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </aside>
       </div>
-    </div>
+    </div >
   );
 }

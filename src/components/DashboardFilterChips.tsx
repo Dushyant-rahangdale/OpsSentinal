@@ -76,7 +76,8 @@ export default function DashboardFilterChips({ services, users }: FilterChipsPro
         <Badge
           key={filter.key}
           variant="secondary"
-          className="px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5"
+          size="xs"
+          className="rounded-full font-medium flex items-center gap-1.5"
         >
           <span>
             {filter.label}: <strong>{filter.value}</strong>

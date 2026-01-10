@@ -79,16 +79,16 @@ export default function DashboardActionItems({
     }
   };
 
-  const getPriorityConfig = (priority: string) => {
+  const getPriorityVariant = (priority: string) => {
     switch (priority) {
       case 'HIGH':
-        return 'bg-red-100 text-red-700 border-red-300';
+        return 'danger';
       case 'MEDIUM':
-        return 'bg-amber-100 text-amber-700 border-amber-300';
+        return 'warning';
       case 'LOW':
-        return 'bg-neutral-100 text-neutral-700 border-neutral-300';
+        return 'neutral';
       default:
-        return 'bg-neutral-100 text-neutral-700 border-neutral-300';
+        return 'neutral';
     }
   };
 
@@ -104,7 +104,7 @@ export default function DashboardActionItems({
           <p className="text-sm text-muted-foreground">Track postmortem follow-ups</p>
         </div>
         <Link href="/action-items">
-          <Badge className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
+          <Badge variant="default" size="sm">
             {stats.total} Total
           </Badge>
         </Link>
@@ -174,7 +174,7 @@ export default function DashboardActionItems({
       <div className="mb-5 p-4 bg-white rounded-lg border border-border">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-semibold text-foreground">Completion Rate</span>
-          <Badge variant="outline" className="font-bold">
+          <Badge variant="outline" size="xs">
             {completionRate.toFixed(0)}%
           </Badge>
         </div>
@@ -222,16 +222,14 @@ export default function DashboardActionItems({
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge
-                        variant="outline"
-                        className={cn(
-                          'text-[0.7rem] font-bold px-2 py-0',
-                          getPriorityConfig(item.priority)
-                        )}
+                        variant={getPriorityVariant(item.priority)}
+                        size="xs"
+                        className="font-bold"
                       >
                         {item.priority}
                       </Badge>
                       {isOverdue && (
-                        <Badge className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200 text-[0.7rem] font-bold px-2 py-0">
+                        <Badge variant="danger" size="xs">
                           Overdue
                         </Badge>
                       )}

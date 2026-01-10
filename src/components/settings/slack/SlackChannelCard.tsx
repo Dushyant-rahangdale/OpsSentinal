@@ -68,7 +68,7 @@ export function SlackChannelCard({
       <div className="flex items-center gap-2 shrink-0">
         {isConnected ? (
           <>
-            <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600 gap-1">
+            <Badge variant="success" size="xs" className="gap-1">
               <CheckCircle className="h-3 w-3" />
               Connected
             </Badge>

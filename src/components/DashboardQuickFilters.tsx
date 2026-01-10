@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { AlertTriangle, CircleDot, Clock, UserMinus } from 'lucide-react';
 
 const quickFilters = [
   {
     label: 'Open',
-    icon: '📋',
+    icon: <CircleDot className="h-3.5 w-3.5" />,
     buildUrl: (params: URLSearchParams) => {
       if (
         params.get('status') === 'OPEN' &&
@@ -30,7 +31,7 @@ const quickFilters = [
   },
   {
     label: 'Critical',
-    icon: '🔴',
+    icon: <AlertTriangle className="h-3.5 w-3.5" />,
     buildUrl: (params: URLSearchParams) => {
       if (params.get('status') === 'OPEN' && params.get('urgency') === 'HIGH') {
         return '/';
@@ -46,7 +47,7 @@ const quickFilters = [
   },
   {
     label: 'Unassigned',
-    icon: '⚠️',
+    icon: <UserMinus className="h-3.5 w-3.5" />,
     buildUrl: (params: URLSearchParams) => {
       if (params.get('status') === 'OPEN' && params.get('assignee') === '') {
         return '/';
@@ -62,7 +63,7 @@ const quickFilters = [
   },
   {
     label: 'Recent',
-    icon: '🕐',
+    icon: <Clock className="h-3.5 w-3.5" />,
     buildUrl: (params: URLSearchParams) => {
       const newParams = new URLSearchParams(params.toString());
       newParams.set('sortBy', 'createdAt');
@@ -80,7 +81,6 @@ const quickFilters = [
 
 export default function DashboardQuickFilters() {
   const searchParams = useSearchParams();
-  const _pathname = usePathname();
 
   return (
     <div className="flex gap-2 flex-wrap mb-3.5">
@@ -102,7 +102,7 @@ export default function DashboardQuickFilters() {
                 : 'bg-neutral-50 text-secondary-foreground border-border hover:-translate-y-px hover:bg-neutral-100'
             }`}
           >
-            <span className="text-xs">{filter.icon}</span>
+            {filter.icon}
             {filter.label}
           </Link>
         );

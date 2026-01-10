@@ -1,6 +1,8 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { cn } from '@/lib/utils';
+import { Clock } from 'lucide-react';
 
 /**
  * Compact Recent Activity Widget
@@ -68,16 +70,16 @@ function getRelativeTime(date: Date | string | null | undefined): string {
   return parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function getStatusColor(status: string): string {
+function getStatusClass(status: string): string {
   switch (status) {
     case 'OPEN':
-      return 'var(--color-danger)';
+      return 'bg-red-500 shadow-[0_0_6px_-1px_rgba(239,68,68,0.5)]';
     case 'ACKNOWLEDGED':
-      return 'var(--color-warning)';
+      return 'bg-amber-500 shadow-[0_0_6px_-1px_rgba(245,158,11,0.5)]';
     case 'RESOLVED':
-      return 'var(--color-success)';
+      return 'bg-emerald-500 shadow-[0_0_6px_-1px_rgba(16,185,129,0.5)]';
     default:
-      return 'var(--text-muted)';
+      return 'bg-muted-foreground';
   }
 }
 
@@ -97,7 +99,7 @@ const CompactRecentActivity = memo(function CompactRecentActivity({
   if (validIncidents.length === 0) {
     return (
       <div
-        className="p-3.5 rounded-sm bg-neutral-50 border border-border text-center"
+        className="p-5 rounded-md bg-muted/20 border border-dashed border-border text-center"
         role="status"
         aria-label="No recent activity"
       >
@@ -111,39 +113,41 @@ const CompactRecentActivity = memo(function CompactRecentActivity({
       {validIncidents.slice(0, 5).map(incident => {
         const serviceName = incident.service?.name || 'Unknown';
         const relativeTime = getRelativeTime(incident.createdAt);
-        const statusColor = getStatusColor(incident.status);
+        const statusClass = getStatusClass(incident.status);
 
         return (
           <div
             key={incident.id}
-            className="flex items-start gap-2 p-2 rounded-sm bg-neutral-50 border border-border"
+            className="flex items-start gap-3 p-2.5 rounded-md bg-muted/40 border border-border hover:bg-muted/60 transition-colors"
             role="listitem"
             aria-label={`${incident.title} - ${serviceName} - ${relativeTime}`}
           >
             {/* Status indicator */}
             <div
-              className="w-2 h-2 rounded-full mt-1 shrink-0"
-              style={{ background: statusColor }}
+              className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0 transition-shadow", statusClass)}
               aria-hidden="true"
               title={incident.status}
             />
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div
-                className="text-sm font-medium text-foreground whitespace-nowrap overflow-hidden overflow-ellipsis"
+                className="text-sm font-semibold text-foreground whitespace-nowrap overflow-hidden overflow-ellipsis leading-tight"
                 title={incident.title}
               >
                 {incident.title}
               </div>
-              <div className="text-xs text-muted-foreground flex gap-2 mt-0.5 flex-wrap">
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 flex-wrap">
                 <span
-                  className="max-w-[120px] overflow-hidden overflow-ellipsis whitespace-nowrap"
+                  className="max-w-[120px] overflow-hidden overflow-ellipsis whitespace-nowrap text-foreground/80 font-medium"
                   title={serviceName}
                 >
                   {serviceName}
                 </span>
-                <span aria-hidden="true">•</span>
-                <span>{relativeTime}</span>
+                <span aria-hidden="true" className="text-muted-foreground/50">•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-muted-foreground/70" />
+                  {relativeTime}
+                </span>
               </div>
             </div>
           </div>

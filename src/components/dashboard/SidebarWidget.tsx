@@ -1,8 +1,7 @@
 'use client';
 
+import Link from 'next/link';
 import { ReactNode, useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
-import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,23 +9,79 @@ import { cn } from '@/lib/utils';
 export interface WidgetAction {
   label: string;
   icon?: ReactNode;
-  onClick: () => void;
+  onClick?: () => void;
+  href?: string;
   variant?: 'primary' | 'secondary' | 'danger';
 }
 
 interface SidebarWidgetProps {
   title: string;
   icon: ReactNode;
-  iconBg: string;
+  iconBg: string; // Now accepts Tailwind classes e.g. "bg-emerald-600"
   children: ReactNode;
   actions?: WidgetAction[];
   isLoading?: boolean;
   lastUpdated?: Date;
   onRefresh?: () => void;
+  subtitle?: string;
 }
 
+// Enhanced Icon backgrounds using Tailwind classes and gradient definitions
+export const WIDGET_ICON_BG = {
+  green: 'emerald',
+  blue: 'blue',
+  orange: 'amber',
+  purple: 'violet',
+  red: 'red',
+  slate: 'slate',
+  cyan: 'cyan',
+};
+
+// Map basic color names to comprehensive theme objects
+const THEME_MAP: Record<string, {
+  iconBg: string;
+  iconText: string;
+  border: string;
+}> = {
+  emerald: {
+    iconBg: 'bg-emerald-100',
+    iconText: 'text-emerald-600',
+    border: 'border-emerald-200/50',
+  },
+  blue: {
+    iconBg: 'bg-blue-100',
+    iconText: 'text-blue-600',
+    border: 'border-blue-200/50',
+  },
+  amber: {
+    iconBg: 'bg-amber-100',
+    iconText: 'text-amber-600',
+    border: 'border-amber-200/50',
+  },
+  violet: {
+    iconBg: 'bg-violet-100',
+    iconText: 'text-violet-600',
+    border: 'border-violet-200/50',
+  },
+  red: {
+    iconBg: 'bg-rose-100',
+    iconText: 'text-rose-600',
+    border: 'border-rose-200/50',
+  },
+  slate: {
+    iconBg: 'bg-slate-100',
+    iconText: 'text-slate-600',
+    border: 'border-slate-200/50',
+  },
+  cyan: {
+    iconBg: 'bg-cyan-100',
+    iconText: 'text-cyan-600',
+    border: 'border-cyan-200/50',
+  }
+};
+
 /**
- * Widget Component - Modern Tailwind Design
+ * Widget Component - Minimal Modern Design (Matching Ops Pulse / Heatmap)
  */
 export default function SidebarWidget({
   title,
@@ -37,6 +92,7 @@ export default function SidebarWidget({
   isLoading,
   lastUpdated,
   onRefresh,
+  subtitle,
 }: SidebarWidgetProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -44,18 +100,38 @@ export default function SidebarWidget({
     setMounted(true);
   }, []);
 
+  // Determine theme based on input
+  const themeKey = Object.values(WIDGET_ICON_BG).includes(iconBg) ? iconBg : 'slate';
+  const theme = THEME_MAP[themeKey] || THEME_MAP.slate;
+
   return (
-    <Card className="shadow-lg border-border/50 bg-card">
-      <CardHeader className="pb-3">
+    <div className={cn(
+      "group relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-white to-primary/5 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden"
+    )}>
+      {/* Accent bar - matching Command Center */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/60" />
+
+      {/* Header */}
+      <div className="p-4 pb-3 border-b border-primary/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-sm flex items-center justify-center shadow-sm"
-              style={{ background: iconBg }}
-            >
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary"
+            )}>
               {icon}
             </div>
-            <h3 className="text-lg font-bold text-foreground tracking-tight">{title}</h3>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+              {subtitle && (
+                <p className="text-[10px] text-slate-500 font-medium">{subtitle}</p>
+              )}
+              {/* Last Updated Indicator */}
+              {mounted && lastUpdated && (
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Updated {getTimeAgo(lastUpdated)}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Actions */}
@@ -66,64 +142,64 @@ export default function SidebarWidget({
                   onClick={onRefresh}
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 hover:bg-neutral-100 hover:scale-105 transition-transform"
+                  className="h-7 w-7 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600"
                   title="Refresh data"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
               )}
-              {actions?.map((action, idx) => (
-                <Button
-                  key={idx}
-                  onClick={action.onClick}
-                  size="sm"
-                  variant={
-                    action.variant === 'primary'
-                      ? 'default'
-                      : action.variant === 'danger'
-                        ? 'destructive'
-                        : 'secondary'
-                  }
-                  className="text-xs gap-1.5 shadow-xs hover:-translate-y-px transition-all"
-                >
-                  {action.icon}
-                  {action.label}
-                </Button>
-              ))}
+              {actions?.map((action, idx) => {
+                const buttonContent = (
+                  <>
+                    {action.icon}
+                    <span className="text-[10px] font-semibold">{action.label}</span>
+                  </>
+                );
+
+                const buttonClasses = cn(
+                  "h-7 gap-1.5 px-2.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors",
+                );
+
+                if (action.href) {
+                  return (
+                    <Link key={idx} href={action.href} className={cn("flex items-center", buttonClasses)}>
+                      {buttonContent}
+                    </Link>
+                  );
+                }
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={action.onClick}
+                    className={cn("flex items-center", buttonClasses)}
+                  >
+                    {buttonContent}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Last Updated Indicator - Client Only to prevent hydration mismatch */}
-        {mounted && lastUpdated && (
-          <Badge
-            variant="secondary"
-            className="w-fit mt-2 flex items-center gap-2 text-xs font-medium"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e] animate-pulse" />
-            Updated {getTimeAgo(lastUpdated)}
-          </Badge>
-        )}
-      </CardHeader>
-
-      <CardContent>
+      <div className="p-4">
         {/* Loading State */}
         {isLoading ? (
-          <div className="py-10 text-center text-muted-foreground">
-            <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
-            <p className="text-sm">Loading...</p>
+          <div className="py-6 text-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 mx-auto mb-2 animate-spin text-slate-400" />
+            <p className="text-xs text-slate-400">Loading...</p>
           </div>
         ) : (
           children
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 /**
  * Formats a Date object as a human-readable relative time string
- * Handles edge cases: invalid dates, future dates, very old dates
  */
 function getTimeAgo(date: Date | null | undefined): string {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
@@ -134,7 +210,6 @@ function getTimeAgo(date: Date | null | undefined): string {
   const then = date.getTime();
   const diffMs = now - then;
 
-  // Handle future dates
   if (diffMs < 0) {
     return 'just now';
   }
@@ -153,28 +228,5 @@ function getTimeAgo(date: Date | null | undefined): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
 
-  // For older dates, show actual date
   return date.toLocaleDateString();
 }
-
-// Icon backgrounds - solid colors for reliability
-export const WIDGET_ICON_BG = {
-  green: '#059669', // Success green
-  blue: '#3b82f6', // Info blue
-  orange: '#f59e0b', // Warning orange
-  purple: '#8b5cf6', // Purple
-  red: '#f43f5e', // Error rose
-  slate: '#475569', // Slate
-  cyan: '#0891b2', // Cyan
-};
-
-// Icon colors - white shows on colored backgrounds
-export const WIDGET_ICON_COLOR = {
-  green: '#ffffff',
-  blue: '#ffffff',
-  orange: '#ffffff',
-  purple: '#ffffff',
-  red: '#ffffff',
-  slate: '#ffffff',
-  cyan: '#ffffff',
-};

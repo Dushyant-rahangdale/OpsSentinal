@@ -98,7 +98,7 @@ export default function IncidentTimeline({
     switch (type) {
       case 'CREATED':
         return {
-          variant: 'destructive' as const,
+          variant: 'danger' as const,
           icon: <AlertCircle className="h-4 w-4" />,
           label: 'Created',
           avatarBg: 'bg-red-100',
@@ -106,7 +106,7 @@ export default function IncidentTimeline({
         };
       case 'ACKNOWLEDGED':
         return {
-          variant: 'default' as const,
+          variant: 'warning' as const,
           icon: <CheckCircle2 className="h-4 w-4" />,
           label: 'Acknowledged',
           avatarBg: 'bg-amber-100',
@@ -114,7 +114,7 @@ export default function IncidentTimeline({
         };
       case 'RESOLVED':
         return {
-          variant: 'default' as const,
+          variant: 'success' as const,
           icon: <Target className="h-4 w-4" />,
           label: 'Resolved',
           avatarBg: 'bg-green-100',
@@ -122,7 +122,7 @@ export default function IncidentTimeline({
         };
       default:
         return {
-          variant: 'secondary' as const,
+          variant: 'neutral' as const,
           icon: <Activity className="h-4 w-4" />,
           label: 'Event',
           avatarBg: 'bg-gray-100',
@@ -144,53 +144,45 @@ export default function IncidentTimeline({
   }
 
   return (
-    <div className="space-y-0 relative">
+    <div className="space-y-6 relative ml-2">
       {/* Continuous vertical line background */}
-      <div className="absolute left-5 top-4 bottom-4 w-px bg-border/50" />
-
+      <div className="absolute left-[19px] top-2 bottom-4 w-px bg-slate-200" />
       {timelineEvents.map((event, index) => {
         const config = getEventConfig(event.type);
+        const isMajorEvent = event.type !== 'EVENT';
 
         return (
           <div
             key={event.id}
-            className="relative flex gap-4 pb-8 group animate-in slide-in-from-left-2 fade-in duration-500 fill-mode-backwards"
+            className="relative flex gap-4 group animate-in slide-in-from-left-2 fade-in duration-500 fill-mode-backwards"
             style={{ animationDelay: `${index * 50}ms` }}
           >
-            {/* Avatar */}
-            <div className="relative z-10 bg-background pt-1">
-              <Avatar
-                className={`h-10 w-10 border-2 border-background ring-1 ring-border shadow-sm ${config.avatarBg} transition-transform group-hover:scale-105`}
-              >
-                <AvatarFallback className={`${config.avatarBg} ${config.avatarText}`}>
-                  {config.icon}
-                </AvatarFallback>
-              </Avatar>
+            {/* Node Icon */}
+            <div className={`relative z-10 rounded-full border-4 border-white shrink-0 h-10 w-10 flex items-center justify-center shadow-sm ${config.avatarBg} ${config.avatarText}`}>
+              {config.icon}
             </div>
 
-            {/* Content */}
-            <div className="flex-1 pt-1 min-w-0">
-              <Card className="border-none shadow-sm hover:shadow-md transition-shadow bg-card/50">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={event.type !== 'EVENT' ? config.variant : 'outline'}
-                        className="text-[10px] uppercase font-bold tracking-wider"
-                      >
-                        {config.label}
-                      </Badge>
-                    </div>
-                    <span className="text-xs text-muted-foreground tabular-nums flex items-center gap-1.5">
-                      <Clock className="h-3 w-3" />
-                      {formatDateTime(event.createdAt, userTimeZone, { format: 'datetime' })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground leading-relaxed break-words">
-                    {formatEscalationMessage(event.message)}
-                  </p>
-                </CardContent>
-              </Card>
+            {/* Content Body */}
+            <div className="flex-1 pt-1.5 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-semibold ${isMajorEvent ? 'text-slate-900' : 'text-slate-700'}`}>
+                    {config.label}
+                  </span>
+                  {isMajorEvent && (
+                    <Badge variant={config.variant} size="xs" className="uppercase h-5">
+                      {event.type}
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-xs text-slate-400 tabular-nums">
+                  {formatDateTime(event.createdAt, userTimeZone, { format: 'datetime' })}
+                </span>
+              </div>
+
+              <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isMajorEvent ? 'text-slate-900 font-medium' : 'text-slate-600'}`}>
+                {formatEscalationMessage(event.message)}
+              </p>
             </div>
           </div>
         );

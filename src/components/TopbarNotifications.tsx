@@ -229,9 +229,13 @@ export default function TopbarNotifications() {
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-medium text-white ring-2 ring-background">
+            <Badge
+              variant="danger"
+              size="xs"
+              className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0"
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
+            </Badge>
           )}
           <span className="sr-only">Notifications</span>
         </Button>
@@ -256,10 +260,7 @@ export default function TopbarNotifications() {
               <TabsTrigger value="unread">
                 Unread
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="ml-2 h-5 px-1.5 min-w-[1.25rem] text-[10px]"
-                  >
+                  <Badge variant="secondary" size="xs" className="ml-2 h-5 min-w-[1.25rem]">
                     {unreadCount}
                   </Badge>
                 )}

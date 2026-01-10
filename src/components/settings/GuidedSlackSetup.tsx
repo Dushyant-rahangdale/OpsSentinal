@@ -235,7 +235,7 @@ export default function GuidedSlackSetup() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {['chat:write', 'channels:read', 'channels:join', 'groups:read'].map(scope => (
-                    <Badge key={scope} variant="secondary" className="font-mono">
+                    <Badge key={scope} variant="secondary" size="xs" className="font-mono">
                       {scope}
                     </Badge>
                   ))}

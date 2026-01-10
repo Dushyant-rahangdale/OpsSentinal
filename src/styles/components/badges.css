@@ -60,3 +60,27 @@
    background: var(--color-error);
    box-shadow: 0 0 6px rgba(190, 18, 60, 0.4);
 }
+
+/* Force badges to stay true-color even under browser dark templates */
+[data-badge="true"] {
+   color-scheme: light;
+   filter: none !important;
+   -webkit-filter: none !important;
+   mix-blend-mode: normal;
+}
+
+@media (prefers-color-scheme: dark) {
+   [data-badge="true"] {
+      color: #475569 !important;
+      filter: none !important;
+      -webkit-filter: none !important;
+   }
+
+   [data-badge="true"] svg {
+      color: currentColor !important;
+   }
+
+   .sidebar [data-badge="true"] {
+      color: #ffffff !important;
+   }
+}

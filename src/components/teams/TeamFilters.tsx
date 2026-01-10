@@ -92,17 +92,17 @@ export default function TeamFilters() {
           <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t">
             <span className="text-xs text-muted-foreground">Active filters:</span>
             {query && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" size="xs" className="gap-1">
                 Search: {query}
               </Badge>
             )}
             {minMembers && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" size="xs" className="gap-1">
                 Min Members: {minMembers}
               </Badge>
             )}
             {minServices && (
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" size="xs" className="gap-1">
                 Min Services: {minServices}
               </Badge>
             )}

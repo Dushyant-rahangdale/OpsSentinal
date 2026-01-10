@@ -106,7 +106,7 @@ export default function SchedulePreview({
               className="p-3 bg-muted/50 rounded-lg border flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <Badge variant="secondary" className="text-xs shrink-0">
+                <Badge variant="secondary" size="xs" className="shrink-0">
                   {block.layerName}
                 </Badge>
                 <span className="text-sm font-medium truncate">{block.userName}</span>

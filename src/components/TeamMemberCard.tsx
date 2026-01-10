@@ -66,6 +66,12 @@ function TeamMemberCard({
     MEMBER: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   };
 
+  const roleVariants = {
+    OWNER: 'info',
+    ADMIN: 'warning',
+    MEMBER: 'success',
+  } as const;
+
   const roleColor = roleColors[member.role as keyof typeof roleColors] || roleColors.MEMBER;
   const canEditRole =
     canManageMembers &&
@@ -166,18 +172,12 @@ function TeamMemberCard({
                 {member.user.name}
               </Link>
               {member.user.status === 'DISABLED' && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0 bg-gray-100 text-gray-600"
-                >
+                <Badge variant="neutral" size="xs">
                   Disabled
                 </Badge>
               )}
               {!hasAnyNotificationEnabled && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 border-orange-200 gap-1"
-                >
+                <Badge variant="warning" size="xs" className="gap-1">
                   <AlertCircle className="h-2.5 w-2.5" />
                   No notifications
                 </Badge>
@@ -242,7 +242,11 @@ function TeamMemberCard({
                   <option value="MEMBER">Member</option>
                 </select>
               ) : (
-                <Badge variant="outline" className={cn('text-[10px] font-semibold', roleColor)}>
+                <Badge
+                  variant={roleVariants[member.role as keyof typeof roleVariants] ?? 'neutral'}
+                  size="xs"
+                  className="font-semibold uppercase"
+                >
                   {member.role}
                 </Badge>
               )}

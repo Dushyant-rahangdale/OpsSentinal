@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import SidebarWidget, { WIDGET_ICON_BG } from '@/components/dashboard/SidebarWidget';
+import { Siren, BarChart2, Settings, Zap, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface QuickActionsPanelProps {
   greeting: string;
@@ -13,19 +15,19 @@ export default function QuickActionsPanel({ greeting, userName }: QuickActionsPa
     {
       href: '/incidents/create',
       label: 'Trigger Incident',
-      icon: '🚨',
+      icon: <Siren className="w-4 h-4" />,
       variant: 'primary' as const,
     },
     {
       href: '/analytics',
       label: 'View Analytics',
-      icon: '📊',
+      icon: <BarChart2 className="w-4 h-4" />,
       variant: 'secondary' as const,
     },
     {
       href: '/services',
       label: 'Manage Services',
-      icon: '⚙️',
+      icon: <Settings className="w-4 h-4" />,
       variant: 'secondary' as const,
     },
   ];
@@ -34,21 +36,36 @@ export default function QuickActionsPanel({ greeting, userName }: QuickActionsPa
     <SidebarWidget
       title={`${greeting}, ${userName}`}
       iconBg={WIDGET_ICON_BG.slate}
-      icon={<span className="text-lg text-white">⚡</span>}
+      icon={<Zap className="w-4 h-4" />}
+      subtitle="Quick actions"
     >
-      <div className="flex flex-col gap-2">
+      <div className="space-y-2">
         {actions.map((action, idx) => (
           <Link
             key={idx}
             href={action.href}
-            className={
+            className={cn(
+              "group flex items-center gap-3 p-2.5 rounded-lg border transition-colors",
               action.variant === 'primary'
-                ? 'flex items-center gap-2.5 px-3.5 py-2.5 rounded-sm bg-primary text-white border border-primary font-medium text-sm transition-all hover:bg-primary/90 hover:shadow-sm hover:-translate-y-px no-underline'
-                : 'flex items-center gap-2.5 px-3.5 py-2.5 rounded-sm bg-neutral-50 text-secondary-foreground border border-border font-medium text-sm transition-all hover:bg-neutral-100 hover:-translate-y-px no-underline'
-            }
+                ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
+                : 'bg-white border-slate-100 text-slate-700 hover:border-slate-200 hover:bg-slate-50/50'
+            )}
           >
-            <span className="text-sm opacity-90">{action.icon}</span>
-            {action.label}
+            <div className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+              action.variant === 'primary'
+                ? 'bg-white/20'
+                : 'bg-slate-100 text-slate-500'
+            )}>
+              {action.icon}
+            </div>
+            <span className="flex-1 text-xs font-semibold">{action.label}</span>
+            <ChevronRight className={cn(
+              "w-3.5 h-3.5 shrink-0 transition-colors",
+              action.variant === 'primary'
+                ? 'text-white/50 group-hover:text-white/80'
+                : 'text-slate-300 group-hover:text-slate-500'
+            )} />
           </Link>
         ))}
       </div>

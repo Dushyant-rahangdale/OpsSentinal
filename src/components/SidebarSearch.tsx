@@ -375,7 +375,7 @@ export default function SidebarSearch() {
                             <div className="flex items-center gap-2">
                               <span className="font-medium truncate text-sm">{result.title}</span>
                               {result.priority && (
-                                <Badge variant="outline" className="h-4 px-1 text-[10px] uppercase">
+                                <Badge variant="neutral" size="xs" className="uppercase">
                                   P{result.priority}
                                 </Badge>
                               )}
@@ -389,10 +389,9 @@ export default function SidebarSearch() {
                           <div className="ml-auto">
                             {result.metadata?.status && (
                               <Badge
-                                variant={
-                                  result.metadata.status === 'resolved' ? 'secondary' : 'default'
-                                }
-                                className={`px-1 h-4 text-[9px] capitalize ${result.metadata.status === 'open' ? 'bg-red-500 hover:bg-red-600' : ''}`}
+                                variant={result.metadata.status === 'resolved' ? 'success' : 'danger'}
+                                size="xs"
+                                className="capitalize"
                               >
                                 {result.metadata.status}
                               </Badge>
