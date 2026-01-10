@@ -15,7 +15,8 @@ ALTER TABLE "SearchPresetUsage" DROP CONSTRAINT "SearchPresetUsage_presetId_fkey
 ALTER TABLE "SearchPresetUsage" DROP CONSTRAINT "SearchPresetUsage_userId_fkey";
 
 -- DropTable
-DROP TABLE "SearchPreset";
+-- DropTable
+DROP TABLE IF EXISTS "SearchPreset";
 
 -- DropTable
-DROP TABLE "SearchPresetUsage";
+DROP TABLE IF EXISTS "SearchPresetUsage";
