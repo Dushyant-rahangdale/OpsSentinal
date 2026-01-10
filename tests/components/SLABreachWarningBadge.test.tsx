@@ -73,7 +73,7 @@ describe('SLABreachWarningBadge', () => {
 
     render(<SLABreachWarningBadge incident={incident} service={mockService} />);
 
-    expect(screen.getByText('ACK BREACHED')).toBeDefined();
+    expect(screen.getByText('ACK breached')).toBeDefined();
   });
 
   it('handles string date props (client-side serialization simulation)', () => {
@@ -89,7 +89,7 @@ describe('SLABreachWarningBadge', () => {
     // This would crash without the fix
     render(<SLABreachWarningBadge incident={incident} service={mockService} />);
 
-    expect(screen.getByText('ACK BREACHED')).toBeDefined();
+    expect(screen.getByText('ACK breached')).toBeDefined();
   });
 
   it('renders warning when approaching breach', () => {
