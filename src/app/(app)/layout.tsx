@@ -105,11 +105,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { calculateSLAMetrics } = await import('@/lib/sla-server');
   const slaMetrics = await calculateSLAMetrics();
   const criticalOpenCount = slaMetrics.criticalCount;
+  const mediumOpenCount = slaMetrics.mediumUrgencyCount;
+  const lowOpenCount = slaMetrics.lowUrgencyCount;
 
-  const statusTone = criticalOpenCount > 0 ? 'danger' : 'ok';
-  const statusLabel = criticalOpenCount > 0 ? 'Red Alert' : 'Green Corridor';
-  const statusDetail =
-    criticalOpenCount > 0 ? `${criticalOpenCount} critical open` : 'No critical incidents';
+  // Status Logic
+  let statusTone: 'ok' | 'warning' | 'danger' = 'ok';
+  let statusLabel = 'Green Corridor';
+  let statusDetail = 'All systems fully operational';
+
+  if (criticalOpenCount > 0) {
+    statusTone = 'danger';
+    statusLabel = 'Red Alert';
+    statusDetail = `${criticalOpenCount} critical incidents active`;
+  } else if (mediumOpenCount > 0) {
+    statusTone = 'warning';
+    statusLabel = 'Yellow Alert';
+    statusDetail = `${mediumOpenCount} warning signs detected`;
+  } else if (lowOpenCount > 0) {
+    statusTone = 'ok'; // Keep green for low, but maybe detailed
+    statusLabel = 'Systems Normal';
+    statusDetail = `${lowOpenCount} low urgency items`;
+  }
 
   const userTimeZone = dbUser?.timeZone || 'UTC';
 
@@ -136,6 +152,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                       tone={statusTone}
                       label={statusLabel}
                       detail={statusDetail}
+                      criticalCount={criticalOpenCount}
+                      mediumCount={mediumOpenCount}
+                      lowCount={lowOpenCount}
                     />
                     <TopbarBreadcrumbs />
                   </div>

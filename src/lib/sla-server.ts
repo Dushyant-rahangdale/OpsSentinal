@@ -566,6 +566,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const activeIncidents = activeIncidentsData.length;
   const unassignedActive = activeIncidentsData.filter(i => !i.assigneeId).length;
   const criticalActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'HIGH').length;
+  const mediumActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'MEDIUM').length;
+  const lowActiveIncidents = activeIncidentsData.filter(i => i.urgency === 'LOW').length;
 
   const activeStatusCountMap = new Map<string, number>();
   activeIncidentsData.forEach(i => {
@@ -764,9 +766,13 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     let resolveSum = 0,
       resolveCount = 0;
     let highUrg = 0;
+    let mediumUrg = 0;
+    let lowUrg = 0;
 
     for (const inc of incidents) {
       if (inc.urgency === 'HIGH') highUrg++;
+      if (inc.urgency === 'MEDIUM') mediumUrg++;
+      if (inc.urgency === 'LOW') lowUrg++;
 
       // Ack
       const ackAt = inc.acknowledgedAt || eventsMap.get(inc.id);
@@ -793,6 +799,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     return {
       count: incidents.length,
       highUrg,
+      mediumUrg,
+      lowUrg,
       mtta: ackCount ? ackSum / ackCount : 0,
       mttr: resolveCount ? resolveSum / resolveCount : 0,
       ackRate: incidents.length ? (ackCount / incidents.length) * 100 : 0,
@@ -1363,6 +1371,8 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     activeIncidents,
     unassignedActive,
     highUrgencyCount: currentStats.highUrg,
+    mediumUrgencyCount: mediumActiveIncidents,
+    lowUrgencyCount: lowActiveIncidents,
     alertsCount,
     openCount: activeStatusFinalMap.get('OPEN') ?? 0,
     acknowledgedCount: activeStatusFinalMap.get('ACKNOWLEDGED') ?? 0,
@@ -1880,6 +1890,8 @@ export async function calculateSLAMetricsFromRollups(
     resolved24h: 0, // Not available in rollups
     unassignedActive: 0, // Not available
     highUrgencyCount: 0, // Not available
+    mediumUrgencyCount: 0, // Not available
+    lowUrgencyCount: 0, // Not available
     alertsCount: 0, // Not available
     snoozedCount: 0, // Not available
     suppressedCount: 0, // Not available

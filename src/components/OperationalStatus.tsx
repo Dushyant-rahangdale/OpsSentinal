@@ -20,15 +20,27 @@ type Props = {
   tone?: 'ok' | 'danger' | 'warning';
   label?: string;
   detail?: string;
+  criticalCount?: number;
+  mediumCount?: number;
+  lowCount?: number;
 };
 
 export default function OperationalStatus({
   tone: initialTone,
   label: initialLabel,
   detail: initialDetail,
+  criticalCount: criticalCountOverride,
+  mediumCount = 0,
+  lowCount = 0,
 }: Props) {
   const [mounted, setMounted] = useState(false);
-  const { activeCount, criticalCount, loading } = useOperationalStats();
+  const {
+    activeCount,
+    criticalCount,
+    mediumCount: mediumCountLive,
+    lowCount: lowCountLive,
+    loading,
+  } = useOperationalStats();
 
   useEffect(() => {
     setMounted(true);
@@ -36,25 +48,41 @@ export default function OperationalStatus({
 
   if (!mounted) return null;
 
+  const hasOverrides =
+    typeof criticalCountOverride === 'number' ||
+    typeof mediumCount === 'number' ||
+    typeof lowCount === 'number';
+
+  const critical =
+    typeof criticalCountOverride === 'number' ? criticalCountOverride : criticalCount;
+  const medium = hasOverrides ? mediumCount : mediumCountLive;
+  const low = hasOverrides ? lowCount : lowCountLive;
+  const active = hasOverrides ? critical + medium + low : activeCount;
+
   // Determine state from backend data
-  const nonCriticalCount = Math.max(0, activeCount - criticalCount);
+  const nonCriticalCount = Math.max(0, active - critical);
 
   // Logic:
   // - Danger: Critical count > 0
   // - Warning: Low urgency count > 0
   // - OK: Active count == 0
 
-  const isDanger = criticalCount > 0;
-  const isWarning = !isDanger && nonCriticalCount > 0;
+  const isDanger = critical > 0;
+  // Warning if explicitly passed mediumCount > 0 OR if falling back to old logic
+  const isWarning = !isDanger && (medium > 0 || nonCriticalCount > 0);
   const isOk = !isDanger && !isWarning;
 
   // Derived Label/Detail
-  const label = isDanger ? 'Critical Alert' : isWarning ? 'Yellow Alert' : 'Green Corridor';
-  const detail = isDanger
-    ? `${criticalCount} critical incidents active`
-    : isWarning
-      ? `${nonCriticalCount} non-critical issues`
-      : 'Systems Normal';
+  const label =
+    initialLabel || (isDanger ? 'Critical Alert' : isWarning ? 'Yellow Alert' : 'Green Corridor');
+
+  const detail =
+    initialDetail ||
+    (isDanger
+      ? `${critical} critical incidents active`
+      : isWarning
+        ? `${medium} warning signs detected`
+        : 'Systems Normal');
 
   interface ThemeConfig {
     bg: string;
@@ -121,9 +149,15 @@ export default function OperationalStatus({
     },
   };
 
-  const currentTheme = isDanger ? theme.danger : isWarning ? theme.warning : theme.ok;
+  const currentTheme = initialTone
+    ? theme[initialTone]
+    : isDanger
+      ? theme.danger
+      : isWarning
+        ? theme.warning
+        : theme.ok;
 
-  if (loading && !initialTone) {
+  if (loading && !initialTone && !hasOverrides) {
     // Show loading only if no fallback
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-muted/20 animate-pulse">
@@ -236,42 +270,56 @@ export default function OperationalStatus({
               )}
             >
               <span className="text-[10px] uppercase text-muted-foreground font-semibold">
-                Active Incidents
+                Critical
               </span>
-              <span className="text-[10px] text-muted-foreground">Excludes snoozed/suppressed</span>
+              <span className="text-[10px] text-muted-foreground">High urgency</span>
               <span
                 className={cn(
                   'text-xl font-bold',
                   isOk ? 'text-emerald-600' : isWarning ? 'text-amber-600' : 'text-red-600'
                 )}
               >
-                {criticalCount}
+                {critical}
               </span>
             </div>
+
+            {/* Medium Priority Card */}
             <div
               className={cn(
                 'flex flex-col gap-1 p-2.5 rounded-lg border bg-opacity-50',
-                isOk ? 'bg-muted/30 border-muted' : 'bg-amber-50/50 border-amber-100'
+                mediumCount > 0 ? 'bg-amber-50 border-amber-100' : 'bg-muted/30 border-muted'
               )}
             >
               <span className="text-[10px] uppercase text-muted-foreground font-semibold">
-                Non-critical
+                Warning
               </span>
-              <div className="flex items-center justify-between">
-                <span
-                  className={cn(
-                    'text-xl font-bold',
-                    isWarning ? 'text-amber-600' : 'text-foreground'
-                  )}
-                >
-                  {nonCriticalCount}
+              <span className="text-[10px] text-muted-foreground">Medium urgency</span>
+              <span
+                className={cn(
+                  'text-xl font-bold',
+                  mediumCount > 0 ? 'text-amber-600' : 'text-muted-foreground'
+                )}
+              >
+                {medium}
+              </span>
+            </div>
+
+            {/* Low/Non-Critical Card (Full Width) */}
+            <div
+              className={cn(
+                'col-span-2 flex items-center justify-between p-2.5 rounded-lg border bg-opacity-50',
+                'bg-muted/30 border-muted'
+              )}
+            >
+              <div>
+                <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                  Low Priority
                 </span>
-                <span
-                  className={cn(
-                    'text-[10px] text-muted-foreground bg-muted p-1 px-1.5 rounded',
-                    isWarning && 'text-amber-700/70 bg-amber-100/50 border border-amber-200/30'
-                  )}
-                >
+                <div className="text-[10px] text-muted-foreground">Low urgency</div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className={cn('text-xl font-bold', 'text-foreground')}>{low}</span>
+                <span className="text-[10px] text-muted-foreground bg-muted p-1 px-1.5 rounded">
                   Logs
                 </span>
               </div>
