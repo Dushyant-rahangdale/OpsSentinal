@@ -72,7 +72,7 @@ export async function logLoginEvent(data: LoginAuditData): Promise<void> {
     await prisma.auditLog.create({
       data: {
         action: data.eventType,
-        entityType: 'AUTH_SESSION', // Using AUTH_SESSION for login events
+        entityType: 'USER', // Using USER for login events since AUTH_SESSION isn't in enum
         entityId: data.email, // Use email as the entity identifier
         actorId: data.userId || null, // Link to user if known
         details: {
@@ -239,7 +239,7 @@ export async function getLoginHistory(
   const logs = await prisma.auditLog.findMany({
     where: {
       actorId: userId,
-      entityType: 'AUTH_SESSION',
+      entityType: 'USER', // Using USER instead of AUTH_SESSION
       action: {
         in: ['LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGIN_BLOCKED', 'LOGOUT'],
       },
@@ -275,7 +275,7 @@ export async function countRecentFailedAttempts(
 
   const count = await prisma.auditLog.count({
     where: {
-      entityType: 'AUTH_SESSION',
+      entityType: 'USER', // Using USER instead of AUTH_SESSION
       entityId: email,
       action: {
         in: ['LOGIN_FAILED', 'LOGIN_BLOCKED'],
