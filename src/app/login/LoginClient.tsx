@@ -88,12 +88,14 @@ export default function LoginClient({
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(59,130,246,0.14),transparent_32%),radial-gradient(circle_at_82%_18%,rgba(16,185,129,0.12),transparent_30%),radial-gradient(circle_at_50%_80%,rgba(99,102,241,0.1),transparent_28%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(148,163,184,0.18),transparent_32%),radial-gradient(circle_at_78%_18%,rgba(100,116,139,0.16),transparent_30%),radial-gradient(circle_at_42%_78%,rgba(71,85,105,0.14),transparent_32%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-15" />
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/92 to-slate-950" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.6),rgba(15,23,42,0.25),rgba(15,23,42,0.6))] opacity-50 mix-blend-overlay" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.45),transparent_58%)]" />
 
-      <div className="relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col px-4 py-6 sm:py-8 lg:py-10">
-        <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 backdrop-blur-sm">
+      <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-5 py-6 sm:py-7 lg:py-9">
+        <header className="flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 shadow-lg shadow-black/20">
               <img src="/logo.svg" alt="OpsSentinal logo" className="h-6 w-6" />
@@ -106,36 +108,36 @@ export default function LoginClient({
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-100">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
-            Systems healthy
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.8)] animate-pulse-subtle" />
+            Systems steady
           </div>
         </header>
 
-        <main className="mt-5 grid flex-1 items-center gap-5 lg:grid-cols-[1fr_1fr]">
-          <section className="hidden flex-col gap-5 lg:flex">
+        <main className="mt-4 grid flex-1 items-start gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10">
+          <section className="hidden max-w-3xl flex-col gap-4 lg:flex">
             <div className="space-y-3">
               <p className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-200/80 ring-1 ring-white/10 backdrop-blur">
                 Open-source incident control
               </p>
-              <h1 className="text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-[2.4rem]">
+              <h1 className="text-3xl font-semibold leading-tight text-white sm:text-[2.1rem] lg:text-[2.2rem]">
                 Detect, mobilize, and communicate—without leaving the deck.
               </h1>
-              <p className="max-w-2xl text-sm text-slate-200/80">
-                OpsSentinal unifies incident lifecycle, on-call, escalation rules, and status
-                broadcasts in one console.
+              <p className="max-w-xl text-sm text-slate-200/80">
+                Self-hosted console for signals, on-call rotations, escalations, and status comms.
               </p>
             </div>
 
-            <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.22),transparent_42%),radial-gradient(circle_at_78%_12%,rgba(16,185,129,0.18),transparent_38%),radial-gradient(circle_at_30%_78%,rgba(236,72,153,0.16),transparent_36%)]" />
+            <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-white/5 p-4 shadow-2xl backdrop-blur">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(148,163,184,0.22),transparent_42%),radial-gradient(circle_at_78%_12%,rgba(100,116,139,0.18),transparent_38%),radial-gradient(circle_at_30%_78%,rgba(71,85,105,0.16),transparent_36%)]" />
               <div className="absolute inset-4 rounded-2xl border border-white/10" />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent,rgba(255,255,255,0.08),transparent)] opacity-50 animate-[shimmer_9s_linear_infinite]" />
 
               <div className="relative grid gap-3 sm:grid-cols-3">
-                <div className="relative flex flex-col gap-2 rounded-2xl bg-white/5 p-4 shadow-inner shadow-black/20">
+                <div className="relative flex flex-col gap-2 rounded-2xl bg-white/5 p-3 shadow-inner shadow-black/20">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200/70">
                     <span>Lifecycle</span>
-                    <span className="inline-flex items-center gap-1 text-emerald-200">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-subtle" />
+                    <span className="inline-flex items-center gap-1 text-slate-100">
+                      <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.5)] animate-pulse-subtle" />
                       Live
                     </span>
                   </div>
@@ -144,7 +146,7 @@ export default function LoginClient({
                       <div key={step} className="flex items-center gap-2">
                         <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/5">
                           <div
-                            className="absolute inset-y-0 left-0 w-3/4 rounded-full bg-emerald-400/40 animate-[shimmer_2s_ease_infinite]"
+                            className="absolute inset-y-0 left-0 w-3/4 rounded-full bg-emerald-300/60 animate-[shimmer_2s_ease_infinite]"
                             style={{ animationDelay: `${idx * 120}ms` }}
                           />
                         </div>
@@ -156,41 +158,41 @@ export default function LoginClient({
                   </div>
                 </div>
 
-                <div className="relative flex flex-col gap-2 rounded-2xl bg-white/5 p-4 shadow-inner shadow-black/20">
+                <div className="relative flex flex-col gap-2 rounded-2xl bg-white/5 p-3 shadow-inner shadow-black/20">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200/70">
                     <span>On-call</span>
-                    <span className="text-emerald-200">Rotation</span>
+                    <span className="text-slate-100">Rotation</span>
                   </div>
-                  <div className="relative mx-auto h-28 w-28">
+                  <div className="relative mx-auto h-24 w-24">
                     <div className="absolute inset-0 rounded-full border border-white/20" />
-                    <div className="absolute inset-2 rounded-full border border-emerald-300/40 animate-[spin_12s_linear_infinite]" />
-                    <div className="absolute inset-5 rounded-full border border-blue-300/30 animate-[spin_10s_linear_infinite_reverse]" />
-                    <div className="absolute inset-8 flex items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                    <div className="absolute inset-2 rounded-full border border-emerald-300/50 animate-[spin_12s_linear_infinite]" />
+                    <div className="absolute inset-5 rounded-full border border-slate-300/40 animate-[spin_10s_linear_infinite_reverse]" />
+                    <div className="absolute inset-8 flex items-center justify-center rounded-full bg-emerald-400/15 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-50">
                       L1 / L2
                     </div>
                   </div>
                   <p className="text-xs text-slate-200/80">Schedules + escalations stay in sync.</p>
                 </div>
 
-                <div className="relative flex flex-col gap-2 rounded-2xl bg-white/5 p-4 shadow-inner shadow-black/20">
+                <div className="relative flex flex-col gap-2 rounded-2xl bg-white/5 p-3 shadow-inner shadow-black/20">
                   <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200/70">
                     <span>Status & comms</span>
-                    <span className="inline-flex items-center gap-1 text-sky-100">
-                      <span className="h-2 w-2 rounded-full bg-sky-300 animate-pulse-subtle" />
+                    <span className="inline-flex items-center gap-1 text-slate-100">
+                      <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.5)] animate-pulse-subtle" />
                       Up
                     </span>
                   </div>
                   <div className="space-y-2 text-xs text-slate-100">
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+                      <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.6)]" />
                       Status page broadcast
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-blue-300 shadow-[0_0_10px_rgba(147,197,253,0.7)]" />
+                      <span className="h-2 w-2 rounded-full bg-slate-200 shadow-[0_0_10px_rgba(226,232,240,0.5)]" />
                       Slack / Email / SMS alerts
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-indigo-300 shadow-[0_0_10px_rgba(165,180,252,0.7)]" />
+                      <span className="h-2 w-2 rounded-full bg-slate-300 shadow-[0_0_10px_rgba(148,163,184,0.5)]" />
                       Audit trail & SSO/OIDC
                     </div>
                   </div>
@@ -199,13 +201,24 @@ export default function LoginClient({
                   </div>
                 </div>
               </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200">
+                {['Self-hosted', 'OIDC / SSO', 'RBAC & audit', 'Multi-channel alerts'].map(item => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
           </section>
 
-          <section className="relative flex items-center justify-center">
+          <section className="order-first lg:order-none relative flex items-center justify-center">
             <div className="absolute inset-0 -z-10 rounded-3xl bg-white/5 blur-3xl" />
-            <div className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-white/10 bg-white/95 text-slate-900 shadow-2xl shadow-slate-900/30">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-blue-500 to-indigo-500" />
+            <div className="relative w-full max-w-[460px] overflow-hidden rounded-2xl border border-white/10 bg-white/95 text-slate-900 shadow-2xl shadow-slate-900/30">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900" />
               <div className="relative space-y-5 px-6 py-7 sm:px-8 sm:py-8">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -232,7 +245,7 @@ export default function LoginClient({
                 )}
 
                 {ssoError && (
-                  <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                     {ssoError}
                   </div>
                 )}

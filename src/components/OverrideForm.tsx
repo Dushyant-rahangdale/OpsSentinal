@@ -1,20 +1,28 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './ToastProvider';
-import { DateTimeInput } from '@/components/ui';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/shadcn/card';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/shadcn/sheet';
 import { Button } from '@/components/ui/shadcn/button';
 import { Label } from '@/components/ui/shadcn/label';
-import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
-import { AlertCircle, Clock, Loader2, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/shadcn/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
+import { AlertCircle, Clock, Loader2 } from 'lucide-react';
+import { addHours } from 'date-fns';
 
 type OverrideFormProps = {
   scheduleId: string;
@@ -35,6 +43,30 @@ export default function OverrideForm({
   const router = useRouter();
   const { showToast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+
+  // Quick Time State
+  const [startTime, setStartTime] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
+
+  // Helper for datetime-local format: YYYY-MM-DDTHH:mm
+  const toLocalISOString = (date: Date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    return localISOTime;
+  };
+
+  const handleQuickDuration = (hours: number) => {
+    const now = new Date();
+    // Round up to next 15 mins for cleanliness
+    const remainder = 15 - (now.getMinutes() % 15);
+    now.setMinutes(now.getMinutes() + remainder);
+
+    const end = addHours(now, hours);
+
+    setStartTime(toLocalISOString(now));
+    setEndTime(toLocalISOString(end));
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -49,164 +81,150 @@ export default function OverrideForm({
           const userName = users.find(u => u.id === userId)?.name || 'User';
           showToast(`Override created for ${userName}`, 'success');
           router.refresh();
+          setOpen(false);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        showToast(errorMessage || 'Failed to create override', 'error');
+        showToast('Failed to create override', 'error');
       }
     });
   };
 
-  if (!canManageSchedules) {
-    return (
-      <Card className="opacity-60">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            Overrides
-          </CardTitle>
-          <CardDescription>Admin or Responder role required</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 pointer-events-none">
-          <Alert>
-            <Clock className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              Temporarily replace on-call coverage. Times use your browser local time.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label className="text-sm">On-call user</Label>
-              <select
-                disabled
-                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-              >
-                <option>Select a responder</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Replace (optional)</Label>
-              <select
-                disabled
-                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-              >
-                <option>Any user</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm">Start</Label>
-                <input
-                  type="datetime-local"
-                  disabled
-                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">End</Label>
-                <input
-                  type="datetime-local"
-                  disabled
-                  className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <Button disabled className="w-full">
-              Create Override
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  if (!canManageSchedules) return null;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Clock className="h-4 w-4 text-primary" />
-          Overrides
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Temporarily replace on-call coverage. Times use your browser local time.
-        </CardDescription>
-      </CardHeader>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full h-10 gap-2 text-sm font-semibold border-slate-200/80 bg-white hover:bg-slate-50 hover:border-slate-300"
+        >
+          <Clock className="h-3.5 w-3.5" />
+          Add Override
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+        <SheetHeader className="mb-6">
+          <SheetTitle className="flex items-center gap-3 text-xl">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+            </span>
+            Add Coverage Override
+          </SheetTitle>
+          <SheetDescription>
+            Temporarily replace the on-call responder for a specific time window.
+          </SheetDescription>
+        </SheetHeader>
 
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="userId" className="text-sm">
-              On-call user <span className="text-red-500">*</span>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4 p-4 bg-slate-50/70 rounded-lg border border-slate-200/80">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Quick Select
             </Label>
-            <select
-              id="userId"
-              name="userId"
-              required
-              disabled={isPending}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">Select a responder</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="replacesUserId" className="text-sm">
-              Replace (optional)
-            </Label>
-            <select
-              id="replacesUserId"
-              name="replacesUserId"
-              disabled={isPending}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">Any user</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="start" className="text-sm">
-                Start <span className="text-red-500">*</span>
-              </Label>
-              <DateTimeInput name="start" required fullWidth disabled={isPending} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end" className="text-sm">
-                End <span className="text-red-500">*</span>
-              </Label>
-              <DateTimeInput name="end" required fullWidth disabled={isPending} />
+            <div className="grid grid-cols-4 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickDuration(1)}
+              >
+                1h
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickDuration(4)}
+              >
+                4h
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickDuration(8)}
+              >
+                8h
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickDuration(24)}
+              >
+                24h
+              </Button>
             </div>
           </div>
 
-          <Button type="submit" disabled={isPending} className="w-full gap-2">
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 gap-2">
+              <Label htmlFor="userId">Who takes coverage?</Label>
+              <Select name="userId" required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select responder" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              <Label htmlFor="replacesUserId">Who are they replacing? (Optional)</Label>
+              <Select name="replacesUserId">
+                <SelectTrigger>
+                  <SelectValue placeholder="Anyone on-call (Override all)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Time</Label>
+                <Input
+                  type="datetime-local"
+                  name="start"
+                  required
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Time</Label>
+                <Input
+                  type="datetime-local"
+                  name="end"
+                  required
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <Button type="submit" disabled={isPending} className="w-full">
             {isPending ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Creating...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Scheduling...
               </>
             ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                Create Override
-              </>
+              'Confirm Override'
             )}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </SheetContent>
+    </Sheet>
   );
 }
