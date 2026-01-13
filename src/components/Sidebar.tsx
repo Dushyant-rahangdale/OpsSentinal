@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -152,7 +153,15 @@ export default function Sidebar(
   }
 ) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { isCollapsed, isMobile, toggleSidebar } = useSidebar();
+
+  // Prefer client-side session data for immediate updates
+  const currentName = session?.user?.name || userName;
+  const currentEmail = session?.user?.email || userEmail;
+  const currentRole = (session?.user as any)?.role || userRole;
+  const currentAvatar = session?.user?.image || session?.user?.avatarUrl || userAvatar;
+  const currentGender = (session?.user as any)?.gender || userGender;
 
   const [stats, setStats] = useState<{
     count: number;
@@ -197,7 +206,7 @@ export default function Sidebar(
     return navigationItems.reduce(
       (acc, item) => {
         if (item.requiresRole) {
-          if (!userRole || !item.requiresRole.includes(userRole)) return acc;
+          if (!currentRole || !item.requiresRole.includes(currentRole)) return acc;
         }
         const section = item.section || 'MAIN';
         // eslint-disable-next-line security/detect-object-injection
@@ -207,7 +216,7 @@ export default function Sidebar(
       },
       {} as Record<string, NavItem[]>
     );
-  }, [userRole]);
+  }, [currentRole]);
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.href);
@@ -477,11 +486,11 @@ export default function Sidebar(
                 )}
               >
                 <AvatarImage
-                  src={userAvatar || getDefaultAvatar(userGender, userId)}
-                  alt={userName || 'User'}
+                  src={currentAvatar || getDefaultAvatar(currentGender, userId)}
+                  alt={currentName || 'User'}
                 />
                 <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-[10px] font-bold uppercase backdrop-blur-md">
-                  {(userName || userEmail || 'U').slice(0, 2)}
+                  {(currentName || currentEmail || 'U').slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0B1120]" />
@@ -490,9 +499,9 @@ export default function Sidebar(
             {!isDesktopCollapsed && (
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div className="text-xs font-bold text-white truncate group-hover:text-indigo-200 transition-colors flex items-center gap-2">
-                  <span>{userName || 'User'}</span>
+                  <span>{currentName || 'User'}</span>
                   {(() => {
-                    const roleKey = (userRole?.toLowerCase() || 'admin') as
+                    const roleKey = (currentRole?.toLowerCase() || 'admin') as
                       | 'admin'
                       | 'responder'
                       | 'observer'
@@ -512,14 +521,14 @@ export default function Sidebar(
                         size="xs"
                         className="uppercase"
                       >
-                        {userRole?.toLowerCase() || 'admin'}
+                        {currentRole?.toLowerCase() || 'admin'}
                       </Badge>
                     );
                   })()}
                 </div>
                 <div className="text-[10px] text-white/40 font-medium truncate">
                   {/* Display Email as requested */}
-                  {userEmail || 'user@example.com'}
+                  {currentEmail || 'user@example.com'}
                 </div>
               </div>
             )}
