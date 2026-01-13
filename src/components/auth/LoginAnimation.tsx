@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 
 /**
  * LoginAnimation Component
@@ -21,6 +21,12 @@ export default function LoginAnimation() {
     { id: 3, label: 'PAYMENTS', angle: 216, status: 'healthy', radius: 140 },
     { id: 4, label: 'WORKERS', angle: 288, status: 'healthy', radius: 140 },
   ]);
+
+  // Live UTC Clock
+  const [currentTime, setCurrentTime] = useState('');
+
+  // Animated Uptime Counter
+  const [uptime, setUptime] = useState(99.95);
 
   useEffect(() => {
     setMounted(true);
@@ -50,20 +56,49 @@ export default function LoginAnimation() {
     return () => clearInterval(interval);
   }, []);
 
-  // Parallax Effect State
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
+  // Live Clock Effect
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      // Calculate normalized position (-1 to 1)
+    const updateClock = () => {
+      const now = new Date();
+      setCurrentTime(now.toISOString().slice(11, 19) + ' UTC');
+    };
+    updateClock();
+    const clockInterval = setInterval(updateClock, 1000);
+    return () => clearInterval(clockInterval);
+  }, []);
+
+  // Animated Uptime Effect
+  useEffect(() => {
+    const uptimeInterval = setInterval(() => {
+      setUptime(prev => {
+        if (prev >= 99.99) return 99.95;
+        return Math.min(99.99, prev + 0.01);
+      });
+    }, 500);
+    return () => clearInterval(uptimeInterval);
+  }, []);
+
+  // Parallax Effect State with throttling
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const rafRef = useRef<number | null>(null);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (rafRef.current) return; // Skip if already scheduled
+    rafRef.current = requestAnimationFrame(() => {
       const x = (e.clientX / window.innerWidth) * 2 - 1;
       const y = (e.clientY / window.innerHeight) * 2 - 1;
       setMousePos({ x, y });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+      rafRef.current = null;
+    });
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [handleMouseMove]);
 
   if (!mounted) return null;
 
@@ -93,14 +128,10 @@ export default function LoginAnimation() {
         <span className="block text-[10px] font-mono text-cyan-500/70 tracking-widest">UPTIME</span>
         <div className="flex items-center justify-end gap-2">
           <span className="text-xl font-mono text-cyan-400 font-bold tracking-widest leading-none">
-            99.99%
+            {uptime.toFixed(2)}%
           </span>
         </div>
-        <div className="flex gap-1 justify-end mt-1">
-          <span className="h-1 w-1 bg-cyan-500/50" />
-          <span className="h-1 w-1 bg-cyan-500/50" />
-          <span className="h-1 w-1 bg-cyan-500/50" />
-        </div>
+        <div className="text-[9px] font-mono text-cyan-500/50 mt-1">{currentTime}</div>
       </div>
 
       {/* Bottom Left: Coordinates */}
