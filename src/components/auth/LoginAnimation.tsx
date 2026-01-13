@@ -45,7 +45,7 @@ export default function LoginAnimation() {
         setIsFixing(false);
         setActiveIncident(null);
       }, 2500);
-    }, 5000); // Every 5 seconds
+    }, 8000); // Every 8 seconds (slower for less distraction)
 
     return () => clearInterval(interval);
   }, []);
