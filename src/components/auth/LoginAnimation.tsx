@@ -204,9 +204,9 @@ export default function LoginAnimation() {
         </div>
 
         {/* The Core: Sentinel Eye */}
-        <div className="z-20 flex h-20 w-20 items-center justify-center rounded-full bg-slate-950 border border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.2)]">
+        <div className="z-20 flex h-20 w-20 items-center justify-center rounded-full bg-slate-950 border border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.2)] animate-[pulse-glow_3s_ease-in-out_infinite]">
           <div
-            className={`h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-300 ${activeIncident !== null ? 'bg-rose-500 shadow-rose-500 scale-125 animate-ping' : ''}`}
+            className={`h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-300 ${activeIncident !== null ? 'bg-rose-500 shadow-rose-500 scale-125 animate-ping' : 'animate-[pulse_2s_ease-in-out_infinite]'}`}
           />
           {/* Scanning Beam */}
           <div className="absolute inset-0 animate-[spin_4s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(6,182,212,0.2)_360deg)]" />

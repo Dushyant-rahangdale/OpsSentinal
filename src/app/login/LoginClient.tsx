@@ -53,6 +53,24 @@ export default function LoginClient({
   // Email validation
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+  // Password strength calculation
+  const getPasswordStrength = (pw: string): { score: number; label: string; color: string } => {
+    if (!pw) return { score: 0, label: '', color: '' };
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+    if (/\d/.test(pw)) score++;
+    if (/[^a-zA-Z0-9]/.test(pw)) score++;
+
+    if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-rose-500' };
+    if (score <= 2) return { score: 2, label: 'Fair', color: 'bg-amber-500' };
+    if (score <= 3) return { score: 3, label: 'Good', color: 'bg-yellow-500' };
+    if (score <= 4) return { score: 4, label: 'Strong', color: 'bg-emerald-500' };
+    return { score: 5, label: 'Excellent', color: 'bg-cyan-500' };
+  };
+  const passwordStrength = getPasswordStrength(password);
+
   useEffect(() => {
     if (errorCode) setError(formatError(errorCode));
   }, [errorCode]);
@@ -394,6 +412,31 @@ export default function LoginClient({
                             />
                           </svg>
                           <span>Caps Lock is on</span>
+                        </div>
+                      )}
+
+                      {/* Password Strength Indicator */}
+                      {password && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map(level => (
+                              <div
+                                key={level}
+                                className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                                  level <= passwordStrength.score
+                                    ? passwordStrength.color
+                                    : 'bg-white/10'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center text-[9px]">
+                            <span
+                              className={`font-mono ${passwordStrength.score >= 3 ? 'text-emerald-400' : passwordStrength.score >= 2 ? 'text-amber-400' : 'text-rose-400'}`}
+                            >
+                              {passwordStrength.label}
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
