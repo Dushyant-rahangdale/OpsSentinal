@@ -48,6 +48,10 @@ export default function LoginClient({
   const [isSuccess, setIsSuccess] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+
+  // Email validation
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   useEffect(() => {
     if (errorCode) setError(formatError(errorCode));
@@ -262,6 +266,7 @@ export default function LoginClient({
                           type="email"
                           value={email}
                           onChange={e => setEmail(e.target.value)}
+                          onBlur={() => setEmailTouched(true)}
                           className="flex-1 bg-transparent px-4 py-3 text-sm font-mono text-white/80 placeholder-white/30 outline-none"
                           placeholder="you@opssentinal.com"
                           required
@@ -269,6 +274,26 @@ export default function LoginClient({
                           autoFocus
                         />
                       </div>
+                      {/* Email Validation Feedback */}
+                      {emailTouched && email && !isEmailValid && (
+                        <div className="flex items-center gap-1.5 mt-1.5 ml-1 text-rose-400 text-[10px]">
+                          <svg
+                            className="h-3 w-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 9v2m0 4h.01"
+                            />
+                            <circle cx="12" cy="12" r="10" strokeWidth={1.5} />
+                          </svg>
+                          <span>Please enter a valid email address</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="group space-y-1.5">
@@ -444,6 +469,16 @@ export default function LoginClient({
                       )}
                     </span>
                   </button>
+
+                  {/* Keyboard Hint */}
+                  {isValid && !isSubmitting && !isSuccess && (
+                    <div className="flex items-center justify-center gap-2 text-[10px] text-white/30 mt-3">
+                      <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-mono">
+                        ↵
+                      </kbd>
+                      <span>Press Enter to sign in</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40 mt-8 font-medium">
                     <svg
