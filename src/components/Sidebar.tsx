@@ -558,13 +558,13 @@ export default function Sidebar(
               >
                 <Settings className="h-4 w-4" />
               </Link>
-              <a
-                href="/api/auth/logout"
+              <Link
+                href="/auth/signout"
                 className="flex items-center justify-center h-8 rounded-md hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           )}
 
@@ -572,13 +572,13 @@ export default function Sidebar(
           {isDesktopCollapsed && (
             <div className="mt-2 flex flex-col gap-1 items-center">
               <div className="h-px w-4 bg-white/10 my-1" />
-              <a
-                href="/api/auth/logout"
+              <Link
+                href="/auth/signout"
                 className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           )}
 
