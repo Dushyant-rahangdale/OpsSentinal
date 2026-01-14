@@ -13,6 +13,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return jsonError('API key missing scope: services:read.', 403);
     }
 
+    const { checkRateLimit } = await import('@/lib/rate-limit');
+    const rate = checkRateLimit(`api:${apiKey.id}:services:get`, 60, 60_000);
+    if (!rate.allowed) {
+      const retryAfter = Math.ceil((rate.resetAt - Date.now()) / 1000);
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+      });
+    }
     const { id } = await params;
     const service = await prisma.service.findUnique({
       where: { id },
@@ -34,7 +43,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     return jsonOk({ service });
   } catch (error: any) {
-     
     return jsonError(error.message || 'Internal Server Error', 500);
   }
 }

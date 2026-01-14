@@ -98,9 +98,12 @@ function buildSubdomainHost(subdomain: string, appHost: string) {
   return `${cleanSubdomain}.${baseHost}`;
 }
 
-async function fetchStatusDomainConfig(origin: string) {
+const INTERNAL_API_BASE =
+  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+async function fetchStatusDomainConfig() {
   try {
-    const response = await fetch(`${origin}/api/status-page/domains`, {
+    const response = await fetch(`${INTERNAL_API_BASE}/api/status-page/domains`, {
       next: { revalidate: STATUS_DOMAIN_CACHE_TTL },
       headers: { 'x-internal-request': 'status-domain-check' },
     });
@@ -307,7 +310,7 @@ export default async function middleware(req: NextRequest) {
     /\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
 
   if (!skipDomainCheck) {
-    const statusConfig = await fetchStatusDomainConfig(req.nextUrl.origin);
+    const statusConfig = await fetchStatusDomainConfig();
     if (statusConfig?.enabled) {
       const hostname = normalizeHostname(req.headers.get('host'));
       const allowedHosts = new Set<string>();

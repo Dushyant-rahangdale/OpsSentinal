@@ -51,6 +51,7 @@ export type SLAMetricsFilter = {
   includeIncidents?: boolean;
   incidentLimit?: number;
   includeActiveIncidents?: boolean;
+  visibility?: 'PUBLIC' | 'PRIVATE' | 'ALL';
   // Pagination support for large datasets
   page?: number;
   pageSize?: number;
@@ -305,6 +306,10 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   const assigneeWhere = filters.assigneeId ? { assigneeId: filters.assigneeId } : null;
   const statusWhere = filters.status ? { status: filters.status } : null;
   const urgencyWhere = filters.urgency ? { urgency: filters.urgency } : null;
+  const visibilityWhere =
+    filters.visibility && filters.visibility !== 'ALL'
+      ? { visibility: filters.visibility as any } // Cast to any to avoid type errors until client updates
+      : {};
 
   const mutedStatusList = ['SNOOZED', 'SUPPRESSED'] as const;
   const activeStatusWhere = filters.status
@@ -314,6 +319,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   let activeWhere: Prisma.IncidentWhereInput = {
     ...activeStatusWhere,
     ...(urgencyWhere ?? {}),
+    ...(visibilityWhere ?? {}),
   } as any;
 
   const hasServiceFilter = Object.keys(serviceWhere).length > 0;
@@ -343,6 +349,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
   let mutedWhere: Prisma.IncidentWhereInput = {
     status: { in: mutedStatusFilter },
     ...(urgencyWhere ?? {}),
+    ...(visibilityWhere ?? {}),
   } as any;
 
   if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {
@@ -364,6 +371,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     createdAt: { gte: finalStart, lte: finalEnd },
     ...(urgencyWhere ?? {}),
     ...(statusWhere ?? {}),
+    ...(visibilityWhere ?? {}),
   } as any;
 
   if (filters.useOrScope && (hasServiceFilter || hasTeamFilter || assigneeWhere)) {

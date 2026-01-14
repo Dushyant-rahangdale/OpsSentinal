@@ -19,6 +19,15 @@ export async function GET(req: NextRequest) {
       return jsonError('API key missing scope: services:read.', 403);
     }
 
+    const { checkRateLimit } = await import('@/lib/rate-limit');
+    const rate = checkRateLimit(`api:${apiKey.id}:services:list`, 60, 60_000);
+    if (!rate.allowed) {
+      const retryAfter = Math.ceil((rate.resetAt - Date.now()) / 1000);
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded.' }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+      });
+    }
     const { searchParams } = new URL(req.url);
     const limit = parseLimit(searchParams.get('limit'));
 
@@ -39,7 +48,6 @@ export async function GET(req: NextRequest) {
 
     return jsonOk({ services });
   } catch (error: any) {
-     
     return jsonError(error.message || 'Internal Server Error', 500);
   }
 }

@@ -90,7 +90,7 @@ describe('Auth JWT + OIDC (unit)', () => {
     expect(result).toBe(false);
   });
 
-  it('creates an OIDC identity link on successful sign-in', async () => {
+  it('rejects OIDC sign-in if email exists but is not linked (ATO prevention)', async () => {
     const authOptions = await getAuthOptions();
     const signIn = authOptions.callbacks?.signIn as unknown as (args: any) => Promise<boolean>;
 
@@ -102,7 +102,6 @@ describe('Auth JWT + OIDC (unit)', () => {
       status: 'ACTIVE',
     });
     (prisma.oidcIdentity.findUnique as any).mockResolvedValue(null);
-    (prisma.oidcIdentity.create as any).mockResolvedValue({ id: 'id1' });
 
     const result = await signIn({
       user: { email: 'user@example.com', name: 'User', id: 'oidc-sub' },
@@ -110,17 +109,8 @@ describe('Auth JWT + OIDC (unit)', () => {
       profile: { email_verified: true, sub: 'oidc-sub' },
     });
 
-    expect(result).toBe(true);
-    expect(prisma.oidcIdentity.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          issuer: 'https://login.example.com',
-          subject: 'oidc-sub',
-          userId: 'u1',
-          email: 'user@example.com',
-        }),
-      })
-    );
+    expect(result).toBe(false);
+    expect(prisma.oidcIdentity.create).not.toHaveBeenCalled();
   });
 
   it('rejects sign-in if OIDC identity is linked to another user', async () => {

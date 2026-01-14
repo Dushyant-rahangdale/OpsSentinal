@@ -61,6 +61,7 @@ describe('SLABreachWarningBadge', () => {
     region: null,
     dedupKey: null,
     escalationProcessingAt: null,
+    visibility: 'PUBLIC',
   };
 
   it('renders correctly with Date objects', () => {

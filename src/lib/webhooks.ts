@@ -56,6 +56,13 @@ export async function sendWebhook(options: WebhookOptions): Promise<WebhookResul
       return { success: false, error: 'Webhook URL is required' };
     }
 
+    // SSRF Protection: Validate URL
+    const { validateWebhookUrl } = await import('./network-security');
+    const isValid = await validateWebhookUrl(url);
+    if (!isValid) {
+      return { success: false, error: 'Invalid or restricted Webhook URL' };
+    }
+
     // Stringify payload
     const payloadString = JSON.stringify(payload);
 
@@ -137,7 +144,6 @@ export async function sendWebhook(options: WebhookOptions): Promise<WebhookResul
         responseBody: responseText,
       };
     } catch (fetchError: any) {
-
       if (fetchError.name === 'AbortError' || fetchError.message?.includes('timeout')) {
         return { success: false, error: 'Webhook request timed out after retries' };
       }
@@ -147,7 +153,6 @@ export async function sendWebhook(options: WebhookOptions): Promise<WebhookResul
       clearTimeout(timeoutId);
     }
   } catch (error: any) {
-
     logger.error('Webhook send error', { component: 'webhooks', error, url: options.url });
     return { success: false, error: error.message };
   }
@@ -186,7 +191,6 @@ export function generateIncidentWebhookPayload(
   },
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated'
 ): Record<string, any> {
-
   const baseUrl = getBaseUrl();
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
 
@@ -208,10 +212,10 @@ export function generateIncidentWebhookPayload(
       },
       assignee: incident.assignee
         ? {
-          id: incident.assignee.id,
-          name: incident.assignee.name,
-          email: incident.assignee.email,
-        }
+            id: incident.assignee.id,
+            name: incident.assignee.name,
+            email: incident.assignee.email,
+          }
         : null,
       timestamps: {
         created: incident.createdAt.toISOString(),
@@ -241,7 +245,6 @@ export function formatGoogleChatPayload(
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
   baseUrl: string
 ): Record<string, any> {
-
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
   const _statusColor =
     eventType === 'triggered'
@@ -294,16 +297,16 @@ export function formatGoogleChatPayload(
           },
           ...(incident.description
             ? [
-              {
-                widgets: [
-                  {
-                    textParagraph: {
-                      text: incident.description,
+                {
+                  widgets: [
+                    {
+                      textParagraph: {
+                        text: incident.description,
+                      },
                     },
-                  },
-                ],
-              },
-            ]
+                  ],
+                },
+              ]
             : []),
         ],
       },
@@ -330,7 +333,6 @@ export function formatMicrosoftTeamsPayload(
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
   baseUrl: string
 ): Record<string, any> {
-
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
   const _accentColor =
     eventType === 'triggered'
@@ -380,13 +382,13 @@ export function formatMicrosoftTeamsPayload(
             },
             ...(incident.description
               ? [
-                {
-                  type: 'TextBlock',
-                  text: incident.description,
-                  wrap: true,
-                  spacing: 'Medium',
-                },
-              ]
+                  {
+                    type: 'TextBlock',
+                    text: incident.description,
+                    wrap: true,
+                    spacing: 'Medium',
+                  },
+                ]
               : []),
           ],
           actions: [
@@ -422,7 +424,6 @@ export function formatDiscordPayload(
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
   baseUrl: string
 ): Record<string, any> {
-
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
   const color =
     eventType === 'triggered'
@@ -490,7 +491,6 @@ export function formatSlackPayload(
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
   baseUrl: string
 ): Record<string, any> {
-
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
 
   // Status color mapping
@@ -538,14 +538,14 @@ export function formatSlackPayload(
       },
       ...(incident.description
         ? [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `*Description:*\n${incident.description}`,
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: `*Description:*\n${incident.description}`,
+              },
             },
-          },
-        ]
+          ]
         : []),
       {
         type: 'actions',
@@ -586,7 +586,6 @@ export function formatWebhookPayloadByType(
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
   baseUrl: string
 ): Record<string, any> {
-
   switch (webhookType.toUpperCase()) {
     case 'GOOGLE_CHAT':
       return formatGoogleChatPayload(incident, eventType, baseUrl);
@@ -637,8 +636,12 @@ export async function sendIncidentWebhook(
       secret,
     });
   } catch (error: any) {
-
-    logger.error('Send incident webhook error', { component: 'webhooks', error, incidentId, eventType });
+    logger.error('Send incident webhook error', {
+      component: 'webhooks',
+      error,
+      incidentId,
+      eventType,
+    });
     return { success: false, error: error.message };
   }
 }

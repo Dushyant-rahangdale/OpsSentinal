@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
       windowDays: 30, // Last 30 days
       includeIncidents: true,
       incidentLimit: 50,
+      visibility: 'PUBLIC',
     });
 
     const incidents = metrics.recentIncidents || [];
@@ -86,17 +87,17 @@ export async function GET(req: NextRequest) {
         <language>en</language>
         <atom:link href="${baseUrl}/api/status/rss" rel="self" type="application/rss+xml" />
         ${incidents
-        .map(incident => {
-          const status =
-            incident.status === 'RESOLVED'
-              ? 'Resolved'
-              : incident.status === 'ACKNOWLEDGED'
-                ? 'Acknowledged'
-                : 'Investigating';
-          const pubDate = new Date(incident.createdAt).toUTCString();
-          const guid = `${baseUrl}/status#incident-${incident.id}`;
+          .map(incident => {
+            const status =
+              incident.status === 'RESOLVED'
+                ? 'Resolved'
+                : incident.status === 'ACKNOWLEDGED'
+                  ? 'Acknowledged'
+                  : 'Investigating';
+            const pubDate = new Date(incident.createdAt).toUTCString();
+            const guid = `${baseUrl}/status#incident-${incident.id}`;
 
-          return `
+            return `
         <item>
             <title>${escapeXml(incident.title)} - ${status}</title>
             <link>${guid}</link>
@@ -105,8 +106,8 @@ export async function GET(req: NextRequest) {
             <description>${escapeXml(incident.description || incident.title)} - Service: ${escapeXml(incident.service.name)}</description>
             <category>${escapeXml(incident.service.name)}</category>
         </item>`;
-        })
-        .join('')}
+          })
+          .join('')}
     </channel>
 </rss>`;
 

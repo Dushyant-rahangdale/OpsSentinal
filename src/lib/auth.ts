@@ -613,16 +613,27 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             const existingIdentity = await prisma.oidcIdentity.findUnique({
               where: { issuer_subject: { issuer, subject } },
             });
-            if (existingIdentity && existingIdentity.userId !== targetUser.id) {
-              logger.warn('[Auth] OIDC sign-in rejected: identity already linked to another user', {
-                component: 'auth:signIn',
-                issuer,
-                subject,
-                email,
-              });
-              return false;
-            }
-            if (!existingIdentity) {
+
+            // SECURITY: If no identity link exists, check if user exists by email.
+            // If user exists by email but isn't linked, we MUST BLOCK the login to prevent Account Takeover.
+            // An attacker could simply create an OIDC account with the same email to hijack the admin account.
+            if (!existingIdentity && targetUser) {
+              // Only allow if we just created the user (auto-provision case)
+              // The reliable way to know if we just created it is if !existing was true at start.
+              if (existing) {
+                logger.warn(
+                  '[Auth] OIDC sign-in blocked: Account Takeover Attempt - Email exists but not linked',
+                  {
+                    component: 'auth:signIn',
+                    email,
+                    issuer,
+                    subject,
+                  }
+                );
+                return false;
+              }
+
+              // If we just created the user in this request (auto-provision), it's safe to link.
               await prisma.oidcIdentity.create({
                 data: {
                   issuer,
@@ -631,12 +642,24 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   userId: targetUser.id,
                 },
               });
-              logger.info('[Auth] Linked OIDC identity to user', {
+              logger.info('[Auth] Linked OIDC identity to NEW user', {
                 component: 'auth:signIn',
                 issuer,
                 subject,
                 userId: targetUser.id,
               });
+            } else if (!existingIdentity) {
+              // Should not happen if auto-provision worked correctly (targetUser should be null if not created)
+              // But if targetUser exists (which it does via auto-provision), we handle it above.
+              // This block effectively unreachable if targetUser is ensured.
+            } else if (existingIdentity && existingIdentity.userId !== targetUser.id) {
+              logger.warn('[Auth] OIDC sign-in rejected: identity already linked to another user', {
+                component: 'auth:signIn',
+                issuer,
+                subject,
+                email,
+              });
+              return false;
             }
 
             const updateData: any = {};

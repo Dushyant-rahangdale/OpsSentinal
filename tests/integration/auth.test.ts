@@ -290,11 +290,49 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       expect(result).toBe(false);
     });
 
-    it('creates an OIDC identity link on successful sign-in', async () => {
+    it('creates an OIDC identity link when auto-provisioning a NEW user', async () => {
+      await seedOidcConfig();
+
+      // Ensure user does not exist
+      const email = 'oidc-new-user@example.com';
+      await testPrisma.user.deleteMany({ where: { email } });
+
+      const authOptions = await getAuthOptions();
+      const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
+        user?: { email?: string | null; id?: string | null; name?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
+        profile?: Record<string, unknown> | null;
+      }) => Promise<boolean>;
+
+      // Mock user object passed by NextAuth (usually has id/email/name)
+      const mockUser = { id: 'oidc-sub-123', email, name: 'New User' };
+
+      const ok = await signInCallback({
+        user: mockUser,
+        account: { provider: 'oidc', providerAccountId: 'sub-abc' },
+        profile: { email_verified: true, sub: 'sub-abc' },
+      });
+
+      expect(ok).toBe(true);
+
+      // Verify user was created
+      const createdUser = await testPrisma.user.findUnique({ where: { email } });
+      expect(createdUser).not.toBeNull();
+
+      // Verify identity link was created
+      const linked = await testPrisma.oidcIdentity.findUnique({
+        where: { issuer_subject: { issuer: 'https://login.example.com', subject: 'sub-abc' } },
+      });
+
+      expect(linked?.userId).toBe(createdUser?.id);
+      expect(linked?.email).toBe(createdUser?.email);
+    });
+
+    it('rejects OIDC sign-in if user exists but is not linked (Account Takeover Protection)', async () => {
       await seedOidcConfig();
 
       const user = await createTestUser({
-        email: 'oidc-linked@example.com',
+        email: 'oidc-existing@example.com',
       });
 
       const authOptions = await getAuthOptions();
@@ -306,18 +344,18 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
 
       const ok = await signInCallback({
         user: { id: user.id, email: user.email, name: user.name },
-        account: { provider: 'oidc', providerAccountId: 'sub-abc' },
-        profile: { email_verified: true, sub: 'sub-abc' },
+        account: { provider: 'oidc', providerAccountId: 'sub-xyz' },
+        profile: { email_verified: true, sub: 'sub-xyz' },
       });
 
-      expect(ok).toBe(true);
+      // Should be BLOCKED
+      expect(ok).toBe(false);
 
+      // Verify NO link was created
       const linked = await testPrisma.oidcIdentity.findUnique({
-        where: { issuer_subject: { issuer: 'https://login.example.com', subject: 'sub-abc' } },
+        where: { issuer_subject: { issuer: 'https://login.example.com', subject: 'sub-xyz' } },
       });
-
-      expect(linked?.userId).toBe(user.id);
-      expect(linked?.email).toBe(user.email);
+      expect(linked).toBeNull();
     });
 
     it('rejects sign-in when OIDC identity is already linked to another user', async () => {
@@ -361,17 +399,27 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
         role: 'USER',
       });
 
+      // Pre-link identity to bypass ATO check
+      await testPrisma.oidcIdentity.create({
+        data: {
+          issuer: 'https://login.example.com',
+          subject: 'sub-role-test',
+          email: user.email,
+          userId: user.id,
+        },
+      });
+
       const authOptions = await getAuthOptions();
       const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
         user?: { email?: string | null; id?: string | null; name?: string | null };
-        account?: { provider?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
         profile?: Record<string, unknown> | null;
       }) => Promise<boolean>;
 
       const result = await signInCallback({
         user: { id: user.id, email: user.email, name: user.name },
-        account: { provider: 'oidc' },
-        profile: { groups: ['admins'] },
+        account: { provider: 'oidc', providerAccountId: 'sub-role-test' },
+        profile: { groups: ['admins'], sub: 'sub-role-test' },
       });
 
       expect(result).toBe(true);
@@ -400,20 +448,31 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
         avatarUrl: 'https://old.example.com/avatar.png',
       });
 
+      // Pre-link identity to bypass ATO check
+      await testPrisma.oidcIdentity.create({
+        data: {
+          issuer: 'https://login.example.com',
+          subject: 'sub-sync-test',
+          email: user.email,
+          userId: user.id,
+        },
+      });
+
       const authOptions = await getAuthOptions();
       const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
         user?: { email?: string | null; id?: string | null; name?: string | null };
-        account?: { provider?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
         profile?: Record<string, unknown> | null;
       }) => Promise<boolean>;
 
       const result = await signInCallback({
         user: { id: user.id, email: user.email, name: user.name },
-        account: { provider: 'oidc' },
+        account: { provider: 'oidc', providerAccountId: 'sub-sync-test' },
         profile: {
           dept: 'Engineering',
           title: 'Staff Engineer',
           picture: 'https://example.com/avatar.png',
+          sub: 'sub-sync-test',
         },
       });
 

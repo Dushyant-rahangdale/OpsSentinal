@@ -19,12 +19,13 @@ describe('Retry Utilities', () => {
     });
 
     it('should retry on failure and succeed', async () => {
-      const fn = vi.fn()
+      const fn = vi
+        .fn()
         .mockRejectedValueOnce(new Error('Network error'))
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce('success');
 
-      const result = await retry(fn, { maxAttempts: 3 });
+      const result = await retry(fn, { maxAttempts: 3, initialDelayMs: 10 });
 
       expect(result.success).toBe(true);
       expect(result.data).toBe('success');
@@ -36,7 +37,7 @@ describe('Retry Utilities', () => {
       const error = new Error('Persistent error');
       const fn = vi.fn().mockRejectedValue(error);
 
-      const result = await retry(fn, { maxAttempts: 3 });
+      const result = await retry(fn, { maxAttempts: 3, initialDelayMs: 10 });
 
       expect(result.success).toBe(false);
       expect(result.error).toBe(error);
@@ -51,11 +52,11 @@ describe('Retry Utilities', () => {
       const startTime = Date.now();
       await retry(fn, {
         maxAttempts: 3,
-        initialDelayMs: 100,
+        initialDelayMs: 10,
         backoffMultiplier: 2,
-        onRetry: (_attempt) => {
+        onRetry: _attempt => {
           delays.push(Date.now() - startTime);
-        }
+        },
       });
 
       // Check that delays increase (allowing for some timing variance)
@@ -68,7 +69,8 @@ describe('Retry Utilities', () => {
 
       const result = await retry(fn, {
         maxAttempts: 3,
-        retryableErrors: () => false // Don't retry
+        retryableErrors: () => false, // Don't retry
+        initialDelayMs: 10,
       });
 
       expect(result.success).toBe(false);
@@ -81,8 +83,8 @@ describe('Retry Utilities', () => {
 
       await retry(fn, {
         maxAttempts: 3,
-        initialDelayMs: 1000,
-        maxDelayMs: 1500,
+        initialDelayMs: 10,
+        maxDelayMs: 15,
         backoffMultiplier: 10, // Would normally exceed maxDelayMs
       });
 
@@ -104,7 +106,9 @@ describe('Retry Utilities', () => {
       const error = new Error('Failed');
       const fn = vi.fn().mockRejectedValue(error);
 
-      await expect(retryWithThrow(fn, { maxAttempts: 2 })).rejects.toThrow('Failed');
+      await expect(retryWithThrow(fn, { maxAttempts: 2, initialDelayMs: 10 })).rejects.toThrow(
+        'Failed'
+      );
     });
   });
 
@@ -136,7 +140,8 @@ describe('Retry Utilities', () => {
 
   describe('retryFetch', () => {
     it('should retry on network errors', async () => {
-      global.fetch = vi.fn()
+      global.fetch = vi
+        .fn()
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce({ ok: true, status: 200 } as Response);
 
@@ -147,7 +152,8 @@ describe('Retry Utilities', () => {
     });
 
     it('should retry on 5xx errors', async () => {
-      global.fetch = vi.fn()
+      global.fetch = vi
+        .fn()
         .mockResolvedValueOnce({ ok: false, status: 500 } as Response)
         .mockResolvedValueOnce({ ok: true, status: 200 } as Response);
 
@@ -172,4 +178,3 @@ describe('Retry Utilities', () => {
     });
   });
 });
-

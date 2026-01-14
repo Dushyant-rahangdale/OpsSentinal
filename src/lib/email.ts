@@ -13,6 +13,7 @@
  * 2. Configure SendGrid in Settings → System → Notification Providers
  */
 
+import { createRequire } from 'module';
 import prisma from './prisma';
 import { getBaseUrl } from './env-validation';
 import { getUserTimeZone, formatDateTime } from './timezone';
@@ -85,22 +86,10 @@ export async function sendEmail(
     // Production: Use configured provider
     if (emailConfig.provider === 'resend') {
       try {
-        // Use runtime require to avoid build-time dependency
-        const requireFunc = eval('require') as (id: string) => unknown;
-        const { Resend } = requireFunc('resend') as {
-          Resend: new (apiKey?: string) => {
-            emails: {
-              send: (args: {
-                from?: string;
-                to: string;
-                subject: string;
-                html: string;
-                text?: string;
-              }) => Promise<{ error?: { message?: string }; data?: { id?: string } }>;
-            };
-          };
-        };
-        const resend = new Resend(emailConfig.apiKey);
+        // Use standard require via createRequire
+        const require = createRequire(import.meta.url);
+        const { Resend } = require('resend');
+        const resend = new Resend(emailConfig.apiKey || '');
 
         const result = await resend.emails.send({
           from: emailConfig.fromEmail,
@@ -142,24 +131,9 @@ export async function sendEmail(
 
     if (emailConfig.provider === 'sendgrid') {
       try {
-        // Use runtime require to avoid build-time dependency
-        const requireFunc = eval('require') as (id: string) => unknown;
-        const sgMail = requireFunc('@sendgrid/mail') as {
-          setApiKey: (key: string) => void;
-          send: (msg: {
-            to: string;
-            from: string;
-            subject: string;
-            html: string;
-            text: string;
-            trackingSettings?: {
-              clickTracking?: { enable: boolean; enableText?: boolean };
-              openTracking?: { enable: boolean };
-            };
-          }) => Promise<
-            Array<{ statusCode: number; headers?: Record<string, string>; body?: unknown }>
-          >;
-        };
+        // Use standard require via createRequire
+        const require = createRequire(import.meta.url);
+        const sgMail = require('@sendgrid/mail');
 
         // Validate API key
         if (!emailConfig.apiKey || emailConfig.apiKey.trim() === '') {
@@ -266,13 +240,9 @@ export async function sendEmail(
 
     if (emailConfig.provider === 'smtp') {
       try {
-        // Use runtime require to avoid build-time dependency
-        const requireFunc = eval('require') as (id: string) => unknown;
-        const nodemailer = requireFunc('nodemailer') as {
-          createTransport: (options: Record<string, unknown>) => {
-            sendMail: (options: Record<string, unknown>) => Promise<{ messageId?: string }>;
-          };
-        };
+        // Use standard require via createRequire
+        const require = createRequire(import.meta.url);
+        const nodemailer = require('nodemailer');
 
         // Validate required SMTP config
         if (!emailConfig.host || !emailConfig.port || !emailConfig.user || !emailConfig.password) {
@@ -331,14 +301,9 @@ export async function sendEmail(
 
     if (emailConfig.provider === 'ses') {
       try {
-        // Use runtime require to avoid build-time dependency
-        const requireFunc = eval('require') as (id: string) => unknown;
-        const { SESClient, SendEmailCommand } = requireFunc('@aws-sdk/client-ses') as {
-          SESClient: new (config: Record<string, unknown>) => {
-            send: (command: unknown) => Promise<{ MessageId?: string }>;
-          };
-          SendEmailCommand: new (args: Record<string, unknown>) => unknown;
-        };
+        // Use standard require via createRequire
+        const require = createRequire(import.meta.url);
+        const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
 
         // Validate required SES config
         if (!emailConfig.apiKey || !emailConfig.host || !emailConfig.fromEmail) {

@@ -124,21 +124,7 @@ export default function CreateIncidentForm({
                 fontSize: '0.9rem',
                 color: 'var(--text-primary)',
               }}
-            >
-              Title <span style={{ color: 'var(--danger)' }}>*</span>
-              {title.length > 0 && (
-                <span
-                  style={{
-                    float: 'right',
-                    fontSize: '0.75rem',
-                    color: title.length > 450 ? 'var(--danger)' : 'var(--text-muted)',
-                    fontWeight: '400',
-                  }}
-                >
-                  {title.length}/500
-                </span>
-              )}
-            </label>
+            ></label>
             <input
               name="title"
               required
@@ -158,6 +144,70 @@ export default function CreateIncidentForm({
               }}
               placeholder="e.g., API Latency Spike in EU Region"
             />
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontWeight: '600',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Visibility{' '}
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '0.5rem' }}>
+                (Controls status page display)
+              </span>
+            </label>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  padding: '0.5rem 1rem',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: '0px',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="PUBLIC"
+                  defaultChecked
+                  style={{ margin: 0, cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  Public (Post to Status Page)
+                </span>
+              </label>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  padding: '0.5rem 1rem',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: '0px',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="PRIVATE"
+                  style={{ margin: 0, cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  Private (Internal Dashboard Only)
+                </span>
+              </label>
+            </div>
           </div>
 
           <div>

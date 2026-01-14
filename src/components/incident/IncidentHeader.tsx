@@ -16,9 +16,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/shadcn/select';
-import { Clock, CheckCircle2, Server, Shield, Users, User, AlertTriangle } from 'lucide-react';
+import { updateIncidentUrgency, updateIncidentVisibility } from '@/app/(app)/incidents/actions';
+import {
+  Eye,
+  EyeOff,
+  Clock,
+  CheckCircle2,
+  Server,
+  Shield,
+  Users,
+  User,
+  AlertTriangle,
+} from 'lucide-react';
 import { getDefaultAvatar } from '@/lib/avatar';
-import { updateIncidentUrgency } from '@/app/(app)/incidents/actions';
 
 import EscalationStatusBadge from './EscalationStatusBadge';
 import AssigneeSection from './AssigneeSection';
@@ -69,12 +79,22 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
   const urgencyDot =
     urgencyDotMap[incident.urgency as 'HIGH' | 'MEDIUM' | 'LOW'] ?? urgencyDotMap.LOW;
 
+  const handleVisibilityChange = (newVisibility: 'PUBLIC' | 'PRIVATE') => {
+    startTransition(async () => {
+      await updateIncidentVisibility(incident.id, newVisibility);
+      router.refresh();
+    });
+  };
+
   const handleUrgencyChange = (newUrgency: string) => {
     startTransition(async () => {
       await updateIncidentUrgency(incident.id, newUrgency);
       router.refresh();
     });
   };
+
+  const currentVisibility = (incident as any).visibility || 'PUBLIC';
+  const isPrivate = currentVisibility === 'PRIVATE';
 
   return (
     <Card className="overflow-hidden bg-slate-50/50 border shadow-sm">
@@ -85,6 +105,57 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
             priority={incident.priority}
             canManage={canManage}
           />
+
+          {/* Visibility Toggle */}
+          {canManage ? (
+            <Select
+              value={(incident as any).visibility || 'PUBLIC'}
+              onValueChange={val => handleVisibilityChange(val as 'PUBLIC' | 'PRIVATE')}
+              disabled={isPending}
+            >
+              <SelectTrigger
+                className={`h-7 w-fit gap-2 border px-2.5 shadow-sm transition-all text-xs font-semibold ${
+                  isPrivate
+                    ? 'bg-slate-800 text-white border-slate-900 hover:bg-slate-700'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {isPrivate ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                <span>{isPrivate ? 'PRIVATE' : 'PUBLIC'}</span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PUBLIC">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-3.5 w-3.5 text-slate-500" />
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-slate-900">Public</span>
+                      <span className="text-[10px] text-slate-500">Visible on Status Page</span>
+                    </div>
+                  </div>
+                </SelectItem>
+                <SelectItem value="PRIVATE">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="h-3.5 w-3.5 text-slate-500" />
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-slate-900">Private</span>
+                      <span className="text-[10px] text-slate-500">Internal Dashboard Only</span>
+                    </div>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-bold ${
+                isPrivate
+                  ? 'bg-slate-100 text-slate-600 border-slate-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-100'
+              }`}
+            >
+              {isPrivate ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {currentVisibility}
+            </div>
+          )}
 
           {incident.escalationStatus && (
             <EscalationStatusBadge
