@@ -258,6 +258,13 @@ export async function completePasswordReset(
       },
     });
 
+    // Log session revocation for observability
+    logger.info('[PasswordReset] Password updated, sessions revoked', {
+      component: 'password-reset',
+      userId: user.id,
+      email: user.email,
+    });
+
     await prisma.userToken.update({
       where: { tokenHash },
       data: { usedAt: new Date() },

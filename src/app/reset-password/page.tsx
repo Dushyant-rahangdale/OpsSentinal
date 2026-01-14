@@ -68,6 +68,15 @@ function ResetPasswordForm() {
         setError(data.error || 'Failed to reset password');
       } else {
         setSuccess(true);
+
+        // Clear all NextAuth session cookies to prevent token version mismatch
+        // This ensures no stale session interferes with fresh login
+        document.cookie = 'next-auth.session-token=; Max-Age=0; path=/; SameSite=Lax';
+        document.cookie =
+          '__Secure-next-auth.session-token=; Max-Age=0; path=/; Secure; SameSite=Lax';
+        document.cookie = 'next-auth.csrf-token=; Max-Age=0; path=/; SameSite=Lax';
+        document.cookie = '__Host-next-auth.csrf-token=; Max-Age=0; path=/; Secure; SameSite=Lax';
+
         // Redirect after success
         setTimeout(() => {
           router.push('/login?password=1');
