@@ -90,6 +90,11 @@ enum IncidentUrgency {
   HIGH
 }
 
+enum IncidentVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 enum EscalationTargetType {
   USER
   TEAM
@@ -395,6 +400,7 @@ model Incident {
   description            String?
   status                 IncidentStatus  @default(OPEN)
   urgency                IncidentUrgency @default(HIGH)
+  visibility             IncidentVisibility @default(PUBLIC)
   priority               String? // P1, P2.. P5
   dedupKey               String? // Key for deduplication
   serviceId              String

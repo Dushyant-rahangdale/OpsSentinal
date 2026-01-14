@@ -412,7 +412,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       const authOptions = await getAuthOptions();
       const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
         user?: { email?: string | null; id?: string | null; name?: string | null };
-        account?: { provider?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
         profile?: Record<string, unknown> | null;
       }) => Promise<boolean>;
 
@@ -461,7 +461,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       const authOptions = await getAuthOptions();
       const signInCallback = authOptions.callbacks?.signIn as unknown as (args: {
         user?: { email?: string | null; id?: string | null; name?: string | null };
-        account?: { provider?: string | null };
+        account?: { provider?: string | null; providerAccountId?: string | null };
         profile?: Record<string, unknown> | null;
       }) => Promise<boolean>;
 

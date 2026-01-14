@@ -441,6 +441,7 @@ export async function createIncident(formData: FormData) {
   }
 
   const teamId = formData.get('teamId') as string | null;
+  const visibility = (formData.get('visibility') as 'PUBLIC' | 'PRIVATE') || 'PUBLIC';
 
   const incident = await prisma.$transaction(async tx => {
     let assigneeName: string | null = null;
@@ -533,6 +534,8 @@ export async function createIncident(formData: FormData) {
         description,
         urgency,
         serviceId,
+
+        visibility,
         priority: priority && priority.length ? priority : null,
         dedupKey: dedupKey && dedupKey.length ? dedupKey : null,
         assigneeId: assigneeId && assigneeId.length ? assigneeId : null,
@@ -856,4 +859,28 @@ export async function removeWatcher(incidentId: string, watcherId: string) {
   });
 
   revalidatePath(`/incidents/${incidentId}`);
+}
+
+export async function updateIncidentVisibility(id: string, visibility: 'PUBLIC' | 'PRIVATE') {
+  try {
+    await assertCanModifyIncident(id);
+  } catch (error) {
+    throw new Error(getUserFriendlyError(error));
+  }
+
+  await prisma.incident.update({
+    where: { id },
+    data: {
+      visibility,
+      events: {
+        create: {
+          message: `Visibility updated to ${visibility}`,
+        },
+      },
+    },
+  });
+
+  revalidatePath(`/incidents/${id}`);
+  revalidatePath('/incidents');
+  revalidatePath('/');
 }

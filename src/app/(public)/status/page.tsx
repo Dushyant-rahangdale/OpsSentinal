@@ -305,6 +305,7 @@ async function renderStatusPage(statusPage: any) {
         where: {
           serviceId: { in: incidentServiceIds },
           createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
+          visibility: 'PUBLIC',
         },
         include: {
           service: true,
@@ -361,6 +362,7 @@ async function renderStatusPage(statusPage: any) {
   const allIncidents = await prisma.incident.findMany({
     where: {
       serviceId: { in: incidentServiceIds },
+      visibility: 'PUBLIC',
       OR: [
         { createdAt: { gte: ninetyDaysAgo } },
         { resolvedAt: { gte: ninetyDaysAgo } },
