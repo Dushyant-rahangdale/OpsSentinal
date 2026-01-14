@@ -34,7 +34,10 @@ export async function initiatePasswordReset(
     // 3. Timing Mitigation & User Validation
     if (!user || user.status === 'DISABLED') {
       await simulateWork(startTime);
-      // Log attempt without PII (no email in logs)
+      // Log attempt as failed/invalid but use same action to mask existence
+      // SECURITY: Log even invalid attempts to AuditLog to prevent DoS via unmetered requests
+      await logAttempt(normalizedEmail, 'PASSWORD_RESET_INITIATED', ipAddress, undefined);
+
       logger.debug('[PasswordReset] Request for unknown/disabled user', {
         component: 'password-reset',
       });
@@ -99,8 +102,10 @@ export async function initiatePasswordReset(
         });
         notificationSent = true;
       } catch (e) {
+        const err = e as Error;
         logger.warn('[PasswordReset] Email sending failed, will try SMS fallback', {
           component: 'password-reset',
+          error: err.message,
         });
       }
     }
@@ -130,6 +135,7 @@ export async function initiatePasswordReset(
       });
     }
 
+    // Log successful initiation
     await logAttempt(normalizedEmail, 'PASSWORD_RESET_INITIATED', ipAddress, user.id);
 
     return {
@@ -150,14 +156,11 @@ export async function checkRateLimit(
 ) {
   const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
 
-  // Check by Email
+  // Check by Email using new Indexed Column
   const emailCount = await prisma.auditLog.count({
     where: {
       action,
-      details: {
-        path: ['targetEmail'],
-        equals: email,
-      },
+      targetEmail: email, // Direct indexed column lookup
       createdAt: { gt: windowStart },
     },
   });
@@ -166,15 +169,12 @@ export async function checkRateLimit(
     throw new Error('Too many requests. Please try again later.');
   }
 
-  // Check by IP
+  // Check by IP using new Indexed Column
   if (ip) {
     const ipCount = await prisma.auditLog.count({
       where: {
         action,
-        details: {
-          path: ['ip'],
-          equals: ip,
-        },
+        ip: ip, // Direct indexed column lookup
         createdAt: { gt: windowStart },
       },
     });
@@ -198,7 +198,9 @@ async function logAttempt(
         entityType: 'USER',
         entityId: userId || 'unknown',
         actorId: userId,
-        details: { targetEmail: email, ip },
+        targetEmail: email, // Populate optimized column
+        ip: ip, // Populate optimized column
+        details: { targetEmail: email, ip }, // Keep JSON for potential extra data
       },
     });
   } catch (e) {
@@ -250,7 +252,10 @@ export async function completePasswordReset(
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
     });
 
     await prisma.userToken.update({

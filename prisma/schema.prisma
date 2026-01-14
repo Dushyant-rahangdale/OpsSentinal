@@ -694,6 +694,8 @@ model AuditLog {
   entityId   String?
   actorId    String?
   details    Json?
+  targetEmail String?         // For rate limiting queries (avoid JSON scan)
+  ip          String?         // For rate limiting queries (avoid JSON scan)
   createdAt  DateTime        @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])
@@ -701,6 +703,10 @@ model AuditLog {
   @@index([entityType, entityId]) // For querying audit logs by entity
   @@index([actorId, createdAt]) // For querying audit logs by actor
   @@index([createdAt]) // For time-based queries
+  
+  // Rate Limiting Performance Indexes
+  @@index([action, targetEmail, createdAt]) // For checking email rate limits O(log n)
+  @@index([action, ip, createdAt]) // For checking IP rate limits O(log n)
 }
 
 // User tokens for invite links, password resets, and admin reset links

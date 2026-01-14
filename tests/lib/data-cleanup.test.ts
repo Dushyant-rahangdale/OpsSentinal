@@ -1,96 +1,98 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { performDataCleanup } from '@/lib/data-cleanup';
 
 // Mock dependencies
 const mockPrisma = {
-    incident: {
-        count: vi.fn(),
-        findMany: vi.fn(),
-        deleteMany: vi.fn(),
-    },
-    alert: {
-        count: vi.fn(),
-        deleteMany: vi.fn(),
-        updateMany: vi.fn(),
-    },
-    logEntry: {
-        count: vi.fn(),
-        deleteMany: vi.fn(),
-    },
-    incidentEvent: {
-        deleteMany: vi.fn(),
-    },
-    incidentNote: {
-        deleteMany: vi.fn(),
-    },
-    customFieldValue: {
-        deleteMany: vi.fn(),
-    },
+  incident: {
+    count: vi.fn(),
+    findMany: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  alert: {
+    count: vi.fn(),
+    deleteMany: vi.fn(),
+    updateMany: vi.fn(),
+  },
+  logEntry: {
+    count: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  incidentEvent: {
+    deleteMany: vi.fn(),
+  },
+  incidentNote: {
+    deleteMany: vi.fn(),
+  },
+  customFieldValue: {
+    deleteMany: vi.fn(),
+  },
+  incidentMetricRollup: {
+    deleteMany: vi.fn().mockResolvedValue({ count: 5 }),
+  },
 };
 
 vi.mock('@/lib/prisma', () => ({
-    default: mockPrisma,
+  default: mockPrisma,
 }));
 
 vi.mock('@/lib/retention-policy', () => ({
-    getRetentionPolicy: vi.fn().mockResolvedValue({
-        incidentRetentionDays: 30,
-        alertRetentionDays: 7,
-        logRetentionDays: 90,
-        metricsRetentionDays: 365,
-        realTimeWindowDays: 90,
-    }),
+  getRetentionPolicy: vi.fn().mockResolvedValue({
+    incidentRetentionDays: 30,
+    alertRetentionDays: 7,
+    logRetentionDays: 90,
+    metricsRetentionDays: 365,
+    realTimeWindowDays: 90,
+  }),
 }));
 
 vi.mock('@/lib/metric-rollup', () => ({
-    cleanupOldRollups: vi.fn().mockResolvedValue(100),
+  cleanupOldRollups: vi.fn().mockResolvedValue(100),
 }));
 
 describe('Data Cleanup Service', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        // Default counts
-        mockPrisma.incident.count.mockResolvedValue(5);
-        mockPrisma.alert.count.mockResolvedValue(10);
-        mockPrisma.logEntry.count.mockResolvedValue(20);
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default counts
+    mockPrisma.incident.count.mockResolvedValue(5);
+    mockPrisma.alert.count.mockResolvedValue(10);
+    mockPrisma.logEntry.count.mockResolvedValue(20);
+  });
 
-    it('should respect dryRun flag and NOT delete data', async () => {
-        const result = await performDataCleanup(true);
+  it('should respect dryRun flag and NOT delete data', async () => {
+    const result = await performDataCleanup(true);
 
-        expect(result.dryRun).toBe(true);
-        expect(result.incidents).toBe(5);
-        expect(result.alerts).toBe(10);
-        expect(result.logs).toBe(20);
+    expect(result.dryRun).toBe(true);
+    expect(result.incidents).toBe(5);
+    expect(result.alerts).toBe(10);
+    expect(result.logs).toBe(20);
 
-        // Verify delete was NOT called
-        expect(mockPrisma.incident.deleteMany).not.toHaveBeenCalled();
-        expect(mockPrisma.alert.deleteMany).not.toHaveBeenCalled();
-        expect(mockPrisma.logEntry.deleteMany).not.toHaveBeenCalled();
-    });
+    // Verify delete was NOT called
+    expect(mockPrisma.incident.deleteMany).not.toHaveBeenCalled();
+    expect(mockPrisma.alert.deleteMany).not.toHaveBeenCalled();
+    expect(mockPrisma.logEntry.deleteMany).not.toHaveBeenCalled();
+  });
 
-    it('should delete data when dryRun is false', async () => {
-        // Setup for execution flow
-        mockPrisma.incident.findMany.mockResolvedValue([{ id: 'inc-1' }, { id: 'inc-2' }]);
-        mockPrisma.incidentEvent.deleteMany.mockResolvedValue({ count: 10 });
-        mockPrisma.incidentNote.deleteMany.mockResolvedValue({ count: 2 });
-        mockPrisma.customFieldValue.deleteMany.mockResolvedValue({ count: 0 });
-        mockPrisma.alert.updateMany.mockResolvedValue({ count: 0 });
-        mockPrisma.incident.deleteMany.mockResolvedValue({ count: 2 });
-        mockPrisma.alert.deleteMany.mockResolvedValue({ count: 8 }); // Alerts not linked to incidents
-        mockPrisma.logEntry.deleteMany.mockResolvedValue({ count: 20 });
+  it('should delete data when dryRun is false', async () => {
+    // Setup for execution flow
+    mockPrisma.incident.findMany.mockResolvedValue([{ id: 'inc-1' }, { id: 'inc-2' }]);
+    mockPrisma.incidentEvent.deleteMany.mockResolvedValue({ count: 10 });
+    mockPrisma.incidentNote.deleteMany.mockResolvedValue({ count: 2 });
+    mockPrisma.customFieldValue.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.alert.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.incident.deleteMany.mockResolvedValue({ count: 2 });
+    mockPrisma.alert.deleteMany.mockResolvedValue({ count: 8 }); // Alerts not linked to incidents
+    mockPrisma.logEntry.deleteMany.mockResolvedValue({ count: 20 });
 
-        const result = await performDataCleanup(false);
+    const result = await performDataCleanup(false);
 
-        expect(result.dryRun).toBe(false);
-        expect(result.incidents).toBe(2);
-        expect(result.events).toBe(10);
-        expect(result.logs).toBe(20);
+    expect(result.dryRun).toBe(false);
+    expect(result.incidents).toBe(2);
+    expect(result.events).toBe(10);
+    expect(result.logs).toBe(20);
 
-        // Verify delete WAS called
-        expect(mockPrisma.incident.deleteMany).toHaveBeenCalled();
-        expect(mockPrisma.alert.deleteMany).toHaveBeenCalled();
-        expect(mockPrisma.logEntry.deleteMany).toHaveBeenCalled();
-    });
+    // Verify delete WAS called
+    expect(mockPrisma.incident.deleteMany).toHaveBeenCalled();
+    expect(mockPrisma.alert.deleteMany).toHaveBeenCalled();
+    expect(mockPrisma.logEntry.deleteMany).toHaveBeenCalled();
+  });
 });
