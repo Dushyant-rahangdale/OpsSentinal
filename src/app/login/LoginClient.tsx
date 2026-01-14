@@ -295,7 +295,7 @@ export default function LoginClient({
             {/* Remember Me */}
             <fieldset>
               <legend className="sr-only">Login options</legend>
-              <div className="flex items-center gap-3 group">
+              <label htmlFor="remember-me" className="flex items-center gap-3 group cursor-pointer">
                 <div className="relative flex items-center">
                   <input
                     id="remember-me"
@@ -303,9 +303,9 @@ export default function LoginClient({
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
                     disabled={isSubmitting || isSuccess}
-                    className="peer h-0 w-0 opacity-0"
+                    className="peer h-4 w-4 opacity-0 absolute cursor-pointer"
                   />
-                  <div className="h-4 w-4 rounded border border-white/20 bg-white/5 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-500/20" />
+                  <div className="h-4 w-4 rounded border border-white/20 bg-white/5 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-500/20 pointer-events-none" />
                   <svg
                     className="pointer-events-none absolute left-0.5 top-0.5 h-3 w-3 text-black opacity-0 transition-opacity peer-checked:opacity-100"
                     fill="none"
@@ -316,13 +316,10 @@ export default function LoginClient({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <label
-                  htmlFor="remember-me"
-                  className="text-xs text-white/60 select-none cursor-pointer hover:text-white transition font-medium"
-                >
+                <span className="text-xs text-white/60 select-none hover:text-white transition font-medium">
                   Remember me
-                </label>
-              </div>
+                </span>
+              </label>
             </fieldset>
 
             <button
