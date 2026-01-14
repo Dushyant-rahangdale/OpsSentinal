@@ -78,12 +78,35 @@ const config: Config = {
           },
           '50%': { boxShadow: '0 0 8px 2px rgba(var(--status-color-rgb), 0.2)' },
         },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-20px)' },
+        },
+        'pulse-subtle': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        },
+        'radar-spin': {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
+        },
+        'grid-flow': {
+          '0%': { transform: 'translateY(0)' },
+          '100%': { transform: 'translateY(40px)' },
+        },
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'ambient-move': 'ambient-move 15s ease infinite',
         'breathing-glow': 'breathing-glow 3s ease-in-out infinite',
+        float: 'float 6s ease-in-out infinite',
+        'pulse-subtle': 'pulse-subtle 3s ease-in-out infinite',
+        'radar-spin': 'radar-spin 4s linear infinite',
+        'grid-flow': 'grid-flow 20s linear infinite',
       },
     },
   },

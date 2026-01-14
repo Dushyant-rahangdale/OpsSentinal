@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -152,7 +153,15 @@ export default function Sidebar(
   }
 ) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { isCollapsed, isMobile, toggleSidebar } = useSidebar();
+
+  // Prefer client-side session data for immediate updates
+  const currentName = session?.user?.name || userName;
+  const currentEmail = session?.user?.email || userEmail;
+  const currentRole = (session?.user as any)?.role || userRole;
+  const currentAvatar = session?.user?.image || session?.user?.avatarUrl || userAvatar;
+  const currentGender = (session?.user as any)?.gender || userGender;
 
   const [stats, setStats] = useState<{
     count: number;
@@ -197,7 +206,7 @@ export default function Sidebar(
     return navigationItems.reduce(
       (acc, item) => {
         if (item.requiresRole) {
-          if (!userRole || !item.requiresRole.includes(userRole)) return acc;
+          if (!currentRole || !item.requiresRole.includes(currentRole)) return acc;
         }
         const section = item.section || 'MAIN';
         // eslint-disable-next-line security/detect-object-injection
@@ -207,7 +216,7 @@ export default function Sidebar(
       },
       {} as Record<string, NavItem[]>
     );
-  }, [userRole]);
+  }, [currentRole]);
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.href);
@@ -222,10 +231,12 @@ export default function Sidebar(
         title={isDesktopCollapsed ? item.label : undefined}
         className={cn(
           'group relative flex items-center rounded-xl text-sm font-medium',
-          'transition-colors duration-150 motion-reduce:transition-none',
+          'transition-all duration-200 ease-out motion-reduce:transition-none',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-foreground/0',
-          'text-white/85 hover:text-white hover:bg-white/10',
-          active && 'bg-white/15 text-white ring-1 ring-white/10',
+          'text-white/85 hover:text-white hover:bg-white/12 hover:shadow-[0_0_12px_rgba(255,255,255,0.05)]',
+          'hover:translate-x-0.5',
+          active &&
+            'bg-white/15 text-white ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.08)]',
           active &&
             'after:absolute after:left-0 after:top-2 after:bottom-2 after:w-[3px] after:rounded-r-full after:bg-white/70',
           isDesktopCollapsed ? 'h-11 w-11 justify-center px-0' : 'px-3 py-2.5 gap-3'
@@ -234,6 +245,7 @@ export default function Sidebar(
         <span
           className={cn(
             'shrink-0 flex items-center justify-center opacity-85 group-hover:opacity-100',
+            'transition-transform duration-200 group-hover:scale-110',
             '[&_svg]:h-5 [&_svg]:w-5 [&_svg]:shrink-0'
           )}
         >
@@ -477,11 +489,11 @@ export default function Sidebar(
                 )}
               >
                 <AvatarImage
-                  src={userAvatar || getDefaultAvatar(userGender, userId)}
-                  alt={userName || 'User'}
+                  src={currentAvatar || getDefaultAvatar(currentGender, userId)}
+                  alt={currentName || 'User'}
                 />
                 <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-[10px] font-bold uppercase backdrop-blur-md">
-                  {(userName || userEmail || 'U').slice(0, 2)}
+                  {(currentName || currentEmail || 'U').slice(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0B1120]" />
@@ -490,9 +502,9 @@ export default function Sidebar(
             {!isDesktopCollapsed && (
               <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <div className="text-xs font-bold text-white truncate group-hover:text-indigo-200 transition-colors flex items-center gap-2">
-                  <span>{userName || 'User'}</span>
+                  <span>{currentName || 'User'}</span>
                   {(() => {
-                    const roleKey = (userRole?.toLowerCase() || 'admin') as
+                    const roleKey = (currentRole?.toLowerCase() || 'admin') as
                       | 'admin'
                       | 'responder'
                       | 'observer'
@@ -512,14 +524,14 @@ export default function Sidebar(
                         size="xs"
                         className="uppercase"
                       >
-                        {userRole?.toLowerCase() || 'admin'}
+                        {currentRole?.toLowerCase() || 'admin'}
                       </Badge>
                     );
                   })()}
                 </div>
                 <div className="text-[10px] text-white/40 font-medium truncate">
                   {/* Display Email as requested */}
-                  {userEmail || 'user@example.com'}
+                  {currentEmail || 'user@example.com'}
                 </div>
               </div>
             )}
@@ -549,13 +561,13 @@ export default function Sidebar(
               >
                 <Settings className="h-4 w-4" />
               </Link>
-              <a
-                href="/api/auth/logout"
+              <Link
+                href="/auth/signout"
                 className="flex items-center justify-center h-8 rounded-md hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           )}
 
@@ -563,13 +575,13 @@ export default function Sidebar(
           {isDesktopCollapsed && (
             <div className="mt-2 flex flex-col gap-1 items-center">
               <div className="h-px w-4 bg-white/10 my-1" />
-              <a
-                href="/api/auth/logout"
+              <Link
+                href="/auth/signout"
                 className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4" />
-              </a>
+              </Link>
             </div>
           )}
 

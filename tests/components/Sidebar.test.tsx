@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SessionProvider } from 'next-auth/react';
 import Sidebar from '@/components/Sidebar';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 
@@ -27,7 +28,11 @@ const mockFetch = () => {
 
 // Helper to render with provider
 const renderWithProvider = (ui: React.ReactElement) => {
-  return render(<SidebarProvider>{ui}</SidebarProvider>);
+  return render(
+    <SessionProvider session={null}>
+      <SidebarProvider>{ui}</SidebarProvider>
+    </SessionProvider>
+  );
 };
 
 describe('Sidebar', () => {

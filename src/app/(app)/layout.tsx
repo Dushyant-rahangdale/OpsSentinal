@@ -18,6 +18,7 @@ import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { logger } from '@/lib/logger';
+import SessionTimeoutWarning from '@/components/auth/SessionTimeoutWarning';
 
 const isNextRedirectError = (error: unknown) => {
   if (!error || typeof error !== 'object') return false;
@@ -182,6 +183,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </SidebarProvider>
         </TimezoneProvider>
       </ToastProvider>
+      <SessionTimeoutWarning warningMinutes={5} />
     </AppErrorBoundary>
   );
 }

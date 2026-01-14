@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +29,7 @@ type Props = {
 };
 
 export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, userId }: Props) {
+  const router = useRouter();
   const finalAvatarUrl = avatarUrl || getDefaultAvatar(gender, name || email || 'User');
   const initials = (name || email || 'U').slice(0, 2).toUpperCase();
 
@@ -116,7 +119,7 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
               className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-1.5 border border-transparent focus:border-border/50 transition-all font-medium"
             >
               <Link href="/settings/profile" className="flex items-center w-full px-2">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-600 mr-2.5 group-hover:bg-blue-100 group-hover:scale-105 transition-all shadow-sm border border-blue-100">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 text-blue-600 mr-2.5 group-hover:bg-blue-100 group-hover:scale-110 group-hover:rotate-3 transition-all duration-200 shadow-sm border border-blue-100">
                   <User className="h-3.5 w-3.5" />
                 </div>
                 <div className="flex flex-col flex-1">
@@ -136,7 +139,7 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
               className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-1.5 mt-0.5 border border-transparent focus:border-border/50 transition-all font-medium"
             >
               <Link href="/settings" className="flex items-center w-full px-2">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-50 text-purple-600 mr-2.5 group-hover:bg-purple-100 group-hover:scale-105 transition-all shadow-sm border border-purple-100">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-50 text-purple-600 mr-2.5 group-hover:bg-purple-100 group-hover:scale-110 group-hover:rotate-3 transition-all duration-200 shadow-sm border border-purple-100">
                   <Settings className="h-3.5 w-3.5" />
                 </div>
                 <div className="flex flex-col flex-1">
@@ -181,9 +184,9 @@ export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, u
 
           <DropdownMenuItem
             className="group cursor-pointer focus:bg-red-50 focus:text-red-600 rounded-md py-1.5 text-red-600 mt-0.5 border border-transparent focus:border-red-100 transition-all font-medium px-2"
-            onClick={() => (window.location.href = '/api/auth/signout')}
+            onClick={() => router.push('/auth/signout')}
           >
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-50 text-red-500 mr-2.5 group-hover:bg-red-100 group-hover:scale-105 transition-all shadow-sm border border-red-100">
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-50 text-red-500 mr-2.5 group-hover:bg-red-100 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-200 shadow-sm border border-red-100">
               <LogOut className="h-3.5 w-3.5" />
             </div>
             <span className="font-medium text-xs">Sign Out</span>

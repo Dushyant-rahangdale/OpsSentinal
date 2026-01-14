@@ -141,6 +141,17 @@ export async function addUser(
       where: { email },
     });
 
+    // Rate Limit (Admin Abuse Protection)
+    const ip = 'unknown'; // Server actions don't easily get IP unless passed. Using email limit.
+    // Actually we can get headers().
+    const { headers } = await import('next/headers');
+    const headerList = await headers();
+    const realIp = headerList.get('x-forwarded-for') || headerList.get('x-real-ip') || 'unknown';
+
+    const { checkRateLimit } = await import('@/lib/password-reset');
+    // Limit admin creating users
+    await checkRateLimit((await assertAdmin()).email, realIp, 'ADMIN_ADD_USER');
+
     if (existing?.status === 'DISABLED') {
       return { error: 'User is disabled. Reactivate before adding again.' };
     }
@@ -149,17 +160,44 @@ export async function addUser(
       return { error: 'A user with that email already exists.' };
     }
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        role: (role as 'ADMIN' | 'RESPONDER' | 'USER') || 'USER',
-        status: 'INVITED',
-        invitedAt: new Date(),
-      },
-    });
+    let inviteUrl = '';
+    let user: any = null; // Typing as any to avoid Prisma type verbosity in this snippet, or infer it.
 
-    const inviteUrl = await createInviteToken(email);
+    user = await prisma.$transaction(async tx => {
+      const newUser = await tx.user.create({
+        data: {
+          name,
+          email,
+          role: (role as 'ADMIN' | 'RESPONDER' | 'USER') || 'USER',
+          status: 'INVITED',
+          invitedAt: new Date(),
+        },
+      });
+
+      // Inline token creation to use TX
+      const token = randomBytes(32).toString('base64url');
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const identifier = email.toLowerCase();
+
+      await tx.userToken.deleteMany({
+        where: { identifier, type: 'INVITE', usedAt: null },
+      });
+
+      await tx.userToken.create({
+        data: {
+          identifier,
+          type: 'INVITE',
+          tokenHash,
+          expiresAt: expires,
+        },
+      });
+
+      const baseUrl = getBaseUrl();
+      inviteUrl = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;
+
+      return newUser;
+    });
 
     await logAudit({
       action: 'user.invited',
@@ -340,6 +378,15 @@ export async function generateInvite(
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
+
+  // Rate Limit (Admin Abuse Protection)
+  const { headers } = await import('next/headers');
+  const headerList = await headers();
+  const realIp = headerList.get('x-forwarded-for') || headerList.get('x-real-ip') || 'unknown';
+
+  const { checkRateLimit } = await import('@/lib/password-reset');
+  // Limit resend invites
+  await checkRateLimit((await assertAdmin()).email, realIp, 'ADMIN_RESEND_INVITE');
 
   if (!user) {
     return { error: 'User not found.' };

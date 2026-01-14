@@ -4,13 +4,25 @@ import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
 import { logAudit } from '@/lib/audit';
+import { headers } from 'next/headers';
+import { checkRateLimit, simulateWork } from '@/lib/password-reset';
 import { validatePasswordStrength } from '@/lib/passwords';
 import { createHash } from 'crypto';
 
 export async function setPassword(formData: FormData) {
+  const startTime = Date.now();
   const token = formData.get('token') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
+
+  // 1. Rate Limiting
+  const headerStore = await headers();
+  const ip = headerStore.get('x-forwarded-for') || headerStore.get('x-real-ip') || 'unknown';
+  try {
+    await checkRateLimit('unknown', ip, 'INVITE_FAILED');
+  } catch (error) {
+    redirect('/set-password?error=rate_limited');
+  }
 
   if (!token) {
     redirect('/set-password?error=missing');
@@ -36,6 +48,15 @@ export async function setPassword(formData: FormData) {
   });
 
   if (!record || record.expiresAt < new Date()) {
+    // Log failure for rate limiting
+    await logAudit({
+      action: 'INVITE_FAILED',
+      entityType: 'USER',
+      entityId: 'unknown',
+      actorId: null,
+      details: { ip, reason: 'INVALID_TOKEN' },
+    });
+    await simulateWork(startTime);
     redirect('/set-password?error=expired');
   }
 
@@ -44,32 +65,69 @@ export async function setPassword(formData: FormData) {
   });
 
   if (!user) {
+    await logAudit({
+      action: 'INVITE_FAILED',
+      entityType: 'USER',
+      entityId: 'unknown',
+      actorId: null,
+      details: { ip, reason: 'USER_NOT_FOUND' },
+    });
+    await simulateWork(startTime);
     redirect('/set-password?error=invalid');
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  // Security: Prevent using an invite link if the user is already active.
+  // They should use "Forgot Password" instead.
+  if (user.status === 'ACTIVE' && user.passwordHash) {
+    await logAudit({
+      action: 'INVITE_FAILED',
+      entityType: 'USER',
+      entityId: user.id,
+      actorId: null,
+      details: { ip, reason: 'ALREADY_ACTIVE' },
+    });
+    await simulateWork(startTime);
+    redirect('/login?error=already_active');
+  }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordHash,
-      status: 'ACTIVE',
-      invitedAt: null,
-      deactivatedAt: null,
-    },
-  });
+  const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.userToken.update({
-    where: { tokenHash },
-    data: { usedAt: new Date() },
+  await prisma.$transaction(async tx => {
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        status: 'ACTIVE',
+        invitedAt: null,
+        deactivatedAt: null,
+      },
+    });
+
+    // Mark THIS token as used
+    await tx.userToken.update({
+      where: { tokenHash },
+      data: { usedAt: new Date() },
+    });
+
+    // Security: Invalidate ALL other INVITE tokens for this user to prevent reuse of old links
+    await tx.userToken.deleteMany({
+      where: {
+        identifier: user.email,
+        type: 'INVITE',
+        NOT: { tokenHash }, // Don't delete the one we just marked used (for audit history), or just delete them all? Keeping history is better.
+        // Actually, we just marked it used.
+        // Let's delete *other* unused invite tokens.
+        usedAt: null,
+      },
+    });
   });
 
   await logAudit({
-    action: 'user.password.set',
+    action: 'user.active', // Changed action to standard user activation event
     entityType: 'USER',
     entityId: user.id,
-    actorId: null,
-    details: { method: 'invite' },
+    actorId: user.id, // User acting on themselves
+    details: { method: 'invite', ip },
   });
 
   // Force sign-out effectively by redirecting to signout or letting the frontend handle it.

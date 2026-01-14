@@ -13,10 +13,8 @@ export default async function SetupPage() {
       redirect('/login');
     }
   } catch (error) {
-    // Log the error for debugging but don't crash the page
     logger.error('[Setup Page] Database error', { component: 'setup-page', error });
 
-    // If it's a connection error, show a helpful message
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (
       errorMessage.includes('connect') ||
@@ -24,120 +22,168 @@ export default async function SetupPage() {
       errorMessage.includes('P1001')
     ) {
       return (
-        <main
-          style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '2rem',
-            background:
-              'radial-gradient(circle at top right, rgba(148, 163, 184, 0.1), transparent 45%), radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.05), transparent 45%), var(--bg-primary)',
-          }}
-        >
-          <div
-            className="glass-panel"
-            style={{ maxWidth: '520px', width: '100%', padding: '2.5rem', background: 'white' }}
-          >
-            <h1
-              style={{
-                fontSize: '1.8rem',
-                fontWeight: 700,
-                marginBottom: '0.35rem',
-                color: 'var(--color-error)',
-              }}
-            >
-              Database Connection Error
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-              Unable to connect to the database. Please ensure:
-            </p>
-            <ul
-              style={{
-                color: 'var(--text-secondary)',
-                marginBottom: '1.5rem',
-                paddingLeft: '1.5rem',
-              }}
-            >
-              <li>The database server is running</li>
-              <li>The DATABASE_URL environment variable is correctly configured</li>
-              <li>
-                If using Docker Compose, run:{' '}
-                <code
-                  style={{ background: '#f3f4f6', padding: '0.2rem 0.4rem', borderRadius: '4px' }}
-                >
-                  docker-compose up -d OpsSentinal-db
-                </code>
-              </li>
-            </ul>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>
-              Error: {errorMessage}
-            </p>
+        <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-white">
+          {/* Background Effects */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(239,68,68,0.2),transparent_32%),radial-gradient(circle_at_78%_18%,rgba(100,116,139,0.16),transparent_30%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-15" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/92 to-slate-950" />
+
+          <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col items-center justify-center px-5 py-6">
+            <div className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-white/95 text-slate-900 shadow-2xl">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600" />
+              <div className="relative space-y-5 px-6 py-7 sm:px-8 sm:py-8">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                      Connection Error
+                    </p>
+                    <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+                      Database Unavailable
+                    </h1>
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-500">
+                  Unable to connect to the database. Please ensure:
+                </p>
+
+                <ul className="space-y-2 text-sm text-slate-600">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                    The database server is running
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                    The DATABASE_URL environment variable is correctly configured
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                    <span>
+                      If using Docker Compose, run:{' '}
+                      <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">
+                        docker-compose up -d OpsSentinal-db
+                      </code>
+                    </span>
+                  </li>
+                </ul>
+
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-medium text-slate-500">Error Details</p>
+                  <p className="mt-1 font-mono text-xs text-slate-600 break-all">{errorMessage}</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </main>
+        </div>
       );
     }
 
-    // For other errors, re-throw to show the default error page
     throw error;
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        background:
-          'radial-gradient(circle at top right, rgba(148, 163, 184, 0.1), transparent 45%), radial-gradient(circle at bottom left, rgba(15, 23, 42, 0.05), transparent 45%), var(--bg-primary)',
-      }}
-    >
-      <div
-        className="glass-panel"
-        style={{ maxWidth: '520px', width: '100%', padding: '2.5rem', background: 'white' }}
-      >
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-          Bootstrapping OpsSentinal
-        </h1>
-        <div
-          style={{
-            marginBottom: '1.5rem',
-            padding: '0.75rem',
-            borderLeft: '4px solid var(--color-warning)',
-            background: 'rgba(217, 119, 6, 0.05)',
-            color: 'var(--color-warning-dark)',
-            fontSize: '0.9rem',
-            borderRadius: '0 4px 4px 0',
-          }}
-        >
-          <strong>Important:</strong> Please change this password immediately after your first login
-          to secure your account.
-        </div>
-        <BootstrapSetupForm />
-        <div
-          style={{
-            marginTop: '1.5rem',
-            textAlign: 'center',
-            borderTop: '1px solid #e5e7eb',
-            paddingTop: '1rem',
-          }}
-        >
-          <Link
-            href="/login"
-            className="glass-button"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              textDecoration: 'none',
-            }}
-          >
-            ← Back to Login
-          </Link>
+    <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-white">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(148,163,184,0.18),transparent_32%),radial-gradient(circle_at_78%_18%,rgba(100,116,139,0.16),transparent_30%),radial-gradient(circle_at_42%_78%,rgba(71,85,105,0.14),transparent_32%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-15" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/92 to-slate-950" />
+
+      <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col items-center justify-center px-5 py-6">
+        {/* Header */}
+        <header className="absolute top-6 left-5 right-5 flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 backdrop-blur-sm max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 shadow-lg shadow-black/20">
+              <img src="/logo.svg" alt="OpsSentinal logo" className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100/90">
+                OpsSentinal
+              </p>
+              <p className="text-sm text-slate-200/80">Initial Setup</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-amber-100">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse" />
+            First run
+          </div>
+        </header>
+
+        {/* Main Card */}
+        <div className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-white/95 text-slate-900 shadow-2xl shadow-slate-900/30">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600" />
+          <div className="relative space-y-5 px-6 py-7 sm:px-8 sm:py-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                  Bootstrap wizard
+                </p>
+                <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+                  Welcome to OpsSentinal
+                </h1>
+                <p className="mt-2 text-sm text-slate-500">
+                  Create the first admin account to get started with your incident control surface.
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/20">
+                <img src="/logo.svg" alt="OpsSentinal" className="h-6 w-6" />
+              </div>
+            </div>
+
+            {/* Warning */}
+            <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+              <svg
+                className="h-5 w-5 shrink-0 text-amber-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Important</p>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  Please change this password immediately after your first login to secure your
+                  account.
+                </p>
+              </div>
+            </div>
+
+            <BootstrapSetupForm />
+
+            <div className="border-t border-slate-200 pt-4 text-center">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 transition hover:text-slate-900"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
+                </svg>
+                Back to Sign In
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

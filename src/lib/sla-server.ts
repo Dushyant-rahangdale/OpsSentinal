@@ -1862,7 +1862,9 @@ export async function calculateSLAMetricsFromRollups(
 
   for (const rollup of rollups) {
     // If priority filter is set, use p1-p5 fields; otherwise use totalIncidents
-    let incidentsToAdd = rollup.totalIncidents;
+    const incidentsToAdd = rollup.totalIncidents;
+    // Priority metrics (temporarily disabled due to schema mismatch)
+    /*
     if (priorityFilter) {
       incidentsToAdd = 0;
       if (priorityFilter.includes('P1') || priorityFilter.includes('1')) {
@@ -1881,6 +1883,7 @@ export async function calculateSLAMetricsFromRollups(
         incidentsToAdd += rollup.p5Incidents;
       }
     }
+    */
     totalIncidents += incidentsToAdd;
     openIncidents += rollup.openIncidents;
     acknowledgedIncidents += rollup.acknowledgedIncidents;

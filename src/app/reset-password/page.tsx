@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import _Link from 'next/link';
 import Spinner from '@/components/ui/Spinner';
-import { Eye, EyeOff, Lock, Check, X, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Lock, AlertTriangle, CheckCircle2, ShieldCheck, X } from 'lucide-react';
+import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
+import { cn } from '@/lib/utils';
+import { calculatePasswordStrength } from '@/lib/password-strength';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -20,25 +22,20 @@ function ResetPasswordForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Password strength requirements
-  const hasMinLength = password.length >= 8;
-  const hasNumber = /\d/.test(password);
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  const hasUpperCase = /[A-Z]/.test(password);
-
-  const strengthScore = [hasMinLength, hasNumber, hasSpecialChar, hasUpperCase].filter(
-    Boolean
-  ).length;
-  const isStrong = strengthScore === 4;
+  // Password strength using centralized utility
+  const passwordStrength = calculatePasswordStrength(password);
+  const isStrong = passwordStrength.meetsMinimum && passwordStrength.score >= 4;
 
   if (!token) {
     return (
-      <div
-        className="login-alert error"
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-      >
-        <AlertTriangle size={16} />
-        <span>Invalid or missing reset token. Please request a new link.</span>
+      <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+        <div className="flex-1">
+          <p className="font-semibold text-rose-400 mb-1">Invalid Token</p>
+          <p className="text-white/70">
+            Invalid or missing reset token. Please request a new link.
+          </p>
+        </div>
       </div>
     );
   }
@@ -53,7 +50,7 @@ function ResetPasswordForm() {
     }
 
     if (!isStrong) {
-      setError('Please meet all password requirements');
+      setError('Please create a stronger password');
       return;
     }
 
@@ -85,37 +82,19 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div
-        className="login-alert success"
-        role="alert"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          textAlign: 'center',
-          gap: '1rem',
-          padding: '2rem',
-        }}
-      >
-        <div
-          style={{ background: '#d1fae5', padding: '1rem', borderRadius: '50%', color: '#059669' }}
-        >
-          <ShieldCheck size={32} />
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="p-6 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center text-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-emerald-400">Password Reset!</h3>
+            <p className="mt-2 text-sm text-emerald-200/80">
+              Your password has been successfully updated. Secure session initialized.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3
-            style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#065f46',
-              marginBottom: '0.5rem',
-            }}
-          >
-            Password Reset!
-          </h3>
-          <p style={{ color: '#047857' }}>Your password has been successfully updated.</p>
-        </div>
-        <div style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#6b7280' }}>
+        <div className="text-center text-xs text-white/40 animate-pulse">
           Redirecting to login...
         </div>
       </div>
@@ -123,275 +102,189 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="login-form-fields" noValidate>
-      {/* New Password Field */}
-      <div className="login-field">
-        <label htmlFor="password" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Lock size={14} className="text-gray-400" />
-          New Password
-        </label>
-        <div className="login-input-wrapper" style={{ position: 'relative' }}>
-          <input
-            id="password"
-            type={showPassword ? 'text' : 'password'}
-            required
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="New strong password"
-            className="login-input"
-            style={{ paddingRight: '2.5rem' }}
-            disabled={isSubmitting}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            style={{
-              position: 'absolute',
-              right: '0.75rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#9ca3af',
-            }}
-            tabIndex={-1}
-          >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
-
-        {/* Password Strength Meter */}
-        <div
-          style={{
-            marginTop: '0.75rem',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '0.25rem',
-          }}
-        >
-          <div
-            style={{
-              height: '4px',
-              borderRadius: '2px',
-              background:
-                strengthScore >= 1 ? (strengthScore === 4 ? '#10b981' : '#fbbf24') : '#e5e7eb',
-              transition: 'all 0.3s',
-            }}
-          />
-          <div
-            style={{
-              height: '4px',
-              borderRadius: '2px',
-              background:
-                strengthScore >= 2 ? (strengthScore === 4 ? '#10b981' : '#fbbf24') : '#e5e7eb',
-              transition: 'all 0.3s',
-            }}
-          />
-          <div
-            style={{
-              height: '4px',
-              borderRadius: '2px',
-              background:
-                strengthScore >= 3 ? (strengthScore === 4 ? '#10b981' : '#fbbf24') : '#e5e7eb',
-              transition: 'all 0.3s',
-            }}
-          />
-          <div
-            style={{
-              height: '4px',
-              borderRadius: '2px',
-              background: strengthScore >= 4 ? '#10b981' : '#e5e7eb',
-              transition: 'all 0.3s',
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            marginTop: '0.75rem',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '0.5rem',
-            fontSize: '0.75rem',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              color: hasMinLength ? '#059669' : '#6b7280',
-            }}
-          >
-            {hasMinLength ? <Check size={12} /> : <div style={{ width: 12 }} />} 8+ Characters
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              color: hasUpperCase ? '#059669' : '#6b7280',
-            }}
-          >
-            {hasUpperCase ? <Check size={12} /> : <div style={{ width: 12 }} />} Uppercase
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              color: hasNumber ? '#059669' : '#6b7280',
-            }}
-          >
-            {hasNumber ? <Check size={12} /> : <div style={{ width: 12 }} />} Number
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              color: hasSpecialChar ? '#059669' : '#6b7280',
-            }}
-          >
-            {hasSpecialChar ? <Check size={12} /> : <div style={{ width: 12 }} />} Symbol
-          </div>
-        </div>
-      </div>
-
-      {/* Confirm Password Field */}
-      <div className="login-field">
-        <label
-          htmlFor="confirmPassword"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Lock size={14} className="text-gray-400" />
-          Confirm Password
-        </label>
-        <div className="login-input-wrapper" style={{ position: 'relative' }}>
-          <input
-            id="confirmPassword"
-            type={showConfirmPassword ? 'text' : 'password'}
-            required
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            placeholder="Confirm new password"
-            className="login-input"
-            style={{ paddingRight: '2.5rem' }}
-            disabled={isSubmitting}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            style={{
-              position: 'absolute',
-              right: '0.75rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#9ca3af',
-            }}
-            tabIndex={-1}
-          >
-            {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
-        {confirmPassword && password !== confirmPassword && (
-          <div
-            style={{
-              fontSize: '0.75rem',
-              color: '#dc2626',
-              marginTop: '0.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-            }}
-          >
-            <X size={12} /> Passwords do not match
-          </div>
-        )}
-      </div>
-
+    <>
       {error && (
-        <div
-          className="login-alert error"
-          role="alert"
-          style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}
-        >
-          <AlertTriangle size={16} style={{ marginTop: '2px', flexShrink: 0 }} />
-          <span>{error}</span>
+        <div className="mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold text-rose-400 mb-1">Reset Failed</p>
+            <p className="text-white/70">{error}</p>
+          </div>
+          <button
+            onClick={() => setError('')}
+            className="text-white/40 hover:text-white transition"
+            aria-label="Dismiss error"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
-      <button
-        type="submit"
-        className="login-btn login-btn-primary"
-        disabled={isSubmitting || !isStrong || password !== confirmPassword}
-        style={{
-          opacity: isSubmitting || !isStrong || password !== confirmPassword ? 0.7 : 1,
-          cursor:
-            isSubmitting || !isStrong || password !== confirmPassword ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {isSubmitting ? (
-          <>
-            <Spinner size="sm" variant="white" />
-            <span>Updating...</span>
-          </>
-        ) : (
-          <span>Set New Password</span>
-        )}
-      </button>
-    </form>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-5">
+          {/* New Password */}
+          <div className="group space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors duration-300 group-focus-within:text-white/80">
+              New Password
+            </label>
+            <div className="relative group/input">
+              <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
+              <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
+
+              <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-all duration-300">
+                <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
+                  <Lock className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={e => {
+                    setPassword(e.target.value);
+                    if (error) setError('');
+                  }}
+                  className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
+                  placeholder="New strong password"
+                  autoComplete="new-password"
+                  disabled={isSubmitting}
+                />
+                <div className="flex items-center border-l border-white/10 pl-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-white/30 hover:text-white/80 transition-colors focus:outline-none p-1 rounded-md"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Strength Indicator */}
+            {password && (
+              <div className="space-y-1 pt-1 duration-200 animate-in fade-in slide-in-from-top-1">
+                <div className="flex gap-1 h-1 w-full overflow-hidden rounded-full bg-white/5">
+                  {[1, 2, 3, 4, 5].map(level => (
+                    <div
+                      key={level}
+                      className={cn(
+                        'h-full flex-1 transition-all duration-500',
+                        level <= (passwordStrength.score + 1) * 1.25
+                          ? passwordStrength.color
+                          : 'bg-transparent'
+                      )}
+                    />
+                  ))}
+                </div>
+                <p className={cn('text-[10px] font-medium text-right', passwordStrength.textColor)}>
+                  Strength: {passwordStrength.label}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="group space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors duration-300 group-focus-within:text-white/80">
+              Confirm Password
+            </label>
+            <div className="relative group/input">
+              <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
+              <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
+
+              <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-all duration-300">
+                <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
+                  <Lock className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
+                </div>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={e => {
+                    setConfirmPassword(e.target.value);
+                    if (error) setError('');
+                  }}
+                  className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  disabled={isSubmitting}
+                />
+                <div className="flex items-center border-l border-white/10 pl-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="text-white/30 hover:text-white/80 transition-colors focus:outline-none p-1 rounded-md"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-[10px] text-rose-400 font-medium pl-1 animate-in slide-in-from-top-1 flex items-center gap-1">
+                <X className="h-3 w-3" /> Passwords do not match
+              </p>
+            )}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting || !isStrong || password !== confirmPassword}
+          className="relative w-full overflow-hidden rounded-lg py-3.5 text-sm font-bold shadow-lg transition-all duration-300 bg-white text-black hover:bg-white/95 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
+        >
+          <span className="relative z-10 flex items-center justify-center gap-2 uppercase tracking-wide">
+            {isSubmitting ? (
+              <>
+                <Spinner size="sm" variant="black" />
+                <span>Updating...</span>
+              </>
+            ) : (
+              <>
+                <span>Set New Password</span>
+                <ShieldCheck className="h-4 w-4" />
+              </>
+            )}
+          </span>
+        </button>
+      </form>
+    </>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <main className="login-shell" role="main">
-      <div className="login-bg-animation">
-        <div className="login-bg-orb login-bg-orb-1"></div>
-        <div className="login-bg-orb login-bg-orb-2"></div>
-        <div className="login-bg-orb login-bg-orb-3"></div>
-      </div>
+    <AuthLayout>
+      <AuthCard>
+        {/* Card Header */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <span className="flex items-center gap-3">
+              <span className="w-1.5 h-6 bg-white/20 rounded-full" />
+              Reset Password
+            </span>
+          </h2>
+          <p className="mt-2 text-sm text-white/50 pl-0.5">
+            Secure your account with a strong password.
+          </p>
+        </div>
 
-      <div
-        className="login-card"
-        style={{
-          maxWidth: '480px',
-          margin: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 'auto',
-          gridTemplateColumns: 'none', // Override grid
-        }}
-      >
-        <section
-          className="login-form"
-          aria-label="Reset Password form"
-          style={{ width: '100%', padding: '2rem 2.5rem' }}
-        >
-          <div className="login-form-wrapper">
-            <div className="login-form-header" style={{ marginBottom: '2rem' }}>
-              <div className="login-form-logo">
-                <img src="/logo.svg" alt="OpsSentinal" className="login-form-logo-img" />
-              </div>
-              <div className="login-form-branding">
-                <h2 className="login-title">Create New Password</h2>
-                <p className="login-subtitle">Secure your account with a strong password</p>
-              </div>
+        <Suspense
+          fallback={
+            <div className="flex justify-center p-8">
+              <Spinner variant="white" />
             </div>
-
-            <Suspense fallback={<Spinner />}>
-              <ResetPasswordForm />
-            </Suspense>
-          </div>
-        </section>
-      </div>
-    </main>
+          }
+        >
+          <ResetPasswordForm />
+        </Suspense>
+      </AuthCard>
+    </AuthLayout>
   );
 }

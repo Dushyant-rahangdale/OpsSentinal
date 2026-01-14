@@ -16,6 +16,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    // Rate Limit Admin Actions (Prevent mass generation)
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const { checkRateLimit } = await import('@/lib/password-reset');
+    try {
+      // Use Admin's email to limit *their* activity
+      await checkRateLimit(sessionUser.email, ip, 'ADMIN_GENERATED_RESET_LINK');
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('Too many')) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+      }
+      throw e;
+    }
+
     const body = await req.json();
     const { userId } = body;
 
@@ -39,7 +52,7 @@ export async function POST(req: NextRequest) {
     await prisma.userToken.deleteMany({
       where: {
         identifier,
-        type: 'ADMIN_RESET_LINK',
+        type: 'PASSWORD_RESET',
         usedAt: null,
       },
     });
@@ -47,7 +60,7 @@ export async function POST(req: NextRequest) {
     await prisma.userToken.create({
       data: {
         identifier,
-        type: 'ADMIN_RESET_LINK',
+        type: 'PASSWORD_RESET',
         tokenHash,
         expiresAt: expires,
         metadata: { generatedBy: sessionUser.id },

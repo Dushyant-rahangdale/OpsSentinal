@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Spinner from '@/components/ui/Spinner';
 import SsoButton from '@/components/auth/SsoButton';
+import LoginTicker from '@/components/auth/LoginTicker';
+import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, X, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { calculatePasswordStrength } from '@/lib/password-strength';
 
 type Props = {
   callbackUrl: string;
@@ -18,12 +25,9 @@ type Props = {
 
 function formatError(message: string | null | undefined) {
   if (!message) return '';
-  if (message === 'CredentialsSignin')
-    return 'Invalid email or password. Please check your credentials and try again.';
-  if (message === 'AccessDenied')
-    return 'Access denied. Check your SSO access or contact your administrator.';
-  if (message === 'Configuration') return 'Server configuration error. Please contact support.';
-  return 'Unable to sign in. Please try again.';
+  if (message === 'CredentialsSignin') return 'Invalid credentials';
+  if (message === 'AccessDenied') return 'Access denied';
+  return 'Authentication failed';
 }
 
 export default function LoginClient({
@@ -36,611 +40,368 @@ export default function LoginClient({
   ssoProviderLabel,
 }: Props) {
   const router = useRouter();
-  const emailInputRef = useRef<HTMLInputElement>(null);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isValid, setIsValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
   const [isSSOLoading, setIsSSOLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
 
-  // Set initial error from errorCode prop after mount to avoid hydration issues
+  // Email validation
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  // Password strength using centralized utility
+  const passwordStrength = calculatePasswordStrength(password);
+
   useEffect(() => {
-    if (errorCode) {
-      const errorMessage = formatError(errorCode);
-      setError(errorMessage);
-      // Focus error message for screen readers
-      setTimeout(() => {
-        errorRef.current?.focus();
-      }, 100);
-    }
+    if (errorCode) setError(formatError(errorCode));
   }, [errorCode]);
 
-  // Focus email input on mount and prevent body scroll
   useEffect(() => {
-    emailInputRef.current?.focus();
-    // Prevent body scroll on login page
-    document.body.style.overflow = 'hidden';
-    return () => {
-      // Restore body scroll when component unmounts
-      document.body.style.overflow = '';
-    };
-  }, []);
-
-  const validateEmail = (value: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!value) {
-      setEmailError('Email is required');
-      return false;
-    }
-    if (!emailRegex.test(value)) {
-      setEmailError('Please enter a valid email address');
-      return false;
-    }
-    setEmailError('');
-    return true;
-  };
-
-  const validatePassword = (value: string): boolean => {
-    if (!value) {
-      setPasswordError('Password is required');
-      return false;
-    }
-    if (value.length < 1) {
-      setPasswordError('Password cannot be empty');
-      return false;
-    }
-    setPasswordError('');
-    return true;
-  };
-
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    if (emailError) {
-      validateEmail(value);
-    }
-    setError(''); // Clear general error when user types
-  };
-
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    if (passwordError) {
-      validatePassword(value);
-    }
-    setError(''); // Clear general error when user types
-  };
+    setIsValid(Boolean(email) && Boolean(password));
+  }, [email, password]);
 
   const handleSSO = async () => {
     setIsSSOLoading(true);
-    setError('');
     try {
       await signIn('oidc', { callbackUrl });
-    } catch (_err) {
-      setError('SSO authentication failed. Please try again.');
+    } catch {
+      setError('Connection failed');
       setIsSSOLoading(false);
     }
   };
 
-  const handleCredentials = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCredentials = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    // Clear previous errors
-    setError('');
-    setEmailError('');
-    setPasswordError('');
-
-    // Validate inputs
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
-
-    if (!isEmailValid || !isPasswordValid) {
-      // Focus first invalid field
-      if (!isEmailValid) {
-        emailInputRef.current?.focus();
-      } else if (!isPasswordValid) {
-        passwordInputRef.current?.focus();
-      }
-      return;
-    }
+    if (!isValid) return;
 
     setIsSubmitting(true);
+    setError('');
 
     try {
       const result = await signIn('credentials', {
         redirect: false,
         email: email.trim(),
         password,
+        rememberMe: String(rememberMe),
         callbackUrl,
       });
 
       if (result?.error) {
         setError(formatError(result.error));
-        // Focus password field on error for security
-        passwordInputRef.current?.focus();
-        setPassword('');
+        setIsSubmitting(false);
+        // Trigger shake animation
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
       } else if (result?.ok) {
-        router.push(result?.url || callbackUrl);
+        setIsSubmitting(false);
+        setIsSuccess(true);
+        setTimeout(() => {
+          router.push(result?.url || callbackUrl);
+        }, 1200);
       }
-    } catch (_err) {
-      setError('An unexpected error occurred. Please try again.');
-      passwordInputRef.current?.focus();
-    } finally {
+    } catch {
+      setError('Unexpected error');
       setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="login-shell" role="main">
-      {/* Animated background elements */}
-      <div className="login-bg-animation">
-        <div className="login-bg-orb login-bg-orb-1"></div>
-        <div className="login-bg-orb login-bg-orb-2"></div>
-        <div className="login-bg-orb login-bg-orb-3"></div>
-      </div>
-
-      <div className="login-card">
-        {/* Brand Section */}
-        <section className="login-brand" aria-label="OpsSentinal product information">
-          <div className="login-brand-content">
-            <div className="login-brand-header">
-              <div className="login-logo-container">
-                <img src="/logo.svg" alt="OpsSentinal" className="login-brand-logo" />
-              </div>
-              <div className="login-badge" aria-hidden="true">
-                <span className="login-badge-dot"></span>
-                OpsSentinal Platform
-              </div>
-            </div>
-
-            <h1 className="login-brand-title">
-              Command incidents.
-              <span className="login-brand-title-accent">Stay ahead.</span>
-            </h1>
-
-            <p className="login-brand-description">
-              A redline-ready control center for high-stakes response. See every alert, escalation,
-              and shift before it becomes a disruption.
-            </p>
-
-            <div className="login-features" suppressHydrationWarning aria-label="Key features">
-              <div className="login-feature-item" role="listitem">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span>Live incident war room</span>
-              </div>
-              <div className="login-feature-item" role="listitem">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline
-                    points="12 6 12 12 16 14"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span>Sub-minute escalation</span>
-              </div>
-              <div className="login-feature-item" role="listitem">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path
-                    d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span>Follow-the-sun coverage</span>
-              </div>
-              <div className="login-feature-item" role="listitem">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <rect
-                    x="3"
-                    y="11"
-                    width="18"
-                    height="11"
-                    rx="2"
-                    ry="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>Audit-ready access controls</span>
-              </div>
-            </div>
-
-            <div className="login-brand-footer">
-              <div className="login-brand-stats">
-                <div className="login-stat">
-                  <div className="login-stat-value">99.9%</div>
-                  <div className="login-stat-label">Uptime</div>
-                </div>
-                <div className="login-stat-divider"></div>
-                <div className="login-stat">
-                  <div className="login-stat-value">24/7</div>
-                  <div className="login-stat-label">Monitoring</div>
-                </div>
-                <div className="login-stat-divider"></div>
-                <div className="login-stat">
-                  <div className="login-stat-value">Global</div>
-                  <div className="login-stat-label">Resilience</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Form Section */}
-        <section className="login-form" aria-label="Sign in form">
-          <div className="login-form-wrapper">
-            <div className="login-form-header">
-              <div className="login-form-logo">
-                <img src="/logo.svg" alt="OpsSentinal" className="login-form-logo-img" />
-              </div>
-              <div className="login-form-branding">
-                <h2 className="login-title">Welcome back</h2>
-                <p className="login-subtitle">Sign in to access your OpsSentinal dashboard</p>
-              </div>
-            </div>
-
-            {ssoError && (
-              <div className="login-alert error" role="alert" aria-live="polite">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <span>{ssoError}</span>
-              </div>
+    <AuthLayout>
+      <AuthCard isSuccess={isSuccess}>
+        {/* Card Header */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            {isSuccess ? (
+              <span className="text-emerald-400 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <CheckCircle2 className="w-6 h-6" />
+                Access Granted
+              </span>
+            ) : (
+              <span className="flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-white/20 rounded-full" />
+                System Authentication
+              </span>
             )}
+          </h2>
+          <p className="mt-2 text-sm text-white/50 pl-0.5">
+            {isSuccess
+              ? 'Redirecting to secure console...'
+              : 'Enter your credentials to access the secure console.'}
+          </p>
+        </div>
 
-            {ssoEnabled && (
-              <>
-                <SsoButton
-                  providerType={ssoProviderType as any}
-                  providerLabel={ssoProviderLabel}
-                  onClick={handleSSO}
-                  loading={isSSOLoading}
-                  disabled={isSubmitting}
-                />
-
-                <div className="login-divider" role="separator" aria-label="Or">
-                  <span className="login-divider-line" />
-                  <span className="login-divider-label">or continue with email</span>
-                  <span className="login-divider-line" />
-                </div>
-              </>
-            )}
-
-            {passwordSet && (
-              <div className="login-alert success" role="alert" aria-live="polite">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>Password set successfully. Sign in to continue.</span>
-              </div>
-            )}
-
-            <form
-              onSubmit={handleCredentials}
-              className="login-form-fields"
-              noValidate
-              aria-label="Email and password sign in"
+        {/* Global Error Alert */}
+        {error && (
+          <div
+            className={`mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm flex items-start gap-3 ${
+              isShaking ? 'animate-shake' : ''
+            }`}
+          >
+            <AlertCircle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-rose-400 mb-1">Authentication Failed</p>
+              <p className="text-white/70">{error}</p>
+            </div>
+            <button
+              onClick={() => setError('')}
+              className="text-white/40 hover:text-white transition"
+              aria-label="Dismiss error"
             >
-              <div className="login-field">
-                <label htmlFor="email">
-                  Email address
-                  <span className="sr-only"> (required)</span>
-                </label>
-                <div className="login-input-wrapper">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleCredentials} className="space-y-6">
+          <div className="space-y-5">
+            {/* Email Field */}
+            <div className="group space-y-2">
+              <label
+                className={`text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${
+                  emailTouched && email && !isEmailValid
+                    ? 'text-rose-400'
+                    : 'text-white/60 group-focus-within:text-white/80'
+                }`}
+              >
+                Identification
+              </label>
+              <div className="relative group/input">
+                <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
+                <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
+
+                <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-colors duration-300">
+                  <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
+                    <Mail className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
+                  </div>
                   <input
-                    id="email"
-                    ref={emailInputRef}
-                    name="email"
                     type="email"
-                    autoComplete="email"
                     required
                     value={email}
-                    onChange={e => handleEmailChange(e.target.value)}
-                    onBlur={() => validateEmail(email)}
-                    placeholder="name@company.com"
-                    className={`login-input ${emailError ? 'login-input-error' : ''}`}
-                    aria-invalid={emailError ? 'true' : 'false'}
-                    aria-describedby={emailError ? 'email-error' : undefined}
-                    disabled={isSubmitting || isSSOLoading}
+                    onChange={e => {
+                      setEmail(e.target.value);
+                      if (error) setError('');
+                    }}
+                    onBlur={() => setEmailTouched(true)}
+                    className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
+                    placeholder="you@opssentinal.com"
+                    disabled={isSubmitting || isSuccess}
                   />
-                  {email && !emailError && (
-                    <svg
-                      className="login-input-icon success"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden="true"
-                    >
-                      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                  {emailTouched && email && !isEmailValid && (
+                    <div className="absolute right-3 text-rose-400 animate-in fade-in zoom-in duration-200">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
                   )}
                 </div>
-                {emailError && (
-                  <div id="email-error" className="login-field-error" role="alert">
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden="true"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    {emailError}
-                  </div>
-                )}
+              </div>
+              {emailTouched && email && !isEmailValid && (
+                <p className="text-[10px] text-rose-400 font-medium pl-1 animate-in slide-in-from-top-1">
+                  Please enter a valid email address
+                </p>
+              )}
+            </div>
+
+            {/* Password Field */}
+            <div className="group space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors duration-300 group-focus-within:text-white/80">
+                  Access Key
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-emerald-500/80 hover:text-emerald-400 transition-colors focus:outline-none focus:underline"
+                >
+                  Forgot password?
+                </Link>
               </div>
 
-              <div className="login-field">
-                <label htmlFor="password">
-                  Password
-                  <span className="sr-only"> (required)</span>
-                </label>
-                <div style={{ marginBottom: '0.35rem', textAlign: 'right' }}>
-                  <a
-                    href="/forgot-password"
-                    style={{
-                      fontSize: '0.8rem',
-                      color: 'var(--primary-color)',
-                      textDecoration: 'none',
-                      fontWeight: 500,
-                    }}
-                    tabIndex={-1}
-                  >
-                    Forgot password?
-                  </a>
-                </div>
-                <div className="login-input-wrapper">
+              <div className="relative group/input">
+                <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
+                <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
+
+                <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-all duration-300">
+                  <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
+                    <Lock className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
+                  </div>
                   <input
-                    id="password"
-                    ref={passwordInputRef}
-                    name="password"
                     type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
                     required
                     value={password}
-                    onChange={e => handlePasswordChange(e.target.value)}
-                    onBlur={() => validatePassword(password)}
-                    placeholder="Enter your password"
-                    className={`login-input ${passwordError ? 'login-input-error' : ''}`}
-                    aria-invalid={passwordError ? 'true' : 'false'}
-                    aria-describedby={passwordError ? 'password-error' : undefined}
-                    disabled={isSubmitting || isSSOLoading}
+                    onChange={e => {
+                      setPassword(e.target.value);
+                      if (error) setError('');
+                    }}
+                    onKeyDown={e => {
+                      if (e.getModifierState('CapsLock')) {
+                        setCapsLockOn(true);
+                      } else {
+                        setCapsLockOn(false);
+                      }
+                    }}
+                    className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
+                    placeholder="••••••••"
+                    disabled={isSubmitting || isSuccess}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="login-password-toggle"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    disabled={isSubmitting || isSSOLoading}
-                    tabIndex={0}
-                  >
-                    {showPassword ? (
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <line
-                          x1="1"
-                          y1="1"
-                          x2="23"
-                          y2="23"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                {passwordError && (
-                  <div id="password-error" className="login-field-error" role="alert">
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden="true"
+                  <div className="flex items-center border-l border-white/10 pl-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-white/30 hover:text-white/80 transition-colors focus:outline-none p-1 rounded-md"
+                      aria-label="Toggle password visibility"
                     >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="12" y1="8" x2="12" y2="12" />
-                      <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    {passwordError}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
 
-              {error && (
-                <div
-                  ref={errorRef}
-                  className="login-alert error"
-                  role="alert"
-                  aria-live="assertive"
-                  tabIndex={-1}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
+              {/* Password Strength Indicator */}
+              {password && !isSuccess && (
+                <div className="space-y-1 pt-1 duration-200 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex gap-1 h-1 w-full overflow-hidden rounded-full bg-white/5">
+                    {[1, 2, 3, 4, 5].map(level => (
+                      <div
+                        key={level}
+                        className={cn(
+                          'h-full flex-1 transition-all duration-500',
+                          level <= (passwordStrength.score + 1) * 1.25
+                            ? passwordStrength.color
+                            : 'bg-transparent'
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <p
+                    className={cn('text-[10px] font-medium text-right', passwordStrength.textColor)}
                   >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <span>{error}</span>
+                    Strength: {passwordStrength.label}
+                  </p>
                 </div>
               )}
 
-              <button
-                type="submit"
-                className="login-btn login-btn-primary"
-                disabled={isSubmitting || isSSOLoading}
-                aria-label="Sign in with email and password"
-              >
-                {isSubmitting ? (
+              {capsLockOn && (
+                <div className="flex items-center gap-2 text-amber-400 text-xs animate-pulse font-medium pl-1">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Caps Lock is ON</span>
+                </div>
+              )}
+            </div>
+
+            {/* Remember Me */}
+            <fieldset>
+              <legend className="sr-only">Login options</legend>
+              <div className="flex items-center gap-3 group">
+                <div className="relative flex items-center">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                    disabled={isSubmitting || isSuccess}
+                    className="peer h-0 w-0 opacity-0"
+                  />
+                  <div className="h-4 w-4 rounded border border-white/20 bg-white/5 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-500 peer-focus:ring-2 peer-focus:ring-emerald-500/20" />
+                  <svg
+                    className="pointer-events-none absolute left-0.5 top-0.5 h-3 w-3 text-black opacity-0 transition-opacity peer-checked:opacity-100"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <label
+                  htmlFor="remember-me"
+                  className="text-xs text-white/60 select-none cursor-pointer hover:text-white transition font-medium"
+                >
+                  Remember me
+                </label>
+              </div>
+            </fieldset>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || isSSOLoading || !isValid || isSuccess}
+              className={`relative w-full overflow-hidden rounded-lg py-3.5 text-sm font-bold shadow-lg transition-all duration-300
+                  ${
+                    isSuccess
+                      ? 'bg-emerald-500 text-white scale-[1.02] shadow-emerald-500/25 ring-2 ring-emerald-400/50'
+                      : 'bg-white text-black hover:bg-white/95 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg'
+                  }
+              `}
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2 uppercase tracking-wide">
+                {isSuccess ? (
                   <>
-                    <Spinner size="sm" variant="white" />
+                    <span>Authorized</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <Spinner size="sm" variant="black" />
                     <span>Signing in...</span>
                   </>
                 ) : (
                   <>
-                    <span>Sign in</span>
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      aria-hidden="true"
-                    >
+                    <span>Sign In</span>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
-                        d="M5 12h14M12 5l7 7-7 7"
                         strokeLinecap="round"
                         strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
                       />
                     </svg>
                   </>
                 )}
-              </button>
-            </form>
+              </span>
+            </button>
 
-            <div className="login-help">
+            {/* Keyboard Hint */}
+            {isValid && !isSubmitting && !isSuccess && (
+              <div className="flex items-center justify-center gap-2 text-[10px] text-white/30 mt-3">
+                <kbd className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-mono">
+                  ↵
+                </kbd>
+                <span>Press Enter to sign in</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40 mt-8 font-medium">
               <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5 text-emerald-500"
                 fill="none"
+                viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
               >
-                <circle cx="12" cy="12" r="10" />
                 <path
-                  d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m0 4h.01"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
               </svg>
-              <span>Need help? Contact your OpsSentinal administrator.</span>
+              <span>Your Operations, Our Sentinel.</span>
             </div>
           </div>
-        </section>
-      </div>
-    </main>
+        </form>
+      </AuthCard>
+
+      <LoginTicker />
+    </AuthLayout>
   );
 }

@@ -41,12 +41,9 @@ import {
   Clock,
   ArrowUp,
   ArrowDown,
-  UserPlus,
   Layers,
   Info,
-  AlertTriangle,
   Loader2,
-  UserX,
   Check,
   X,
 } from 'lucide-react';
@@ -114,9 +111,12 @@ function HelpTip({ children }: { children: React.ReactNode }) {
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button type="button" className="text-slate-300 hover:text-blue-500 transition-colors">
+          <span
+            role="button"
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-help"
+          >
             <Info className="h-3 w-3" />
-          </button>
+          </span>
         </TooltipTrigger>
         <TooltipContent
           side="right"
@@ -234,15 +234,17 @@ export default function LayerCard({
 
   return (
     <>
-      <Card className={cn('border-l-[3px] shadow-sm', color.border)}>
+      <Card
+        className={cn('overflow-hidden border-l-4 border-slate-200/80 shadow-sm', color.border)}
+      >
         {/* Compact Header */}
-        <div className="flex items-center justify-between p-3 bg-slate-50/50">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className={cn('h-6 w-6 rounded-md flex items-center justify-center', color.light)}>
-              <Layers className={cn('h-3 w-3', color.text)} />
+        <div className="flex items-start justify-between gap-3 p-3 bg-slate-50/70">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center', color.light)}>
+              <Layers className={cn('h-4 w-4', color.text)} />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-slate-800 truncate">{layer.name}</h3>
                 <HelpTip>
                   <p>
@@ -251,19 +253,17 @@ export default function LayerCard({
                   </p>
                 </HelpTip>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-slate-500">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+                <Badge variant="secondary" size="xs">
+                  {layer.rotationLengthHours}h rotation
+                </Badge>
                 <span className="flex items-center gap-1">
-                  <Clock className="h-2.5 w-2.5" />
-                  {layer.rotationLengthHours}h
+                  <Clock className="h-3 w-3" />
+                  {formatShortTime(new Date(layer.start), timeZone)}
+                  {layer.end
+                    ? ` - ${formatShortTime(new Date(layer.end), timeZone)}`
+                    : ' - Open ended'}
                 </span>
-                <span>•</span>
-                <span>{formatShortTime(new Date(layer.start), timeZone)}</span>
-                {layer.end && (
-                  <>
-                    <span>→</span>
-                    <span>{formatShortTime(new Date(layer.end), timeZone)}</span>
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -274,7 +274,7 @@ export default function LayerCard({
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsEditOpen(!isEditOpen)}
-                className={cn('h-6 w-6', isEditOpen && 'bg-slate-200')}
+                className={cn('h-7 w-7', isEditOpen && 'bg-slate-200')}
               >
                 <Edit3 className="h-3 w-3" />
               </Button>
@@ -282,7 +282,7 @@ export default function LayerCard({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>

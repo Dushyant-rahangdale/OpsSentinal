@@ -12,6 +12,7 @@ const mockPrisma = vi.hoisted(() => ({
   },
   auditLog: {
     create: vi.fn(),
+    count: vi.fn().mockResolvedValue(0), // For checkRateLimit
   },
   systemSettings: {
     findUnique: vi.fn(),

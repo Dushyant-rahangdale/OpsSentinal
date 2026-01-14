@@ -3,6 +3,7 @@
 
 import { useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Badge } from '@/components/ui/shadcn/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -10,6 +11,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/shadcn/tooltip';
 import { getDefaultAvatar } from '@/lib/avatar';
+import { formatDateTime, startOfDayInTimeZone, startOfNextDayInTimeZone } from '@/lib/timezone';
 import { Sun, Moon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,10 +39,8 @@ const LAYER_COLORS = [
 
 export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineProps) {
   const now = new Date();
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(todayStart);
-  todayEnd.setDate(todayEnd.getDate() + 1);
+  const todayStart = startOfDayInTimeZone(now, timeZone);
+  const todayEnd = startOfNextDayInTimeZone(now, timeZone);
 
   // Filter shifts to today only
   const todayShifts = useMemo(() => {
@@ -67,48 +67,79 @@ export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineP
   }, [todayShifts]);
 
   // Current hour position
-  const currentHourPosition = ((now.getHours() * 60 + now.getMinutes()) / (24 * 60)) * 100;
+  const dayDurationMs = Math.max(todayEnd.getTime() - todayStart.getTime(), 1);
+  const currentHourPosition = Math.min(
+    100,
+    Math.max(0, ((now.getTime() - todayStart.getTime()) / dayDurationMs) * 100)
+  );
 
   // Generate hour markers
   const hourMarkers = [0, 6, 12, 18];
+  const formatHourLabel = (hour: number) =>
+    formatDateTime(new Date(todayStart.getTime() + hour * 60 * 60 * 1000), timeZone, {
+      format: 'time',
+      hour12: true,
+    })
+      .replace(':00', '')
+      .toLowerCase();
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-          <Clock className="h-3 w-3" />
-          Today's Coverage
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" size="xs">
+            Today
+          </Badge>
+          <span className="text-xs text-slate-500">
+            {formatDateTime(now, timeZone, { format: 'date' })}
+          </span>
         </div>
-        <span className="text-[10px] text-slate-400">
-          {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-        </span>
+        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+          <Clock className="h-3 w-3" />
+          <span>{formatDateTime(now, timeZone, { format: 'time', hour12: false })}</span>
+          <Badge variant="outline" size="xs">
+            {timeZone}
+          </Badge>
+        </div>
       </div>
 
       {/* Timeline */}
-      <div className="relative rounded-lg border border-slate-200 bg-white overflow-hidden">
+      <div className="relative rounded-xl border border-slate-200/80 bg-white/90 overflow-hidden shadow-sm">
         {/* Hour Grid */}
         <div className="absolute inset-0 flex">
           {/* Night (0-6) */}
-          <div className="w-1/4 bg-slate-50/50 border-r border-slate-100" />
+          <div className="w-1/4 bg-slate-50/70 border-r border-slate-100" />
           {/* Day (6-12) */}
-          <div className="w-1/4 bg-amber-50/30 border-r border-slate-100" />
+          <div className="w-1/4 bg-amber-50/40 border-r border-slate-100" />
           {/* Day (12-18) */}
-          <div className="w-1/4 bg-amber-50/30 border-r border-slate-100" />
+          <div className="w-1/4 bg-amber-50/40 border-r border-slate-100" />
           {/* Night (18-24) */}
-          <div className="w-1/4 bg-slate-50/50" />
+          <div className="w-1/4 bg-slate-50/70" />
         </div>
 
         {/* Shift Blocks */}
-        <div className="relative h-10">
+        <div className="relative h-12">
           {todayShifts.map((shift, index) => {
-            const startMinutes =
-              shift.displayStart.getHours() * 60 + shift.displayStart.getMinutes();
-            const endMinutes =
-              shift.displayEnd.getHours() * 60 + shift.displayEnd.getMinutes() || 24 * 60;
-            const leftPercent = (startMinutes / (24 * 60)) * 100;
-            const widthPercent = ((endMinutes - startMinutes) / (24 * 60)) * 100;
+            const startMinutes = Math.max(
+              0,
+              Math.round((shift.displayStart.getTime() - todayStart.getTime()) / 60000)
+            );
+            const endMinutes = Math.max(
+              0,
+              Math.round((shift.displayEnd.getTime() - todayStart.getTime()) / 60000)
+            );
+            const leftPercent = (startMinutes / (dayDurationMs / 60000)) * 100;
+            const widthPercent = ((endMinutes - startMinutes) / (dayDurationMs / 60000)) * 100;
             const color = layerColorMap.get(shift.layerName) || LAYER_COLORS[0];
+            const startLabel = formatDateTime(shift.displayStart, timeZone, {
+              format: 'time',
+              hour12: false,
+            });
+            const endLabel = formatDateTime(shift.displayEnd, timeZone, {
+              format: 'time',
+              hour12: false,
+            });
 
             return (
               <TooltipProvider key={`${shift.layerName}-${index}`} delayDuration={100}>
@@ -116,7 +147,7 @@ export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineP
                   <TooltipTrigger asChild>
                     <div
                       className={cn(
-                        'absolute top-1 h-8 rounded-md flex items-center gap-1.5 px-1.5 cursor-pointer transition-all hover:ring-2 hover:ring-offset-1',
+                        'absolute top-2 h-8 rounded-lg flex items-center gap-1.5 px-1.5 cursor-pointer transition-all hover:ring-2 hover:ring-offset-1',
                         color.bg,
                         'hover:ring-slate-300'
                       )}
@@ -150,17 +181,7 @@ export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineP
                   <TooltipContent side="top" className="text-xs">
                     <div className="font-medium">{shift.userName}</div>
                     <div className="text-slate-400">
-                      {shift.displayStart.toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                      })}
-                      {' → '}
-                      {shift.displayEnd.toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                      })}
+                      {startLabel} - {endLabel}
                     </div>
                     <div className="text-slate-500">{shift.layerName}</div>
                   </TooltipContent>
@@ -179,7 +200,7 @@ export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineP
         </div>
 
         {/* Hour Labels */}
-        <div className="relative h-4 border-t border-slate-100 flex text-[9px] text-slate-400">
+        <div className="relative h-5 border-t border-slate-100 flex text-[9px] text-slate-400">
           {hourMarkers.map(hour => (
             <div
               key={hour}
@@ -188,15 +209,7 @@ export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineP
             >
               {hour === 6 && <Sun className="h-2.5 w-2.5 text-amber-400" />}
               {hour === 18 && <Moon className="h-2.5 w-2.5 text-slate-400" />}
-              <span>
-                {hour === 0
-                  ? '12am'
-                  : hour === 12
-                    ? '12pm'
-                    : hour < 12
-                      ? `${hour}am`
-                      : `${hour - 12}pm`}
-              </span>
+              <span>{formatHourLabel(hour)}</span>
             </div>
           ))}
         </div>

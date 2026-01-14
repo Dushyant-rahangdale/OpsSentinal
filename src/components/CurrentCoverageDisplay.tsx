@@ -8,7 +8,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Clock, UserCheck, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/shadcn/separator';
 
 type CoverageBlock = {
   id: string;
@@ -72,51 +71,58 @@ export default function CurrentCoverageDisplay({
   const hasCoverage = activeBlocks.length > 0;
 
   return (
-    <Card
-      className={cn(
-        'overflow-hidden border-none shadow-md',
-        hasCoverage
-          ? 'bg-gradient-to-b from-emerald-600 to-teal-700'
-          : 'bg-gradient-to-b from-slate-700 to-slate-800'
-      )}
-    >
-      <CardHeader className="pb-3 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
+    <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+      <CardHeader
+        className={cn(
+          'pb-3 border-b',
+          hasCoverage
+            ? 'bg-emerald-50/70 border-emerald-100/70'
+            : 'bg-amber-50/70 border-amber-100/70'
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                'flex h-9 w-9 items-center justify-center rounded-xl',
+                hasCoverage
+                  ? 'bg-emerald-500/15 text-emerald-700'
+                  : 'bg-amber-500/15 text-amber-700'
+              )}
+            >
               {hasCoverage ? (
-                <ShieldCheck className="h-5 w-5 text-white" />
+                <ShieldCheck className="h-4 w-4" />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-white" />
+                <AlertTriangle className="h-4 w-4" />
               )}
             </div>
             <div>
-              <CardTitle className="text-sm font-bold tracking-wide uppercase opacity-90">
-                On-Call Now
-              </CardTitle>
-              <p className="text-[10px] text-white/70 font-medium flex items-center gap-1">
+              <CardTitle className="text-sm font-semibold">On-Call Now</CardTitle>
+              <p className="text-xs text-slate-500 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {formatTime(currentTime)}
               </p>
             </div>
           </div>
-          <div
-            className={cn(
-              'h-2 w-2 rounded-full animate-pulse',
-              hasCoverage ? 'bg-white' : 'bg-red-400'
-            )}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={hasCoverage ? 'success' : 'warning'} size="xs">
+              {hasCoverage ? 'Live coverage' : 'No coverage'}
+            </Badge>
+            <Badge variant="outline" size="xs">
+              {scheduleTimeZone}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 bg-white/95 backdrop-blur-xl min-h-[100px] shadow-inner">
+      <CardContent className="p-0 bg-white">
         {!hasCoverage ? (
           <div className="flex flex-col items-center justify-center py-8 text-center px-4">
             <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
               <UserCheck className="h-5 w-5 text-slate-400" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">No Active Responders</p>
-            <p className="text-xs text-slate-500 mt-1 max-w-[180px]">
+            <p className="text-sm font-semibold text-slate-700">No active responders</p>
+            <p className="text-xs text-slate-500 mt-1 max-w-[200px]">
               No shifts are currently scheduled. Check configuration.
             </p>
           </div>
@@ -125,9 +131,9 @@ export default function CurrentCoverageDisplay({
             {activeBlocks.map((block, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
               >
-                <Avatar className="h-10 w-10 ring-2 ring-emerald-100 shadow-sm">
+                <Avatar className="h-9 w-9 ring-1 ring-slate-200 shadow-sm">
                   <AvatarImage
                     src={block.userAvatar || getDefaultAvatar(block.userGender, block.userName)}
                   />
@@ -136,22 +142,23 @@ export default function CurrentCoverageDisplay({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-slate-800 truncate pr-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-semibold text-slate-800 truncate">
                       {block.userName}
                     </h4>
-                    <Badge
-                      variant="secondary"
-                      className="text-[9px] h-4 px-1.5 bg-slate-100 text-slate-500 font-semibold border-slate-200"
-                    >
+                    <Badge variant="secondary" size="xs">
                       {block.layerName}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <p className="text-xs text-slate-500 font-medium truncate">
-                      Until {formatTime(new Date(block.end))}
-                    </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Ends {formatTime(new Date(block.end))}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Active
+                    </span>
                   </div>
                 </div>
               </div>
@@ -161,7 +168,7 @@ export default function CurrentCoverageDisplay({
         {hasCoverage && (
           <div className="bg-slate-50 px-4 py-2 border-t border-slate-100 text-center">
             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
-              OpsSentinal Coverage
+              Updates every 30 seconds
             </p>
           </div>
         )}

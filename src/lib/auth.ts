@@ -119,25 +119,98 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           credentials: {
             email: { label: 'Email', type: 'email' },
             password: { label: 'Password', type: 'password' },
+            rememberMe: { label: 'Remember Me', type: 'text' },
           },
-          async authorize(credentials) {
-            const email = credentials?.email?.toLowerCase().trim();
-            const password = credentials?.password || '';
+          async authorize(credentials, req) {
+            // Import security modules
+            const { checkLoginAttempt, recordFailedAttempt, resetLoginAttempts, isValidEmail } =
+              await import('@/lib/login-security');
+            const { logLoginSuccess, logLoginFailed, logLoginBlocked } =
+              await import('@/lib/login-audit');
 
-            if (!email || !password) return null;
+            const email = credentials?.email?.toLowerCase().trim() || '';
+            const password = credentials?.password || '';
+            const rememberMe = credentials?.rememberMe === 'true';
+
+            // Get IP from request headers (best effort)
+            const forwardedFor = req?.headers?.['x-forwarded-for'];
+            const ip =
+              typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '0.0.0.0';
+            const userAgent = (req?.headers?.['user-agent'] as string) || 'Unknown';
+
+            // Server-side email validation
+            if (!email || !isValidEmail(email)) {
+              await logLoginFailed(email || 'unknown', ip, userAgent, 'INVALID_EMAIL_FORMAT');
+              return null;
+            }
+
+            if (!password) {
+              await logLoginFailed(email, ip, userAgent, 'INVALID_CREDENTIALS');
+              return null;
+            }
+
+            // Check rate limiting / lockout
+            const attemptCheck = checkLoginAttempt(email, ip);
+            if (!attemptCheck.allowed) {
+              await logLoginBlocked(
+                email,
+                ip,
+                userAgent,
+                'ACCOUNT_LOCKED',
+                attemptCheck.lockoutDurationMs || undefined
+              );
+              logger.warn('[Auth] Login blocked - account locked', {
+                component: 'auth:credentials',
+                email,
+                ip,
+                lockedUntil: attemptCheck.lockedUntil?.toISOString(),
+              });
+              return null;
+            }
 
             const user = await prisma.user.findUnique({ where: { email } });
             if (!user || !user.passwordHash) {
+              recordFailedAttempt(email, ip);
+              await logLoginFailed(email, ip, userAgent, 'USER_NOT_FOUND');
               return null;
             }
 
             // Check if user is disabled
             if (user.status === 'DISABLED') {
+              await logLoginFailed(email, ip, userAgent, 'USER_DISABLED');
               return null;
             }
 
             const isValid = await bcrypt.compare(password, user.passwordHash);
-            if (!isValid) return null;
+            if (!isValid) {
+              const result = recordFailedAttempt(email, ip);
+              await logLoginFailed(
+                email,
+                ip,
+                userAgent,
+                'INVALID_CREDENTIALS',
+                result.attemptCount
+              );
+
+              if (result.locked) {
+                logger.warn('[Auth] Account locked after failed attempts', {
+                  component: 'auth:credentials',
+                  email,
+                  attemptCount: result.attemptCount,
+                  lockoutDurationMs: result.lockoutDurationMs,
+                });
+              }
+              return null;
+            }
+
+            // Success - reset attempts and log
+            resetLoginAttempts(email, ip);
+            await logLoginSuccess(email, user.id, ip, userAgent, 'credentials');
+
+            // Log remember me usage (Note: extending session maxAge dynamically requires JWT callback changes)
+            if (rememberMe) {
+              logger.debug('[Auth] User requested "Remember Me"', { email });
+            }
 
             // Update status to ACTIVE if it's INVITED (first login)
             if (user.status !== 'ACTIVE') {

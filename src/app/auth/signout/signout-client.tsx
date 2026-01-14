@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useState } from 'react';
+import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
+import { LogOut, ArrowLeft } from 'lucide-react';
+import Spinner from '@/components/ui/Spinner';
 
 export default function SignOutClient() {
   const searchParams = useSearchParams();
@@ -16,97 +19,69 @@ export default function SignOutClient() {
   };
 
   return (
-    <main className="login-shell" role="main">
-      <div className="login-bg-animation">
-        <div className="login-bg-orb login-bg-orb-1"></div>
-        <div className="login-bg-orb login-bg-orb-2"></div>
-        <div className="login-bg-orb login-bg-orb-3"></div>
-      </div>
-
-      <div
-        className="login-card glass-panel"
-        style={{
-          maxWidth: '480px',
-          margin: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 'auto',
-          gridTemplateColumns: 'none',
-          background: 'rgba(255, 255, 255, 0.7)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        <section
-          className="login-form"
-          style={{
-            width: '100%',
-            padding: '3rem 2rem',
-            background: 'transparent',
-            boxShadow: 'none',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            className="login-form-logo"
-            style={{ margin: '0 auto 1.5rem', width: '56px', height: '56px' }}
-          >
-            <img
-              src="/logo.svg"
-              alt="OpsSentinal"
-              className="login-form-logo-img"
-              style={{ width: '32px', height: '32px' }}
-            />
-          </div>
-
-          <h1
-            style={{
-              fontSize: '1.75rem',
-              fontWeight: 800,
-              color: 'var(--text-primary)',
-              marginBottom: '0.75rem',
-            }}
-          >
-            Sign Out
-          </h1>
-
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              marginBottom: '2rem',
-              fontSize: '1rem',
-            }}
-          >
-            Are you sure you want to sign out of your session?
+    <AuthLayout>
+      <AuthCard>
+        {/* Card Header */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <span className="flex items-center gap-3">
+              <span className="w-1.5 h-6 bg-white/20 rounded-full" />
+              Sign Out
+            </span>
+          </h2>
+          <p className="mt-2 text-sm text-white/50 pl-0.5">
+            Are you sure you want to end your secure session?
           </p>
+        </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <button
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className="login-btn login-btn-primary"
-              style={{ width: '100%' }}
-            >
-              {isSigningOut ? 'Signing out...' : 'Sign Out'}
-            </button>
+        <div className="space-y-4">
+          <button
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="relative w-full overflow-hidden rounded-lg py-3.5 text-sm font-bold shadow-lg transition-all duration-300 bg-rose-500 text-white hover:bg-rose-400 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(244,63,94,0.4)] focus:outline-none focus:ring-2 focus:ring-rose-500/50 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2 uppercase tracking-wide">
+              {isSigningOut ? (
+                <>
+                  <Spinner size="sm" variant="white" />
+                  <span>Signing out...</span>
+                </>
+              ) : (
+                <>
+                  <span>Termimate Session</span>
+                  <LogOut className="h-4 w-4" />
+                </>
+              )}
+            </span>
+          </button>
 
-            <Link
-              href={callbackUrl}
-              className="login-btn"
-              style={{
-                background: 'rgba(255, 255, 255, 0.5)',
-                color: 'var(--text-secondary)',
-                width: '100%',
-                textDecoration: 'none',
-                justifyContent: 'center',
-              }}
-            >
-              Cancel
-            </Link>
-          </div>
-        </section>
-      </div>
-    </main>
+          <Link
+            href={callbackUrl}
+            className="group relative w-full flex items-center justify-center gap-2 overflow-hidden rounded-lg border border-white/10 bg-white/5 py-3.5 text-sm font-bold text-white/70 transition-all duration-300 hover:bg-white/10 hover:text-white hover:border-white/20"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>Return to App</span>
+          </Link>
+        </div>
+
+        {/* Footer info */}
+        <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40 mt-8 font-medium">
+          <svg
+            className="h-3.5 w-3.5 text-emerald-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+          <span>Your Operations, Our Sentinel.</span>
+        </div>
+      </AuthCard>
+    </AuthLayout>
   );
 }

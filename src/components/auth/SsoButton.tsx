@@ -12,13 +12,13 @@ type Props = {
   disabled?: boolean;
 };
 
-const providerStyles: Record<
+// Map provider types to Tailwind class strings and icons
+const providerConfig: Record<
   string,
-  { bg: string; hover: string; icon: React.ReactNode; defaultLabel: string }
+  { classes: string; icon: React.ReactNode; defaultLabel: string }
 > = {
   google: {
-    bg: '#ffffff',
-    hover: '#f1f5f9',
+    classes: 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200',
     defaultLabel: 'Google',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -42,8 +42,7 @@ const providerStyles: Record<
     ),
   },
   okta: {
-    bg: '#00297A',
-    hover: '#001d5c',
+    classes: 'bg-[#00297A] hover:bg-[#001d5c] text-white border-transparent',
     defaultLabel: 'Okta',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
@@ -52,8 +51,7 @@ const providerStyles: Record<
     ),
   },
   azure: {
-    bg: '#0078D4',
-    hover: '#005a9e',
+    classes: 'bg-[#0078D4] hover:bg-[#005a9e] text-white border-transparent',
     defaultLabel: 'Microsoft',
     icon: (
       <svg width="20" height="20" viewBox="0 0 21 21" aria-hidden="true">
@@ -65,8 +63,7 @@ const providerStyles: Record<
     ),
   },
   auth0: {
-    bg: '#EB5424',
-    hover: '#c44118',
+    classes: 'bg-[#EB5424] hover:bg-[#c44118] text-white border-transparent',
     defaultLabel: 'Auth0',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
@@ -75,8 +72,7 @@ const providerStyles: Record<
     ),
   },
   custom: {
-    bg: 'var(--primary-color)',
-    hover: 'var(--primary-hover)',
+    classes: 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md',
     defaultLabel: 'SSO',
     icon: (
       <svg
@@ -105,27 +101,25 @@ export default function SsoButton({
   loading,
   disabled,
 }: Props) {
-  const provider = providerType && providerStyles[providerType] ? providerType : 'custom';
-  const style = providerStyles[provider];
-  const label = providerLabel || style.defaultLabel;
-
-  const isGoogle = provider === 'google';
-  const textColor = isGoogle ? '#374151' : '#ffffff';
+  const providerKey = providerType && providerConfig[providerType] ? providerType : 'custom';
+  const config = providerConfig[providerKey];
+  const label = providerLabel || config.defaultLabel;
+  const isGoogle = providerKey === 'google';
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={loading || disabled}
-      className="sso-button"
       aria-label={`Sign in with ${label}`}
-      style={
-        {
-          '--sso-bg': style.bg,
-          '--sso-hover': style.hover,
-          '--sso-text': textColor,
-        } as React.CSSProperties
-      }
+      className={`
+        relative w-full flex items-center justify-center gap-3 px-5 py-3.5 
+        rounded-xl text-[0.95rem] font-semibold border
+        transition-all duration-200 transform
+        active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed
+        shadow-sm hover:shadow-md
+        ${config.classes}
+      `}
     >
       {loading ? (
         <>
@@ -134,41 +128,10 @@ export default function SsoButton({
         </>
       ) : (
         <>
-          {style.icon}
+          {config.icon}
           <span>Continue with {label}</span>
         </>
       )}
-
-      <style jsx>{`
-        .sso-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          width: 100%;
-          padding: 0.875rem 1.25rem;
-          background: var(--sso-bg);
-          color: var(--sso-text);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          border-radius: var(--radius-md, 12px);
-          font-size: 0.95rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-        }
-
-        .sso-button:hover:not(:disabled) {
-          background: var(--sso-hover);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          transform: translateY(-1px);
-        }
-
-        .sso-button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-      `}</style>
     </button>
   );
 }

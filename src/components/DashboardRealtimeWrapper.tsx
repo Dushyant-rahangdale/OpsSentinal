@@ -7,7 +7,12 @@ import { logger } from '@/lib/logger';
 
 interface DashboardRealtimeWrapperProps {
   children: React.ReactNode;
-  onMetricsUpdate?: (metrics: { open: number; acknowledged: number; resolved24h: number; highUrgency: number }) => void;
+  onMetricsUpdate?: (metrics: {
+    open: number;
+    acknowledged: number;
+    resolved24h: number;
+    highUrgency: number;
+  }) => void;
   onIncidentsUpdate?: (incidents: any[]) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
@@ -18,7 +23,7 @@ interface DashboardRealtimeWrapperProps {
 export default function DashboardRealtimeWrapper({
   children,
   onMetricsUpdate,
-  onIncidentsUpdate
+  onIncidentsUpdate,
 }: DashboardRealtimeWrapperProps) {
   const { isConnected, metrics, recentIncidents, error } = useRealtime();
   const router = useRouter();
@@ -30,11 +35,27 @@ export default function DashboardRealtimeWrapper({
   }, [metrics, onMetricsUpdate]);
 
   useEffect(() => {
-    if (recentIncidents && recentIncidents.length > 0 && onIncidentsUpdate) {
-      onIncidentsUpdate(recentIncidents);
-    } else if (recentIncidents && recentIncidents.length > 0) {
-      // Auto-refresh if incidents updated
-      router.refresh();
+    if (recentIncidents && recentIncidents.length > 0) {
+      if (onIncidentsUpdate) {
+        onIncidentsUpdate(recentIncidents);
+      }
+
+      // Check sessionStorage for last refresh time (persists across remounts/refreshes)
+      // This is critical because router.refresh() might cause a full remount
+      const now = Date.now();
+      const lastRefreshCtx = sessionStorage.getItem('dashboard_last_refresh');
+      const lastRefresh = lastRefreshCtx ? parseInt(lastRefreshCtx, 10) : 0;
+
+      // Only auto-refresh if it's been at least 15 seconds since the last one
+      if (now - lastRefresh > 15000) {
+        sessionStorage.setItem('dashboard_last_refresh', now.toString());
+        logger.debug('Triggering dashboard refresh from realtime update');
+        router.refresh();
+      } else {
+        logger.debug('Skipping dashboard refresh (debounced)', {
+          timeSinceLast: now - lastRefresh,
+        });
+      }
     }
   }, [recentIncidents, onIncidentsUpdate, router]);
 
@@ -58,7 +79,7 @@ export default function DashboardRealtimeWrapper({
             borderRadius: 'var(--radius-md)',
             fontSize: '0.875rem',
             zIndex: 1000,
-            display: 'none' // Hidden by default, can be enabled for debugging
+            display: 'none', // Hidden by default, can be enabled for debugging
           }}
           aria-live="polite"
           aria-atomic="true"

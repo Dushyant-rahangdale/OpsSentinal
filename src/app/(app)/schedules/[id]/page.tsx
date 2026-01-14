@@ -1,7 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
 import { buildScheduleBlocks } from '@/lib/oncall';
-import { formatDateTime, formatDateForInput } from '@/lib/timezone';
+import { formatDateForInput, formatDateTime, getTimeZoneLabel } from '@/lib/timezone';
 import {
   addLayerUser,
   createLayer,
@@ -17,13 +17,41 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import ScheduleCalendar from '@/components/ScheduleCalendar';
 import LayerCard from '@/components/LayerCard';
-import LayerCreateForm from '@/components/LayerCreateForm';
-import OverrideForm from '@/components/OverrideForm';
-import OverrideList from '@/components/OverrideList';
 import CurrentCoverageDisplay from '@/components/CurrentCoverageDisplay';
 import CoverageTimeline from '@/components/CoverageTimeline';
-import LayerHelpPanel from '@/components/LayerHelpPanel';
 import ScheduleEditForm from '@/components/ScheduleEditForm';
+import ScheduleActionsPanel from '@/components/ScheduleActionsPanel';
+import ScheduleTimeline from '@/components/ScheduleTimeline';
+import ScheduleTimezoneNotice from '@/components/ScheduleTimezoneNotice';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Separator } from '@/components/ui/shadcn/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/shadcn/tooltip';
+import {
+  Calendar,
+  Clock,
+  Users,
+  Layers,
+  AlertTriangle,
+  ArrowLeft,
+  Info,
+  ShieldCheck,
+} from 'lucide-react';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 // Revalidate every 30 seconds to ensure current coverage is up-to-date
 export const revalidate = 30;
@@ -161,28 +189,14 @@ export default async function ScheduleDetailPage({
     coverageRangeEnd
   );
   // Filter for blocks that are currently active (start <= now < end)
-  // Use getTime() for accurate comparison
   const nowTime = now.getTime();
   const activeBlocks = coverageBlocks.filter(block => {
     const blockStartTime = block.start.getTime();
     const blockEndTime = block.end.getTime();
     return blockStartTime <= nowTime && blockEndTime > nowTime;
   });
-  const _nextChange = activeBlocks.length
-    ? activeBlocks.reduce(
-        (earliest, block) => (block.end < earliest ? block.end : earliest),
-        activeBlocks[0].end
-      )
-    : coverageBlocks
-        .filter(block => block.start > now)
-        .reduce<Date | null>((earliest, block) => {
-          if (!earliest || block.start < earliest) return block.start;
-          return earliest;
-        }, null);
+  const totalParticipants = schedule.layers.reduce((acc, layer) => acc + layer.users.length, 0);
   const historyTotalPages = Math.max(1, Math.ceil(historyCount / historyPageSize));
-
-  const _formatDateTimeLocal = (date: Date) =>
-    formatDateTime(date, schedule.timeZone, { format: 'short' });
 
   const scheduleTimezoneLabel = new Intl.DateTimeFormat('en-US', {
     timeZone: schedule.timeZone,
@@ -196,245 +210,265 @@ export default async function ScheduleDetailPage({
       hour12: false,
       timeZone: schedule.timeZone,
     }).format(date);
+  const scheduleNowLabel = formatShortTime(now);
+  const scheduleTimezoneLongLabel = getTimeZoneLabel(schedule.timeZone);
+  const formatOverrideRange = (start: Date, end: Date) =>
+    `${formatDateTime(start, schedule.timeZone, { format: 'short', hour12: false })} - ${formatDateTime(end, schedule.timeZone, { format: 'short', hour12: false })}`;
+  const getInitials = (name: string) =>
+    name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
 
   return (
-    <main style={{ padding: '1rem' }}>
-      {/* Header */}
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '2rem',
-          paddingBottom: '1.5rem',
-          borderBottom: '2px solid var(--border)',
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <Link
-            href="/schedules"
-            className="schedule-back-link"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '0.9rem',
-              color: 'var(--text-secondary)',
-              textDecoration: 'none',
-              marginBottom: '0.75rem',
-              fontWeight: '500',
-              transition: 'color 0.2s',
-            }}
-          >
-            ← Back to schedules
-          </Link>
-          <h1
-            style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: 'var(--text-primary)',
-              marginBottom: '0.5rem',
-            }}
-          >
-            {schedule.name}
-          </h1>
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              fontSize: '0.95rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-            }}
-          >
-            <span
-              style={{
-                padding: '0.25rem 0.6rem',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-                color: '#0c4a6e',
-                border: '1px solid #bae6fd',
-              }}
-            >
-              {schedule.timeZone}
-            </span>
-            <span>·</span>
-            <span>
-              Current time: <strong>{formatShortTime(now)}</strong> ({scheduleTimezoneLabel})
-            </span>
-            <span>·</span>
-            <span
-              style={{
-                fontSize: '0.8rem',
-                color: 'var(--text-muted)',
-                fontStyle: 'italic',
-              }}
-            >
-              All times shown in schedule timezone
-            </span>
-          </p>
-          <div
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.5rem 0.75rem',
-              background: '#fef3c7',
-              border: '1px solid #f59e0b',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              color: '#92400e',
-            }}
-          >
-            Times entered are interpreted in the schedule timezone. If you change the timezone,
-            re-save layers and overrides.
-          </div>
-          {canManageSchedules && (
-            <ScheduleEditForm
-              scheduleId={schedule.id}
-              currentName={schedule.name}
-              currentTimeZone={schedule.timeZone}
-              updateSchedule={updateSchedule}
-              canManageSchedules={canManageSchedules}
-            />
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              borderRadius: '20px',
-              background:
-                activeBlocks.length > 0
-                  ? 'linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%)'
-                  : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-              border: `1px solid ${activeBlocks.length > 0 ? '#a7f3d0' : '#fecaca'}`,
-              fontSize: '0.85rem',
-              fontWeight: '600',
-              color: activeBlocks.length > 0 ? '#065f46' : '#991b1b',
-            }}
-          >
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: activeBlocks.length > 0 ? '#10b981' : '#ef4444',
-                display: 'inline-block',
-              }}
-            />
-            {activeBlocks.length > 0 ? 'On-call active' : 'No coverage'}
-          </div>
-        </div>
-      </header>
+    <div className="w-full px-4 py-6 space-y-6 [zoom:0.8]">
+      {/* Header with Stats - Matching Teams/Users Pattern */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary via-primary/90 to-primary/75 text-primary-foreground shadow-lg">
+        <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(255,255,255,0.25),transparent_55%)]" />
+        <div className="relative p-5 md:p-7">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+            <div className="space-y-2">
+              <Link
+                href="/schedules"
+                className="inline-flex items-center gap-1 text-xs opacity-80 hover:opacity-100 transition-opacity"
+              >
+                <ArrowLeft className="h-3 w-3" />
+                Back to Schedules
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{schedule.name}</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-white/80">
+                <Badge variant="secondary" className="bg-white/15 text-white border-white/20">
+                  {schedule.timeZone}
+                </Badge>
+                <Separator orientation="vertical" className="h-4 bg-white/30" />
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {scheduleNowLabel} ({scheduleTimezoneLabel})
+                </span>
+                <Separator orientation="vertical" className="h-4 bg-white/30" />
+                <span className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  {totalParticipants} participants
+                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25 transition hover:bg-white/25"
+                        aria-label="Timezone info"
+                      >
+                        <Info className="h-3.5 w-3.5 text-white" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs">
+                      Schedule times, overrides, and calendars use {scheduleTimezoneLongLabel}.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
 
-      {/* Current Coverage - Prominent Display */}
-      <div style={{ marginBottom: '2rem' }}>
-        <CurrentCoverageDisplay
-          key={`coverage-${schedule.id}-${schedule.layers.map(l => `${l.id}-${l.start.getTime()}-${l.end?.getTime() || 'null'}`).join('-')}`}
-          initialBlocks={activeBlocks.map(block => ({
-            id: block.id,
-            userName: block.userName,
-            userAvatar: block.userAvatar,
-            userGender: block.userGender,
-            layerName: block.layerName,
-            start: block.start.toISOString(),
-            end: block.end.toISOString(),
-          }))}
-          scheduleTimeZone={schedule.timeZone}
-        />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 w-full lg:w-auto">
+              <Card className="bg-white/10 border-white/20 backdrop-blur transition hover:bg-white/15">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/25">
+                      <Layers className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-xl md:text-2xl font-bold">{schedule.layers.length}</div>
+                      <div className="text-[10px] md:text-xs opacity-80">Layers</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white/10 border-white/20 backdrop-blur transition hover:bg-white/15">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/25">
+                      <Users className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-xl md:text-2xl font-bold">{totalParticipants}</div>
+                      <div className="text-[10px] md:text-xs opacity-80">Participants</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white/10 border-white/20 backdrop-blur transition hover:bg-white/15">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/25">
+                      <ShieldCheck className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div
+                        className={`text-xl md:text-2xl font-bold ${activeBlocks.length > 0 ? 'text-emerald-200' : 'text-red-200'}`}
+                      >
+                        {activeBlocks.length}
+                      </div>
+                      <div className="text-[10px] md:text-xs opacity-80">On-Call Now</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white/10 border-white/20 backdrop-blur transition hover:bg-white/15">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/25">
+                      <AlertTriangle className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-xl md:text-2xl font-bold text-amber-200">
+                        {upcomingOverrides.length}
+                      </div>
+                      <div className="text-[10px] md:text-xs opacity-80">Upcoming Overrides</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-        <div>
-          <LayerHelpPanel />
+      <ScheduleTimezoneNotice scheduleTimeZone={schedule.timeZone} />
 
-          <section
-            className="glass-panel"
-            style={{
-              padding: '1.5rem',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid #e2e8f0',
-              borderRadius: '12px',
-              marginBottom: '2rem',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1.5rem',
-                paddingBottom: '1rem',
-                borderBottom: '1px solid #e2e8f0',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h3
-                  style={{
-                    fontSize: '1.25rem',
-                    fontWeight: '700',
-                    color: 'var(--text-primary)',
-                    margin: 0,
-                  }}
-                >
-                  Layers
-                </h3>
-                <span
-                  title="Layers define rotation patterns. Multiple layers can run simultaneously to provide different coverage (e.g., day shift and night shift). Each layer rotates through its assigned responders based on the rotation length."
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    background: '#e0f2fe',
-                    color: '#0c4a6e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    cursor: 'help',
-                    border: '1px solid #bae6fd',
-                  }}
-                >
-                  ?
+      {/* Main Grid - 4 columns like teams page */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6">
+        {/* Main Content - 3 columns */}
+        <div className="xl:col-span-3 space-y-4 md:space-y-6">
+          {/* Today's Coverage */}
+          <Card className="overflow-hidden border-slate-200/80">
+            <CardHeader className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/70 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Today&apos;s Coverage
+                </CardTitle>
+                <CardDescription>24-hour view in the schedule timezone</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={activeBlocks.length > 0 ? 'success' : 'warning'} size="xs">
+                  {activeBlocks.length > 0 ? 'Active coverage' : 'No coverage'}
+                </Badge>
+                <Badge variant="outline" size="xs">
+                  {schedule.timeZone}
+                </Badge>
+                <span className="text-xs text-slate-500 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {scheduleNowLabel}
                 </span>
               </div>
-              <span
-                style={{
-                  padding: '0.3rem 0.6rem',
-                  borderRadius: '8px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
-                  color: '#0c4a6e',
-                  border: '1px solid #bae6fd',
-                }}
-              >
-                {schedule.layers.length} {schedule.layers.length === 1 ? 'layer' : 'layers'}
-              </span>
-            </div>
-            {schedule.layers.length === 0 ? (
-              <p
-                style={{
-                  fontSize: '0.9rem',
-                  color: 'var(--text-muted)',
-                  padding: '2rem',
-                  textAlign: 'center',
-                  background: '#f8fafc',
-                  borderRadius: '8px',
-                }}
-              >
-                No layers yet. Add a layer to define rotations.
-              </p>
-            ) : (
-              <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
-                {schedule.layers.map(layer => (
+            </CardHeader>
+            <CardContent className="p-4">
+              <CoverageTimeline
+                shifts={scheduleBlocks.map(block => ({
+                  userName: block.userName,
+                  userAvatar: block.userAvatar,
+                  userGender: block.userGender,
+                  layerName: block.layerName,
+                  start: block.start,
+                  end: block.end,
+                }))}
+                timeZone={schedule.timeZone}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Schedule Timeline - 7/14 Days (has built-in header) */}
+          <ScheduleTimeline
+            shifts={scheduleBlocks.map(block => ({
+              id: block.id,
+              start: block.start,
+              end: block.end,
+              layerName: block.layerName,
+              userName: block.userName,
+              userAvatar: block.userAvatar,
+              userGender: block.userGender,
+              source: block.source,
+            }))}
+            timeZone={schedule.timeZone}
+          />
+
+          {/* Monthly Calendar (has built-in header) */}
+          <ScheduleCalendar shifts={calendarShifts} timeZone={schedule.timeZone} />
+        </div>
+
+        {/* Sidebar - 1 column */}
+        <div className="space-y-4 md:space-y-6">
+          {/* Current On-Call - has its own Card with gradient styling */}
+          <CurrentCoverageDisplay
+            key={`coverage-${schedule.id}-${schedule.layers.map(l => `${l.id}-${l.start.getTime()}-${l.end?.getTime() || 'null'}`).join('-')}`}
+            initialBlocks={activeBlocks.map(block => ({
+              id: block.id,
+              userName: block.userName,
+              userAvatar: block.userAvatar,
+              userGender: block.userGender,
+              layerName: block.layerName,
+              start: block.start.toISOString(),
+              end: block.end.toISOString(),
+            }))}
+            scheduleTimeZone={schedule.timeZone}
+          />
+
+          {/* What are Layers - Info Card */}
+          <Alert className="border-blue-200/80 bg-blue-50/70">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-sm text-blue-900">Layering basics</AlertTitle>
+            <AlertDescription className="text-xs text-blue-700">
+              Layers define on-call rotations. Higher layers override lower ones. Use a primary
+              layer for baseline coverage and add secondary layers for backup.
+            </AlertDescription>
+          </Alert>
+
+          {/* Rotation Layers */}
+          <Card className="overflow-hidden border-slate-200/80">
+            <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-indigo-600" />
+                    Rotation Layers
+                  </CardTitle>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-slate-500 hover:text-slate-700"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs">
+                        Layers are evaluated from top to bottom. Higher layers override lower ones
+                        during overlaps.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Badge variant="secondary">{schedule.layers.length}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-3 space-y-2 max-h-[350px] overflow-y-auto">
+              {schedule.layers.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Layers className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs font-medium">No layers defined</p>
+                </div>
+              ) : (
+                schedule.layers.map((layer, index) => (
                   <LayerCard
                     key={layer.id}
                     layer={{
@@ -454,111 +488,201 @@ export default async function ScheduleDetailPage({
                     addLayerUser={addLayerUser}
                     moveLayerUser={moveLayerUser}
                     removeLayerUser={removeLayerUser}
+                    colorIndex={index}
                   />
-                ))}
-              </div>
-            )}
-            <LayerCreateForm
-              scheduleId={schedule.id}
-              canManageSchedules={canManageSchedules}
-              createLayer={createLayer}
-              defaultStartDate={formatDateForInput(now, schedule.timeZone)}
-            />
-          </section>
+                ))
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Timeline View */}
-          <CoverageTimeline
-            shifts={scheduleBlocks.map(block => ({
-              id: block.id,
-              start: block.start,
-              end: block.end,
-              label: `${block.layerName}: ${block.userName}${block.source === 'override' ? ' (Override)' : ''}`,
-              layerName: block.layerName,
-              userName: block.userName,
-              userAvatar: block.userAvatar,
-              userGender: block.userGender,
-              source: block.source,
-            }))}
-            timeZone={schedule.timeZone}
-          />
-
-          {/* Calendar View */}
-          <ScheduleCalendar shifts={calendarShifts} timeZone={schedule.timeZone} />
-        </div>
-
-        <aside>
-          <OverrideForm
+          {/* Quick Actions - has its own Card */}
+          <ScheduleActionsPanel
             scheduleId={schedule.id}
             users={users}
             canManageSchedules={canManageSchedules}
+            createLayer={createLayer}
             createOverride={createOverride}
+            defaultStartDate={formatDateForInput(now, schedule.timeZone)}
           />
-          <OverrideList
-            overrides={upcomingOverrides.map(o => ({
-              id: o.id,
-              start: new Date(o.start),
-              end: new Date(o.end),
-              userId: o.userId,
-              replacesUserId: o.replacesUserId,
-              user: o.user,
-              replacesUser: o.replacesUser,
-            }))}
-            scheduleId={schedule.id}
-            canManageSchedules={canManageSchedules}
-            deleteOverride={deleteOverride}
-            timeZone={schedule.timeZone}
-            title="Upcoming Overrides"
-            emptyMessage="No upcoming overrides."
-          />
-          <OverrideList
-            overrides={historyOverrides.map(o => ({
-              id: o.id,
-              start: new Date(o.start),
-              end: new Date(o.end),
-              userId: o.userId,
-              replacesUserId: o.replacesUserId,
-              user: o.user,
-              replacesUser: o.replacesUser,
-            }))}
-            scheduleId={schedule.id}
-            canManageSchedules={canManageSchedules}
-            deleteOverride={deleteOverride}
-            timeZone={schedule.timeZone}
-            title="Override History"
-            emptyMessage="No past overrides yet."
-          />
-          {historyTotalPages > 1 && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: '1rem',
-                paddingTop: '1rem',
-                borderTop: '1px solid #e2e8f0',
-              }}
-            >
-              <Link
-                href={`/schedules/${schedule.id}?history=${Math.max(1, historyPage - 1)}`}
-                className={`glass-button ${historyPage === 1 ? 'disabled' : ''}`}
-                style={{ textDecoration: 'none' }}
-              >
-                Prev
-              </Link>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Page {historyPage} of {historyTotalPages}
-              </span>
-              <Link
-                href={`/schedules/${schedule.id}?history=${Math.min(historyTotalPages, historyPage + 1)}`}
-                className={`glass-button ${historyPage === historyTotalPages ? 'disabled' : ''}`}
-                style={{ textDecoration: 'none' }}
-              >
-                Next
-              </Link>
-            </div>
+
+          {/* Schedule Settings */}
+          {canManageSchedules && (
+            <Card className="overflow-hidden border-slate-200/80">
+              <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/70">
+                <CardTitle className="text-sm">Schedule Settings</CardTitle>
+                <CardDescription className="text-xs">
+                  Rename the schedule or change its timezone
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 pt-3">
+                <ScheduleEditForm
+                  scheduleId={schedule.id}
+                  currentName={schedule.name}
+                  currentTimeZone={schedule.timeZone}
+                  updateSchedule={updateSchedule}
+                  canManageSchedules={canManageSchedules}
+                />
+              </CardContent>
+            </Card>
           )}
-        </aside>
+
+          {/* Overrides Section */}
+          <Card className="overflow-hidden border-slate-200/80">
+            <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    Overrides
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Temporary swaps and coverage changes
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="warning" size="xs">
+                    {upcomingOverrides.length} upcoming
+                  </Badge>
+                  <Badge variant="secondary" size="xs">
+                    {historyCount} past
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-3 space-y-4">
+              {/* Upcoming */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Upcoming</p>
+                {upcomingOverrides.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No upcoming overrides</p>
+                ) : (
+                  <div className="space-y-2">
+                    {upcomingOverrides.map(o => (
+                      <div
+                        key={o.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-7 w-7">
+                            <AvatarImage
+                              src={o.user.avatarUrl || getDefaultAvatar(o.user.gender, o.user.name)}
+                            />
+                            <AvatarFallback className="text-[10px] font-semibold">
+                              {getInitials(o.user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 truncate">
+                              {o.user.name}
+                            </p>
+                            <p className="text-[10px] text-slate-500 truncate">
+                              {formatOverrideRange(new Date(o.start), new Date(o.end))}
+                            </p>
+                            {o.replacesUser?.name && (
+                              <p className="text-[10px] text-slate-400 truncate">
+                                Replaces {o.replacesUser.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="warning" size="xs">
+                          Upcoming
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* History */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  History ({historyCount})
+                </p>
+                {historyOverrides.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No past overrides</p>
+                ) : (
+                  <div className="space-y-2">
+                    {historyOverrides.slice(0, 3).map(o => (
+                      <div
+                        key={o.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="h-7 w-7">
+                            <AvatarImage
+                              src={o.user.avatarUrl || getDefaultAvatar(o.user.gender, o.user.name)}
+                            />
+                            <AvatarFallback className="text-[10px] font-semibold">
+                              {getInitials(o.user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 truncate">
+                              {o.user.name}
+                            </p>
+                            <p className="text-[10px] text-slate-500 truncate">
+                              {formatOverrideRange(new Date(o.start), new Date(o.end))}
+                            </p>
+                            {o.replacesUser?.name && (
+                              <p className="text-[10px] text-slate-400 truncate">
+                                Replaced {o.replacesUser.name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="secondary" size="xs">
+                          Completed
+                        </Badge>
+                      </div>
+                    ))}
+                    {historyCount > 3 && (
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        +{historyCount - 3} more
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Pagination for history */}
+              {historyTotalPages > 1 && (
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="text-[10px] text-muted-foreground">
+                    Page {historyPage}/{historyTotalPages}
+                  </div>
+                  <div className="flex gap-1">
+                    <Link
+                      href={`/schedules/${schedule.id}?history=${Math.max(1, historyPage - 1)}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px]"
+                        disabled={historyPage === 1}
+                      >
+                        Prev
+                      </Button>
+                    </Link>
+                    <Link
+                      href={`/schedules/${schedule.id}?history=${Math.min(historyTotalPages, historyPage + 1)}`}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px]"
+                        disabled={historyPage === historyTotalPages}
+                      >
+                        Next
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

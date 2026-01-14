@@ -120,7 +120,7 @@
 @import './components/dropdowns.css';
 
 /* Pages Layer - Page-specific styles */
-@import './pages/login.css';
+
 @import './pages/mobile.css';
 @import './pages/schedule.css';
 @import './pages/analytics.css';

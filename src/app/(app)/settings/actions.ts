@@ -17,6 +17,7 @@ import {
 } from '@/lib/notification-providers';
 import { logger } from '@/lib/logger';
 import { getDefaultAvatar } from '@/lib/avatar';
+import { logAudit } from '@/lib/audit';
 
 type ActionState = {
   error?: string | null;
@@ -333,13 +334,21 @@ export async function updatePassword(
       }
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({
       where: { id: user.id },
       data: { passwordHash },
     });
     // Revoke all existing sessions after password change (world-class security default).
     await revokeUserSessions(user.id);
+
+    await logAudit({
+      action: 'user.password.updated',
+      entityType: 'USER',
+      entityId: user.id,
+      actorId: user.id,
+      details: { method: 'settings' },
+    });
 
     revalidatePath('/settings/security');
     return { success: true };

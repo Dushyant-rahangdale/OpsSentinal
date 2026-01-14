@@ -96,7 +96,8 @@ export default function ProfileForm({
       if (result.success) {
         toast.success('Avatar updated');
         setAvatarPreview(selectedAvatarUrl);
-        await update(); // Trigger session refresh
+        // Force session update by passing dummy data to verify trigger="update"
+        await update({ force: true });
         router.refresh();
       } else {
         toast.error(result.error || 'Failed to update avatar');
@@ -130,7 +131,8 @@ export default function ProfileForm({
 
         if (result.success) {
           toast.success('Profile photo updated');
-          await update(); // Trigger session refresh
+          // Force session update
+          await update({ force: true });
           router.refresh();
         } else {
           toast.error(result.error || 'Failed to upload photo');
@@ -158,7 +160,8 @@ export default function ProfileForm({
 
     if (result.success) {
       toast.success('Profile updated successfully');
-      await update(); // Trigger session refresh
+      // Force session update
+      await update({ force: true });
       router.refresh();
     } else {
       toast.error(result.error || 'Failed to update profile');
@@ -253,7 +256,8 @@ export default function ProfileForm({
                       toast.success('Profile photo removed');
                       // Set preview to gender-based default avatar
                       setAvatarPreview(getDefaultAvatar(currentGender, email || 'user'));
-                      await update(); // Trigger session refresh
+                      // Force session update
+                      await update({ force: true });
                       router.refresh();
                     } else {
                       toast.error(result.error || 'Failed to remove photo');

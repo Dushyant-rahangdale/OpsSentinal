@@ -3,7 +3,7 @@
 import { CSSProperties } from 'react';
 
 type SpinnerSize = 'sm' | 'md' | 'lg';
-type SpinnerVariant = 'default' | 'primary' | 'white';
+type SpinnerVariant = 'default' | 'primary' | 'white' | 'black';
 
 interface SpinnerProps {
   size?: SpinnerSize;
@@ -22,6 +22,7 @@ const colorMap: Record<SpinnerVariant, string> = {
   default: 'var(--text-muted)',
   primary: 'var(--primary-color)',
   white: '#ffffff',
+  black: '#000000',
 };
 
 /**
