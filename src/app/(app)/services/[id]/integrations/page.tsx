@@ -256,6 +256,22 @@ export default async function ServiceIntegrationsPage({
                                   <CopyButton text={webhookUrl} />
                                 </div>
                               </div>
+                              {integration.signatureSecret && (
+                                <div>
+                                  <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <Key className="h-3 w-3" /> Signature Secret
+                                  </div>
+                                  <div className="bg-white border rounded px-2 py-1.5 font-mono text-xs flex items-center justify-between gap-2 shadow-sm">
+                                    <span className="truncate max-w-[200px] blur-[2px] hover:blur-none transition-all duration-300">
+                                      {integration.signatureSecret}
+                                    </span>
+                                    <CopyButton text={integration.signatureSecret} />
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 mt-1">
+                                    Use this secret in the external service to sign requests.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
