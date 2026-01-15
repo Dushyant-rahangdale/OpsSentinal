@@ -190,6 +190,7 @@ export default async function Dashboard({
       },
       orderBy: { name: 'asc' },
     }),
+    // Fail-safe wrapper for SLA metrics
     calculateSLAMetrics({
       serviceId: service,
       assigneeId: assigneeFilter,
@@ -201,7 +202,34 @@ export default async function Dashboard({
       includeIncidents: true,
       includeActiveIncidents: true,
       incidentLimit: 5,
+    }).catch(err => {
+      console.error('Failed to load SLA metrics:', err);
+      // Return safe default object matching return type
+      return {
+        totalIncidents: 0,
+        openCount: 0,
+        acknowledgedCount: 0,
+        resolvedCount: 0,
+        criticalCount: 0,
+        highUrgencyCount: 0,
+        mediumUrgencyCount: 0,
+        lowUrgencyCount: 0,
+        mttr: 0,
+        mttd: 0, // Mean Time to Detect/Ack
+        ackCompliance: 100,
+        resolveCompliance: 100,
+        statusMix: [],
+        currentShifts: [],
+        unassignedActive: 0,
+        assigneeLoad: [],
+        serviceMetrics: [],
+        activeIncidentSummaries: [],
+        heatmapData: [],
+        isClipped: false,
+        retentionDays: 30,
+      };
     }),
+    // Fail-safe wrapper for Widget Data
     user
       ? getWidgetData(user.id, 'user', {
           serviceId: service,
@@ -211,6 +239,9 @@ export default async function Dashboard({
           startDate: metricsStartDate,
           endDate: metricsEndDate,
           includeAllTime: range === 'all',
+        }).catch(err => {
+          console.error('Failed to load widget data:', err);
+          return null;
         })
       : Promise.resolve(null),
   ]);

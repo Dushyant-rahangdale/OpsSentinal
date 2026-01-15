@@ -340,12 +340,18 @@ export default async function middleware(req: NextRequest) {
 
   // Check authentication status
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const isAuthenticated = !!token;
+  // Check if token exists AND is valid (not revoked/errored)
+  const isAuthenticated = !!token && !token.error && !!token.sub;
 
   // Handle authenticated users trying to access public auth pages
   if (isAuthenticated) {
     // Redirect authenticated users away from auth-related pages
     if (pathname === '/login' || pathname.startsWith('/login')) {
+      // Allow access if explicitly handling a session error (prevents redirect loop)
+      if (req.nextUrl.searchParams.get('error') === 'SessionExpired') {
+        return response;
+      }
+
       // Redirect authenticated users away from login page
       const callbackUrl = req.nextUrl.searchParams.get('callbackUrl');
       const redirectUrl =

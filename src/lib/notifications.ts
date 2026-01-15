@@ -1,3 +1,4 @@
+import { Incident, Service } from '@prisma/client';
 import prisma from './prisma';
 import { sendIncidentEmail } from './email';
 
@@ -15,7 +16,7 @@ export async function sendNotification(
   userId: string,
   channel: NotificationChannel,
   message: string,
-  incident?: any // eslint-disable-line @typescript-eslint/no-explicit-any
+  incident?: Incident & { service?: Service | null }
 ) {
   // Create notification record
   const notification = await prisma.notification.create({
@@ -93,8 +94,8 @@ export async function sendNotification(
                 include: { service: true },
               });
 
-        if (!incidentForWebhook) {
-          result = { success: false, error: 'Incident not found' };
+        if (!incidentForWebhook || !incidentForWebhook.service) {
+          result = { success: false, error: 'Incident or Service not found' };
           break;
         }
 

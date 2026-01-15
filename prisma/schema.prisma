@@ -243,6 +243,8 @@ model Service {
   webhookIntegrations WebhookIntegration[]
   slackIntegration    SlackIntegration?    @relation("ServiceSlackIntegration", fields: [slackIntegrationId], references: [id], onDelete: Cascade)
 
+  @@index([teamId])
+  @@index([escalationPolicyId])
 }
 
 // Enhanced Escalation Policy
@@ -283,6 +285,11 @@ model EscalationRule {
   targetUser     User?           @relation(fields: [targetUserId], references: [id])
   targetTeam     Team?           @relation(fields: [targetTeamId], references: [id])
   targetSchedule OnCallSchedule? @relation(fields: [targetScheduleId], references: [id])
+
+  @@index([policyId])
+  @@index([targetUserId])
+  @@index([targetTeamId])
+  @@index([targetScheduleId])
 }
 
 model Integration {

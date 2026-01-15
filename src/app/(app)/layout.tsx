@@ -45,7 +45,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (userCount === 0) {
       redirect('/setup');
     }
-    redirect('/login');
+    // Force re-login with error flag to bypass middleware redirect loop
+    redirect('/login?error=SessionExpired');
   }
 
   // Verify user still exists in database (handle DB resets)
@@ -89,7 +90,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
     // Rare condition: User deleted or DB reset but others exist
     // Force signout to clear stale session
-    redirect('/api/auth/signout?callbackUrl=/login');
+    redirect('/api/auth/signout?callbackUrl=/login?error=SessionExpired');
   }
 
   // Fetch latest user data from database to ensure name is always current
@@ -104,7 +105,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const canCreate = userRole === 'ADMIN' || userRole === 'RESPONDER';
 
   const { calculateSLAMetrics } = await import('@/lib/sla-server');
-  const slaMetrics = await calculateSLAMetrics();
+  // Fail-safe wrapper for global SLA metrics
+  const slaMetrics = await calculateSLAMetrics().catch(err => {
+    logger.error('[App Layout] Failed to load SLA metrics', { component: 'layout', error: err });
+    return {
+      totalIncidents: 0,
+      openCount: 0,
+      acknowledgedCount: 0,
+      resolvedCount: 0,
+      criticalCount: 0,
+      highUrgencyCount: 0,
+      mediumUrgencyCount: 0,
+      lowUrgencyCount: 0,
+      mttr: 0,
+      mttd: 0,
+      ackCompliance: 100,
+      resolveCompliance: 100,
+      statusMix: [],
+      currentShifts: [],
+      unassignedActive: 0,
+      assigneeLoad: [],
+      serviceMetrics: [],
+      activeIncidentSummaries: [],
+      heatmapData: [],
+      isClipped: false,
+      retentionDays: 30,
+    };
+  });
   const criticalOpenCount = slaMetrics.criticalCount;
   const mediumOpenCount = slaMetrics.mediumUrgencyCount;
   const lowOpenCount = slaMetrics.lowUrgencyCount;
