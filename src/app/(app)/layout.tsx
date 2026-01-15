@@ -34,6 +34,12 @@ export const revalidate = 30;
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(await getAuthOptions());
   if (!session?.user?.email) {
+    logger.warn('[App Layout] No session or email found', {
+      component: 'layout',
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      email: session?.user?.email,
+    });
     let userCount = 0;
     try {
       userCount = await prisma.user.count();
@@ -47,6 +53,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
     // Force re-login with error flag to bypass middleware redirect loop
     redirect('/login?error=SessionExpired');
+  } else {
+    logger.info('[App Layout] Session valid', { email: session.user.email });
   }
 
   // Verify user still exists in database (handle DB resets)

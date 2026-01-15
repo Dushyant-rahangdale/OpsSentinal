@@ -117,6 +117,7 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
         name: 'Test User',
         email: 'test@example.com',
         role: 'ADMIN',
+        tokenVersion: 0,
       });
     });
 

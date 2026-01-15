@@ -53,6 +53,7 @@ export default async function LoginPage({
       : null;
 
   // Server-side check: If user is already authenticated, redirect them away
+  const awaitedSearchParams = await searchParams;
   if (session) {
     if (session?.user?.email) {
       try {
@@ -72,16 +73,18 @@ export default async function LoginPage({
         }
       }
     }
-    const awaitedSearchParams = await searchParams;
     const callbackUrl =
       typeof awaitedSearchParams?.callbackUrl === 'string' ? awaitedSearchParams.callbackUrl : '/';
-    // Only redirect to callbackUrl if it's a valid internal path
-    const redirectUrl =
-      callbackUrl.startsWith('/') && !callbackUrl.startsWith('/login') ? callbackUrl : '/'; // Default to dashboard
+    // Only redirect to callbackUrl if it's a valid internal path (not login or signout)
+    const isValidCallback =
+      callbackUrl.startsWith('/') &&
+      !callbackUrl.startsWith('/login') &&
+      !callbackUrl.includes('/signout') &&
+      !callbackUrl.includes('/auth/signout');
+    const redirectUrl = isValidCallback ? callbackUrl : '/'; // Default to dashboard
     redirect(redirectUrl);
   }
 
-  const awaitedSearchParams = await searchParams;
   const callbackUrl =
     typeof awaitedSearchParams?.callbackUrl === 'string' ? awaitedSearchParams.callbackUrl : '/';
   const errorCode =

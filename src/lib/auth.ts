@@ -229,6 +229,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               name: user.name,
               email: user.email,
               role: user.role,
+              tokenVersion: user.tokenVersion,
             };
           },
         }),
