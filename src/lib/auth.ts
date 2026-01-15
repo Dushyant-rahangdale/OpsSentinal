@@ -240,6 +240,16 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       },
       callbacks: {
         async jwt({ token, user, account, trigger, session }) {
+          // Debug: Log incoming token state
+          logger.debug('[Auth] JWT callback started', {
+            component: 'auth:jwt',
+            hasSub: !!token.sub,
+            hasUser: !!user,
+            hasAccount: !!account,
+            trigger: trigger || 'none',
+            provider: account?.provider,
+          });
+
           // Initial sign in
           if (user && account) {
             // ... (keep existing initial sign-in logic)
