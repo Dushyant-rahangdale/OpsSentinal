@@ -138,7 +138,11 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : '0.0.0.0';
             const userAgent = (req?.headers?.['user-agent'] as string) || 'Unknown';
 
-            console.log('[Auth-Debug] Authorize started', { email, ip });
+            logger.warn('[Auth-Debug] Authorize started', {
+              component: 'auth:credentials',
+              email,
+              ip,
+            });
 
             // Server-side email validation
             if (!email || !isValidEmail(email)) {
@@ -161,7 +165,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 'ACCOUNT_LOCKED',
                 attemptCheck.lockoutDurationMs || undefined
               );
-              console.warn('[Auth] Login blocked - account locked', {
+              logger.warn('[Auth] Login blocked - account locked', {
+                component: 'auth:credentials',
                 email,
                 ip,
                 lockedUntil: attemptCheck.lockedUntil?.toISOString(),
@@ -173,7 +178,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             if (!user || !user.passwordHash) {
               recordFailedAttempt(email, ip);
               await logLoginFailed(email, ip, userAgent, 'USER_NOT_FOUND');
-              console.log('[Auth-Debug] User not found or no password hash', { email });
+              logger.warn('[Auth-Debug] User not found or no password hash', {
+                component: 'auth:credentials',
+                email,
+              });
               return null;
             }
 
@@ -195,13 +203,17 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               );
 
               if (result.locked) {
-                console.warn('[Auth] Account locked after failed attempts', {
+                logger.warn('[Auth] Account locked after failed attempts', {
+                  component: 'auth:credentials',
                   email,
                   attemptCount: result.attemptCount,
                   lockoutDurationMs: result.lockoutDurationMs,
                 });
               }
-              console.log('[Auth-Debug] Invalid Password', { email });
+              logger.warn('[Auth-Debug] Invalid Password', {
+                component: 'auth:credentials',
+                email,
+              });
               return null;
             }
 
@@ -226,7 +238,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               });
             }
 
-            console.log('[Auth-Debug] Authorize Success', {
+            logger.warn('[Auth-Debug] Authorize Success', {
+              component: 'auth:credentials',
               id: user.id,
               tokenVersion: user.tokenVersion,
             });
@@ -248,7 +261,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       callbacks: {
         async jwt({ token, user, account, trigger, session }) {
           // Debug: Log incoming token state
-          console.log('[Auth-Debug] JWT callback started', {
+          logger.warn('[Auth-Debug] JWT callback started', {
+            component: 'auth:jwt',
             hasSub: !!token.sub,
             sub: token.sub,
             trigger: trigger || 'none',
@@ -256,7 +270,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
 
           // Initial sign in
           if (user && account) {
-            console.log('[Auth-Debug] Initial Sign In', {
+            logger.warn('[Auth-Debug] Initial Sign In', {
+              component: 'auth:jwt',
               userId: user.id,
               provider: account.provider,
             });
@@ -298,7 +313,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   });
                 }
               } catch (error) {
-                logger.error('[Auth] JWT callback - DB lookup failed', { error });
+                logger.error('[Auth] JWT callback - DB lookup failed', {
+                  component: 'auth:jwt',
+                  error,
+                });
               }
             } else {
               // For Credentials, 'user' comes from authorize() and is already the DB user object
@@ -314,7 +332,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           // and `token.role` is set correctly.
           // This block handles the initial population of the token from the `user` object.
           else if (user) {
-            console.log('[Auth-Debug] Initial Sign In (Fallback)', { userId: (user as any).id });
+            logger.warn('[Auth-Debug] Initial Sign In (Fallback)', {
+              component: 'auth:jwt',
+              userId: (user as any).id,
+            });
             token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
             token.sub = (user as any).id ?? token.sub; // eslint-disable-line @typescript-eslint/no-explicit-any
             token.name = (user as any).name; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -358,7 +379,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 if (dbUser) {
                   const dbTokenVersion =
                     typeof dbUser.tokenVersion === 'number' ? dbUser.tokenVersion : 0;
-                  console.log('[Auth-Debug] User Check', {
+                  logger.warn('[Auth-Debug] User Check', {
+                    component: 'auth:jwt',
                     dbId: token.sub,
                     dbVer: dbTokenVersion,
                     tokenVer: currentTokenVersion,
@@ -373,7 +395,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                     typeof currentTokenVersion === 'number' &&
                     dbTokenVersion !== currentTokenVersion
                   ) {
-                    console.log('[Auth-Debug] REVOKING SESSION: Version Mismatch', {
+                    logger.warn('[Auth-Debug] REVOKING SESSION: Version Mismatch', {
+                      component: 'auth:jwt',
                       db: dbTokenVersion,
                       token: currentTokenVersion,
                     });
@@ -387,7 +410,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   token.gender = dbUser.gender;
                   (token as any).tokenVersion = dbTokenVersion; // eslint-disable-line @typescript-eslint/no-explicit-any
                 } else {
-                  console.log('[Auth-Debug] User NOT FOUND in DB', { id: token.sub });
+                  logger.warn('[Auth-Debug] User NOT FOUND in DB', {
+                    component: 'auth:jwt',
+                    id: token.sub,
+                  });
                 }
               } catch (error) {
                 console.error('[Auth-Debug] DB Fetch Error', error);
@@ -395,13 +421,14 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               (token as any).userFetchedAt = Date.now(); // eslint-disable-line @typescript-eslint/no-explicit-any
             }
           } else {
-            console.log('[Auth-Debug] No token.sub found!', token);
+            logger.warn('[Auth-Debug] No token.sub found!', { component: 'auth:jwt', token });
           }
 
           return token;
         },
         async session({ session, token }) {
-          console.log('[Auth-Debug] Session callback', {
+          logger.warn('[Auth-Debug] Session callback', {
+            component: 'auth:session',
             hasToken: !!token,
             sub: token?.sub,
             error: (token as any)?.error,
@@ -410,7 +437,9 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           if ((token as any)?.error || !token.sub) {
             // Force unauthenticated session shape.
             (session as any).user = undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
-            console.log('[Auth-Debug] Session CLEARED due to error/missing sub');
+            logger.warn('[Auth-Debug] Session CLEARED due to error/missing sub', {
+              component: 'auth:session',
+            });
             return session;
           }
 

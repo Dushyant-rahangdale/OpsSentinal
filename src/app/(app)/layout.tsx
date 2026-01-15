@@ -34,7 +34,8 @@ export const revalidate = 30;
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(await getAuthOptions());
 
-  console.log('[App Layout Debug] Session State:', {
+  logger.warn('[App Layout Debug] Session State:', {
+    component: 'layout',
     hasSession: !!session,
     hasUser: !!session?.user,
     email: session?.user?.email,
