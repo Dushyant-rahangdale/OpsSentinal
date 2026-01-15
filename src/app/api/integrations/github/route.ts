@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { processEvent } from '@/lib/events';
 import { transformGitHubToEvent, GitHubEvent } from '@/lib/integrations/github';
-import { isIntegrationAuthorized } from '@/lib/integrations/auth';
+
 import { verifyGitHubSignature } from '@/lib/integrations/signature-verification';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
@@ -50,10 +50,6 @@ export async function POST(req: NextRequest) {
         return jsonError('Integration is disabled', 403);
       }
 
-      if (!isIntegrationAuthorized(req, integration.key)) {
-        return jsonError('Unauthorized', 401);
-      }
-
       // Verify GitHub signature if secret is configured
       if (VERIFY_SIGNATURES && integration.signatureSecret) {
         const signature = req.headers.get('x-hub-signature-256');
@@ -98,7 +94,6 @@ export async function POST(req: NextRequest) {
 
       return jsonOk({ status: 'success', result }, 202);
     } catch (error: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       logger.error('api.integration.github_error', {
         error: error instanceof Error ? error.message : String(error),
       });

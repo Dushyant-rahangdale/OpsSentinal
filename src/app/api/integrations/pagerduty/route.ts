@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { processEvent } from '@/lib/events';
 import { transformPagerDutyToEvent, PagerDutyEvent } from '@/lib/integrations/pagerduty';
-import { isIntegrationAuthorized } from '@/lib/integrations/auth';
+
 import { verifyPagerDutySignature } from '@/lib/integrations/signature-verification';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
@@ -42,10 +42,6 @@ export async function POST(req: NextRequest) {
         return jsonError('Integration is disabled', 403);
       }
 
-      if (!isIntegrationAuthorized(req, integration.key)) {
-        return jsonError('Unauthorized', 401);
-      }
-
       if (VERIFY_SIGNATURES && integration.signatureSecret) {
         const signature = req.headers.get('x-pagerduty-signature');
         if (
@@ -81,7 +77,6 @@ export async function POST(req: NextRequest) {
       });
       return jsonOk({ status: 'success', result }, 202);
     } catch (error: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       logger.error('api.integration.pagerduty_error', {
         error: error instanceof Error ? error.message : String(error),
       });

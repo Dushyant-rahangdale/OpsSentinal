@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { processEvent } from '@/lib/events';
 import { transformAzureToEvent, AzureAlertData } from '@/lib/integrations/azure';
-import { isIntegrationAuthorized } from '@/lib/integrations/auth';
+
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { withIntegrationMiddleware } from '@/lib/integrations/handler';
@@ -43,10 +43,6 @@ export async function POST(req: NextRequest) {
         return jsonError('Integration is disabled', 403);
       }
 
-      if (!isIntegrationAuthorized(req, integration.key)) {
-        return jsonError('Unauthorized', 401);
-      }
-
       let body: any; // eslint-disable-line @typescript-eslint/no-explicit-any
       try {
         body = await req.json();
@@ -78,7 +74,6 @@ export async function POST(req: NextRequest) {
 
       return jsonOk({ status: 'success', result }, 202);
     } catch (error: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       logger.error('api.integration.azure_error', {
         error: error instanceof Error ? error.message : String(error),
       });
