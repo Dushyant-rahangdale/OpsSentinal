@@ -177,7 +177,7 @@ export function resetRateLimit(integrationId: string): void {
 /**
  * Reset all rate limits (for testing)
  */
-export function resetAllMetrics(): void {
+export function resetAllLimits(): void {
   rateLimitStore.clear();
 }
 

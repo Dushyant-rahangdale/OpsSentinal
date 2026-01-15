@@ -3,7 +3,7 @@ import {
   checkRateLimit,
   getRateLimitStatus,
   resetRateLimit,
-  resetAllMetrics as resetAllLimits,
+  resetAllLimits,
   createRateLimitHeaders,
 } from '@/lib/integrations/rate-limiter';
 
