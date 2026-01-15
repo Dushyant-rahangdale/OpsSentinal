@@ -153,6 +153,54 @@ export async function updateService(serviceId: string, formData: FormData) {
   }
 }
 
+export async function rotateIntegrationSecret(integrationId: string, serviceId: string) {
+  try {
+    await assertAdminOrResponder();
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unauthorized');
+  }
+
+  const signatureSecret = randomBytes(32).toString('hex');
+
+  await prisma.integration.update({
+    where: { id: integrationId },
+    data: { signatureSecret },
+  });
+
+  await logAudit({
+    action: 'integration.secret_rotated',
+    entityType: 'SERVICE',
+    entityId: serviceId,
+    actorId: await getDefaultActorId(),
+    details: { integrationId },
+  });
+
+  revalidatePath(`/services/${serviceId}/integrations`);
+}
+
+export async function clearIntegrationSecret(integrationId: string, serviceId: string) {
+  try {
+    await assertAdminOrResponder();
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Unauthorized');
+  }
+
+  await prisma.integration.update({
+    where: { id: integrationId },
+    data: { signatureSecret: null },
+  });
+
+  await logAudit({
+    action: 'integration.secret_cleared',
+    entityType: 'SERVICE',
+    entityId: serviceId,
+    actorId: await getDefaultActorId(),
+    details: { integrationId },
+  });
+
+  revalidatePath(`/services/${serviceId}/integrations`);
+}
+
 export async function deleteService(serviceId: string) {
   try {
     await assertAdmin();
