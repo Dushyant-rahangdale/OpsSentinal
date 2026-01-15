@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 import { getNextAuthSecretSync } from '@/lib/secret-manager';
 
 function getDefaultSecret(): string {
@@ -11,12 +11,28 @@ export function generateApiKey() {
   return {
     token,
     prefix: token.slice(0, 8),
-    tokenHash: hashToken(token),
+    tokenHash: hashTokenV2(token),
   };
 }
 
-export function hashToken(token: string) {
+/**
+ * Legacy hash function (SHA256 concatenation)
+ * Vulnerable to length extension attacks and marked as weak by CodeQL
+ */
+export function hashTokenV1(token: string) {
   const hash = createHash('sha256');
   hash.update(`${getDefaultSecret()}:${token}`);
   return hash.digest('hex');
 }
+
+/**
+ * Secure hash function (HMAC-SHA256)
+ * Recommended for authentication tokens
+ */
+export function hashTokenV2(token: string) {
+  const hmac = createHmac('sha256', getDefaultSecret());
+  hmac.update(token);
+  return hmac.digest('hex');
+}
+
+export const hashToken = hashTokenV2;

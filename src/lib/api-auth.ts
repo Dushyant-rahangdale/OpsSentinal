@@ -1,39 +1,59 @@
 import type { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
-import { hashToken } from '@/lib/api-keys';
+import { hashTokenV1, hashTokenV2 } from '@/lib/api-keys';
 
 function extractApiKey(req: NextRequest) {
-    const header = req.headers.get('authorization') || '';
-    if (header.toLowerCase().startsWith('bearer ')) {
-        return header.slice(7).trim();
-    }
-    if (header.toLowerCase().startsWith('api-key ')) {
-        return header.slice(8).trim();
-    }
-    const direct = req.headers.get('x-api-key');
-    return direct?.trim() || null;
+  const header = req.headers.get('authorization') || '';
+  if (header.toLowerCase().startsWith('bearer ')) {
+    return header.slice(7).trim();
+  }
+  if (header.toLowerCase().startsWith('api-key ')) {
+    return header.slice(8).trim();
+  }
+  const direct = req.headers.get('x-api-key');
+  return direct?.trim() || null;
 }
 
 export async function authenticateApiKey(req: NextRequest) {
-    const token = extractApiKey(req);
-    if (!token) return null;
+  const token = extractApiKey(req);
+  if (!token) return null;
 
-    const tokenHash = hashToken(token);
-    const apiKey = await prisma.apiKey.findFirst({
-        where: { tokenHash, revokedAt: null }
+  const v2Hash = hashTokenV2(token);
+  let apiKey = await prisma.apiKey.findFirst({
+    where: { tokenHash: v2Hash, revokedAt: null },
+  });
+
+  // Lazy migration: Check legacy hash if V2 not found
+  if (!apiKey) {
+    const v1Hash = hashTokenV1(token);
+    apiKey = await prisma.apiKey.findFirst({
+      where: { tokenHash: v1Hash, revokedAt: null },
     });
 
-    if (!apiKey) return null;
-
-    await prisma.apiKey.update({
+    if (apiKey) {
+      // Found with legacy hash - migrate to secure HMAC hash immediately
+      await prisma.apiKey.update({
         where: { id: apiKey.id },
-        data: { lastUsedAt: new Date() }
-    });
+        data: {
+          tokenHash: v2Hash,
+          lastUsedAt: new Date(),
+        },
+      });
+      return apiKey;
+    }
+  }
 
-    return apiKey;
+  if (!apiKey) return null;
+
+  await prisma.apiKey.update({
+    where: { id: apiKey.id },
+    data: { lastUsedAt: new Date() },
+  });
+
+  return apiKey;
 }
 
 export function hasApiScopes(scopes: string[] | null | undefined, required: string[]) {
-    if (!scopes || scopes.length === 0) return false;
-    return required.every((scope) => scopes.includes(scope));
+  if (!scopes || scopes.length === 0) return false;
+  return required.every(scope => scopes.includes(scope));
 }
