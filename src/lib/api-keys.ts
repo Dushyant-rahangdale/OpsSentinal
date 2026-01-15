@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, scryptSync } from 'crypto';
+import { randomBytes, scryptSync } from 'crypto';
 import { getNextAuthSecretSync } from '@/lib/secret-manager';
 
 function getDefaultSecret(): string {
@@ -16,14 +16,13 @@ export function generateApiKey() {
 }
 
 /**
- * Legacy hash function (SHA256 concatenation)
- * Used for old keys before migration.
- * Low computational effort (fast), hence replaced by V2 for new keys.
+ * Legacy hash function (upgraded to use scrypt for stronger, slower hashing)
+ * Kept only for backward-compatibility lookups and lazy migration.
  */
 export function hashTokenV1(token: string) {
-  const hash = createHash('sha256');
-  hash.update(`${getDefaultSecret()}:${token}`);
-  return hash.digest('hex');
+  const secret = getDefaultSecret();
+  const derivedKey = scryptSync(token, secret, 32);
+  return derivedKey.toString('hex');
 }
 
 /**
