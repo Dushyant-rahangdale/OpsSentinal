@@ -75,6 +75,11 @@ export async function assertNotSelf(currentUserId: string, targetUserId: string,
 export async function getUserPermissions() {
   try {
     const user = await getCurrentUser();
+    const { logger } = await import('@/lib/logger');
+    logger.warn('[RBAC] Resolved user permissions', {
+      id: user.id,
+      role: user.role,
+    });
     return {
       id: user.id,
       role: user.role as Role,
