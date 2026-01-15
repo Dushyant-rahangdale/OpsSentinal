@@ -47,12 +47,85 @@ export async function POST(req: NextRequest) {
         return jsonError('Integration is disabled', 403);
       }
 
+      interface SNSMessage {
+        Type?: string;
+        SubscribeURL?: string;
+        TopicArn?: string;
+        Message?: string;
+        AlarmName?: string;
+      }
+
       // Parse request body
-      let body: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      let body: SNSMessage;
       try {
-        body = await req.json();
+        body = (await req.json()) as SNSMessage;
       } catch (_error) {
         return jsonError('Invalid JSON in request body.', 400);
+      }
+
+      // Handle SNS SubscriptionConfirmation (auto-confirm)
+      if (body.Type === 'SubscriptionConfirmation' && body.SubscribeURL) {
+        logger.info('api.integration.cloudwatch_subscription_confirmation', {
+          integrationId,
+          topicArn: body.TopicArn,
+        });
+
+        // Automatically confirm the subscription by visiting the SubscribeURL
+        // Automatically confirm the subscription by visiting the SubscribeURL
+        try {
+          // Strict SSRF protection: only allow well-formed AWS SNS HTTPS endpoints
+          const validateSnsUrl = (urlString: string): string => {
+            let url: URL;
+            try {
+              url = new URL(urlString);
+            } catch {
+              throw new Error('Invalid URL format');
+            }
+
+            if (url.protocol !== 'https:') {
+              throw new Error('Protocol must be https');
+            }
+
+            const hostname = url.hostname.toLowerCase();
+            // Match sns.<region>.amazonaws.com and sns.<region>.amazonaws.com.cn
+            const snsHostPattern = /^sns\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$/;
+            if (!snsHostPattern.test(hostname)) {
+              throw new Error('Invalid SNS host');
+            }
+
+            // Return reconstructed string to break taint chain
+            return `https://${hostname}${url.pathname}${url.search}`;
+          };
+
+          const safeUrlString = validateSnsUrl(body.SubscribeURL);
+
+          // Log safety check pass
+          logger.info('api.integration.cloudwatch_subscription_url_validated', {
+            integrationId,
+            host: new URL(safeUrlString).hostname,
+          });
+
+          const confirmResponse = await fetch(safeUrlString);
+          if (confirmResponse.ok) {
+            logger.info('api.integration.cloudwatch_subscription_confirmed', {
+              integrationId,
+              topicArn: body.TopicArn,
+            });
+            return jsonOk({ status: 'subscription_confirmed' }, 200);
+          } else {
+            logger.error('api.integration.cloudwatch_subscription_failed', {
+              integrationId,
+              status: confirmResponse.status,
+            });
+            return jsonError('Failed to confirm subscription', 500);
+          }
+        } catch (error) {
+          logger.error('api.integration.cloudwatch_subscription_error', {
+            integrationId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return jsonError('Failed to confirm subscription', 500);
+        }
       }
 
       // Handle SNS format vs direct CloudWatch format
@@ -102,7 +175,7 @@ export async function POST(req: NextRequest) {
       });
 
       return jsonOk({ status: 'success', result }, 202);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('api.integration.cloudwatch_error', {
         error: error instanceof Error ? error.message : String(error),
       });

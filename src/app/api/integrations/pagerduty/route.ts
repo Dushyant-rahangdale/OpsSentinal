@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         latencyMs: Date.now() - startTime,
       });
       return jsonOk({ status: 'success', result }, 202);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('api.integration.pagerduty_error', {
         error: error instanceof Error ? error.message : String(error),
       });

@@ -162,7 +162,10 @@ describe('Signature Verification', () => {
     const headers: Record<string, string | null> = {};
 
     beforeEach(() => {
-      Object.keys(headers).forEach(key => delete headers[key]);
+      Object.keys(headers).forEach(key => {
+        // eslint-disable-next-line security/detect-object-injection
+        delete headers[key];
+      });
     });
 
     it('should verify GitHub provider', () => {
