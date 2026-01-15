@@ -1,4 +1,4 @@
-import type { NextAuthOptions } from 'next-auth';
+import type { NextAuthOptions, User } from 'next-auth';
 import OIDCProvider from '@/lib/oidc';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
@@ -12,6 +12,23 @@ function getJwtUserRefreshTtlMs() {
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 60000;
 }
+
+import type { JWT } from 'next-auth/jwt';
+
+// Augmented types to avoid 'any' usage
+type AugmentedJWT = JWT & {
+  tokenVersion?: number;
+  userFetchedAt?: number;
+  error?: string;
+  avatarUrl?: string | null;
+  gender?: string | null;
+  role?: string;
+};
+
+type AugmentedUser = User & {
+  tokenVersion?: number;
+  role?: string;
+};
 
 function isOidcEmailVerifiedStrict() {
   return (process.env.OIDC_REQUIRE_EMAIL_VERIFIED_STRICT ?? 'false').toLowerCase() === 'true';
@@ -48,7 +65,7 @@ function coerceBooleanClaim(value: unknown): boolean | undefined {
   return undefined;
 }
 
-function clearSessionToken(token: any, reason: string) {
+function clearSessionToken(token: AugmentedJWT, reason: string) {
   token.error = reason;
   delete token.sub;
   delete token.role;
@@ -257,7 +274,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
         signOut: '/auth/signout',
       },
       callbacks: {
-        async jwt({ token, user, account, trigger, session }) {
+        async jwt({ token, user, account, trigger, session: _session }) {
           // Debug: Log incoming token state
           logger.warn('[Auth-Debug] JWT callback started', {
             component: 'auth:jwt',
@@ -280,7 +297,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               try {
                 const activeConfig = await getOidcConfig();
                 const issuer = activeConfig?.issuer ? normalizeIssuer(activeConfig.issuer) : null;
-                const subject = account.providerAccountId || (user as any).id || null; // eslint-disable-line @typescript-eslint/no-explicit-any
+                const subject = account.providerAccountId || user.id || null;
 
                 // Prefer stable identity link (issuer + subject) over email-only lookup.
                 const identity =
@@ -302,7 +319,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   token.name = dbUser.name;
                   token.email = dbUser.email;
                   // Include tokenVersion so we can revoke sessions later
-                  (token as any).tokenVersion = (dbUser as any).tokenVersion ?? 0; // eslint-disable-line @typescript-eslint/no-explicit-any
+                  (token as AugmentedJWT).tokenVersion = dbUser.tokenVersion ?? 0;
                 } else {
                   // This should technically not happen if signIn passed, but just in case
                   logger.error('[Auth] JWT callback - OIDC user not found in DB', {
@@ -318,11 +335,11 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               }
             } else {
               // For Credentials, 'user' comes from authorize() and is already the DB user object
-              token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
+              token.role = (user as AugmentedUser).role;
               token.sub = user.id;
               token.name = user.name;
               token.email = user.email;
-              (token as any).tokenVersion = (user as any).tokenVersion ?? 0; // eslint-disable-line @typescript-eslint/no-explicit-any
+              (token as AugmentedJWT).tokenVersion = (user as AugmentedUser).tokenVersion ?? 0;
             }
           }
           // The user provided in the jwt callback is the one returned by the `authorize` function
@@ -332,12 +349,12 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           else if (user) {
             logger.warn('[Auth-Debug] Initial Sign In (Fallback)', {
               component: 'auth:jwt',
-              userId: (user as any).id,
+              userId: user.id || (user as AugmentedUser).id,
             });
-            token.role = (user as any).role; // eslint-disable-line @typescript-eslint/no-explicit-any
-            token.sub = (user as any).id ?? token.sub; // eslint-disable-line @typescript-eslint/no-explicit-any
-            token.name = (user as any).name; // eslint-disable-line @typescript-eslint/no-explicit-any
-            token.email = (user as any).email; // eslint-disable-line @typescript-eslint/no-explicit-any
+            token.role = (user as AugmentedUser).role;
+            token.sub = user.id ?? (user as AugmentedUser).id ?? token.sub;
+            token.name = user.name;
+            token.email = user.email;
           }
 
           // Handle client-side update() calls
@@ -352,8 +369,9 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           // This ensures name changes reflect immediately without requiring re-login
           if (token.sub && typeof token.sub === 'string') {
             // Session revocation: if the user increments tokenVersion, older JWTs are invalid.
-            const currentTokenVersion = (token as any).tokenVersion as number | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
-            const lastFetchedAt = (token as any).userFetchedAt as number | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+            // Session revocation: if the user increments tokenVersion, older JWTs are invalid.
+            const currentTokenVersion = (token as AugmentedJWT).tokenVersion;
+            const lastFetchedAt = (token as AugmentedJWT).userFetchedAt;
             const ttlMs = getJwtUserRefreshTtlMs();
 
             // Skip DB fetch if cached AND NOT forced by update trigger
@@ -386,7 +404,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
 
                   // If disabled, force logout.
                   if (dbUser.status === 'DISABLED') {
-                    return clearSessionToken(token as any, 'USER_DISABLED');
+                    return clearSessionToken(token as AugmentedJWT, 'USER_DISABLED');
                   }
 
                   if (
@@ -398,7 +416,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                       db: dbTokenVersion,
                       token: currentTokenVersion,
                     });
-                    return clearSessionToken(token as any, 'SESSION_REVOKED');
+                    return clearSessionToken(token as AugmentedJWT, 'SESSION_REVOKED');
                   }
 
                   token.name = dbUser.name;
@@ -406,7 +424,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   token.role = dbUser.role;
                   token.avatarUrl = dbUser.avatarUrl;
                   token.gender = dbUser.gender;
-                  (token as any).tokenVersion = dbTokenVersion; // eslint-disable-line @typescript-eslint/no-explicit-any
+                  (token as AugmentedJWT).tokenVersion = dbTokenVersion;
                 } else {
                   logger.warn('[Auth-Debug] User NOT FOUND in DB', {
                     component: 'auth:jwt',
@@ -416,7 +434,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               } catch (error) {
                 console.error('[Auth-Debug] DB Fetch Error', error);
               }
-              (token as any).userFetchedAt = Date.now(); // eslint-disable-line @typescript-eslint/no-explicit-any
+              (token as AugmentedJWT).userFetchedAt = Date.now();
             }
           } else {
             logger.warn('[Auth-Debug] No token.sub found!', { component: 'auth:jwt', token });
@@ -429,12 +447,12 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             component: 'auth:session',
             hasToken: !!token,
             sub: token?.sub,
-            error: (token as any)?.error,
+            error: (token as AugmentedJWT)?.error,
           });
 
-          if ((token as any)?.error || !token.sub) {
+          if ((token as AugmentedJWT)?.error || !token.sub) {
             // Force unauthenticated session shape.
-            (session as any).user = undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+            (session as unknown as { user: unknown }).user = undefined;
             logger.warn('[Auth-Debug] Session CLEARED due to error/missing sub', {
               component: 'auth:session',
             });
@@ -442,8 +460,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           }
 
           if (session.user) {
-            (session.user as any).role = token.role; // eslint-disable-line @typescript-eslint/no-explicit-any
-            (session.user as any).id = token.sub; // eslint-disable-line @typescript-eslint/no-explicit-any
+            (session.user as AugmentedUser).role = token.role;
+            (session.user as AugmentedUser).id = token.sub;
             // Always use the latest name from token (which is fetched from DB)
             session.user.name = (token.name as string) || session.user.name;
             session.user.email = (token.email as string) || session.user.email;

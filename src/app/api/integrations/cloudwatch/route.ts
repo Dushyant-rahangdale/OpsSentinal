@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
         SubscribeURL?: string;
         TopicArn?: string;
         Message?: string;
+        AlarmName?: string;
       }
 
       // Parse request body

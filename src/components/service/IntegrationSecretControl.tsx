@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/shadcn/button';
-import { Key, RefreshCw, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Key, RefreshCw, Trash2 } from 'lucide-react';
 import CopyButton from '@/components/service/CopyButton';
 import { rotateIntegrationSecret, clearIntegrationSecret } from '@/app/(app)/services/actions';
 import { useToast } from '@/components/ToastProvider';
@@ -37,7 +37,7 @@ export default function IntegrationSecretControl({
     try {
       await rotateIntegrationSecret(integrationId, serviceId);
       showToast('Secret rotated successfully', 'success');
-    } catch (error) {
+    } catch (_error) {
       showToast('Failed to rotate secret', 'error');
     } finally {
       setLoading(false);
@@ -49,7 +49,7 @@ export default function IntegrationSecretControl({
     try {
       await clearIntegrationSecret(integrationId, serviceId);
       showToast('Secret cleared successfully', 'success');
-    } catch (error) {
+    } catch (_error) {
       showToast('Failed to clear secret', 'error');
     } finally {
       setLoading(false);

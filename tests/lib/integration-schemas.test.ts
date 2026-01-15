@@ -1,16 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   validatePayload,
   CloudWatchAlarmSchema,
-  AzureAlertSchema,
-  DatadogEventSchema,
   GitHubEventSchema,
-  GrafanaAlertSchema,
   PrometheusAlertSchema,
-  NewRelicEventSchema,
   OpsgenieEventSchema,
-  PagerDutyEventSchema,
-  SentryEventSchema,
   GenericWebhookSchema,
   IntegrationSchemas,
 } from '@/lib/integrations/schemas';
@@ -174,7 +168,7 @@ describe('Integration Schemas', () => {
       const result = validatePayload(GenericWebhookSchema, payload);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect((result.data as any).custom_field).toBe('custom_value'); // eslint-disable-line @typescript-eslint/no-explicit-any
+        expect((result.data as Record<string, unknown>).custom_field).toBe('custom_value');
       }
     });
   });

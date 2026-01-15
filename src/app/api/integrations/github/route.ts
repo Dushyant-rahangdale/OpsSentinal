@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       });
 
       return jsonOk({ status: 'success', result }, 202);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('api.integration.github_error', {
         error: error instanceof Error ? error.message : String(error),
       });

@@ -58,6 +58,8 @@ export function validateProductionEnv(): void {
     },
   ];
 
+  // Safe because 'name' comes from the hardcoded 'required' array above
+  // eslint-disable-next-line security/detect-object-injection
   const missing = required.filter(({ name }) => !process.env[name]);
 
   if (missing.length > 0) {

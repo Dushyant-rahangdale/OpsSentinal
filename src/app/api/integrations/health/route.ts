@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
       ),
       errorRate: summary.errorRate,
     });
-  } catch (error) {
+  } catch (_error) {
     return jsonError('Internal Server Error', 500);
   }
 }
@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
     const { IntegrationSchemas, validatePayload } = await import('@/lib/integrations/schemas');
 
     const schemaKey = integration.type as keyof typeof IntegrationSchemas;
+    // eslint-disable-next-line security/detect-object-injection
     const schema = IntegrationSchemas[schemaKey];
 
     if (!schema) {
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
       },
       message: 'Payload validation successful',
     });
-  } catch (error) {
+  } catch (_error) {
     return jsonError('Internal Server Error', 500);
   }
 }
