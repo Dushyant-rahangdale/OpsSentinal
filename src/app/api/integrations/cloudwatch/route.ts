@@ -71,47 +71,40 @@ export async function POST(req: NextRequest) {
         });
 
         // Automatically confirm the subscription by visiting the SubscribeURL
+        // Automatically confirm the subscription by visiting the SubscribeURL
         try {
-          const subscribeUrl = new URL(body.SubscribeURL);
-
           // Strict SSRF protection: only allow well-formed AWS SNS HTTPS endpoints
-          const isValidSnsSubscribeUrl = (url: URL): boolean => {
+          const validateSnsUrl = (urlString: string): URL => {
+            let url: URL;
+            try {
+              url = new URL(urlString);
+            } catch {
+              throw new Error('Invalid URL format');
+            }
+
             if (url.protocol !== 'https:') {
-              return false;
+              throw new Error('Protocol must be https');
             }
 
             const hostname = url.hostname.toLowerCase();
             // Match sns.<region>.amazonaws.com and sns.<region>.amazonaws.com.cn
             const snsHostPattern = /^sns\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$/;
             if (!snsHostPattern.test(hostname)) {
-              return false;
+              throw new Error('Invalid SNS host');
             }
 
-            // Optional: require ConfirmSubscription action in query for extra assurance
-            try {
-              const params = new URLSearchParams(url.search);
-              const action = params.get('Action') || params.get('action');
-              if (action && action !== 'ConfirmSubscription') {
-                return false;
-              }
-            } catch {
-              // If parsing search params fails for some reason, be conservative
-              return false;
-            }
-
-            return true;
+            return url;
           };
 
-          if (!isValidSnsSubscribeUrl(subscribeUrl)) {
-            logger.error('api.integration.cloudwatch_subscription_invalid_subscribe_url', {
-              integrationId,
-              topicArn: body.TopicArn,
-              subscribeUrl: subscribeUrl.toString(),
-            });
-            return jsonError('Invalid subscription confirmation URL', 400);
-          }
+          const safeUrl = validateSnsUrl(body.SubscribeURL);
 
-          const confirmResponse = await fetch(subscribeUrl.toString());
+          // Log safety check pass
+          logger.info('api.integration.cloudwatch_subscription_url_validated', {
+            integrationId,
+            host: safeUrl.hostname,
+          });
+
+          const confirmResponse = await fetch(safeUrl.toString());
           if (confirmResponse.ok) {
             logger.info('api.integration.cloudwatch_subscription_confirmed', {
               integrationId,
