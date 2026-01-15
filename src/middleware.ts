@@ -2,6 +2,7 @@
 import { getToken } from 'next-auth/jwt';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
+import { getNextAuthSecret } from '@/lib/secret-manager';
 
 const PUBLIC_PATH_PREFIXES = [
   '/login',
@@ -339,7 +340,7 @@ export default async function middleware(req: NextRequest) {
   }
 
   // Check authentication status
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req, secret: await getNextAuthSecret() });
   // Check if token exists AND is valid (not revoked/errored)
   const isAuthenticated = !!token && !token.error && !!token.sub;
 
