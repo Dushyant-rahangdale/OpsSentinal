@@ -20,7 +20,8 @@ import { ChevronLeft, Key, Terminal, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
 
 function getWebhookUrl(integrationType: IntegrationType, integrationId: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
   switch (integrationType) {
     case 'CLOUDWATCH':
