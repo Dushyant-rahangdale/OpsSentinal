@@ -62,7 +62,8 @@ function generateLayerBlocks(layer: LayerInput, windowStart: Date, windowEnd: Da
 
   const blocks: OnCallBlock[] = [];
   let guard = 0;
-  const maxBlocks = 1500;
+  // Support up to 1 year of 1-hour rotations (~8760 blocks). 10000 is safe.
+  const maxBlocks = 10000;
   while (blockStart < windowEnd) {
     const rawEnd = new Date(blockStart.getTime() + rotationMs);
     const blockEnd = layerEnd && rawEnd > layerEnd ? layerEnd : rawEnd;

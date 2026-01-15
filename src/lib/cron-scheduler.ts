@@ -140,7 +140,7 @@ async function updateState(data: {
 async function getNextScheduledTime(): Promise<Date> {
   try {
     const prisma = (await import('./prisma')).default;
-    const [nextIncident, nextJob, nextSlaBreach] = await Promise.all([
+    const [nextIncident, nextJob, nextSlaBreach, nextSnooze] = await Promise.all([
       prisma.incident.findFirst({
         where: {
           escalationStatus: 'ESCALATING',
@@ -169,11 +169,20 @@ async function getNextScheduledTime(): Promise<Date> {
           },
         },
       }),
+      prisma.incident.findFirst({
+        where: {
+          status: 'SNOOZED',
+          snoozedUntil: { not: null },
+        },
+        orderBy: { snoozedUntil: 'asc' },
+        select: { snoozedUntil: true },
+      }),
     ]);
 
     const times: (number | null)[] = [
       nextIncident?.nextEscalationAt ? new Date(nextIncident.nextEscalationAt).getTime() : null,
       nextJob?.scheduledAt ? new Date(nextJob.scheduledAt).getTime() : null,
+      nextSnooze?.snoozedUntil ? new Date(nextSnooze.snoozedUntil).getTime() : null,
     ];
 
     // Add SLA breach check time (5 min before ack target)
@@ -290,12 +299,20 @@ async function runOnce() {
         yesterday.setDate(yesterday.getDate() - 1);
         yesterday.setUTCHours(0, 0, 0, 0);
 
-        const { generateAllDailyRollups } = await import('./metric-rollup');
+        const { generateAllDailyRollups, cleanupOldRollups } = await import('./metric-rollup');
+        const { cleanupOldData } = await import('./retention-policy');
+
         await generateAllDailyRollups(yesterday);
 
+        // Cleanup old data based on retention policy
+        const cleanupStats = await cleanupOldData();
+        const deletedRollups = await cleanupOldRollups();
+
         await updateState({ lastRollupDate: todayKey });
-        logger.info('[Cron] Daily metric rollups generated', {
+        logger.info('[Cron] Daily maintenance complete', {
           date: yesterday.toISOString().split('T')[0],
+          dataCleanup: cleanupStats,
+          rollupsDeleted: deletedRollups,
           nextRun: 'tomorrow at 1 AM UTC',
         });
       } catch (error) {

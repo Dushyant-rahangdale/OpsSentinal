@@ -6,11 +6,16 @@ export type NotificationChannel = 'EMAIL' | 'SMS' | 'PUSH' | 'SLACK' | 'WEBHOOK'
 /**
  * Send notifications to escalation policy targets for an incident.
  */
+/**
+ * Send notifications to escalation policy targets for an incident.
+ * @param incident - Optional pre-fetched incident object to avoid extra DB queries
+ */
 export async function sendNotification(
   incidentId: string,
   userId: string,
   channel: NotificationChannel,
-  message: string
+  message: string,
+  incident?: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ) {
   // Create notification record
   const notification = await prisma.notification.create({
@@ -31,11 +36,13 @@ export async function sendNotification(
     switch (channel) {
       case 'EMAIL':
         // Determine event type from message or incident status
-        const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
+        // Use passed incident if available, otherwise fetch
+        const incidentData =
+          incident || (await prisma.incident.findUnique({ where: { id: incidentId } }));
         const eventType =
-          incident?.status === 'RESOLVED'
+          incidentData?.status === 'RESOLVED'
             ? 'resolved'
-            : incident?.status === 'ACKNOWLEDGED'
+            : incidentData?.status === 'ACKNOWLEDGED'
               ? 'acknowledged'
               : 'triggered';
         result = await sendIncidentEmail(userId, incidentId, eventType);
@@ -43,7 +50,8 @@ export async function sendNotification(
 
       case 'SMS':
         const { sendIncidentSMS } = await import('./sms');
-        const incidentForSMS = await prisma.incident.findUnique({ where: { id: incidentId } });
+        const incidentForSMS =
+          incident || (await prisma.incident.findUnique({ where: { id: incidentId } }));
         const eventTypeSMS =
           incidentForSMS?.status === 'RESOLVED'
             ? 'resolved'
@@ -55,7 +63,8 @@ export async function sendNotification(
 
       case 'PUSH':
         const { sendIncidentPush } = await import('./push');
-        const incidentForPush = await prisma.incident.findUnique({ where: { id: incidentId } });
+        const incidentForPush =
+          incident || (await prisma.incident.findUnique({ where: { id: incidentId } }));
         const eventTypePush =
           incidentForPush?.status === 'RESOLVED'
             ? 'resolved'
@@ -75,10 +84,14 @@ export async function sendNotification(
         // For now, we'll need the webhook URL from the escalation policy or service
         // This is a placeholder - webhook URLs should be stored in escalation policy config
         const { sendIncidentWebhook } = await import('./webhooks');
-        const incidentForWebhook = await prisma.incident.findUnique({
-          where: { id: incidentId },
-          include: { service: true },
-        });
+        // Webhooks need service relation
+        const incidentForWebhook =
+          incident && incident.service
+            ? incident
+            : await prisma.incident.findUnique({
+                where: { id: incidentId },
+                include: { service: true },
+              });
 
         if (!incidentForWebhook) {
           result = { success: false, error: 'Incident not found' };
@@ -111,7 +124,8 @@ export async function sendNotification(
 
       case 'WHATSAPP':
         const { sendIncidentWhatsApp } = await import('./whatsapp');
-        const incidentForWhatsApp = await prisma.incident.findUnique({ where: { id: incidentId } });
+        const incidentForWhatsApp =
+          incident || (await prisma.incident.findUnique({ where: { id: incidentId } }));
         const eventTypeWhatsApp =
           incidentForWhatsApp?.status === 'RESOLVED'
             ? 'resolved'
@@ -147,7 +161,6 @@ export async function sendNotification(
       throw new Error(result.error || 'Notification delivery failed');
     }
   } catch (error: any) {
-     
     await prisma.notification.update({
       where: { id: notification.id },
       data: {

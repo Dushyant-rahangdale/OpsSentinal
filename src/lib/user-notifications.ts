@@ -161,30 +161,37 @@ export async function sendUserNotification(
 export async function sendIncidentNotifications(
   incidentId: string,
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
-  excludeUserIds: string[] = []
+  excludeUserIds: string[] = [],
+  incident?: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<{ success: boolean; errors?: string[] }> {
   try {
-    const incident = await prisma.incident.findUnique({
-      where: { id: incidentId },
-      include: {
-        service: {
-          include: {
-            team: {
-              include: {
-                members: {
-                  include: { user: true },
+    const incidentData =
+      incident ||
+      (await prisma.incident.findUnique({
+        where: { id: incidentId },
+        include: {
+          service: {
+            include: {
+              team: {
+                include: {
+                  members: {
+                    include: { user: true },
+                  },
                 },
               },
             },
           },
+          assignee: true,
         },
-        assignee: true,
-      },
-    });
+      }));
 
-    if (!incident || !incident.service) {
+    if (!incidentData || !incidentData.service) {
+      // Use incidentData instead of incident
       return { success: false, errors: ['Incident or service not found'] };
     }
+
+    // Use incidentData for the rest of the function
+    const incidentRecord = incidentData;
 
     const errors: string[] = [];
     const recipients: string[] = [];

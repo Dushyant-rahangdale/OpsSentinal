@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { NotificationChannel } from './notifications';
 import prisma from './prisma';
+import { runSerializableTransaction } from './db-utils';
 // import { sendNotification, NotificationChannel } from './notifications'; // Unused
 import { buildScheduleBlocks } from './oncall';
 import { logger } from './logger';
@@ -295,7 +296,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
 
     const isLastStep = currentStepIndex >= policySteps.length - 1;
 
-    await prisma.$transaction(async tx => {
+    await runSerializableTransaction(async tx => {
       await tx.incidentEvent.create({
         data: {
           incidentId,
@@ -342,7 +343,8 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
   );
 
   // Assign the incident immediately when the escalation step runs (before notifications)
-  await prisma.$transaction(async tx => {
+  // Assign the incident immediately when the escalation step runs (before notifications)
+  await runSerializableTransaction(async tx => {
     const currentIncident = await tx.incident.findUnique({
       where: { id: incidentId },
       select: { assigneeId: true, teamId: true },
@@ -386,7 +388,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
 
     const isLastStep = currentStepIndex >= policySteps.length - 1;
 
-    await prisma.$transaction(async tx => {
+    await runSerializableTransaction(async tx => {
       await tx.incidentEvent.create({
         data: {
           incidentId,
@@ -459,7 +461,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     nextStepMessage = `Next escalation step scheduled for [[scheduledAt=${nextEscalationAt.toISOString()}]] (${nextStep.delayMinutes} minute delay)`;
   }
 
-  await prisma.$transaction(async tx => {
+  await runSerializableTransaction(async tx => {
     // Check current assignee/team state from database to avoid race conditions
     const currentIncident = await tx.incident.findUnique({
       where: { id: incidentId },
@@ -601,6 +603,10 @@ export async function processPendingEscalations(
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
+      const isRetryable =
+        errorMessage.includes('Serialization') ||
+        errorMessage.includes('deadlock') ||
+        errorMessage.includes('Connection');
 
       logger.error('Error processing escalation', {
         incidentId: incident.id,
@@ -608,31 +614,47 @@ export async function processPendingEscalations(
         stack: errorStack,
         currentStep: incident.currentEscalationStep,
         escalationStatus: incident.escalationStatus,
+        isRetryable,
       });
       errors.push(`Incident ${incident.id}: ${errorMessage}`);
 
       // Update incident to prevent infinite retries on same error
       try {
-        await prisma.incident.update({
-          where: { id: incident.id },
-          data: {
-            escalationStatus: 'COMPLETED',
-            nextEscalationAt: null,
-            escalationProcessingAt: null,
-          },
-        });
-
-        // Log error event
-        await prisma.incidentEvent
-          .create({
+        if (!isRetryable) {
+          // Only stop escalation for non-retryable errors
+          await prisma.incident.update({
+            where: { id: incident.id },
             data: {
-              incidentId: incident.id,
-              message: `Escalation processing failed: ${errorMessage}`,
+              escalationStatus: 'COMPLETED',
+              nextEscalationAt: null,
+              escalationProcessingAt: null,
             },
-          })
-          .catch(() => {
-            // Ignore event creation errors
           });
+
+          // Log error event
+          await prisma.incidentEvent
+            .create({
+              data: {
+                incidentId: incident.id,
+                message: `Escalation processing failed (FATAL): ${errorMessage}`,
+              },
+            })
+            .catch(() => {
+              // Ignore event creation errors
+            });
+        } else {
+          // For retryable errors, just clear the processing lock so it picks up again
+          await prisma.incident.update({
+            where: { id: incident.id },
+            data: {
+              escalationProcessingAt: null, // Release lock
+              // We don't change nextEscalationAt, so it will be picked up immediately in next run
+            },
+          });
+          logger.warn('Escalation failed with retryable error, releasing lock', {
+            incidentId: incident.id,
+          });
+        }
       } catch (updateError) {
         logger.error('Failed to update incident after escalation error', {
           incidentId: incident.id,

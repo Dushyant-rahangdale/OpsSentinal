@@ -16,29 +16,15 @@ export type EventPayload = {
   };
 };
 
-function isRetryableTransactionError(error: unknown): boolean {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    return error.code === 'P2034' || error.code === 'P2002';
-  }
-  const message = error instanceof Error ? error.message : '';
-  return message.includes('Serialization') || message.includes('deadlock');
-}
+import { runSerializableTransaction } from './db-utils';
 
-async function runSerializableTransaction<T>(
-  operation: (tx: Prisma.TransactionClient) => Promise<T>
-): Promise<T> {
-  const maxAttempts = EVENT_TRANSACTION_MAX_ATTEMPTS;
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    try {
-      return (await prisma.$transaction(operation as any, { isolationLevel: 'Serializable' })) as T; // eslint-disable-line @typescript-eslint/no-explicit-any
-    } catch (error) {
-      if (attempt < maxAttempts - 1 && isRetryableTransactionError(error)) {
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw new Error('Transaction failed after retries.');
+const MAX_DEDUP_KEY_LENGTH = 512;
+
+function truncateDedupKey(key: string): string {
+  if (key.length <= MAX_DEDUP_KEY_LENGTH) return key;
+  // Keep start and end for readability/entropy
+  const half = Math.floor((MAX_DEDUP_KEY_LENGTH - 3) / 2);
+  return `${key.slice(0, half)}...${key.slice(-half)}`;
 }
 
 export async function processEvent(
@@ -46,7 +32,8 @@ export async function processEvent(
   serviceId: string,
   _integrationId: string
 ) {
-  const { event_action, dedup_key, payload: eventData } = payload;
+  const { event_action, dedup_key: rawDedupKey, payload: eventData } = payload;
+  const dedup_key = truncateDedupKey(rawDedupKey);
 
   const result = await runSerializableTransaction(async tx => {
     // 1. Log the raw alert
@@ -95,7 +82,12 @@ export async function processEvent(
             ? JSON.stringify(eventData.custom_details, null, 2)
             : null,
           status: 'OPEN',
-          urgency: eventData.severity === 'critical' ? 'HIGH' : 'LOW',
+          urgency:
+            eventData.severity === 'critical'
+              ? 'HIGH'
+              : eventData.severity === 'error'
+                ? 'MEDIUM'
+                : 'LOW',
           dedupKey: dedup_key,
           serviceId,
         },
@@ -187,6 +179,9 @@ export async function processEvent(
       });
 
       if (incidentWithService) {
+        // PERF: Fire-and-forget status webhooks to avoid blocking response
+        // Catch errors locally to prevent unhandled promise rejections
+        const webhookStart = performance.now();
         triggerWebhooksForService(result.incident.serviceId, 'incident.created', {
           id: incidentWithService.id,
           title: incidentWithService.title,
@@ -200,11 +195,19 @@ export async function processEvent(
           },
           assignee: incidentWithService.assignee,
           createdAt: incidentWithService.createdAt.toISOString(),
-        }).catch(err => {
-          logger.error('api.event.webhook_trigger_failed', {
-            error: err instanceof Error ? err.message : String(err),
+        })
+          .then(() => {
+            logger.info('api.event.webhook_trigger_success', {
+              latencyMs: performance.now() - webhookStart,
+              incidentId: result.incident.id,
+            });
+          })
+          .catch(err => {
+            logger.error('api.event.webhook_trigger_failed', {
+              error: err instanceof Error ? err.message : String(err),
+              latencyMs: performance.now() - webhookStart,
+            });
           });
-        });
       }
     } catch (e) {
       logger.error('api.event.webhook_trigger_error', {
@@ -214,25 +217,40 @@ export async function processEvent(
 
     // Send service-level notifications (to team members, assignee, etc.)
     // Uses user preferences for each recipient
-    try {
-      const { sendIncidentNotifications } = await import('./user-notifications');
-      await sendIncidentNotifications(result.incident.id, 'triggered');
-    } catch (error) {
-      logger.error('Service notification failed', {
-        incidentId: result.incident.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    // Send service-level notifications (to team members, assignee, etc.)
+    // Uses user preferences for each recipient
+    // Send service-level notifications (to team members, assignee, etc.)
+    // Uses user preferences for each recipient
+    // PERF: Async dispatch (no await) prevents blocking the webhook response
+    const notifyStart = performance.now();
+    import('./user-notifications')
+      .then(({ sendIncidentNotifications }) => {
+        sendIncidentNotifications(result.incident.id, 'triggered', [], result.incident)
+          .then(() => {
+            logger.info('api.event.notifications_sent', {
+              latencyMs: performance.now() - notifyStart,
+              incidentId: result.incident.id,
+            });
+          })
+          .catch(error => {
+            logger.error('Service notification failed', {
+              incidentId: result.incident.id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              latencyMs: performance.now() - notifyStart,
+            });
+          });
+      })
+      .catch(e => logger.error('Failed to load user-notifications', { error: e }));
 
     // Execute escalation policy - send notifications via policy steps
-    try {
-      await executeEscalation(result.incident.id);
-    } catch (error) {
+    // Execute escalation policy - send notifications via policy steps
+    // PERF: Async dispatch (no await)
+    executeEscalation(result.incident.id).catch(error => {
       logger.error('Escalation failed', {
         incidentId: result.incident.id,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-    }
+    });
   }
 
   if (result.action === 'resolved' && result.incident) {
