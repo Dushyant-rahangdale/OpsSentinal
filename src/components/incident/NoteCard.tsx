@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
+import { DirectUserAvatar } from '@/components/UserAvatar';
 import { getDefaultAvatar } from '@/lib/avatar';
 
 type NoteCardProps = {
@@ -58,20 +58,13 @@ function NoteCard({
   return (
     <div style={{ display: 'flex', gap: '1rem' }}>
       {/* Avatar */}
-      <Avatar
-        className={`h-9 w-9 shrink-0 ring-2 ${isResolution ? 'ring-orange-100 shadow-orange-100' : 'ring-slate-100 shadow-slate-100'} shadow-md transition-transform hover:scale-105`}
-      >
-        <AvatarImage
-          src={userAvatar || getDefaultAvatar(userGender, userName)}
-          alt={userName}
-          className="object-cover"
-        />
-        <AvatarFallback
-          className={`text-xs font-bold ${isResolution ? 'bg-orange-50 text-orange-700' : 'bg-slate-50 text-slate-700'}`}
-        >
-          {userName.charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+      <DirectUserAvatar
+        avatarUrl={userAvatar || getDefaultAvatar(userGender, userName)}
+        name={userName}
+        size="sm"
+        className={`ring-2 ${isResolution ? 'ring-orange-100 shadow-orange-100' : 'ring-slate-100 shadow-slate-100'} shadow-md transition-transform hover:scale-105`}
+        fallbackClassName={`text-xs font-bold ${isResolution ? 'bg-orange-50 text-orange-700' : 'bg-slate-50 text-slate-700'}`}
+      />
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>

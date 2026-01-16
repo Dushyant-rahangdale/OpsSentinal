@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Badge } from '@/components/ui/shadcn/badge';
+import UserAvatar from '@/components/UserAvatar';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   DropdownMenu,
@@ -59,7 +59,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getDefaultAvatar, isDefaultAvatar } from '@/lib/avatar';
 
 type Team = {
   id: string;
@@ -95,15 +94,6 @@ type UserCardProps = {
   onGenerateInvite?: () => void;
   onUpdateRole?: (role: string) => void;
   onAddToTeam?: (teamId: string) => void;
-};
-
-const getInitials = (name: string) => {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 };
 
 const roleAccentColors = {
@@ -169,8 +159,6 @@ export function UserCard({
     }
   };
 
-  const avatarUrl = user.avatarUrl || getDefaultAvatar(user.gender, user.name);
-
   const statusVariants = {
     ACTIVE: 'success',
     INVITED: 'warning',
@@ -228,12 +216,13 @@ export function UserCard({
         />
 
         {/* Avatar */}
-        <Avatar className="h-12 w-12 ring-2 ring-background shadow-md transition-transform duration-300 group-hover:scale-105">
-          <AvatarImage src={avatarUrl} alt={user.name} className="object-cover" />
-          <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary/10 via-primary/5 to-background">
-            {getInitials(user.name)}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          userId={user.id}
+          name={user.name}
+          gender={user.gender}
+          size="lg"
+          className="ring-2 ring-background shadow-md transition-transform duration-300 group-hover:scale-105"
+        />
 
         {/* User Info */}
         <div className="flex-1 min-w-0">

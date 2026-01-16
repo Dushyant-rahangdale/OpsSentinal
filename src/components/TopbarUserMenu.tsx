@@ -15,7 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { Settings, LogOut, User, Keyboard, HelpCircle } from 'lucide-react';
-import { getDefaultAvatar } from '@/lib/avatar';
+import { useUserAvatarSafe } from '@/hooks/useUserAvatar';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +30,7 @@ type Props = {
 
 export default function TopbarUserMenu({ name, email, role, avatarUrl, gender, userId }: Props) {
   const router = useRouter();
-  const finalAvatarUrl = avatarUrl || getDefaultAvatar(gender, name || email || 'User');
+  const finalAvatarUrl = useUserAvatarSafe(userId, gender, name || email || 'User');
   const initials = (name || email || 'U').slice(0, 2).toUpperCase();
 
   return (

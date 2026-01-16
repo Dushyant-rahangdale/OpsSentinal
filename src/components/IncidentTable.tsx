@@ -9,10 +9,10 @@ import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import StatusBadge from '@/components/incident/StatusBadge';
 import { useToast } from '@/components/ToastProvider';
+import { DirectUserAvatar } from '@/components/UserAvatar';
 import { getDefaultAvatar } from '@/lib/avatar';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Check, MoreHorizontal, ArrowUp, ArrowDown, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -478,18 +478,14 @@ export default memo(function IncidentTable({
                         <span className="text-muted-foreground text-xs">•</span>
                         {incident.assignee ? (
                           <div className="flex items-center gap-1.5">
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage
-                                src={
-                                  incident.assignee.avatarUrl ||
-                                  getDefaultAvatar(incident.assignee.gender, incident.assignee.name)
-                                }
-                                alt={incident.assignee.name}
-                              />
-                              <AvatarFallback className="text-[0.6rem]">
-                                {incident.assignee.name.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <DirectUserAvatar
+                              avatarUrl={
+                                incident.assignee.avatarUrl ||
+                                getDefaultAvatar(incident.assignee.gender, incident.assignee.name)
+                              }
+                              name={incident.assignee.name}
+                              size="xs"
+                            />
                             <span className="text-secondary-foreground text-sm font-semibold">
                               {incident.assignee.name}
                             </span>

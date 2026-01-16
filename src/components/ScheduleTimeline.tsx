@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Badge } from '@/components/ui/shadcn/badge';
+import { DirectUserAvatar } from '@/components/UserAvatar';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Card,
@@ -332,17 +332,16 @@ export default function ScheduleTimeline({ shifts, timeZone }: ScheduleTimelineP
                                       top: '0',
                                     }}
                                   >
-                                    <Avatar className="h-7 w-7 ring-2 ring-white/40 shadow-sm shrink-0">
-                                      <AvatarImage
-                                        src={
-                                          shift.userAvatar ||
-                                          getDefaultAvatar(shift.userGender, shift.userName)
-                                        }
-                                      />
-                                      <AvatarFallback className="text-[10px] font-bold bg-white/30 text-white">
-                                        {shift.userName.charAt(0)}
-                                      </AvatarFallback>
-                                    </Avatar>
+                                    <DirectUserAvatar
+                                      avatarUrl={
+                                        shift.userAvatar ||
+                                        getDefaultAvatar(shift.userGender, shift.userName)
+                                      }
+                                      name={shift.userName}
+                                      size="sm"
+                                      className="ring-2 ring-white/40 shadow-sm"
+                                      fallbackClassName="bg-white/30 text-white"
+                                    />
                                     {widthPercent > 8 && (
                                       <div className="min-w-0 flex-1">
                                         <div className="text-xs font-semibold text-white truncate">
@@ -367,17 +366,14 @@ export default function ScheduleTimeline({ shifts, timeZone }: ScheduleTimelineP
                                 <TooltipContent side="top" className="p-3 max-w-xs">
                                   <div className="space-y-1.5">
                                     <div className="flex items-center gap-2">
-                                      <Avatar className="h-6 w-6">
-                                        <AvatarImage
-                                          src={
-                                            shift.userAvatar ||
-                                            getDefaultAvatar(shift.userGender, shift.userName)
-                                          }
-                                        />
-                                        <AvatarFallback className="text-[9px]">
-                                          {shift.userName.charAt(0)}
-                                        </AvatarFallback>
-                                      </Avatar>
+                                      <DirectUserAvatar
+                                        avatarUrl={
+                                          shift.userAvatar ||
+                                          getDefaultAvatar(shift.userGender, shift.userName)
+                                        }
+                                        name={shift.userName}
+                                        size="xs"
+                                      />
                                       <span className="font-semibold text-slate-900">
                                         {shift.userName}
                                       </span>

@@ -18,10 +18,9 @@ import {
 } from '@/components/ui/shadcn/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { Button } from '@/components/ui/shadcn/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Users, Lock, Trash2, Check, ChevronsUpDown, Search } from 'lucide-react';
-import { getDefaultAvatar } from '@/lib/avatar';
+import UserAvatar from '@/components/UserAvatar';
 import { cn } from '@/lib/utils';
 
 type Watcher = {
@@ -106,18 +105,13 @@ export default function IncidentWatchers({
                       >
                         {selectedUser ? (
                           <div className="flex items-center gap-2 overflow-hidden">
-                            <Avatar className="h-5 w-5 shrink-0">
-                              <AvatarImage
-                                src={
-                                  selectedUser.avatarUrl ||
-                                  getDefaultAvatar(selectedUser.gender, selectedUser.name)
-                                }
-                                alt={selectedUser.name}
-                              />
-                              <AvatarFallback className="text-[8px] bg-slate-100 font-bold text-slate-600">
-                                {selectedUser.name.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <UserAvatar
+                              userId={selectedUser.id}
+                              name={selectedUser.name}
+                              gender={selectedUser.gender}
+                              size="xs"
+                              className="shrink-0"
+                            />
                             <span className="truncate">{selectedUser.name}</span>
                           </div>
                         ) : (
@@ -150,15 +144,13 @@ export default function IncidentWatchers({
                                 }}
                                 className="flex items-center gap-2 cursor-pointer text-sm rounded-md aria-selected:bg-accent my-0 py-1.5"
                               >
-                                <Avatar className="h-7 w-7 border border-slate-200 shrink-0">
-                                  <AvatarImage
-                                    src={user.avatarUrl || getDefaultAvatar(user.gender, user.name)}
-                                    alt={user.name}
-                                  />
-                                  <AvatarFallback className="text-[10px] bg-slate-100 text-slate-600 font-bold">
-                                    {user.name.slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <UserAvatar
+                                  userId={user.id}
+                                  name={user.name}
+                                  gender={user.gender}
+                                  size="sm"
+                                  className="border-slate-200"
+                                />
                                 <div className="flex flex-col min-w-0">
                                   <span className="font-medium leading-none truncate text-xs">
                                     {user.name}
@@ -222,18 +214,14 @@ export default function IncidentWatchers({
                   className="flex items-center justify-between p-3 rounded-lg border bg-card/50 hover:bg-accent/5 transition-colors group"
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
-                      <AvatarImage
-                        src={
-                          watcher.user.avatarUrl ||
-                          getDefaultAvatar(watcher.user.gender, watcher.user.name)
-                        }
-                        alt={watcher.user.name}
-                      />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                        {watcher.user.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                      userId={watcher.user.id}
+                      name={watcher.user.name}
+                      gender={watcher.user.gender}
+                      size="sm"
+                      className="h-9 w-9 border-2 border-white shadow-sm"
+                      fallbackClassName="bg-primary/10 text-primary"
+                    />
                     <div>
                       <div className="text-sm font-semibold text-foreground">
                         {watcher.user.name}

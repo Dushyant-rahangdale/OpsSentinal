@@ -4,6 +4,8 @@ import { getAuthOptions } from '@/lib/auth';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 import SettingsPage from '@/components/settings/SettingsPage';
 import SettingsSectionCard from '@/components/settings/SettingsSectionCard';
+import { DirectUserAvatar } from '@/components/UserAvatar';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +19,15 @@ export default async function AuditLogsSettingsPage() {
 
   const logs = await prisma.auditLog.findMany({
     include: {
-      actor: true,
+      actor: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          gender: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
     take: 250,
@@ -57,8 +67,39 @@ export default async function AuditLogsSettingsPage() {
                       {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{log.actor?.name || 'System'}</div>
-                      <div className="settings-muted">{log.actor?.email || '-'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {log.actor ? (
+                          <DirectUserAvatar
+                            avatarUrl={
+                              log.actor.avatarUrl ||
+                              getDefaultAvatar(log.actor.gender, log.actor.name)
+                            }
+                            name={log.actor.name}
+                            size="sm"
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: '#e5e7eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              color: '#6b7280',
+                            }}
+                          >
+                            SYS
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{log.actor?.name || 'System'}</div>
+                          <div className="settings-muted">{log.actor?.email || '-'}</div>
+                        </div>
+                      </div>
                     </td>
                     <td style={{ fontWeight: 600 }}>{log.action}</td>
                     <td>

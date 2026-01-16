@@ -17,6 +17,7 @@ import AppErrorBoundary from './error-boundary';
 import SkipLinks from '@/components/SkipLinks';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { SidebarProvider } from '@/contexts/SidebarContext';
+import { UserAvatarProvider } from '@/contexts/UserAvatarContext';
 import { logger } from '@/lib/logger';
 import SessionTimeoutWarning from '@/components/auth/SessionTimeoutWarning';
 
@@ -177,53 +178,60 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppErrorBoundary>
       <ToastProvider>
         <TimezoneProvider initialTimeZone={userTimeZone}>
-          <SidebarProvider>
-            <GlobalKeyboardHandlerWrapper />
-            <SkipLinks />
-            <div className="app-shell">
-              <Sidebar
-                userName={userName}
-                userEmail={userEmail}
-                userRole={userRole}
-                userAvatar={userAvatar}
-                userGender={userGender}
-                userId={userId}
-              />
-              <div className="content-shell">
-                <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 [zoom:0.8]">
-                  <div className="flex items-center gap-4">
-                    <OperationalStatus
-                      tone={statusTone}
-                      label={statusLabel}
-                      detail={statusDetail}
-                      criticalCount={criticalOpenCount}
-                      mediumCount={mediumOpenCount}
-                      lowCount={lowOpenCount}
-                    />
-                    <TopbarBreadcrumbs />
-                  </div>
-                  <div className="flex flex-1 items-center justify-center px-4">
-                    <SidebarSearch />
-                  </div>
-                  <div className="flex items-center gap-4 ml-auto">
-                    <TopbarNotifications />
-                    <QuickActions canCreate={canCreate} />
-                    <TopbarUserMenu
-                      name={userName}
-                      email={userEmail}
-                      role={userRole}
-                      avatarUrl={userAvatar}
-                      gender={userGender}
-                      userId={userId}
-                    />
-                  </div>
-                </header>
-                <main id="main-content" className="page-shell">
-                  {children}
-                </main>
+          <UserAvatarProvider
+            currentUserId={userId}
+            currentUserAvatar={userAvatar}
+            currentUserGender={userGender}
+            currentUserName={userName}
+          >
+            <SidebarProvider>
+              <GlobalKeyboardHandlerWrapper />
+              <SkipLinks />
+              <div className="app-shell">
+                <Sidebar
+                  userName={userName}
+                  userEmail={userEmail}
+                  userRole={userRole}
+                  userAvatar={userAvatar}
+                  userGender={userGender}
+                  userId={userId}
+                />
+                <div className="content-shell">
+                  <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 [zoom:0.8]">
+                    <div className="flex items-center gap-4">
+                      <OperationalStatus
+                        tone={statusTone}
+                        label={statusLabel}
+                        detail={statusDetail}
+                        criticalCount={criticalOpenCount}
+                        mediumCount={mediumOpenCount}
+                        lowCount={lowOpenCount}
+                      />
+                      <TopbarBreadcrumbs />
+                    </div>
+                    <div className="flex flex-1 items-center justify-center px-4">
+                      <SidebarSearch />
+                    </div>
+                    <div className="flex items-center gap-4 ml-auto">
+                      <TopbarNotifications />
+                      <QuickActions canCreate={canCreate} />
+                      <TopbarUserMenu
+                        name={userName}
+                        email={userEmail}
+                        role={userRole}
+                        avatarUrl={userAvatar}
+                        gender={userGender}
+                        userId={userId}
+                      />
+                    </div>
+                  </header>
+                  <main id="main-content" className="page-shell">
+                    {children}
+                  </main>
+                </div>
               </div>
-            </div>
-          </SidebarProvider>
+            </SidebarProvider>
+          </UserAvatarProvider>
         </TimezoneProvider>
       </ToastProvider>
       <SessionTimeoutWarning warningMinutes={5} />

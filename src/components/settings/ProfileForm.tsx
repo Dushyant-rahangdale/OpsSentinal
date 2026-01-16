@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AvatarPicker } from '@/components/settings/AvatarPicker';
 import { getDefaultAvatar, isDefaultAvatar } from '@/lib/avatar';
+import { useAvatarUpdater } from '@/hooks/useUserAvatar';
 
 type Props = {
   name: string;
@@ -62,6 +63,7 @@ export default function ProfileForm({
 }: Props) {
   const router = useRouter();
   const { update } = useSession();
+  const { updateCurrentUser } = useAvatarUpdater();
   const [isUploading, startTransition] = useTransition();
   const [isSaving, setIsSaving] = useState(false);
   const [currentGender, setCurrentGender] = useState<string | null | undefined>(gender);
@@ -96,6 +98,8 @@ export default function ProfileForm({
       if (result.success) {
         toast.success('Avatar updated');
         setAvatarPreview(selectedAvatarUrl);
+        // Update avatar context for immediate sync across all components
+        updateCurrentUser(selectedAvatarUrl, currentGender);
         // Force session update by passing dummy data to verify trigger="update"
         await update({ force: true });
         router.refresh();
@@ -255,7 +259,10 @@ export default function ProfileForm({
                     if (result.success) {
                       toast.success('Profile photo removed');
                       // Set preview to gender-based default avatar
-                      setAvatarPreview(getDefaultAvatar(currentGender, email || 'user'));
+                      const defaultAvatar = getDefaultAvatar(currentGender, email || 'user');
+                      setAvatarPreview(defaultAvatar);
+                      // Update avatar context for immediate sync across all components
+                      updateCurrentUser(null, currentGender);
                       // Force session update
                       await update({ force: true });
                       router.refresh();

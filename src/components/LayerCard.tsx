@@ -6,8 +6,7 @@ import { useToast } from './ToastProvider';
 import { DateTimeInput } from '@/components/ui';
 import { formatDateForInput } from '@/lib/timezone';
 import { Card, CardContent } from '@/components/ui/shadcn/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { getDefaultAvatar } from '@/lib/avatar';
+import UserAvatar from '@/components/UserAvatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -422,22 +421,13 @@ export default function LayerCard({
                         >
                           {index + 1}
                         </span>
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage
-                            src={
-                              layerUser.user.avatarUrl ||
-                              getDefaultAvatar(layerUser.user.gender, layerUser.user.name)
-                            }
-                          />
-                          <AvatarFallback className="text-[8px] bg-slate-100">
-                            {layerUser.user.name
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')
-                              .toUpperCase()
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          userId={layerUser.userId}
+                          name={layerUser.user.name}
+                          gender={layerUser.user.gender}
+                          size="xs"
+                          className="h-5 w-5"
+                        />
                         <span className="text-xs font-medium text-slate-700">
                           {layerUser.user.name}
                         </span>

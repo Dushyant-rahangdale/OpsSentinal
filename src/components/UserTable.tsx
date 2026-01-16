@@ -9,6 +9,7 @@ import DeleteUserButton from './DeleteUserButton';
 import GenerateResetLinkButton from './GenerateResetLinkButton';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import UserAvatar from '@/components/UserAvatar';
 
 type User = {
   id: string;
@@ -16,6 +17,8 @@ type User = {
   email: string;
   role: string;
   status: string;
+  avatarUrl?: string | null;
+  gender?: string | null;
   createdAt?: Date;
   teamMemberships?: Array<{
     id: string;
@@ -358,12 +361,17 @@ export default function UserTable({
                   />
                 </td>
                 <td style={{ padding: '0.875rem 1rem' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.15rem' }}>
-                      {user.name}
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {user.email}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <UserAvatar userId={user.id} name={user.name} gender={user.gender} size="md" />
+                    <div>
+                      <div
+                        style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.15rem' }}
+                      >
+                        {user.name}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {user.email}
+                      </div>
                     </div>
                   </div>
                 </td>

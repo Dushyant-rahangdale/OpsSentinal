@@ -9,7 +9,6 @@ import { useModalState } from '@/hooks/useModalState';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -34,7 +33,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getDefaultAvatar } from '@/lib/avatar';
+import UserAvatar from '@/components/UserAvatar';
 
 type NavItem = {
   href: string;
@@ -160,7 +159,6 @@ export default function Sidebar(
   const currentName = session?.user?.name || userName;
   const currentEmail = session?.user?.email || userEmail;
   const currentRole = (session?.user as any)?.role || userRole;
-  const currentAvatar = session?.user?.image || session?.user?.avatarUrl || userAvatar;
   const currentGender = (session?.user as any)?.gender || userGender;
 
   const [stats, setStats] = useState<{
@@ -485,23 +483,18 @@ export default function Sidebar(
               isDesktopCollapsed ? 'justify-center' : ''
             )}
           >
-            <div className="relative shrink-0">
-              <Avatar
-                className={cn(
-                  'border border-white/10 shadow-sm transition-transform group-hover:scale-105',
-                  isDesktopCollapsed ? 'w-8 h-8' : 'w-9 h-9'
-                )}
-              >
-                <AvatarImage
-                  src={currentAvatar || getDefaultAvatar(currentGender, userId)}
-                  alt={currentName || 'User'}
-                />
-                <AvatarFallback className="bg-indigo-500/20 text-indigo-200 text-[10px] font-bold uppercase backdrop-blur-md">
-                  {(currentName || currentEmail || 'U').slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0B1120]" />
-            </div>
+            <UserAvatar
+              userId={userId || 'user'}
+              name={currentName}
+              gender={currentGender}
+              size={isDesktopCollapsed ? 'sm' : 'sm'}
+              showOnlineStatus={true}
+              className={cn(
+                'border-white/10 transition-transform group-hover:scale-105',
+                !isDesktopCollapsed && 'h-9 w-9'
+              )}
+              fallbackClassName="bg-indigo-500/20 text-indigo-200 backdrop-blur-md"
+            />
 
             {!isDesktopCollapsed && (
               <div className="flex-1 min-w-0 flex flex-col justify-center">

@@ -3,9 +3,8 @@
 import { useTransition, memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from './ToastProvider';
-import { getDefaultAvatar } from '@/lib/avatar';
 import { Card, CardContent } from '@/components/ui/shadcn/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import UserAvatar from '@/components/UserAvatar';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
 import { Switch } from '@/components/ui/shadcn/switch';
@@ -130,15 +129,6 @@ function TeamMemberCard({
     });
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <Card
       className={cn(
@@ -150,18 +140,13 @@ function TeamMemberCard({
         <div className="flex items-center gap-4">
           {/* Avatar */}
           <Link href={`/users?q=${encodeURIComponent(member.user.email)}`} className="shrink-0">
-            <Avatar className="h-12 w-12 ring-2 ring-background shadow-md hover:scale-110 transition-transform cursor-pointer">
-              <AvatarImage
-                src={
-                  member.user.avatarUrl || getDefaultAvatar(member.user.gender, member.user.name)
-                }
-                alt={member.user.name}
-                className="object-cover"
-              />
-              <AvatarFallback className="text-sm font-semibold bg-gradient-to-br from-primary/10 via-primary/5 to-background">
-                {getInitials(member.user.name)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              userId={member.user.id}
+              name={member.user.name}
+              gender={member.user.gender}
+              size="lg"
+              className="ring-2 ring-background shadow-md hover:scale-110 transition-transform cursor-pointer"
+            />
           </Link>
 
           {/* User Info */}

@@ -7,8 +7,8 @@ import { Incident, Service } from '@prisma/client';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
+import UserAvatar from '@/components/UserAvatar';
 import {
   Select,
   SelectContent,
@@ -28,8 +28,6 @@ import {
   User,
   AlertTriangle,
 } from 'lucide-react';
-import { getDefaultAvatar } from '@/lib/avatar';
-
 import EscalationStatusBadge from './EscalationStatusBadge';
 import AssigneeSection from './AssigneeSection';
 import PrioritySelector from './PrioritySelector';
@@ -256,18 +254,13 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
                 </div>
               ) : incident.assignee ? (
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Avatar className="h-7 w-7 shrink-0 border border-slate-200 shadow-sm">
-                    <AvatarImage
-                      src={
-                        incident.assignee.avatarUrl ||
-                        getDefaultAvatar(incident.assignee.gender, incident.assignee.name)
-                      }
-                      alt={incident.assignee.name}
-                    />
-                    <AvatarFallback className="text-[10px] bg-slate-100 font-bold text-slate-600">
-                      {incident.assignee.name.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    userId={incident.assignee.id}
+                    name={incident.assignee.name}
+                    gender={incident.assignee.gender}
+                    size="sm"
+                    className="border-slate-200 shadow-sm"
+                  />
                   <span className="text-sm font-bold text-slate-900 truncate">
                     {incident.assignee.name}
                   </span>

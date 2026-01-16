@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { reassignIncident } from '@/app/(app)/incidents/actions';
 import { useToast } from '../ToastProvider';
-import { getDefaultAvatar } from '@/lib/avatar';
+import UserAvatar from '@/components/UserAvatar';
 import {
   Command,
   CommandEmpty,
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/shadcn/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { Button } from '@/components/ui/shadcn/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { Check, ChevronsUpDown, Users as UsersIcon, User, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -154,12 +153,13 @@ export default function AssigneeSection({
               onSelect={() => handleReassign(`user:${u.id}`)}
               className="text-sm rounded-md aria-selected:bg-accent my-0 py-1.5"
             >
-              <Avatar className="h-7 w-7 mr-2 border border-slate-200 shrink-0">
-                <AvatarImage src={u.avatarUrl || getDefaultAvatar(u.gender, u.name)} alt={u.name} />
-                <AvatarFallback className="text-[10px] bg-slate-100 text-slate-600 font-bold">
-                  {u.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                userId={u.id}
+                name={u.name}
+                gender={u.gender}
+                size="sm"
+                className="mr-2 border-slate-200"
+              />
               <div className="flex flex-col min-w-0">
                 <span className="font-medium truncate text-xs">{u.name}</span>
                 <span className="text-[10px] text-muted-foreground truncate">{u.email}</span>
@@ -216,15 +216,13 @@ export default function AssigneeSection({
         >
           {assignee ? (
             <>
-              <Avatar className="h-6 w-6 border border-slate-200">
-                <AvatarImage
-                  src={assignee.avatarUrl || getDefaultAvatar(assignee.gender, assignee.name)}
-                  alt={assignee.name}
-                />
-                <AvatarFallback className="text-[9px]">
-                  {assignee.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                userId={assignee.id}
+                name={assignee.name}
+                gender={assignee.gender}
+                size="xs"
+                className="border-slate-200"
+              />
               <span className="text-sm font-medium text-slate-700 truncate max-w-[120px]">
                 {assignee.name.split(' ')[0]}
               </span>

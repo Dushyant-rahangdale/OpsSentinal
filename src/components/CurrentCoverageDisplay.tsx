@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatDateTime } from '@/lib/timezone';
 import { getDefaultAvatar } from '@/lib/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { DirectUserAvatar } from '@/components/UserAvatar';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Clock, UserCheck, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -61,13 +61,6 @@ export default function CurrentCoverageDisplay({
     return () => clearInterval(interval);
   }, [initialBlocks]);
 
-  const getInitials = (name: string) =>
-    name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   const hasCoverage = activeBlocks.length > 0;
 
   return (
@@ -133,14 +126,13 @@ export default function CurrentCoverageDisplay({
                 key={i}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
               >
-                <Avatar className="h-9 w-9 ring-1 ring-slate-200 shadow-sm">
-                  <AvatarImage
-                    src={block.userAvatar || getDefaultAvatar(block.userGender, block.userName)}
-                  />
-                  <AvatarFallback className="bg-emerald-50 text-emerald-700 text-xs font-bold">
-                    {getInitials(block.userName)}
-                  </AvatarFallback>
-                </Avatar>
+                <DirectUserAvatar
+                  avatarUrl={block.userAvatar || getDefaultAvatar(block.userGender, block.userName)}
+                  name={block.userName}
+                  size="sm"
+                  className="h-9 w-9 ring-1 ring-slate-200 shadow-sm"
+                  fallbackClassName="bg-emerald-50 text-emerald-700"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-semibold text-slate-800 truncate">

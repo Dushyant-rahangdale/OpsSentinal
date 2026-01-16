@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Card, Badge } from '@/components/ui';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import UserAvatar from '@/components/UserAvatar';
 
 type PostmortemCardProps = {
   postmortem: {
@@ -16,7 +17,10 @@ type PostmortemCardProps = {
     createdAt: Date;
     publishedAt: Date | null;
     createdBy: {
+      id: string;
       name: string;
+      avatarUrl?: string | null;
+      gender?: string | null;
     };
     incident: {
       title: string;
