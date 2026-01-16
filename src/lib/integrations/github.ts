@@ -264,5 +264,16 @@ export function transformGitHubToEvent(payload: GitHubEvent): {
     };
   }
 
-  throw new Error('Invalid GitHub/GitLab payload: unknown format');
+  // Fallback for unsupported event types - return acknowledge instead of throwing
+  // This handles events like push, pull_request, issues, etc. that we don't process
+  return {
+    event_action: 'acknowledge',
+    dedup_key: `github-unknown-${Date.now()}`,
+    payload: {
+      summary: `GitHub event received: ${payload.action || payload.object_kind || 'unknown'}`,
+      source: `GitHub${payload.repository ? ` - ${payload.repository.full_name}` : payload.project ? ` - ${payload.project.path_with_namespace}` : ''}`,
+      severity: 'info',
+      custom_details: payload,
+    },
+  };
 }

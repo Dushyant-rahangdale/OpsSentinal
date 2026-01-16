@@ -53,11 +53,13 @@ export async function POST(req: NextRequest) {
       // Verify signature if secret is configured
       if (VERIFY_SIGNATURES && integration.signatureSecret) {
         const signature = req.headers.get('x-signature') || req.headers.get('x-webhook-signature');
-        if (signature) {
-          if (!verifyHmacSignature(rawBody, signature, integration.signatureSecret)) {
-            logger.warn('api.integration.webhook_invalid_signature', { integrationId });
-            return jsonError('Invalid webhook signature', 401);
-          }
+        if (!signature) {
+          logger.warn('api.integration.webhook_missing_signature', { integrationId });
+          return jsonError('Missing signature header (X-Signature or X-Webhook-Signature)', 401);
+        }
+        if (!verifyHmacSignature(rawBody, signature, integration.signatureSecret)) {
+          logger.warn('api.integration.webhook_invalid_signature', { integrationId });
+          return jsonError('Invalid webhook signature', 401);
         }
       }
 

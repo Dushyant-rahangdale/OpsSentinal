@@ -26,7 +26,7 @@ export type PrometheusAlert = {
 };
 
 export function transformPrometheusToEvent(payload: PrometheusAlert): {
-  event_action: 'trigger' | 'resolve';
+  event_action: 'trigger' | 'resolve' | 'acknowledge';
   dedup_key: string;
   payload: {
     summary: string;
@@ -36,7 +36,17 @@ export function transformPrometheusToEvent(payload: PrometheusAlert): {
   };
 } {
   if (!payload.alerts || payload.alerts.length === 0) {
-    throw new Error('Invalid Prometheus payload: empty alerts array');
+    // Return acknowledge for empty alerts array instead of throwing
+    return {
+      event_action: 'acknowledge',
+      dedup_key: `prometheus-empty-${Date.now()}`,
+      payload: {
+        summary: 'Prometheus alert received: empty alerts array',
+        source: 'Prometheus Alertmanager',
+        severity: 'info',
+        custom_details: payload,
+      },
+    };
   }
 
   // Process the first alert (or combine multiple)

@@ -13,12 +13,12 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { isIntegrationAuthorized } from './auth';
 import { checkRateLimit, createRateLimitHeaders } from './rate-limiter';
 import { verifyWebhookSignature, isTimestampValid } from './signature-verification';
 import { recordWebhookReceived } from './metrics';
 import { IntegrationErrors, isIntegrationError } from './errors';
 import { validatePayload, IntegrationSchemas } from './schemas';
+import { extractIntegrationKey, isIntegrationAuthorized } from './auth';
 import type { z } from 'zod';
 
 // Environment configuration
@@ -29,7 +29,6 @@ export interface IntegrationContext<T> {
   integration: {
     id: string;
     type: string;
-    key: string;
     serviceId: string;
     enabled: boolean;
   };
@@ -110,7 +109,6 @@ export function createIntegrationHandler<T>(
         select: {
           id: true,
           type: true,
-          key: true,
           serviceId: true,
           enabled: true,
           signatureSecret: true,
@@ -123,12 +121,7 @@ export function createIntegrationHandler<T>(
 
       integrationType = integration.type;
 
-      // 4. Authorization check
-      if (!isIntegrationAuthorized(req, integration.key)) {
-        throw IntegrationErrors.unauthorized('Invalid integration key');
-      }
-
-      // 5. Get raw body for signature verification
+      // 4. Get raw body for signature verification
       const rawPayload = await req.text();
 
       // 6. Collect headers for signature verification
@@ -197,7 +190,6 @@ export function createIntegrationHandler<T>(
         integration: {
           id: integration.id,
           type: integration.type,
-          key: integration.key,
           serviceId: integration.serviceId,
           enabled: integration.enabled,
         },
@@ -247,8 +239,15 @@ export function createIntegrationHandler<T>(
 }
 
 /**
- * Simple wrapper for backwards compatibility
- * Applies rate limiting and metrics to existing handlers
+ * Industry-Standard Integration Middleware
+ *
+ * Security features (matching PagerDuty/OpsGenie):
+ * - Integration key validation (URL param or header)
+ * - Rate limiting per integration
+ * - Metrics recording
+ *
+ * HMAC signature verification is handled in individual route handlers
+ * for providers that support it (GitHub, Sentry, Grafana, Slack).
  */
 export async function withIntegrationMiddleware(
   req: NextRequest,
@@ -257,9 +256,14 @@ export async function withIntegrationMiddleware(
 ): Promise<Response> {
   const startTime = performance.now();
   const { searchParams } = new URL(req.url);
-  const integrationId = searchParams.get('integrationId') || 'unknown';
+  const integrationId = searchParams.get('integrationId');
 
-  // Rate limiting
+  // 1. Require integrationId
+  if (!integrationId) {
+    return jsonError('integrationId is required', 400);
+  }
+
+  // 2. Rate limiting
   if (RATE_LIMIT_ENABLED) {
     const rateResult = checkRateLimit(integrationId);
     if (!rateResult.allowed) {
@@ -280,12 +284,63 @@ export async function withIntegrationMiddleware(
     }
   }
 
+  // 3. Integration key validation (required - industry standard)
+  // All webhook URLs include the key, so we always validate it
+  // This provides baseline security for non-HMAC providers (Datadog, New Relic, etc.)
+  // HMAC providers (GitHub, Sentry) get additional signature verification in route handlers
+  const integration = await prisma.integration.findUnique({
+    where: { id: integrationId },
+    select: { key: true, enabled: true },
+  });
+
+  if (!integration) {
+    logger.warn('integration.not_found', { integrationId });
+    recordWebhookReceived(
+      integrationType,
+      integrationId,
+      false,
+      performance.now() - startTime,
+      'NOT_FOUND'
+    );
+    return jsonError('Integration not found', 404);
+  }
+
+  if (!integration.enabled) {
+    logger.warn('integration.disabled', { integrationId });
+    recordWebhookReceived(
+      integrationType,
+      integrationId,
+      false,
+      performance.now() - startTime,
+      'DISABLED'
+    );
+    return jsonError('Integration is disabled', 403);
+  }
+
+  // Validate integration key (from URL param or header)
+  if (!isIntegrationAuthorized(req, integration.key)) {
+    logger.warn('integration.invalid_key', { integrationId });
+    recordWebhookReceived(
+      integrationType,
+      integrationId,
+      false,
+      performance.now() - startTime,
+      'UNAUTHORIZED'
+    );
+    return jsonError('Invalid integration key', 401);
+  }
+
   try {
     const response = await handler();
     const success = response.status >= 200 && response.status < 300;
     recordWebhookReceived(integrationType, integrationId, success, performance.now() - startTime);
     return response;
   } catch (error) {
+    logger.error('integration.handler_error', {
+      integrationId,
+      integrationType,
+      error: error instanceof Error ? error.message : String(error),
+    });
     recordWebhookReceived(
       integrationType,
       integrationId,

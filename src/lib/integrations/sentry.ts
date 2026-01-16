@@ -4,139 +4,138 @@
  */
 
 export type SentryEvent = {
-    action?: 'created' | 'resolved' | 'assigned' | 'unassigned' | 'ignored';
-    issue?: {
-        id: string;
-        shortId: string;
-        title: string;
-        culprit: string;
-        level: 'fatal' | 'error' | 'warning' | 'info' | 'debug';
-        status: 'unresolved' | 'resolved' | 'ignored';
-        assignedTo?: {
-            name: string;
-            email: string;
-        };
-        metadata?: {
-            type?: string;
-            value?: string;
-        };
-        permalink: string;
+  action?: 'created' | 'resolved' | 'assigned' | 'unassigned' | 'ignored';
+  issue?: {
+    id: string;
+    shortId: string;
+    title: string;
+    culprit: string;
+    level: 'fatal' | 'error' | 'warning' | 'info' | 'debug';
+    status: 'unresolved' | 'resolved' | 'ignored';
+    assignedTo?: {
+      name: string;
+      email: string;
     };
-    // Legacy format
-    event?: {
-        event_id: string;
-        message?: string;
-        level: string;
-        timestamp: number;
-        platform: string;
-        tags?: Record<string, string>;
-        contexts?: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    metadata?: {
+      type?: string;
+      value?: string;
     };
-    project?: {
-        name: string;
-        slug: string;
-    };
+    permalink: string;
+  };
+  // Legacy format
+  event?: {
+    event_id: string;
+    message?: string;
+    level: string;
+    timestamp: number;
+    platform: string;
+    tags?: Record<string, string>;
+    contexts?: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  };
+  project?: {
+    name: string;
+    slug: string;
+  };
 };
 
 export function transformSentryToEvent(payload: SentryEvent): {
-    event_action: 'trigger' | 'resolve' | 'acknowledge';
-    dedup_key: string;
-    payload: {
-        summary: string;
-        source: string;
-        severity: 'critical' | 'error' | 'warning' | 'info';
-        custom_details: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    };
+  event_action: 'trigger' | 'resolve' | 'acknowledge';
+  dedup_key: string;
+  payload: {
+    summary: string;
+    source: string;
+    severity: 'critical' | 'error' | 'warning' | 'info';
+    custom_details: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  };
 } {
-    // Handle new issue format
-    if (payload.issue) {
-        const issue = payload.issue;
-        const action = payload.action || 'created';
+  // Handle new issue format
+  if (payload.issue) {
+    const issue = payload.issue;
+    const action = payload.action || 'created';
 
-        let eventAction: 'trigger' | 'resolve' | 'acknowledge' = 'trigger';
-        if (action === 'resolved' || issue.status === 'resolved') {
-            eventAction = 'resolve';
-        } else if (action === 'ignored' || issue.status === 'ignored') {
-            eventAction = 'acknowledge';
-        }
-
-        const severityMap: Record<string, 'critical' | 'error' | 'warning' | 'info'> = {
-            'fatal': 'critical',
-            'error': 'error',
-            'warning': 'warning',
-            'info': 'info',
-            'debug': 'info'
-        };
-        const severity = severityMap[issue.level] || 'error';
-
-        return {
-            event_action: eventAction,
-            dedup_key: `sentry-${issue.id}`,
-            payload: {
-                summary: issue.title,
-                source: `Sentry${payload.project ? ` - ${payload.project.name}` : ''}`,
-                severity,
-                custom_details: {
-                    action,
-                    issue: {
-                        id: issue.id,
-                        shortId: issue.shortId,
-                        title: issue.title,
-                        culprit: issue.culprit,
-                        level: issue.level,
-                        status: issue.status,
-                        assignedTo: issue.assignedTo,
-                        metadata: issue.metadata,
-                        permalink: issue.permalink
-                    },
-                    project: payload.project
-                }
-            }
-        };
+    let eventAction: 'trigger' | 'resolve' | 'acknowledge' = 'trigger';
+    if (action === 'resolved' || issue.status === 'resolved') {
+      eventAction = 'resolve';
+    } else if (action === 'ignored' || issue.status === 'ignored') {
+      eventAction = 'acknowledge';
     }
 
-    // Handle legacy event format
-    if (payload.event) {
-        const event = payload.event;
-        const severityMap: Record<string, 'critical' | 'error' | 'warning' | 'info'> = {
-            'fatal': 'critical',
-            'error': 'error',
-            'warning': 'warning',
-            'info': 'info',
-            'debug': 'info'
-        };
-        const severity = severityMap[event.level?.toLowerCase() || 'error'] || 'error';
+    const severityMap: Record<string, 'critical' | 'error' | 'warning' | 'info'> = {
+      fatal: 'critical',
+      error: 'error',
+      warning: 'warning',
+      info: 'info',
+      debug: 'info',
+    };
+    const severity = severityMap[issue.level] || 'error';
 
-        return {
-            event_action: 'trigger',
-            dedup_key: `sentry-${event.event_id}`,
-            payload: {
-                summary: event.message || 'Sentry Error',
-                source: `Sentry${payload.project ? ` - ${payload.project.name}` : ''}`,
-                severity,
-                custom_details: {
-                    event_id: event.event_id,
-                    message: event.message,
-                    level: event.level,
-                    timestamp: event.timestamp,
-                    platform: event.platform,
-                    tags: event.tags,
-                    contexts: event.contexts,
-                    project: payload.project
-                }
-            }
-        };
-    }
+    return {
+      event_action: eventAction,
+      dedup_key: `sentry-${issue.id}`,
+      payload: {
+        summary: issue.title,
+        source: `Sentry${payload.project ? ` - ${payload.project.name}` : ''}`,
+        severity,
+        custom_details: {
+          action,
+          issue: {
+            id: issue.id,
+            shortId: issue.shortId,
+            title: issue.title,
+            culprit: issue.culprit,
+            level: issue.level,
+            status: issue.status,
+            assignedTo: issue.assignedTo,
+            metadata: issue.metadata,
+            permalink: issue.permalink,
+          },
+          project: payload.project,
+        },
+      },
+    };
+  }
 
-    throw new Error('Invalid Sentry payload: unknown format');
+  // Handle legacy event format
+  if (payload.event) {
+    const event = payload.event;
+    const severityMap: Record<string, 'critical' | 'error' | 'warning' | 'info'> = {
+      fatal: 'critical',
+      error: 'error',
+      warning: 'warning',
+      info: 'info',
+      debug: 'info',
+    };
+    const severity = severityMap[event.level?.toLowerCase() || 'error'] || 'error';
+
+    return {
+      event_action: 'trigger',
+      dedup_key: `sentry-${event.event_id}`,
+      payload: {
+        summary: event.message || 'Sentry Error',
+        source: `Sentry${payload.project ? ` - ${payload.project.name}` : ''}`,
+        severity,
+        custom_details: {
+          event_id: event.event_id,
+          message: event.message,
+          level: event.level,
+          timestamp: event.timestamp,
+          platform: event.platform,
+          tags: event.tags,
+          contexts: event.contexts,
+          project: payload.project,
+        },
+      },
+    };
+  }
+  // Fallback for unsupported payload formats - return acknowledge instead of throwing
+  return {
+    event_action: 'acknowledge' as const,
+    dedup_key: `sentry-unknown-${Date.now()}`,
+    payload: {
+      summary: 'Sentry event received: unknown format',
+      source: `Sentry${payload.project ? ` - ${payload.project.name}` : ''}`,
+      severity: 'info' as const,
+      custom_details: payload,
+    },
+  };
 }
-
-
-
-
-
-
-
-
-
-
