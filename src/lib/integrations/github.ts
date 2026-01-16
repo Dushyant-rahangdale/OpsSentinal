@@ -45,7 +45,7 @@ export type GitHubEvent = {
 };
 
 export function transformGitHubToEvent(payload: GitHubEvent): {
-  event_action: 'trigger' | 'resolve';
+  event_action: 'trigger' | 'resolve' | 'acknowledge';
   dedup_key: string;
   payload: {
     summary: string;
@@ -62,9 +62,37 @@ export function transformGitHubToEvent(payload: GitHubEvent): {
       workflow.conclusion === 'cancelled' ||
       workflow.conclusion === 'timed_out';
     const isResolved = workflow.status === 'completed' && workflow.conclusion === 'success';
+    const isPending =
+      workflow.status === 'queued' ||
+      workflow.status === 'in_progress' ||
+      workflow.status === 'requested';
+
+    // Don't create events for pending/in-progress workflows
+    if (isPending && !isFailure) {
+      return {
+        event_action: 'acknowledge',
+        dedup_key: `github-${workflow.id}`,
+        payload: {
+          summary: `Workflow in progress: ${workflow.name}`,
+          source: `GitHub${payload.repository ? ` - ${payload.repository.full_name}` : ''}`,
+          severity: 'info',
+          custom_details: {
+            action: payload.action,
+            repository: payload.repository,
+            workflow_run: {
+              id: workflow.id,
+              name: workflow.name,
+              status: workflow.status,
+              conclusion: workflow.conclusion,
+              html_url: workflow.html_url,
+            },
+          },
+        },
+      };
+    }
 
     return {
-      event_action: isResolved ? 'resolve' : isFailure ? 'trigger' : 'resolve',
+      event_action: isResolved ? 'resolve' : 'trigger',
       dedup_key: `github-${workflow.id}`,
       payload: {
         summary: `Workflow failed: ${workflow.name}`,
@@ -93,9 +121,34 @@ export function transformGitHubToEvent(payload: GitHubEvent): {
       check.conclusion === 'cancelled' ||
       check.conclusion === 'timed_out';
     const isResolved = check.status === 'completed' && check.conclusion === 'success';
+    const isPending = check.status === 'queued' || check.status === 'in_progress';
+
+    // Handle pending state as acknowledge
+    if (isPending && !isFailure) {
+      return {
+        event_action: 'acknowledge',
+        dedup_key: `github-${check.id}`,
+        payload: {
+          summary: `Check in progress: ${check.name}`,
+          source: `GitHub${payload.repository ? ` - ${payload.repository.full_name}` : ''}`,
+          severity: 'info',
+          custom_details: {
+            action: payload.action,
+            repository: payload.repository,
+            check_run: {
+              id: check.id,
+              name: check.name,
+              status: check.status,
+              conclusion: check.conclusion,
+              html_url: check.html_url,
+            },
+          },
+        },
+      };
+    }
 
     return {
-      event_action: isResolved ? 'resolve' : isFailure ? 'trigger' : 'resolve',
+      event_action: isResolved ? 'resolve' : 'trigger',
       dedup_key: `github-${check.id}`,
       payload: {
         summary: `Check failed: ${check.name}`,
@@ -121,9 +174,32 @@ export function transformGitHubToEvent(payload: GitHubEvent): {
     const deployment = payload.deployment;
     const isFailure = deployment.state === 'failure' || deployment.state === 'error';
     const isResolved = deployment.state === 'success';
+    const isPending = deployment.state === 'pending';
+
+    // Handle pending state as acknowledge
+    if (isPending) {
+      return {
+        event_action: 'acknowledge',
+        dedup_key: `github-deployment-${deployment.id}`,
+        payload: {
+          summary: `Deployment pending: ${deployment.environment}`,
+          source: `GitHub${payload.repository ? ` - ${payload.repository.full_name}` : ''}`,
+          severity: 'info',
+          custom_details: {
+            action: payload.action,
+            repository: payload.repository,
+            deployment: {
+              id: deployment.id,
+              environment: deployment.environment,
+              state: deployment.state,
+            },
+          },
+        },
+      };
+    }
 
     return {
-      event_action: isResolved ? 'resolve' : isFailure ? 'trigger' : 'resolve',
+      event_action: isResolved ? 'resolve' : 'trigger',
       dedup_key: `github-deployment-${deployment.id}`,
       payload: {
         summary: `Deployment ${deployment.state}: ${deployment.environment}`,
@@ -147,8 +223,30 @@ export function transformGitHubToEvent(payload: GitHubEvent): {
     const isFailure = payload.build_status === 'failed' || payload.status === 'failed';
     const isResolved = payload.build_status === 'success' || payload.status === 'success';
 
+    // For GitLab, pending states are handled as acknowledge
+    const isPending = !isResolved && !isFailure;
+    if (isPending) {
+      return {
+        event_action: 'acknowledge',
+        dedup_key: `gitlab-${payload.ref || Date.now()}`,
+        payload: {
+          summary: `Build ${payload.build_status || payload.status}: ${payload.ref || 'unknown'}`,
+          source: `GitLab${payload.project ? ` - ${payload.project.path_with_namespace}` : ''}`,
+          severity: 'info',
+          custom_details: {
+            object_kind: payload.object_kind,
+            project: payload.project,
+            build_status: payload.build_status,
+            status: payload.status,
+            ref: payload.ref,
+            commit: payload.commit,
+          },
+        },
+      };
+    }
+
     return {
-      event_action: isResolved ? 'resolve' : isFailure ? 'trigger' : 'resolve',
+      event_action: isResolved ? 'resolve' : 'trigger',
       dedup_key: `gitlab-${payload.ref || Date.now()}`,
       payload: {
         summary: `Build ${payload.build_status || payload.status}: ${payload.ref || 'unknown'}`,

@@ -44,7 +44,12 @@ export async function POST(req: NextRequest) {
 
       if (VERIFY_SIGNATURES && integration.signatureSecret) {
         const signature = req.headers.get('sentry-hook-signature');
-        if (signature && !verifySentrySignature(rawBody, signature, integration.signatureSecret)) {
+        if (!signature) {
+          logger.warn('api.integration.sentry_missing_signature', { integrationId });
+          return jsonError('Missing Sentry-Hook-Signature header', 401);
+        }
+        if (!verifySentrySignature(rawBody, signature, integration.signatureSecret)) {
+          logger.warn('api.integration.sentry_invalid_signature', { integrationId });
           return jsonError('Invalid webhook signature', 401);
         }
       }

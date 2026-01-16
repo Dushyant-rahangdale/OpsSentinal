@@ -44,7 +44,12 @@ export async function POST(req: NextRequest) {
 
       if (VERIFY_SIGNATURES && integration.signatureSecret) {
         const signature = req.headers.get('x-grafana-signature');
-        if (signature && !verifyGrafanaSignature(rawBody, signature, integration.signatureSecret)) {
+        if (!signature) {
+          logger.warn('api.integration.grafana_missing_signature', { integrationId });
+          return jsonError('Missing X-Grafana-Signature header', 401);
+        }
+        if (!verifyGrafanaSignature(rawBody, signature, integration.signatureSecret)) {
+          logger.warn('api.integration.grafana_invalid_signature', { integrationId });
           return jsonError('Invalid webhook signature', 401);
         }
       }

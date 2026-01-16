@@ -20,53 +20,58 @@ import { Badge } from '@/components/ui/shadcn/badge';
 import { ChevronLeft, Key, Terminal, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
 
-function getWebhookUrl(integrationType: IntegrationType, integrationId: string): string {
+function getWebhookUrl(
+  integrationType: IntegrationType,
+  integrationId: string,
+  integrationKey: string
+): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const keyParam = `&integrationKey=${encodeURIComponent(integrationKey)}`;
 
   switch (integrationType) {
     case 'CLOUDWATCH':
-      return `${baseUrl}/api/integrations/cloudwatch?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/cloudwatch?integrationId=${integrationId}${keyParam}`;
     case 'AZURE':
-      return `${baseUrl}/api/integrations/azure?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/azure?integrationId=${integrationId}${keyParam}`;
     case 'DATADOG':
-      return `${baseUrl}/api/integrations/datadog?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/datadog?integrationId=${integrationId}${keyParam}`;
     case 'GRAFANA':
-      return `${baseUrl}/api/integrations/grafana?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/grafana?integrationId=${integrationId}${keyParam}`;
     case 'PROMETHEUS':
-      return `${baseUrl}/api/integrations/prometheus?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/prometheus?integrationId=${integrationId}${keyParam}`;
     case 'NEWRELIC':
-      return `${baseUrl}/api/integrations/newrelic?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/newrelic?integrationId=${integrationId}${keyParam}`;
     case 'SENTRY':
-      return `${baseUrl}/api/integrations/sentry?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/sentry?integrationId=${integrationId}${keyParam}`;
     case 'GITHUB':
-      return `${baseUrl}/api/integrations/github?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/github?integrationId=${integrationId}${keyParam}`;
     case 'GOOGLE_CLOUD_MONITORING':
-      return `${baseUrl}/api/integrations/google-cloud-monitoring?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/google-cloud-monitoring?integrationId=${integrationId}${keyParam}`;
     case 'SPLUNK_ONCALL':
-      return `${baseUrl}/api/integrations/splunk-oncall?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/splunk-oncall?integrationId=${integrationId}${keyParam}`;
     case 'SPLUNK_OBSERVABILITY':
-      return `${baseUrl}/api/integrations/splunk-observability?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/splunk-observability?integrationId=${integrationId}${keyParam}`;
     case 'DYNATRACE':
-      return `${baseUrl}/api/integrations/dynatrace?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/dynatrace?integrationId=${integrationId}${keyParam}`;
     case 'APPDYNAMICS':
-      return `${baseUrl}/api/integrations/appdynamics?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/appdynamics?integrationId=${integrationId}${keyParam}`;
     case 'ELASTIC':
-      return `${baseUrl}/api/integrations/elastic?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/elastic?integrationId=${integrationId}${keyParam}`;
     case 'HONEYCOMB':
-      return `${baseUrl}/api/integrations/honeycomb?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/honeycomb?integrationId=${integrationId}${keyParam}`;
     case 'BITBUCKET':
-      return `${baseUrl}/api/integrations/bitbucket?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/bitbucket?integrationId=${integrationId}${keyParam}`;
     case 'UPTIMEROBOT':
-      return `${baseUrl}/api/integrations/uptimerobot?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/uptimerobot?integrationId=${integrationId}${keyParam}`;
     case 'PINGDOM':
-      return `${baseUrl}/api/integrations/pingdom?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/pingdom?integrationId=${integrationId}${keyParam}`;
     case 'BETTER_UPTIME':
-      return `${baseUrl}/api/integrations/better-uptime?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/better-uptime?integrationId=${integrationId}${keyParam}`;
     case 'UPTIME_KUMA':
-      return `${baseUrl}/api/integrations/uptime-kuma?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/uptime-kuma?integrationId=${integrationId}${keyParam}`;
     case 'WEBHOOK':
-      return `${baseUrl}/api/integrations/webhook?integrationId=${integrationId}`;
+      return `${baseUrl}/api/integrations/webhook?integrationId=${integrationId}${keyParam}`;
     case 'EVENTS_API_V2':
     default:
       return `${baseUrl}/api/events`;
@@ -195,7 +200,11 @@ export default async function ServiceIntegrationsPage({
                   const typeInfo =
                     INTEGRATION_TYPES.find(t => t.value === integrationType) ||
                     INTEGRATION_TYPES[0];
-                  const webhookUrl = getWebhookUrl(integrationType, integration.id);
+                  const webhookUrl = getWebhookUrl(
+                    integrationType,
+                    integration.id,
+                    integration.key
+                  );
 
                   return (
                     <Card

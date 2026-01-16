@@ -4,7 +4,11 @@ import type { NextRequest } from 'next/server';
 function safeEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a);
   const bBuf = Buffer.from(b);
-  if (aBuf.length !== bBuf.length) return false;
+  if (aBuf.length !== bBuf.length) {
+    // Perform dummy comparison to prevent timing attack on length check
+    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32));
+    return false;
+  }
   return crypto.timingSafeEqual(aBuf, bBuf);
 }
 

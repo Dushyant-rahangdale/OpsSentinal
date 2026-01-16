@@ -3,6 +3,8 @@
  * Transforms Prometheus Alertmanager webhooks to standard event format
  */
 
+import crypto from 'crypto';
+
 export type PrometheusAlert = {
   version: string;
   groupKey: string;
@@ -56,11 +58,10 @@ export function transformPrometheusToEvent(payload: PrometheusAlert): {
     const sortedKeys = Object.keys(labels).sort();
     const signature = sortedKeys.map(k => `${k}=${labels[k]}`).join(',');
 
-    // If no labels, fallback to alertname. If no alertname, ONLY then use random (last resort)
+    // Hash the signature to create a shorter, database-safe dedup key
     if (signature) {
-      // Simple hash replacement (in real app, use crypto.createHash)
-      // For now, using the raw signature is fine as it's unique per label set
-      dedupKey = `prometheus-${signature}`;
+      const hash = crypto.createHash('sha256').update(signature).digest('hex').slice(0, 16);
+      dedupKey = `prometheus-${hash}`;
     } else {
       dedupKey = `prometheus-${Date.now()}`;
     }

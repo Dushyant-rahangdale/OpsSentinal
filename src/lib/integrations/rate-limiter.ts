@@ -211,3 +211,8 @@ export function createRateLimitHeaders(result: RateLimitResult): Record<string, 
 
   return headers;
 }
+
+// Start cleanup timer on module load to prevent memory leaks
+if (typeof setInterval !== 'undefined') {
+  startCleanupTimer();
+}

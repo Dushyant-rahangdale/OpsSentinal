@@ -141,9 +141,18 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // Parse embedded CloudWatch message
+        // Parse and validate embedded CloudWatch message
         try {
-          alarmMessage = JSON.parse(body.Message);
+          const parsedMessage = JSON.parse(body.Message);
+          const messageValidation = validatePayload(CloudWatchAlarmSchema, parsedMessage);
+          if (!messageValidation.success) {
+            logger.warn('api.integration.cloudwatch_message_validation_failed', {
+              errors: messageValidation.errors,
+              integrationId,
+            });
+            return jsonError('Invalid CloudWatch message in SNS payload', 400);
+          }
+          alarmMessage = messageValidation.data;
         } catch {
           return jsonError('Invalid CloudWatch message in SNS payload', 400);
         }
