@@ -284,43 +284,51 @@ export async function withIntegrationMiddleware(
     }
   }
 
-  // 3. Integration key validation (industry standard)
-  // Supports: URL param (?integrationKey=xxx), Header (X-Integration-Key, Authorization: Bearer xxx)
-  const providedKey = extractIntegrationKey(req);
-  if (providedKey) {
-    // If key is provided, validate it against DB
-    const integration = await prisma.integration.findUnique({
-      where: { id: integrationId },
-      select: { key: true },
-    });
+  // 3. Integration key validation (required - industry standard)
+  // All webhook URLs include the key, so we always validate it
+  // This provides baseline security for non-HMAC providers (Datadog, New Relic, etc.)
+  // HMAC providers (GitHub, Sentry) get additional signature verification in route handlers
+  const integration = await prisma.integration.findUnique({
+    where: { id: integrationId },
+    select: { key: true, enabled: true },
+  });
 
-    if (!integration) {
-      logger.warn('integration.not_found', { integrationId });
-      recordWebhookReceived(
-        integrationType,
-        integrationId,
-        false,
-        performance.now() - startTime,
-        'NOT_FOUND'
-      );
-      return jsonError('Integration not found', 404);
-    }
-
-    if (!isIntegrationAuthorized(req, integration.key)) {
-      logger.warn('integration.invalid_key', { integrationId });
-      recordWebhookReceived(
-        integrationType,
-        integrationId,
-        false,
-        performance.now() - startTime,
-        'UNAUTHORIZED'
-      );
-      return jsonError('Invalid integration key', 401);
-    }
+  if (!integration) {
+    logger.warn('integration.not_found', { integrationId });
+    recordWebhookReceived(
+      integrationType,
+      integrationId,
+      false,
+      performance.now() - startTime,
+      'NOT_FOUND'
+    );
+    return jsonError('Integration not found', 404);
   }
-  // Note: If no key provided, we allow the request through.
-  // Security relies on HMAC signature verification in the route handler.
-  // This matches PagerDuty's model: routing_key identifies, signature authenticates.
+
+  if (!integration.enabled) {
+    logger.warn('integration.disabled', { integrationId });
+    recordWebhookReceived(
+      integrationType,
+      integrationId,
+      false,
+      performance.now() - startTime,
+      'DISABLED'
+    );
+    return jsonError('Integration is disabled', 403);
+  }
+
+  // Validate integration key (from URL param or header)
+  if (!isIntegrationAuthorized(req, integration.key)) {
+    logger.warn('integration.invalid_key', { integrationId });
+    recordWebhookReceived(
+      integrationType,
+      integrationId,
+      false,
+      performance.now() - startTime,
+      'UNAUTHORIZED'
+    );
+    return jsonError('Invalid integration key', 401);
+  }
 
   try {
     const response = await handler();
