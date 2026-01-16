@@ -13,6 +13,8 @@
   position: sticky;
   top: 0;
   z-index: 5;
+  zoom: 0.9;
+  min-height: 75px;
 }
 
 .topbar-left {
@@ -3294,6 +3296,7 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
    ======================================== */
 
 @media (prefers-color-scheme: dark) {
+
   .topbar,
   .topbar-inner,
   .topbar-left,

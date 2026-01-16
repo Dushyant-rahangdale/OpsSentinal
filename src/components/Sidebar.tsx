@@ -258,7 +258,7 @@ export default function Sidebar(
         {showBadge &&
           (isDesktopCollapsed ? (
             <Badge
-              variant="danger"
+              variant="sidebar-danger"
               size="xs"
               aria-label={`${stats!.count} active incidents`}
               className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full p-0"
@@ -267,7 +267,7 @@ export default function Sidebar(
             </Badge>
           ) : (
             <Badge
-              variant="danger"
+              variant="sidebar-danger"
               size="xs"
               aria-label={`${stats!.count} active incidents`}
               className="ml-auto h-5 min-w-5 rounded-full px-1.5"
@@ -393,7 +393,7 @@ export default function Sidebar(
                   OpsSentinel
                 </h1>
                 <Badge
-                  variant="info"
+                  variant="sidebar-info"
                   size="xs"
                   className={cn(
                     'w-fit mt-1 uppercase tracking-wider',
@@ -511,11 +511,11 @@ export default function Sidebar(
                       <Badge
                         variant={
                           roleKey === 'admin'
-                            ? 'danger'
+                            ? 'sidebar-danger'
                             : roleKey === 'responder'
-                              ? 'info'
+                              ? 'sidebar-info'
                               : roleKey === 'observer'
-                                ? 'success'
+                                ? 'sidebar-success'
                                 : 'neutral'
                         }
                         size="xs"

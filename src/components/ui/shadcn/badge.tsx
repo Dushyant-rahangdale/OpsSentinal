@@ -19,6 +19,11 @@ const badgeVariants = cva(
         success: 'border-emerald-200 bg-emerald-100 text-emerald-800',
         warning: 'border-amber-200 bg-amber-100 text-amber-800',
         danger: 'border-red-200 bg-red-100 text-red-800',
+        // Sidebar variants - solid colors with white text for dark backgrounds
+        'sidebar-danger': 'border-red-500 bg-red-500 text-white',
+        'sidebar-info': 'border-blue-500 bg-blue-500 text-white',
+        'sidebar-success': 'border-emerald-500 bg-emerald-500 text-white',
+        'sidebar-warning': 'border-amber-500 bg-amber-500 text-white',
       },
       size: {
         xs: 'px-2 py-0.5 text-[10px]',

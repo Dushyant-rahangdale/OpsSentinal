@@ -462,28 +462,80 @@ aside.sidebar [data-badge="true"][class*="bg-amber"] {
 }
 
 /* ========================================
+   NUCLEAR: ID-based selectors for maximum specificity
+   Uses #app-sidebar which is the ID of the sidebar element
+   ======================================== */
+
+#app-sidebar [data-badge="true"],
+#app-sidebar [data-badge] {
+  color: #ffffff !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+#app-sidebar [data-badge="true"][class*="bg-red"] {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+#app-sidebar [data-badge="true"][class*="bg-blue"] {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+#app-sidebar [data-badge="true"][class*="bg-emerald"] {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+
+#app-sidebar [data-badge="true"][class*="bg-amber"] {
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+/* ========================================
    Sidebar Dark Mode Protection
    Prevents browser dark mode from affecting sidebar
    ======================================== */
 
 @media (prefers-color-scheme: dark) {
-  /* Sidebar badges */
+  /* Sidebar badges - use ID for maximum specificity */
+  #app-sidebar [data-badge="true"],
   .sidebar [data-badge="true"] {
+    color: #ffffff !important;
     filter: none !important;
     -webkit-filter: none !important;
   }
 
-  .sidebar .bg-red-100 {
+  #app-sidebar [data-badge="true"][class*="bg-red"],
+  .sidebar [data-badge="true"][class*="bg-red"] {
     background-color: #ef4444 !important;
-  }
-  .sidebar .text-red-800 {
+    border-color: #ef4444 !important;
     color: #ffffff !important;
   }
 
-  .sidebar .bg-blue-100 {
+  #app-sidebar [data-badge="true"][class*="bg-blue"],
+  .sidebar [data-badge="true"][class*="bg-blue"] {
     background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: #ffffff !important;
   }
-  .sidebar .text-blue-800 {
+
+  #app-sidebar [data-badge="true"][class*="bg-emerald"],
+  .sidebar [data-badge="true"][class*="bg-emerald"] {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+  }
+
+  #app-sidebar [data-badge="true"][class*="bg-amber"],
+  .sidebar [data-badge="true"][class*="bg-amber"] {
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
     color: #ffffff !important;
   }
 

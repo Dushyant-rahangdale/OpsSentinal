@@ -147,18 +147,13 @@ function PostmortemCard({ postmortem }: PostmortemCardProps) {
             borderTop: '1px solid #f1f5f9',
           }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-1)' }}>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+            <UserAvatar
+              userId={postmortem.createdBy.id}
+              name={postmortem.createdBy.name}
+              gender={postmortem.createdBy.gender}
+              size="xs"
+            />
             {postmortem.createdBy.name}
           </span>
           <span>•</span>
