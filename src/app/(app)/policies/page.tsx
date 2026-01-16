@@ -106,12 +106,12 @@ export default async function PoliciesPage({
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-500 font-medium">Manage your escalation rules</div>
           {canCreatePolicy && (
-            <Link href="/policies/create">
-              <Button className="shadow-sm">
+            <Button asChild className="shadow-sm">
+              <Link href="/policies/create">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Policy
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </div>
 

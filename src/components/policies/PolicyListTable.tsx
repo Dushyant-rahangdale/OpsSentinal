@@ -53,17 +53,11 @@ export default function PolicyListTable({ policies, canManagePolicies }: PolicyL
           <LayoutList className="mx-auto h-12 w-12" />
         </div>
         <p className="text-base font-bold text-slate-700 mb-1">No escalation policies yet</p>
-        <p className="text-sm text-slate-500 m-0 mb-4">
-          Create a policy to define who gets notified when incidents occur.
+        <p className="text-sm text-slate-500 m-0">
+          {canManagePolicies
+            ? 'Click "Create Policy" above to define who gets notified when incidents occur.'
+            : 'No escalation policies have been created yet.'}
         </p>
-        {canManagePolicies && (
-          <Link href="/policies/create">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Policy
-            </Button>
-          </Link>
-        )}
       </div>
     );
   }

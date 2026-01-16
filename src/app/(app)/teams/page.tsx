@@ -379,16 +379,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
                   <div className="text-center py-12">
                     <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No teams found</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
+                    <p className="text-sm text-muted-foreground">
                       {query || minMembers !== undefined || minServices !== undefined
                         ? 'Try adjusting your search criteria'
-                        : 'Create your first team to get started'}
+                        : 'Use the form above to create your first team'}
                     </p>
-                    {canCreateTeam && (
-                      <Link href="#create-team">
-                        <Button>Create Your First Team</Button>
-                      </Link>
-                    )}
                   </div>
                 ) : (
                   teamsWithActivity.map(({ team, activityLogs, activityTotal }) => {

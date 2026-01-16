@@ -29,7 +29,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   },
   // Inject custom push event handlers
   extendDefaultRuntimeCaching: true,
-  cacheOnFrontEndNav: true,
+  cacheOnFrontEndNav: false,
   aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
   swcMinify: true,
