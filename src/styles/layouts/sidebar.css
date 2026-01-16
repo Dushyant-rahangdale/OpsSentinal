@@ -11,11 +11,12 @@
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  /* When zoomed at 0.8, need 125% height to fill viewport visually */
-  height: calc(100dvh / 0.8);
-  min-height: calc(100dvh / 0.8);
-  position: sticky;
+  /* Fixed position prevents any scroll movement */
+  position: fixed;
   top: 0;
+  left: 0;
+  /* When zoomed at 0.8, need 125% height (100/0.8) to fill viewport visually */
+  height: 125vh;
   color: white;
   box-shadow: 2px 0 25px rgba(0, 0, 0, 0.15), inset -1px 0 0 rgba(255, 255, 255, 0.05);
   z-index: 1000;

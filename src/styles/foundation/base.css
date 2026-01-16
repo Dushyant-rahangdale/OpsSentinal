@@ -71,6 +71,15 @@ select option {
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 100dvh;
+    /* Offset for fixed sidebar */
+    margin-left: var(--sidebar-width);
+    transition: margin-left var(--transition-base);
+}
+
+/* When sidebar is collapsed, reduce margin */
+.app-shell:has(.sidebar-collapsed) .content-shell,
+.app-shell:has(.sidebar[data-collapsed='true']) .content-shell {
+    margin-left: var(--sidebar-width-collapsed);
 }
 
 .page-shell {
