@@ -385,3 +385,137 @@
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* ========================================
+   Sidebar Badge Styles
+   High contrast badges for dark sidebar background
+   Forces solid colors with white text for visibility
+   ======================================== */
+
+/* MASTER RULE: Force ALL badges in sidebar to have white text */
+.sidebar [data-badge="true"],
+aside.sidebar [data-badge="true"],
+.sidebar [data-badge],
+aside.sidebar [data-badge] {
+  color: #ffffff !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  color-scheme: light only !important;
+}
+
+/* Force white text on all badge text color classes - maximum specificity */
+.sidebar [data-badge="true"][class*="text-red"],
+.sidebar [data-badge="true"][class*="text-blue"],
+.sidebar [data-badge="true"][class*="text-emerald"],
+.sidebar [data-badge="true"][class*="text-amber"],
+.sidebar [data-badge="true"][class*="text-green"],
+aside.sidebar [data-badge="true"][class*="text-red"],
+aside.sidebar [data-badge="true"][class*="text-blue"],
+aside.sidebar [data-badge="true"][class*="text-emerald"],
+aside.sidebar [data-badge="true"][class*="text-amber"],
+aside.sidebar [data-badge="true"][class*="text-green"] {
+  color: #ffffff !important;
+}
+
+/* Danger/red badges - solid red background */
+.sidebar [data-badge="true"][class*="bg-red"],
+aside.sidebar [data-badge="true"][class*="bg-red"] {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Info/blue badges - solid blue background */
+.sidebar [data-badge="true"][class*="bg-blue"],
+aside.sidebar [data-badge="true"][class*="bg-blue"] {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* Success/emerald badges - solid emerald background */
+.sidebar [data-badge="true"][class*="bg-emerald"],
+aside.sidebar [data-badge="true"][class*="bg-emerald"] {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+
+/* Warning/amber badges - solid amber background */
+.sidebar [data-badge="true"][class*="bg-amber"],
+aside.sidebar [data-badge="true"][class*="bg-amber"] {
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+/* Classic sidebar-badge class */
+.sidebar-badge {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+.sidebar-badge--dot {
+  background: #ef4444 !important;
+}
+
+/* ========================================
+   Sidebar Dark Mode Protection
+   Prevents browser dark mode from affecting sidebar
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  /* Sidebar badges */
+  .sidebar [data-badge="true"] {
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  .sidebar .bg-red-100 {
+    background-color: #ef4444 !important;
+  }
+  .sidebar .text-red-800 {
+    color: #ffffff !important;
+  }
+
+  .sidebar .bg-blue-100 {
+    background-color: #3b82f6 !important;
+  }
+  .sidebar .text-blue-800 {
+    color: #ffffff !important;
+  }
+
+  .sidebar-badge {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+  }
+
+  /* Navigation items text */
+  .sidebar .nav-item {
+    color: rgba(255, 255, 255, 0.85) !important;
+    filter: none !important;
+  }
+
+  .sidebar .nav-item.active {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .sidebar .nav-icon {
+    color: inherit !important;
+  }
+
+  .sidebar-label {
+    color: rgba(255, 255, 255, 0.85) !important;
+  }
+
+  .sidebar-section-title {
+    color: rgba(255, 255, 255, 0.5) !important;
+  }
+
+  .sidebar-subtitle {
+    color: rgba(255, 255, 255, 0.4) !important;
+  }
+}

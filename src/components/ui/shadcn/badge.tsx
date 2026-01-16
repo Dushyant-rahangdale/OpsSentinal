@@ -8,20 +8,17 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          'border-transparent bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700',
+        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90',
         secondary:
-          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/90 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800',
+          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/90',
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-red-900/60 dark:text-red-100 dark:hover:bg-red-900/80',
+          'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline: 'border-border text-foreground bg-transparent',
-        neutral: 'border-border bg-muted text-foreground dark:bg-slate-900 dark:text-slate-100',
-        info: 'border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-500/45 dark:bg-blue-500/25 dark:text-blue-100',
-        success:
-          'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-500/45 dark:bg-emerald-500/25 dark:text-emerald-100',
-        warning:
-          'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-500/45 dark:bg-amber-500/25 dark:text-amber-100',
-        danger: 'border-red-200 bg-red-100 text-red-800 dark:border-red-500/45 dark:bg-red-500/25 dark:text-red-100',
+        neutral: 'border-border bg-muted text-foreground',
+        info: 'border-blue-200 bg-blue-100 text-blue-800',
+        success: 'border-emerald-200 bg-emerald-100 text-emerald-800',
+        warning: 'border-amber-200 bg-amber-100 text-amber-800',
+        danger: 'border-red-200 bg-red-100 text-red-800',
       },
       size: {
         xs: 'px-2 py-0.5 text-[10px]',
@@ -41,11 +38,7 @@ export interface BadgeProps
 
 function Badge({ className, variant, size, ...props }: BadgeProps) {
   return (
-    <div
-      data-badge="true"
-      className={cn(badgeVariants({ variant, size }), className)}
-      {...props}
-    />
+    <div data-badge="true" className={cn(badgeVariants({ variant, size }), className)} {...props} />
   );
 }
 

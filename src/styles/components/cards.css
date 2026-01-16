@@ -66,3 +66,32 @@
    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
    padding: 0.85rem 1rem;
 }
+
+/* ========================================
+   Card Dark Mode Protection
+   Prevents browser dark mode from affecting card colors
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+   .stats-card,
+   .panel,
+   .directory-panel,
+   [class*="card"],
+   .bg-white,
+   .bg-background {
+      background-color: #ffffff !important;
+      color: var(--text-primary) !important;
+      filter: none !important;
+      -webkit-filter: none !important;
+   }
+
+   .stats-label,
+   .panel-eyebrow,
+   .hero-eyebrow {
+      color: var(--text-muted) !important;
+   }
+
+   .stats-value {
+      color: var(--text-primary) !important;
+   }
+}

@@ -149,6 +149,6 @@
     "OpsSentinal": "./scripts/OpsSentinal.mjs"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node -O '{\"module\":\"commonjs\"}' prisma/seed.ts"
   }
 }

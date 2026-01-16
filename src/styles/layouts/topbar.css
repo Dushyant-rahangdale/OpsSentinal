@@ -3287,3 +3287,98 @@ section:not(.login-brand):not(.login-form):not(.login-card section),
   border-color: rgba(148, 163, 184, 0.6);
   transform: translateY(-1px);
 }
+
+/* ========================================
+   Topbar Dark Mode Protection
+   Prevents browser dark mode from affecting topbar colors
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .topbar,
+  .topbar-inner,
+  .topbar-left,
+  .topbar-right,
+  .topbar-center {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  /* Operational status pill */
+  .ops-status-pill {
+    filter: none !important;
+  }
+
+  .ops-status-pill.ok {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.04) 100%) !important;
+    color: #166534 !important;
+    border-color: rgba(34, 197, 94, 0.35) !important;
+  }
+
+  .ops-status-pill.danger {
+    background: #fff5f5 !important;
+    color: #c53030 !important;
+    border-color: #feb2b2 !important;
+  }
+
+  .ops-status-dot.ok {
+    background: #22c55e !important;
+    --ops-dot-color: #22c55e;
+    --ops-dot-glow: rgba(34, 197, 94, 1);
+  }
+
+  .ops-status-dot.danger {
+    background: #ef4444 !important;
+    --ops-dot-color: #ef4444;
+    --ops-dot-glow: rgba(239, 68, 68, 1);
+  }
+
+  .ops-status-value.ok {
+    color: #16a34a !important;
+    background: rgba(22, 163, 74, 0.08) !important;
+  }
+
+  .ops-status-value.danger {
+    color: #dc2626 !important;
+    background: rgba(254, 226, 226, 0.6) !important;
+  }
+
+  /* User menu and dropdowns in topbar */
+  .user-menu-trigger,
+  .topbar-user-menu,
+  .user-role-badge {
+    filter: none !important;
+    color: inherit;
+  }
+
+  /* Notifications panel */
+  .topbar-notifications-panel,
+  .topbar-notifications-header,
+  .topbar-notifications-content,
+  .topbar-notifications-footer {
+    background-color: #ffffff !important;
+    color: var(--text-primary) !important;
+    filter: none !important;
+  }
+
+  .topbar-notification-item {
+    background-color: #ffffff !important;
+  }
+
+  .topbar-notification-item:hover {
+    background-color: #f8fafc !important;
+  }
+
+  .topbar-notification-dot {
+    background: #2563eb !important;
+  }
+
+  /* Search bar */
+  .topbar-search,
+  .topbar-search-input {
+    background-color: #ffffff !important;
+    color: var(--text-primary) !important;
+    filter: none !important;
+  }
+}

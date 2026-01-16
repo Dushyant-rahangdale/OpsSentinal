@@ -2569,3 +2569,134 @@
   flex-direction: column;
   gap: 0.75rem;
 }
+
+/* ========================================
+   Analytics Dark Mode Protection
+   Prevents browser dark mode from affecting metric cards and analytics components
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  /* Hero section */
+  .analytics-hero,
+  .analytics-hero-redesigned {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%) !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  /* Metric cards */
+  .analytics-card,
+  .analytics-card-enhanced,
+  .analytics-card-default,
+  .analytics-card-primary,
+  .analytics-card-success,
+  .analytics-card-warning,
+  .analytics-card-danger {
+    background: #ffffff !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  .analytics-card-primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, #ffffff 100%) !important;
+  }
+
+  .analytics-card-success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.04) 0%, #ffffff 100%) !important;
+  }
+
+  .analytics-card-warning {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.04) 0%, #ffffff 100%) !important;
+  }
+
+  .analytics-card-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, #ffffff 100%) !important;
+  }
+
+  /* Analytics labels and values */
+  .analytics-label {
+    color: var(--text-muted) !important;
+  }
+
+  .analytics-value {
+    color: var(--text-primary) !important;
+  }
+
+  .analytics-detail {
+    color: var(--text-secondary) !important;
+  }
+
+  /* Charts and sections */
+  .analytics-chart,
+  .analytics-chart-enhanced,
+  .analytics-section-enhanced,
+  .analytics-filters-enhanced {
+    background: #ffffff !important;
+    filter: none !important;
+  }
+
+  /* KPI cards */
+  .analytics-kpi {
+    background: #ffffff !important;
+  }
+
+  .analytics-kpi span {
+    color: var(--text-muted) !important;
+  }
+
+  .analytics-kpi strong {
+    color: var(--text-primary) !important;
+  }
+
+  /* List items */
+  .analytics-list-item,
+  .analytics-list-item-enhanced,
+  .analytics-table-row {
+    background: #ffffff !important;
+    filter: none !important;
+  }
+
+  /* Trend indicators */
+  .analytics-trend-up {
+    color: #22c55e !important;
+  }
+
+  .analytics-trend-down {
+    color: #ef4444 !important;
+  }
+
+  /* Status badges */
+  .analytics-status-badge,
+  .analytics-badge-default,
+  .analytics-badge-success,
+  .analytics-badge-warning,
+  .analytics-badge-danger,
+  .analytics-badge-info {
+    filter: none !important;
+  }
+
+  /* Schedule components */
+  .schedule-stat,
+  .schedule-card,
+  .schedule-panel {
+    background: #ffffff !important;
+    filter: none !important;
+  }
+
+  .schedule-stat-value {
+    color: var(--text-primary) !important;
+  }
+
+  /* Coverage pills */
+  .coverage-pill.on {
+    color: #15803d !important;
+    background: #ecfdf3 !important;
+    border-color: #86efac !important;
+  }
+
+  .coverage-pill.off {
+    color: #be123c !important;
+    background: #fff1f2 !important;
+    border-color: #fecdd3 !important;
+  }
+}

@@ -53,3 +53,50 @@
     justify-content: flex-start;
     flex-wrap: wrap;
 }
+
+/* ========================================
+   Form Dark Mode Protection
+   Prevents browser dark mode from affecting form colors
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+    .filter-input,
+    .filter-select,
+    .role-select,
+    .assign-select,
+    .form-input,
+    .form-select,
+    .bulk-actions-select,
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="date"],
+    input[type="time"],
+    textarea,
+    select {
+        background-color: #ffffff !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border) !important;
+        filter: none !important;
+        -webkit-filter: none !important;
+        color-scheme: light only !important;
+    }
+
+    .form-label {
+        color: var(--text-secondary) !important;
+    }
+
+    .form-error {
+        color: var(--color-error) !important;
+    }
+
+    /* Placeholder text */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--text-muted) !important;
+    }
+}
