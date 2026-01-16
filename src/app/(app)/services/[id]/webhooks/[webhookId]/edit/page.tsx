@@ -123,6 +123,7 @@ export default async function EditWebhookPage({
                     <option value="TEAMS">Microsoft Teams</option>
                     <option value="SLACK">Slack</option>
                     <option value="DISCORD">Discord</option>
+                    <option value="TELEGRAM">Telegram</option>
                   </select>
                 </div>
               </div>
@@ -164,6 +165,9 @@ export default async function EditWebhookPage({
                   defaultValue={webhook.channel || ''}
                   placeholder="e.g., #incidents, General"
                 />
+                <p className="text-xs text-muted-foreground">
+                  For Telegram, provide the target chat ID.
+                </p>
               </div>
 
               <div className="flex items-center space-x-2 pt-2">

@@ -1,260 +1,205 @@
 import { describe, it, expect, vi } from 'vitest';
 
 describe('Third-Party Integrations', () => {
-    describe('PagerDuty Integration', () => {
-        it('should create PagerDuty incident', async () => {
-            const createPagerDutyIncident = vi.fn();
+  describe('Datadog Integration', () => {
+    it('should send metrics to Datadog', async () => {
+      const sendDatadogMetric = vi.fn();
 
-            const incidentData = {
-                title: 'Database Outage',
-                description: 'Primary database is down',
-                urgency: 'high',
-                service_id: 'PD123',
-            };
+      const metric = {
+        metric: 'incident.count',
+        points: [[Date.now(), 5]],
+        tags: ['urgency:high', 'service:api'],
+      };
 
-            createPagerDutyIncident.mockResolvedValue({
-                id: 'pd-incident-1',
-                status: 'triggered',
-            });
+      sendDatadogMetric.mockResolvedValue({ status: 'ok' });
 
-            const result = await createPagerDutyIncident(incidentData);
+      const result = await sendDatadogMetric(metric);
 
-            expect(createPagerDutyIncident).toHaveBeenCalledWith(incidentData);
-            expect(result.status).toBe('triggered');
-        });
-
-        it('should acknowledge PagerDuty incident', async () => {
-            const acknowledgePagerDutyIncident = vi.fn();
-
-            acknowledgePagerDutyIncident.mockResolvedValue({
-                id: 'pd-incident-1',
-                status: 'acknowledged',
-            });
-
-            const result = await acknowledgePagerDutyIncident('pd-incident-1');
-
-            expect(result.status).toBe('acknowledged');
-        });
+      expect(sendDatadogMetric).toHaveBeenCalledWith(metric);
+      expect(result.status).toBe('ok');
     });
 
-    describe('Datadog Integration', () => {
-        it('should send metrics to Datadog', async () => {
-            const sendDatadogMetric = vi.fn();
+    it('should create Datadog event', async () => {
+      const createDatadogEvent = vi.fn();
 
-            const metric = {
-                metric: 'incident.count',
-                points: [[Date.now(), 5]],
-                tags: ['urgency:high', 'service:api'],
-            };
+      const event = {
+        title: 'Incident Created',
+        text: 'New critical incident',
+        alert_type: 'error',
+        tags: ['source:OpsSentinal'],
+      };
 
-            sendDatadogMetric.mockResolvedValue({ status: 'ok' });
+      createDatadogEvent.mockResolvedValue({ status: 'ok' });
 
-            const result = await sendDatadogMetric(metric);
+      await createDatadogEvent(event);
 
-            expect(sendDatadogMetric).toHaveBeenCalledWith(metric);
-            expect(result.status).toBe('ok');
-        });
+      expect(createDatadogEvent).toHaveBeenCalledWith(event);
+    });
+  });
 
-        it('should create Datadog event', async () => {
-            const createDatadogEvent = vi.fn();
+  describe('Slack Integration', () => {
+    it('should post message to Slack', async () => {
+      const postSlackMessage = vi.fn();
 
-            const event = {
-                title: 'Incident Created',
-                text: 'New critical incident',
-                alert_type: 'error',
-                tags: ['source:OpsSentinal'],
-            };
+      const message = {
+        channel: '#incidents',
+        text: 'New incident created',
+        attachments: [
+          {
+            color: 'danger',
+            title: 'Database Outage',
+            text: 'Primary database is down',
+          },
+        ],
+      };
 
-            createDatadogEvent.mockResolvedValue({ status: 'ok' });
+      postSlackMessage.mockResolvedValue({
+        ok: true,
+        ts: '1234567890.123456',
+      });
 
-            await createDatadogEvent(event);
+      const result = await postSlackMessage(message);
 
-            expect(createDatadogEvent).toHaveBeenCalledWith(event);
-        });
+      expect(result.ok).toBe(true);
     });
 
-    describe('Slack Integration', () => {
-        it('should post message to Slack', async () => {
-            const postSlackMessage = vi.fn();
+    it('should update Slack message', async () => {
+      const updateSlackMessage = vi.fn();
 
-            const message = {
-                channel: '#incidents',
-                text: 'New incident created',
-                attachments: [{
-                    color: 'danger',
-                    title: 'Database Outage',
-                    text: 'Primary database is down',
-                }],
-            };
+      updateSlackMessage.mockResolvedValue({
+        ok: true,
+        ts: '1234567890.123456',
+      });
 
-            postSlackMessage.mockResolvedValue({
-                ok: true,
-                ts: '1234567890.123456',
-            });
+      await updateSlackMessage('1234567890.123456', 'Updated message');
 
-            const result = await postSlackMessage(message);
+      expect(updateSlackMessage).toHaveBeenCalled();
+    });
+  });
 
-            expect(result.ok).toBe(true);
-        });
+  describe('GitHub Integration', () => {
+    it('should create GitHub issue', async () => {
+      const createGitHubIssue = vi.fn();
 
-        it('should update Slack message', async () => {
-            const updateSlackMessage = vi.fn();
+      const issue = {
+        title: 'Production Incident',
+        body: 'Database connection issues',
+        labels: ['incident', 'critical'],
+      };
 
-            updateSlackMessage.mockResolvedValue({
-                ok: true,
-                ts: '1234567890.123456',
-            });
+      createGitHubIssue.mockResolvedValue({
+        number: 123,
+        html_url: 'https://github.com/org/repo/issues/123',
+      });
 
-            await updateSlackMessage('1234567890.123456', 'Updated message');
+      const result = await createGitHubIssue(issue);
 
-            expect(updateSlackMessage).toHaveBeenCalled();
-        });
+      expect(result.number).toBe(123);
     });
 
-    describe('GitHub Integration', () => {
-        it('should create GitHub issue', async () => {
-            const createGitHubIssue = vi.fn();
+    it('should close GitHub issue', async () => {
+      const closeGitHubIssue = vi.fn();
 
-            const issue = {
-                title: 'Production Incident',
-                body: 'Database connection issues',
-                labels: ['incident', 'critical'],
-            };
+      closeGitHubIssue.mockResolvedValue({
+        number: 123,
+        state: 'closed',
+      });
 
-            createGitHubIssue.mockResolvedValue({
-                number: 123,
-                html_url: 'https://github.com/org/repo/issues/123',
-            });
+      const result = await closeGitHubIssue(123);
 
-            const result = await createGitHubIssue(issue);
+      expect(result.state).toBe('closed');
+    });
+  });
 
-            expect(result.number).toBe(123);
-        });
+  describe('Sentry Integration', () => {
+    it('should send error to Sentry', async () => {
+      const sendSentryError = vi.fn();
 
-        it('should close GitHub issue', async () => {
-            const closeGitHubIssue = vi.fn();
+      const error = {
+        message: 'Database connection failed',
+        level: 'error',
+        tags: { service: 'api' },
+      };
 
-            closeGitHubIssue.mockResolvedValue({
-                number: 123,
-                state: 'closed',
-            });
+      sendSentryError.mockResolvedValue({
+        id: 'sentry-event-1',
+      });
 
-            const result = await closeGitHubIssue(123);
+      const result = await sendSentryError(error);
 
-            expect(result.state).toBe('closed');
-        });
+      expect(result.id).toBe('sentry-event-1');
+    });
+  });
+
+  describe('Prometheus Integration', () => {
+    it('should query Prometheus metrics', async () => {
+      const queryPrometheus = vi.fn();
+
+      const query = 'up{job="api"}';
+
+      queryPrometheus.mockResolvedValue({
+        status: 'success',
+        data: {
+          resultType: 'vector',
+          result: [{ value: [1234567890, '1'] }],
+        },
+      });
+
+      const result = await queryPrometheus(query);
+
+      expect(result.status).toBe('success');
+    });
+  });
+
+  describe('Integration Authentication', () => {
+    it('should validate API key', () => {
+      const validateApiKey = (key: string) => {
+        return key && key.length >= 32;
+      };
+
+      expect(validateApiKey('a'.repeat(32))).toBe(true);
+      expect(validateApiKey('short')).toBe(false);
     });
 
-    describe('Sentry Integration', () => {
-        it('should send error to Sentry', async () => {
-            const sendSentryError = vi.fn();
+    it('should validate OAuth token', () => {
+      const validateOAuthToken = (token: string) => {
+        return token && token.startsWith('Bearer ');
+      };
 
-            const error = {
-                message: 'Database connection failed',
-                level: 'error',
-                tags: { service: 'api' },
-            };
+      expect(validateOAuthToken('Bearer abc123')).toBe(true);
+      expect(validateOAuthToken('abc123')).toBe(false);
+    });
+  });
 
-            sendSentryError.mockResolvedValue({
-                id: 'sentry-event-1',
-            });
+  describe('Integration Error Handling', () => {
+    it('should handle rate limiting', async () => {
+      const callWithRateLimit = vi.fn();
 
-            const result = await sendSentryError(error);
+      callWithRateLimit.mockRejectedValue({
+        status: 429,
+        message: 'Rate limit exceeded',
+        retryAfter: 60,
+      });
 
-            expect(result.id).toBe('sentry-event-1');
-        });
+      try {
+        await callWithRateLimit();
+      } catch (error: any) {
+        expect(error.message).toContain('Rate limit exceeded');
+        expect(error.retryAfter).toBe(60);
+      }
     });
 
-    describe('Prometheus Integration', () => {
-        it('should query Prometheus metrics', async () => {
-            const queryPrometheus = vi.fn();
+    it('should handle authentication errors', async () => {
+      const callWithAuth = vi.fn();
 
-            const query = 'up{job="api"}';
+      callWithAuth.mockRejectedValue({
+        status: 401,
+        message: 'Unauthorized',
+      });
 
-            queryPrometheus.mockResolvedValue({
-                status: 'success',
-                data: {
-                    resultType: 'vector',
-                    result: [{ value: [1234567890, '1'] }],
-                },
-            });
-
-            const result = await queryPrometheus(query);
-
-            expect(result.status).toBe('success');
-        });
+      await expect(callWithAuth()).rejects.toMatchObject({
+        status: 401,
+      });
     });
-
-    describe('OpsGenie Integration', () => {
-        it('should create OpsGenie alert', async () => {
-            const createOpsGenieAlert = vi.fn();
-
-            const alert = {
-                message: 'Database Outage',
-                description: 'Primary database is down',
-                priority: 'P1',
-            };
-
-            createOpsGenieAlert.mockResolvedValue({
-                requestId: 'req-123',
-                result: 'success',
-            });
-
-            const result = await createOpsGenieAlert(alert);
-
-            expect(result.result).toBe('success');
-        });
-    });
-
-    describe('Integration Authentication', () => {
-        it('should validate API key', () => {
-            const validateApiKey = (key: string) => {
-                return key && key.length >= 32;
-            };
-
-            expect(validateApiKey('a'.repeat(32))).toBe(true);
-            expect(validateApiKey('short')).toBe(false);
-        });
-
-        it('should validate OAuth token', () => {
-            const validateOAuthToken = (token: string) => {
-                return token && token.startsWith('Bearer ');
-            };
-
-            expect(validateOAuthToken('Bearer abc123')).toBe(true);
-            expect(validateOAuthToken('abc123')).toBe(false);
-        });
-    });
-
-    describe('Integration Error Handling', () => {
-        it('should handle rate limiting', async () => {
-            const callWithRateLimit = vi.fn();
-
-            callWithRateLimit.mockRejectedValue({
-                status: 429,
-                message: 'Rate limit exceeded',
-                retryAfter: 60,
-            });
-
-            try {
-                await callWithRateLimit();
-            } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-                expect(error.message).toContain('Rate limit exceeded');
-                expect(error.retryAfter).toBe(60);
-            }
-        });
-
-        it('should handle authentication errors', async () => {
-            const callWithAuth = vi.fn();
-
-            callWithAuth.mockRejectedValue({
-                status: 401,
-                message: 'Unauthorized',
-            });
-
-            await expect(callWithAuth()).rejects.toMatchObject({
-                status: 401,
-            });
-        });
-    });
+  });
 });

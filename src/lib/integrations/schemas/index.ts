@@ -320,100 +320,6 @@ export const NewRelicEventSchema = z.object({
 export type NewRelicEvent = z.infer<typeof NewRelicEventSchema>;
 
 // ============================================
-// Opsgenie
-// ============================================
-
-export const OpsgenieEventSchema = z.object({
-  action: z.enum(['Create', 'Close', 'Acknowledge', 'AddNote', 'Assign']).optional(),
-  alert: z.object({
-    alertId: z.string(),
-    alias: z.string().optional(),
-    message: z.string(),
-    description: z.string().optional(),
-    status: z.enum(['open', 'closed', 'acknowledged']),
-    acknowledged: z.boolean(),
-    isSeen: z.boolean(),
-    tags: z.array(z.string()).optional(),
-    createdAt: z.number(),
-    updatedAt: z.number(),
-    source: z.string().optional(),
-    priority: z.enum(['P1', 'P2', 'P3', 'P4', 'P5']).optional(),
-    owner: z.string().optional(),
-    teams: z
-      .array(
-        z.object({
-          id: z.string(),
-          name: z.string(),
-        })
-      )
-      .optional(),
-  }),
-});
-
-export type OpsgenieEvent = z.infer<typeof OpsgenieEventSchema>;
-
-// ============================================
-// PagerDuty
-// ============================================
-
-export const PagerDutyEventSchema = z.object({
-  event: z
-    .object({
-      event_type: z.enum([
-        'incident.triggered',
-        'incident.acknowledged',
-        'incident.resolved',
-        'incident.escalated',
-      ]),
-      incident: z
-        .object({
-          id: z.string(),
-          incident_number: z.number(),
-          title: z.string(),
-          description: z.string().optional(),
-          status: z.enum(['triggered', 'acknowledged', 'resolved']),
-          urgency: z.enum(['high', 'low']),
-          created_at: z.string(),
-          service: z
-            .object({
-              id: z.string(),
-              name: z.string(),
-            })
-            .optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  messages: z
-    .array(
-      z.object({
-        event: z.string(),
-        incident: z
-          .object({
-            incident_key: z.string(),
-            incident_number: z.number(),
-            created_on: z.string(),
-            status: z.string(),
-            html_url: z.string(),
-            service: z.object({
-              name: z.string(),
-            }),
-            trigger_summary_data: z
-              .object({
-                subject: z.string().optional(),
-                description: z.string().optional(),
-              })
-              .optional(),
-          })
-          .optional(),
-      })
-    )
-    .optional(),
-});
-
-export type PagerDutyEvent = z.infer<typeof PagerDutyEventSchema>;
-
-// ============================================
 // Sentry
 // ============================================
 
@@ -462,6 +368,319 @@ export const SentryEventSchema = z.object({
 });
 
 export type SentryEvent = z.infer<typeof SentryEventSchema>;
+
+// ============================================
+// Google Cloud Monitoring (Pub/Sub)
+// ============================================
+
+export const GoogleCloudMonitoringSchema = z
+  .object({
+    incident: z
+      .object({
+        incident_id: z.string().optional(),
+        state: z.string().optional(),
+        summary: z.string().optional(),
+        policy_name: z.string().optional(),
+        severity: z.string().optional(),
+        resource: z
+          .object({
+            type: z.string().optional(),
+            display_name: z.string().optional(),
+            labels: z.record(z.string()).optional(),
+          })
+          .optional(),
+        condition: z
+          .object({
+            name: z.string().optional(),
+          })
+          .optional(),
+        started_at: z.string().optional(),
+        ended_at: z.string().optional(),
+      })
+      .optional(),
+    summary: z.string().optional(),
+    state: z.string().optional(),
+    severity: z.string().optional(),
+  })
+  .passthrough();
+
+export type GoogleCloudMonitoringEvent = z.infer<typeof GoogleCloudMonitoringSchema>;
+
+// ============================================
+// Splunk On-Call
+// ============================================
+
+export const SplunkOnCallSchema = z
+  .object({
+    message_type: z.string().optional(),
+    entity_id: z.string().optional(),
+    entity_display_name: z.string().optional(),
+    state_message: z.string().optional(),
+    incident_id: z.union([z.string(), z.number()]).optional(),
+    state: z.string().optional(),
+    status: z.string().optional(),
+    message: z.string().optional(),
+    severity: z.string().optional(),
+    alert: z
+      .object({
+        id: z.string().optional(),
+        message: z.string().optional(),
+        severity: z.string().optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
+export type SplunkOnCallEvent = z.infer<typeof SplunkOnCallSchema>;
+
+// ============================================
+// Splunk Observability
+// ============================================
+
+export const SplunkObservabilitySchema = z
+  .object({
+    incidentId: z.union([z.string(), z.number()]).optional(),
+    detectorId: z.union([z.string(), z.number()]).optional(),
+    detectorName: z.string().optional(),
+    severity: z.string().optional(),
+    title: z.string().optional(),
+    description: z.string().optional(),
+    eventType: z.string().optional(),
+    status: z.string().optional(),
+    link: z.string().optional(),
+  })
+  .passthrough();
+
+export type SplunkObservabilityEvent = z.infer<typeof SplunkObservabilitySchema>;
+
+// ============================================
+// Dynatrace
+// ============================================
+
+export const DynatraceSchema = z
+  .object({
+    ProblemID: z.union([z.string(), z.number()]).optional(),
+    ProblemTitle: z.string().optional(),
+    ProblemDetailsText: z.string().optional(),
+    State: z.string().optional(),
+    SeverityLevel: z.string().optional(),
+    ProblemImpact: z.string().optional(),
+    ProblemURL: z.string().optional(),
+  })
+  .passthrough();
+
+export type DynatraceEvent = z.infer<typeof DynatraceSchema>;
+
+// ============================================
+// AppDynamics
+// ============================================
+
+export const AppDynamicsSchema = z
+  .object({
+    eventType: z.string().optional(),
+    eventMessage: z.string().optional(),
+    summary: z.string().optional(),
+    severity: z.string().optional(),
+    eventSeverity: z.string().optional(),
+    application: z.string().optional(),
+    incidentId: z.union([z.string(), z.number()]).optional(),
+    eventId: z.union([z.string(), z.number()]).optional(),
+    eventTime: z.union([z.string(), z.number()]).optional(),
+  })
+  .passthrough();
+
+export type AppDynamicsEvent = z.infer<typeof AppDynamicsSchema>;
+
+// ============================================
+// Elastic (Kibana Alerting)
+// ============================================
+
+export const ElasticSchema = z
+  .object({
+    rule: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+      })
+      .optional(),
+    alert: z
+      .object({
+        id: z.string().optional(),
+        status: z.string().optional(),
+        severity: z.string().optional(),
+        reason: z.string().optional(),
+      })
+      .optional(),
+    context: z
+      .object({
+        message: z.string().optional(),
+        severity: z.string().optional(),
+      })
+      .optional(),
+    event: z
+      .object({
+        action: z.string().optional(),
+      })
+      .optional(),
+    message: z.string().optional(),
+    status: z.string().optional(),
+    severity: z.string().optional(),
+  })
+  .passthrough();
+
+export type ElasticEvent = z.infer<typeof ElasticSchema>;
+
+// ============================================
+// Honeycomb
+// ============================================
+
+export const HoneycombSchema = z
+  .object({
+    alert_id: z.string().optional(),
+    alert_name: z.string().optional(),
+    alert_severity: z.string().optional(),
+    event_type: z.string().optional(),
+    status: z.string().optional(),
+    trigger_reason: z.string().optional(),
+    result_url: z.string().optional(),
+    dataset: z.string().optional(),
+  })
+  .passthrough();
+
+export type HoneycombEvent = z.infer<typeof HoneycombSchema>;
+
+// ============================================
+// Bitbucket
+// ============================================
+
+export const BitbucketSchema = z
+  .object({
+    event: z.string().optional(),
+    repository: z
+      .object({
+        name: z.string().optional(),
+        full_name: z.string().optional(),
+        uuid: z.string().optional(),
+        links: z
+          .object({
+            html: z
+              .object({
+                href: z.string().optional(),
+              })
+              .optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    pipeline: z
+      .object({
+        uuid: z.string().optional(),
+        build_number: z.number().optional(),
+        state: z
+          .object({
+            name: z.string().optional(),
+            result: z
+              .object({
+                name: z.string().optional(),
+              })
+              .optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    status: z.string().optional(),
+  })
+  .passthrough();
+
+export type BitbucketEvent = z.infer<typeof BitbucketSchema>;
+
+// ============================================
+// UptimeRobot
+// ============================================
+
+export const UptimeRobotSchema = z
+  .object({
+    alertType: z.union([z.string(), z.number()]).optional(),
+    alertTypeFriendlyName: z.string().optional(),
+    monitorID: z.union([z.string(), z.number()]).optional(),
+    monitorFriendlyName: z.string().optional(),
+    alertDetails: z.string().optional(),
+    alertDateTime: z.string().optional(),
+  })
+  .passthrough();
+
+export type UptimeRobotEvent = z.infer<typeof UptimeRobotSchema>;
+
+// ============================================
+// Pingdom
+// ============================================
+
+export const PingdomSchema = z
+  .object({
+    check_id: z.union([z.string(), z.number()]).optional(),
+    check_name: z.string().optional(),
+    state: z.string().optional(),
+    message: z.string().optional(),
+    description: z.string().optional(),
+    last_error: z.string().optional(),
+    time: z.union([z.string(), z.number()]).optional(),
+  })
+  .passthrough();
+
+export type PingdomEvent = z.infer<typeof PingdomSchema>;
+
+// ============================================
+// Better Uptime
+// ============================================
+
+export const BetterUptimeSchema = z
+  .object({
+    incident: z
+      .object({
+        id: z.union([z.string(), z.number()]).optional(),
+        name: z.string().optional(),
+        status: z.string().optional(),
+        severity: z.string().optional(),
+        cause: z.string().optional(),
+        started_at: z.string().optional(),
+        resolved_at: z.string().optional(),
+        url: z.string().optional(),
+      })
+      .optional(),
+    name: z.string().optional(),
+    status: z.string().optional(),
+    severity: z.string().optional(),
+  })
+  .passthrough();
+
+export type BetterUptimeEvent = z.infer<typeof BetterUptimeSchema>;
+
+// ============================================
+// Uptime Kuma
+// ============================================
+
+export const UptimeKumaSchema = z
+  .object({
+    heartbeat: z
+      .object({
+        status: z.number().optional(),
+        msg: z.string().optional(),
+        monitorID: z.number().optional(),
+      })
+      .optional(),
+    monitor: z
+      .object({
+        id: z.number().optional(),
+        name: z.string().optional(),
+        url: z.string().optional(),
+      })
+      .optional(),
+    status: z.string().optional(),
+    msg: z.string().optional(),
+  })
+  .passthrough();
+
+export type UptimeKumaEvent = z.infer<typeof UptimeKumaSchema>;
 
 // ============================================
 // Generic Webhook
@@ -533,9 +752,19 @@ export const IntegrationSchemas = {
   GRAFANA: GrafanaAlertSchema,
   PROMETHEUS: PrometheusAlertSchema,
   NEWRELIC: NewRelicEventSchema,
-  OPSGENIE: OpsgenieEventSchema,
-  PAGERDUTY: PagerDutyEventSchema,
   SENTRY: SentryEventSchema,
+  GOOGLE_CLOUD_MONITORING: GoogleCloudMonitoringSchema,
+  SPLUNK_ONCALL: SplunkOnCallSchema,
+  SPLUNK_OBSERVABILITY: SplunkObservabilitySchema,
+  DYNATRACE: DynatraceSchema,
+  APPDYNAMICS: AppDynamicsSchema,
+  ELASTIC: ElasticSchema,
+  HONEYCOMB: HoneycombSchema,
+  BITBUCKET: BitbucketSchema,
+  UPTIMEROBOT: UptimeRobotSchema,
+  PINGDOM: PingdomSchema,
+  BETTER_UPTIME: BetterUptimeSchema,
+  UPTIME_KUMA: UptimeKumaSchema,
   WEBHOOK: GenericWebhookSchema,
 } as const;
 

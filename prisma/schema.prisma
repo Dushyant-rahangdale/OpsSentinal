@@ -114,7 +114,7 @@ model User {
   timeZone                     String      @default("UTC")
   dailySummary                 Boolean     @default(true)
   incidentDigest               DigestLevel @default(HIGH)
-  // Notification preferences (user-level, like PagerDuty)
+  // Notification preferences (user-level, on-call tools)
   emailNotificationsEnabled    Boolean     @default(false)
   smsNotificationsEnabled      Boolean     @default(false)
   pushNotificationsEnabled     Boolean     @default(false)

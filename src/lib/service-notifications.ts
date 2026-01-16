@@ -141,7 +141,8 @@ export async function sendServiceNotifications(
             incidentId,
             webhookEventType,
             webhook.secret || undefined,
-            webhook.type // Pass webhook type for proper formatting
+            webhook.type, // Pass webhook type for proper formatting
+            webhook.channel || undefined
           );
 
           if (!result.success) {

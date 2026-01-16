@@ -473,6 +473,55 @@ export function formatDiscordPayload(
 }
 
 /**
+ * Format payload for Telegram
+ */
+export function formatTelegramPayload(
+  incident: {
+    id: string;
+    title: string;
+    description?: string | null;
+    status: string;
+    urgency: string;
+    service: { name: string; id: string };
+    assignee?: { name: string; email: string; id: string } | null;
+    createdAt: Date;
+    acknowledgedAt?: Date | null;
+    resolvedAt?: Date | null;
+  },
+  eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
+  baseUrl: string,
+  channel?: string
+): Record<string, any> {
+  const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
+  const statusEmoji =
+    eventType === 'triggered'
+      ? '🔴'
+      : eventType === 'acknowledged'
+        ? '🟡'
+        : eventType === 'resolved'
+          ? '🟢'
+          : '⚪';
+
+  const text = [
+    `${statusEmoji} Incident ${eventType.toUpperCase()}: ${incident.title}`,
+    `Service: ${incident.service.name}`,
+    `Status: ${incident.status}`,
+    `Urgency: ${incident.urgency}`,
+    `Assignee: ${incident.assignee?.name || 'Unassigned'}`,
+    incident.description ? `Details: ${incident.description}` : null,
+    `View: ${incidentUrl}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    chat_id: channel,
+    text,
+    disable_web_page_preview: false,
+  };
+}
+
+/**
  * Format payload for Slack (Block Kit)
  */
 export function formatSlackPayload(
@@ -584,7 +633,8 @@ export function formatWebhookPayloadByType(
     resolvedAt?: Date | null;
   },
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
-  baseUrl: string
+  baseUrl: string,
+  channel?: string
 ): Record<string, any> {
   switch (webhookType.toUpperCase()) {
     case 'GOOGLE_CHAT':
@@ -596,6 +646,8 @@ export function formatWebhookPayloadByType(
       return formatSlackPayload(incident, eventType, baseUrl);
     case 'DISCORD':
       return formatDiscordPayload(incident, eventType, baseUrl);
+    case 'TELEGRAM':
+      return formatTelegramPayload(incident, eventType, baseUrl, channel);
     case 'GENERIC':
     default:
       return generateIncidentWebhookPayload(incident, eventType);
@@ -610,7 +662,8 @@ export async function sendIncidentWebhook(
   incidentId: string,
   eventType: 'triggered' | 'acknowledged' | 'resolved' | 'updated',
   secret?: string,
-  webhookType?: string
+  webhookType?: string,
+  channel?: string
 ): Promise<WebhookResult> {
   try {
     const incident = await prisma.incident.findUnique({
@@ -627,7 +680,7 @@ export async function sendIncidentWebhook(
 
     const baseUrl = getBaseUrl();
     const payload = webhookType
-      ? formatWebhookPayloadByType(webhookType, incident, eventType, baseUrl)
+      ? formatWebhookPayloadByType(webhookType, incident, eventType, baseUrl, channel)
       : generateIncidentWebhookPayload(incident, eventType);
 
     return await sendWebhookWithRetry({

@@ -1,5 +1,5 @@
 /**
- * User-Based Notification System (PagerDuty-style)
+ * User-Based Notification System (on-call style)
  *
  * Architecture:
  * - Users configure their notification preferences (email, SMS, push)

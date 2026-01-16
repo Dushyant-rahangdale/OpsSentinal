@@ -117,7 +117,9 @@ Push incidents to custom systems:
 Send to chat platforms:
 
 - Microsoft Teams
+- Google Chat
 - Discord
+- Telegram
 - Custom bots
 
 ## Best Practices

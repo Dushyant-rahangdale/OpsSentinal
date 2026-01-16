@@ -1,6 +1,6 @@
 # Urgency & Severity Mapping
 
-OpsSentinal normalizes alerts from different monitoring tools into a standard **Severity** and **Urgency** model. This ensures consistent notification behavior regardless of whether the alert comes from AWS, Datadog, or PagerDuty.
+OpsSentinal normalizes alerts from different monitoring tools into a standard **Severity** and **Urgency** model. This ensures consistent notification behavior regardless of whether the alert comes from AWS, Datadog, or GitHub.
 
 ## Core Concepts
 
@@ -102,25 +102,6 @@ OpsSentinal supports both direct CloudWatch Alarms and via **SNS** notifications
 | `warning`        | Warning              | 🟡 LOW    |
 | `info` / `debug` | Info                 | 🟢 LOW    |
 
-### Incident Management
-
-#### PagerDuty
-
-| Urgency | OpsSentinal Severity | Urgency |
-| ------- | -------------------- | ------- |
-| `high`  | **Critical**         | 🔴 HIGH |
-| `low`   | Warning              | 🟡 LOW  |
-
-#### Opsgenie
-
-| Priority | OpsSentinal Severity | Urgency   |
-| -------- | -------------------- | --------- |
-| `P1`     | **Critical**         | 🔴 HIGH   |
-| `P2`     | **Error**            | 🟠 MEDIUM |
-| `P3`     | Warning              | 🟡 LOW    |
-| `P4`     | Info                 | 🟢 LOW    |
-| `P5`     | Info                 | 🟢 LOW    |
-
 ### CI/CD & Code
 
 #### GitHub / GitLab
@@ -130,6 +111,26 @@ OpsSentinal supports both direct CloudWatch Alarms and via **SNS** notifications
 | `failure` (Workflow)   | **Error**               | 🟠 MEDIUM |
 | `failure` (Deployment) | **Error**               | 🟠 MEDIUM |
 | `success`              | Using 'resolved' action | 🟢 -      |
+
+### Observability & APM
+
+The following integrations map severity using standard keywords (`critical`, `error`, `warning`, `info`) or numeric priorities (P1–P5):
+
+- Google Cloud Monitoring
+- Splunk On-Call / Splunk Observability
+- Dynatrace
+- AppDynamics
+- Elastic
+- Honeycomb
+
+### Uptime Monitoring
+
+#### UptimeRobot / Pingdom / Better Uptime / Uptime Kuma
+
+| Status            | OpsSentinal Severity | Urgency |
+| ----------------- | -------------------- | ------- |
+| `down` / `open`   | **Critical**         | 🔴 HIGH |
+| `up` / `resolved` | Info                 | 🟢 LOW  |
 
 ### Custom Webhooks
 

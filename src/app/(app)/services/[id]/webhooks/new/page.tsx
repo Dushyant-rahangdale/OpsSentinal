@@ -126,6 +126,7 @@ export default async function NewWebhookPage({
                     <option value="TEAMS">Microsoft Teams</option>
                     <option value="SLACK">Slack</option>
                     <option value="DISCORD">Discord</option>
+                    <option value="TELEGRAM">Telegram</option>
                   </select>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -163,6 +164,9 @@ export default async function NewWebhookPage({
               <div className="space-y-2">
                 <Label htmlFor="channel">Channel/Room Name (Optional)</Label>
                 <Input id="channel" name="channel" placeholder="e.g., #incidents, General" />
+                <p className="text-xs text-muted-foreground">
+                  For Telegram, provide the target chat ID.
+                </p>
               </div>
             </CardContent>
 

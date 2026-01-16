@@ -31,8 +31,6 @@ function getWebhookUrl(integrationType: IntegrationType, integrationId: string):
       return `${baseUrl}/api/integrations/azure?integrationId=${integrationId}`;
     case 'DATADOG':
       return `${baseUrl}/api/integrations/datadog?integrationId=${integrationId}`;
-    case 'PAGERDUTY':
-      return `${baseUrl}/api/integrations/pagerduty?integrationId=${integrationId}`;
     case 'GRAFANA':
       return `${baseUrl}/api/integrations/grafana?integrationId=${integrationId}`;
     case 'PROMETHEUS':
@@ -41,10 +39,32 @@ function getWebhookUrl(integrationType: IntegrationType, integrationId: string):
       return `${baseUrl}/api/integrations/newrelic?integrationId=${integrationId}`;
     case 'SENTRY':
       return `${baseUrl}/api/integrations/sentry?integrationId=${integrationId}`;
-    case 'OPSGENIE':
-      return `${baseUrl}/api/integrations/opsgenie?integrationId=${integrationId}`;
     case 'GITHUB':
       return `${baseUrl}/api/integrations/github?integrationId=${integrationId}`;
+    case 'GOOGLE_CLOUD_MONITORING':
+      return `${baseUrl}/api/integrations/google-cloud-monitoring?integrationId=${integrationId}`;
+    case 'SPLUNK_ONCALL':
+      return `${baseUrl}/api/integrations/splunk-oncall?integrationId=${integrationId}`;
+    case 'SPLUNK_OBSERVABILITY':
+      return `${baseUrl}/api/integrations/splunk-observability?integrationId=${integrationId}`;
+    case 'DYNATRACE':
+      return `${baseUrl}/api/integrations/dynatrace?integrationId=${integrationId}`;
+    case 'APPDYNAMICS':
+      return `${baseUrl}/api/integrations/appdynamics?integrationId=${integrationId}`;
+    case 'ELASTIC':
+      return `${baseUrl}/api/integrations/elastic?integrationId=${integrationId}`;
+    case 'HONEYCOMB':
+      return `${baseUrl}/api/integrations/honeycomb?integrationId=${integrationId}`;
+    case 'BITBUCKET':
+      return `${baseUrl}/api/integrations/bitbucket?integrationId=${integrationId}`;
+    case 'UPTIMEROBOT':
+      return `${baseUrl}/api/integrations/uptimerobot?integrationId=${integrationId}`;
+    case 'PINGDOM':
+      return `${baseUrl}/api/integrations/pingdom?integrationId=${integrationId}`;
+    case 'BETTER_UPTIME':
+      return `${baseUrl}/api/integrations/better-uptime?integrationId=${integrationId}`;
+    case 'UPTIME_KUMA':
+      return `${baseUrl}/api/integrations/uptime-kuma?integrationId=${integrationId}`;
     case 'WEBHOOK':
       return `${baseUrl}/api/integrations/webhook?integrationId=${integrationId}`;
     case 'EVENTS_API_V2':

@@ -23,11 +23,21 @@ Connect OpsSentinal with your existing tools and workflows.
 - Grafana
 - Sentry
 - NewRelic
-- PagerDuty (migration)
-- OpsGenie (migration)
 - AWS CloudWatch
 - Azure Monitor
 - GitHub Actions
+- Google Cloud Monitoring
+- Splunk On-Call
+- Splunk Observability
+- Dynatrace
+- AppDynamics
+- Elastic
+- Honeycomb
+- Bitbucket Pipelines
+- UptimeRobot
+- Pingdom
+- Better Uptime
+- Uptime Kuma
 
 ### Custom
 

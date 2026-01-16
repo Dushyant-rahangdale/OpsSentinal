@@ -102,27 +102,6 @@ export function verifyGitLabToken(token: string, secret: string): boolean {
 }
 
 /**
- * PagerDuty Webhook Signature Verification (V3)
- * Headers: X-PagerDuty-Signature: v1=<signature>
- */
-export function verifyPagerDutySignature(
-  payload: string | Buffer,
-  signature: string,
-  secret: string
-): boolean {
-  if (!signature) return false;
-
-  // PagerDuty sends "v1=<hex>"
-  const match = signature.match(/^v1=([a-f0-9]+)$/);
-  if (!match) return false;
-
-  const providedSig = match[1];
-  const expectedSig = generateHmacSignature(payload, secret, 'sha256');
-
-  return safeCompare(providedSig, expectedSig);
-}
-
-/**
  * Sentry Webhook Signature Verification
  * Header: Sentry-Hook-Signature: <signature>
  */
@@ -186,21 +165,6 @@ export function verifyGrafanaSignature(
 }
 
 /**
- * Opsgenie Webhook Signature Verification
- * Header: X-Opsgenie-Signature: <signature>
- */
-export function verifyOpsgenieSignature(
-  payload: string | Buffer,
-  signature: string,
-  secret: string
-): boolean {
-  if (!signature || !secret) return false;
-
-  const expectedSig = generateHmacSignature(payload, secret, 'sha256');
-  return safeCompare(signature, expectedSig);
-}
-
-/**
  * New Relic Webhook - Uses API key validation
  * Header: X-Api-Key or Api-Key
  */
@@ -249,15 +213,7 @@ export type SignatureVerificationResult = {
  * Unified signature verification for any provider
  */
 export function verifyWebhookSignature(
-  provider:
-    | 'github'
-    | 'gitlab'
-    | 'pagerduty'
-    | 'sentry'
-    | 'slack'
-    | 'grafana'
-    | 'opsgenie'
-    | 'generic',
+  provider: 'github' | 'gitlab' | 'sentry' | 'slack' | 'grafana' | 'generic',
   payload: string | Buffer,
   headers: Record<string, string | null>,
   secret: string
@@ -277,12 +233,6 @@ export function verifyWebhookSignature(
       const token = headers['x-gitlab-token'];
       if (!token) return { valid: false, error: 'MISSING_SIGNATURE' };
       return { valid: verifyGitLabToken(token, secret) };
-    }
-
-    case 'pagerduty': {
-      const sig = headers['x-pagerduty-signature'];
-      if (!sig) return { valid: false, error: 'MISSING_SIGNATURE' };
-      return { valid: verifyPagerDutySignature(payload, sig, secret) };
     }
 
     case 'sentry': {
@@ -305,12 +255,6 @@ export function verifyWebhookSignature(
       const sig = headers['x-grafana-signature'];
       if (!sig) return { valid: false, error: 'MISSING_SIGNATURE' };
       return { valid: verifyGrafanaSignature(payload, sig, secret) };
-    }
-
-    case 'opsgenie': {
-      const sig = headers['x-opsgenie-signature'];
-      if (!sig) return { valid: false, error: 'MISSING_SIGNATURE' };
-      return { valid: verifyOpsgenieSignature(payload, sig, secret) };
     }
 
     case 'generic':

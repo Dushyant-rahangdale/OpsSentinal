@@ -4,7 +4,7 @@ This document explains how integrations work in OpsSentinal, from receiving a we
 
 ## Overview
 
-OpsSentinal supports 12 external monitoring and alerting services that can send webhooks to automatically create and manage incidents.
+OpsSentinal supports 21 external monitoring and alerting services that can send webhooks to automatically create and manage incidents.
 
 ```mermaid
 flowchart LR
@@ -22,19 +22,29 @@ flowchart LR
 
 ## Supported Integrations
 
-| Integration     | Endpoint                       | Signature Verification |
-| --------------- | ------------------------------ | ---------------------- |
-| AWS CloudWatch  | `/api/integrations/cloudwatch` | API Key                |
-| Azure Monitor   | `/api/integrations/azure`      | API Key                |
-| Datadog         | `/api/integrations/datadog`    | API Key                |
-| GitHub/GitLab   | `/api/integrations/github`     | HMAC SHA-256           |
-| Grafana         | `/api/integrations/grafana`    | HMAC SHA-256           |
-| New Relic       | `/api/integrations/newrelic`   | API Key                |
-| Opsgenie        | `/api/integrations/opsgenie`   | HMAC SHA-256           |
-| PagerDuty       | `/api/integrations/pagerduty`  | HMAC SHA-256           |
-| Prometheus      | `/api/integrations/prometheus` | API Key                |
-| Sentry          | `/api/integrations/sentry`     | HMAC SHA-256           |
-| Generic Webhook | `/api/integrations/webhook`    | Optional HMAC          |
+| Integration             | Endpoint                                    | Signature Verification |
+| ----------------------- | ------------------------------------------- | ---------------------- |
+| AWS CloudWatch          | `/api/integrations/cloudwatch`              | API Key                |
+| Azure Monitor           | `/api/integrations/azure`                   | API Key                |
+| Datadog                 | `/api/integrations/datadog`                 | API Key                |
+| GitHub/GitLab           | `/api/integrations/github`                  | HMAC SHA-256           |
+| Grafana                 | `/api/integrations/grafana`                 | HMAC SHA-256           |
+| New Relic               | `/api/integrations/newrelic`                | API Key                |
+| Google Cloud Monitoring | `/api/integrations/google-cloud-monitoring` | Optional HMAC          |
+| Splunk On-Call          | `/api/integrations/splunk-oncall`           | Optional HMAC          |
+| Splunk Observability    | `/api/integrations/splunk-observability`    | Optional HMAC          |
+| Dynatrace               | `/api/integrations/dynatrace`               | Optional HMAC          |
+| AppDynamics             | `/api/integrations/appdynamics`             | Optional HMAC          |
+| Elastic                 | `/api/integrations/elastic`                 | Optional HMAC          |
+| Honeycomb               | `/api/integrations/honeycomb`               | Optional HMAC          |
+| Bitbucket               | `/api/integrations/bitbucket`               | Optional HMAC          |
+| UptimeRobot             | `/api/integrations/uptimerobot`             | Optional HMAC          |
+| Pingdom                 | `/api/integrations/pingdom`                 | Optional HMAC          |
+| Better Uptime           | `/api/integrations/better-uptime`           | Optional HMAC          |
+| Uptime Kuma             | `/api/integrations/uptime-kuma`             | Optional HMAC          |
+| Prometheus              | `/api/integrations/prometheus`              | API Key                |
+| Sentry                  | `/api/integrations/sentry`                  | HMAC SHA-256           |
+| Generic Webhook         | `/api/integrations/webhook`                 | Optional HMAC          |
 
 ---
 
@@ -125,7 +135,6 @@ Incidents are deduplicated using the `dedup_key`:
 'cloudwatch-us-east-1-HighCPU';
 'github-workflow-12345';
 'prometheus-abc123fingerprint';
-'pagerduty-incident-P789';
 ```
 
 If an incident with the same `dedup_key` is already OPEN:
@@ -184,15 +193,13 @@ Check integration health at `/api/integrations/health`:
 
 Each integration maps its native severity to OpsSentinal levels:
 
-| Integration | Critical      | Error | Warning     | Info         |
-| ----------- | ------------- | ----- | ----------- | ------------ |
-| CloudWatch  | ALARM         | -     | -           | OK           |
-| Azure       | Sev0          | Sev1  | Sev2        | Sev3+        |
-| Datadog     | error         | -     | warning     | info/success |
-| Opsgenie    | P1            | P2    | P3          | P4/P5        |
-| PagerDuty   | high urgency  | -     | low urgency | -            |
-| Prometheus  | critical/page | error | warning     | -            |
-| Sentry      | fatal         | error | warning     | info         |
+| Integration | Critical      | Error | Warning | Info         |
+| ----------- | ------------- | ----- | ------- | ------------ |
+| CloudWatch  | ALARM         | -     | -       | OK           |
+| Azure       | Sev0          | Sev1  | Sev2    | Sev3+        |
+| Datadog     | error         | -     | warning | info/success |
+| Prometheus  | critical/page | error | warning | -            |
+| Sentry      | fatal         | error | warning | info         |
 
 ---
 

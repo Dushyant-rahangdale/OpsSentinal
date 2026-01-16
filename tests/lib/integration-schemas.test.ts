@@ -4,7 +4,6 @@ import {
   CloudWatchAlarmSchema,
   GitHubEventSchema,
   PrometheusAlertSchema,
-  OpsgenieEventSchema,
   GenericWebhookSchema,
   IntegrationSchemas,
 } from '@/lib/integrations/schemas';
@@ -126,27 +125,6 @@ describe('Integration Schemas', () => {
     });
   });
 
-  describe('OpsgenieEventSchema', () => {
-    it('should validate Opsgenie alert', () => {
-      const payload = {
-        action: 'Create',
-        alert: {
-          alertId: 'alert-123',
-          message: 'Server down',
-          status: 'open',
-          acknowledged: false,
-          isSeen: false,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          priority: 'P1',
-        },
-      };
-
-      const result = validatePayload(OpsgenieEventSchema, payload);
-      expect(result.success).toBe(true);
-    });
-  });
-
   describe('GenericWebhookSchema', () => {
     it('should validate minimal webhook payload', () => {
       const payload = {
@@ -183,9 +161,19 @@ describe('Integration Schemas', () => {
         'GRAFANA',
         'PROMETHEUS',
         'NEWRELIC',
-        'OPSGENIE',
-        'PAGERDUTY',
         'SENTRY',
+        'GOOGLE_CLOUD_MONITORING',
+        'SPLUNK_ONCALL',
+        'SPLUNK_OBSERVABILITY',
+        'DYNATRACE',
+        'APPDYNAMICS',
+        'ELASTIC',
+        'HONEYCOMB',
+        'BITBUCKET',
+        'UPTIMEROBOT',
+        'PINGDOM',
+        'BETTER_UPTIME',
+        'UPTIME_KUMA',
         'WEBHOOK',
       ];
 

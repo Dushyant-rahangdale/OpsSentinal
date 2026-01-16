@@ -10,10 +10,20 @@ Connect your monitoring tools to OpsSentinal.
 | [Prometheus](./prometheus.md) | ✅ Supported |
 | [Grafana](./grafana.md)       | ✅ Supported |
 | [Sentry](./sentry.md)         | ✅ Supported |
-| PagerDuty Migration           | ✅ Supported |
-| OpsGenie Migration            | ✅ Supported |
 | AWS CloudWatch                | ✅ Supported |
 | Azure Monitor                 | ✅ Supported |
+| Google Cloud Monitoring       | ✅ Supported |
+| Splunk On-Call                | ✅ Supported |
+| Splunk Observability          | ✅ Supported |
+| Dynatrace                     | ✅ Supported |
+| AppDynamics                   | ✅ Supported |
+| Elastic                       | ✅ Supported |
+| Honeycomb                     | ✅ Supported |
+| Bitbucket Pipelines           | ✅ Supported |
+| UptimeRobot                   | ✅ Supported |
+| Pingdom                       | ✅ Supported |
+| Better Uptime                 | ✅ Supported |
+| Uptime Kuma                   | ✅ Supported |
 
 ## How It Works
 

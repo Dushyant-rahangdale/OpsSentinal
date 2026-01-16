@@ -47,15 +47,7 @@ export interface HandlerOptions<T> {
   schema?: z.ZodSchema<T>;
 
   /** Provider for signature verification */
-  signatureProvider?:
-    | 'github'
-    | 'gitlab'
-    | 'pagerduty'
-    | 'sentry'
-    | 'slack'
-    | 'grafana'
-    | 'opsgenie'
-    | 'generic';
+  signatureProvider?: 'github' | 'gitlab' | 'sentry' | 'slack' | 'grafana' | 'generic';
 
   /** Skip rate limiting for this integration */
   skipRateLimit?: boolean;
@@ -143,12 +135,10 @@ export function createIntegrationHandler<T>(
       const headers: Record<string, string | null> = {
         'x-hub-signature-256': req.headers.get('x-hub-signature-256'),
         'x-gitlab-token': req.headers.get('x-gitlab-token'),
-        'x-pagerduty-signature': req.headers.get('x-pagerduty-signature'),
         'sentry-hook-signature': req.headers.get('sentry-hook-signature'),
         'x-slack-request-timestamp': req.headers.get('x-slack-request-timestamp'),
         'x-slack-signature': req.headers.get('x-slack-signature'),
         'x-grafana-signature': req.headers.get('x-grafana-signature'),
-        'x-opsgenie-signature': req.headers.get('x-opsgenie-signature'),
         'x-signature': req.headers.get('x-signature'),
         'x-webhook-signature': req.headers.get('x-webhook-signature'),
       };

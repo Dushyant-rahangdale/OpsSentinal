@@ -3,7 +3,6 @@ import {
   generateHmacSignature,
   verifyHmacSignature,
   verifyGitHubSignature,
-  verifyPagerDutySignature,
   verifySentrySignature,
   verifySlackSignature,
   verifyWebhookSignature,
@@ -80,20 +79,6 @@ describe('Signature Verification', () => {
 
     it('should return false for empty signature', () => {
       expect(verifyGitHubSignature(testPayload, '', testSecret)).toBe(false);
-    });
-  });
-
-  describe('verifyPagerDutySignature', () => {
-    it('should verify valid PagerDuty v1 signature', () => {
-      const hmac = generateHmacSignature(testPayload, testSecret);
-      const signature = 'v1=' + hmac;
-      expect(verifyPagerDutySignature(testPayload, signature, testSecret)).toBe(true);
-    });
-
-    it('should reject signature with wrong version', () => {
-      const hmac = generateHmacSignature(testPayload, testSecret);
-      const signature = 'v2=' + hmac;
-      expect(verifyPagerDutySignature(testPayload, signature, testSecret)).toBe(false);
     });
   });
 
@@ -180,14 +165,6 @@ describe('Signature Verification', () => {
       const result = verifyWebhookSignature('github', testPayload, headers, testSecret);
       expect(result.valid).toBe(false);
       expect(result.error).toBe('MISSING_SIGNATURE');
-    });
-
-    it('should verify PagerDuty provider', () => {
-      const signature = 'v1=' + generateHmacSignature(testPayload, testSecret);
-      headers['x-pagerduty-signature'] = signature;
-
-      const result = verifyWebhookSignature('pagerduty', testPayload, headers, testSecret);
-      expect(result.valid).toBe(true);
     });
 
     it('should return error for missing secret', () => {

@@ -5,7 +5,7 @@ import VersionCheck from '@/components/VersionCheck';
 
 export const metadata: Metadata = {
   title: 'OpsSentinal | Enterprise Incident Management',
-  description: 'PagerDuty Clone',
+  description: 'Enterprise incident management and response platform',
   icons: {
     icon: [
       { url: '/logo.svg', type: 'image/svg+xml' },
