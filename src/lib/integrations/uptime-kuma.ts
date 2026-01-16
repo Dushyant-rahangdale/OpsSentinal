@@ -2,21 +2,24 @@ import { normalizeSeverity, firstString } from './normalization';
 
 export type UptimeKumaEvent = {
   heartbeat?: {
-    status?: number | string;
-    msg?: string;
-    monitorID?: number | string;
+    status?: number | string | null;
+    msg?: string | null;
+    monitorID?: number | string | null;
   };
   monitor?: {
-    id?: number | string;
-    name?: string;
-    url?: string;
+    id?: number | string | null;
+    name?: string | null;
+    url?: string | null;
   };
-  status?: string;
-  msg?: string;
+  status?: string | null;
+  msg?: string | null;
   [key: string]: unknown;
 };
 
-function mapAction(status?: number | string, statusText?: string): 'trigger' | 'resolve' {
+function mapAction(
+  status?: number | string | null,
+  statusText?: string | null
+): 'trigger' | 'resolve' {
   if (typeof status === 'number') {
     return status === 1 ? 'resolve' : 'trigger';
   }
