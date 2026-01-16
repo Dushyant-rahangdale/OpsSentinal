@@ -663,20 +663,22 @@ export const UptimeKumaSchema = z
   .object({
     heartbeat: z
       .object({
-        status: z.number().optional(),
-        msg: z.string().optional(),
-        monitorID: z.number().optional(),
+        status: z.union([z.number(), z.string(), z.null()]).optional(),
+        msg: z.union([z.string(), z.null()]).optional(),
+        monitorID: z.union([z.number(), z.string(), z.null()]).optional(),
       })
+      .nullable()
       .optional(),
     monitor: z
       .object({
-        id: z.number().optional(),
-        name: z.string().optional(),
-        url: z.string().optional(),
+        id: z.union([z.number(), z.string(), z.null()]).optional(),
+        name: z.union([z.string(), z.null()]).optional(),
+        url: z.union([z.string(), z.null()]).optional(),
       })
+      .nullable()
       .optional(),
-    status: z.string().optional(),
-    msg: z.string().optional(),
+    status: z.union([z.string(), z.null()]).optional(),
+    msg: z.union([z.string(), z.null()]).optional(),
   })
   .passthrough();
 
