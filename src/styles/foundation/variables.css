@@ -201,4 +201,7 @@
     /* Layout */
     --sidebar-width: clamp(220px, 18vw, 264px);
     --sidebar-width-collapsed: 76px;
+    /* Zoomed sidebar width (0.8 zoom factor applied) - used for content offset */
+    --sidebar-width-zoomed: calc(288px * 0.8);
+    --sidebar-width-collapsed-zoomed: calc(var(--sidebar-width-collapsed) * 0.8);
 }

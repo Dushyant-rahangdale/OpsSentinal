@@ -56,7 +56,7 @@ select option {
 
 /* Main Layout Shells */
 .app-shell {
-    display: flex;
+    display: block;
     min-height: 100dvh;
     max-height: 100dvh;
     position: relative;
@@ -64,22 +64,23 @@ select option {
 }
 
 .content-shell {
-    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: 100dvh;
-    /* Offset for fixed sidebar */
-    margin-left: var(--sidebar-width);
-    transition: margin-left var(--transition-base);
+    height: 100dvh;
+    /* Position content to start exactly where zoomed sidebar ends */
+    margin-left: var(--sidebar-width-zoomed);
+    width: calc(100% - var(--sidebar-width-zoomed));
+    transition: margin-left var(--transition-base), width var(--transition-base);
 }
 
-/* When sidebar is collapsed, reduce margin */
+/* When sidebar is collapsed, adjust content area */
 .app-shell:has(.sidebar-collapsed) .content-shell,
 .app-shell:has(.sidebar[data-collapsed='true']) .content-shell {
-    margin-left: var(--sidebar-width-collapsed);
+    margin-left: var(--sidebar-width-collapsed-zoomed);
+    width: calc(100% - var(--sidebar-width-collapsed-zoomed));
 }
 
 .page-shell {
