@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
@@ -31,7 +32,7 @@ import { cn } from '@/lib/utils';
 type QuickAction = {
   label: string;
   href: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement<{ className?: string }>;
   description?: string;
   colorClass: string;
   badge?: string;
@@ -125,83 +126,71 @@ export default function QuickActions({ canCreate = true }: QuickActionsProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-64 p-0 overflow-hidden border-2 border-border shadow-2xl bg-white/95 backdrop-blur-xl z-[1050] [zoom:0.8]"
+        className="w-52 p-0 overflow-hidden border border-border shadow-xl bg-white/95 backdrop-blur-xl z-[1050]"
       >
         {/* Compact Header */}
-        <div className="relative p-3 bg-gradient-to-br from-primary/90 via-primary to-primary/90 text-primary-foreground overflow-hidden border-b border-white/10">
+        <div className="relative p-2 bg-gradient-to-br from-primary/90 via-primary to-primary/90 text-primary-foreground overflow-hidden border-b border-white/10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_50%)]" />
-          <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.05]" />
 
-          <div className="relative z-10 flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white/10 border-2 border-white/20 shadow-md ring-2 ring-white/10 backdrop-blur-md">
-              <Sparkles className="h-4 w-4 text-white" />
+          <div className="relative z-10 flex items-center gap-2">
+            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white/10 border border-white/20 shadow-sm backdrop-blur-md">
+              <Sparkles className="h-3 w-3 text-white" />
             </div>
             <div className="flex flex-col min-w-0">
-              <p className="text-sm font-bold truncate leading-none mb-0.5 text-white">
-                Create New
-              </p>
-              <p className="text-[9px] text-primary-foreground/80 font-medium truncate">
-                Select a resource type
+              <p className="text-xs font-semibold truncate leading-none text-white">Create New</p>
+              <p className="text-[8px] text-primary-foreground/80 font-medium truncate">
+                Select resource type
               </p>
             </div>
           </div>
         </div>
 
-        <div className="p-1 space-y-0.5">
+        <div className="p-0.5">
           {quickActions.map((action, index) => (
-            <>
-              {index === 2 && ( // Separator after Incident/Postmortem
-                <div className="px-1 py-0.5">
-                  <DropdownMenuSeparator className="bg-border/60" />
-                </div>
-              )}
+            <React.Fragment key={action.href}>
+              {index === 2 && <DropdownMenuSeparator className="my-0.5 bg-border/60" />}
               <DropdownMenuItem
-                key={action.href}
                 onClick={() => router.push(action.href)}
-                className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md py-1.5 px-2 border border-transparent focus:border-border/50 transition-all"
+                className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded py-1 px-1.5"
               >
                 <div
                   className={cn(
-                    'flex items-center justify-center w-6 h-6 rounded-full mr-2.5 shrink-0 transition-all shadow-sm border',
-                    action.colorClass,
-                    'group-hover:scale-105 group-hover:shadow'
+                    'flex items-center justify-center w-5 h-5 rounded-full mr-2 shrink-0 transition-all shadow-sm border',
+                    action.colorClass
                   )}
                 >
-                  {action.icon}
+                  {React.cloneElement(action.icon, { className: 'h-3 w-3' })}
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-foreground tracking-tight">
-                      {action.label}
-                    </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-foreground">{action.label}</span>
                     {action.badge && (
-                      <Badge variant="neutral" size="xs" className="uppercase">
+                      <Badge variant="neutral" size="xs" className="uppercase text-[7px] px-1 py-0">
                         {action.badge}
                       </Badge>
                     )}
                   </div>
-                  {/* Dense mode: Hide description or make it very small? Keeping it very small for now but checking if user wanted it gone. 'very compact' suggests small. */}
                   {action.description && (
-                    <span className="text-[9px] text-muted-foreground group-hover:text-foreground/80 transition-colors truncate leading-tight">
+                    <span className="text-[8px] text-muted-foreground truncate leading-tight">
                       {action.description}
                     </span>
                   )}
                 </div>
                 {action.shortcut ? (
-                  <DropdownMenuShortcut className="text-[9px] bg-muted px-1 py-0 rounded border border-border/50 opacity-100">
+                  <DropdownMenuShortcut className="text-[8px] bg-muted px-0.5 rounded border border-border/50">
                     ⌘{action.shortcut}
                   </DropdownMenuShortcut>
                 ) : (
-                  <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-0.5 transition-all opacity-0 group-hover:opacity-100" />
+                  <ArrowRight className="h-2 w-2 text-muted-foreground/30 group-hover:text-primary transition-all opacity-0 group-hover:opacity-100" />
                 )}
               </DropdownMenuItem>
-            </>
+            </React.Fragment>
           ))}
         </div>
 
-        <div className="p-1.5 bg-muted/30 border-t flex items-center justify-center gap-2">
-          <Command className="h-2.5 w-2.5 text-muted-foreground" />
-          <p className="text-[9px] text-muted-foreground">
+        <div className="p-1 bg-muted/30 border-t flex items-center justify-center gap-1.5">
+          <Command className="h-2 w-2 text-muted-foreground" />
+          <p className="text-[8px] text-muted-foreground">
             Press{' '}
             <kbd className="font-mono bg-muted border border-border/50 px-0.5 rounded text-foreground font-medium">
               C

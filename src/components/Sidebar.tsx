@@ -229,9 +229,8 @@ export default function Sidebar(
         aria-label={isDesktopCollapsed ? item.label : undefined}
         title={isDesktopCollapsed ? item.label : undefined}
         className={cn(
-          'group relative flex items-center rounded-xl font-medium',
-          // Larger text to compensate for 0.8 zoom (visible ~14px after zoom)
-          'text-[1.1rem]',
+          'group relative flex items-center rounded-lg font-medium',
+          'text-sm',
           'transition-all duration-200 ease-out motion-reduce:transition-none',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-foreground/0',
           'text-white/85 hover:text-white hover:bg-white/12 hover:shadow-[0_0_12px_rgba(255,255,255,0.05)]',
@@ -240,14 +239,14 @@ export default function Sidebar(
             'bg-white/15 text-white ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.08)]',
           active &&
             'after:absolute after:left-0 after:top-2 after:bottom-2 after:w-[3px] after:rounded-r-full after:bg-white/70',
-          isDesktopCollapsed ? 'h-11 w-11 justify-center px-0' : 'px-3 py-2.5 gap-3'
+          isDesktopCollapsed ? 'h-10 w-10 justify-center px-0' : 'px-3 py-2 gap-3'
         )}
       >
         <span
           className={cn(
             'shrink-0 flex items-center justify-center opacity-85 group-hover:opacity-100',
             'transition-transform duration-200 group-hover:scale-110',
-            '[&_svg]:h-6 [&_svg]:w-6 [&_svg]:shrink-0'
+            '[&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0'
           )}
         >
           {item.icon}
@@ -294,17 +293,14 @@ export default function Sidebar(
     return (
       <div
         key={sectionName}
-        className={cn('w-full', isDesktopCollapsed ? 'mb-3' : 'mb-5')}
+        className={cn('w-full', isDesktopCollapsed ? 'mb-3' : 'mb-4')}
         data-section={sectionName}
       >
         {!isDesktopCollapsed && sectionName !== 'MAIN' && (
-          <div className="flex items-center gap-2 mb-2.5 px-1">
+          <div className="flex items-center gap-2 mb-2 px-1">
             <div className={cn('h-1.5 w-1.5 rounded-full', colors.dotClass)} />
             <span
-              className={cn(
-                'text-[0.85rem] font-semibold tracking-wide uppercase',
-                colors.textClass
-              )}
+              className={cn('text-[11px] font-semibold tracking-wide uppercase', colors.textClass)}
             >
               {sectionName}
             </span>
@@ -337,14 +333,10 @@ export default function Sidebar(
         aria-hidden={isMobile && !isMobileMenuOpen}
         data-collapsed={isDesktopCollapsed ? 'true' : 'false'}
         className={cn(
-          // Use original CSS class which has clamp() for zoom-resilient width
           'sidebar',
           isDesktopCollapsed && 'sidebar-collapsed',
           isMobile && 'sidebar-mobile',
-          isMobileMenuOpen && 'sidebar-mobile-open',
-          // Use zoom - the app-shell overflow:hidden will clip any excess
-          !isMobile && '[zoom:0.8]',
-          !isMobile && !isDesktopCollapsed && '!w-72'
+          isMobileMenuOpen && 'sidebar-mobile-open'
         )}
       >
         {/* Enhanced Header with Branding */}
@@ -352,7 +344,7 @@ export default function Sidebar(
           className={cn(
             'relative shrink-0 border-b border-white/10',
             'bg-gradient-to-b from-white/5 to-transparent',
-            isDesktopCollapsed ? 'p-3.5 px-2.5 pb-3' : 'p-3 md:p-4'
+            isDesktopCollapsed ? 'p-3' : 'px-4 py-5'
           )}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.05)_0%,transparent_55%)] pointer-events-none" />
@@ -363,7 +355,7 @@ export default function Sidebar(
               'relative z-10 flex items-center no-underline transition-transform hover:translate-x-0.5',
               isDesktopCollapsed
                 ? 'flex-col justify-center gap-2 w-full'
-                : 'flex-row justify-start gap-2.5'
+                : 'flex-row justify-start gap-3 w-full'
             )}
           >
             <div
@@ -371,37 +363,30 @@ export default function Sidebar(
                 'relative shrink-0 rounded-xl border border-white/12 bg-white/8',
                 'shadow-md flex items-center justify-center overflow-hidden',
                 'transition-transform hover:scale-105',
-                isDesktopCollapsed ? 'h-10 w-10' : 'h-10 w-10 md:h-11 md:w-11'
+                isDesktopCollapsed ? 'h-10 w-10' : 'h-11 w-11'
               )}
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2)_0%,transparent_70%)] pointer-events-none" />
               <Image
                 src="/logo.svg"
                 alt="OpsSentinal logo"
-                width={48}
-                height={48}
+                width={40}
+                height={40}
                 className={cn(
                   'relative z-10 object-contain',
-                  isDesktopCollapsed ? 'h-6 w-6' : 'h-7 w-7 md:h-8 md:w-8'
+                  isDesktopCollapsed ? 'h-6 w-6' : 'h-7 w-7'
                 )}
               />
             </div>
 
             {!isDesktopCollapsed && (
-              <div className="flex flex-col gap-0.5 min-w-0">
-                <h1 className="text-base md:text-lg font-extrabold text-white m-0 leading-tight tracking-tight">
+              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                <h1 className="text-lg font-bold text-white m-0 leading-tight tracking-tight">
                   OpsSentinel
                 </h1>
-                <Badge
-                  variant="sidebar-info"
-                  size="xs"
-                  className={cn(
-                    'w-fit mt-1 uppercase tracking-wider',
-                    'backdrop-blur-sm transition-colors'
-                  )}
-                >
+                <span className="text-xs text-white/50 font-medium uppercase tracking-wide">
                   Incident Response
-                </Badge>
+                </span>
               </div>
             )}
           </Link>
@@ -461,8 +446,8 @@ export default function Sidebar(
             '[&::-webkit-scrollbar-thumb]:bg-white/20',
             '[&::-webkit-scrollbar-thumb]:rounded-full',
             '[&::-webkit-scrollbar-thumb:hover]:bg-white/35',
-            // Compact padding
-            isDesktopCollapsed ? 'p-1.5' : 'p-2 md:p-3'
+            // Standard padding
+            isDesktopCollapsed ? 'p-2' : 'p-3'
           )}
         >
           {Object.entries(groupedItems).map(([section, items]) => renderSection(section, items))}
@@ -472,7 +457,6 @@ export default function Sidebar(
         <div
           className={cn(
             'mt-auto shrink-0 border-t border-white/5',
-            // Removed bg-black/20 to match sidebar theme seamlessly
             isDesktopCollapsed ? 'p-2' : 'p-3'
           )}
         >
@@ -490,7 +474,7 @@ export default function Sidebar(
               size={isDesktopCollapsed ? 'sm' : 'sm'}
               showOnlineStatus={true}
               className={cn(
-                'border-white/10 transition-transform group-hover:scale-105',
+                'border-white/10 transition-transform group-hover:scale-105 shrink-0',
                 !isDesktopCollapsed && 'h-9 w-9'
               )}
               fallbackClassName="bg-indigo-500/20 text-indigo-200 backdrop-blur-md"
@@ -498,36 +482,10 @@ export default function Sidebar(
 
             {!isDesktopCollapsed && (
               <div className="flex-1 min-w-0 flex flex-col justify-center">
-                <div className="text-sm font-bold text-white truncate group-hover:text-indigo-200 transition-colors flex items-center gap-2">
-                  <span>{currentName || 'User'}</span>
-                  {(() => {
-                    const roleKey = (currentRole?.toLowerCase() || 'admin') as
-                      | 'admin'
-                      | 'responder'
-                      | 'observer'
-                      | 'user';
-
-                    return (
-                      <Badge
-                        variant={
-                          roleKey === 'admin'
-                            ? 'sidebar-danger'
-                            : roleKey === 'responder'
-                              ? 'sidebar-info'
-                              : roleKey === 'observer'
-                                ? 'sidebar-success'
-                                : 'neutral'
-                        }
-                        size="xs"
-                        className="uppercase"
-                      >
-                        {currentRole?.toLowerCase() || 'admin'}
-                      </Badge>
-                    );
-                  })()}
+                <div className="text-sm font-semibold text-white truncate group-hover:text-indigo-200 transition-colors">
+                  {currentName || 'User'}
                 </div>
                 <div className="text-xs text-white/40 font-medium truncate">
-                  {/* Display Email as requested */}
                   {currentEmail || 'user@example.com'}
                 </div>
               </div>
@@ -539,31 +497,31 @@ export default function Sidebar(
             <div className="grid grid-cols-4 gap-1 mt-3">
               <Link
                 href="/docs"
-                className="flex items-center justify-center h-9 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                className="flex items-center justify-center h-8 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
                 title="Documentation"
               >
-                <HelpCircle className="h-5 w-5" />
+                <HelpCircle className="h-4 w-4" />
               </Link>
               <Link
                 href="/shortcuts"
-                className="flex items-center justify-center h-9 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                className="flex items-center justify-center h-8 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
                 title="Keyboard Shortcuts"
               >
-                <Keyboard className="h-5 w-5" />
+                <Keyboard className="h-4 w-4" />
               </Link>
               <Link
                 href="/settings"
-                className="flex items-center justify-center h-9 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+                className="flex items-center justify-center h-8 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
                 title="Settings"
               >
-                <Settings className="h-5 w-5" />
+                <Settings className="h-4 w-4" />
               </Link>
               <Link
                 href="/auth/signout"
-                className="flex items-center justify-center h-9 rounded-md hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-colors"
+                className="flex items-center justify-center h-8 rounded-md hover:bg-rose-500/10 text-white/40 hover:text-rose-400 transition-colors"
                 title="Sign Out"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
               </Link>
             </div>
           )}

@@ -193,7 +193,7 @@ export default function AssigneeSection({
             <ChevronsUpDown className="h-3 w-3" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[320px]" align="end" style={{ zoom: 0.8 }}>
+        <PopoverContent className="p-0 w-64" align="end">
           {ReassignContent}
         </PopoverContent>
       </Popover>
@@ -247,7 +247,7 @@ export default function AssigneeSection({
         </div>
       </PopoverTrigger>
       {canManage && (
-        <PopoverContent className="p-0 w-[320px]" align="start" style={{ zoom: 0.8 }}>
+        <PopoverContent className="p-0 w-64" align="start">
           {ReassignContent}
         </PopoverContent>
       )}

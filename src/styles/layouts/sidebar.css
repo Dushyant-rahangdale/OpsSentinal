@@ -15,8 +15,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  /* When zoomed at 0.8, need 125% height (100/0.8) to fill viewport visually */
-  height: 125vh;
+  height: 100vh;
+  height: 100dvh;
   color: white;
   box-shadow: 2px 0 25px rgba(0, 0, 0, 0.15), inset -1px 0 0 rgba(255, 255, 255, 0.05);
   z-index: 1000;
@@ -179,7 +179,7 @@
 }
 
 .sidebar-section-title {
-  font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  font-size: 0.6875rem; /* 11px - fixed size */
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -192,7 +192,7 @@
 }
 
 .sidebar .nav-item {
-  padding: clamp(0.5rem, 1vw, 0.625rem) clamp(0.6rem, 1.2vw, 0.75rem);
+  padding: 0.5rem 0.75rem; /* Fixed: 8px 12px */
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -202,7 +202,7 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.85);
   font-weight: 600;
-  font-size: clamp(0.82rem, 1.05vw, 0.9rem);
+  font-size: 0.875rem; /* Fixed: 14px */
   border: 1px solid transparent;
   min-width: 0;
   position: relative;
@@ -229,8 +229,8 @@
 }
 
 .sidebar .nav-icon {
-  width: clamp(16px, 1.8vw, 18px);
-  height: clamp(16px, 1.8vw, 18px);
+  width: 18px; /* Fixed size */
+  height: 18px; /* Fixed size */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -256,7 +256,7 @@
   padding: 0 5px;
   background: #ef4444;
   color: white;
-  font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  font-size: 0.6875rem; /* Fixed: 11px */
   font-weight: 700;
   border-radius: 9px;
   display: flex;
@@ -290,8 +290,8 @@
 }
 
 .sidebar.sidebar-collapsed .nav-item {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   gap: 0;
 }

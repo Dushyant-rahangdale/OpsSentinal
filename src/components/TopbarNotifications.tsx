@@ -240,7 +240,7 @@ export default function TopbarNotifications() {
           <span className="sr-only">Notifications</span>
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md flex flex-col p-0 [zoom:0.8]">
+      <SheetContent className="w-full sm:max-w-sm flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-2">
           <div className="flex items-center justify-between mb-2">
             <SheetTitle>Notifications</SheetTitle>

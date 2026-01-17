@@ -197,7 +197,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   userId={userId}
                 />
                 <div className="content-shell">
-                  <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 [zoom:0.8]">
+                  <header className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="flex items-center gap-4">
                       <OperationalStatus
                         tone={statusTone}

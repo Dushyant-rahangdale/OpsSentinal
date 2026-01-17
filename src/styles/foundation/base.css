@@ -320,17 +320,17 @@ select option {
     overflow-y: auto;
     overflow-x: hidden;
     height: 100dvh;
-    /* Position content to start exactly where zoomed sidebar ends */
-    margin-left: var(--sidebar-width-zoomed);
-    width: calc(100% - var(--sidebar-width-zoomed));
+    /* Position content to start exactly where sidebar ends */
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
     transition: margin-left var(--transition-base), width var(--transition-base);
 }
 
 /* When sidebar is collapsed, adjust content area */
 .app-shell:has(.sidebar-collapsed) .content-shell,
 .app-shell:has(.sidebar[data-collapsed='true']) .content-shell {
-    margin-left: var(--sidebar-width-collapsed-zoomed);
-    width: calc(100% - var(--sidebar-width-collapsed-zoomed));
+    margin-left: var(--sidebar-width-collapsed);
+    width: calc(100% - var(--sidebar-width-collapsed));
 }
 
 .page-shell {

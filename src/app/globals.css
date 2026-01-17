@@ -4249,3 +4249,19 @@ select option {
   color: #dc2626;
   transform: none;
 }
+
+/* ========================================
+   Safari Compatibility Fixes
+   ======================================== */
+
+/* Fix for Radix portal positioning in Safari */
+@supports (-webkit-touch-callout: none) {
+  [data-radix-popper-content-wrapper] {
+    isolation: isolate;
+  }
+
+  [data-radix-portal] {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}

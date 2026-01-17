@@ -296,7 +296,7 @@ export default function SidebarSearch() {
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="p-0 w-[400px] md:w-[600px] overflow-hidden [zoom:0.8]"
+          className="p-0 w-[320px] md:w-[480px] overflow-hidden"
           align="start"
           sideOffset={8}
           onOpenAutoFocus={(e: Event) => e.preventDefault()} // Don't steal focus from input
@@ -389,7 +389,9 @@ export default function SidebarSearch() {
                           <div className="ml-auto">
                             {result.metadata?.status && (
                               <Badge
-                                variant={result.metadata.status === 'resolved' ? 'success' : 'danger'}
+                                variant={
+                                  result.metadata.status === 'resolved' ? 'success' : 'danger'
+                                }
                                 size="xs"
                                 className="capitalize"
                               >

@@ -4,36 +4,64 @@
  * This module eliminates the need for users to manually configure NEXTAUTH_SECRET
  * by auto-generating one on first run and storing it in the database.
  *
+ * EDGE RUNTIME COMPATIBILITY NOTE:
+ * This file is used by middleware.ts which runs on Edge Runtime.
+ * Standard Prisma Client DOES NOT work on Edge Runtime.
+ * Therefore, we have removed the database fallback for this specific module.
+ *
  * Priority order:
- * 1. Environment variable NEXTAUTH_SECRET (for explicit override)
- * 2. Database SystemConfig table (auto-generated)
- * 3. Generate new secret if neither exists
+ * 1. Environment variable NEXTAUTH_SECRET (Recommended for Production)
+ * 2. Generate new ephemeral secret (Development/Fallback - Invalidates on restart)
  */
 
-import { randomBytes } from 'crypto';
-import prisma from './prisma';
 import { logger } from './logger';
 
-// In-memory cache to avoid DB lookup on every request
-let cachedSecret: string | null = null;
-let cacheInitialized = false;
+// Use globalThis.crypto for Edge Runtime compatibility
+function generateRandomBase64(length: number): string {
+  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
+    const array = new Uint8Array(length);
+    globalThis.crypto.getRandomValues(array);
+    // Use Buffer if available (Next.js Edge supports it), otherwise perform manual conversion
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(array).toString('base64');
+    }
+    // Fallback for environments without Buffer but with crypto (unlikely in Next.js context but safe)
+    let binary = '';
+    for (let i = 0; i < length; i++) {
+      binary += String.fromCharCode(array[i]);
+    }
+    return btoa(binary);
+  }
 
-const SYSTEM_CONFIG_KEY = 'nextauth_secret';
+  // Fallback for Node.js environments where global crypto might be missing (unlikely in strict mode but good for safety)
+  // We use dynamic require to avoid static analysis picking up 'crypto' in Edge
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { randomBytes } = require('crypto');
+    return randomBytes(length).toString('base64');
+  } catch (_e) {
+    // Should not happen in standard envs
+    throw new Error('No crypto implementation available');
+  }
+}
+
+// In-memory cache
+let cachedSecret: string | null = null;
 
 /**
  * Generates a cryptographically secure random secret
  */
 function generateSecret(): string {
-  return randomBytes(32).toString('base64');
+  return generateRandomBase64(32);
 }
 
 /**
- * Get the NextAuth secret, auto-generating if necessary
+ * Get the NextAuth secret
  *
  * This function:
  * 1. Returns env var if set
  * 2. Returns cached value if available
- * 3. Fetches from DB or generates new one
+ * 3. Returns ephemeral generated secret (logging a warning)
  */
 export async function getNextAuthSecret(): Promise<string> {
   // Priority 1: Environment variable override
@@ -43,67 +71,27 @@ export async function getNextAuthSecret(): Promise<string> {
   }
 
   // Priority 2: Return cached value
-  if (cacheInitialized && cachedSecret) {
+  if (cachedSecret) {
     return cachedSecret;
   }
 
-  try {
-    // Priority 3: Fetch from database
-    const config = await prisma.systemConfig.findUnique({
-      where: { key: SYSTEM_CONFIG_KEY },
-    });
+  // NOTE: We removed Prisma database fallback for Edge Runtime compatibility.
+  // Middleware (running on Edge) uses this file and cannot run Prisma Client.
 
-    if (config?.value && typeof config.value === 'object' && 'secret' in config.value) {
-      cachedSecret = (config.value as { secret: string }).secret;
-      cacheInitialized = true;
-      logger.debug('[SecretManager] Loaded NEXTAUTH_SECRET from database');
-      return cachedSecret;
-    }
+  // Priority 3: Generate ephemeral secret
+  logger.warn(
+    '[SecretManager] NEXTAUTH_SECRET is not set in environment. Generating a TEMPORARY secret. Sessions will be invalidated on server restart. Please set NEXTAUTH_SECRET in your .env file.'
+  );
+  cachedSecret = generateSecret();
 
-    // Priority 4: Generate new secret and store it
-    const newSecret = generateSecret();
-
-    await prisma.systemConfig.upsert({
-      where: { key: SYSTEM_CONFIG_KEY },
-      create: {
-        key: SYSTEM_CONFIG_KEY,
-        value: { secret: newSecret, createdAt: new Date().toISOString() },
-      },
-      update: {
-        // Don't update if already exists - this is a safety measure
-        value: { secret: newSecret, createdAt: new Date().toISOString() },
-      },
-    });
-
-    cachedSecret = newSecret;
-    cacheInitialized = true;
-    logger.info('[SecretManager] Generated new NEXTAUTH_SECRET and stored in database');
-
-    return newSecret;
-  } catch (error) {
-    // If database is unavailable (e.g., during migrations), use a fallback
-    logger.error('[SecretManager] Failed to fetch/generate secret from DB, using fallback', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-
-    // Generate a temporary secret for this instance
-    // This is NOT ideal but allows the app to start even if DB is unavailable
-    if (!cachedSecret) {
-      cachedSecret = generateSecret();
-      logger.warn(
-        '[SecretManager] Using temporary in-memory secret. Sessions will not persist across restarts.'
-      );
-    }
-
-    return cachedSecret;
-  }
+  return cachedSecret;
 }
 
 /**
  * Synchronous version that returns cached value or env var
- * Used in places where async is not possible (e.g., middleware configuration)
+ * Used in places where async is not possible (e.g., middleware configuration or legacy code)
  *
- * IMPORTANT: Call getNextAuthSecret() during app startup to populate the cache
+ * IMPORTANT: Call getNextAuthSecret() first to populate the cache if relying on generated secrets
  */
 export function getNextAuthSecretSync(): string {
   // Priority 1: Environment variable
@@ -118,32 +106,9 @@ export function getNextAuthSecretSync(): string {
   }
 
   // Fallback: Generate temporary secret
-  // This should rarely happen if the app properly initializes
   logger.warn(
     '[SecretManager] getNextAuthSecretSync called without cached secret. Generating temporary.'
   );
   cachedSecret = generateSecret();
   return cachedSecret;
-}
-
-/**
- * Initialize the secret manager - call this during app startup
- */
-export async function initializeSecretManager(): Promise<void> {
-  try {
-    await getNextAuthSecret();
-    logger.info('[SecretManager] Initialized successfully');
-  } catch (error) {
-    logger.error('[SecretManager] Initialization failed', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-}
-
-/**
- * Clear the cached secret (useful for testing)
- */
-export function clearSecretCache(): void {
-  cachedSecret = null;
-  cacheInitialized = false;
 }
