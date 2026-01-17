@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync } from 'crypto';
-import { getNextAuthSecretSync } from '@/lib/secret-manager';
+import { getNextAuthSecretSync } from './secret-manager';
 
 function getDefaultSecret(): string {
   return process.env.API_KEY_SECRET || getNextAuthSecretSync();

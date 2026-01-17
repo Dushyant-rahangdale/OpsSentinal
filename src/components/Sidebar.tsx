@@ -344,7 +344,7 @@ export default function Sidebar(
           className={cn(
             'relative shrink-0 border-b border-white/10',
             'bg-gradient-to-b from-white/5 to-transparent',
-            isDesktopCollapsed ? 'p-3' : 'p-4'
+            isDesktopCollapsed ? 'p-3' : 'px-4 py-5'
           )}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.05)_0%,transparent_55%)] pointer-events-none" />
@@ -384,7 +384,7 @@ export default function Sidebar(
                 <h1 className="text-lg font-bold text-white m-0 leading-tight tracking-tight">
                   OpsSentinel
                 </h1>
-                <span className="text-[11px] text-white/50 font-medium uppercase tracking-wide">
+                <span className="text-xs text-white/50 font-medium uppercase tracking-wide">
                   Incident Response
                 </span>
               </div>

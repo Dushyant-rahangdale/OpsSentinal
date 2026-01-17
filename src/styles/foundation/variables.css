@@ -198,7 +198,7 @@
     --badge-neutral-bg: #e2e8f0;
     --badge-neutral-text: #334155;
 
-    /* Layout - Industry standard sidebar widths */
-    --sidebar-width: 256px;
+    /* Layout - Industry standard sidebar widths (AWS Console style) */
+    --sidebar-width: 280px;
     --sidebar-width-collapsed: 64px;
 }
