@@ -14,12 +14,15 @@ import {
 } from '@/components/ui/shadcn/collapsible';
 import { UserPlus, ChevronDown, ChevronUp, Loader2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import UserAvatar from '@/components/UserAvatar';
 
 type User = {
   id: string;
   name: string;
   email: string;
   status?: string;
+  avatarUrl?: string | null;
+  gender?: string | null;
 };
 
 type BulkTeamMemberActionsProps = {
@@ -118,6 +121,7 @@ export default function BulkTeamMemberActions({
         checked={selectedUsers.has(user.id)}
         onCheckedChange={() => handleToggleUser(user.id)}
       />
+      <UserAvatar userId={user.id} name={user.name} gender={user.gender} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="font-medium text-sm truncate">{user.name}</div>
         <div className="text-xs text-muted-foreground truncate">{user.email}</div>

@@ -23,10 +23,11 @@ import {
 } from '@/components/ui/shadcn/select';
 import { AlertCircle, Clock, Loader2 } from 'lucide-react';
 import { addHours } from 'date-fns';
+import UserAvatar from '@/components/UserAvatar';
 
 type OverrideFormProps = {
   scheduleId: string;
-  users: Array<{ id: string; name: string }>;
+  users: Array<{ id: string; name: string; avatarUrl?: string | null; gender?: string | null }>;
   canManageSchedules: boolean;
   createOverride: (
     scheduleId: string,
@@ -166,7 +167,15 @@ export default function OverrideForm({
                 <SelectContent>
                   {users.map(user => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                      <div className="flex items-center gap-2">
+                        <UserAvatar
+                          userId={user.id}
+                          name={user.name}
+                          gender={user.gender}
+                          size="xs"
+                        />
+                        {user.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -182,7 +191,15 @@ export default function OverrideForm({
                 <SelectContent>
                   {users.map(user => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                      <div className="flex items-center gap-2">
+                        <UserAvatar
+                          userId={user.id}
+                          name={user.name}
+                          gender={user.gender}
+                          size="xs"
+                        />
+                        {user.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -40,6 +40,8 @@ type UserSearchResult = {
   name?: string | null;
   email?: string | null;
   role?: string | null;
+  avatarUrl?: string | null;
+  gender?: string | null;
 };
 
 type PolicySearchResult = {
@@ -174,6 +176,8 @@ export async function GET(req: NextRequest) {
           name: true,
           email: true,
           role: true,
+          avatarUrl: true,
+          gender: true,
         },
       }),
 
@@ -278,6 +282,8 @@ export async function GET(req: NextRequest) {
         subtitle: u.email || `${u.role || 'User'}`,
         href: `/users?highlight=${u.id}`,
         priority: 6,
+        avatarUrl: u.avatarUrl,
+        gender: u.gender,
       })),
       ...policies.map(p => ({
         type: 'policy' as const,

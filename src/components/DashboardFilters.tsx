@@ -12,8 +12,15 @@ import {
   SelectValue,
 } from '@/components/ui/shadcn/select';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/shadcn/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/shadcn/card';
 import { Filter, X, Briefcase, User, Activity, Flame } from 'lucide-react';
+import UserAvatar from '@/components/UserAvatar';
 
 type Props = {
   initialStatus?: string;
@@ -21,7 +28,7 @@ type Props = {
   initialAssignee?: string;
   initialUrgency?: string;
   services: { id: string; name: string }[];
-  users: { id: string; name: string }[];
+  users: { id: string; name: string; avatarUrl?: string | null; gender?: string | null }[];
 };
 
 export default function DashboardFilters({
@@ -37,20 +44,23 @@ export default function DashboardFilters({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const handleFilterChange = useCallback((key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value && value !== 'ALL' && value !== 'all') {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    // Reset to page 1 when filters change
-    params.delete('page');
+  const handleFilterChange = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== 'ALL' && value !== 'all') {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+      // Reset to page 1 when filters change
+      params.delete('page');
 
-    startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    });
-  }, [pathname, router, searchParams]);
+      startTransition(() => {
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      });
+    },
+    [pathname, router, searchParams]
+  );
 
   const clearFilters = () => {
     startTransition(() => {
@@ -130,7 +140,7 @@ export default function DashboardFilters({
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Status</Label>
             <Select
               value={initialStatus || 'ALL'}
-              onValueChange={(val) => handleFilterChange('status', val)}
+              onValueChange={val => handleFilterChange('status', val)}
             >
               <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
@@ -153,7 +163,7 @@ export default function DashboardFilters({
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Urgency</Label>
             <Select
               value={initialUrgency || 'ALL'}
-              onValueChange={(val) => handleFilterChange('urgency', val)}
+              onValueChange={val => handleFilterChange('urgency', val)}
             >
               <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
@@ -174,7 +184,7 @@ export default function DashboardFilters({
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Service</Label>
             <Select
               value={initialService || 'ALL'}
-              onValueChange={(val) => handleFilterChange('service', val)}
+              onValueChange={val => handleFilterChange('service', val)}
             >
               <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
@@ -185,17 +195,21 @@ export default function DashboardFilters({
               <SelectContent>
                 <SelectItem value="ALL">All Services</SelectItem>
                 {services.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">Assignee</Label>
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+              Assignee
+            </Label>
             <Select
               value={initialAssignee || 'ALL'}
-              onValueChange={(val) => handleFilterChange('assignee', val)}
+              onValueChange={val => handleFilterChange('assignee', val)}
             >
               <SelectTrigger className="h-9 bg-muted/30 focus:bg-background transition-colors text-sm">
                 <div className="flex items-center gap-2">
@@ -206,7 +220,12 @@ export default function DashboardFilters({
               <SelectContent>
                 <SelectItem value="ALL">All Assignees</SelectItem>
                 {users.map(u => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  <SelectItem key={u.id} value={u.id}>
+                    <div className="flex items-center gap-2">
+                      <UserAvatar userId={u.id} name={u.name} gender={u.gender} size="xs" />
+                      {u.name}
+                    </div>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

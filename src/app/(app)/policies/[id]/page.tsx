@@ -57,7 +57,7 @@ export default async function PolicyDetailPage({
     }),
     prisma.user.findMany({
       where: { status: 'ACTIVE', role: { in: ['ADMIN', 'RESPONDER'] } },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, avatarUrl: true, gender: true },
       orderBy: { name: 'asc' },
     }),
     prisma.team.findMany({

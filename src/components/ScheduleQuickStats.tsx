@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Badge } from '@/components/ui/shadcn/badge';
+import { DirectUserAvatar } from '@/components/UserAvatar';
 import { getDefaultAvatar } from '@/lib/avatar';
 import { Clock, Users, CalendarClock, ArrowRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,14 @@ export default function ScheduleQuickStats({
     });
 
     // Next handoff - earliest end time from active blocks
-    let nextHandoff: { time: Date; from: string; to: string; layer: string } | null = null;
+    let nextHandoff: {
+      time: Date;
+      from: string;
+      fromAvatar: string;
+      to: string;
+      toAvatar: string;
+      layer: string;
+    } | null = null;
     if (activeBlocks.length > 0) {
       const sortedBlocks = [...activeBlocks].sort((a, b) => a.end.getTime() - b.end.getTime());
       const earliest = sortedBlocks[0];
@@ -51,16 +58,22 @@ export default function ScheduleQuickStats({
       // Find who's next in that layer
       const layer = layers.find(l => l.name === earliest.layerName);
       let nextPerson = 'Next responder';
+      let nextPersonAvatar = getDefaultAvatar(null, 'next');
       if (layer && layer.users.length > 1) {
         const currentIndex = layer.users.findIndex(u => u.user.name === earliest.userName);
         const nextIndex = (currentIndex + 1) % layer.users.length;
-        nextPerson = layer.users[nextIndex]?.user.name || 'Next responder';
+        const nextUser = layer.users[nextIndex];
+        nextPerson = nextUser?.user.name || 'Next responder';
+        nextPersonAvatar =
+          nextUser?.user.avatarUrl || getDefaultAvatar(nextUser?.user.gender, nextUser?.userId);
       }
 
       nextHandoff = {
         time: earliest.end,
         from: earliest.userName,
+        fromAvatar: earliest.userAvatar || getDefaultAvatar(earliest.userGender, earliest.userName),
         to: nextPerson,
+        toAvatar: nextPersonAvatar,
         layer: earliest.layerName,
       };
     }
@@ -109,10 +122,20 @@ export default function ScheduleQuickStats({
           </div>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
+              <DirectUserAvatar
+                avatarUrl={stats.nextHandoff.fromAvatar}
+                name={stats.nextHandoff.from}
+                size="xs"
+              />
               <span className="text-xs font-medium text-slate-700 truncate">
                 {stats.nextHandoff.from}
               </span>
               <ArrowRight className="h-3 w-3 text-slate-400 shrink-0" />
+              <DirectUserAvatar
+                avatarUrl={stats.nextHandoff.toAvatar}
+                name={stats.nextHandoff.to}
+                size="xs"
+              />
               <span className="text-xs font-medium text-indigo-700 truncate">
                 {stats.nextHandoff.to}
               </span>

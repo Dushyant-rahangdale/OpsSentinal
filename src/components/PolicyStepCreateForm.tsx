@@ -15,10 +15,17 @@ import {
 } from '@/components/ui/shadcn/select';
 import { Plus, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import UserAvatar from '@/components/UserAvatar';
 
 type PolicyStepCreateFormProps = {
   policyId: string;
-  users: Array<{ id: string; name: string; email: string }>;
+  users: Array<{
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+    gender?: string | null;
+  }>;
   teams: Array<{ id: string; name: string }>;
   schedules: Array<{ id: string; name: string }>;
   addStep: (policyId: string, formData: FormData) => Promise<{ error?: string } | undefined>;
@@ -125,7 +132,15 @@ export default function PolicyStepCreateForm({
                 <SelectContent className="max-h-[200px]">
                   {users.map(user => (
                     <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                      <div className="flex items-center gap-2">
+                        <UserAvatar
+                          userId={user.id}
+                          name={user.name}
+                          gender={user.gender}
+                          size="xs"
+                        />
+                        {user.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

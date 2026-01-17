@@ -8,6 +8,7 @@ import type { ActionItem } from './PostmortemActionItems';
 import { Badge, Button } from '@/components/ui';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import UserAvatar from '@/components/UserAvatar';
 
 interface PostmortemDetailViewProps {
   postmortem: {
@@ -27,6 +28,8 @@ interface PostmortemDetailViewProps {
       id: string;
       name: string;
       email: string;
+      avatarUrl?: string | null;
+      gender?: string | null;
     };
     incident: {
       id: string;
@@ -34,7 +37,13 @@ interface PostmortemDetailViewProps {
       resolvedAt?: Date | null;
     };
   };
-  users?: Array<{ id: string; name: string; email: string }>;
+  users?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+    gender?: string | null;
+  }>;
   canEdit?: boolean;
   incidentId: string;
 }
@@ -205,7 +214,13 @@ export default function PostmortemDetailView({
             color: 'var(--text-muted)',
           }}
         >
-          <span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+            <UserAvatar
+              userId={postmortem.createdBy.id}
+              name={postmortem.createdBy.name}
+              gender={postmortem.createdBy.gender}
+              size="xs"
+            />
             Created by <strong>{postmortem.createdBy.name}</strong>
           </span>
           <span>•</span>
@@ -518,7 +533,17 @@ export default function PostmortemDetailView({
                           color: 'var(--text-muted)',
                         }}
                       >
-                        {owner && <span>👤 {owner.name}</span>}
+                        {owner && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <UserAvatar
+                              userId={owner.id}
+                              name={owner.name}
+                              gender={owner.gender}
+                              size="xs"
+                            />
+                            {owner.name}
+                          </span>
+                        )}
                         {item.dueDate && (
                           <span>
                             📅 Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}

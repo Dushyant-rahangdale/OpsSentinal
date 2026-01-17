@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { cn } from '@/lib/utils';
+import { DirectUserAvatar } from '@/components/UserAvatar';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type SearchResult = {
   type: 'incident' | 'service' | 'team' | 'user' | 'policy' | 'postmortem';
@@ -39,6 +41,8 @@ type SearchResult = {
   href: string;
   priority?: number;
   metadata?: Record<string, any>;
+  avatarUrl?: string | null;
+  gender?: string | null;
 };
 
 type RecentSearch = {
@@ -368,9 +372,21 @@ export default function SidebarSearch() {
                           onSelect={() => handleSelect('', result)}
                           className="aria-selected:bg-accent aria-selected:text-accent-foreground group"
                         >
-                          <div className="mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-muted/50">
-                            {getTypeIcon(result.type)}
-                          </div>
+                          {result.type === 'user' ? (
+                            <div className="mr-3 shrink-0">
+                              <DirectUserAvatar
+                                avatarUrl={
+                                  result.avatarUrl || getDefaultAvatar(result.gender, result.id)
+                                }
+                                name={result.title}
+                                size="sm"
+                              />
+                            </div>
+                          ) : (
+                            <div className="mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-muted/50">
+                              {getTypeIcon(result.type)}
+                            </div>
+                          )}
                           <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
                             <div className="flex items-center gap-2">
                               <span className="font-medium truncate text-sm">{result.title}</span>

@@ -232,8 +232,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
             include: {
               actor: {
                 select: {
+                  id: true,
                   name: true,
                   email: true,
+                  avatarUrl: true,
+                  gender: true,
                 },
               },
             },

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import { DirectUserAvatar } from '@/components/UserAvatar';
+import { getDefaultAvatar } from '@/lib/avatar';
 
 type AuditLog = {
   id: string;
@@ -11,8 +13,11 @@ type AuditLog = {
   entityId: string | null;
   createdAt: Date;
   actor: {
+    id: string;
     name: string;
     email: string;
+    avatarUrl?: string | null;
+    gender?: string | null;
   } | null;
   details: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 };
@@ -143,8 +148,26 @@ export default function TeamActivityLog({
                         {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      by <strong>{log.actor?.name || 'System'}</strong>
+                    <div
+                      style={{
+                        fontSize: '0.85rem',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      by{' '}
+                      {log.actor && (
+                        <DirectUserAvatar
+                          avatarUrl={
+                            log.actor.avatarUrl || getDefaultAvatar(log.actor.gender, log.actor.id)
+                          }
+                          name={log.actor.name}
+                          size="xs"
+                        />
+                      )}
+                      <strong>{log.actor?.name || 'System'}</strong>
                       {log.details && typeof log.details === 'object' && (
                         <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>
                           {Object.entries(log.details).map(([key, value]) => (

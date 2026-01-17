@@ -1,17 +1,28 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { useToast } from './ToastProvider';
 import { Button } from '@/components/ui/shadcn/button';
 import { Label } from '@/components/ui/shadcn/label';
 import { Card, CardContent } from '@/components/ui/shadcn/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
 import { AlertTriangle, Loader2, UserPlus } from 'lucide-react';
+import UserAvatar from '@/components/UserAvatar';
+import { Badge } from '@/components/ui/shadcn/badge';
 
 type User = {
   id: string;
   name: string;
   email: string;
   status?: string;
+  avatarUrl?: string | null;
+  gender?: string | null;
 };
 
 type TeamMemberFormProps = {
@@ -31,22 +42,26 @@ export default function TeamMemberForm({
 }: TeamMemberFormProps) {
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<string>('MEMBER');
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const userId = formData.get('userId') as string;
-    const role = formData.get('role') as string;
-    const userName = availableUsers.find(u => u.id === userId)?.name || 'User';
+    if (!selectedUserId) return;
+
+    const formData = new FormData();
+    formData.set('userId', selectedUserId);
+    formData.set('role', selectedRole);
+    const userName = availableUsers.find(u => u.id === selectedUserId)?.name || 'User';
 
     startTransition(async () => {
       const result = await addMember(formData);
       if (result?.error) {
         showToast(result.error, 'error');
       } else {
-        showToast(`${userName} added as ${role}`, 'success');
-        form.reset();
+        showToast(`${userName} added as ${selectedRole}`, 'success');
+        setSelectedUserId('');
+        setSelectedRole('MEMBER');
       }
     });
   };
@@ -71,48 +86,60 @@ export default function TeamMemberForm({
         <Label htmlFor="userId" className="text-xs">
           Select User
         </Label>
-        <select
-          id="userId"
-          name="userId"
-          required
+        <Select
+          value={selectedUserId}
+          onValueChange={setSelectedUserId}
           disabled={isPending || availableUsers.length === 0}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <option value="">
-            {availableUsers.length === 0 ? 'All users are members' : 'Choose a user...'}
-          </option>
-          {availableUsers.map(user => (
-            <option key={user.id} value={user.id}>
-              {user.name} {user.status === 'DISABLED' ? '(Disabled)' : ''} - {user.email}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue
+              placeholder={
+                availableUsers.length === 0 ? 'All users are members' : 'Choose a user...'
+              }
+            />
+          </SelectTrigger>
+          <SelectContent className="max-h-[200px]">
+            {availableUsers.map(user => (
+              <SelectItem key={user.id} value={user.id}>
+                <div className="flex items-center gap-2">
+                  <UserAvatar userId={user.id} name={user.name} gender={user.gender} size="xs" />
+                  <span className="truncate">{user.name}</span>
+                  {user.status === 'DISABLED' && (
+                    <Badge variant="secondary" size="xs">
+                      Disabled
+                    </Badge>
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="role" className="text-xs">
           Role
         </Label>
-        <select
-          id="role"
-          name="role"
-          defaultValue="MEMBER"
-          disabled={!canAssignOwnerAdmin || isPending}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          title={
-            !canAssignOwnerAdmin
-              ? 'Admin or Team Owner access required to assign OWNER or ADMIN roles'
-              : undefined
-          }
-        >
-          <option value="OWNER" disabled={!canAssignOwnerAdmin}>
-            Owner{!canAssignOwnerAdmin ? ' (Admin/Owner only)' : ''}
-          </option>
-          <option value="ADMIN" disabled={!canAssignOwnerAdmin}>
-            Admin{!canAssignOwnerAdmin ? ' (Admin/Owner only)' : ''}
-          </option>
-          <option value="MEMBER">Member</option>
-        </select>
+        <Select value={selectedRole} onValueChange={setSelectedRole} disabled={isPending}>
+          <SelectTrigger
+            title={
+              !canAssignOwnerAdmin
+                ? 'Admin or Team Owner access required to assign OWNER or ADMIN roles'
+                : undefined
+            }
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="OWNER" disabled={!canAssignOwnerAdmin}>
+              Owner{!canAssignOwnerAdmin ? ' (Admin/Owner only)' : ''}
+            </SelectItem>
+            <SelectItem value="ADMIN" disabled={!canAssignOwnerAdmin}>
+              Admin{!canAssignOwnerAdmin ? ' (Admin/Owner only)' : ''}
+            </SelectItem>
+            <SelectItem value="MEMBER">Member</SelectItem>
+          </SelectContent>
+        </Select>
         {!canAssignOwnerAdmin && (
           <p className="text-xs text-orange-600 flex items-center gap-1">
             <AlertTriangle className="h-3 w-3" />
@@ -124,7 +151,7 @@ export default function TeamMemberForm({
       <Button
         type="submit"
         className="w-full gap-2"
-        disabled={availableUsers.length === 0 || isPending}
+        disabled={availableUsers.length === 0 || !selectedUserId || isPending}
       >
         {isPending ? (
           <>
