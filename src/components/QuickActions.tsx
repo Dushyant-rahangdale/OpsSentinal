@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 type QuickAction = {
   label: string;
   href: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement<{ className?: string }>;
   description?: string;
   colorClass: string;
   badge?: string;
@@ -147,10 +147,9 @@ export default function QuickActions({ canCreate = true }: QuickActionsProps) {
 
         <div className="p-0.5">
           {quickActions.map((action, index) => (
-            <>
+            <React.Fragment key={action.href}>
               {index === 2 && <DropdownMenuSeparator className="my-0.5 bg-border/60" />}
               <DropdownMenuItem
-                key={action.href}
                 onClick={() => router.push(action.href)}
                 className="group cursor-pointer focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded py-1 px-1.5"
               >
@@ -160,7 +159,7 @@ export default function QuickActions({ canCreate = true }: QuickActionsProps) {
                     action.colorClass
                   )}
                 >
-                  {React.cloneElement(action.icon as React.ReactElement, { className: 'h-3 w-3' })}
+                  {React.cloneElement(action.icon, { className: 'h-3 w-3' })}
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -185,7 +184,7 @@ export default function QuickActions({ canCreate = true }: QuickActionsProps) {
                   <ArrowRight className="h-2 w-2 text-muted-foreground/30 group-hover:text-primary transition-all opacity-0 group-hover:opacity-100" />
                 )}
               </DropdownMenuItem>
-            </>
+            </React.Fragment>
           ))}
         </div>
 

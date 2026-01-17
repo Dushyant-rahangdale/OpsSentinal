@@ -86,3 +86,29 @@ export async function getNextAuthSecret(): Promise<string> {
 
   return cachedSecret;
 }
+
+/**
+ * Synchronous version that returns cached value or env var
+ * Used in places where async is not possible (e.g., middleware configuration or legacy code)
+ *
+ * IMPORTANT: Call getNextAuthSecret() first to populate the cache if relying on generated secrets
+ */
+export function getNextAuthSecretSync(): string {
+  // Priority 1: Environment variable
+  const envSecret = process.env.NEXTAUTH_SECRET;
+  if (envSecret) {
+    return envSecret;
+  }
+
+  // Priority 2: Cached value
+  if (cachedSecret) {
+    return cachedSecret;
+  }
+
+  // Fallback: Generate temporary secret
+  logger.warn(
+    '[SecretManager] getNextAuthSecretSync called without cached secret. Generating temporary.'
+  );
+  cachedSecret = generateSecret();
+  return cachedSecret;
+}
