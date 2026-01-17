@@ -1,0 +1,183 @@
+# Default values for opssentinal
+# This is a YAML-formatted file.
+
+# -- Number of replicas for the application deployment
+replicaCount: 2
+
+# -- Image configuration
+image:
+  repository: ghcr.io/dushyant-rahangdale/opssentinal
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag whose default is the chart appVersion
+  tag: ''
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+# -- Override the name of the chart
+nameOverride: ''
+# -- Override the full name of the release
+fullnameOverride: ''
+
+# -- Service account configuration
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ''
+
+# -- Pod annotations
+podAnnotations: {}
+
+# -- Pod security context
+podSecurityContext:
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+# -- Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# -- Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+# -- Ingress configuration
+ingress:
+  # -- Enable ingress controller resource
+  enabled: false
+  # -- Ingress class name (e.g., nginx, traefik, alb, azure-application-gateway, gce)
+  className: ''
+  # -- Ingress annotations - see examples/ folder for controller-specific configs
+  annotations: {}
+  # -- Ingress hosts configuration
+  hosts:
+    - host: opssentinal.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- Ingress TLS configuration
+  tls: []
+  #  - secretName: opssentinal-tls
+  #    hosts:
+  #      - opssentinal.example.com
+
+# -- Resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# -- Horizontal Pod Autoscaler configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# -- Pod Disruption Budget configuration
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# -- Node selector
+nodeSelector: {}
+
+# -- Tolerations
+tolerations: []
+
+# -- Affinity rules
+affinity: {}
+
+# -- Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# -- Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /api/health?mode=readiness
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# -- Application secrets
+secrets:
+  # -- NextAuth secret for session encryption (generate with: openssl rand -base64 32)
+  nextauthSecret: 'change_this_to_a_random_secret_in_production'
+  # -- Cron job authentication secret
+  cronSecret: 'change_me_to_a_secure_token'
+
+# -- Network Policy configuration
+networkPolicy:
+  # -- Enable network policies
+  enabled: false
+
+# -- Application configuration (non-sensitive)
+config:
+  # -- Node environment
+  nodeEnv: production
+  # -- NextAuth URL (your application URL)
+  nextauthUrl: 'http://localhost:3000'
+  # -- Application port
+  port: '3000'
+  # -- Hostname to bind to
+  hostname: '0.0.0.0'
+  # -- Disable Next.js telemetry
+  nextTelemetryDisabled: '1'
+
+# -- PostgreSQL configuration
+postgresql:
+  # -- Enable built-in PostgreSQL. Set to false to use an external database
+  enabled: true
+  # -- Database name
+  database: opssentinal_db
+  # -- Database host (only used when postgresql.enabled=false)
+  host: ''
+  # -- Database port
+  port: '5432'
+  # -- Database user
+  username: opssentinal
+  # -- Database password (generate a secure password for production)
+  password: 'opssentinal_secure_password_change_me'
+  # -- Storage size for PostgreSQL PVC
+  storage: 10Gi
+  # -- Storage class for PostgreSQL PVC (leave empty for default)
+  storageClass: ''
+  # -- PostgreSQL image
+  image:
+    repository: postgres
+    tag: '15-alpine'
+    pullPolicy: Always
+  # -- PostgreSQL resources
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 2000m

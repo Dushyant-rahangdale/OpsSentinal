@@ -1,0 +1,20 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opssentinal.postgresql.serviceName" . }}
+  labels:
+    {{- include "opssentinal.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "opssentinal.name" . }}-postgresql
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    app.kubernetes.io/name: {{ include "opssentinal.name" . }}-postgresql
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

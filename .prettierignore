@@ -12,3 +12,7 @@ pnpm-lock.yaml
 prisma/migrations
 *.log
 
+
+# Ignore Helm templates
+helm/**/templates/**/*.yaml
+helm/**/templates/**/*.tpl
