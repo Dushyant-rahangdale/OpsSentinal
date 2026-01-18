@@ -31,7 +31,7 @@ locals {
 
 resource "aws_security_group" "web_sg" {
   name        = "${var.project_name}-web-sg"
-  description = "Security group for OpsSentinal web server (Cloudflare only)"
+  description = "Security group for OpsKnight web server (Cloudflare only)"
 
   # SSH Access - Restricted to your IP
   ingress {

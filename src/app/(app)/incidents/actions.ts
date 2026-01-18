@@ -752,7 +752,7 @@ export async function reassignIncident(incidentId: string, assigneeId: string, t
           select: { title: true },
         });
 
-        const message = `[OpsSentinal] ${incident?.title || 'Incident'} assigned to your team: ${teamWithMembers.name}`;
+        const message = `[OpsKnight] ${incident?.title || 'Incident'} assigned to your team: ${teamWithMembers.name}`;
         for (const member of teamWithMembers.members) {
           await sendUserNotification(incidentId, member.userId, message);
         }

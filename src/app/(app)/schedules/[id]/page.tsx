@@ -241,7 +241,9 @@ export default async function ScheduleDetailPage({
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
                   <Calendar className="h-5 w-5" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{schedule.name}</h1>
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight tracking-tight">
+                  {schedule.name}
+                </h1>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-white/80">
                 <Badge variant="secondary" className="bg-white/15 text-white border-white/20">
@@ -284,7 +286,9 @@ export default async function ScheduleDetailPage({
                       <Layers className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <div className="text-xl md:text-2xl font-bold">{schedule.layers.length}</div>
+                      <div className="text-xl md:text-2xl font-extrabold">
+                        {schedule.layers.length}
+                      </div>
                       <div className="text-[10px] md:text-xs opacity-80">Layers</div>
                     </div>
                   </div>
@@ -297,7 +301,7 @@ export default async function ScheduleDetailPage({
                       <Users className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <div className="text-xl md:text-2xl font-bold">{totalParticipants}</div>
+                      <div className="text-xl md:text-2xl font-extrabold">{totalParticipants}</div>
                       <div className="text-[10px] md:text-xs opacity-80">Participants</div>
                     </div>
                   </div>
@@ -311,7 +315,7 @@ export default async function ScheduleDetailPage({
                     </div>
                     <div>
                       <div
-                        className={`text-xl md:text-2xl font-bold ${activeBlocks.length > 0 ? 'text-emerald-200' : 'text-red-200'}`}
+                        className={`text-xl md:text-2xl font-extrabold ${activeBlocks.length > 0 ? 'text-emerald-200' : 'text-red-200'}`}
                       >
                         {activeBlocks.length}
                       </div>
@@ -327,7 +331,7 @@ export default async function ScheduleDetailPage({
                       <AlertTriangle className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <div className="text-xl md:text-2xl font-bold text-amber-200">
+                      <div className="text-xl md:text-2xl font-extrabold text-amber-200">
                         {upcomingOverrides.length}
                       </div>
                       <div className="text-[10px] md:text-xs opacity-80">Upcoming Overrides</div>

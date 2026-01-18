@@ -360,7 +360,7 @@ export default function KeyboardShortcuts({
           }}
         >
           <span>Use these shortcuts to navigate faster</span>
-          <span style={{ fontWeight: '600', color: 'var(--primary-color)' }}>OpsSentinal</span>
+          <span style={{ fontWeight: '600', color: 'var(--primary-color)' }}>OpsKnight</span>
         </div>
       </div>
     </div>

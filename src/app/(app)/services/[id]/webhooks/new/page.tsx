@@ -71,7 +71,9 @@ export default async function NewWebhookPage({
 
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Add Webhook Integration</h1>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+            Add Webhook Integration
+          </h1>
           <p className="text-xs md:text-sm opacity-90 mt-1">
             Configure a webhook integration for {service.name}
           </p>

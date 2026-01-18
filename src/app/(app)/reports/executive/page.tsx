@@ -14,7 +14,7 @@ import { Shield, Users, Clock, AlertCircle } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Executive Report | OpsSentinel',
+  title: 'Executive Report | OpsKnight',
   description: 'High-Level Operational Health Overview',
 };
 

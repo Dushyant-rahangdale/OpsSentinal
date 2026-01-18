@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: opssentinal-service
-  namespace: opssentinal
+  name: opsknight-service
+  namespace: opsknight
   labels:
-    app: opssentinal-app
+    app: opsknight-app
 spec:
   selector:
-    app: opssentinal-app
+    app: opsknight-app
   ports:
     - protocol: TCP
       port: 80

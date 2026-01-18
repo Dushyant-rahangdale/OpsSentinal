@@ -20,9 +20,9 @@ concurrency:
 env:
   # GHCR image names must be lowercase; use the app name (lowercased).
   # "test" channel image (always updated from main)
-  IMAGE_NAME_TEST: ghcr.io/${{ github.repository_owner }}/opssentinal-test
+  IMAGE_NAME_TEST: ghcr.io/${{ github.repository_owner }}/opsknight-test
   # "release" channel image (published only from version tags)
-  IMAGE_NAME_RELEASE: ghcr.io/${{ github.repository_owner }}/opssentinal
+  IMAGE_NAME_RELEASE: ghcr.io/${{ github.repository_owner }}/opsknight
 
 jobs:
   build:
@@ -69,7 +69,7 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME_RELEASE }}
           tags: |
-            # Publishes: opssentinal:latest + version tags from git tags (e.g. v1.2.3)
+            # Publishes: opsknight:latest + version tags from git tags (e.g. v1.2.3)
             type=raw,value=latest
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

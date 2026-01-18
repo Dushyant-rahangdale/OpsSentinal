@@ -41,7 +41,7 @@ export default function SetPasswordForm({ token, userEmail, error }: Props) {
             </p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/20">
-            <img src="/logo.svg" alt="OpsSentinal" className="h-6 w-6" />
+            <img src="/logo.svg" alt="OpsKnight" className="h-6 w-6" />
           </div>
         </div>
 

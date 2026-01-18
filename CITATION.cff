@@ -3,7 +3,7 @@ message: "If you use this software, please cite it as below."
 authors:
   - family-names: "Rahangdale"
     given-names: "Dushyant"
-title: "OpsSentinal: Open-Source Incident Management Platform"
+title: "OpsKnight: Open-Source Incident Management Platform"
 version: 1.0.0
-url: "https://github.com/dushyant-rahangdale/opssentinal"
+url: "https://github.com/dushyant-rahangdale/opsknight"
 date-released: 2026-01-08

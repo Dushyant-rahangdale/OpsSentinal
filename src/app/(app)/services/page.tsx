@@ -203,7 +203,7 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
               <Server className="h-6 w-6 md:h-8 md:w-8" />
               Service Directory
             </h1>
@@ -221,13 +221,13 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 w-full lg:w-auto">
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold">{totalServices}</div>
+                <div className="text-xl md:text-2xl font-extrabold">{totalServices}</div>
                 <div className="text-[10px] md:text-xs opacity-90">Total Services</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-emerald-200">
+                <div className="text-xl md:text-2xl font-extrabold text-emerald-200">
                   {operationalCount}
                 </div>
                 <div className="text-[10px] md:text-xs opacity-90">Operational</div>
@@ -235,13 +235,17 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-yellow-200">{degradedCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-yellow-200">
+                  {degradedCount}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Degraded</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-red-200">{criticalCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-red-200">
+                  {criticalCount}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Critical</div>
               </CardContent>
             </Card>

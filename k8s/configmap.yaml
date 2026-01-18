@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: opssentinal-config
-  namespace: opssentinal
+  name: opsknight-config
+  namespace: opsknight
 data:
   # Database configuration
-  POSTGRES_DB: 'opssentinal_db'
-  POSTGRES_HOST: 'opssentinal-postgres-service'
+  POSTGRES_DB: 'opsknight_db'
+  POSTGRES_HOST: 'opsknight-postgres-service'
   POSTGRES_PORT: '5432'
 
   # Application configuration

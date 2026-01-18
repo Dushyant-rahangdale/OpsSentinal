@@ -33,12 +33,12 @@ variable "nextauth_secret" {
 variable "nextauth_url" {
   description = "Full URL of your application (e.g. https://status.example.com)"
   type        = string
-  default     = "https://opssentinal.com"
+  default     = "https://opsknight.com"
 }
 
 variable "project_name" {
   description = "Project name for resource tagging"
-  default     = "opssentinal"
+  default     = "opsknight"
 }
 
 variable "instance_type" {
@@ -48,7 +48,7 @@ variable "instance_type" {
 variable "ssh_key_name" {
   description = "Name of the SSH key pair in AWS to access the instance"
   type        = string
-  default     = "OpsSentinal"
+  default     = "OpsKnight"
 }
 
 variable "your_ip" {

@@ -35,7 +35,7 @@ export function SlackWorkspaceHeader({
               <Slack className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold tracking-tight">
+              <h3 className="text-xl font-bold tracking-tight">
                 {workspaceName || 'Slack Workspace'}
               </h3>
               <p className="text-sm text-slate-300">

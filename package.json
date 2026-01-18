@@ -1,5 +1,5 @@
 {
-  "name": "opssentinal",
+  "name": "opsknight",
   "version": "1.0.0",
   "description": "Professional Open-Source Incident Management Platform for SREs and DevOps teams.",
   "keywords": [
@@ -15,13 +15,13 @@
   ],
   "author": "Dushyant Rahangdale",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/dushyant-rahangdale/opssentinal",
+  "homepage": "https://github.com/dushyant-rahangdale/opsknight",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dushyant-rahangdale/opssentinal.git"
+    "url": "git+https://github.com/dushyant-rahangdale/opsknight.git"
   },
   "bugs": {
-    "url": "https://github.com/dushyant-rahangdale/opssentinal/issues"
+    "url": "https://github.com/dushyant-rahangdale/opsknight/issues"
   },
   "private": false,
   "scripts": {
@@ -43,7 +43,8 @@
     "test:ci:unit": "npx vitest run -c vitest.unit.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-unit.xml",
     "test:ci:db": "npx vitest run -c vitest.int.config.ts --no-file-parallelism --maxWorkers=1 --reporter=default --reporter=junit --outputFile=reports/junit-db.xml",
     "test:all": "npm run lint:check && npm run test:run",
-    "OpsSentinal": "node ./scripts/OpsSentinal.mjs",
+    "OpsKnight": "node ./scripts/OpsKnight.mjs",
+    "ops": "node ./scripts/OpsKnight.mjs",
     "build:scripts": "tsc scripts/auto-recover-migrations.ts --outDir scripts/dist --module commonjs --target es2020 --esModuleInterop --skipLibCheck",
     "prisma:validate": "node scripts/validate-migrations.cjs",
     "prisma:health": "node scripts/check-migration-health.cjs",
@@ -54,6 +55,7 @@
     "lint:report": "eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.971.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -146,9 +148,9 @@
     "vitest": "^4.0.16"
   },
   "bin": {
-    "OpsSentinal": "./scripts/OpsSentinal.mjs"
+    "OpsKnight": "./scripts/OpsKnight.mjs"
   },
   "prisma": {
-    "seed": "ts-node -O '{\"module\":\"commonjs\"}' prisma/seed.ts"
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
   }
 }

@@ -259,7 +259,7 @@ export default function MobileLoginClient({
                 animation: 'pulse-glow 3s ease-in-out infinite',
               }}
             >
-              <Image src="/logo.svg" alt="OpsSentinal" width={44} height={44} />
+              <Image src="/logo.svg" alt="OpsKnight" width={44} height={44} />
             </div>
             <h1
               style={{
@@ -279,7 +279,7 @@ export default function MobileLoginClient({
                 margin: 0,
               }}
             >
-              Sign in to OpsSentinal
+              Sign in to OpsKnight
             </p>
           </div>
 
@@ -694,7 +694,7 @@ export default function MobileLoginClient({
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Secured by OpsSentinal
+              Secured by OpsKnight
             </p>
           </div>
         </div>
@@ -711,7 +711,7 @@ export default function MobileLoginClient({
             letterSpacing: '0.05em',
           }}
         >
-          OpsSentinal Mobile v1.0
+          OpsKnight Mobile v1.0
         </div>
       </div>
     </>

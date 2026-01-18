@@ -5,16 +5,18 @@
 
 .btn {
     border-radius: 999px;
-    padding: 0.4rem 1rem;
-    font-weight: 600;
-    font-size: 0.875rem;
+    padding: 0.45rem 1.1rem;
+    font-weight: 800;
+    font-size: 0.8125rem;
+    letter-spacing: -0.005em;
+    line-height: 1.4;
     border: 1px solid transparent;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.3rem;
+    gap: 0.35rem;
     background: #111827;
     color: #ffffff;
 }
@@ -53,11 +55,22 @@
 
 .btn-sm {
     font-size: 0.75rem;
-    padding: 0.3rem 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    padding: 0.3rem 0.85rem;
 }
 
 .btn-md {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: -0.005em;
+}
+
+.btn-lg {
+    font-size: 0.9375rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    padding: 0.6rem 1.4rem;
 }
 
 
@@ -70,8 +83,9 @@
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 6px;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 500;
+    letter-spacing: -0.003em;
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;

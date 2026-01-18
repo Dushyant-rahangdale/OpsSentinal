@@ -1,10 +1,14 @@
+---
+order: 2
+---
+
 # Prometheus/Alertmanager Integration
 
-Send Prometheus alerts to OpsSentinal via Alertmanager.
+Send Prometheus alerts to OpsKnight via Alertmanager.
 
 ## Setup
 
-### Step 1: Create Integration in OpsSentinal
+### Step 1: Create Integration in OpsKnight
 
 1. Go to your Service
 2. Click **Integrations → Add Integration**
@@ -12,11 +16,11 @@ Send Prometheus alerts to OpsSentinal via Alertmanager.
 
 ### Step 2: Configure Alertmanager
 
-Add OpsSentinal as a receiver in `alertmanager.yml`:
+Add OpsKnight as a receiver in `alertmanager.yml`:
 
 ```yaml
 receivers:
-  - name: 'opssentinal'
+  - name: 'opsknight'
     webhook_configs:
       - url: 'https://your-ops.com/api/events'
         send_resolved: true
@@ -26,11 +30,11 @@ receivers:
             password: 'YOUR_API_KEY'
 
 route:
-  receiver: 'opssentinal'
+  receiver: 'opsknight'
   routes:
     - match:
         severity: critical
-      receiver: 'opssentinal'
+      receiver: 'opsknight'
 ```
 
 ### Step 3: Configure Payload
@@ -45,7 +49,7 @@ templates:
 Template file:
 
 ```
-{{ define "opssentinal.payload" }}
+{{ define "opsknight.payload" }}
 {
   "routing_key": "YOUR_ROUTING_KEY",
   "event_action": "{{ if eq .Status "firing" }}trigger{{ else }}resolve{{ end }}",
@@ -65,11 +69,11 @@ Template file:
 
 ## Severity Mapping
 
-| Prometheus Label | OpsSentinal |
-| ---------------- | ----------- |
-| `critical`       | `critical`  |
-| `warning`        | `warning`   |
-| `info`           | `info`      |
+| Prometheus Label | OpsKnight  |
+| ---------------- | ---------- |
+| `critical`       | `critical` |
+| `warning`        | `warning`  |
+| `info`           | `info`     |
 
 ## Testing
 
@@ -79,7 +83,7 @@ Template file:
    curl -X POST http://alertmanager:9093/api/v1/alerts \
      -d '[{"labels":{"alertname":"TestAlert","severity":"warning"}}]'
    ```
-2. Verify incident in OpsSentinal
+2. Verify incident in OpsKnight
 3. Resolve the alert
 4. Verify incident resolves
 

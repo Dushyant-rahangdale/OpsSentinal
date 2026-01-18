@@ -208,7 +208,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
             </div>
 
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">{service.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">{service.name}</h1>
               {service.description && (
                 <p className="text-xs md:text-sm opacity-90 max-w-3xl">{service.description}</p>
               )}
@@ -249,13 +249,13 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6">
           <Card className="bg-white/10 border-white/20 backdrop-blur">
             <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-bold">{availability.toFixed(2)}%</div>
+              <div className="text-xl md:text-2xl font-extrabold">{availability.toFixed(2)}%</div>
               <div className="text-[10px] md:text-xs opacity-90">Availability</div>
             </CardContent>
           </Card>
           <Card className="bg-white/10 border-white/20 backdrop-blur">
             <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-bold">
+              <div className="text-xl md:text-2xl font-extrabold">
                 {mttr !== undefined
                   ? mttr < 1
                     ? `${Math.round(mttr * 60)}m`
@@ -269,7 +269,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           </Card>
           <Card className="bg-white/10 border-white/20 backdrop-blur">
             <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-bold">
+              <div className="text-xl md:text-2xl font-extrabold">
                 {incidentsPerMonth < 1 ? '<1' : incidentsPerMonth.toFixed(1)}
               </div>
               <div className="text-[10px] md:text-xs opacity-90">Incidents / month</div>
@@ -277,7 +277,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           </Card>
           <Card className="bg-white/10 border-white/20 backdrop-blur">
             <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-bold">
+              <div className="text-xl md:text-2xl font-extrabold">
                 {slaCompliance !== null ? `${slaCompliance.toFixed(1)}%` : '-'}
               </div>
               <div className="text-[10px] md:text-xs opacity-90">SLA Compliance</div>

@@ -45,7 +45,7 @@ describe('PwaInstallCard', () => {
 
     render(<PwaInstallCard />);
 
-    expect(screen.getByText('Install OpsSentinal')).toBeInTheDocument();
+    expect(screen.getByText('Install OpsKnight')).toBeInTheDocument();
     expect(screen.getByText(/Add the app to your Home Screen/i)).toBeInTheDocument();
   });
 
@@ -58,6 +58,6 @@ describe('PwaInstallCard', () => {
 
     render(<PwaInstallCard />);
 
-    expect(screen.queryByText('Install OpsSentinal')).toBeNull();
+    expect(screen.queryByText('Install OpsKnight')).toBeNull();
   });
 });

@@ -1417,7 +1417,7 @@ async function renderStatusPage(statusPage: any) {
                     letterSpacing: '0.02em',
                     textDecoration: 'none',
                   }}
-                  aria-label="OpsSentinal GitHub Repository"
+                  aria-label="OpsKnight GitHub Repository"
                 >
                   <span
                     style={{
@@ -1434,13 +1434,13 @@ async function renderStatusPage(statusPage: any) {
                   >
                     <img
                       src="/logo.svg"
-                      alt="OpsSentinel"
+                      alt="OpsKnight"
                       style={{ width: '16px', height: '16px', display: 'block' }}
                     />
                   </span>
                   Powered by{' '}
                   <strong style={{ fontWeight: '700', color: 'var(--status-text, #111827)' }}>
-                    OpsSentinal
+                    OpsKnight
                   </strong>
                 </a>
               </div>

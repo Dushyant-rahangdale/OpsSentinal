@@ -433,7 +433,7 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     step.notificationChannels.length > 0 ? step.notificationChannels : undefined;
 
   for (const userId of targetUserIds) {
-    const message = `[OpsSentinal] Incident: ${incident.title}${currentStepIndex > 0 ? ` (Escalation Level ${currentStepIndex + 1})` : ''}`;
+    const message = `[OpsKnight] Incident: ${incident.title}${currentStepIndex > 0 ? ` (Escalation Level ${currentStepIndex + 1})` : ''}`;
     const result = await sendUserNotification(incidentId, userId, message, escalationChannels);
     notificationsSent.push({ userId, result });
   }

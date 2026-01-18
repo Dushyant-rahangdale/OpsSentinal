@@ -1,12 +1,12 @@
 # OIDC Single Sign-On (SSO) Setup
 
-This guide explains how to configure OIDC SSO in OpsSentinal for common providers.
+This guide explains how to configure OIDC SSO in OpsKnight for common providers.
 
 Table of contents
 
 - Prerequisites
 - Common configuration fields
-- OpsSentinal setup steps
+- OpsKnight setup steps
 - Provider guides
   - Google Workspace
   - Microsoft Entra ID (Azure AD)
@@ -18,9 +18,9 @@ Table of contents
 
 Prerequisites
 
-- OpsSentinal admin access
+- OpsKnight admin access
 - Your IdP OIDC app registration created
-- A stable base URL for OpsSentinal (used for redirect/callback)
+- A stable base URL for OpsKnight (used for redirect/callback)
 - ENCRYPTION_KEY configured (required to store client secret)
 
 Common configuration fields
@@ -29,11 +29,11 @@ Common configuration fields
 - Client ID: From your IdP app
 - Client Secret: From your IdP app
 - Callback URL: https://YOUR_BASE_URL/api/auth/callback/oidc
-- Scopes: OpsSentinal requests openid email profile by default; you can add custom scopes
+- Scopes: OpsKnight requests openid email profile by default; you can add custom scopes
 - Allowed domains: Optional allowlist of email domains for SSO
 - Auto-provision users: If disabled, only existing users can sign in
 
-OpsSentinal setup steps
+OpsKnight setup steps
 
 1. Go to Settings -> Security -> Single sign-on (OIDC)
 2. Enable SSO

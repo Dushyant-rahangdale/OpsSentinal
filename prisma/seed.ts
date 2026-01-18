@@ -204,7 +204,7 @@ async function clearDatabase() {
 }
 
 async function main() {
-  process.stdout.write('Seeding OpsSentinal demo data...\n');
+  process.stdout.write('Seeding OpsKnight demo data...\n');
 
   await clearDatabase();
 
@@ -266,7 +266,7 @@ async function main() {
   await prisma.oidcConfig.create({
     data: {
       issuer: 'https://login.example.com',
-      clientId: 'opssentinal-demo',
+      clientId: 'opsknight-demo',
       clientSecret: sha256('oidc-secret'),
       enabled: true,
       autoProvision: true,
@@ -285,7 +285,7 @@ async function main() {
       {
         provider: 'resend',
         enabled: true,
-        config: { apiKey: sha256('resend-key'), sender: 'OpsSentinal <noreply@example.com>' },
+        config: { apiKey: sha256('resend-key'), sender: 'OpsKnight <noreply@example.com>' },
         updatedBy: admin.id,
       },
       {
@@ -299,7 +299,7 @@ async function main() {
 
   await prisma.systemSettings.create({
     data: {
-      appUrl: 'https://opssentinal.local',
+      appUrl: 'https://opsknight.local',
       encryptionKey: sha256('seed-encryption-key').slice(0, 64),
       incidentRetentionDays: 365,
       alertRetentionDays: 180,
@@ -308,11 +308,30 @@ async function main() {
     },
   });
 
+  function encryptWithKey(text: string, keyHex: string) {
+    const algorithm = 'aes-256-cbc';
+    const key = Buffer.from(keyHex, 'hex');
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
+  }
+
+  const seedKey = sha256('seed-encryption-key').slice(0, 64);
+  const canaryValue = 'OPS_KNIGHT_CRYPTO_CHECK';
+  const encryptedCanary = encryptWithKey(canaryValue, seedKey);
+
   await prisma.systemConfig.createMany({
     data: [
       {
         key: 'encryption_fingerprint',
         value: { fingerprint: sha256('seed-key') },
+        updatedBy: admin.id,
+      },
+      {
+        key: 'encryption_canary',
+        value: { encrypted: encryptedCanary },
         updatedBy: admin.id,
       },
       {
@@ -465,7 +484,7 @@ async function main() {
   const slackIntegration = await prisma.slackIntegration.create({
     data: {
       workspaceId: 'T00000001',
-      workspaceName: 'OpsSentinal Demo',
+      workspaceName: 'OpsKnight Demo',
       botToken: sha256('xoxb-demo-token'),
       signingSecret: sha256('slack-signing-secret'),
       installedBy: admin.id,
@@ -500,7 +519,7 @@ async function main() {
           slackIntegrationId: attachSlack ? slackIntegration.id : null,
           slackChannel: attachSlack ? '#incidents' : null,
           slackWebhookUrl: attachSlack ? 'https://hooks.slack.com/services/T000/B000/XXXX' : null,
-          webhookUrl: index === 1 ? 'https://webhook.site/opssentinal-demo' : null,
+          webhookUrl: index === 1 ? 'https://webhook.site/opsknight-demo' : null,
         },
       });
 
@@ -826,9 +845,9 @@ async function main() {
 
   const statusPage = await prisma.statusPage.create({
     data: {
-      name: 'OpsSentinal Public Status',
-      organizationName: 'OpsSentinal Labs',
-      subdomain: 'status-opssentinal',
+      name: 'OpsKnight Public Status',
+      organizationName: 'OpsKnight Labs',
+      subdomain: 'status-opsknight',
       enabled: true,
       showServices: true,
       showIncidents: true,
@@ -842,7 +861,7 @@ async function main() {
       showRecentIncidents: true,
       footerText: 'All systems are actively monitored.',
       contactEmail: 'status@example.com',
-      contactUrl: 'https://opssentinal.local/contact',
+      contactUrl: 'https://opsknight.local/contact',
       branding: { logo: '/logo.svg', primary: '#0f172a', accent: '#f59e0b' },
     },
   });

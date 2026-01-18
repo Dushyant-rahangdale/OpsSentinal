@@ -21,11 +21,11 @@ function PageShell({ children }: { children: React.ReactNode }) {
         <header className="absolute top-6 left-5 right-5 flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 backdrop-blur-sm max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 shadow-lg shadow-black/20">
-              <img src="/logo.svg" alt="OpsSentinal logo" className="h-6 w-6" />
+              <img src="/logo.svg" alt="OpsKnight logo" className="h-6 w-6" />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100/90">
-                OpsSentinal
+                OpsKnight
               </p>
               <p className="text-sm text-slate-200/80">Account Setup</p>
             </div>

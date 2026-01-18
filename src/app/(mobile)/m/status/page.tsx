@@ -620,7 +620,7 @@ export default async function MobileStatusPage() {
         }}
       >
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-          Powered by OpsSentinal
+          Powered by OpsKnight
         </p>
       </div>
     </div>

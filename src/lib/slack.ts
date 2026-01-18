@@ -334,7 +334,7 @@ function buildSlackBlocks(
     elements: [
       {
         type: 'mrkdwn',
-        text: `*OpsSentinal* | Incident #${incident.id.slice(-5).toUpperCase()}`,
+        text: `*OpsKnight* | Incident #${incident.id.slice(-5).toUpperCase()}`,
       },
     ],
   });

@@ -26,7 +26,7 @@ describe('Third-Party Integrations', () => {
         title: 'Incident Created',
         text: 'New critical incident',
         alert_type: 'error',
-        tags: ['source:OpsSentinal'],
+        tags: ['source:OpsKnight'],
       };
 
       createDatadogEvent.mockResolvedValue({ status: 'ok' });

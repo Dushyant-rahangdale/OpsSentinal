@@ -1,5 +1,5 @@
 /* ========================================
-   OpsSentinal CSS Entry Point
+   OpsKnight CSS Entry Point
    Single import for all core styles
 
    MIGRATION NOTE:
@@ -90,7 +90,7 @@
 @import '../app/globals.css';
 
 /* Foundation Layer - Overrides globals.css duplicates */
-@import './foundation/fonts.css';
+/* @import './foundation/fonts.css'; - REMOVED: Now managed by next/font in layout.tsx */
 @import './foundation/variables.css';
 @import './foundation/variables-dark.css';
 @import './foundation/reset.css';

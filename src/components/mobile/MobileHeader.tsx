@@ -23,8 +23,8 @@ export default function MobileHeader({ systemStatus = 'ok' }: MobileHeaderProps)
   return (
     <header className="mobile-header">
       <Link href="/m" className="mobile-header-logo">
-        <Image src="/logo.svg" alt="OpsSentinal" width={28} height={28} />
-        <span className="mobile-header-title">OpsSentinal</span>
+        <Image src="/logo.svg" alt="OpsKnight" width={28} height={28} />
+        <span className="mobile-header-title">OpsKnight</span>
       </Link>
 
       <div className="mobile-header-actions">

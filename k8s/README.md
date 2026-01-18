@@ -1,6 +1,6 @@
 # Kubernetes Deployment Guide
 
-Deploy opssentinal to Kubernetes for production-grade orchestration.
+Deploy opsknight to Kubernetes for production-grade orchestration.
 
 ## Prerequisites
 
@@ -16,38 +16,42 @@ Deploy opssentinal to Kubernetes for production-grade orchestration.
 
 ```bash
 # Build the image
-docker build -t opssentinal:v1.0.0 .
+docker build -t opsknight:v1.0.0 .
 
 # Tag for your registry
-docker tag opssentinal:v1.0.0 your-registry.com/opssentinal:v1.0.0
+docker tag opsknight:v1.0.0 your-registry.com/opsknight:v1.0.0
 
 # Push to registry
-docker push your-registry.com/opssentinal:v1.0.0
+docker push your-registry.com/opsknight:v1.0.0
 ```
 
 ### 2. Update Image Reference
 
-Edit `k8s/opssentinal-deployment.yaml` and replace:
+Edit `k8s/opsknight-deployment.yaml` and replace:
+
 ```yaml
-image: your-registry/opssentinal:latest
+image: your-registry/opsknight:latest
 ```
 
 With your actual image:
+
 ```yaml
-image: your-registry.com/opssentinal:v1.0.0
+image: your-registry.com/opsknight:v1.0.0
 ```
 
 ### 3. Update Configuration
 
 **Update ConfigMap** (`k8s/configmap.yaml`):
+
 ```yaml
 data:
-  NEXTAUTH_URL: "https://your-actual-domain.com"
+  NEXTAUTH_URL: 'https://your-actual-domain.com'
 ```
 
 **Update Secrets** (`k8s/secret.yaml`):
 
 Generate new secrets:
+
 ```bash
 # Generate base64 encoded values
 echo -n 'your-db-username' | base64
@@ -62,16 +66,17 @@ echo -n 'whatsapp:+1234567890' | base64  # For TWILIO_WHATSAPP_NUMBER (optional)
 ```
 
 Or create secrets via kubectl:
+
 ```bash
-kubectl create secret generic opssentinal-secrets \
-  --from-literal=POSTGRES_USER=opssentinal \
+kubectl create secret generic opsknight-secrets \
+  --from-literal=POSTGRES_USER=opsknight \
   --from-literal=POSTGRES_PASSWORD=your-secure-password \
   --from-literal=NEXTAUTH_SECRET=$(openssl rand -base64 32) \
   --from-literal=TWILIO_ACCOUNT_SID=your-twilio-account-sid \
   --from-literal=TWILIO_AUTH_TOKEN=your-twilio-auth-token \
   --from-literal=TWILIO_FROM_NUMBER=+1234567890 \
   --from-literal=TWILIO_WHATSAPP_NUMBER=whatsapp:+1234567890 \
-  -n opssentinal --dry-run=client -o yaml > k8s/secret.yaml
+  -n opsknight --dry-run=client -o yaml > k8s/secret.yaml
 ```
 
 **Note:** Twilio secrets are optional. Only include them if you want to enable SMS/WhatsApp notifications.
@@ -86,14 +91,15 @@ kubectl apply -f k8s/secret.yaml
 kubectl apply -f k8s/postgres-pvc.yaml
 kubectl apply -f k8s/postgres-deployment.yaml
 kubectl apply -f k8s/postgres-service.yaml
-kubectl apply -f k8s/opssentinal-deployment.yaml
-kubectl apply -f k8s/opssentinal-service.yaml
+kubectl apply -f k8s/opsknight-deployment.yaml
+kubectl apply -f k8s/opsknight-service.yaml
 
 # Optional: Deploy Ingress
 kubectl apply -f k8s/ingress.yaml
 ```
 
 Or apply all at once:
+
 ```bash
 kubectl apply -f k8s/
 ```
@@ -105,29 +111,30 @@ kubectl apply -f k8s/
 kubectl get namespaces
 
 # Check all resources
-kubectl get all -n opssentinal
+kubectl get all -n opsknight
 
 # Check pods status
-kubectl get pods -n opssentinal
+kubectl get pods -n opsknight
 
 # Check services
-kubectl get services -n opssentinal
+kubectl get services -n opsknight
 ```
 
 Wait for pods to be in `Running` state:
+
 ```bash
-kubectl wait --for=condition=ready pod -l app=opssentinal-app -n opssentinal --timeout=300s
+kubectl wait --for=condition=ready pod -l app=opsknight-app -n opsknight --timeout=300s
 ```
 
 ### 6. Create Admin User
 
 ```bash
 # Get pod name
-POD_NAME=$(kubectl get pod -n opssentinal -l app=opssentinal-app -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get pod -n opsknight -l app=opsknight-app -o jsonpath='{.items[0].metadata.name}')
 
 # Create admin user
-kubectl exec -it -n opssentinal $POD_NAME -- \
-  node scripts/opssentinal.mjs \
+kubectl exec -it -n opsknight $POD_NAME -- \
+  node scripts/opsknight.mjs \
   --user admin \
   --email admin@example.com \
   --password admin \
@@ -139,16 +146,18 @@ kubectl exec -it -n opssentinal $POD_NAME -- \
 ### 7. Access the Application
 
 **If using LoadBalancer:**
+
 ```bash
-kubectl get service opssentinal-service -n opssentinal
+kubectl get service opsknight-service -n opsknight
 # Note the EXTERNAL-IP
 ```
 
 Access at: `http://<EXTERNAL-IP>`
 
 **If using Port Forward (for testing):**
+
 ```bash
-kubectl port-forward -n opssentinal service/opssentinal-service 3000:80
+kubectl port-forward -n opsknight service/opsknight-service 3000:80
 ```
 
 Access at: `http://localhost:3000`
@@ -163,25 +172,28 @@ Configure your DNS to point to the Ingress controller's IP, then access via your
 If you want to enable SMS and WhatsApp notifications via Twilio:
 
 1. **Install Twilio package** (optional - will be installed automatically if in package.json):
+
    ```bash
    npm install twilio
    ```
 
 2. **Add Twilio secrets** to `k8s/secret.yaml`:
+
    ```yaml
    data:
      TWILIO_ACCOUNT_SID: <base64-encoded-account-sid>
      TWILIO_AUTH_TOKEN: <base64-encoded-auth-token>
-     TWILIO_FROM_NUMBER: <base64-encoded-from-number>  # E.g., +1234567890
-     TWILIO_WHATSAPP_NUMBER: <base64-encoded-whatsapp-number>  # Optional: whatsapp:+1234567890
+     TWILIO_FROM_NUMBER: <base64-encoded-from-number> # E.g., +1234567890
+     TWILIO_WHATSAPP_NUMBER: <base64-encoded-whatsapp-number> # Optional: whatsapp:+1234567890
    ```
 
-3. **Uncomment Twilio environment variables** in `k8s/opssentinal-deployment.yaml`:
+3. **Uncomment Twilio environment variables** in `k8s/opsknight-deployment.yaml`:
+
    ```yaml
    - name: TWILIO_ACCOUNT_SID
      valueFrom:
        secretKeyRef:
-         name: opssentinal-secrets
+         name: opsknight-secrets
          key: TWILIO_ACCOUNT_SID
          optional: true
    # ... (repeat for other Twilio vars)
@@ -197,48 +209,53 @@ The PostgreSQL deployment uses a PersistentVolumeClaim (PVC) for data storage.
 
 **Customize storage:**
 Edit `k8s/postgres-pvc.yaml`:
+
 ```yaml
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 20Gi  # Increase as needed
-  storageClassName: fast-ssd  # Use your storage class
+      storage: 20Gi # Increase as needed
+  storageClassName: fast-ssd # Use your storage class
 ```
 
 ### Resource Limits
 
 **PostgreSQL resources** (`k8s/postgres-deployment.yaml`):
+
 ```yaml
 resources:
   requests:
-    memory: "512Mi"
-    cpu: "500m"
+    memory: '512Mi'
+    cpu: '500m'
   limits:
-    memory: "2Gi"
-    cpu: "2000m"
+    memory: '2Gi'
+    cpu: '2000m'
 ```
 
-**Application resources** (`k8s/opssentinal-deployment.yaml`):
+**Application resources** (`k8s/opsknight-deployment.yaml`):
+
 ```yaml
 resources:
   requests:
-    memory: "512Mi"
-    cpu: "500m"
+    memory: '512Mi'
+    cpu: '500m'
   limits:
-    memory: "2Gi"
-    cpu: "2000m"
+    memory: '2Gi'
+    cpu: '2000m'
 ```
 
 ### Scaling
 
 Scale the application horizontally:
+
 ```bash
-kubectl scale deployment -n opssentinal opssentinal-app --replicas=3
+kubectl scale deployment -n opsknight opsknight-app --replicas=3
 ```
 
 Or edit the deployment:
+
 ```yaml
 spec:
   replicas: 3
@@ -251,35 +268,37 @@ spec:
 For production, configure Ingress with TLS:
 
 **Prerequisites:**
+
 - Ingress controller installed (nginx, traefik, etc.)
 - cert-manager for automatic SSL (optional)
 
 **Update** `k8s/ingress.yaml`:
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: opssentinal-ingress
-  namespace: opssentinal
+  name: opsknight-ingress
+  namespace: opsknight
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   tls:
-  - hosts:
-    - opssentinal.yourdomain.com
-    secretName: opssentinal-tls
+    - hosts:
+        - opsknight.yourdomain.com
+      secretName: opsknight-tls
   rules:
-  - host: opssentinal.yourdomain.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: opssentinal-service
-            port:
-              number: 80
+    - host: opsknight.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opsknight-service
+                port:
+                  number: 80
 ```
 
 ## Management
@@ -288,55 +307,57 @@ spec:
 
 ```bash
 # Application logs
-kubectl logs -f -n opssentinal deployment/opssentinal-app
+kubectl logs -f -n opsknight deployment/opsknight-app
 
 # Database logs
-kubectl logs -f -n opssentinal deployment/opssentinal-postgres
+kubectl logs -f -n opsknight deployment/opsknight-postgres
 
 # Specific pod
-kubectl logs -f -n opssentinal <pod-name>
+kubectl logs -f -n opsknight <pod-name>
 
 # Previous pod logs (after crash)
-kubectl logs -n opssentinal <pod-name> --previous
+kubectl logs -n opsknight <pod-name> --previous
 ```
 
 ### Exec into Pods
 
 ```bash
 # Application pod
-kubectl exec -it -n opssentinal <app-pod-name> -- sh
+kubectl exec -it -n opsknight <app-pod-name> -- sh
 
 # Database pod
-kubectl exec -it -n opssentinal <postgres-pod-name> -- sh
+kubectl exec -it -n opsknight <postgres-pod-name> -- sh
 
 # Run psql
-kubectl exec -it -n opssentinal <postgres-pod-name> -- psql -U opssentinal -d opssentinal_db
+kubectl exec -it -n opsknight <postgres-pod-name> -- psql -U opsknight -d opsknight_db
 ```
 
 ### Update Deployment
 
 **Update image version:**
+
 ```bash
-kubectl set image -n opssentinal deployment/opssentinal-app \
-  opssentinal=your-registry.com/opssentinal:v1.1.0
+kubectl set image -n opsknight deployment/opsknight-app \
+  opsknight=your-registry.com/opsknight:v1.1.0
 
 # Watch rollout
-kubectl rollout status -n opssentinal deployment/opssentinal-app
+kubectl rollout status -n opsknight deployment/opsknight-app
 ```
 
 **Rollback deployment:**
+
 ```bash
-kubectl rollout undo -n opssentinal deployment/opssentinal-app
+kubectl rollout undo -n opsknight deployment/opsknight-app
 
 # Rollback to specific revision
-kubectl rollout undo -n opssentinal deployment/opssentinal-app --to-revision=2
+kubectl rollout undo -n opsknight deployment/opsknight-app --to-revision=2
 ```
 
 ### Restart Deployment
 
 ```bash
-kubectl rollout restart -n opssentinal deployment/opssentinal-app
-kubectl rollout restart -n opssentinal deployment/opssentinal-postgres
+kubectl rollout restart -n opsknight deployment/opsknight-app
+kubectl rollout restart -n opsknight deployment/opsknight-postgres
 ```
 
 ## Backup and Recovery
@@ -344,56 +365,59 @@ kubectl rollout restart -n opssentinal deployment/opssentinal-postgres
 ### Database Backup
 
 **Manual backup:**
-```bash
-POD_NAME=$(kubectl get pod -n opssentinal -l app=opssentinal-postgres -o jsonpath='{.items[0].metadata.name}')
 
-kubectl exec -n opssentinal $POD_NAME -- \
-  pg_dump -U opssentinal opssentinal_db > backup_$(date +%Y%m%d_%H%M%S).sql
+```bash
+POD_NAME=$(kubectl get pod -n opsknight -l app=opsknight-postgres -o jsonpath='{.items[0].metadata.name}')
+
+kubectl exec -n opsknight $POD_NAME -- \
+  pg_dump -U opsknight opsknight_db > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
 **Restore from backup:**
+
 ```bash
 cat backup_20250121_120000.sql | \
-kubectl exec -i -n opssentinal $POD_NAME -- \
-  psql -U opssentinal opssentinal_db
+kubectl exec -i -n opsknight $POD_NAME -- \
+  psql -U opsknight opsknight_db
 ```
 
 **Automated backups with CronJob:**
 
 Create `k8s/backup-cronjob.yaml`:
+
 ```yaml
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: postgres-backup
-  namespace: opssentinal
+  namespace: opsknight
 spec:
-  schedule: "0 2 * * *"  # Daily at 2 AM
+  schedule: '0 2 * * *' # Daily at 2 AM
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-          - name: backup
-            image: postgres:15-alpine
-            command:
-            - /bin/sh
-            - -c
-            - pg_dump -h opssentinal-postgres-service -U opssentinal opssentinal_db > /backup/backup_$(date +%Y%m%d).sql
-            env:
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: opssentinal-secrets
-                  key: POSTGRES_PASSWORD
-            volumeMounts:
-            - name: backup-storage
-              mountPath: /backup
+            - name: backup
+              image: postgres:15-alpine
+              command:
+                - /bin/sh
+                - -c
+                - pg_dump -h opsknight-postgres-service -U opsknight opsknight_db > /backup/backup_$(date +%Y%m%d).sql
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: opsknight-secrets
+                      key: POSTGRES_PASSWORD
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
           restartPolicy: OnFailure
           volumes:
-          - name: backup-storage
-            persistentVolumeClaim:
-              claimName: backup-pvc
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: backup-pvc
 ```
 
 ## Monitoring
@@ -403,18 +427,21 @@ spec:
 The deployment includes liveness and readiness probes:
 
 **Application:**
+
 - Liveness: `GET /api/health?mode=liveness`
 - Readiness: `GET /api/health?mode=readiness`
 
 **Database:**
-- Liveness: `pg_isready -U opssentinal`
-- Readiness: `pg_isready -U opssentinal`
+
+- Liveness: `pg_isready -U opsknight`
+- Readiness: `pg_isready -U opsknight`
 
 ### Metrics
 
 For production monitoring, integrate:
 
 **Prometheus + Grafana:**
+
 ```bash
 # Add Prometheus annotations to deployments
 metadata:
@@ -430,16 +457,17 @@ metadata:
 
 ```bash
 # Check pod status
-kubectl get pods -n opssentinal
+kubectl get pods -n opsknight
 
 # Describe pod for events
-kubectl describe pod -n opssentinal <pod-name>
+kubectl describe pod -n opsknight <pod-name>
 
 # Check logs
-kubectl logs -n opssentinal <pod-name>
+kubectl logs -n opsknight <pod-name>
 ```
 
 Common issues:
+
 - **ImagePullBackOff**: Wrong image or registry credentials
 - **CrashLoopBackOff**: Application error, check logs
 - **Pending**: Resource constraints or PVC issues
@@ -448,7 +476,7 @@ Common issues:
 
 ```bash
 # Test database connectivity from app pod
-kubectl exec -it -n opssentinal <app-pod-name> -- \
+kubectl exec -it -n opsknight <app-pod-name> -- \
   sh -c 'apk add postgresql-client && psql $DATABASE_URL'
 ```
 
@@ -456,20 +484,20 @@ kubectl exec -it -n opssentinal <app-pod-name> -- \
 
 ```bash
 # Check service
-kubectl get service -n opssentinal opssentinal-service
+kubectl get service -n opsknight opsknight-service
 
 # Check endpoints
-kubectl get endpoints -n opssentinal opssentinal-service
+kubectl get endpoints -n opsknight opsknight-service
 
 # Test from within cluster
-kubectl run -it --rm debug --image=curlimages/curl -n opssentinal -- \
-  curl http://opssentinal-service/api/health?mode=readiness
+kubectl run -it --rm debug --image=curlimages/curl -n opsknight -- \
+  curl http://opsknight-service/api/health?mode=readiness
 ```
 
 ### View Events
 
 ```bash
-kubectl get events -n opssentinal --sort-by='.lastTimestamp'
+kubectl get events -n opsknight --sort-by='.lastTimestamp'
 ```
 
 ## Cleanup
@@ -481,7 +509,7 @@ kubectl get events -n opssentinal --sort-by='.lastTimestamp'
 kubectl delete -f k8s/
 
 # Or delete namespace (removes everything)
-kubectl delete namespace opssentinal
+kubectl delete namespace opsknight
 ```
 
 **Note:** This will delete the PVC and all data. Backup first!
@@ -514,5 +542,3 @@ kubectl delete namespace opssentinal
 - [Main Setup Guide](../SETUP.md)
 - [Deployment Guide](../DEPLOYMENT.md)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
-
-

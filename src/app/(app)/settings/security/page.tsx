@@ -103,7 +103,7 @@ export default async function SecuritySettingsPage() {
         description="Update your account password."
         footer={
           <p className="text-sm text-muted-foreground">
-            For password resets or session issues, contact your OpsSentinal administrator.
+            For password resets or session issues, contact your OpsKnight administrator.
           </p>
         }
       >

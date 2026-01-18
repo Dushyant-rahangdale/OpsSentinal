@@ -1,10 +1,19 @@
 import type { Metadata, Viewport } from 'next';
+import { Manrope } from 'next/font/google'; // [NEW]
 import '@/styles/index.css';
 import { Providers } from './providers';
 import VersionCheck from '@/components/VersionCheck';
 
+// Initialize fonts with explicit weights for better control
+const manrope = Manrope({
+  variable: '--font-manrope',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'OpsSentinal | Enterprise Incident Management',
+  title: 'OpsKnight | Incident Management',
   description: 'Enterprise incident management and response platform',
   icons: {
     icon: [
@@ -16,7 +25,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'OpsSentinel',
+    title: 'OpsKnight',
   },
   manifest: '/manifest.json',
 };
@@ -36,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="color-scheme" content="light only" />
         <meta name="darkreader-lock" />
       </head>
-      <body>
+      <body className={`${manrope.variable} antialiased`}>
         <Providers>
           <VersionCheck />
           {children}

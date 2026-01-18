@@ -2,7 +2,7 @@ github_username = "your-github-username"
 github_token    = "ghp_xxxxxxxxxxxxxxxxxxxx" # CR_PAT with read:packages
 db_password     = "your-secure-db-password"
 nextauth_secret = "your-nextauth-secret"
-nextauth_url    = "https://opssentinal.com"
+nextauth_url    = "https://opsknight.com"
 
 your_ip         = "1.2.3.4/32"
 your_ipv6       = "2401:4900:8838:c07c::/64" # Optional

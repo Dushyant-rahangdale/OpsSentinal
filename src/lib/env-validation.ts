@@ -54,7 +54,7 @@ export function validateProductionEnv(): void {
     // NEXTAUTH_SECRET is now auto-generated - no longer required in env
     {
       name: 'NEXTAUTH_URL',
-      description: 'Full URL of your application (e.g., https://OpsSentinal.yourdomain.com)',
+      description: 'Full URL of your application (e.g., https://OpsKnight.yourdomain.com)',
     },
   ];
 
@@ -121,5 +121,5 @@ export function getFromEmail(): string {
     logger.warn('EMAIL_FROM not set and cannot derive from NEXT_PUBLIC_APP_URL. Using default.');
   }
 
-  return 'noreply@OpsSentinal.local';
+  return 'noreply@OpsKnight.local';
 }

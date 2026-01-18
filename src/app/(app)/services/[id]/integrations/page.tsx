@@ -154,14 +154,18 @@ export default async function ServiceIntegrationsPage({
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Service Integrations</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Service Integrations
+            </h1>
             <p className="text-xs md:text-sm opacity-90 mt-1">
               Configure alert sources to send incidents to {service.name}
             </p>
           </div>
           <Card className="bg-white/10 border-white/20 backdrop-blur">
             <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-bold">{service.integrations.length}</div>
+              <div className="text-xl md:text-2xl font-extrabold">
+                {service.integrations.length}
+              </div>
               <div className="text-[10px] md:text-xs opacity-90">Active Integrations</div>
             </CardContent>
           </Card>

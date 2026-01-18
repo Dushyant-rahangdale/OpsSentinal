@@ -11,7 +11,7 @@ export interface EmailStyles {
 }
 
 /**
- * Email container with responsive layout and OpsSentinal branding
+ * Email container with responsive layout and OpsKnight branding
  * Fully optimized for mobile devices
  */
 export function EmailContainer(content: string, styles: EmailStyles = {}): string {
@@ -26,7 +26,7 @@ export function EmailContainer(content: string, styles: EmailStyles = {}): strin
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="x-apple-disable-message-reformatting">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>OpsSentinal Notification</title>
+    <title>OpsKnight Notification</title>
     <!--[if gte mso 9]>
     <xml>
         <o:OfficeDocumentSettings>
@@ -83,7 +83,7 @@ export function EmailContainer(content: string, styles: EmailStyles = {}): strin
 }
 
 /**
- * Branded email header with OpsSentinal logo and red gradient
+ * Branded email header with OpsKnight logo and red gradient
  * Mobile-responsive with flexible layout
  */
 export function EmailHeader(title: string, subtitle?: string, styles: EmailStyles = {}): string {
@@ -102,10 +102,10 @@ export function EmailHeader(title: string, subtitle?: string, styles: EmailStyle
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="margin: 0;">
                     <tr>
                         <td style="padding-right: 12px; vertical-align: middle;">
-                            ${getOpsSentinalLogo(56)}
+                            ${getOpsKnightLogo(56)}
                         </td>
                         <td style="vertical-align: middle;">
-                            <span class="mobile-logo-name" style="font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; white-space: nowrap;">OpsSentinal</span>
+                            <span class="mobile-logo-name" style="font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; white-space: nowrap;">OpsKnight</span>
                         </td>
                     </tr>
                 </table>
@@ -150,7 +150,7 @@ export function EmailContent(content: string): string {
 }
 
 /**
- * Status badge with icon - OpsSentinal branded
+ * Status badge with icon - OpsKnight branded
  */
 export function StatusBadge(
   status: string,
@@ -193,7 +193,7 @@ export function StatusBadge(
 }
 
 /**
- * Call-to-action button with OpsSentinal red gradient
+ * Call-to-action button with OpsKnight red gradient
  * Optimized for mobile with large touch targets
  */
 export function EmailButton(text: string, url: string, _styles: EmailStyles = {}): string {
@@ -237,7 +237,7 @@ export function InfoCard(
 }
 
 /**
- * Alert box for important messages with OpsSentinal colors
+ * Alert box for important messages with OpsKnight colors
  */
 export function AlertBox(
   title: string,
@@ -265,7 +265,7 @@ export function AlertBox(
 }
 
 /**
- * Footer with OpsSentinal branding
+ * Footer with OpsKnight branding
  */
 export function EmailFooter(unsubscribeUrl?: string): string {
   return `
@@ -273,7 +273,7 @@ export function EmailFooter(unsubscribeUrl?: string): string {
     <tr>
         <td style="padding: 36px 40px; background: #f3f4f6; border-top: 1px solid #e5e7eb; text-align: center;">
             <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                This is an automated notification from <strong style="color: #1e293b;">OpsSentinal</strong> Incident Management.
+                This is an automated notification from <strong style="color: #1e293b;">OpsKnight</strong> Incident Management.
             </p>
             ${
               unsubscribeUrl
@@ -295,8 +295,8 @@ export function EmailFooter(unsubscribeUrl?: string): string {
 
 /**
  * Header specifically for Status Page Subscribers
- * Shows the Organization Name prominently instead of OpsSentinal
- * Maintains the premium OpsSentinal aesthetic
+ * Shows the Organization Name prominently instead of OpsKnight
+ * Maintains the premium OpsKnight aesthetic
  */
 export function SubscriberEmailHeader(
   pageName: string,
@@ -311,7 +311,7 @@ export function SubscriberEmailHeader(
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
     <tr>
         <td class="mobile-header-padding" style="background: ${headerGradient}; padding: 48px 44px; text-align: left; position: relative;">
-            <!-- OpsSentinal Logo -->
+            <!-- OpsKnight Logo -->
             <div style="margin-bottom: 32px;">
                 <!--[if mso]>
                 <table role="presentation" align="left"><tr><td>
@@ -319,10 +319,10 @@ export function SubscriberEmailHeader(
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="margin: 0;">
                     <tr>
                         <td style="padding-right: 12px; vertical-align: middle;">
-                            ${getOpsSentinalLogo(44)}
+                            ${getOpsKnightLogo(44)}
                         </td>
                         <td style="vertical-align: middle;">
-                            <span class="mobile-logo-name" style="font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; white-space: nowrap;">OpsSentinal</span>
+                            <span class="mobile-logo-name" style="font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em; font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; white-space: nowrap;">OpsKnight</span>
                         </td>
                     </tr>
                 </table>
@@ -374,15 +374,15 @@ export function SubscriberEmailFooter(unsubscribeUrl: string, pageName: string):
                 <a href="${unsubscribeUrl}" style="color: #6b7280; text-decoration: underline;">Unsubscribe from updates</a>
             </p>
 
-            <!-- OpsSentinal Marketing -->
+            <!-- OpsKnight Marketing -->
             <div style="opacity: 0.8;">
                 <p style="margin: 0; color: #9ca3af; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">
                     Powered by
                 </p>
-                <a href="https://OpsSentinal.com" target="_blank" style="text-decoration: none; display: inline-block; margin-top: 8px;">
+                <a href="https://OpsKnight.com" target="_blank" style="text-decoration: none; display: inline-block; margin-top: 8px;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        ${getOpsSentinalLogo(24)}
-                        <span style="color: #1f2937; font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em;">OpsSentinal</span>
+                        ${getOpsKnightLogo(24)}
+                        <span style="color: #1f2937; font-size: 16px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em;">OpsKnight</span>
                     </div>
                 </a>
             </div>
@@ -395,7 +395,7 @@ export function SubscriberEmailFooter(unsubscribeUrl: string, pageName: string):
  * SVG Icons (inline for email compatibility)
  */
 
-function getOpsSentinalLogo(width: number): string {
+function getOpsKnightLogo(width: number): string {
   // Inline SVG logo for email compatibility - works in all email clients without external dependencies
   return `<svg width="${width}" height="${width}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display: block;">
         <!-- Shield background -->

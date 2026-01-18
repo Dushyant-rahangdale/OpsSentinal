@@ -1,44 +1,44 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opssentinal-app
-  namespace: opssentinal
+  name: opsknight-app
+  namespace: opsknight
   labels:
-    app: opssentinal-app
+    app: opsknight-app
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: opssentinal-app
+      app: opsknight-app
   template:
     metadata:
       labels:
-        app: opssentinal-app
+        app: opsknight-app
     spec:
-      serviceAccountName: opssentinal-app
+      serviceAccountName: opsknight-app
       securityContext:
         runAsUser: 1001
         runAsGroup: 1001
         fsGroup: 1001
       containers:
-        - name: opssentinal-app
-          image: ghcr.io/dushyant-rahangdale/opssentinal-test:latest
+        - name: opsknight-app
+          image: ghcr.io/dushyant-rahangdale/opsknight-test:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
               name: http
           envFrom:
             - configMapRef:
-                name: opssentinal-config
+                name: opsknight-config
             - secretRef:
-                name: opssentinal-secrets
+                name: opsknight-secrets
           env:
             - name: DATABASE_URL
               value: 'postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?schema=public'
             - name: CRON_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: opssentinal-secrets
+                  name: opsknight-secrets
                   key: CRON_SECRET
           resources:
             requests:

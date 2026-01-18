@@ -1,15 +1,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: opssentinal-app-hpa
-  namespace: opssentinal
+  name: opsknight-app-hpa
+  namespace: opsknight
   labels:
-    app: opssentinal-app
+    app: opsknight-app
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: opssentinal-app
+    name: opsknight-app
   minReplicas: 2
   maxReplicas: 10
   metrics:

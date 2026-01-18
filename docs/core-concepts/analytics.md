@@ -1,48 +1,46 @@
+---
+order: 10
+---
+
 # Analytics
 
-Analytics provide insights into incident trends, response times, and team performance.
+Analytics provide insight into incident trends, response times, and team performance.
 
 ## Key Metrics
 
 ### MTTA (Mean Time to Acknowledge)
 
-Average time from incident trigger to first acknowledgment.
-
-| Rating               | MTTA         |
-| -------------------- | ------------ |
-| 🟢 Excellent         | < 5 minutes  |
-| 🟡 Good              | 5-15 minutes |
-| 🔴 Needs Improvement | > 15 minutes |
+| Rating | MTTA         |
+| ------ | ------------ |
+| 🟢     | < 5 minutes  |
+| 🟡     | 5–15 minutes |
+| 🔴     | > 15 minutes |
 
 ### MTTR (Mean Time to Resolve)
 
-Average time from incident trigger to resolution.
-
-| Rating               | MTTR          |
-| -------------------- | ------------- |
-| 🟢 Excellent         | < 30 minutes  |
-| 🟡 Good              | 30-60 minutes |
-| 🔴 Needs Improvement | > 60 minutes  |
+| Rating | MTTR          |
+| ------ | ------------- |
+| 🟢     | < 30 minutes  |
+| 🟡     | 30–60 minutes |
+| 🔴     | > 60 minutes  |
 
 ### SLA Compliance
 
-Percentage of incidents resolved within SLA targets.
+Percentage of incidents resolved within defined SLA targets.
 
-## Dashboard Widgets
+## Dashboards
 
-The analytics dashboard provides:
+- Incident volume trends
+- MTTA/MTTR charts
+- Team performance
+- Service health
+- Escalation step distribution
 
-- **Incident Trends** - Volume over time
-- **Response Times** - MTTA/MTTR charts
-- **Team Performance** - By team breakdown
-- **Service Health** - Uptime percentages
-- **Escalation Metrics** - Step reached distribution
+## Filters
 
-## Filtering
+Filter by:
 
-Filter analytics by:
-
-- Time range (24h, 7d, 30d, custom)
+- Time range
 - Services
 - Teams
 - Severity
@@ -50,20 +48,16 @@ Filter analytics by:
 
 ## Reports
 
-### Executive Report
+### Executive Summary
 
-High-level summary for leadership:
+Highlights:
 
 - Total incidents
 - SLA compliance
 - Top affected services
-- Trends vs. previous period
+- Period-over-period trends
 
-Access: **Insights → Executive Report**
-
-### On-Call Report
-
-Performance metrics for on-call teams:
+### On-Call Performance
 
 - Response times by responder
 - Incidents per shift
@@ -71,17 +65,13 @@ Performance metrics for on-call teams:
 
 ## Exporting Data
 
-Export analytics for external analysis:
-
 1. Go to **Analytics**
 2. Apply filters
 3. Click **Export**
-4. Choose format (CSV, JSON)
+4. Download CSV or JSON
 
 ## Best Practices
 
-- ✅ Review metrics weekly
-- ✅ Set realistic SLA targets
-- ✅ Track trends, not just numbers
-- ✅ Share reports with stakeholders
-- ✅ Use data to improve processes
+- Review weekly to spot patterns.
+- Track trends, not just totals.
+- Share reports with stakeholders.

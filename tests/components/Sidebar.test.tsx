@@ -57,7 +57,7 @@ describe('Sidebar', () => {
       <Sidebar userName="Alex Doe" userEmail="alex@example.com" userRole="ADMIN" />
     );
 
-    const heading = screen.getByRole('heading', { name: /OpsSentinel/i });
+    const heading = screen.getByRole('heading', { name: /OpsKnight/i });
     expect(heading).toBeInTheDocument();
   });
 

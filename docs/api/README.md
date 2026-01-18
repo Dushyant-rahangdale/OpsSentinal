@@ -1,6 +1,10 @@
+---
+order: 5
+---
+
 # API Reference
 
-Developer documentation for the OpsSentinal REST API.
+Developer documentation for the OpsKnight REST API.
 
 ## In This Section
 
@@ -48,7 +52,7 @@ API keys have scoped permissions:
 ## Base URL
 
 ```
-https://your-opssentinal.com
+https://your-opsknight.com
 ```
 
 ## Rate Limits

@@ -149,7 +149,7 @@ export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
       {
         id: 'integrations',
         label: 'Integrations',
-        description: 'Connect OpsSentinal with your tools',
+        description: 'Connect OpsKnight with your tools',
         href: '/settings/integrations',
         icon: 'plug',
         keywords: ['slack', 'webhooks', 'connect'],

@@ -1,26 +1,29 @@
+---
+order: 1
+---
+
 # Dashboard
 
-The dashboard is your command center for monitoring incidents and team activity.
+The dashboard is the command center for real-time incident response. It surfaces what is happening now, who is on-call, and which services need attention.
 
-## Overview
+## What You See
 
-The dashboard provides at-a-glance visibility into:
+- **Active incidents** with severity and ownership
+- **Service health** by status
+- **On-call coverage** by schedule
+- **Trends** for MTTA/MTTR and incident volume
+- **Recent activity** across incidents and settings
 
-- Active incidents
-- Service health
-- On-call status
-- Recent activity
-
-## Dashboard Widgets
+## Key Widgets
 
 ### Active Incidents
 
-Shows all unresolved incidents with:
+Shows unresolved incidents with:
 
-- Priority badge
+- Severity badge
 - Service name
 - Time since trigger
-- Assignee
+- Current assignee
 
 ### Service Health
 
@@ -36,60 +39,29 @@ Current on-call responders for each schedule.
 
 ### Incident Trends
 
-Charts showing:
+Charts for:
 
-- Incidents over time
-- By severity breakdown
+- Incident volume over time
 - MTTA/MTTR trends
+- Breakdown by severity
 
 ### Recent Activity
 
-Timeline of recent events:
+Timeline of key events:
 
 - New incidents
-- Acknowledgments
+- Acknowledgements
 - Resolutions
-- Notes
+- Notes and changes
 
 ## Quick Actions
 
-From the dashboard, you can:
-
-- **Create Incident** - Manual incident creation
-- **View All Incidents** - Full incident list
-- **Check On-Call** - See who's on-call
-
-## Customization
-
-### Widget Visibility
-
-Show/hide widgets based on your role:
-
-- Responders: Focus on incidents
-- Managers: Focus on metrics
-- Admins: Full visibility
-
-### Time Range
-
-Adjust the time range for trend data:
-
-- Last 24 hours
-- Last 7 days
-- Last 30 days
-
-## Mobile View
-
-The dashboard is fully responsive:
-
-- Optimized for mobile
-- PWA support
-- Push notifications
-
-See [Mobile PWA](../deployment/mobile-pwa.md).
+- **Create Incident** for manual entries
+- **View Incidents** to jump into triage
+- **Check On-Call** for current ownership
 
 ## Best Practices
 
-- ✅ Check the dashboard at shift start
-- ✅ Use it as the primary incident view
-- ✅ Monitor trends for proactive response
-- ✅ Keep browser notifications enabled
+- Review the dashboard at shift start.
+- Keep it open during active incidents.
+- Use trend charts to identify recurring issues.

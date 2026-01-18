@@ -1,10 +1,14 @@
+---
+order: 3
+---
+
 # Custom Fields
 
-Add custom metadata to incidents for better organization and filtering.
+Add custom metadata to incidents for better organization, filtering, and reporting.
 
 ## What are Custom Fields?
 
-Custom fields let you capture additional information:
+Custom fields let you capture extra context such as:
 
 - Environment (prod, staging, dev)
 - Region (us-east, eu-west)
@@ -25,25 +29,27 @@ Custom fields let you capture additional information:
 | Required      | Mandatory on incidents     |
 | Default Value | Pre-filled value           |
 
+> **Tip:** Use short, consistent keys like `environment` or `customer_tier`.
+
 ## Field Types
 
 ### Text
 
 Free-form text input.
 
-**Example**: Customer ID, Ticket Number
+**Example:** `ticket_id`, `customer_id`
 
 ### Select (Dropdown)
 
 Single selection from predefined options.
 
-**Example**: Environment → [Production, Staging, Development]
+**Example:** Environment → [Production, Staging, Development]
 
 ### Multi-Select
 
 Multiple selections allowed.
 
-**Example**: Affected Regions → [US-East, US-West, EU-West]
+**Example:** Affected Regions → [US-East, US-West, EU-West]
 
 ## Using Custom Fields
 
@@ -61,7 +67,7 @@ Filter incidents by custom field values:
 
 1. Go to **Incidents**
 2. Click **Filters**
-3. Select custom field
+3. Select the custom field
 4. Choose values
 
 ### In Reports
@@ -113,8 +119,7 @@ curl -X POST /api/incidents \
 
 ## Best Practices
 
-- ✅ Use dropdowns when possible
-- ✅ Limit required fields
-- ✅ Use consistent naming
-- ✅ Review field usage periodically
-- ✅ Document field meanings
+- Prefer dropdowns for consistent reporting.
+- Keep required fields minimal to reduce friction.
+- Document field meanings for teams.
+- Review and clean up unused fields periodically.

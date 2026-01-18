@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We only provide security updates for the latest major version of OpsSentinal.
+We only provide security updates for the latest major version of OpsKnight.
 
 | Version | Supported |
 | ------- | --------- |
@@ -13,7 +13,7 @@ We only provide security updates for the latest major version of OpsSentinal.
 
 **Please do not open GitHub issues for security vulnerabilities.**
 
-If you discover a security vulnerability within OpsSentinal, please send an e-mail to the maintainers. All security vulnerabilities will be promptly addressed.
+If you discover a security vulnerability within OpsKnight, please send an e-mail to the maintainers. All security vulnerabilities will be promptly addressed.
 
 Please include the following in your report:
 
@@ -31,11 +31,11 @@ Please include the following in your report:
 
 ## Security Best Practices for Users
 
-OpsSentinal comes with several security features that should be configured correctly for production use:
+OpsKnight comes with several security features that should be configured correctly for production use:
 
 - **SSO/OIDC**: Highly recommended for enterprise environments.
 - **RBAC**: Ensure users have the minimum necessary permissions.
 - **Encryption**: sensitive data (API keys, secrets) is encrypted in the database.
 - **Audit Logs**: Regularly review audit logs for suspicious activity.
 
-Thank you for helping keep OpsSentinal secure!
+Thank you for helping keep OpsKnight secure!

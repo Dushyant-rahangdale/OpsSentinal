@@ -2,7 +2,7 @@
 
 ## Overview
 
-OpsSentinel uses a **Zero-Trust, Fault-Tolerant** encryption system to secure sensitive credentials (SSO Client Secrets, Slack Tokens, API Keys).
+OpsKnight uses a **Zero-Trust, Fault-Tolerant** encryption system to secure sensitive credentials (SSO Client Secrets, Slack Tokens, API Keys).
 
 ## 1. First Time Setup (Bootstrap)
 

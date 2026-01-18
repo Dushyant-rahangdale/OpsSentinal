@@ -29,7 +29,7 @@ export default async function PreferencesSettingsPage() {
     <div className="space-y-6 [zoom:0.7]">
       <SettingsPageHeader
         title="Preferences"
-        description="Personalize how OpsSentinal appears and notifies you."
+        description="Personalize how OpsKnight appears and notifies you."
         backHref="/settings"
         backLabel="Back to Settings"
       />

@@ -171,7 +171,21 @@ export function IncidentHeatmapWidget({
       weeksArray.push({ days: weekDays });
 
       const firstDay = weekDays[0].date;
-      const monthName = firstDay.toLocaleString('default', { month: 'short' });
+      const MONTHS = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      const monthName = MONTHS[firstDay.getMonth()];
 
       if (monthName !== currentMonth) {
         monthLabelsArray.push({ label: monthName, weekIndex: weeksArray.length - 1 });

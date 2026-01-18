@@ -113,7 +113,7 @@ export default async function CreateIncidentPage({
 
         <div className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl mb-2">
+            <h1 className="text-3xl font-extrabold tracking-tight tracking-tight text-foreground sm:text-4xl mb-2">
               Create Incident
             </h1>
             <p className="text-lg text-muted-foreground">

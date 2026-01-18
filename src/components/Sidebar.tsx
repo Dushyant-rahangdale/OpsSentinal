@@ -299,9 +299,7 @@ export default function Sidebar(
         {!isDesktopCollapsed && sectionName !== 'MAIN' && (
           <div className="flex items-center gap-2 mb-2 px-1">
             <div className={cn('h-1.5 w-1.5 rounded-full', colors.dotClass)} />
-            <span
-              className={cn('text-[11px] font-semibold tracking-wide uppercase', colors.textClass)}
-            >
+            <span className={cn('text-[11px] font-bold tracking-wide uppercase', colors.textClass)}>
               {sectionName}
             </span>
           </div>
@@ -369,7 +367,7 @@ export default function Sidebar(
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.2)_0%,transparent_70%)] pointer-events-none" />
               <Image
                 src="/logo.svg"
-                alt="OpsSentinal logo"
+                alt="OpsKnight logo"
                 width={40}
                 height={40}
                 className={cn(
@@ -380,43 +378,18 @@ export default function Sidebar(
             </div>
 
             {!isDesktopCollapsed && (
-              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                <h1 className="text-lg font-bold text-white m-0 leading-tight tracking-tight">
-                  OpsSentinel
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <h1 className="text-[1.4rem] font-extrabold text-white m-0 leading-none tracking-tighter font-display drop-shadow-sm">
+                  OpsKnight
                 </h1>
-                <span className="text-xs text-white/50 font-medium uppercase tracking-wide">
+                <span className="text-[0.65rem] text-white/60 font-bold uppercase tracking-widest">
                   Incident Response
                 </span>
               </div>
             )}
           </Link>
 
-          {/* World-Class Desktop Collapse Toggle Button */}
-          {!isMobile && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className={cn(
-                'absolute -right-3 top-1/2 -translate-y-1/2 z-20',
-                'w-6 h-6 rounded-full group',
-                'bg-black/40 backdrop-blur-md text-white/90',
-                'border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.2)]',
-                'hover:bg-black/60 hover:text-white hover:scale-110 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]',
-                'transition-all duration-300 ease-out',
-                'focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2',
-                'flex items-center justify-center'
-              )}
-            >
-              {isDesktopCollapsed ? (
-                <ChevronsRight className="h-3.5 w-3.5 stroke-[3] transition-transform duration-300 group-hover:translate-x-0.5" />
-              ) : (
-                <ChevronsLeft className="h-3.5 w-3.5 stroke-[3] transition-transform duration-300 group-hover:-translate-x-0.5" />
-              )}
-            </Button>
-          )}
+          {/* Removed - Toggle moved to sidebar edge */}
 
           {/* Mobile Close Button */}
           {isMobile && isMobileMenuOpen && (
@@ -544,12 +517,59 @@ export default function Sidebar(
           {!isDesktopCollapsed && (
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
               <span className="text-xs text-white/20 font-medium hover:text-white/40 transition-colors cursor-default">
-                opssentinal.com
+                opsknight.com
               </span>
               <span className="text-xs text-white/10 font-mono">v1.0.2</span>
             </div>
           )}
         </div>
+
+        {/* Edge Collapse Toggle - Sleek vertical handle */}
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 z-30',
+              'flex items-center justify-center',
+              'transition-all duration-300 ease-out',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900',
+              // Positioning - at the right edge
+              isDesktopCollapsed ? '-right-[14px]' : '-right-[11px]',
+              // Size and shape - vertical pill
+              'w-[18px] h-14 rounded-full',
+              // Colors and effects
+              'bg-gradient-to-b from-slate-700/95 to-slate-800/95 backdrop-blur-md',
+              'border border-white/10',
+              'shadow-[0_2px_10px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.08)]',
+              // Hover state
+              'hover:w-[22px] hover:from-slate-600/95 hover:to-slate-700/95',
+              'hover:border-white/20',
+              'hover:shadow-[0_4px_16px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.12)]',
+              // Active state
+              'active:scale-[0.97]',
+              // Group for icon animation
+              'group'
+            )}
+          >
+            {/* Chevron icon with resonance */}
+            <span className="transition-all duration-200 group-hover:scale-110 animate-[pulse-subtle_2s_ease-in-out_infinite]">
+              {isDesktopCollapsed ? (
+                <ChevronsRight className="h-3.5 w-3.5 text-white/70 group-hover:text-white stroke-[2.5] transition-colors duration-200" />
+              ) : (
+                <ChevronsLeft className="h-3.5 w-3.5 text-white/70 group-hover:text-white stroke-[2.5] transition-colors duration-200" />
+              )}
+            </span>
+            {/* Resonance ring */}
+            <span
+              className="absolute inset-0 rounded-full border border-white/20 animate-ping opacity-20 pointer-events-none"
+              style={{ animationDuration: '2.5s' }}
+            />
+            {/* Top shine */}
+            <span className="absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
+          </button>
+        )}
       </aside>
     </>
   );

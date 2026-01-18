@@ -169,7 +169,7 @@ export default function NotificationHistory() {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-extrabold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">All recent notifications</p>
           </CardContent>
         </Card>

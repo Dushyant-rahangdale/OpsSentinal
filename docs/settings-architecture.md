@@ -1,6 +1,6 @@
 # Settings Component Architecture
 
-This document describes the component architecture for the OpsSentinal settings section.
+This document describes the component architecture for the OpsKnight settings section.
 
 ## Overview
 

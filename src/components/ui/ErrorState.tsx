@@ -47,7 +47,7 @@ export default function ErrorState({
         )}
 
         {/* Title */}
-        <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
+        <h2 className="text-2xl font-extrabold tracking-tight text-foreground mb-2">{title}</h2>
 
         {/* Message */}
         <p className="text-base text-secondary-foreground mb-6 leading-relaxed">{message}</p>

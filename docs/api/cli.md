@@ -1,28 +1,28 @@
+---
+order: 3
+---
+
 # CLI Tool
 
-The OpsSentinalCLI for user management and automation.
+The OpsKnight CLI is used for user management and bootstrap automation.
 
-## Installation
-
-The CLI is included with OpsSentinal:
+## Usage
 
 ```bash
-npm run opssentinal -- [options]
+npm run opsknight -- [options]
 ```
 
-## User Management
-
-### Create User
+## Create a User
 
 ```bash
-npm run opssentinal -- \
+npm run opsknight -- \
   --user "John Doe" \
   --email john@company.com \
   --password SecurePass123! \
   --role admin
 ```
 
-### Options
+## Options
 
 | Option       | Description                        | Required |
 | ------------ | ---------------------------------- | -------- |
@@ -32,10 +32,10 @@ npm run opssentinal -- \
 | `--role`     | Role: `admin`, `responder`, `user` | ✅       |
 | `--update`   | Update existing user               | -        |
 
-### Update User
+## Update a User
 
 ```bash
-npm run opssentinal -- \
+npm run opsknight -- \
   --user "John Doe" \
   --email john@company.com \
   --password NewPassword123! \
@@ -45,10 +45,8 @@ npm run opssentinal -- \
 
 ## Docker Usage
 
-When running in Docker:
-
 ```bash
-docker exec -it opssentinal_app npm run opssentinal -- \
+docker exec -it opsknight_app npm run opsknight -- \
   --user "Admin" \
   --email admin@example.com \
   --password SecurePass123! \
@@ -58,57 +56,15 @@ docker exec -it opssentinal_app npm run opssentinal -- \
 ## Kubernetes Usage
 
 ```bash
-kubectl exec -it deploy/opssentinal -- npm run opssentinal -- \
+kubectl exec -it deploy/opsknight -- npm run opsknight -- \
   --user "Admin" \
   --email admin@example.com \
   --password SecurePass123! \
   --role admin
 ```
 
-## Common Tasks
-
-### Initial Setup
-
-Create the first admin user after deployment:
-
-```bash
-npm run opssentinal -- \
-  --user "System Admin" \
-  --email admin@yourcompany.com \
-  --password "$(openssl rand -base64 16)" \
-  --role admin
-```
-
-### Reset Password
-
-```bash
-npm run opssentinal -- \
-  --user "John Doe" \
-  --email john@company.com \
-  --password NewSecurePass! \
-  --role responder \
-  --update
-```
-
-### Promote User
-
-```bash
-npm run opssentinal -- \
-  --email john@company.com \
-  --role admin \
-  --update
-```
-
-## Exit Codes
-
-| Code | Meaning |
-| ---- | ------- |
-| 0    | Success |
-| 1    | Error   |
-
 ## Best Practices
 
-- ✅ Use strong passwords
-- ✅ Store credentials securely
-- ✅ Audit user creation
-- ✅ Use SSO for production
+- Use strong passwords.
+- Store credentials securely.
+- Prefer SSO for production.

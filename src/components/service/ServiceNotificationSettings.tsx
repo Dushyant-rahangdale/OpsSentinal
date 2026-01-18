@@ -198,7 +198,7 @@ export default function ServiceNotificationSettings({
     } else if (channel.isPrivate) {
       setJoinState({
         status: 'error',
-        message: `Note: Bot is NOT connected to #${channel.name}. For private channels, invite the bot in Slack using: /invite @OpsSentinal`,
+        message: `Note: Bot is NOT connected to #${channel.name}. For private channels, invite the bot in Slack using: /invite @OpsKnight`,
         channelId: channel.id,
       });
     } else {

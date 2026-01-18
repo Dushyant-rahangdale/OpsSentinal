@@ -23,7 +23,7 @@ export async function POST() {
 
     const result = await sendPush({
       userId: user.id,
-      title: '🔔 OpsSentinal Test Push',
+      title: '🔔 OpsKnight Test Push',
       body: `Hey ${user.name || 'there'}! Your push notifications are working perfectly. ✅`,
       data: {
         url: '/m/notifications',

@@ -142,7 +142,7 @@ export default function GuidedSlackSetup() {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  You&apos;ll create a new Slack App in your workspace. This gives OpsSentinal
+                  You&apos;ll create a new Slack App in your workspace. This gives OpsKnight
                   permission to send notifications to your channels.
                 </AlertDescription>
               </Alert>
@@ -170,8 +170,8 @@ export default function GuidedSlackSetup() {
                   </p>
                   <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>
-                      App Name: <code className="bg-muted px-1 py-0.5 rounded">OpsSentinal</code>{' '}
-                      (or any name you prefer)
+                      App Name: <code className="bg-muted px-1 py-0.5 rounded">OpsKnight</code> (or
+                      any name you prefer)
                     </li>
                     <li>Pick Workspace: Select your Slack workspace</li>
                     <li>Click &quot;Create App&quot;</li>
@@ -327,8 +327,7 @@ export default function GuidedSlackSetup() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                You&apos;ll be redirected to Slack to authorize OpsSentinal to access your
-                workspace.
+                You&apos;ll be redirected to Slack to authorize OpsKnight to access your workspace.
               </AlertDescription>
             </Alert>
 

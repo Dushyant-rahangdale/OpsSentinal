@@ -269,7 +269,7 @@ export async function saveEncryptionKey(
 
   // Update Canary
   const { encryptWithKey } = await import('@/lib/encryption');
-  const canaryCipher = await encryptWithKey('OPS_SENTINAL_CRYPTO_CHECK', key);
+  const canaryCipher = await encryptWithKey('OPS_KNIGHT_CRYPTO_CHECK', key);
   await prisma.systemConfig.upsert({
     where: { key: 'encryption_canary' },
     create: { key: 'encryption_canary', value: { encrypted: canaryCipher } },

@@ -1,248 +1,56 @@
 'use client';
 
-import { ReactNode, useEffect, useRef } from 'react';
+import * as React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
-
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  children: ReactNode;
-  footer?: ReactNode;
-  size?: ModalSize;
-  closeOnBackdropClick?: boolean;
-  closeOnEscape?: boolean;
+  description?: string;
+  children: React.ReactNode;
   className?: string;
 }
 
-/**
- * Modal component for dialogs and overlays
- *
- * @example
- * <Modal
- *   isOpen={isOpen}
- *   onClose={() => setIsOpen(false)}
- *   title="Modal Title"
- *   footer={<Button onClick={handleSave}>Save</Button>}
- * >
- *   Content here
- * </Modal>
- */
-export default function Modal({
-  isOpen,
-  onClose,
-  title,
-  children,
-  footer,
-  size = 'md',
-  closeOnBackdropClick = true,
-  closeOnEscape = true,
-  className = '',
-}: ModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const previousActiveElement = useRef<HTMLElement | null>(null);
-
-  // Handle escape key
-  useEffect(() => {
-    if (!isOpen || !closeOnEscape) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, closeOnEscape, onClose]);
-
-  // Get all focusable elements within modal
-  const getFocusableElements = (): HTMLElement[] => {
-    if (!modalRef.current) return [];
-    const selector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    return Array.from(modalRef.current.querySelectorAll<HTMLElement>(selector)).filter(
-      el => !el.hasAttribute('disabled') && !el.hasAttribute('aria-hidden')
-    );
-  };
-
-  // Focus trap - keep focus within modal
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleTabKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-
-      const focusableElements = getFocusableElements();
-      if (focusableElements.length === 0) return;
-
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-
-      // If Shift+Tab on first element, move to last
-      if (e.shiftKey && document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
-        return;
-      }
-
-      // If Tab on last element, move to first
-      if (!e.shiftKey && document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
-        return;
-      }
-    };
-
-    // Prevent focus from escaping modal - trap focus within modal
-    const handleFocusIn = (e: FocusEvent) => {
-      if (!modalRef.current) return;
-
-      // If focus moves outside modal, bring it back
-      if (!modalRef.current.contains(e.target as Node)) {
-        e.preventDefault();
-        const focusableElements = getFocusableElements();
-        if (focusableElements.length > 0) {
-          focusableElements[0].focus();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleTabKey);
-    document.addEventListener('focusin', handleFocusIn);
-    return () => {
-      document.removeEventListener('keydown', handleTabKey);
-      document.removeEventListener('focusin', handleFocusIn);
-    };
-  }, [isOpen]);
-
-  // Focus management
-  useEffect(() => {
-    if (isOpen) {
-      // Store previous active element
-      previousActiveElement.current = document.activeElement as HTMLElement;
-
-      // Focus modal
-      setTimeout(() => {
-        const focusableElements = getFocusableElements();
-        if (focusableElements.length > 0) {
-          focusableElements[0].focus();
-        }
-      }, 0);
-
-      // Prevent body scroll
-      document.body.style.overflow = 'hidden';
-    } else {
-      // Restore body scroll
-      document.body.style.overflow = '';
-
-      // Restore focus
-      if (previousActiveElement.current) {
-        previousActiveElement.current.focus();
-      }
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  // Handle backdrop click - prevent clicks outside modal from focusing elements
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (closeOnBackdropClick && e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  // Prevent clicks outside modal from focusing elements behind it
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      if (!modalRef.current) return;
-
-      // If click is outside modal, prevent default to stop focus
-      if (!modalRef.current.contains(e.target as Node)) {
-        e.preventDefault();
-        // Refocus modal to maintain focus trap
-        const focusableElements = getFocusableElements();
-        if (focusableElements.length > 0) {
-          focusableElements[0].focus();
-        }
-      }
-    };
-
-    // Use capture phase to intercept before other handlers
-    document.addEventListener('mousedown', handleMouseDown, true);
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown, true);
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-2xl',
-    lg: 'max-w-4xl',
-    xl: 'max-w-6xl',
-    fullscreen: 'max-w-full w-full h-full max-h-full',
-  };
-
+const Modal = ({ isOpen, onClose, title, description, children, className }: ModalProps) => {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={handleBackdropClick}
-    >
-      <div
-        ref={modalRef}
-        className={cn(
-          'w-full max-h-[90vh] flex flex-col bg-card rounded-lg shadow-2xl',
-          'animate-in slide-in-from-bottom-4 duration-300',
-          size === 'fullscreen' && 'rounded-none',
-          sizeClasses[size],
-          className
-        )}
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? 'modal-title' : undefined}
-      >
-        {/* Header */}
-        {(title || closeOnBackdropClick) && (
-          <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
-            {title && (
-              <h2 id="modal-title" className="text-xl font-bold text-foreground m-0">
+    <DialogPrimitive.Root open={isOpen} onOpenChange={open => !open && onClose()}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className={cn(
+            'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg dark:border-slate-800 dark:bg-slate-950',
+            className
+          )}
+        >
+          {title && (
+            <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+              <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-50">
                 {title}
-              </h2>
-            )}
-            {closeOnBackdropClick && (
-              <Button
-                onClick={onClose}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground"
-                aria-label="Close modal"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-        )}
+              </DialogPrimitive.Title>
+              {description && (
+                <DialogPrimitive.Description className="text-sm text-slate-500 dark:text-slate-400">
+                  {description}
+                </DialogPrimitive.Description>
+              )}
+            </div>
+          )}
 
-        {/* Body */}
-        <div className="flex-1 p-6 overflow-y-auto">{children}</div>
+          {children}
 
-        {/* Footer */}
-        {footer && (
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-border shrink-0">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
+          <DialogPrimitive.Close
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
-}
+};
+
+export default Modal;

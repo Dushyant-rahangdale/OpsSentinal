@@ -1,12 +1,16 @@
+---
+order: 4
+---
+
 # Audit Logs
 
-Track security-relevant events across your OpsSentinal workspace.
+Track security-relevant events across your OpsKnight workspace.
 
-## What are Audit Logs?
+## Overview
 
 Audit logs record:
 
-- User authentication events
+- Authentication events
 - Configuration changes
 - Sensitive operations
 - Access patterns
@@ -94,8 +98,7 @@ Audit logs have extended retention:
 
 ## Best Practices
 
-- ✅ Review logs regularly
-- ✅ Investigate failed logins
-- ✅ Monitor configuration changes
-- ✅ Export for compliance
-- ✅ Set up alerts for suspicious activity
+- Review logs regularly.
+- Investigate failed logins.
+- Monitor configuration changes.
+- Export logs for compliance needs.

@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
-
+/* Font loaded via Next.js font optimization in layout.tsx (Manrope) */
 
 :root {
   /* Primary & Modern Palette: Muted Executive Slate */
@@ -154,38 +153,41 @@
   --radius: 0.875rem;
   /* 14px */
 
-  /* Typography Scale */
-  --font-size-xs: 0.75rem;
-  /* 12px */
-  --font-size-sm: 0.875rem;
-  /* 14px */
-  --font-size-base: 1rem;
-  /* 16px */
-  --font-size-lg: 1.125rem;
-  /* 18px */
-  --font-size-xl: 1.25rem;
-  /* 20px */
-  --font-size-2xl: 1.5rem;
-  /* 24px */
-  --font-size-3xl: 1.875rem;
-  /* 30px */
-  --font-size-4xl: 2.25rem;
-  /* 36px */
-  --font-size-5xl: 3rem;
-  /* 48px */
+  /* Typography Scale - Optimized for readability */
+  --font-size-2xs: 0.6875rem;   /* 11px - overlines, badges */
+  --font-size-xs: 0.75rem;      /* 12px - captions, meta */
+  --font-size-sm: 0.8125rem;    /* 13px - labels, compact UI */
+  --font-size-base: 0.9375rem;  /* 15px - body text */
+  --font-size-lg: 1.0625rem;    /* 17px - emphasized body */
+  --font-size-xl: 1.125rem;     /* 18px - h4, subheadings */
+  --font-size-2xl: 1.375rem;    /* 22px - h3 */
+  --font-size-3xl: 1.75rem;     /* 28px - h2 */
+  --font-size-4xl: 2.25rem;     /* 36px - h1 */
+  --font-size-5xl: 3rem;        /* 48px - display */
 
-  /* Font Weights */
-  --font-weight-light: 300;
+  /* Font Weights - Full range for hierarchy */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
 
-  /* Line Heights */
+  /* Line Heights - Tighter for headings, looser for body */
+  --line-height-none: 1;
   --line-height-tight: 1.2;
+  --line-height-snug: 1.3;
   --line-height-normal: 1.5;
-  --line-height-relaxed: 1.6;
-  --line-height-loose: 1.8;
+  --line-height-relaxed: 1.55;
+  --line-height-loose: 1.65;
+
+  /* Letter Spacing - Negative for headings, positive for caps */
+  --letter-spacing-tighter: -0.03em;
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-snug: -0.01em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.01em;
+  --letter-spacing-wider: 0.02em;
+  --letter-spacing-widest: 0.08em;
 
   /* Transitions */
   --transition-fast: 150ms;

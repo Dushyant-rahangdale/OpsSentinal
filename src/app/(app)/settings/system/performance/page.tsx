@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Activity, Zap, Clock, AlertTriangle, TrendingUp, Database } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Performance Monitoring | Admin | OpsSentinel',
+  title: 'Performance Monitoring | Admin | OpsKnight',
   description: 'System performance monitoring and metrics',
 };
 

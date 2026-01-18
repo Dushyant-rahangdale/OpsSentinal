@@ -180,8 +180,8 @@ EOT
 cat <<'EOT' > docker-compose.yml
 services:
   app:
-    image: ghcr.io/dushyant-rahangdale/opssentinal-test:latest
-    container_name: opssentinal
+    image: ghcr.io/dushyant-rahangdale/opsknight-test:latest
+    container_name: opsknight
     restart: always
     expose:
       - "3000"
@@ -192,7 +192,7 @@ services:
 
   db:
     image: postgres:15-alpine
-    container_name: opssentinal_db
+    container_name: opsknight_db
     restart: always
     volumes:
       - /mnt/postgres_data/pgdata:/var/lib/postgresql/data
@@ -205,7 +205,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: opssentinal_nginx
+    container_name: opsknight_nginx
     restart: always
     ports:
       - "80:80"
@@ -225,7 +225,7 @@ services:
     environment:
       - WATCHTOWER_NOTIFICATIONS=slack
       - WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL=$${WATCHTOWER_SLACK_HOOK_URL}
-      - WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER=opssentinal
+      - WATCHTOWER_NOTIFICATION_SLACK_IDENTIFIER=opsknight
     command: --interval 300 --cleanup --notifications-level=info
 EOT
 
@@ -240,13 +240,13 @@ echo "${github_token}" | docker login ghcr.io -u "${github_username}" --password
 # Create .env file
 # ---------------------------
 cat <<ENV > .env
-DATABASE_URL=postgresql://ops_user:${db_password}@db:5432/opssentinal
+DATABASE_URL=postgresql://ops_user:${db_password}@db:5432/opsknight
 NEXTAUTH_SECRET=${nextauth_secret}
 NEXTAUTH_URL=${nextauth_url}
 
 POSTGRES_USER=ops_user
 POSTGRES_PASSWORD=${db_password}
-POSTGRES_DB=opssentinal
+POSTGRES_DB=opsknight
 
 # Watchtower Slack hook (recommended to pass from TF var)
 WATCHTOWER_SLACK_HOOK_URL="${watchtower_slack_hook_url}"
@@ -285,7 +285,7 @@ cd /home/ec2-user/app
 /usr/local/bin/docker-compose up -d db
 
 echo "Waiting for database to be ready..."
-until /usr/local/bin/docker-compose exec -T db pg_isready -U ops_user -d opssentinal >/dev/null 2>&1; do
+until /usr/local/bin/docker-compose exec -T db pg_isready -U ops_user -d opsknight >/dev/null 2>&1; do
   sleep 2
 done
 

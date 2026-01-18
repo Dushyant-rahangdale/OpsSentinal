@@ -52,7 +52,7 @@ describe('Slack Channels API', () => {
     vi.mocked(prisma.slackIntegration.findFirst).mockResolvedValue({
       id: 'integration-1',
       workspaceId: 'T123',
-      workspaceName: 'OpsSentinal HQ',
+      workspaceName: 'OpsKnight HQ',
       botToken: 'encrypted_token',
       signingSecret: null,
       installedBy: 'user-1',

@@ -39,7 +39,7 @@ import './analytics-v2.css';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Analytics V2 | OpsSentinel',
+  title: 'Analytics V2 | OpsKnight',
   description: 'Incident Operations Analytics',
 };
 

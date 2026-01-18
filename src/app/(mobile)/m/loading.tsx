@@ -7,7 +7,7 @@ export default function MobileLoading() {
         <div className="mobile-route-buffer-logo">
           <Image
             src="/logo-compressed.png"
-            alt="OpsSentinal"
+            alt="OpsKnight"
             width={64}
             height={64}
             priority

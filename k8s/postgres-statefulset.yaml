@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: opssentinal-postgres
-  namespace: opssentinal
+  name: opsknight-postgres
+  namespace: opsknight
   labels:
-    app: opssentinal-postgres
+    app: opsknight-postgres
     version: v1
 spec:
-  serviceName: 'opssentinal-postgres-service' # Headless service needed for StatefulSet
+  serviceName: 'opsknight-postgres-service' # Headless service needed for StatefulSet
   replicas: 1
   selector:
     matchLabels:
-      app: opssentinal-postgres
+      app: opsknight-postgres
   template:
     metadata:
       labels:
-        app: opssentinal-postgres
+        app: opsknight-postgres
         version: v1
     spec:
       securityContext:
@@ -44,17 +44,17 @@ spec:
             - name: POSTGRES_DB
               valueFrom:
                 configMapKeyRef:
-                  name: opssentinal-config
+                  name: opsknight-config
                   key: POSTGRES_DB
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: opssentinal-secrets
+                  name: opsknight-secrets
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: opssentinal-secrets
+                  name: opsknight-secrets
                   key: POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
@@ -76,12 +76,12 @@ spec:
               cpu: '2000m'
           livenessProbe:
             exec:
-              command: ['pg_isready', '-U', 'opssentinal']
+              command: ['pg_isready', '-U', 'opsknight']
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             exec:
-              command: ['pg_isready', '-U', 'opssentinal']
+              command: ['pg_isready', '-U', 'opsknight']
             initialDelaySeconds: 5
             periodSeconds: 5
       volumes:

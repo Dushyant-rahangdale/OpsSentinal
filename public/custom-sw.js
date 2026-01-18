@@ -1,4 +1,4 @@
-// Custom Service Worker for OpsSentinal PWA
+// Custom Service Worker for OpsKnight PWA
 // Handles push notifications and notification clicks
 
 // Import Workbox (provided by Next.js PWA)
@@ -9,7 +9,7 @@ self.addEventListener('push', function (event) {
     console.log('[Service Worker] Push received', event);
 
     let data = {
-        title: 'OpsSentinal',
+        title: 'OpsKnight',
         body: 'New notification',
         icon: '/icons/android-chrome-192x192.png',
         badge: '/icons/android-chrome-192x192.png',
@@ -32,7 +32,7 @@ self.addEventListener('push', function (event) {
             url: data.url || data.data?.url || '/m/notifications',
             ...data.data
         },
-        tag: data.tag || 'opssentinal-notification',
+        tag: data.tag || 'opsknight-notification',
         requireInteraction: true, // Keep notification visible on mobile
         vibrate: [200, 100, 200], // Vibration pattern
     };

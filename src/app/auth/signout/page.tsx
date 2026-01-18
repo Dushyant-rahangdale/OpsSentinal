@@ -43,7 +43,7 @@ export default function SignOutPage() {
               >
                 <img
                   src="/logo.svg"
-                  alt="OpsSentinal"
+                  alt="OpsKnight"
                   className="login-form-logo-img"
                   style={{ width: '32px', height: '32px' }}
                 />

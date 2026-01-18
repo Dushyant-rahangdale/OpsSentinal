@@ -1,6 +1,10 @@
+---
+order: 2
+---
+
 # Notifications
 
-Configure how OpsSentinal alerts users about incidents.
+Configure how OpsKnight alerts users about incidents and status changes.
 
 ## Notification Channels
 
@@ -12,9 +16,9 @@ Configure how OpsSentinal alerts users about incidents.
 | WhatsApp | International teams |
 | Slack    | Team notifications  |
 
-## Configuring Providers
+## Where to Configure
 
-Navigate to **Settings → Notifications** to configure.
+Go to **Settings → Notifications** to add providers and test delivery.
 
 ---
 
@@ -52,10 +56,10 @@ Navigate to **Settings → Notifications** to configure.
 
 ### Setup Steps
 
-1. Create Twilio account at twilio.com
-2. Get Account SID and Auth Token
-3. Purchase a phone number
-4. Enter credentials in Settings
+1. Create a Twilio account.
+2. Get the Account SID and Auth Token.
+3. Purchase a phone number.
+4. Enter credentials in **Settings → Notifications**.
 
 ### User Phone Numbers
 
@@ -67,7 +71,7 @@ Users must add their phone number:
 
 ---
 
-## Push Notifications (Firebase/OneSignal)
+## Push Notifications (Firebase / OneSignal)
 
 ### Firebase Cloud Messaging
 
@@ -87,25 +91,23 @@ Users must add their phone number:
 
 Users enable push via the PWA:
 
-1. Open app in browser
+1. Open the app in a browser
 2. Accept notification permission
-3. Push enabled automatically
+3. Push is enabled automatically
 
 ---
 
 ## WhatsApp (Twilio)
 
-### Configuration
-
-Same as SMS, plus WhatsApp-enabled number:
+Use the same Twilio credentials as SMS, plus a WhatsApp-enabled number:
 
 1. Enable WhatsApp in Twilio console
 2. Connect WhatsApp Business
-3. Use WhatsApp number in Settings
+3. Use the WhatsApp number in Settings
 
 ---
 
-## AWS SNS
+## AWS SNS (SMS)
 
 For high-volume SMS:
 
@@ -117,13 +119,13 @@ For high-volume SMS:
 
 ---
 
-## Notification Preferences
+## Preferences and Routing
 
 ### User Level
 
 Each user configures their preferences:
 
-- Which channels to use
+- Channels to use
 - Quiet hours
 - Digest frequency
 
@@ -144,8 +146,7 @@ Per-service notification settings:
 
 ## Best Practices
 
-- ✅ Configure multiple channels
-- ✅ Use SMS for critical alerts only
-- ✅ Test notifications after setup
-- ✅ Respect quiet hours
-- ✅ Monitor delivery status
+- Use multiple channels for critical services.
+- Use SMS for high-severity incidents only.
+- Test providers after changes.
+- Respect quiet hours to avoid alert fatigue.

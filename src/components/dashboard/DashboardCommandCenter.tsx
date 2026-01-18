@@ -59,12 +59,11 @@ export default function DashboardCommandCenter({
 
   return (
     <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4 md:p-6 mb-6 shadow-lg">
-
       {/* Header */}
       <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6 mb-6">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl md:text-2xl font-bold text-primary-foreground">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-primary-foreground">
               Command Center
             </h1>
             <LiveClock timeZone={userTimeZone} />
@@ -91,9 +90,15 @@ export default function DashboardCommandCenter({
               {systemStatus.label}
             </Badge>
             {allOpenIncidentsCount > 0 && (
-              <span className="text-xs text-primary-foreground/80">({allOpenIncidentsCount} active)</span>
+              <span className="text-xs text-primary-foreground/80">
+                ({allOpenIncidentsCount} active)
+              </span>
             )}
-            <Badge variant="outline" size="xs" className="text-xs text-primary-foreground/80 border-white/30">
+            <Badge
+              variant="outline"
+              size="xs"
+              className="text-xs text-primary-foreground/80 border-white/30"
+            >
               Range {rangeLabel}
             </Badge>
             {/* Retention Warning */}
@@ -109,7 +114,6 @@ export default function DashboardCommandCenter({
               </Badge>
             )}
           </div>
-
         </div>
 
         {/* Actions */}
@@ -135,7 +139,12 @@ export default function DashboardCommandCenter({
       <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard label="TOTAL" value={totalInRange} rangeLabel={rangeLabel} variant="hero" />
         <MetricCard label="OPEN" value={metricsOpenCount} rangeLabel={rangeLabel} variant="hero" />
-        <MetricCard label="RESOLVED" value={metricsResolvedCount} rangeLabel={rangeLabel} variant="hero" />
+        <MetricCard
+          label="RESOLVED"
+          value={metricsResolvedCount}
+          rangeLabel={rangeLabel}
+          variant="hero"
+        />
         <MetricCard
           label="UNASSIGNED"
           value={unassignedCount}
@@ -146,4 +155,3 @@ export default function DashboardCommandCenter({
     </div>
   );
 }
-

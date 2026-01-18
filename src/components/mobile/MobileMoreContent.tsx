@@ -426,13 +426,13 @@ export default function MobileMoreContent({ name, email, role }: MobileMoreConte
           <MobileSignOutButton
             icon={iconSignOut}
             label="Sign Out"
-            description="Sign out of OpsSentinal"
+            description="Sign out of OpsKnight"
             tone="red"
           />
         </div>
       </section>
 
-      <div className="mobile-more-footer">OpsSentinal Mobile v1.0.0</div>
+      <div className="mobile-more-footer">OpsKnight Mobile v1.0.0</div>
     </div>
   );
 }

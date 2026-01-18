@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This document defines the reference architecture for the **OpsSentinel Enterprise Observability Engine**. The system provides a unified platform for Incident Management and Telemetry, unified by a **Value-Based Tiered Architecture**.
+This document defines the reference architecture for the **OpsKnight Enterprise Observability Engine**. The system provides a unified platform for Incident Management and Telemetry, unified by a **Value-Based Tiered Architecture**.
 
 **Core Philosophy**: "Not all data is equal."
 

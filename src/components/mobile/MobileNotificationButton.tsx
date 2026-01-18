@@ -15,7 +15,7 @@ interface Notification {
 
 /**
  * Mobile-optimized notification button with radar pulse animation
- * Fits the OpsSentinal monitoring/sentinel theme
+ * Fits the OpsKnight monitoring/sentinel theme
  */
 export default function MobileNotificationButton() {
   const router = useRouter();

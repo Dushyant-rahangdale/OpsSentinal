@@ -739,7 +739,7 @@ export default function SlackIntegrationPage({
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Warning</AlertTitle>
               <AlertDescription>
-                Disconnecting will remove OpsSentinal&apos;s access to your Slack workspace and
+                Disconnecting will remove OpsKnight&apos;s access to your Slack workspace and
                 disable all incident notifications across all services.
               </AlertDescription>
             </Alert>

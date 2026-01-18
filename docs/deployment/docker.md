@@ -1,38 +1,49 @@
+---
+order: 1
+---
+
 # Docker Deployment
 
-Deploy OpsSentinal with Docker Compose.
+Deploy OpsKnight with Docker Compose. This is the fastest way to run the platform locally and is suitable for small production environments.
+
+## Prerequisites
+
+- Docker Engine 20+
+- Docker Compose 2+
+- PostgreSQL (included in Compose by default)
 
 ## Quick Start
 
 ```bash
 # Clone repository
-git clone https://github.com/dushyant-rahangdale/opssentinal.git
-cd opssentinal
+git clone https://github.com/dushyant-rahangdale/opsknight.git
+cd opsknight
 
 # Configure
 cp env.example .env
-# Edit .env with your settings
 
-# Start
+# Start services
 docker compose up -d
 
-# Create admin
-docker exec -it opssentinal_app npm run opssentinal -- \
+# Create admin user
+docker exec -it opsknight_app npm run opsknight -- \
   --user "Admin" --email admin@example.com \
   --password SecurePass123! --role admin
 ```
 
-## Configuration
+## Required Configuration
 
-### Required Environment Variables
+Set the core variables in `.env`:
 
 ```bash
-DATABASE_URL=postgresql://opssentinal:password@postgres:5432/opssentinal_db
+DATABASE_URL=postgresql://opsknight:password@postgres:5432/opsknight_db
 NEXTAUTH_URL=https://your-domain.com
 NEXTAUTH_SECRET=your-32-char-secret
 ```
 
-### Generate NEXTAUTH_SECRET
+> **Important:** `NEXTAUTH_URL` must match the exact base URL users will access.
+
+Generate a secret:
 
 ```bash
 openssl rand -base64 32
@@ -46,34 +57,14 @@ openssl rand -base64 32
 | `docker-compose.dev.yml`  | Development with hot reload |
 | `docker-compose.prod.yml` | Production optimizations    |
 
-## Production Deployment
+## Production Checklist
 
-### Step 1: Configure Environment
+1. Use a strong database password.
+2. Set `NEXTAUTH_URL` to your public HTTPS domain.
+3. Configure SMTP/SMS providers in **Settings → Notifications**.
+4. Put a reverse proxy in front of the app for TLS termination.
 
-```bash
-cp env.example .env
-```
-
-Edit `.env`:
-
-```bash
-DATABASE_URL=postgresql://opssentinal:STRONG_PASSWORD@postgres:5432/opssentinal_db
-NEXTAUTH_URL=https://ops.yourcompany.com
-NEXTAUTH_SECRET=<generated-secret>
-POSTGRES_PASSWORD=STRONG_PASSWORD
-```
-
-### Step 2: Deploy
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-### Step 3: Setup Reverse Proxy
-
-Use nginx or Traefik for SSL termination.
-
-Example nginx config:
+### Example nginx Reverse Proxy
 
 ```nginx
 server {
@@ -96,22 +87,24 @@ server {
 ## Updating
 
 ```bash
-# Pull latest
+# Pull latest changes
 git pull
+
+# Update images
 docker compose pull
 
-# Restart
+# Restart containers
 docker compose up -d
 ```
 
-## Backup
+## Backups
 
 ```bash
 # Database backup
-docker exec opssentinal_postgres pg_dump -U opssentinal opssentinal_db > backup.sql
+docker exec opsknight_postgres pg_dump -U opsknight opsknight_db > backup.sql
 
 # Restore
-cat backup.sql | docker exec -i opssentinal_postgres psql -U opssentinal opssentinal_db
+cat backup.sql | docker exec -i opsknight_postgres psql -U opsknight opsknight_db
 ```
 
 ## Troubleshooting
@@ -129,3 +122,9 @@ docker compose logs -f postgres
 docker compose down -v
 docker compose up -d
 ```
+
+### Health Check
+
+- Confirm `http://localhost:3000` loads.
+- Log in with the admin user.
+- Create a test service to validate DB writes.

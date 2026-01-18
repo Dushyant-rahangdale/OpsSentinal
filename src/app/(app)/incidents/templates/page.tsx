@@ -45,7 +45,7 @@ export default async function TemplatesPage() {
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
               <LayoutTemplate className="h-6 w-6 md:h-8 md:w-8 text-indigo-400" />
               Incident Templates
             </h1>

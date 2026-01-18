@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
 
   if (format === 'xlsx') {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'OpsSentinal';
+    workbook.creator = 'OpsKnight';
     workbook.created = new Date();
 
     const sheet = workbook.addWorksheet('Incidents', {

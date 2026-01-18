@@ -106,21 +106,25 @@
 }
 
 .ops-label {
-  font-size: 0.65rem;
+  font-size: 0.625rem;
   color: var(--text-muted);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .ops-value {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
+  line-height: 1.25;
 }
 
 .ops-detail {
   font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-secondary);
   padding-left: 0.5rem;
   border-left: 1px solid var(--border);

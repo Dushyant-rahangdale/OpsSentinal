@@ -66,7 +66,7 @@ export default function DeleteIntegrationButton({
             </div>
             <div className="bg-amber-50 border-l-4 border-amber-500 p-3 text-amber-800 text-xs rounded-r">
               <span className="font-bold block mb-1">⚠️ Manual Action Required</span>
-              Deleting this integration <strong>only removes it from OpsSentinal</strong>. You must
+              Deleting this integration <strong>only removes it from OpsKnight</strong>. You must
               manually delete the webhook from your external provider (e.g. GitHub, Datadog) to stop
               them from sending events.
             </div>

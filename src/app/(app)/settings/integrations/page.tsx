@@ -12,7 +12,7 @@ export default function IntegrationsSettingsPage() {
     <div className="space-y-6 [zoom:0.7]">
       <SettingsPageHeader
         title="Integrations"
-        description="Connect OpsSentinal with the tools your team relies on."
+        description="Connect OpsKnight with the tools your team relies on."
         backHref="/settings"
         backLabel="Back to Settings"
       />

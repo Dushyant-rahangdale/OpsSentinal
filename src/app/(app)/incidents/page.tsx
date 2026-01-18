@@ -121,7 +121,7 @@ export default async function IncidentsPage({
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
               <AlertTriangle className="h-6 w-6 md:h-8 md:w-8" />
               Incidents
             </h1>
@@ -133,31 +133,37 @@ export default async function IncidentsPage({
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 w-full lg:w-auto">
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold">{mineCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold">{mineCount}</div>
                 <div className="text-[10px] md:text-xs opacity-90">Mine</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-red-200">{openCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-red-200">{openCount}</div>
                 <div className="text-[10px] md:text-xs opacity-90">Open</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-green-200">{resolvedCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-green-200">
+                  {resolvedCount}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Resolved</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-yellow-200">{snoozedCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-yellow-200">
+                  {snoozedCount}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Snoozed</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-gray-200">{suppressedCount}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-gray-200">
+                  {suppressedCount}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Suppressed</div>
               </CardContent>
             </Card>

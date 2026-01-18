@@ -1,5 +1,5 @@
 /**
- * Modern Email templates for Status Page using OpsSentinal Brand Colors
+ * Modern Email templates for Status Page using OpsKnight Brand Colors
  * Brand Colors: Primary Red (#d32f2f), Dark (#0b0b0f), Accent Red (#ff5252)
  */
 

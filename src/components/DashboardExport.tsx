@@ -34,7 +34,7 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
     const csvRows: string[] = [];
 
     // Header
-    csvRows.push('OpsSentinal Dashboard Export');
+    csvRows.push('OpsKnight Dashboard Export');
     csvRows.push(`Generated: ${formatDateTime(new Date(), userTimeZone, { format: 'datetime' })}`);
     csvRows.push('');
 
@@ -83,7 +83,7 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
         incident.urgency || 'N/A',
         incident.service?.name || 'N/A',
         incident.assignee?.name || 'Unassigned',
-        formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' })
+        formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' }),
       ];
       csvRows.push(row.join(','));
     });
@@ -120,20 +120,31 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
         gap: '0.5rem',
         opacity: isExporting ? 0.6 : 1,
         transition: 'all 0.2s ease',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
       }}
       title="Export dashboard data to CSV"
-      onMouseEnter={(e) => {
+      onMouseEnter={e => {
         if (!isExporting) {
           e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
         }
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={e => {
         e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
       }}
     >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path
+          d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
         <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
         <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -141,5 +152,3 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
     </button>
   );
 }
-
-

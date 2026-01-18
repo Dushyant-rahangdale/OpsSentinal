@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `🧪 *Test Notification from OpsSentinal*\n\nThis is a test message to verify the Slack integration is working correctly.`,
+            text: `🧪 *Test Notification from OpsKnight*\n\nThis is a test message to verify the Slack integration is working correctly.`,
           },
         },
         {

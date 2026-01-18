@@ -1,16 +1,20 @@
+---
+order: 5
+---
+
 # Data Retention
 
 Manage data storage and automatic cleanup policies.
 
 ## Overview
 
-Data retention policies automatically clean up old data to:
+Retention policies help:
 
 - Reduce storage costs
 - Improve query performance
-- Comply with data policies
+- Meet compliance requirements
 
-## Configuring Retention
+## Configure Retention
 
 1. Go to **Settings → System → Data Retention**
 2. Set retention periods
@@ -40,15 +44,6 @@ The cleanup job runs automatically:
 3. Delete in batches
 4. Log cleanup results
 
-## Previewing Cleanup
-
-Before running cleanup:
-
-1. Go to **Data Retention**
-2. Click **Preview Cleanup**
-3. Review what would be deleted
-4. Confirm or adjust settings
-
 ## Manual Cleanup
 
 Force immediate cleanup:
@@ -60,14 +55,6 @@ curl -X POST https://your-ops.com/api/settings/retention/cleanup \
   -H "X-Cron-Secret: YOUR_CRON_SECRET"
 ```
 
-## Storage Monitoring
-
-Monitor storage usage:
-
-- Dashboard widgets show storage
-- Alerts when approaching limits
-- Trending data available
-
 ## Data Export
 
 Before data is deleted, export if needed:
@@ -77,18 +64,15 @@ Before data is deleted, export if needed:
 3. Click **Export**
 4. Download CSV/JSON
 
-## Compliance
+## Compliance Notes
 
-For regulated industries:
-
-- Audit logs have extended retention
-- Some data may be excluded from cleanup
-- Export before deletion
+- Audit logs have extended retention.
+- Export data before deletion if required for audits.
+- Use a longer retention policy for regulated workloads.
 
 ## Best Practices
 
-- ✅ Set appropriate retention periods
-- ✅ Preview before first cleanup
-- ✅ Export critical data before expiry
-- ✅ Keep audit logs longer
-- ✅ Monitor storage trends
+- Set retention based on regulatory needs.
+- Review retention quarterly.
+- Export critical datasets before expiry.
+- Monitor storage growth.

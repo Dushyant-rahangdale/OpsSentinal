@@ -323,7 +323,7 @@ export async function sendIncidentSMS(
               ? 'ELEVATED'
               : 'INCIDENT';
 
-    // Build professional OpsSentinal branded message (optimized for SMS)
+    // Build professional OpsKnight branded message (optimized for SMS)
     const titleMaxLength = 35;
     const serviceMaxLength = 15;
 
@@ -337,17 +337,17 @@ export async function sendIncidentSMS(
         ? incident.service.name.substring(0, serviceMaxLength - 1) + '…'
         : incident.service.name;
 
-    // Professional OpsSentinal SMS format with clean structure:
-    // Line 1: [OpsSentinal] STATUS
+    // Professional OpsKnight SMS format with clean structure:
+    // Line 1: [OpsKnight] STATUS
     // Line 2: Incident Title
     // Line 3: Service Name
     // Line 4: Link
     const message =
       eventType === 'resolved'
-        ? `[OpsSentinal] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
+        ? `[OpsKnight] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
         : eventType === 'acknowledged'
-          ? `[OpsSentinal] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
-          : `[OpsSentinal] ${eventEmoji} ${
+          ? `[OpsKnight] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
+          : `[OpsKnight] ${eventEmoji} ${
               incident.urgency === 'HIGH'
                 ? 'CRITICAL ALERT'
                 : incident.urgency === 'MEDIUM'

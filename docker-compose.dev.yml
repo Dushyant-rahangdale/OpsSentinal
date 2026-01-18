@@ -1,36 +1,36 @@
 services:
-  opssentinal-db:
+  opsknight-db:
     image: postgres:15-alpine
-    container_name: opssentinal_postgres_dev
+    container_name: opsknight_postgres_dev
     restart: unless-stopped
     mem_limit: 2g
     environment:
-      POSTGRES_USER: opssentinal
-      POSTGRES_PASSWORD: opssentinal_secure_password_change_me
-      POSTGRES_DB: opssentinal_db
+      POSTGRES_USER: opsknight
+      POSTGRES_PASSWORD: opsknight_secure_password_change_me
+      POSTGRES_DB: opsknight_db
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
-      - opssentinal_postgres_dev_data:/var/lib/postgresql/data
+      - opsknight_postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U opssentinal -d opssentinal_db" ]
+      test: ['CMD-SHELL', 'pg_isready -U opsknight -d opsknight_db']
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - opssentinal-dev-network
+      - opsknight-dev-network
 
-  opssentinal-app:
+  opsknight-app:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: opssentinal_app_dev
+    container_name: opsknight_app_dev
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://opssentinal:opssentinal_secure_password_change_me@opssentinal-db:5432/opssentinal_db
+      - DATABASE_URL=postgresql://opsknight:opsknight_secure_password_change_me@opsknight-db:5432/opsknight_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key-for-development-only
       - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
@@ -49,17 +49,17 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      opssentinal-db:
+      opsknight-db:
         condition: service_healthy
     networks:
-      - opssentinal-dev-network
+      - opsknight-dev-network
     command: >
       sh -c "npx prisma generate && ./docker-entrypoint.sh"
 
 volumes:
-  opssentinal_postgres_dev_data:
+  opsknight_postgres_dev_data:
     driver: local
 
 networks:
-  opssentinal-dev-network:
+  opsknight-dev-network:
     driver: bridge

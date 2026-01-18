@@ -72,7 +72,7 @@ export default function PwaInstallCard() {
   return (
     <MobileCard padding="md">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Install OpsSentinal</div>
+        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Install OpsKnight</div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
           Add the app to your Home Screen for faster access and alerts.
         </div>

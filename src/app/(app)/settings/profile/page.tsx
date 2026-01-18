@@ -41,7 +41,7 @@ export default async function ProfileSettingsPage() {
     <div className="space-y-6 [zoom:0.7]">
       <SettingsPageHeader
         title="Profile"
-        description="Identity details tied to your OpsSentinal account."
+        description="Identity details tied to your OpsKnight account."
         backHref="/settings"
         backLabel="Back to Settings"
       />

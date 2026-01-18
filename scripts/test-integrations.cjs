@@ -69,7 +69,7 @@ const SAMPLE_PAYLOADS = {
         version: '4',
         groupKey: 'group-' + Date.now(),
         status: 'firing',
-        receiver: 'opssentinal',
+        receiver: 'opsknight',
         groupLabels: { alertname: 'HighCPU' },
         commonLabels: { severity: 'critical' },
         commonAnnotations: { summary: 'High CPU usage' },

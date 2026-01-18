@@ -72,7 +72,7 @@ export default async function SetupPage() {
                     <span>
                       If using Docker Compose, run:{' '}
                       <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">
-                        docker-compose up -d OpsSentinal-db
+                        docker-compose up -d OpsKnight-db
                       </code>
                     </span>
                   </li>
@@ -97,7 +97,7 @@ export default async function SetupPage() {
       <AuthCard>
         {/* Card Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white tracking-tight flex items-center gap-3">
             <span className="flex items-center gap-3">
               <span className="w-1.5 h-6 bg-white/20 rounded-full" />
               System Initialization

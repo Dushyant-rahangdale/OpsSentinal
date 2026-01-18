@@ -1479,11 +1479,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                   {item.icon && <span className="status-page-config-tab-icon">{item.icon}</span>}
                   {item.label}
                   {item.badge ? (
-                    <Badge
-                      variant={isActive ? 'info' : 'neutral'}
-                      size="xs"
-                      className="ml-auto"
-                    >
+                    <Badge variant={isActive ? 'info' : 'neutral'} size="xs" className="ml-auto">
                       {item.badge}
                     </Badge>
                   ) : null}
@@ -1568,8 +1564,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             onChange={e =>
                               setFormData({ ...formData, organizationName: e.target.value })
                             }
-                            helperText="Used in email headers (e.g., 'OpsSentinal'). Overrides Status Page Name if set."
-                            placeholder="e.g. OpsSentinal"
+                            helperText="Used in email headers (e.g., 'OpsKnight'). Overrides Status Page Name if set."
+                            placeholder="e.g. OpsKnight"
                           />
                         </div>
                       </div>

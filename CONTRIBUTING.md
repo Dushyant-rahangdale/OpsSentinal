@@ -1,6 +1,6 @@
-# Contributing to OpsSentinal
+# Contributing to OpsKnight
 
-Thank you for your interest in contributing to OpsSentinal! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to OpsKnight! This document provides guidelines and information for contributors.
 
 ## 📋 Table of Contents
 
@@ -33,12 +33,12 @@ Please review our [Security Policy](SECURITY.md) for instructions on how to repo
 1. Fork the repository on GitHub
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/opssentinal.git
-   cd opssentinal
+   git clone https://github.com/YOUR_USERNAME/opsknight.git
+   cd opsknight
    ```
 3. Add upstream remote:
    ```bash
-   git remote add upstream https://github.com/dushyant-rahangdale/opssentinal.git
+   git remote add upstream https://github.com/dushyant-rahangdale/opsknight.git
    ```
 
 ## Development Setup
@@ -161,7 +161,7 @@ npm run test:coverage
 
 ## Questions?
 
-- Open a [GitHub Issue](https://github.com/dushyant-rahangdale/opssentinal/issues)
+- Open a [GitHub Issue](https://github.com/dushyant-rahangdale/opsknight/issues)
 - Check existing issues and discussions
 
 ---

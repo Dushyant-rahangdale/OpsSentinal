@@ -1,6 +1,6 @@
 {
-  "name": "OpsSentinal",
-  "short_name": "OpsSentinal",
+  "name": "OpsKnight",
+  "short_name": "OpsKnight",
   "description": "Enterprise Incident Management & Response",
   "start_url": "/m",
   "display": "standalone",

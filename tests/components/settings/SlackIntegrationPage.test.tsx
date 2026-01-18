@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
 const integrationFixture = {
   id: 'integration-1',
   workspaceId: 'T123',
-  workspaceName: 'OpsSentinal HQ',
+  workspaceName: 'OpsKnight HQ',
   enabled: true,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -62,7 +62,7 @@ describe('SlackIntegrationPage', () => {
     );
 
     expect(await screen.findByText('alerts')).toBeInTheDocument();
-    expect(screen.getAllByText('OpsSentinal HQ')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('OpsKnight HQ')[0]).toBeInTheDocument();
     expect(screen.getAllByText(/connected/i).length).toBeGreaterThan(0);
     expect(screen.getByText('Replace Workspace')).toBeInTheDocument();
     expect(screen.getByText('Scope Checklist')).toBeInTheDocument();

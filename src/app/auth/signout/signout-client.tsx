@@ -23,7 +23,7 @@ export default function SignOutClient() {
       <AuthCard>
         {/* Card Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white tracking-tight flex items-center gap-3">
             <span className="flex items-center gap-3">
               <span className="w-1.5 h-6 bg-white/20 rounded-full" />
               Sign Out

@@ -324,8 +324,8 @@ function TerminalPing() {
   useEffect(() => {
     // Initial header simulating real terminal startup
     setLines([
-      'root@ops-sentinal:~# ping -c 999 opssentinal.com',
-      'PING opssentinal.com (104.21.55.2) 56(84) bytes of data.',
+      'root@ops-knight:~# ping -c 999 opsknight.com',
+      'PING opsknight.com (104.21.55.2) 56(84) bytes of data.',
     ]);
 
     let seq = 1;

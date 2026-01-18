@@ -47,7 +47,7 @@ type RecentSearch = {
   resultCount?: number;
 };
 
-const RECENT_SEARCHES_KEY = 'OpsSentinal-recent-searches-v2';
+const RECENT_SEARCHES_KEY = 'OpsKnight-recent-searches-v2';
 const MAX_RECENT_SEARCHES = 5;
 
 const QUICK_ACTIONS = [

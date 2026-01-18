@@ -85,7 +85,7 @@ export default function AddIntegrationGrid({ serviceId }: AddIntegrationGridProp
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="space-y-1">
           <h2 className="text-xl font-semibold tracking-tight">Add New Integration</h2>
-          <p className="text-sm text-slate-500">Select a tool to connect with OpsSentinal.</p>
+          <p className="text-sm text-slate-500">Select a tool to connect with OpsKnight.</p>
         </div>
         <div className="w-full md:w-72 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />

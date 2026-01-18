@@ -1,31 +1,30 @@
+---
+order: 3
+---
+
 # Incidents
 
-Incidents are the core of OpsSentinal. They represent issues that require attention and tracking through resolution.
+Incidents track issues from trigger to resolution. They drive notifications, escalations, and reporting.
 
 ## Incident Lifecycle
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  TRIGGERED  │────▶│ACKNOWLEDGED │────▶│  RESOLVED   │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                   │
-       ▼                   ▼
-┌─────────────┐     ┌─────────────┐
-│   SNOOZED   │     │  ESCALATED  │
-└─────────────┘     └─────────────┘
+TRIGGERED -> ACKNOWLEDGED -> RESOLVED
+     \-> SNOOZED
+     \-> ESCALATED
 ```
 
 ### Statuses
 
-| Status           | Description                     |
-| ---------------- | ------------------------------- |
-| **Triggered**    | New incident, awaiting response |
-| **Acknowledged** | Someone is working on it        |
-| **Resolved**     | Issue has been fixed            |
-| **Snoozed**      | Temporarily silenced            |
-| **Suppressed**   | Matched a suppression rule      |
+| Status       | Description                     |
+| ------------ | ------------------------------- |
+| Triggered    | New incident, awaiting response |
+| Acknowledged | Ownership assigned              |
+| Resolved     | Issue fixed                     |
+| Snoozed      | Temporarily silenced            |
+| Suppressed   | Matched a suppression rule      |
 
-## Creating Incidents
+## Create Incidents
 
 ### Via API
 
@@ -34,9 +33,9 @@ curl -X POST https://your-ops.com/api/events \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "service_id": "SERVICE_ID",
+    "routing_key": "SERVICE_ROUTING_KEY",
     "event_action": "trigger",
-    "dedup_key": "unique-id",
+    "dedup_key": "cpu-high",
     "payload": {
       "summary": "CPU usage above 90%",
       "source": "prometheus",
@@ -47,67 +46,57 @@ curl -X POST https://your-ops.com/api/events \
 
 ### Via UI
 
-1. Navigate to **Incidents**
+1. Go to **Incidents**
 2. Click **+ New Incident**
 3. Fill in details and submit
 
-## Incident Priority
+## Priority and Urgency
 
-| Priority          | Response Time | Use Case             |
-| ----------------- | ------------- | -------------------- |
-| **P1 - Critical** | Immediate     | Production down      |
-| **P2 - High**     | < 1 hour      | Major feature broken |
-| **P3 - Medium**   | < 4 hours     | Degraded performance |
-| **P4 - Low**      | < 24 hours    | Minor issues         |
+| Priority | Response Time | Use Case             |
+| -------- | ------------- | -------------------- |
+| P1       | Immediate     | Production down      |
+| P2       | < 1 hour      | Major feature broken |
+| P3       | < 4 hours     | Degraded performance |
+| P4       | < 24 hours    | Minor issues         |
 
 ## Deduplication
 
-OpsSentinal uses `dedup_key` to group related alerts:
+The `dedup_key` groups related alerts into a single incident.
 
-- Same `dedup_key` = Same incident
-- Different `dedup_key` = New incident
-
-This prevents alert storms from creating duplicate incidents.
+- Same key → update existing incident
+- New key → create new incident
 
 ## Incident Actions
 
 ### Acknowledge
 
-Mark that you're working on an incident:
-
 ```bash
 curl -X POST https://your-ops.com/api/events \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
   -d '{
+    "routing_key": "SERVICE_ROUTING_KEY",
     "event_action": "acknowledge",
-    "dedup_key": "existing-incident-key"
+    "dedup_key": "cpu-high"
   }'
 ```
 
 ### Resolve
 
-Mark the incident as fixed:
-
 ```bash
 curl -X POST https://your-ops.com/api/events \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
   -d '{
+    "routing_key": "SERVICE_ROUTING_KEY",
     "event_action": "resolve",
-    "dedup_key": "existing-incident-key"
+    "dedup_key": "cpu-high"
   }'
 ```
 
-## Incident Timeline
-
-Every incident maintains a complete timeline:
-
-- When it was triggered
-- Who acknowledged it
-- Notes and comments
-- Resolution details
-
 ## Best Practices
 
-- ✅ Use meaningful `dedup_key` values
-- ✅ Include context in `summary`
-- ✅ Set appropriate severity
-- ✅ Add notes when acknowledging
-- ✅ Document resolution steps
+- Use descriptive `dedup_key` values.
+- Add context in `payload.summary` and `custom_details`.
+- Resolve incidents when the issue clears.
+- Record notes during triage.

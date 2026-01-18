@@ -1,6 +1,10 @@
+---
+order: 1
+---
+
 # Events API
 
-The Events API is the primary way to send alerts to OpsSentinal.
+The Events API is the primary way to trigger, acknowledge, and resolve incidents.
 
 ## Endpoint
 
@@ -10,7 +14,7 @@ POST /api/events
 
 ## Authentication
 
-Requires API key with `events:write` scope.
+Requires an API key with `events:write` scope.
 
 ## Request Body
 
@@ -35,7 +39,7 @@ Requires API key with `events:write` scope.
 | Field                    | Type   | Required | Description                            |
 | ------------------------ | ------ | -------- | -------------------------------------- |
 | `routing_key`            | string | ✅       | Service integration key                |
-| `service_id`             | string | ✅\*     | Alternative to routing_key             |
+| `service_id`             | string | ✅\*     | Alternative to `routing_key`           |
 | `event_action`           | string | ✅       | `trigger`, `acknowledge`, `resolve`    |
 | `dedup_key`              | string | ✅       | Deduplication key                      |
 | `payload.summary`        | string | ✅       | Alert description                      |
@@ -43,11 +47,9 @@ Requires API key with `events:write` scope.
 | `payload.severity`       | string | ✅       | `critical`, `error`, `warning`, `info` |
 | `payload.custom_details` | object | -        | Additional context                     |
 
-## Event Actions
+## Examples
 
 ### Trigger
-
-Create a new incident or add alert to existing:
 
 ```bash
 curl -X POST https://your-ops.com/api/events \
@@ -67,8 +69,6 @@ curl -X POST https://your-ops.com/api/events \
 
 ### Acknowledge
 
-Mark incident as being worked on:
-
 ```bash
 curl -X POST https://your-ops.com/api/events \
   -H "Authorization: Bearer YOUR_API_KEY" \
@@ -81,8 +81,6 @@ curl -X POST https://your-ops.com/api/events \
 ```
 
 ### Resolve
-
-Mark incident as resolved:
 
 ```bash
 curl -X POST https://your-ops.com/api/events \
@@ -121,15 +119,12 @@ curl -X POST https://your-ops.com/api/events \
 
 ## Deduplication
 
-Events with the same `dedup_key` are grouped:
-
-- First trigger → Creates incident
-- Subsequent triggers → Adds to timeline
-- Resolve → Closes the incident
+- First trigger creates the incident.
+- Subsequent triggers with the same `dedup_key` update the incident.
+- Resolve closes the incident.
 
 ## Best Practices
 
-- ✅ Use meaningful `dedup_key` values
-- ✅ Include context in `custom_details`
-- ✅ Set appropriate severity
-- ✅ Send resolve events when issues clear
+- Use stable `dedup_key` values.
+- Include context in `custom_details`.
+- Send resolve events when issues clear.

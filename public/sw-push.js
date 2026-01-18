@@ -6,7 +6,7 @@ self.addEventListener('push', function (event) {
     console.log('[SW] Push notification received:', event);
 
     let notificationData = {
-        title: 'OpsSentinal',
+        title: 'OpsKnight',
         body: 'New notification',
         icon: '/icons/android-chrome-192x192.png',
         badge: '/icons/android-chrome-192x192.png',
@@ -37,7 +37,7 @@ self.addEventListener('push', function (event) {
             url: notificationData.url,
             ...notificationData.data
         },
-        tag: 'opssentinal-notification',
+        tag: 'opsknight-notification',
         requireInteraction: true, // Keep visible on mobile
         vibrate: [200, 100, 200],
         actions: [

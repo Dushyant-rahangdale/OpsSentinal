@@ -1,34 +1,36 @@
 /**
- * Password Reset Email Template using OpsSentinal Branding
+ * Password Reset Email Template using OpsKnight Branding
  */
 
 import {
-    EmailContainer,
-    EmailHeader,
-    EmailContent,
-    EmailButton,
-    AlertBox,
-    EmailFooter,
+  EmailContainer,
+  EmailHeader,
+  EmailContent,
+  EmailButton,
+  AlertBox,
+  EmailFooter,
 } from '@/lib/email-components';
 
 export interface PasswordResetEmailData {
-    userName: string;
-    resetLink: string;
-    expiryMinutes?: number;
+  userName: string;
+  resetLink: string;
+  expiryMinutes?: number;
 }
 
 /**
  * Password Reset Request Template
  * Professional, secure, and branded template for password reset emails
  */
-export function getPasswordResetEmailTemplate(
-    data: PasswordResetEmailData
-): { subject: string; html: string; text: string } {
-    const subject = '🔐 Reset your OpsSentinal password';
-    const expiryText = data.expiryMinutes ? `${data.expiryMinutes} minutes` : '1 hour';
+export function getPasswordResetEmailTemplate(data: PasswordResetEmailData): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = '🔐 Reset your OpsKnight password';
+  const expiryText = data.expiryMinutes ? `${data.expiryMinutes} minutes` : '1 hour';
 
-    const content = `
-        ${EmailHeader('Password Reset Request', 'OpsSentinal Account Security')}
+  const content = `
+        ${EmailHeader('Password Reset Request', 'OpsKnight Account Security')}
         ${EmailContent(`
             <!-- Security Icon -->
             <div style="text-align: center; margin-bottom: 32px;">
@@ -68,10 +70,10 @@ export function getPasswordResetEmailTemplate(
             
             <!-- Security Warning -->
             ${AlertBox(
-        '🛡️ Security Notice',
-        'If you did not request a password reset, please ignore this email. Your password will remain unchanged. Consider enabling two-factor authentication for added security.',
-        'warning'
-    )}
+              '🛡️ Security Notice',
+              'If you did not request a password reset, please ignore this email. Your password will remain unchanged. Consider enabling two-factor authentication for added security.',
+              'warning'
+            )}
             
             <!-- Additional Info -->
             <div style="text-align: center; margin-top: 32px; padding-top: 32px; border-top: 1px solid #e5e7eb;">
@@ -86,14 +88,14 @@ export function getPasswordResetEmailTemplate(
         ${EmailFooter()}
     `;
 
-    const html = EmailContainer(content);
+  const html = EmailContainer(content);
 
-    const text = `
-OpsSentinal - Password Reset Request
+  const text = `
+OpsKnight - Password Reset Request
 
 Hello ${data.userName},
 
-We received a request to reset your password for your OpsSentinal account.
+We received a request to reset your password for your OpsKnight account.
 
 To reset your password, visit this link:
 ${data.resetLink}
@@ -106,8 +108,8 @@ If you did not request a password reset, please ignore this email. Your password
 Need help? Contact your administrator for assistance.
 
 ---
-This is an automated message from OpsSentinal Incident Management.
+This is an automated message from OpsKnight Incident Management.
     `.trim();
 
-    return { subject, html, text };
+  return { subject, html, text };
 }

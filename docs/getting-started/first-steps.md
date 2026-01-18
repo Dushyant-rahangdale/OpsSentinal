@@ -1,48 +1,76 @@
+---
+order: 3
+---
+
 # First Steps
 
-After installing OpsSentinal, follow these steps to set up your incident management workflow.
+This walkthrough sets up a working incident flow end-to-end so you can validate OpsKnight quickly.
 
-## 1. Create Admin User
+## 1) Create the Admin User
 
-If you haven't already, create your first admin user:
+If you did not create an admin during install:
 
 ```bash
-docker exec -it opssentinal_app npm run opssentinal -- \
+docker exec -it opsknight_app npm run opsknight -- \
   --user "Your Name" \
   --email admin@yourcompany.com \
   --password SecurePassword123! \
   --role admin
 ```
 
-## 2. Log In
+## 2) Log In
 
-1. Open http://localhost:3000
+1. Open `http://localhost:3000`
 2. Click **Sign In**
 3. Enter your admin credentials
 
-## 3. Create Your First Service
+## 3) Create a Team
 
-Services represent the systems you want to monitor.
+Teams map your on-call ownership and access policies.
 
-1. Navigate to **Services** in the sidebar
+1. Navigate to **Teams**
+2. Click **+ New Team**
+3. Add a team name and description
+4. Save
+
+## 4) Create Your First Service
+
+Services represent systems you want to monitor.
+
+1. Navigate to **Services**
 2. Click **+ New Service**
 3. Fill in:
    - **Name**: e.g., "API Gateway"
-   - **Description**: Brief description of the service
+   - **Description**: Brief summary of what it does
+   - **Owning Team**: Select the team you created
 4. Click **Create**
 
-## 4. Create an Integration Key
+## 5) Set an Escalation Policy
 
-Integration keys allow external systems to send alerts.
+Escalation policies define who is notified and when.
 
-1. Go to your service details
-2. Click **Integrations** tab
+1. Go to **Escalation Policies**
+2. Click **+ New Policy**
+3. Add steps (users or schedules)
+4. Save
+
+## 6) Create an On-Call Schedule
+
+1. Go to **Schedules**
+2. Click **+ New Schedule**
+3. Add rotation rules and participants
+4. Save and attach it to your escalation policy
+
+## 7) Create an Integration Key
+
+Integration keys allow external systems to trigger incidents.
+
+1. Open your service
+2. Go to the **Integrations** tab
 3. Click **+ Add Integration**
-4. Copy the generated **Routing Key**
+4. Copy the **Routing Key**
 
-## 5. Trigger a Test Incident
-
-Use the API to trigger a test incident:
+## 8) Trigger a Test Incident
 
 ```bash
 curl -X POST http://localhost:3000/api/events \
@@ -59,16 +87,27 @@ curl -X POST http://localhost:3000/api/events \
   }'
 ```
 
-## 6. View the Incident
+## 9) Acknowledge and Resolve
 
-1. Navigate to **Incidents** in the sidebar
-2. You should see your test incident
-3. Click to view details
-4. Try **Acknowledge** and **Resolve** actions
+1. Go to **Incidents**
+2. Open the test incident
+3. Click **Acknowledge**
+4. Add a short note
+5. Click **Resolve**
+
+## 10) Configure Notifications
+
+Add notification providers so your team is alerted.
+
+- Email/SMS/Push: **Settings → Notifications**
+- Slack: **Integrations → Slack**
+
+---
 
 ## Next Steps
 
-- [Set up Teams](../core-concepts/teams.md) - Organize users
-- [Create Schedules](../core-concepts/schedules.md) - On-call rotations
-- [Configure Notifications](../administration/notifications.md) - SMS, Push, Email
-- [Connect Slack](../integrations/slack.md) - Team notifications
+- [Configure notifications](../administration/notifications.md)
+- [Connect Slack](../integrations/slack.md)
+- [Set up services](../core-concepts/services.md)
+- [Understand incidents](../core-concepts/incidents.md)
+- [Explore escalation policies](../core-concepts/escalation-policies.md)

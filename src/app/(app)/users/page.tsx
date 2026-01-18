@@ -222,7 +222,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
               <Users className="h-6 w-6 md:h-8 md:w-8" />
               Users
             </h1>
@@ -234,25 +234,31 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 w-full lg:w-auto">
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold">{stats.total}</div>
+                <div className="text-xl md:text-2xl font-extrabold">{stats.total}</div>
                 <div className="text-[10px] md:text-xs opacity-90">Total</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-green-200">{stats.active}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-green-200">
+                  {stats.active}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Active</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-yellow-200">{stats.invited}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-yellow-200">
+                  {stats.invited}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Invited</div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 backdrop-blur">
               <CardContent className="p-3 md:p-4 text-center">
-                <div className="text-xl md:text-2xl font-bold text-gray-200">{stats.disabled}</div>
+                <div className="text-xl md:text-2xl font-extrabold text-gray-200">
+                  {stats.disabled}
+                </div>
                 <div className="text-[10px] md:text-xs opacity-90">Disabled</div>
               </CardContent>
             </Card>

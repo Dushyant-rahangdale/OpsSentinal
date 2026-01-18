@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "🚀 OpsSentinal Startup"
+echo "🚀 OpsKnight Startup"
 echo "======================"
 
 # ---------------------------

@@ -116,7 +116,7 @@ export default function LoginClient({
       <AuthCard isSuccess={isSuccess}>
         {/* Card Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white tracking-tight flex items-center gap-3">
             {isSuccess ? (
               <span className="text-emerald-400 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <CheckCircle2 className="w-6 h-6" />
@@ -189,7 +189,7 @@ export default function LoginClient({
                     }}
                     onBlur={() => setEmailTouched(true)}
                     className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
-                    placeholder="you@opssentinal.com"
+                    placeholder="you@opsknight.com"
                     disabled={isSubmitting || isSuccess}
                   />
                   {emailTouched && email && !isEmailValid && (

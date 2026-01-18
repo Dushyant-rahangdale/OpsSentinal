@@ -187,7 +187,7 @@ export default function BootstrapSetupForm() {
             type="email"
             required
             className="flex-1 bg-transparent px-4 py-4 text-white placeholder:text-white/30 focus:outline-none"
-            placeholder="alice@opssentinal.com"
+            placeholder="alice@opsknight.com"
           />
         </div>
       </div>

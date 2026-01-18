@@ -53,7 +53,7 @@ function isValidHexKey(value: string) {
   return /^[0-9a-f]{64}$/i.test(value);
 }
 
-const CANARY_Plaintext = 'OPS_SENTINAL_CRYPTO_CHECK';
+const CANARY_Plaintext = 'OPS_KNIGHT_CRYPTO_CHECK';
 
 export async function validateCanary(keyHex: string): Promise<boolean> {
   try {

@@ -99,7 +99,9 @@ export default async function PolicyDetailPage({
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl md:text-3xl font-bold">{policy.name}</h1>
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                  {policy.name}
+                </h1>
               </div>
               <p className="text-primary-foreground/80 text-sm max-w-2xl">
                 {policy.description || 'No description provided.'}
@@ -109,13 +111,13 @@ export default async function PolicyDetailPage({
             <div className="grid grid-cols-2 gap-2 md:gap-4 w-full lg:w-auto">
               <Card className="bg-white/10 border-white/20 backdrop-blur">
                 <CardContent className="p-3 md:p-4 text-center">
-                  <div className="text-xl md:text-2xl font-bold">{policy.steps.length}</div>
+                  <div className="text-xl md:text-2xl font-extrabold">{policy.steps.length}</div>
                   <div className="text-[10px] md:text-xs opacity-90">Steps</div>
                 </CardContent>
               </Card>
               <Card className="bg-white/10 border-white/20 backdrop-blur">
                 <CardContent className="p-3 md:p-4 text-center">
-                  <div className="text-xl md:text-2xl font-bold text-green-200">
+                  <div className="text-xl md:text-2xl font-extrabold text-green-200">
                     {services.length}
                   </div>
                   <div className="text-[10px] md:text-xs opacity-90">Services</div>

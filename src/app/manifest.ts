@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'OpsSentinel',
-    short_name: 'OpsSentinel',
+    name: 'OpsKnight',
+    short_name: 'OpsKnight',
     description: 'Enterprise Incident Management & On-Call',
     start_url: '/m',
     display: 'standalone',

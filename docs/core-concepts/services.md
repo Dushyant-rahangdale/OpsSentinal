@@ -1,36 +1,36 @@
+---
+order: 2
+---
+
 # Services
 
-Services are the foundation of OpsSentinal. They represent the systems, applications, or infrastructure components you want to monitor.
+Services represent the systems, applications, or dependencies you want to monitor.
 
 ## What is a Service?
 
-A Service in OpsSentinal represents any component that can have incidents:
+A service can be:
 
 - APIs and microservices
 - Databases
-- Infrastructure (servers, networking)
+- Infrastructure components
 - Third-party dependencies
-- Business processes
+- Business workflows
 
-## Creating a Service
+## Create a Service
 
-1. Navigate to **Services** in the sidebar
+1. Go to **Services**
 2. Click **+ New Service**
-3. Fill in the details:
+3. Fill in:
 
 | Field             | Description                 | Required |
 | ----------------- | --------------------------- | -------- |
 | Name              | Unique service name         | ✅       |
-| Description       | What this service does      | -        |
+| Description       | Short summary               | -        |
 | Escalation Policy | How incidents are escalated | -        |
 
-## Service Integrations
+## Integrations
 
-Each service can have multiple integrations to receive alerts:
-
-### Event API Integration
-
-The default integration for programmatic alerts:
+Each service can have multiple integrations. The Events API integration is the default entry point.
 
 ```bash
 curl -X POST https://your-ops.com/api/events \
@@ -47,18 +47,18 @@ curl -X POST https://your-ops.com/api/events \
   }'
 ```
 
-### Supported Severity Levels
+## Severity Levels
 
-| Severity   | Description       | Badge |
-| ---------- | ----------------- | ----- |
-| `critical` | Service is down   | 🔴    |
-| `error`    | Significant issue | 🟠    |
-| `warning`  | Potential problem | 🟡    |
-| `info`     | Informational     | 🔵    |
+| Severity   | Description       |
+| ---------- | ----------------- |
+| `critical` | Service is down   |
+| `error`    | Significant issue |
+| `warning`  | Potential problem |
+| `info`     | Informational     |
 
-## Service Health
+## Health Status
 
-Services display real-time health status:
+Service status updates based on incident severity:
 
 | Status          | Meaning                   |
 | --------------- | ------------------------- |
@@ -66,18 +66,8 @@ Services display real-time health status:
 | 🟡 Degraded     | Active warning incidents  |
 | 🔴 Major Outage | Active critical incidents |
 
-## Linking to Escalation Policies
-
-Associate services with escalation policies to determine how incidents are routed:
-
-1. Open the service
-2. Go to **Settings** tab
-3. Select an **Escalation Policy**
-4. Save changes
-
 ## Best Practices
 
-- ✅ Use descriptive, consistent naming (e.g., `api-gateway`, `user-service`)
-- ✅ Add meaningful descriptions
-- ✅ Assign appropriate escalation policies
-- ✅ Group related services under teams
+- Use consistent naming (e.g., `api-gateway`, `user-service`).
+- Assign an escalation policy for production services.
+- Group services by team ownership.
