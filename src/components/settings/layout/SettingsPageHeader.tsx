@@ -65,7 +65,7 @@ export function SettingsPageHeader({
       {/* Title and Description */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">{title}</h1>
+          <h1 className="text-4xl font-extrabold tracking-tighter">{title}</h1>
           {description && (
             <p className="text-base text-muted-foreground max-w-2xl">{description}</p>
           )}

@@ -299,9 +299,7 @@ export default function Sidebar(
         {!isDesktopCollapsed && sectionName !== 'MAIN' && (
           <div className="flex items-center gap-2 mb-2 px-1">
             <div className={cn('h-1.5 w-1.5 rounded-full', colors.dotClass)} />
-            <span
-              className={cn('text-[11px] font-semibold tracking-wide uppercase', colors.textClass)}
-            >
+            <span className={cn('text-[11px] font-bold tracking-wide uppercase', colors.textClass)}>
               {sectionName}
             </span>
           </div>
@@ -380,11 +378,11 @@ export default function Sidebar(
             </div>
 
             {!isDesktopCollapsed && (
-              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                <h1 className="text-xl font-extrabold text-white m-0 leading-tight tracking-tight font-display">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <h1 className="text-[1.4rem] font-extrabold text-white m-0 leading-none tracking-tighter font-display drop-shadow-sm">
                   OpsKnight
                 </h1>
-                <span className="text-xs text-white/50 font-medium uppercase tracking-wide">
+                <span className="text-[0.65rem] text-white/60 font-bold uppercase tracking-widest">
                   Incident Response
                 </span>
               </div>

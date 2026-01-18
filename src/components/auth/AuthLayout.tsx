@@ -34,7 +34,12 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
               />
             </Link>
             <div>
-              <h1 className="text-xl font-extrabold tracking-[0.2em] text-white">OpsKnight</h1>
+              <h1
+                className="text-2xl font-extrabold tracking-tight text-white drop-shadow-md"
+                style={{ letterSpacing: '-0.02em' }}
+              >
+                OpsKnight
+              </h1>
             </div>
           </div>
 

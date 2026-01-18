@@ -71,7 +71,7 @@ export default function SettingsNav({
     >
       {SETTINGS_NAV_SECTIONS.map(section => (
         <div key={section.id} className="flex flex-col gap-2">
-          <div className="px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {section.label}
           </div>
           <div className="flex flex-col gap-1">

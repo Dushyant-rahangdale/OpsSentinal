@@ -13,7 +13,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'OpsKnight | Enterprise Incident Management',
+  title: 'OpsKnight | Incident Management',
   description: 'Enterprise incident management and response platform',
   icons: {
     icon: [
