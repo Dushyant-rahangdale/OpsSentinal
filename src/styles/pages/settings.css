@@ -96,19 +96,20 @@
 .settings-field {
     display: grid;
     gap: 0.4rem;
-    font-size: clamp(0.8rem, 1.1vw, 0.9rem);
-    color: var(--text-muted);
-    font-weight: 600;
+    font-size: clamp(0.9rem, 1.2vw, 0.95rem);
+    color: var(--text-primary);
+    font-weight: 700;
 }
 
 .settings-field input,
 .settings-field select {
-    padding: 0.5rem 0.625rem;
+    padding: 0.625rem 0.75rem;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: #fff;
     color: var(--text-primary);
-    font-size: clamp(0.82rem, 1.05vw, 0.9rem);
+    font-size: clamp(0.9rem, 1.15vw, 1rem);
+    font-weight: 500;
 }
 
 .settings-field input[readonly] {
@@ -116,8 +117,9 @@
 }
 
 .settings-note {
-    font-size: clamp(0.82rem, 1.05vw, 0.9rem);
+    font-size: clamp(0.9rem, 1.15vw, 1rem);
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .settings-row {
@@ -136,12 +138,14 @@
 
 .settings-row h3 {
     margin-bottom: 0.25rem;
-    font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+    font-size: clamp(1rem, 1.3vw, 1.15rem);
+    font-weight: 700;
 }
 
 .settings-row p {
     color: var(--text-secondary);
-    font-size: clamp(0.82rem, 1.05vw, 0.9rem);
+    font-size: clamp(0.9rem, 1.15vw, 1rem);
+    font-weight: 500;
 }
 
 .settings-badge {

@@ -52,7 +52,7 @@ export default async function SettingsOverviewPage() {
   );
 
   return (
-    <div className="p-6 space-y-8 [zoom:0.7]">
+    <div className="p-6 space-y-8 [zoom:0.95]">
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">Settings</h1>

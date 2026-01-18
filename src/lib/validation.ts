@@ -72,9 +72,23 @@ export const StatusPageSettingsSchema = z.object({
   showIncidents: z.boolean().optional(),
   showMetrics: z.boolean().optional(),
   showSubscribe: z.boolean().optional(),
+  uptimeExcellentThreshold: z.number().min(0).max(100).optional(),
+  uptimeGoodThreshold: z.number().min(0).max(100).optional(),
   footerText: z.string().trim().max(1000).optional().nullable(),
-  contactEmail: emailValidator.optional().nullable(),
-  contactUrl: optionalUrlValidator,
+  contactEmail: z
+    .string()
+    .trim()
+    .transform(val => (val === '' ? undefined : val))
+    .pipe(emailValidator.optional().nullable())
+    .optional()
+    .nullable(),
+  contactUrl: z
+    .string()
+    .trim()
+    .transform(val => (val === '' ? undefined : val))
+    .pipe(z.string().url().optional().nullable())
+    .optional()
+    .nullable(),
   branding: z.unknown().optional().nullable(),
   serviceIds: z.array(z.string()).optional(),
   serviceConfigs: z

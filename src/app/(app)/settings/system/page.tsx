@@ -124,7 +124,7 @@ export default async function SystemSettingsPage() {
   const appUrlStatus = appUrlData.appUrl ? 'Custom' : 'Fallback';
 
   return (
-    <div className="space-y-6 system-settings-shell [zoom:0.7]">
+    <div className="space-y-6 system-settings-shell [zoom:0.95]">
       <div className="system-settings-hero">
         <SettingsPageHeader
           title="System Settings"

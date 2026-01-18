@@ -203,17 +203,17 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2 text-white">
               <Server className="h-6 w-6 md:h-8 md:w-8" />
               Service Directory
             </h1>
-            <p className="text-xs md:text-sm opacity-90 mt-1">
+            <p className="text-xs md:text-sm opacity-90 mt-1 text-white/90">
               Manage your services and monitor their health status
             </p>
-            <p className="text-[11px] md:text-xs opacity-80 mt-1">
+            <p className="text-[11px] md:text-xs opacity-80 mt-1 text-white/80">
               Metrics shown for the last 30 days.
             </p>
-            <p className="text-[11px] md:text-xs opacity-80">
+            <p className="text-[11px] md:text-xs opacity-80 text-white/80">
               Active incident counts exclude snoozed and suppressed incidents.
             </p>
           </div>

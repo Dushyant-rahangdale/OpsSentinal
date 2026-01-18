@@ -99,11 +99,11 @@ export default async function PolicyDetailPage({
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
                   {policy.name}
                 </h1>
               </div>
-              <p className="text-primary-foreground/80 text-sm max-w-2xl">
+              <p className="text-white/80 text-sm max-w-2xl">
                 {policy.description || 'No description provided.'}
               </p>
             </div>

@@ -287,11 +287,11 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2 text-white">
               <Users className="h-6 w-6 md:h-8 md:w-8" />
               Teams
             </h1>
-            <p className="text-xs md:text-sm opacity-90 mt-1">
+            <p className="text-xs md:text-sm opacity-90 mt-1 text-white/90">
               Manage team ownership, roles, and service coverage
             </p>
           </div>

@@ -20,6 +20,42 @@ vi.mock('@/lib/prisma', () => ({
   default: mockPrisma,
 }));
 
+// Mock SLA server to avoid database calls
+vi.mock('@/lib/sla-server', () => ({
+  calculateSLAMetrics: vi.fn().mockResolvedValue({
+    breakdown: [],
+    overallHealth: 100,
+    mttr: { avgMinutes: 0, p50: 0, p95: 0 },
+    mtbf: { avgHours: 720, incidents: 0 },
+    trend: { changePercent: 0, direction: 'stable' },
+    previousIncidents: [],
+    totalIncidentCount: 0,
+    slaBudget: null,
+    topServices: [],
+    uptimeByRegion: {},
+    serviceMetrics: [],
+  }),
+  calculateMultiServiceUptime: vi.fn().mockResolvedValue({}),
+  getExternalStatusLabel: vi.fn().mockReturnValue('Operational'),
+  generateDailySnapshot: vi.fn().mockResolvedValue(undefined),
+  checkIncidentSLA: vi.fn().mockResolvedValue({
+    ackSLA: { breached: false, timeRemaining: null, targetMinutes: 15 },
+    resolveSLA: { breached: false, timeRemaining: null, targetMinutes: 120 },
+  }),
+  calculateSLAMetricsFromRollups: vi.fn().mockResolvedValue({
+    breakdown: [],
+    overallHealth: 100,
+    dataSource: 'rollup',
+  }),
+}));
+
+// Mock uptime server to avoid database calls
+vi.mock('@/lib/uptime-server', () => ({
+  getUptimeByServiceId: vi.fn().mockResolvedValue({}),
+  getAggregatedUptimeForTimeWindow: vi.fn().mockResolvedValue({}),
+  calculateRollingUptimeForServices: vi.fn().mockResolvedValue({}),
+}));
+
 // Mock child components to simplify testing
 vi.mock('@/components/status-page/StatusPageHeader', () => ({
   default: () => <div data-testid="status-page-header">Header</div>,

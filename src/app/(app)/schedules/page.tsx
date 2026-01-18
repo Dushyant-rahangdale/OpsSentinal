@@ -45,11 +45,11 @@ export default async function SchedulesPage() {
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2 text-white">
               <Calendar className="h-6 w-6 md:h-8 md:w-8" />
               Schedules
             </h1>
-            <p className="text-primary-foreground/80 text-xs md:text-sm max-w-2xl">
+            <p className="text-white/80 text-xs md:text-sm max-w-2xl">
               Design rotations, monitor coverage, and keep responders aligned
             </p>
           </div>
