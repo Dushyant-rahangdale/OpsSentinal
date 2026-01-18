@@ -39,7 +39,28 @@
   width: var(--sidebar-width-collapsed);
 }
 
-/* Simple << / >> Toggle - Enhanced Visibility */
+/* Edge hover indicator - subtle hint for toggle */
+.sidebar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 70px;
+  border-radius: 2px 0 0 2px;
+  background: linear-gradient(180deg, transparent 5%, rgba(255,255,255,0.12) 50%, transparent 95%);
+  opacity: 0;
+  transition: opacity 0.3s ease, height 0.3s ease;
+  pointer-events: none;
+}
+
+.sidebar:hover::after {
+  opacity: 1;
+  height: 90px;
+}
+
+/* Legacy toggle styles - kept for reference */
 .sidebar-collapse-toggle {
   position: absolute;
   top: 12px;

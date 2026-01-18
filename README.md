@@ -76,15 +76,30 @@ kubectl apply -k deploy/kustomize/overlays/production
 
 ---
 
-## 📚 Documentation
+## 📚 Documentation Portal
 
-| Section                                      | Description                                            |
-| :------------------------------------------- | :----------------------------------------------------- |
-| [**Getting Started**](docs/getting-started/) | Installation guides, initial setup, and configuration. |
-| [**Core Concepts**](docs/core-concepts/)     | Learn about Services, Incidents, Teams, and Schedules. |
-| [**Administration**](docs/administration/)   | SSO/OIDC setup, RBAC, and data retention policies.     |
-| [**API Reference**](docs/api/)               | Full REST API documentation for automation.            |
-| [**Security**](docs/security/)               | Encryption, audit logs, and compliance.                |
+Everything you need to build, deploy, and manage OpsKnight.
+
+### 🏁 Getting Started
+
+- [**Installation Guide**](docs/getting-started/README.md) - Set up OpsKnight in minutes.
+- [**Configuration**](docs/getting-started/configuration.md) - Environment variables and secrets.
+- [**Core Concepts**](docs/core-concepts/README.md) - detailed overview of the platform model.
+
+### 🛠️ Operator Manual
+
+- [**Deployment**](docs/deployment/README.md) - Guides for Docker, Helm, and Kustomize.
+  - [Docker Compose](docs/deployment/docker-compose.md)
+  - [Helm Charts](docs/deployment/helm.md)
+  - [Kustomize](docs/deployment/kustomize.md)
+- [**Administration**](docs/administration/README.md) - Manage users, roles, and SSO.
+- [**Security**](docs/security/README.md) - Hardening and compliance.
+
+### 👨‍💻 Developer Resources
+
+- [**API Reference**](docs/api/README.md) - Automate everything with our REST API.
+- [**Integrations**](docs/integrations/README.md) - Connect Slack, Datadog, Prometheus, and more.
+- [**Contributing**](CONTRIBUTING.md) - strict guidelines for code contributions.
 
 ---
 
