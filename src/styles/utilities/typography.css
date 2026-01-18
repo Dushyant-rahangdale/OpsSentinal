@@ -3,20 +3,6 @@
    Extracted from globals.css
    ======================================== */
 
-h1,
-h2,
-h3,
-h4,
-.font-display {
-    font-family: var(--font-manrope), Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    letter-spacing: -0.02em;
-}
-
-body,
-.font-sans {
-    font-family: var(--font-manrope), Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
 .focus-border:focus,
 .focus-border:focus-visible {
     border-color: var(--border-focus);
