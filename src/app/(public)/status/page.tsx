@@ -565,10 +565,22 @@ async function renderStatusPage(statusPage: any) {
         <script
           dangerouslySetInnerHTML={{
             __html: `
-                            setTimeout(function() {
-                                window.location.reload();
-                            }, ${refreshInterval * 1000});
-                        `,
+              (function() {
+                try {
+                  var refreshMs = ${refreshInterval * 1000};
+                  console.log('[Status Page] Auto-refresh enabled, interval: ' + ${refreshInterval} + 's');
+                  setTimeout(function() {
+                    console.log('[Status Page] Refreshing page...');
+                    // Force cache bypass by adding timestamp
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('_t', Date.now());
+                    window.location.href = url.toString();
+                  }, refreshMs);
+                } catch (e) {
+                  console.error('[Status Page] Auto-refresh error:', e);
+                }
+              })();
+            `,
           }}
         />
       )}
