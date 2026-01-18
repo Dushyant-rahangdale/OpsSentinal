@@ -4,13 +4,12 @@
 
 # 🛡️ OpsKnight
 
-**Open-Source Incident Management Platform**
+**Open-Source Incidents, On-Call, and Status Pages.**
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-5-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
 [![Website](https://img.shields.io/badge/Website-opsknight.com-10b981?style=for-the-badge&logo=google-chrome&logoColor=white)](https://opsknight.com)
 [![License](https://img.shields.io/badge/License-AGPL--3.0-green?style=for-the-badge)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](docs/deployment/docker-compose.md)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](docs/deployment/helm.md)
 
 <div align="center">
   <h3>
@@ -20,65 +19,78 @@
   </h3>
 </div>
 
-[**Documentation**](docs/) • [**Quick Start**](#-quick-start) • [**Features**](#-features) • [**API**](docs/api/)
+[**Documentation**](docs/) • [**Live Demo**](https://opsknight.com) • [**Join Community**](https://discord.gg/opsknight)
 
 </div>
 
 ---
 
-## ✨ Features
+## 🚀 Overview
 
-- 🚨 **Incident Management** - Complete lifecycle from trigger to resolution
-- 📅 **On-Call Scheduling** - Flexible rotations, overrides, and layers
-- 📈 **Escalation Policies** - Multi-tier escalation with user/team/schedule targets
-- 📊 **Analytics & SLA** - MTTA, MTTR, and SLA compliance tracking
-- 🌐 **Status Page** - Public-facing service status with subscriber notifications
-- 🔔 **Multi-Channel Alerts** - SMS, Push, Email, Slack, WhatsApp
-- 📱 **Mobile PWA** - Install on any device with push notifications
-- 🔐 **Enterprise Security** - SSO/OIDC, RBAC, audit logs
+**OpsKnight** is the open-source alternative to PagerDuty and OpsGenie. We help engineering teams manage on-call rotations, escalate alerts, and communicate incidents effectively—without the enterprise price tag.
+
+### ✨ Key Features
+
+- **🚨 Incident Management** - Full lifecycle tracking, severity levels, and automated timelines.
+- **📅 On-Call Scheduling** - Flexible rotations, layers, overrides, and fair-scheduling algorithms.
+- **📈 Escalation Policies** - Ensure no alert is missed with multi-step escalation rules.
+- **🌐 Status Pages** - Beautiful public-facing status pages with subscriber notifications.
+- **🔔 Omni-Channel Alerts** - Native integrations for Slack, SMS, Phone, Email, and Push.
+- **📱 Mobile App** - Full-featured PWA for iOS and Android.
 
 ---
 
-## 🚀 Quick Start
+## 📦 Deployment
 
-### Docker Compose
+OpsKnight is designed to run anywhere. Choose your preferred deployment method:
+
+### 🐳 Docker Compose (Fastest)
+
+Ideal for testing and small deployments.
 
 ```bash
-# Clone and configure
 git clone https://github.com/dushyant-rahangdale/opsknight.git
 cd opsknight
 cp env.example .env
-
-# Start services
 docker compose up -d
-
-# Create admin user
-docker exec -it opsknight_app npm run opsknight -- \
-  --user "Admin" \
-  --email admin@example.com \
-  --password SecurePass123! \
-  --role admin
 ```
 
-Open **http://localhost:3000** and sign in.
+### ☸️ Helm Charts
+
+Production-ready Kubernetes deployment.
+
+```bash
+helm repo add opsknight https://charts.opsknight.com
+helm install opsknight opsknight/opsknight -n opsknight --create-namespace
+```
+
+### ⛵ Kustomize
+
+For declarative Kubernetes management.
+
+```bash
+kubectl apply -k deploy/kustomize/overlays/production
+```
+
+> See [**Deployment Documentation**](docs/deployment/) for detailed configuration guides.
 
 ---
 
 ## 📚 Documentation
 
-| Section                                      | Description                                       |
-| -------------------------------------------- | ------------------------------------------------- |
-| [**Getting Started**](docs/getting-started/) | Installation, first steps, configuration          |
-| [**Core Concepts**](docs/core-concepts/)     | Services, Incidents, Teams, Schedules, Escalation |
-| [**Administration**](docs/administration/)   | Authentication, Notifications, Data Retention     |
-| [**Integrations**](docs/integrations/)       | Slack, Webhooks, Monitoring Tools                 |
-| [**API Reference**](docs/api/)               | REST API documentation                            |
-| [**Deployment**](docs/deployment/)           | Docker, Kubernetes, Mobile PWA                    |
-| [**Roadmap**](ROADMAP.md)                    | Future plans and feature tracking                 |
+| Section                                      | Description                                            |
+| :------------------------------------------- | :----------------------------------------------------- |
+| [**Getting Started**](docs/getting-started/) | Installation guides, initial setup, and configuration. |
+| [**Core Concepts**](docs/core-concepts/)     | Learn about Services, Incidents, Teams, and Schedules. |
+| [**Administration**](docs/administration/)   | SSO/OIDC setup, RBAC, and data retention policies.     |
+| [**API Reference**](docs/api/)               | Full REST API documentation for automation.            |
+| [**Security**](docs/security/)               | Encryption, audit logs, and compliance.                |
 
 ---
 
 ## 🔌 Integrations
+
+Native support for your favorite observability tools:
 
 <p align="center">
   <img src="https://img.shields.io/badge/Slack-4A154B?style=for-the-badge&logo=slack&logoColor=white" alt="Slack">
@@ -86,40 +98,22 @@ Open **http://localhost:3000** and sign in.
   <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus">
   <img src="https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white" alt="Grafana">
   <img src="https://img.shields.io/badge/Sentry-362D59?style=for-the-badge&logo=sentry&logoColor=white" alt="Sentry">
+  <img src="https://img.shields.io/badge/AWS_CloudWatch-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white" alt="AWS">
 </p>
-
-See [Integrations Documentation](docs/integrations/) for setup guides.
-
----
-
-## 🛠️ CLI
-
-```bash
-# Create/update users
-npm run opsknight -- --user "Name" --email user@example.com --password Pass123! --role responder
-```
-
-See [CLI Documentation](docs/api/cli.md) for full usage.
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) and review our [Code of Conduct](CODE_OF_CONDUCT.md) for details.
+We love contributions! OpsKnight is built by the community, for the community.
 
----
-
-## 🔒 Security
-
-For reporting security vulnerabilities or reviewing our security policy, please see [SECURITY.md](SECURITY.md).
-
----
+1.  Read our [**Contributing Guide**](CONTRIBUTING.md).
+2.  Join our [Discord](https://discord.gg/opsknight) to discuss ideas.
+3.  Open a Pull Request!
 
 ## 📄 License
 
-OpsKnight is licensed under the [Apache License 2.0](LICENSE).
-
----
+Licensed under the [Apache License 2.0](LICENSE).
 
 <div align="center">
   <sub>Built with ❤️ for SREs and DevOps Teams</sub>
