@@ -29,28 +29,15 @@ export interface SmsSettings {
   secretAccessKey?: string;
 }
 
-// Push Notification Provider Types
-export type PushProvider = 'firebase' | 'onesignal';
-
-export interface FirebaseConfig {
-  projectId: string;
-  privateKey: string;
-  clientEmail: string;
-}
-
-export interface OneSignalConfig {
-  appId: string;
-  restApiKey: string;
-}
+// Push Notification Provider Types (PWA Web Push only)
+export type PushProvider = 'web-push';
 
 export interface PushSettings {
   enabled: boolean;
   provider: PushProvider;
-  projectId?: string;
-  privateKey?: string;
-  clientEmail?: string;
-  appId?: string;
-  restApiKey?: string;
+  vapidPublicKey?: string;
+  vapidPrivateKey?: string;
+  vapidSubject?: string;
 }
 
 // WhatsApp Settings

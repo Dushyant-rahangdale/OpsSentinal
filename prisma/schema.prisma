@@ -772,7 +772,7 @@ model ApiKey {
 // System-level notification provider configuration
 model NotificationProvider {
   id        String   @id @default(cuid())
-  provider  String   @unique // 'twilio', 'resend', 'sendgrid', 'smtp', 'firebase', 'onesignal'
+  provider  String   @unique // 'twilio', 'resend', 'sendgrid', 'smtp', 'web-push'
   enabled   Boolean  @default(false)
   // Encrypted configuration (JSON stored as text, should be encrypted in production)
   config    Json // Provider-specific configuration

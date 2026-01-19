@@ -195,55 +195,6 @@ const providerConfigs: ProviderConfigSchema[] = [
     ],
   },
   {
-    key: 'firebase',
-    name: 'Firebase (Push)',
-    description: 'Send push notifications via Firebase Cloud Messaging',
-    fields: [
-      {
-        name: 'projectId',
-        label: 'Project ID',
-        type: 'text',
-        required: true,
-        placeholder: 'your-project-id',
-      },
-      {
-        name: 'privateKey',
-        label: 'Private Key',
-        type: 'textarea',
-        required: true,
-        placeholder: '-----BEGIN PRIVATE KEY-----\n...',
-      },
-      {
-        name: 'clientEmail',
-        label: 'Client Email',
-        type: 'email',
-        required: true,
-        placeholder: 'firebase-adminsdk@...',
-      },
-    ],
-  },
-  {
-    key: 'onesignal',
-    name: 'OneSignal (Push)',
-    description: 'Send push notifications via OneSignal',
-    fields: [
-      {
-        name: 'appId',
-        label: 'App ID',
-        type: 'text',
-        required: true,
-        placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-      },
-      {
-        name: 'restApiKey', // Map to correct field name expected by backend if differing
-        label: 'REST API Key',
-        type: 'password',
-        required: true,
-        placeholder: 'Your OneSignal API key',
-      },
-    ],
-  },
-  {
     key: 'web-push',
     name: 'Web Push (PWA)',
     description: 'Send native PWA Push Notifications (Standard Web Push)',

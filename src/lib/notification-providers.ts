@@ -2,7 +2,7 @@ import prisma from './prisma';
 import { logger } from './logger';
 
 export type SMSProvider = 'twilio' | 'aws-sns' | null;
-export type PushProvider = 'firebase' | 'onesignal' | 'web-push' | null;
+export type PushProvider = 'web-push' | null;
 
 export interface SMSConfig {
   enabled: boolean;
@@ -22,13 +22,6 @@ export interface SMSConfig {
 export interface PushConfig {
   enabled: boolean;
   provider: PushProvider;
-  // Firebase config
-  projectId?: string;
-  privateKey?: string;
-  clientEmail?: string;
-  // OneSignal config
-  appId?: string;
-  restApiKey?: string;
   // Web Push (PWA) config
   vapidPublicKey?: string;
   vapidPrivateKey?: string;
@@ -346,39 +339,6 @@ export async function getSMSConfig(): Promise<SMSConfig> {
  */
 export async function getPushConfig(): Promise<PushConfig> {
   try {
-    const firebaseProvider = await prisma.notificationProvider.findUnique({
-      where: { provider: 'firebase' },
-    });
-
-    if (firebaseProvider && firebaseProvider.enabled && firebaseProvider.config) {
-      const config = firebaseProvider.config as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-      if (config.projectId && config.privateKey) {
-        return {
-          enabled: true,
-          provider: 'firebase',
-          projectId: config.projectId,
-          privateKey: config.privateKey,
-          clientEmail: config.clientEmail,
-        };
-      }
-    }
-
-    const onesignalProvider = await prisma.notificationProvider.findUnique({
-      where: { provider: 'onesignal' },
-    });
-
-    if (onesignalProvider && onesignalProvider.enabled && onesignalProvider.config) {
-      const config = onesignalProvider.config as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-      if (config.appId && config.restApiKey) {
-        return {
-          enabled: true,
-          provider: 'onesignal',
-          appId: config.appId,
-          restApiKey: config.restApiKey,
-        };
-      }
-    }
-
     const webPushProvider = await prisma.notificationProvider.findUnique({
       where: { provider: 'web-push' },
     });
