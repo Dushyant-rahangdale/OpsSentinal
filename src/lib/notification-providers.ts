@@ -26,6 +26,7 @@ export interface PushConfig {
   vapidPublicKey?: string;
   vapidPrivateKey?: string;
   vapidSubject?: string;
+  vapidKeyHistory?: Array<{ publicKey: string; privateKey: string }>;
 }
 
 export type EmailProvider = 'resend' | 'sendgrid' | 'smtp' | 'ses' | null;

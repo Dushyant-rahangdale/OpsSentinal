@@ -115,7 +115,6 @@ export async function sendPush(
         }
         return [
           {
-            subject: pushConfig.vapidSubject || 'mailto:admin@localhost',
             subject: process.env.VAPID_SUBJECT || 'mailto:admin@localhost',
             publicKey,
             privateKey,
