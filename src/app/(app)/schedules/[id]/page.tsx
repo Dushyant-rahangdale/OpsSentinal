@@ -54,7 +54,7 @@ import {
 import { getDefaultAvatar } from '@/lib/avatar';
 
 // Revalidate every 30 seconds to ensure current coverage is up-to-date
-export const revalidate = 30;
+export const revalidate = 0;
 
 export default async function ScheduleDetailPage({
   params,

@@ -105,7 +105,7 @@ const INTERNAL_API_BASE =
 async function fetchStatusDomainConfig() {
   try {
     const response = await fetch(`${INTERNAL_API_BASE}/api/status-page/domains`, {
-      next: { revalidate: STATUS_DOMAIN_CACHE_TTL },
+      cache: 'no-store',
       headers: { 'x-internal-request': 'status-domain-check' },
     });
     if (!response.ok) {

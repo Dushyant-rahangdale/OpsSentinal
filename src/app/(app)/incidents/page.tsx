@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { Button } from '@/components/ui/shadcn/button';
 import { AlertTriangle } from 'lucide-react';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 const ITEMS_PER_PAGE = 50;
 

@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         'Content-Type': userAvatar.mimeType,
         // Aggressive caching: 1 year, immutable (browser won't revalidate)
         // Cache invalidation is done by changing the URL query param (?t=timestamp)
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': 'no-store',
       },
     });
   } catch (error) {

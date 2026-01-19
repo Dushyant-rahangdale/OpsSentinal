@@ -43,7 +43,7 @@ import {
 import { IncidentHeatmapWidget } from '@/components/dashboard/widgets/IncidentHeatmapWidget';
 import { IncidentStatus, IncidentUrgency } from '@prisma/client';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 const INCIDENTS_PREVIEW_LIMIT = 20;
 const DASHBOARD_RECENT_INCIDENTS_LIMIT = 15;

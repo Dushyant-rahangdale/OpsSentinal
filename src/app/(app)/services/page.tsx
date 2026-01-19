@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Server, AlertTriangle, XCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/shadcn/alert';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 async function createService(formData: FormData) {
   'use server';

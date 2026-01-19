@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/shadcn/dropdown-menu';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 const urgencyColorMap: Record<string, string> = {
   HIGH: 'border-l-red-500',

@@ -1367,7 +1367,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         templateFetchRef.current.add(template.id);
         try {
           const response = await fetch(`/status-page-templates/${template.file}`, {
-            cache: 'force-cache',
+            cache: 'no-store',
           });
           if (!response.ok) {
             throw new Error('Template preview fetch failed');

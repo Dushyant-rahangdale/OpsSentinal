@@ -224,7 +224,7 @@ export default function Sidebar(
       <Link
         key={item.href}
         href={item.href}
-        prefetch={true}
+        prefetch={false}
         aria-current={active ? 'page' : undefined}
         aria-label={isDesktopCollapsed ? item.label : undefined}
         title={isDesktopCollapsed ? item.label : undefined}

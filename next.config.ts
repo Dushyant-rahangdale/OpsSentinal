@@ -4,7 +4,7 @@ import type { NextConfig } from 'next';
 
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development', // Disable in dev for faster builds
+  disable: true, // Disable SW/PWA caching to prevent stale navigation in prod
   register: true,
   skipWaiting: true,
   sw: 'sw.js', // Use auto-generated SW but we'll add push handlers via workbox

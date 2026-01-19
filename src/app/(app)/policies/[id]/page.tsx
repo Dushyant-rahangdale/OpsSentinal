@@ -24,7 +24,7 @@ import { ArrowLeft, Clock, ShieldCheck, Settings, AlertTriangle } from 'lucide-r
 import { Input } from '@/components/ui/shadcn/input';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 export default async function PolicyDetailPage({
   params,

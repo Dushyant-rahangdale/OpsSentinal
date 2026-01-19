@@ -155,16 +155,11 @@ export async function GET(req: NextRequest) {
       uptime: parseFloat((uptimeMap[service.id] || 100).toFixed(3)),
     }));
 
-    const headers: Record<string, string> =
-      statusPage.requireAuth || statusPage.statusApiRequireToken
-        ? {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            Pragma: 'no-cache',
-            Expires: '0',
-          }
-        : {
-            'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
-          };
+    const headers: Record<string, string> = {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    };
 
     return jsonOk(
       {

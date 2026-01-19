@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Plus, ShieldAlert, BarChart3, LayoutList } from 'lucide-react';
 
-export const revalidate = 30;
+export const revalidate = 0;
 
 export default async function PoliciesPage({
   searchParams,
