@@ -23,6 +23,7 @@ import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 import StatusPageSubscribe from '@/components/status-page/StatusPageSubscribe';
 import StatusPageMetrics from '@/components/status-page/StatusPageMetrics';
+import StatusPageAutoRefresh from '@/components/status-page/StatusPageAutoRefresh';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -263,7 +264,7 @@ async function renderStatusPage(statusPage: any) {
   const showRssLink = branding.showRssLink !== false;
   const showApiLink = branding.showApiLink !== false;
   const autoRefresh = branding.autoRefresh !== false;
-  const refreshInterval = branding.refreshInterval || 60;
+  const refreshInterval = Number(branding.refreshInterval) || 60;
   const showSubscribe = statusPage.showSubscribe !== false;
   const showUptimeExports = statusPage.enableUptimeExports === true;
 
@@ -573,28 +574,7 @@ async function renderStatusPage(statusPage: any) {
       {/* Custom CSS */}
       {customCss && <style dangerouslySetInnerHTML={{ __html: customCss }} />}
 
-      {/* Auto-refresh script */}
-      {autoRefresh && refreshInterval >= 30 && (
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var refreshMs = ${refreshInterval * 1000};
-                  setTimeout(function() {
-                    // Force cache bypass by adding timestamp
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('_t', Date.now());
-                    window.location.href = url.toString();
-                  }, refreshMs);
-                } catch (e) {
-                  console.error('[Status Page] Auto-refresh error:', e);
-                }
-              })();
-            `,
-          }}
-        />
-      )}
+      <StatusPageAutoRefresh enabled={autoRefresh} intervalSeconds={refreshInterval} />
 
       <div
         className="status-page-container"
