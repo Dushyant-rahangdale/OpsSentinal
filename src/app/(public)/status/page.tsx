@@ -25,6 +25,7 @@ import StatusPageSubscribe from '@/components/status-page/StatusPageSubscribe';
 import StatusPageMetrics from '@/components/status-page/StatusPageMetrics';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function generateMetadata(): Promise<Metadata> {
   const statusPage = await prisma.statusPage.findFirst({

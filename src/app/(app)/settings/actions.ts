@@ -1,7 +1,5 @@
 'use server';
 
-import fs from 'fs';
-import path from 'path';
 import prisma from '@/lib/prisma';
 import { getAuthOptions, revokeUserSessions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
@@ -53,31 +51,33 @@ export async function updateProfile(
       if (!avatarFile.type.startsWith('image/')) {
         return { error: 'Invalid file type. Please upload an image.' };
       }
-      if (avatarFile.size > 5 * 1024 * 1024) {
-        // 5MB limit
-        return { error: 'File size too large. Max 5MB.' };
+      if (avatarFile.size > 2 * 1024 * 1024) {
+        // 2MB limit
+        return { error: 'File size too large. Max 2MB.' };
       }
 
       try {
         const bytes = await avatarFile.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Ensure uploads directory exists
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        // Save to database (UserAvatar table)
+        await prisma.userAvatar.upsert({
+          where: { userId: user.id },
+          update: {
+            data: buffer,
+            mimeType: avatarFile.type,
+          },
+          create: {
+            userId: user.id,
+            data: buffer,
+            mimeType: avatarFile.type,
+          },
+        });
 
-        // Generate unique filename
-        const ext = path.extname(avatarFile.name) || '.jpg';
-        const filename = `${user.id}-${Date.now()}${ext}`;
-        const filepath = path.join(uploadDir, filename);
-
-        // Save file
-        fs.writeFileSync(filepath, buffer);
-        avatarUrl = `/uploads/avatars/${filename}`;
+        // Set avatarUrl to API route with cache-busting timestamp
+        avatarUrl = `/api/users/${user.id}/avatar?t=${Date.now()}`;
       } catch (err) {
-        logger.error('Failed to save avatar', { error: err });
+        logger.error('Failed to save avatar to database', { error: err });
         return { error: 'Failed to upload profile photo.' };
       }
     }

@@ -113,8 +113,8 @@ export default function ProfileForm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File is too large. Max 5MB.');
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('File is too large. Max 2MB allowed.');
         return;
       }
 
@@ -280,7 +280,7 @@ export default function ProfileForm({
             )}
           </div>
           <p className="text-xs text-muted-foreground text-center">
-            Choose from preset avatars or upload your own (JPG, GIF, PNG. Max 5MB)
+            Choose from preset avatars or upload your own (JPG, GIF, PNG. Max 2MB)
           </p>
         </div>
       </div>

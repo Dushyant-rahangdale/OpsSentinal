@@ -45,6 +45,10 @@ const nextConfig: NextConfig = {
   // Performance optimizations
   experimental: {
     optimizePackageImports: ['@prisma/client', 'react-icons'],
+    // Allow larger file uploads via Server Actions (default is 1MB)
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   // Turbopack: explicitly configure to allow custom webpack config
   turbopack: {},
