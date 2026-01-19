@@ -54,10 +54,12 @@ describe('IncidentsListTable', () => {
         urgency: 'HIGH',
         createdAt: new Date('2024-01-01T10:00:00Z'),
         assigneeId: null,
+        teamId: null,
         service: {
           id: 'svc-1',
           name: 'API Gateway',
         },
+        team: null,
         assignee: null,
       },
     ];
