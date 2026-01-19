@@ -200,15 +200,15 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps) 
   return (
     <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Metric panel */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2 text-white">
               <Server className="h-6 w-6 md:h-8 md:w-8" />
-              Service Directory
+              Services
             </h1>
-            <p className="text-xs md:text-sm opacity-90 mt-1">
-              Manage your services and monitor their health status
+            <p className="text-xs md:text-sm opacity-90 mt-1 text-white">
+              Monitor service health and performance
             </p>
             <p className="text-[11px] md:text-xs opacity-80 mt-1">
               Metrics shown for the last 30 days.

@@ -219,14 +219,14 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
   return (
     <div className="w-full px-4 py-6 space-y-6 [zoom:0.8]">
       {/* Header with Stats */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight flex items-center gap-2 text-white">
               <Users className="h-6 w-6 md:h-8 md:w-8" />
               Users
             </h1>
-            <p className="text-xs md:text-sm opacity-90 mt-1">
+            <p className="text-xs md:text-sm opacity-90 mt-1 text-white">
               Manage team members and permissions
             </p>
           </div>
