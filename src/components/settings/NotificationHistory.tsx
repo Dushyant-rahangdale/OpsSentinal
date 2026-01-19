@@ -328,8 +328,10 @@ export default function NotificationHistory() {
                         <TableCell className="text-muted-foreground">
                           {notification.sentAt || '-'}
                         </TableCell>
-                        <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                          {notification.errorMsg || '-'}
+                        <TableCell className="text-muted-foreground">
+                          <div className="max-w-[320px] whitespace-pre-wrap break-words font-mono text-xs">
+                            {notification.errorMsg || '-'}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -16,11 +16,10 @@ export async function GET(_req: NextRequest) {
     }
 
     // Get settings from database
-    const [twilioProvider, awsProvider, firebaseProvider, onesignalProvider] = await Promise.all([
+    const [twilioProvider, awsProvider, webPushProvider] = await Promise.all([
       prisma.notificationProvider.findUnique({ where: { provider: 'twilio' } }),
       prisma.notificationProvider.findUnique({ where: { provider: 'aws-sns' } }),
-      prisma.notificationProvider.findUnique({ where: { provider: 'firebase' } }),
-      prisma.notificationProvider.findUnique({ where: { provider: 'onesignal' } }),
+      prisma.notificationProvider.findUnique({ where: { provider: 'web-push' } }),
     ]);
 
     // Build SMS config from database
@@ -47,22 +46,14 @@ export async function GET(_req: NextRequest) {
 
     // Build Push config from database
     let pushConfig: any = { enabled: false, provider: null }; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (firebaseProvider && firebaseProvider.enabled) {
-      const config = firebaseProvider.config as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (webPushProvider && webPushProvider.enabled) {
+      const config = webPushProvider.config as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       pushConfig = {
         enabled: true,
-        provider: 'firebase',
-        projectId: config.projectId || '',
-        privateKey: config.privateKey || '',
-        clientEmail: config.clientEmail || '',
-      };
-    } else if (onesignalProvider && onesignalProvider.enabled) {
-      const config = onesignalProvider.config as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-      pushConfig = {
-        enabled: true,
-        provider: 'onesignal',
-        appId: config.appId || '',
-        restApiKey: config.restApiKey || '',
+        provider: 'web-push',
+        vapidPublicKey: config.vapidPublicKey || '',
+        vapidPrivateKey: config.vapidPrivateKey || '',
+        vapidSubject: config.vapidSubject || '',
       };
     }
 
@@ -110,7 +101,6 @@ export async function POST(req: NextRequest) {
     if (body.sms) {
       const smsProvider = body.sms.provider === 'twilio' ? 'twilio' : 'aws-sns';
       const smsConfig: any = {
-         
         enabled: body.sms.enabled || false,
       };
 
@@ -163,27 +153,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Save Push provider (Firebase or OneSignal)
+    // Save Push provider (Web Push)
     if (body.push) {
-      const pushProvider = body.push.provider === 'firebase' ? 'firebase' : 'onesignal';
       const pushConfig: any = {
-         
         enabled: body.push.enabled || false,
       };
 
-      if (body.push.provider === 'firebase') {
-        pushConfig.projectId = body.push.projectId || '';
-        pushConfig.privateKey = body.push.privateKey || '';
-        pushConfig.clientEmail = body.push.clientEmail || '';
-      } else if (body.push.provider === 'onesignal') {
-        pushConfig.appId = body.push.appId || '';
-        pushConfig.restApiKey = body.push.restApiKey || '';
-      }
+      pushConfig.vapidPublicKey = body.push.vapidPublicKey || '';
+      pushConfig.vapidPrivateKey = body.push.vapidPrivateKey || '';
+      pushConfig.vapidSubject = body.push.vapidSubject || '';
 
       await prisma.notificationProvider.upsert({
-        where: { provider: pushProvider },
+        where: { provider: 'web-push' },
         create: {
-          provider: pushProvider,
+          provider: 'web-push',
           enabled: pushConfig.enabled,
           config: pushConfig,
           updatedBy: user.id,
@@ -194,18 +177,6 @@ export async function POST(req: NextRequest) {
           updatedBy: user.id,
         },
       });
-
-      // Disable the other push provider if switching
-      const otherProvider = body.push.provider === 'firebase' ? 'onesignal' : 'firebase';
-      const otherProviderRecord = await prisma.notificationProvider.findUnique({
-        where: { provider: otherProvider },
-      });
-      if (otherProviderRecord) {
-        await prisma.notificationProvider.update({
-          where: { provider: otherProvider },
-          data: { enabled: false, updatedBy: user.id },
-        });
-      }
     }
 
     if (body.whatsapp) {

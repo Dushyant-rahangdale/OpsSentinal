@@ -277,7 +277,12 @@ export async function sendEmail(
         return { success: true };
       } catch (error: unknown) {
         // If nodemailer package is not installed, fall back to logger notes
-        const err = error as { code?: string; message?: string };
+        const err = error as {
+          code?: string;
+          message?: string;
+          response?: string;
+          command?: string;
+        };
         if (err.code === 'MODULE_NOT_FOUND') {
           logger.warn('Nodemailer package not installed', {
             component: 'email',
@@ -295,7 +300,13 @@ export async function sendEmail(
           error,
           to: options.to,
         });
-        return { success: false, error: err.message || 'SMTP send error' };
+        const errorParts = [
+          err.message || 'SMTP send error',
+          err.code ? `code=${err.code}` : null,
+          err.command ? `command=${err.command}` : null,
+          err.response ? `response=${err.response}` : null,
+        ].filter(Boolean);
+        return { success: false, error: errorParts.join(' | ') };
       }
     }
 
