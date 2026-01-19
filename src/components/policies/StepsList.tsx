@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DndContext,
@@ -81,6 +81,10 @@ export default function StepsList({
   const { showToast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setSteps(initialSteps);
+  }, [initialSteps]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
