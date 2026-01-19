@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
+import { Input } from '@/components/ui/shadcn/input';
 import {
   Select,
   SelectContent,
@@ -28,11 +29,13 @@ import {
   Smartphone,
   Hash,
   Webhook,
+  Search,
   CheckCircle2,
   Clock,
   XCircle,
   Loader2,
 } from 'lucide-react';
+import Link from 'next/link';
 
 type Notification = {
   id: string;
@@ -49,17 +52,27 @@ type Notification = {
   deliveredAt: string | null;
   failedAt: string | null;
   errorMsg: string | null;
+  attempts: number;
+  latencyMs: number | null;
+  pendingForMs: number | null;
   createdAt: string;
 };
 
 export default function NotificationHistory() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [limit] = useState(50);
   const [filterChannel, setFilterChannel] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     sent: 0,
@@ -67,32 +80,63 @@ export default function NotificationHistory() {
     failed: 0,
   });
 
-  const fetchNotifications = async () => {
+  const resolveDateToIso = (value: string, endOfDay: boolean) => {
+    if (!value) return null;
+    const date = new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}`);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString();
+  };
+
+  const formatDuration = (durationMs: number) => {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const seconds = totalSeconds % 60;
+    const minutes = Math.floor(totalSeconds / 60) % 60;
+    const hours = Math.floor(totalSeconds / 3600);
+
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  };
+
+  const fetchNotifications = async (options?: { refresh?: boolean }) => {
     try {
-      setLoading(true);
+      if (options?.refresh && notifications.length > 0) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setErrorMessage('');
       const params = new URLSearchParams({
         limit: limit.toString(),
         offset: offset.toString(),
       });
       if (filterChannel && filterChannel !== 'all') params.set('channel', filterChannel);
       if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus);
+      if (debouncedQuery) params.set('q', debouncedQuery);
+      const fromIso = resolveDateToIso(fromDate, false);
+      const toIso = resolveDateToIso(toDate, true);
+      if (fromIso) params.set('from', fromIso);
+      if (toIso) params.set('to', toIso);
 
       const response = await fetch(`/api/notifications/history?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.notifications || []);
-        setTotal(data.total || 0);
-
-        const allNotifications = data.notifications || [];
-        const statsData = {
-          total: data.total || 0,
-          sent: allNotifications.filter((n: Notification) => n.status === 'SENT').length,
-          pending: allNotifications.filter((n: Notification) => n.status === 'PENDING').length,
-          failed: allNotifications.filter((n: Notification) => n.status === 'FAILED').length,
-        };
-        setStats(statsData);
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications');
       }
+
+      const data = await response.json();
+      setNotifications(data.notifications || []);
+      setTotal(data.total || 0);
+      setStats(
+        data.stats || {
+          total: 0,
+          sent: 0,
+          pending: 0,
+          failed: 0,
+        }
+      );
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (error) {
+      setErrorMessage('Unable to load notification history.');
       if (error instanceof Error) {
         logger.error('Error fetching notification history', { error: error.message });
       } else {
@@ -100,13 +144,25 @@ export default function NotificationHistory() {
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, filterChannel, filterStatus]);
+  }, [offset, filterChannel, filterStatus, debouncedQuery, fromDate, toDate]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [filterChannel, filterStatus, debouncedQuery, fromDate, toDate]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -170,7 +226,9 @@ export default function NotificationHistory() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-extrabold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">All recent notifications</p>
+            <p className="text-xs text-muted-foreground">
+              {filterChannel === 'all' ? 'All channels' : `Channel: ${filterChannel}`}
+            </p>
           </CardContent>
         </Card>
 
@@ -214,6 +272,28 @@ export default function NotificationHistory() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <CardTitle>Notification History</CardTitle>
             <div className="flex flex-wrap gap-2">
+              <div className="relative w-[220px]">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={event => setSearchQuery(event.target.value)}
+                  placeholder="Search incidents or messages"
+                  className="pl-9"
+                  aria-label="Search notifications"
+                />
+              </div>
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={event => setFromDate(event.target.value)}
+                className="w-[150px]"
+              />
+              <Input
+                type="date"
+                value={toDate}
+                onChange={event => setToDate(event.target.value)}
+                className="w-[150px]"
+              />
               <Select
                 value={filterChannel}
                 onValueChange={v => {
@@ -256,19 +336,37 @@ export default function NotificationHistory() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchNotifications()}
-                disabled={loading}
+                onClick={() => fetchNotifications({ refresh: true })}
+                disabled={loading || refreshing}
               >
-                {loading ? (
+                {refreshing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
                 <span className="ml-2">Refresh</span>
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setDebouncedQuery('');
+                  setFromDate('');
+                  setToDate('');
+                  setFilterChannel('all');
+                  setFilterStatus('all');
+                }}
+              >
+                Reset
+              </Button>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">Total: {total} notifications</p>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <span>Total: {total} notifications</span>
+            {filterStatus !== 'all' && <span>Status filter: {filterStatus}</span>}
+            {lastUpdated && <span>Last updated: {lastUpdated}</span>}
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -277,6 +375,18 @@ export default function NotificationHistory() {
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+              <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchNotifications({ refresh: true })}
+                className="mt-3"
+              >
+                Try again
+              </Button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-12">
@@ -288,15 +398,18 @@ export default function NotificationHistory() {
             </div>
           ) : (
             <>
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[980px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Channel</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Incident</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead>Sent</TableHead>
+                      <TableHead>Delivery</TableHead>
+                      <TableHead>Latency</TableHead>
+                      <TableHead>Attempts</TableHead>
+                      <TableHead>Message</TableHead>
                       <TableHead>Error</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -312,12 +425,12 @@ export default function NotificationHistory() {
                         <TableCell>{getStatusBadge(notification.status)}</TableCell>
                         <TableCell>
                           {notification.incident ? (
-                            <a
+                            <Link
                               className="text-primary hover:underline font-medium"
                               href={`/incidents/${notification.incident.id}`}
                             >
                               {notification.incident.title}
-                            </a>
+                            </Link>
                           ) : (
                             <span className="text-muted-foreground">N/A</span>
                           )}
@@ -326,7 +439,34 @@ export default function NotificationHistory() {
                           {notification.createdAt}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {notification.sentAt || '-'}
+                          {notification.deliveredAt ||
+                            notification.sentAt ||
+                            notification.failedAt ||
+                            '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {notification.latencyMs !== null
+                            ? formatDuration(notification.latencyMs)
+                            : notification.pendingForMs !== null
+                              ? `Pending ${formatDuration(notification.pendingForMs)}`
+                              : '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {notification.attempts}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          <div
+                            className="max-w-[280px]"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                            title={notification.message || ''}
+                          >
+                            {notification.message || '-'}
+                          </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           <div className="max-w-[320px] whitespace-pre-wrap break-words font-mono text-xs">

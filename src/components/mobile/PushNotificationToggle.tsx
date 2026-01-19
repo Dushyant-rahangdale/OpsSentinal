@@ -39,6 +39,7 @@ export default function PushNotificationToggle() {
   const [isTesting, setIsTesting] = useState(false);
   const [testMessage, setTestMessage] = useState('');
   const [isSupported, setIsSupported] = useState(false);
+  const serviceWorkerPath = '/sw-push.js';
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
@@ -47,9 +48,24 @@ export default function PushNotificationToggle() {
     }
   }, []);
 
+  async function ensureServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+      throw new Error('Service Worker not supported');
+    }
+    const existing = await navigator.serviceWorker.getRegistration();
+    const targetUrl = new URL(serviceWorkerPath, window.location.origin).toString();
+    const existingUrl = existing?.active?.scriptURL;
+    const shouldRegister = !existing || !existingUrl || existingUrl !== targetUrl;
+    const registration = shouldRegister
+      ? await navigator.serviceWorker.register(serviceWorkerPath, { scope: '/' })
+      : existing;
+    await navigator.serviceWorker.ready;
+    return registration;
+  }
+
   async function checkSubscription() {
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await ensureServiceWorker();
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error: unknown) {
@@ -64,16 +80,20 @@ export default function PushNotificationToggle() {
     setLoading(true);
     setError('');
     try {
+      if (Notification.permission === 'denied') {
+        throw new Error('Notifications blocked. Please enable in browser settings.');
+      }
+
       // Race condition to prevent infinite hanging
-      const registration = await Promise.race([
-        navigator.serviceWorker.ready,
+      const registration = (await Promise.race([
+        ensureServiceWorker(),
         new Promise<ServiceWorkerRegistration>((_, reject) =>
           setTimeout(
             () => reject(new Error('Service Worker taking too long. Try reloading.')),
             4000
           )
         ),
-      ]);
+      ])) as ServiceWorkerRegistration;
 
       // Fetch VAPID Key from API (supports DB or Env)
       const keyRes = await fetch('/api/system/vapid-public-key');
@@ -109,6 +129,7 @@ export default function PushNotificationToggle() {
       if (!res.ok) throw new Error('Failed to save subscription');
 
       setIsSubscribed(true);
+      setError('');
     } catch (error: unknown) {
       logger.error('Push subscription failed', { component: 'PushNotificationToggle', error });
       const message = error instanceof Error ? error.message : 'Failed to subscribe';
@@ -124,10 +145,24 @@ export default function PushNotificationToggle() {
   async function unsubscribe() {
     setLoading(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await ensureServiceWorker();
       const subscription = await registration.pushManager.getSubscription();
-      if (subscription) {
-        await subscription.unsubscribe();
+      if (!subscription) {
+        setIsSubscribed(false);
+        return;
+      }
+
+      const endpoint = subscription.endpoint;
+      await subscription.unsubscribe();
+
+      const response = await fetch('/api/user/push-subscription', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove subscription');
       }
       setIsSubscribed(false);
     } catch (error: unknown) {
@@ -135,6 +170,9 @@ export default function PushNotificationToggle() {
         component: 'PushNotificationToggle',
         error,
       });
+      setError(
+        error instanceof Error ? error.message : 'Failed to unsubscribe from push notifications'
+      );
     } finally {
       setLoading(false);
     }

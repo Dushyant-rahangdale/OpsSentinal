@@ -28,7 +28,10 @@ export default function MobileSearch({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const value = controlledValue !== undefined ? controlledValue : internalValue;
-  const showSuggestions = isFocused && suggestions.length > 0 && value.length > 0;
+  const filteredSuggestions = suggestions
+    .filter(s => s.toLowerCase().includes(value.toLowerCase()))
+    .slice(0, 5);
+  const showSuggestions = isFocused && value.length > 0 && filteredSuggestions.length > 0;
 
   const handleChange = (newValue: string) => {
     if (controlledValue === undefined) {
@@ -147,31 +150,29 @@ export default function MobileSearch({
             zIndex: 100,
           }}
         >
-          {suggestions
-            .filter(s => s.toLowerCase().includes(value.toLowerCase()))
-            .slice(0, 5)
-            .map((suggestion, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  handleChange(suggestion);
-                  onSearch?.(suggestion);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1rem',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: index < suggestions.length - 1 ? '1px solid var(--border)' : 'none',
-                  textAlign: 'left',
-                  fontSize: '0.9rem',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                }}
-              >
-                {suggestion}
-              </button>
-            ))}
+          {filteredSuggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                handleChange(suggestion);
+                onSearch?.(suggestion);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                background: 'none',
+                border: 'none',
+                borderBottom:
+                  index < filteredSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
+                textAlign: 'left',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+              }}
+            >
+              {suggestion}
+            </button>
+          ))}
         </div>
       )}
     </div>

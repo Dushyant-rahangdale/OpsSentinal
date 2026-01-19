@@ -149,7 +149,9 @@ export default function MobileNotificationsClient() {
       if (!response.ok) {
         throw new Error('Failed to mark all as read');
       }
-      setNotifications(prev => prev.map(item => ({ ...item, unread: false })));
+      setNotifications(prev =>
+        activeFilter === 'unread' ? [] : prev.map(item => ({ ...item, unread: false }))
+      );
       setUnreadCount(0);
     } catch (error) {
       logger.error('mobile.notifications.mark_all_failed', {

@@ -1,17 +1,26 @@
 'use client';
 
-import { useState, useRef, ReactNode } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function PullToRefresh({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [startPoint, setStartPoint] = useState<number>(0);
   const [pullChange, setPullChange] = useState<number>(0);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const startPointRef = useRef<number | null>(null);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pullThreshold = 70;
   const maxPull = 100;
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const initLoading = async () => {
     setRefreshing(true);
@@ -23,9 +32,13 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
     router.refresh();
 
     // Keep indicator visible for smooth UX
-    setTimeout(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+    refreshTimeoutRef.current = setTimeout(() => {
       setRefreshing(false);
       setPullChange(0);
+      refreshTimeoutRef.current = null;
     }, 1200);
   };
 
@@ -35,8 +48,8 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
       ? scrollParent.scrollTop
       : window.scrollY || document.documentElement.scrollTop;
 
-    if (scrollTop <= 0) {
-      setStartPoint(e.targetTouches[0].clientY);
+    if (scrollTop <= 0 && !refreshing) {
+      startPointRef.current = e.targetTouches[0].clientY;
     }
   };
 
@@ -46,11 +59,11 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
       ? scrollParent.scrollTop
       : window.scrollY || document.documentElement.scrollTop;
 
-    if (scrollTop > 0) return;
-    if (!startPoint) return;
+    if (scrollTop > 0 || refreshing) return;
+    if (startPointRef.current === null) return;
 
     const touchY = e.targetTouches[0].clientY;
-    const diff = touchY - startPoint;
+    const diff = touchY - startPointRef.current;
 
     if (diff > 0) {
       // Rubber band resistance effect
@@ -60,14 +73,14 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
   };
 
   const handleTouchEnd = () => {
-    if (!startPoint) return;
+    if (startPointRef.current === null) return;
 
     if (pullChange > pullThreshold) {
       initLoading();
     } else {
       setPullChange(0);
     }
-    setStartPoint(0);
+    startPointRef.current = null;
   };
 
   // Calculate progress for visual feedback

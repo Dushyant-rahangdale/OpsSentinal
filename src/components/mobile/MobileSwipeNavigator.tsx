@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { MOBILE_NAV_ITEMS } from '@/components/mobile/mobileNavItems';
+import { MOBILE_NAV_ITEMS, MOBILE_MORE_ROUTES } from '@/components/mobile/mobileNavItems';
 
 type MobileSwipeNavigatorProps = {
   children: ReactNode;
@@ -21,10 +21,19 @@ const isInteractiveTarget = (target: EventTarget | null) => {
 };
 
 const resolveActiveIndex = (pathname: string) => {
-  return MOBILE_NAV_ITEMS.findIndex(item => {
+  const directIndex = MOBILE_NAV_ITEMS.findIndex(item => {
     if (item.href === '/m') return pathname === '/m';
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
   });
+  if (directIndex >= 0) return directIndex;
+  const moreIndex = MOBILE_NAV_ITEMS.findIndex(item => item.href === '/m/more');
+  if (
+    moreIndex >= 0 &&
+    MOBILE_MORE_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`))
+  ) {
+    return moreIndex;
+  }
+  return -1;
 };
 
 export default function MobileSwipeNavigator({ children }: MobileSwipeNavigatorProps) {
@@ -105,18 +114,26 @@ export default function MobileSwipeNavigator({ children }: MobileSwipeNavigatorP
       if (navigator?.vibrate) {
         navigator.vibrate(12);
       }
+      if (navTimeout.current) {
+        clearTimeout(navTimeout.current);
+      }
       navTimeout.current = setTimeout(() => {
         router.push(MOBILE_NAV_ITEMS[activeIndex + 1].href);
         setSnapDirection(null);
+        navTimeout.current = null;
       }, SWIPE_NAV_DELAY_MS);
     } else if (dx > 0 && activeIndex > 0) {
       setSnapDirection('right');
       if (navigator?.vibrate) {
         navigator.vibrate(12);
       }
+      if (navTimeout.current) {
+        clearTimeout(navTimeout.current);
+      }
       navTimeout.current = setTimeout(() => {
         router.push(MOBILE_NAV_ITEMS[activeIndex - 1].href);
         setSnapDirection(null);
+        navTimeout.current = null;
       }, SWIPE_NAV_DELAY_MS);
     }
   };

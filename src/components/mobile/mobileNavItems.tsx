@@ -8,6 +8,16 @@ export type MobileNavItem = {
   hasBadge?: boolean;
 };
 
+export const MOBILE_MORE_ROUTES = [
+  '/m/teams',
+  '/m/users',
+  '/m/schedules',
+  '/m/policies',
+  '/m/analytics',
+  '/m/postmortems',
+  '/m/status',
+];
+
 export const MOBILE_NAV_ITEMS: MobileNavItem[] = [
   {
     href: '/m',

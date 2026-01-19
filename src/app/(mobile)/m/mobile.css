@@ -611,8 +611,7 @@ body {
     position: absolute;
     bottom: 0;
     left: 0;
-    width: calc(100% / 5);
-    /* 5 nav items */
+    width: calc(100% / var(--mobile-nav-count, 5));
     height: 100%;
     background: linear-gradient(180deg, rgba(var(--primary-rgb, 37, 99, 235), 0.08) 0%, transparent 100%);
     border-radius: 12px 12px 0 0;

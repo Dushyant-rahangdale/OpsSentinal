@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { MOBILE_NAV_ITEMS } from '@/components/mobile/mobileNavItems';
+import { useState, useEffect, type CSSProperties } from 'react';
+import { MOBILE_NAV_ITEMS, MOBILE_MORE_ROUTES } from '@/components/mobile/mobileNavItems';
 
 export default function MobileNav() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
+  const moreIndex = MOBILE_NAV_ITEMS.findIndex(item => item.href === '/m/more');
 
   // Fetch notification count
   useEffect(() => {
@@ -30,26 +31,39 @@ export default function MobileNav() {
     return () => clearInterval(interval);
   }, []);
 
-  const isActive = (href: string) => {
-    if (href === '/m' && pathname === '/m') return true;
-    if (href !== '/m' && pathname.startsWith(href)) return true;
-    return false;
+  const resolveActiveIndex = () => {
+    const directIndex = MOBILE_NAV_ITEMS.findIndex(item => {
+      if (item.href === '/m') return pathname === '/m';
+      return pathname === item.href || pathname.startsWith(`${item.href}/`);
+    });
+    if (directIndex >= 0) return directIndex;
+    if (
+      moreIndex >= 0 &&
+      MOBILE_MORE_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`))
+    ) {
+      return moreIndex;
+    }
+    return -1;
   };
 
   // Calculate active index for slider position
-  const activeIndex = MOBILE_NAV_ITEMS.findIndex(item => isActive(item.href));
+  const activeIndex = resolveActiveIndex();
+  const sliderIndex = activeIndex === -1 ? 0 : activeIndex;
 
   return (
-    <nav className="mobile-nav">
+    <nav
+      className="mobile-nav"
+      style={{ '--mobile-nav-count': MOBILE_NAV_ITEMS.length } as CSSProperties}
+    >
       {/* Animated active indicator */}
       <div
         className="mobile-nav-slider"
         style={{
-          transform: `translateX(${activeIndex * 100}%)`,
+          transform: `translateX(${sliderIndex * 100}%)`,
         }}
       />
       {MOBILE_NAV_ITEMS.map((item, index) => {
-        const active = isActive(item.href);
+        const active = index === activeIndex;
         return (
           <Link
             key={item.href}

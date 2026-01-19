@@ -48,7 +48,8 @@ export default function MobileListControls({
         else params.delete('sort');
       }
 
-      router.replace(`${basePath}?${params.toString()}`);
+      const query = params.toString();
+      router.replace(query ? `${basePath}?${query}` : basePath);
     },
     [basePath, router, searchParams]
   );

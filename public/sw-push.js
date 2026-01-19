@@ -10,7 +10,8 @@ self.addEventListener('push', function (event) {
         body: 'New notification',
         icon: '/icons/android-chrome-192x192.png',
         badge: '/icons/android-chrome-192x192.png',
-        url: '/m/notifications'
+        url: '/m/notifications',
+        actions: undefined
     };
 
     if (event.data) {
@@ -22,10 +23,27 @@ self.addEventListener('push', function (event) {
                 icon: parsed.icon || notificationData.icon,
                 badge: parsed.badge || notificationData.badge,
                 url: parsed.url || parsed.data?.url || notificationData.url,
-                data: parsed.data || {}
+                data: parsed.data || {},
+                actions: parsed.actions || parsed.data?.actions
             };
         } catch (error) {
             console.error('[SW] Error parsing push data:', error);
+        }
+    }
+
+    let resolvedActions;
+    if (notificationData.actions) {
+        if (Array.isArray(notificationData.actions)) {
+            resolvedActions = notificationData.actions;
+        } else if (typeof notificationData.actions === 'string') {
+            try {
+                const parsedActions = JSON.parse(notificationData.actions);
+                if (Array.isArray(parsedActions)) {
+                    resolvedActions = parsedActions;
+                }
+            } catch {
+                resolvedActions = undefined;
+            }
         }
     }
 
@@ -39,12 +57,17 @@ self.addEventListener('push', function (event) {
         },
         tag: 'opsknight-notification',
         requireInteraction: true, // Keep visible on mobile
-        vibrate: [200, 100, 200],
-        actions: [
+        vibrate: [200, 100, 200]
+    };
+
+    if (resolvedActions && resolvedActions.length > 0) {
+        options.actions = resolvedActions;
+    } else {
+        options.actions = [
             { action: 'open', title: 'View' },
             { action: 'close', title: 'Dismiss' }
-        ]
-    };
+        ];
+    }
 
     event.waitUntil(
         self.registration.showNotification(notificationData.title, options)

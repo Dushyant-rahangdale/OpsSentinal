@@ -11,13 +11,16 @@ describe('PushNotificationToggle', () => {
       value: function PushManager() {},
       configurable: true,
     });
+    const registration = {
+      pushManager: {
+        getSubscription: vi.fn().mockResolvedValue({}),
+      },
+    };
     Object.defineProperty(navigator, 'serviceWorker', {
       value: {
-        ready: Promise.resolve({
-          pushManager: {
-            getSubscription: vi.fn().mockResolvedValue({}),
-          },
-        }),
+        getRegistration: vi.fn().mockResolvedValue(null),
+        register: vi.fn().mockResolvedValue(registration),
+        ready: Promise.resolve(registration),
       },
       configurable: true,
     });

@@ -13,7 +13,8 @@ self.addEventListener('push', function (event) {
         body: 'New notification',
         icon: '/icons/android-chrome-192x192.png',
         badge: '/icons/android-chrome-192x192.png',
-        url: '/m/notifications'
+        url: '/m/notifications',
+        actions: undefined
     };
 
     if (event.data) {
@@ -21,6 +22,23 @@ self.addEventListener('push', function (event) {
             data = event.data.json();
         } catch (e) {
             console.error('[Service Worker] Failed to parse push data', e);
+        }
+    }
+
+    let resolvedActions;
+    const rawActions = data.actions || data.data?.actions;
+    if (rawActions) {
+        if (Array.isArray(rawActions)) {
+            resolvedActions = rawActions;
+        } else if (typeof rawActions === 'string') {
+            try {
+                const parsedActions = JSON.parse(rawActions);
+                if (Array.isArray(parsedActions)) {
+                    resolvedActions = parsedActions;
+                }
+            } catch {
+                resolvedActions = undefined;
+            }
         }
     }
 
@@ -34,8 +52,12 @@ self.addEventListener('push', function (event) {
         },
         tag: data.tag || 'opsknight-notification',
         requireInteraction: true, // Keep notification visible on mobile
-        vibrate: [200, 100, 200], // Vibration pattern
+        vibrate: [200, 100, 200] // Vibration pattern
     };
+
+    if (resolvedActions && resolvedActions.length > 0) {
+        options.actions = resolvedActions;
+    }
 
     event.waitUntil(
         self.registration.showNotification(data.title, options)
