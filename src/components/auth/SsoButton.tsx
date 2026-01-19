@@ -2,7 +2,7 @@
 
 import Spinner from '@/components/ui/Spinner';
 
-type ProviderType = 'google' | 'okta' | 'azure' | 'auth0' | 'custom' | null | undefined;
+export type ProviderType = 'google' | 'okta' | 'azure' | 'auth0' | 'custom' | null | undefined;
 
 type Props = {
   providerType?: ProviderType;
