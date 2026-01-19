@@ -38,6 +38,7 @@ export interface PushSettings {
   vapidPublicKey?: string;
   vapidPrivateKey?: string;
   vapidSubject?: string;
+  vapidKeyHistory?: Array<{ publicKey: string; privateKey: string }>;
 }
 
 // WhatsApp Settings

@@ -210,15 +210,9 @@ export default function ProviderCard({
     config.vapidPublicKey.trim() !== '' &&
     typeof config.vapidPrivateKey === 'string' &&
     config.vapidPrivateKey.trim() !== '';
+  const legacyKeyCount = Array.isArray(config.vapidKeyHistory) ? config.vapidKeyHistory.length : 0;
 
   const handleGenerateVapid = async () => {
-    if (hasVapidKeys) {
-      const confirmed = window.confirm(
-        'Regenerating VAPID keys will invalidate existing push subscriptions. Users will need to re-enable push notifications. Continue?'
-      );
-      if (!confirmed) return;
-    }
-
     setIsGenerating(true);
     setGenerateNotice(null);
     setGenerateError(null);
@@ -227,7 +221,11 @@ export default function ProviderCard({
     try {
       const { generateVapidKeys } = await import('@/app/(app)/settings/system/actions');
       const subjectValue = typeof config.vapidSubject === 'string' ? config.vapidSubject : '';
-      const result = await generateVapidKeys(subjectValue);
+      const result = await generateVapidKeys({
+        subject: subjectValue,
+        rotate: hasVapidKeys,
+        keepPrevious: true,
+      });
 
       setConfig(prev => ({
         ...prev,
@@ -237,7 +235,9 @@ export default function ProviderCard({
       }));
 
       setGenerateNotice(
-        'New VAPID keys generated and saved. Existing subscriptions must re-enable push.'
+        hasVapidKeys
+          ? 'Keys rotated. Existing devices continue to work; new devices use the latest key.'
+          : 'VAPID keys generated and saved.'
       );
     } catch (err) {
       setGenerateError(
@@ -313,8 +313,8 @@ export default function ProviderCard({
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">VAPID keys</p>
                     <p className="text-xs text-muted-foreground">
-                      Generate a key pair for web push. Regenerating invalidates existing
-                      subscriptions.
+                      Generate or rotate the key pair for web push. Rotations keep existing devices
+                      working by retaining previous keys.
                     </p>
                   </div>
                   <Button
@@ -326,9 +326,14 @@ export default function ProviderCard({
                     className="gap-2"
                   >
                     {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {hasVapidKeys ? 'Regenerate keys' : 'Generate keys'}
+                    {hasVapidKeys ? 'Rotate keys' : 'Generate keys'}
                   </Button>
                 </div>
+                {hasVapidKeys && (
+                  <div className="text-xs text-muted-foreground">
+                    Legacy keys retained: {legacyKeyCount}
+                  </div>
+                )}
                 {generateNotice && (
                   <Alert className="bg-green-50 border-green-200">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />

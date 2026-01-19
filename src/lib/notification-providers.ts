@@ -352,6 +352,7 @@ export async function getPushConfig(): Promise<PushConfig> {
           vapidPublicKey: config.vapidPublicKey,
           vapidPrivateKey: config.vapidPrivateKey,
           vapidSubject: config.vapidSubject,
+          vapidKeyHistory: Array.isArray(config.vapidKeyHistory) ? config.vapidKeyHistory : [],
         };
       }
     }

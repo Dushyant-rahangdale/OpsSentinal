@@ -83,7 +83,11 @@ export async function updateNotificationProvider(
 /**
  * Generate and persist VAPID keys for Web Push
  */
-export async function generateVapidKeys(existingSubject?: string) {
+export async function generateVapidKeys(options?: {
+  subject?: string;
+  rotate?: boolean;
+  keepPrevious?: boolean;
+}) {
   try {
     await assertAdmin();
   } catch (error) {
@@ -94,19 +98,41 @@ export async function generateVapidKeys(existingSubject?: string) {
 
   const { generateVAPIDKeys } = await import('web-push');
   const { publicKey, privateKey } = generateVAPIDKeys();
-  const subject = existingSubject?.trim() || 'mailto:admin@example.com';
+  const subject = options?.subject?.trim() || 'mailto:admin@example.com';
 
   const user = await getCurrentUser();
   const existing = await prisma.notificationProvider.findUnique({
     where: { provider: 'web-push' },
   });
   const existingConfig = (existing?.config as Record<string, unknown>) || {};
+  const previousKeys = Array.isArray(existingConfig.vapidKeyHistory)
+    ? (existingConfig.vapidKeyHistory as Array<{ publicKey: string; privateKey: string }>)
+    : [];
+
+  const shouldRotate = !!options?.rotate;
+  const keepPrevious = options?.keepPrevious !== false;
+  const nextHistory =
+    shouldRotate && keepPrevious && existingConfig.vapidPublicKey
+      ? [
+          {
+            publicKey: String(existingConfig.vapidPublicKey),
+            privateKey: String(existingConfig.vapidPrivateKey || ''),
+          },
+          ...previousKeys,
+        ]
+      : previousKeys;
 
   const nextConfig = {
     ...existingConfig,
     vapidPublicKey: publicKey,
     vapidPrivateKey: privateKey,
     vapidSubject: subject,
+    vapidKeyHistory: nextHistory
+      .filter(entry => entry.publicKey && entry.privateKey)
+      .filter(
+        (entry, index, all) => all.findIndex(item => item.publicKey === entry.publicKey) === index
+      )
+      .slice(0, 3),
   };
 
   await prisma.notificationProvider.upsert({

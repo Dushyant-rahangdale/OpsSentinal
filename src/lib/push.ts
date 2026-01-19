@@ -70,7 +70,9 @@ export async function sendPush(
     // Production: Use configured provider
     let successCount = 0;
     const errorMessages: string[] = [];
-    const resolveVapidDetails = () => {
+    const resolveVapidDetailsList = () => {
+      const details: { subject: string; publicKey: string; privateKey: string }[] = [];
+
       if (
         pushConfig.provider === 'web-push' &&
         pushConfig.vapidPublicKey &&
@@ -78,42 +80,62 @@ export async function sendPush(
       ) {
         const publicKey = normalizeVapidKey(pushConfig.vapidPublicKey);
         const privateKey = normalizeVapidKey(pushConfig.vapidPrivateKey);
-        if (!publicKey || !privateKey) {
-          return undefined;
+        if (publicKey && privateKey) {
+          details.push({
+            subject: pushConfig.vapidSubject || 'mailto:admin@localhost',
+            publicKey,
+            privateKey,
+          });
         }
-        return {
-          subject: pushConfig.vapidSubject || 'mailto:admin@localhost',
-          publicKey,
-          privateKey,
-        };
+
+        if (Array.isArray(pushConfig.vapidKeyHistory)) {
+          for (const entry of pushConfig.vapidKeyHistory) {
+            const legacyPublic = normalizeVapidKey(entry.publicKey);
+            const legacyPrivate = normalizeVapidKey(entry.privateKey);
+            if (legacyPublic && legacyPrivate) {
+              details.push({
+                subject: pushConfig.vapidSubject || 'mailto:admin@localhost',
+                publicKey: legacyPublic,
+                privateKey: legacyPrivate,
+              });
+            }
+          }
+        }
+      }
+
+      if (details.length > 0) {
+        return details;
       }
 
       if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
         const publicKey = normalizeVapidKey(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
         const privateKey = normalizeVapidKey(process.env.VAPID_PRIVATE_KEY);
         if (!publicKey || !privateKey) {
-          return undefined;
+          return [];
         }
-        return {
-          subject: process.env.VAPID_SUBJECT || 'mailto:admin@localhost',
-          publicKey,
-          privateKey,
-        };
+        return [
+          {
+            subject: pushConfig.vapidSubject || 'mailto:admin@localhost',
+            subject: process.env.VAPID_SUBJECT || 'mailto:admin@localhost',
+            publicKey,
+            privateKey,
+          },
+        ];
       }
 
-      return undefined;
+      return [];
     };
 
-    const vapidDetails = resolveVapidDetails();
+    const vapidDetailsList = resolveVapidDetailsList();
 
     const sendWebPush = async (device: (typeof devices)[number]) => {
-      if (!vapidDetails) {
+      if (vapidDetailsList.length === 0) {
         errorMessages.push(`Device ${device.deviceId}: VAPID keys not configured`);
         return;
       }
 
+      const subscription = JSON.parse(device.token);
       try {
-        const subscription = JSON.parse(device.token);
         const payload = JSON.stringify({
           title: options.title,
           body: options.body,
@@ -123,12 +145,52 @@ export async function sendPush(
           url: options.data?.url || '/m',
           actions: options.data?.actions ? JSON.parse(options.data.actions) : undefined,
         });
-        await webpush.sendNotification(subscription, payload, { vapidDetails });
-        await prisma.userDevice.update({
-          where: { id: device.id },
-          data: { lastUsed: new Date() },
-        });
-        successCount++;
+        let sent = false;
+        let lastErrorMessage = 'Unknown error';
+
+        for (const vapidDetails of vapidDetailsList) {
+          try {
+            await webpush.sendNotification(subscription, payload, { vapidDetails });
+            await prisma.userDevice.update({
+              where: { id: device.id },
+              data: { lastUsed: new Date() },
+            });
+            successCount++;
+            sent = true;
+            break;
+          } catch (error: unknown) {
+            const statusCode =
+              typeof error === 'object' && error !== null && 'statusCode' in error
+                ? (error as { statusCode?: number }).statusCode
+                : undefined;
+            const errorMessage =
+              typeof error === 'object' && error !== null && 'message' in error
+                ? String((error as { message?: unknown }).message ?? '')
+                : 'Unknown error';
+            lastErrorMessage = errorMessage;
+
+            if (statusCode === 410 || statusCode === 404) {
+              await prisma.userDevice.delete({ where: { id: device.id } });
+              errorMessages.push(`Device ${device.deviceId}: Subscription expired (removed)`);
+              return;
+            }
+
+            const shouldRetry =
+              statusCode === 401 ||
+              statusCode === 403 ||
+              errorMessage.toLowerCase().includes('vapid') ||
+              errorMessage.toLowerCase().includes('authorization');
+
+            if (!shouldRetry) {
+              errorMessages.push(`Device ${device.deviceId}: ${errorMessage}`);
+              return;
+            }
+          }
+        }
+
+        if (!sent) {
+          errorMessages.push(`Device ${device.deviceId}: ${lastErrorMessage}`);
+        }
       } catch (error: unknown) {
         const statusCode =
           typeof error === 'object' && error !== null && 'statusCode' in error
@@ -157,7 +219,7 @@ export async function sendPush(
       return { success: false, error: 'No web push subscriptions found for user' };
     }
 
-    if (!vapidDetails) {
+    if (vapidDetailsList.length === 0) {
       return { success: false, error: 'VAPID keys not configured' };
     }
 
