@@ -67,7 +67,10 @@ export default function PolicyForm() {
         showToast('Policy created successfully', 'success');
         // The action likely redirects, but if not:
         // router.push('/policies');
-      } catch (error) {
+      } catch (error: any) {
+        if (error.message === 'NEXT_REDIRECT' || error.digest?.startsWith('NEXT_REDIRECT')) {
+          throw error;
+        }
         showToast('Failed to create policy', 'error');
       }
     });

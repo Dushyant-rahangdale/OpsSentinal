@@ -39,7 +39,7 @@ export default async function SecuritySettingsPage() {
   const isAdmin = (session?.user as any)?.role === 'ADMIN'; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   return (
-    <div className="space-y-6 [zoom:0.7]">
+    <div className="space-y-6">
       <SettingsPageHeader
         title="Security"
         description="Control how you sign in and monitor account activity."

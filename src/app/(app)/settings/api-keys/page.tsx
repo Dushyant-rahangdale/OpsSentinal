@@ -23,7 +23,7 @@ export default async function ApiKeysSettingsPage() {
     : [];
 
   return (
-    <div className="space-y-6 [zoom:0.7]">
+    <div className="space-y-6">
       <SettingsPageHeader
         title="API Keys"
         description="Generate keys for automation and integrations."

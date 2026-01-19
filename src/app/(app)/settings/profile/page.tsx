@@ -38,7 +38,7 @@ export default async function ProfileSettingsPage() {
     : null;
 
   return (
-    <div className="space-y-6 [zoom:0.7]">
+    <div className="space-y-6">
       <SettingsPageHeader
         title="Profile"
         description="Identity details tied to your OpsKnight account."

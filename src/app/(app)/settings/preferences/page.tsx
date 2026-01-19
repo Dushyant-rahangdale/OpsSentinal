@@ -26,7 +26,7 @@ export default async function PreferencesSettingsPage() {
     : null;
 
   return (
-    <div className="space-y-6 [zoom:0.7]">
+    <div className="space-y-6">
       <SettingsPageHeader
         title="Preferences"
         description="Personalize how OpsKnight appears and notifies you."

@@ -4,9 +4,9 @@ import { logger } from '@/lib/logger';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalState } from '@/hooks/useModalState';
+import { Command as CommandPrimitive } from 'cmdk';
 import {
   Command,
-  CommandInput,
   CommandList,
   CommandEmpty,
   CommandGroup,
@@ -270,38 +270,44 @@ export default function SidebarSearch() {
     <Command shouldFilter={false} className="overflow-visible bg-transparent border-0 shadow-none">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div className="relative w-full md:w-64">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 pointer-events-none" />
-            <CommandInput
-              ref={inputRef}
-              placeholder="Search..."
-              value={query}
-              onValueChange={val => {
-                setQuery(val);
-                if (val.trim().length > 0 && !open) setOpen(true);
-                if (val.trim().length === 0 && open) setOpen(false);
-              }}
-              onFocus={() => {
-                if (query.length > 0 || recentSearches.length > 0 || QUICK_ACTIONS.length > 0) {
-                  setOpen(true);
-                }
-              }}
-              className="pl-9 pr-12 h-9 w-full rounded-md border border-input bg-muted/50 focus:ring-2 focus:ring-ring focus:bg-background transition-all"
-            />
-            {isLoading ? (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin text-muted-foreground" />
-            ) : (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 opacity-50">
-                <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded bg-background px-1.5 font-mono text-[10px] font-medium shadow-sm border flex">
-                  <span className="text-xs">{shortcutKey}</span>K
-                </kbd>
-              </div>
-            )}
+          <div className="relative w-full max-w-[420px]">
+            {/* 
+              Redesign: Flex container mimicking the input style. 
+              The actual input is transparent and sits next to the icon.
+            */}
+            <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 focus-within:ring-2 focus-within:ring-ring focus-within:bg-background transition-all">
+              <SearchIcon className="mr-2 h-4 w-4 shrink-0 opacity-50 text-muted-foreground" />
+              <CommandPrimitive.Input
+                ref={inputRef}
+                placeholder="Search..."
+                value={query}
+                onValueChange={val => {
+                  setQuery(val);
+                  if (val.trim().length > 0 && !open) setOpen(true);
+                  if (val.trim().length === 0 && open) setOpen(false);
+                }}
+                onFocus={() => {
+                  if (query.length > 0 || recentSearches.length > 0 || QUICK_ACTIONS.length > 0) {
+                    setOpen(true);
+                  }
+                }}
+                className="flex h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              {isLoading ? (
+                <Loader2 className="ml-2 h-3 w-3 animate-spin text-muted-foreground" />
+              ) : (
+                <div className="ml-2 hidden sm:flex items-center gap-1 opacity-50">
+                  <kbd className="pointer-events-none h-5 select-none items-center gap-1 rounded bg-background px-1.5 font-mono text-[10px] font-medium shadow-sm border flex">
+                    <span className="text-xs">{shortcutKey}</span>K
+                  </kbd>
+                </div>
+              )}
+            </div>
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="p-0 w-[320px] md:w-[480px] overflow-hidden"
-          align="start"
+          className="p-0 w-[var(--radix-popover-trigger-width)] overflow-hidden"
+          align="center"
           sideOffset={8}
           onOpenAutoFocus={(e: Event) => e.preventDefault()} // Don't steal focus from input
         >

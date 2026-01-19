@@ -1,12 +1,19 @@
 import { getUserPermissions } from '@/lib/rbac';
 import SettingsShell from '@/components/settings/SettingsShell';
 
-export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
-    const permissions = await getUserPermissions();
+import SettingsZoomWrapper from '@/components/SettingsZoomWrapper';
 
-    return (
-        <SettingsShell isAdmin={permissions.isAdmin} isResponderOrAbove={permissions.isResponderOrAbove}>
-            {children}
-        </SettingsShell>
-    );
+export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
+  const permissions = await getUserPermissions();
+
+  return (
+    <SettingsZoomWrapper>
+      <SettingsShell
+        isAdmin={permissions.isAdmin}
+        isResponderOrAbove={permissions.isResponderOrAbove}
+      >
+        {children}
+      </SettingsShell>
+    </SettingsZoomWrapper>
+  );
 }
