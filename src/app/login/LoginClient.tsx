@@ -158,6 +158,26 @@ export default function LoginClient({
           </div>
         )}
 
+        {ssoEnabled && (
+          <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
+            <SsoButton
+              providerType={ssoProviderType as 'google' | 'okta' | 'azure' | 'auth0' | 'custom'}
+              providerLabel={ssoProviderLabel}
+              onClick={handleSSO}
+              loading={isSSOLoading}
+              disabled={isSubmitting || isSuccess}
+            />
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-bold">
+                <span className="bg-[#0a0a0a] px-3 text-white/30">Or sign in with</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleCredentials} className="space-y-6">
           <div className="space-y-5">
             {/* Email Field */}
