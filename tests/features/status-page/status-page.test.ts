@@ -193,7 +193,6 @@ describe('Status Page Settings Save Flow', () => {
   describe('API Route Handler Logic', () => {
     it('should correctly build updateData from request body', () => {
       const buildUpdateData = (parsed: any) => {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         const {
           organizationName,
           subdomain,
@@ -729,11 +728,26 @@ describe('Status Page Edge Cases', () => {
     });
 
     it('should sanitize HTML in footer text', () => {
-      const sanitize = (text: string) => text.replace(/<[^>]*>/g, '').replace(/&/g, '&amp;');
+      // Use iterative removal to prevent nested tag injection (CodeQL fix)
+      const sanitize = (text: string) => {
+        let previous: string;
+        let current = text;
+        // Iteratively remove HTML tags until no more changes occur
+        do {
+          previous = current;
+          current = current.replace(/<[^>]*>/g, '');
+        } while (current !== previous);
+        // Escape ampersands after tag removal
+        return current.replace(/&/g, '&amp;');
+      };
 
       expect(sanitize('<script>alert("xss")</script>')).toBe('alert("xss")');
       expect(sanitize('Normal footer & company')).toBe('Normal footer &amp; company');
       expect(sanitize('<b>Bold</b> text')).toBe('Bold text');
+      // Test nested tag injection attack
+      expect(sanitize('<<script>script>alert(1)<</script>/script>')).toBe(
+        'script>alert(1)/script>'
+      );
     });
   });
 
