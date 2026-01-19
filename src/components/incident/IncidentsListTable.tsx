@@ -723,9 +723,9 @@ export default function IncidentsListTable({
                       canManage={canManageIncidents}
                       users={users}
                       teams={[]}
-                      team={null}
-                      assigneeId={null}
-                      teamId={null}
+                      team={incident.team}
+                      assigneeId={incident.assigneeId}
+                      teamId={incident.teamId}
                     />
 
                     <div className="self-start sm:self-center" data-no-row-nav="true">

@@ -339,6 +339,15 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                     {incident.assignee.name}
                   </span>
                 </>
+              ) : incident.team ? (
+                <>
+                  <div className="h-6 w-6 rounded-full border border-indigo-200 bg-indigo-100 flex items-center justify-center">
+                    <User className="h-3 w-3 text-indigo-600" />
+                  </div>
+                  <span className="font-semibold text-sm truncate text-slate-900">
+                    {incident.team.name}
+                  </span>
+                </>
               ) : (
                 <span className="text-sm text-slate-400 italic">Unassigned</span>
               )}

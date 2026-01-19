@@ -113,7 +113,14 @@ export const incidentListSelect = {
   urgency: true,
   createdAt: true,
   assigneeId: true,
+  teamId: true,
   service: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  team: {
     select: {
       id: true,
       name: true,
