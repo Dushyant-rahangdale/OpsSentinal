@@ -137,10 +137,17 @@ export default async function Dashboard({
     priority: true,
     createdAt: true,
     assigneeId: true,
+    teamId: true,
     escalationStatus: true,
     currentEscalationStep: true,
     nextEscalationAt: true,
     service: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
+    team: {
       select: {
         id: true,
         name: true,
