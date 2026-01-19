@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { assertAdmin } from '@/lib/rbac';
 import { jsonError, jsonOk } from '@/lib/api-response';
@@ -224,10 +225,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Purge cache for the public status page to ensure updates are reflected immediately
+    revalidatePath('/status');
+    // Also revalidate the root path in case of rewrites or home page links
+    revalidatePath('/');
+
     logger.info('api.status_page.updated', { statusPageId: statusPage.id });
     return jsonOk({ success: true }, 200);
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.update_error', {
       error: error instanceof Error ? error.message : String(error),
     });

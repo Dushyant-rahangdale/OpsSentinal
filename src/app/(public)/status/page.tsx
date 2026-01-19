@@ -1,5 +1,17 @@
 import prisma from '@/lib/prisma';
 import { Metadata } from 'next';
+import {
+  Shield,
+  AlertTriangle,
+  Globe,
+  Key,
+  UserCheck,
+  Database,
+  Activity,
+  Info,
+  ArrowRight,
+  Mail,
+} from 'lucide-react';
 import { getBaseUrl } from '@/lib/env-validation';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
@@ -13,6 +25,7 @@ import StatusPageSubscribe from '@/components/status-page/StatusPageSubscribe';
 import StatusPageMetrics from '@/components/status-page/StatusPageMetrics';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function generateMetadata(): Promise<Metadata> {
   const statusPage = await prisma.statusPage.findFirst({
@@ -73,10 +86,10 @@ export default async function PublicStatusPage() {
       announcements: {
         where: {
           isActive: true,
-          OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
+          OR: [{ type: 'UPDATE' }, { endDate: null }, { endDate: { gte: new Date() } }],
         },
         orderBy: { startDate: 'desc' },
-        take: 10,
+        take: 3,
       },
     },
   });
@@ -1313,9 +1326,7 @@ async function renderStatusPage(statusPage: any) {
                         }}
                         aria-label={`Email ${statusPage.contactEmail}`}
                       >
-                        <span aria-hidden="true" style={{ fontSize: '0.9rem' }}>
-                          ?
-                        </span>
+                        <Mail size={14} />
                         {statusPage.contactEmail}
                       </a>
                     )}
@@ -1336,9 +1347,7 @@ async function renderStatusPage(statusPage: any) {
                         }}
                         aria-label={`Open ${contactUrlLabel || statusPage.contactUrl}`}
                       >
-                        <span aria-hidden="true" style={{ fontSize: '0.9rem' }}>
-                          ?
-                        </span>
+                        <Globe size={14} />
                         {contactUrlLabel || statusPage.contactUrl}
                       </a>
                     )}
