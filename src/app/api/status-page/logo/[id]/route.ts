@@ -52,7 +52,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Invalid logo data.' }, { status: 400 });
     }
 
-    return new NextResponse(parsed.buffer, {
+    const body = new Uint8Array(parsed.buffer);
+    return new NextResponse(body, {
       status: 200,
       headers: {
         'Content-Type': parsed.mime,
