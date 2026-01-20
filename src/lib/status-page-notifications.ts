@@ -165,9 +165,22 @@ function resolveBrandLogoUrl(logoUrl: string | undefined, baseUrl: string): stri
   if (!logoUrl) return undefined;
   if (logoUrl.startsWith('http') || logoUrl.startsWith('data:')) return logoUrl;
   if (!baseUrl || !baseUrl.startsWith('http')) return logoUrl;
-  const normalizedBase = baseUrl.replace(/\/$/, '');
-  const normalizedPath = logoUrl.startsWith('/') ? logoUrl : `/${logoUrl}`;
-  return `${normalizedBase}${normalizedPath}`;
+  try {
+    const parsed = new URL(baseUrl);
+    const basePath =
+      parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.replace(/\/$/, '') : '';
+    const normalizedPath = logoUrl.startsWith('/') ? logoUrl : `/${logoUrl}`;
+    if (basePath.endsWith('/status')) {
+      const prefix = `${parsed.origin}${basePath.slice(0, -'/status'.length)}`;
+      return `${prefix}${normalizedPath}`;
+    }
+    const prefix = basePath ? `${parsed.origin}${basePath}` : parsed.origin;
+    return `${prefix}${normalizedPath}`;
+  } catch {
+    const normalizedBase = baseUrl.replace(/\/$/, '');
+    const normalizedPath = logoUrl.startsWith('/') ? logoUrl : `/${logoUrl}`;
+    return `${normalizedBase}${normalizedPath}`;
+  }
 }
 
 function normalizeSupportUrl(value?: string | null): string | undefined {
