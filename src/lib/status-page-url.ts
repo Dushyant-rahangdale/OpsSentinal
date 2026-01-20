@@ -70,6 +70,15 @@ export function getStatusPagePublicBaseUrl(
   return appOriginWithPath;
 }
 
+export function getStatusPageLogoUrl(
+  config: StatusPageDomainConfig,
+  statusPageId: string,
+  appBaseUrl: string = getBaseUrl()
+): string {
+  const baseUrl = getStatusPagePublicBaseUrl(config, appBaseUrl).replace(/\/$/, '');
+  return `${baseUrl}/api/status-page/logo/${statusPageId}`;
+}
+
 export function getStatusPagePublicUrl(
   config: StatusPageDomainConfig,
   appBaseUrl: string = getBaseUrl()

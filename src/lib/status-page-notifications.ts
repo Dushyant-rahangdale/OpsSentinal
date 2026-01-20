@@ -3,7 +3,7 @@ import { sendEmail } from '@/lib/email';
 import { getStatusPageEmailConfig } from '@/lib/notification-providers';
 import { logger } from '@/lib/logger';
 import { getBaseUrl } from '@/lib/env-validation';
-import { getStatusPagePublicUrl } from '@/lib/status-page-url';
+import { getStatusPageLogoUrl, getStatusPagePublicUrl } from '@/lib/status-page-url';
 import {
   EmailContainer,
   EmailContent,
@@ -92,10 +92,12 @@ export async function notifyStatusPageSubscribers(
           ? (page.branding as Record<string, unknown>)
           : {};
       const statusPageUrl = getStatusPagePublicUrl(page, appBaseUrl);
-      const brandLogoUrl = resolveBrandLogoUrl(
-        typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined,
-        statusPageUrl
-      );
+      const rawLogoUrl = typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined;
+      const logoUrl =
+        rawLogoUrl && rawLogoUrl.startsWith('data:image/')
+          ? getStatusPageLogoUrl(page, page.id, appBaseUrl)
+          : rawLogoUrl;
+      const brandLogoUrl = resolveBrandLogoUrl(logoUrl, statusPageUrl);
       const safeBrandLogoUrl = brandLogoUrl ? escapeHtml(brandLogoUrl) : undefined;
       const subject = formatSubject(displayName, incident.title, eventType);
       const html = formatEmailBody(
@@ -370,10 +372,12 @@ export async function notifyStatusPageSubscribersAnnouncement(
         ? (page.branding as Record<string, unknown>)
         : {};
     const statusPageUrl = getStatusPagePublicUrl(page, appBaseUrl);
-    const brandLogoUrl = resolveBrandLogoUrl(
-      typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined,
-      statusPageUrl
-    );
+    const rawLogoUrl = typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined;
+    const logoUrl =
+      rawLogoUrl && rawLogoUrl.startsWith('data:image/')
+        ? getStatusPageLogoUrl(page, page.id, appBaseUrl)
+        : rawLogoUrl;
+    const brandLogoUrl = resolveBrandLogoUrl(logoUrl, statusPageUrl);
     const safeBrandLogoUrl = brandLogoUrl ? escapeHtml(brandLogoUrl) : undefined;
     const safeDisplayName = escapeHtml(displayName);
     const safeAnnouncementTitle = escapeHtml(announcement.title || 'Announcement');

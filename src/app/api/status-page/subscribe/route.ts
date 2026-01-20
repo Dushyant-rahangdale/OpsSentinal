@@ -7,7 +7,11 @@ import { sendEmail } from '@/lib/email';
 import { getVerificationEmailTemplate } from '@/lib/status-page-email-templates';
 import { getBaseUrl } from '@/lib/env-validation';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { getStatusPagePublicUrl, getStatusPageVerificationUrl } from '@/lib/status-page-url';
+import {
+  getStatusPageLogoUrl,
+  getStatusPagePublicUrl,
+  getStatusPageVerificationUrl,
+} from '@/lib/status-page-url';
 
 /**
  * Subscribe to Status Page Updates
@@ -112,7 +116,11 @@ export async function POST(req: NextRequest) {
           !Array.isArray(statusPage.branding)
             ? (statusPage.branding as Record<string, unknown>)
             : {};
-        const logoUrl = typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined;
+        const rawLogoUrl = typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined;
+        const logoUrl =
+          rawLogoUrl && rawLogoUrl.startsWith('data:image/')
+            ? getStatusPageLogoUrl(statusPage, statusPage.id, appBaseUrl)
+            : rawLogoUrl;
 
         const emailTemplate = getVerificationEmailTemplate({
           statusPageName: statusPage.name,
