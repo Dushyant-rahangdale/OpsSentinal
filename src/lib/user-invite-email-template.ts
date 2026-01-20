@@ -28,11 +28,17 @@ export function getUserInviteEmailTemplate(data: UserInviteEmailData): {
   const subject = 'You are invited to OpsKnight';
   const expiresText = data.expiresInDays ? `${data.expiresInDays} days` : '7 days';
   const greetingName = data.userName || 'there';
+  const resolveLogoUrl = (baseUrl: string) => {
+    const parsed = new URL(baseUrl);
+    const basePath =
+      parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.replace(/\/$/, '') : '';
+    const prefix = basePath ? `${parsed.origin}${basePath}` : parsed.origin;
+    return `${prefix}/logo-compressed.png`;
+  };
   let logoUrl: string | undefined;
   try {
     const baseUrl = getBaseUrl();
-    const parsed = new URL(baseUrl);
-    logoUrl = `${parsed.origin}/logo-compressed.png`;
+    logoUrl = resolveLogoUrl(baseUrl);
   } catch {
     logoUrl = undefined;
   }
