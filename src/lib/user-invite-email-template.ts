@@ -10,6 +10,7 @@ import {
   EmailButton,
   AlertBox,
   EmailFooter,
+  escapeHtml,
 } from '@/lib/email-components';
 import { getBaseUrl } from '@/lib/env-validation';
 
@@ -28,6 +29,9 @@ export function getUserInviteEmailTemplate(data: UserInviteEmailData): {
   const subject = 'You are invited to OpsKnight';
   const expiresText = data.expiresInDays ? `${data.expiresInDays} days` : '7 days';
   const greetingName = data.userName || 'there';
+  const safeGreetingName = escapeHtml(greetingName);
+  const safeInvitedBy = data.invitedBy ? escapeHtml(data.invitedBy) : '';
+  const safeInviteUrl = escapeHtml(data.inviteUrl);
   const resolveLogoUrl = (baseUrl: string) => {
     const parsed = new URL(baseUrl);
     const basePath =
@@ -42,11 +46,12 @@ export function getUserInviteEmailTemplate(data: UserInviteEmailData): {
   } catch {
     logoUrl = undefined;
   }
+  const safeLogoUrl = logoUrl ? escapeHtml(logoUrl) : undefined;
 
   const content = `
         ${EmailHeader('You are invited', 'Activate your OpsKnight account', {
           headerGradient: 'linear-gradient(135deg, #0b0b0f 0%, #111827 45%, #0f172a 100%)',
-          logoUrl,
+          logoUrl: safeLogoUrl,
         })}
         ${EmailContent(`
             <div style="text-align: center; margin-bottom: 28px;">
@@ -54,10 +59,10 @@ export function getUserInviteEmailTemplate(data: UserInviteEmailData): {
                     <span style="font-size: 34px; filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.25));">🚀</span>
                 </div>
                 <h2 style="margin: 0 0 10px 0; color: #111827; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">
-                    Welcome, ${greetingName}
+                    Welcome, ${safeGreetingName}
                 </h2>
                 <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
-                    You have been invited${data.invitedBy ? ` by <strong>${data.invitedBy}</strong>` : ''} to join OpsKnight.
+                    You have been invited${safeInvitedBy ? ` by <strong>${safeInvitedBy}</strong>` : ''} to join OpsKnight.
                 </p>
             </div>
 
@@ -65,7 +70,7 @@ export function getUserInviteEmailTemplate(data: UserInviteEmailData): {
                 <p style="margin: 0 0 20px 0; color: #e2e8f0 !important; font-size: 15px; line-height: 1.7; text-align: center;">
                     Set your password to activate your account and access the OpsKnight console.
                 </p>
-                ${EmailButton('Set up your account →', data.inviteUrl, {
+                ${EmailButton('Set up your account →', safeInviteUrl, {
                   buttonBackground: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
                   buttonShadow: '0 10px 24px rgba(37, 99, 235, 0.35)',
                 })}
@@ -79,7 +84,7 @@ export function getUserInviteEmailTemplate(data: UserInviteEmailData): {
                     Button not working?
                 </p>
                 <p style="margin: 0; color: #9ca3af; font-size: 13px; line-height: 1.6; word-break: break-all;">
-                    Copy and paste this link: <a href="${data.inviteUrl}" style="color: #2563eb; text-decoration: none;">${data.inviteUrl}</a>
+                    Copy and paste this link: <a href="${safeInviteUrl}" style="color: #2563eb; text-decoration: none;">${safeInviteUrl}</a>
                 </p>
             </div>
 
