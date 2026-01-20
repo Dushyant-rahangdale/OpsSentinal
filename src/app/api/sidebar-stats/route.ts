@@ -69,7 +69,11 @@ export async function GET() {
         lowIncidentsCount,
         ...retentionInfo,
       },
-      200
+      200,
+      {
+        // Safe caching: 10 second browser cache, allows stale for 30 seconds while revalidating
+        'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+      }
     );
   } catch (error) {
     logger.error('api.sidebar_stats.error', {

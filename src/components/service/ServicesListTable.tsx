@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ import {
   Globe,
   Shield,
   Users,
+  Loader2,
 } from 'lucide-react';
 
 export type ServiceListItem = {
@@ -97,6 +98,8 @@ export default function ServicesListTable({
   pagination,
 }: ServicesListTableProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
 
   const totalItems = pagination?.totalItems ?? services.length;
   const showingFrom =
@@ -151,22 +154,38 @@ export default function ServicesListTable({
                   'focus-within:ring-2 focus-within:ring-primary/20',
                   'border-slate-200',
                   statusAccentClass[service.dynamicStatus] ?? 'border-l-slate-300',
-                  'border-l-4'
+                  'border-l-4',
+                  navigatingId === service.id && 'opacity-70 pointer-events-none'
                 )}
                 onClick={e => {
                   const target = e.target as HTMLElement;
                   if (target.closest('[data-no-row-nav="true"]')) return;
-                  router.push(`/services/${service.id}`);
+                  setNavigatingId(service.id);
+                  startTransition(() => {
+                    router.push(`/services/${service.id}`);
+                  });
                 }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    router.push(`/services/${service.id}`);
+                    setNavigatingId(service.id);
+                    startTransition(() => {
+                      router.push(`/services/${service.id}`);
+                    });
                   }
                 }}
               >
+                {/* Loading overlay */}
+                {navigatingId === service.id && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-2xl">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm font-medium text-primary">Opening...</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-4 items-start p-3 md:p-4">
                   {/* Icon/Avatar Placeholder if needed, or just status indicator */}
 

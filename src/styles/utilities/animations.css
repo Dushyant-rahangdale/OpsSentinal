@@ -177,3 +177,18 @@
     background-size: 200px 100%;
     animation: skeleton-wave 1.6s linear infinite;
 }
+
+/* Shimmer effect for premium loading states */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.animate-shimmer {
+    animation: shimmer 2s infinite;
+}

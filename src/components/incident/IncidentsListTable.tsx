@@ -48,6 +48,7 @@ import {
   CheckSquare,
   XCircle,
   FileSpreadsheet,
+  Loader2,
 } from 'lucide-react';
 
 type IncidentsListTableProps = {
@@ -99,6 +100,7 @@ export default function IncidentsListTable({
   const [bulkAction, setBulkAction] = useState<BulkActionMode>(null);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
 
   const totalItems = pagination?.totalItems ?? incidents.length;
   const showingFrom =
@@ -621,22 +623,38 @@ export default function IncidentsListTable({
                     'border-slate-200',
                     statusAccentClass[incidentStatus] ?? 'border-l-slate-300',
                     'border-l-4',
-                    isSelected && 'ring-2 ring-primary/20 border-primary/40 bg-primary/5'
+                    isSelected && 'ring-2 ring-primary/20 border-primary/40 bg-primary/5',
+                    navigatingId === incident.id && 'opacity-70 pointer-events-none'
                   )}
                   onClick={e => {
                     const target = e.target as HTMLElement;
                     if (target.closest('[data-no-row-nav="true"]')) return;
-                    router.push(`/incidents/${incident.id}`);
+                    setNavigatingId(incident.id);
+                    startTransition(() => {
+                      router.push(`/incidents/${incident.id}`);
+                    });
                   }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={e => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      router.push(`/incidents/${incident.id}`);
+                      setNavigatingId(incident.id);
+                      startTransition(() => {
+                        router.push(`/incidents/${incident.id}`);
+                      });
                     }
                   }}
                 >
+                  {/* Loading overlay */}
+                  {navigatingId === incident.id && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-2xl">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm font-medium text-primary">Opening...</span>
+                      </div>
+                    </div>
+                  )}
                   <div className={cn('flex gap-3 items-start', rowPad)}>
                     {canManageIncidents && (
                       <div data-no-row-nav="true" className="pt-1">

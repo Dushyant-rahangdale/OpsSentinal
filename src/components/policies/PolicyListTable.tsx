@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ import {
   LayoutList,
   Clock,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -39,8 +40,8 @@ type PolicyListTableProps = {
 
 export default function PolicyListTable({ policies, canManagePolicies }: PolicyListTableProps) {
   const router = useRouter();
-  // We can add selection logic effectively if we need bulk actions later,
-  // currently we'll just focus on the list presentation.
+  const [isPending, startTransition] = useTransition();
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
 
   const titleText = 'text-sm';
   const metaText = 'text-xs';
@@ -71,22 +72,38 @@ export default function PolicyListTable({ policies, canManagePolicies }: PolicyL
             'group relative rounded-2xl border bg-white shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-all',
             'hover:shadow-md hover:-translate-y-[1px]',
             'focus-within:ring-2 focus-within:ring-primary/20',
-            'border-slate-200'
+            'border-slate-200',
+            navigatingId === policy.id && 'opacity-70 pointer-events-none'
           )}
           onClick={e => {
             const target = e.target as HTMLElement;
             if (target.closest('[data-no-row-nav="true"]')) return;
-            router.push(`/policies/${policy.id}`);
+            setNavigatingId(policy.id);
+            startTransition(() => {
+              router.push(`/policies/${policy.id}`);
+            });
           }}
           role="button"
           tabIndex={0}
           onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              router.push(`/policies/${policy.id}`);
+              setNavigatingId(policy.id);
+              startTransition(() => {
+                router.push(`/policies/${policy.id}`);
+              });
             }
           }}
         >
+          {/* Loading overlay */}
+          {navigatingId === policy.id && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-2xl">
+              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm font-medium text-primary">Opening...</span>
+              </div>
+            </div>
+          )}
           <div className={cn('flex gap-3 items-start', rowPad)}>
             {/* Main Content */}
             <div className="min-w-0 flex-1 space-y-2">

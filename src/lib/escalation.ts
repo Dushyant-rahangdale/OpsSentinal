@@ -197,6 +197,11 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     return { escalated: false, reason: 'No escalation policy configured' };
   }
 
+  // Check if escalation is already completed - prevent re-triggering
+  if (incident.escalationStatus === 'COMPLETED') {
+    return { escalated: false, reason: 'Escalation already completed' };
+  }
+
   const policy = incident.service.policy;
   const policySteps = policy.steps;
 
@@ -634,12 +639,28 @@ export async function processPendingEscalations(
       if (result.escalated) {
         processed++;
       } else {
+        // Benign reasons that shouldn't change escalation status
+        const benignReason = (result.reason || '').toLowerCase();
+        const isBenign =
+          benignReason.includes('already in progress') ||
+          benignReason.includes('scheduled') ||
+          benignReason.includes('already completed');
+
+        if (isBenign) {
+          // Don't modify incident state - another process is handling it or it's already done
+          continue;
+        }
+
         // If escalation failed or completed, update status
         await prisma.incident.update({
           where: { id: incident.id },
           data: {
             escalationStatus:
-              result.reason?.includes('exhausted') || result.reason?.includes('completed')
+              benignReason.includes('exhausted') ||
+              benignReason.includes('completed') ||
+              benignReason.includes('no escalation policy') ||
+              benignReason.includes('no users to notify') ||
+              benignReason.includes('invalid target')
                 ? 'COMPLETED'
                 : 'ESCALATING',
             nextEscalationAt: null,
