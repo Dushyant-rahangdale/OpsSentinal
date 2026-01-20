@@ -82,7 +82,7 @@ export default function DashboardExport({ incidents, filters, metrics }: ExportP
         incident.status,
         incident.urgency || 'N/A',
         incident.service?.name || 'N/A',
-        incident.assignee?.name || 'Unassigned',
+        incident.assignee?.name || incident.team?.name || 'Unassigned',
         formatDateTime(incident.createdAt, userTimeZone, { format: 'datetime' }),
       ];
       csvRows.push(row.join(','));

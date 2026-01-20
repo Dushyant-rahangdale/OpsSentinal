@@ -23,6 +23,7 @@ type Incident = {
   urgency?: string;
   service: { name: string };
   assignee: { name: string; avatarUrl?: string | null; gender?: string | null } | null;
+  team?: { name: string } | null;
   createdAt: Date;
 };
 
@@ -490,6 +491,10 @@ export default memo(function IncidentTable({
                               {incident.assignee.name}
                             </span>
                           </div>
+                        ) : incident.team ? (
+                          <span className="text-secondary-foreground text-sm font-semibold">
+                            {incident.team.name}
+                          </span>
                         ) : (
                           <span className="text-secondary-foreground text-sm font-semibold">
                             Unassigned

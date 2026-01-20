@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getUserPermissions } from '@/lib/rbac';
@@ -66,6 +67,90 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+async function ServiceMetricsSummary({ serviceId }: { serviceId: string }) {
+  const { calculateSLAMetrics } = await import('@/lib/sla-server');
+  const slaWindowDays = 30;
+  const slaMetrics = await calculateSLAMetrics({
+    serviceId,
+    windowDays: slaWindowDays,
+    includeActiveIncidents: true,
+  });
+
+  const activeIncidentsCount = slaMetrics.activeIncidents;
+  const windowTotalIncidents = slaMetrics.totalIncidents;
+  const slaCompliance = slaMetrics.resolveCompliance;
+  const mttr = slaMetrics.mttr ? slaMetrics.mttr / 60 : undefined; // Convert minutes to hours
+
+  const effectiveDurationDays =
+    (slaMetrics.effectiveEnd.getTime() - slaMetrics.effectiveStart.getTime()) /
+    (1000 * 60 * 60 * 24);
+  const incidentsPerMonth =
+    effectiveDurationDays > 0 ? (windowTotalIncidents / effectiveDurationDays) * 30 : 0;
+
+  const mtbfMs = slaMetrics.mtbfMs;
+  const mttrMs = (slaMetrics.mttr || 0) * 60 * 1000;
+  const hasEverHadIncidents = windowTotalIncidents > 0 || activeIncidentsCount > 0;
+
+  const availability =
+    mtbfMs && mtbfMs > 0 ? (mtbfMs / (mtbfMs + mttrMs)) * 100 : !hasEverHadIncidents ? 100 : 0;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6">
+      <Card className="bg-white/10 border-white/20 backdrop-blur">
+        <CardContent className="p-3 md:p-4 text-center">
+          <div className="text-xl md:text-2xl font-extrabold">{availability.toFixed(2)}%</div>
+          <div className="text-[10px] md:text-xs opacity-90">Availability</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-white/10 border-white/20 backdrop-blur">
+        <CardContent className="p-3 md:p-4 text-center">
+          <div className="text-xl md:text-2xl font-extrabold">
+            {mttr !== undefined
+              ? mttr < 1
+                ? `${Math.round(mttr * 60)}m`
+                : mttr < 24
+                  ? `${mttr.toFixed(1)}h`
+                  : `${(mttr / 24).toFixed(1)}d`
+              : '-'}
+          </div>
+          <div className="text-[10px] md:text-xs opacity-90">MTTR</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-white/10 border-white/20 backdrop-blur">
+        <CardContent className="p-3 md:p-4 text-center">
+          <div className="text-xl md:text-2xl font-extrabold">
+            {incidentsPerMonth < 1 ? '<1' : incidentsPerMonth.toFixed(1)}
+          </div>
+          <div className="text-[10px] md:text-xs opacity-90">Incidents / month</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-white/10 border-white/20 backdrop-blur">
+        <CardContent className="p-3 md:p-4 text-center">
+          <div className="text-xl md:text-2xl font-extrabold">
+            {slaCompliance !== null ? `${slaCompliance.toFixed(1)}%` : '-'}
+          </div>
+          <div className="text-[10px] md:text-xs opacity-90">SLA Compliance</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ServiceMetricsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index} className="bg-white/10 border-white/20 backdrop-blur">
+          <CardContent className="p-3 md:p-4 text-center">
+            <div className="mx-auto h-6 md:h-7 w-16 rounded bg-white/25 animate-pulse" />
+            <div className="mx-auto mt-2 h-3 w-24 rounded bg-white/20 animate-pulse" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default async function ServiceDetailPage({ params, searchParams }: ServiceDetailPageProps) {
   const { id } = await params;
   const searchParamsResolved = await searchParams;
@@ -80,7 +165,10 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
       : { status: 'RESOLVED' as const };
 
   // Parallelize data fetching
-  const [serviceRaw, slaMetrics] = await Promise.all([
+  const { calculateSLAMetrics } = await import('@/lib/sla-server');
+  const slaWindowDays = 30;
+
+  const [serviceRaw, totalIncidentCount, slaMetrics] = await Promise.all([
     // 1. Service Data (with filtering for the list)
     prisma.service.findUnique({
       where: { id },
@@ -95,6 +183,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
             assignee: {
               select: { id: true, name: true, email: true, avatarUrl: true, gender: true },
             },
+            team: {
+              select: { id: true, name: true },
+            },
           },
           orderBy: { createdAt: 'desc' },
           skip,
@@ -105,17 +196,12 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
         },
       },
     }),
-
-    // 2. SLA Metrics (30-day window to include active incidents)
-    (async () => {
-      const { calculateSLAMetrics } = await import('@/lib/sla-server');
-      const slaWindowDays = 30;
-      return calculateSLAMetrics({
-        serviceId: id,
-        windowDays: slaWindowDays,
-        includeActiveIncidents: true,
-      });
-    })(),
+    prisma.incident.count({ where: { serviceId: id } }),
+    calculateSLAMetrics({
+      serviceId: id,
+      windowDays: slaWindowDays,
+      includeActiveIncidents: true,
+    }),
   ]);
 
   if (!serviceRaw) {
@@ -125,10 +211,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const service = serviceRaw as any;
 
-  const dynamicStatus = (slaMetrics.dynamicStatus || 'OPERATIONAL') as
-    | 'OPERATIONAL'
-    | 'DEGRADED'
-    | 'CRITICAL';
+  const dynamicStatus = slaMetrics.dynamicStatus;
 
   // Use the filtered count for pagination
   const filteredTotalIncidents = service._count.incidents;
@@ -137,34 +220,8 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
   const permissions = await getUserPermissions();
   const canDeleteService = permissions.isAdmin;
 
-  // Calculate metrics
   const activeIncidentsCount = slaMetrics.activeIncidents;
-  const allTimeTotalIncidents = slaMetrics.totalIncidents; // Correct total for metrics regardless of tab
-
-  const slaCompliance = slaMetrics.resolveCompliance;
-  const mttr = slaMetrics.mttr ? slaMetrics.mttr / 60 : undefined; // Convert minutes to hours
-
-  // Calculate incident frequency (incidents per month) using strictly SLA server window
-  const effectiveDurationDays =
-    (slaMetrics.effectiveEnd.getTime() - slaMetrics.effectiveStart.getTime()) /
-    (1000 * 60 * 60 * 24);
-  const incidentsPerMonth =
-    effectiveDurationDays > 0 ? (allTimeTotalIncidents / effectiveDurationDays) * 30 : 0;
-
-  // Calculate Availability using MTBF (Mean Time Between Failures) relation: Availability = MTBF / (MTBF + MTTR)
-  // Converting MTTR (minutes) to ms for consistent units
-  const mtbfMs = slaMetrics.mtbfMs;
-  const mttrMs = (slaMetrics.mttr || 0) * 60 * 1000;
-
-  // Robust Availability Logic:
-  // 1. If we have MTBF data, use the standard formula.
-  // 2. If we have NO incidents ever (active or historical), 100% availability.
-  // 3. If we have incidents but no MTBF (e.g. only 1 active incident ever), it's 0% (currently down) or undefined.
-  //    Defaulting to 0% for "Service failure with no history" is safer than 100%.
-  const hasEverHadIncidents = allTimeTotalIncidents > 0 || activeIncidentsCount > 0;
-
-  const availability =
-    mtbfMs && mtbfMs > 0 ? (mtbfMs / (mtbfMs + mttrMs)) * 100 : !hasEverHadIncidents ? 100 : 0;
+  const allTimeTotalIncidents = totalIncidentCount;
 
   const deleteServiceWithId = deleteService.bind(null, service.id);
 
@@ -246,44 +303,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6">
-          <Card className="bg-white/10 border-white/20 backdrop-blur">
-            <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-extrabold">{availability.toFixed(2)}%</div>
-              <div className="text-[10px] md:text-xs opacity-90">Availability</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/10 border-white/20 backdrop-blur">
-            <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-extrabold">
-                {mttr !== undefined
-                  ? mttr < 1
-                    ? `${Math.round(mttr * 60)}m`
-                    : mttr < 24
-                      ? `${mttr.toFixed(1)}h`
-                      : `${(mttr / 24).toFixed(1)}d`
-                  : '-'}
-              </div>
-              <div className="text-[10px] md:text-xs opacity-90">MTTR</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/10 border-white/20 backdrop-blur">
-            <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-extrabold">
-                {incidentsPerMonth < 1 ? '<1' : incidentsPerMonth.toFixed(1)}
-              </div>
-              <div className="text-[10px] md:text-xs opacity-90">Incidents / month</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/10 border-white/20 backdrop-blur">
-            <CardContent className="p-3 md:p-4 text-center">
-              <div className="text-xl md:text-2xl font-extrabold">
-                {slaCompliance !== null ? `${slaCompliance.toFixed(1)}%` : '-'}
-              </div>
-              <div className="text-[10px] md:text-xs opacity-90">SLA Compliance</div>
-            </CardContent>
-          </Card>
-        </div>
+        <Suspense fallback={<ServiceMetricsSkeleton />}>
+          <ServiceMetricsSummary serviceId={id} />
+        </Suspense>
       </div>
 
       <Tabs defaultValue={tab} className="space-y-6">
@@ -344,6 +366,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
                 createdAt: i.createdAt,
                 resolvedAt: i.resolvedAt,
                 assignee: i.assignee,
+                team: i.team,
               }))}
               serviceId={id}
             />

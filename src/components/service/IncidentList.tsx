@@ -15,6 +15,7 @@ import {
   Clock,
   CheckCircle2,
   User as UserIcon,
+  Users as UsersIcon,
   Search,
   ArrowRight,
   MoreHorizontal,
@@ -65,6 +66,10 @@ type Incident = {
     email: string;
     avatarUrl?: string | null;
     gender?: string | null;
+  } | null;
+  team: {
+    id: string;
+    name: string;
   } | null;
 };
 
@@ -229,6 +234,15 @@ function IncidentList({ incidents, serviceId }: IncidentListProps) {
                             {incident.assignee.name}
                           </span>
                         </div>
+                      ) : incident.team ? (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-100">
+                          <div className="h-4 w-4 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                            <UsersIcon className="h-2.5 w-2.5" />
+                          </div>
+                          <span className="text-xs text-indigo-700 font-medium max-w-[100px] truncate">
+                            {incident.team.name}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-xs text-slate-400 italic px-2">Unassigned</span>
                       )}
@@ -321,7 +335,9 @@ export default memo(IncidentList, (prevProps, nextProps) => {
         inc.priority === nextProps.incidents[i]?.priority &&
         inc.createdAt.getTime() === nextProps.incidents[i]?.createdAt.getTime() &&
         inc.resolvedAt?.getTime() === nextProps.incidents[i]?.resolvedAt?.getTime() &&
-        inc.assignee?.id === nextProps.incidents[i]?.assignee?.id
+        inc.assignee?.id === nextProps.incidents[i]?.assignee?.id &&
+        inc.team?.id === nextProps.incidents[i]?.team?.id &&
+        inc.team?.name === nextProps.incidents[i]?.team?.name
     )
   );
 });

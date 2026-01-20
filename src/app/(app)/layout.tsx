@@ -121,37 +121,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const canCreate = userRole === 'ADMIN' || userRole === 'RESPONDER';
 
-  const { calculateSLAMetrics } = await import('@/lib/sla-server');
-  // Fail-safe wrapper for global SLA metrics
-  const slaMetrics = await calculateSLAMetrics().catch(err => {
-    logger.error('[App Layout] Failed to load SLA metrics', { component: 'layout', error: err });
-    return {
-      totalIncidents: 0,
-      openCount: 0,
-      acknowledgedCount: 0,
-      resolvedCount: 0,
-      criticalCount: 0,
-      highUrgencyCount: 0,
-      mediumUrgencyCount: 0,
-      lowUrgencyCount: 0,
-      mttr: 0,
-      mttd: 0,
-      ackCompliance: 100,
-      resolveCompliance: 100,
-      statusMix: [],
-      currentShifts: [],
-      unassignedActive: 0,
-      assigneeLoad: [],
-      serviceMetrics: [],
-      activeIncidentSummaries: [],
-      heatmapData: [],
-      isClipped: false,
-      retentionDays: 30,
-    };
-  });
-  const criticalOpenCount = slaMetrics.criticalCount;
-  const mediumOpenCount = slaMetrics.mediumUrgencyCount;
-  const lowOpenCount = slaMetrics.lowUrgencyCount;
+  let criticalOpenCount = 0;
+  let mediumOpenCount = 0;
+  let lowOpenCount = 0;
+
+  try {
+    const openUrgencyCounts = await prisma.incident.groupBy({
+      by: ['urgency'],
+      where: {
+        status: { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] as const },
+      },
+      _count: { _all: true },
+    });
+
+    for (const entry of openUrgencyCounts) {
+      if (entry.urgency === 'HIGH') criticalOpenCount = entry._count._all;
+      else if (entry.urgency === 'MEDIUM') mediumOpenCount = entry._count._all;
+      else if (entry.urgency === 'LOW') lowOpenCount = entry._count._all;
+    }
+  } catch (error) {
+    logger.error('[App Layout] Failed to load incident counts', { component: 'layout', error });
+  }
 
   // Status Logic
   let statusTone: 'ok' | 'warning' | 'danger' = 'ok';

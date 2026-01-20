@@ -14,6 +14,7 @@ type Incident = {
   urgency?: string;
   service: { name: string };
   assignee: { name: string } | null;
+  team?: { name: string } | null;
   createdAt: Date;
 };
 
@@ -259,7 +260,7 @@ export default function IncidentTableMobile({
                 </div>
                 <div style={{ marginBottom: '0.25rem' }}>
                   <strong>Assignee:</strong>{' '}
-                  {incident.assignee ? incident.assignee.name : 'Unassigned'}
+                  {incident.assignee?.name || incident.team?.name || 'Unassigned'}
                 </div>
                 <div>
                   <strong>Created:</strong>{' '}
