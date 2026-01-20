@@ -54,6 +54,9 @@ export function getStatusPagePublicBaseUrl(
 
   const fallbackProtocol = appUrl.protocol || 'https:';
   const appHost = appUrl.host;
+  const appBasePath =
+    appUrl.pathname && appUrl.pathname !== '/' ? appUrl.pathname.replace(/\/$/, '') : '';
+  const appOriginWithPath = appBasePath ? `${appUrl.origin}${appBasePath}` : appUrl.origin;
 
   const customDomainBase = resolveDomainBaseUrl(config.customDomain ?? null, fallbackProtocol);
   if (customDomainBase) return customDomainBase;
@@ -64,7 +67,7 @@ export function getStatusPagePublicBaseUrl(
     return `${fallbackProtocol}//${host}`;
   }
 
-  return appUrl.origin;
+  return appOriginWithPath;
 }
 
 export function getStatusPagePublicUrl(

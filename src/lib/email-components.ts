@@ -457,7 +457,10 @@ function getDefaultLogoUrl(): string | null {
   if (!baseUrl || !baseUrl.startsWith('http')) return null;
   try {
     const parsed = new URL(baseUrl);
-    return `${parsed.origin}/logo-compressed.png`;
+    const basePath =
+      parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.replace(/\/$/, '') : '';
+    const prefix = basePath ? `${parsed.origin}${basePath}` : parsed.origin;
+    return `${prefix}/logo-compressed.png`;
   } catch {
     return `${baseUrl.replace(/\/$/, '')}/logo-compressed.png`;
   }

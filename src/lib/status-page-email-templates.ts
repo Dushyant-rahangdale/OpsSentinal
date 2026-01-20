@@ -37,8 +37,14 @@ function resolveBrandLogoUrl(
   if (!statusPageUrl || !statusPageUrl.startsWith('http')) return logoUrl;
   try {
     const base = new URL(statusPageUrl);
+    const basePath = base.pathname && base.pathname !== '/' ? base.pathname.replace(/\/$/, '') : '';
     const normalizedPath = logoUrl.startsWith('/') ? logoUrl : `/${logoUrl}`;
-    return `${base.origin}${normalizedPath}`;
+    if (basePath.endsWith('/status')) {
+      const prefix = `${base.origin}${basePath.slice(0, -'/status'.length)}`;
+      return `${prefix}${normalizedPath}`;
+    }
+    const prefix = basePath ? `${base.origin}${basePath}` : base.origin;
+    return `${prefix}${normalizedPath}`;
   } catch {
     return logoUrl;
   }
@@ -46,10 +52,17 @@ function resolveBrandLogoUrl(
 
 function resolveStatusPageLink(statusPageUrl: string, incidentUrl?: string): string {
   if (!incidentUrl) return statusPageUrl;
+  if (incidentUrl.startsWith('http://') || incidentUrl.startsWith('https://')) {
+    try {
+      const statusOrigin = new URL(statusPageUrl).origin;
+      const incidentOrigin = new URL(incidentUrl).origin;
+      return statusOrigin === incidentOrigin ? incidentUrl : statusPageUrl;
+    } catch {
+      return statusPageUrl;
+    }
+  }
   try {
-    const statusOrigin = new URL(statusPageUrl).origin;
-    const incidentOrigin = new URL(incidentUrl).origin;
-    return statusOrigin === incidentOrigin ? incidentUrl : statusPageUrl;
+    return new URL(incidentUrl, statusPageUrl).toString();
   } catch {
     return statusPageUrl;
   }
