@@ -71,55 +71,53 @@ export async function sendServiceNotifications(
       return { success: true };
     }
 
-    // Handle SLACK channel
+    // Handle SLACK channel (OAuth + Webhook can both be used if configured)
     if (serviceChannels.includes('SLACK')) {
-      try {
-        // Try Slack API first (if channel is configured)
-        if (incident.service.slackChannel) {
-          const slackResult = await sendSlackMessageToChannel(
-            incident.service.slackChannel,
-            {
-              id: incident.id,
-              title: incident.title,
-              status: incident.status,
-              urgency: incident.urgency,
-              serviceName: incident.service.name,
-              assigneeName: incident.assignee?.name,
-            },
-            eventType === 'triggered'
-              ? 'triggered'
-              : eventType === 'acknowledged'
-                ? 'acknowledged'
-                : eventType === 'resolved'
-                  ? 'resolved'
-                  : 'triggered',
-            true, // includeInteractiveButtons
-            incident.serviceId // Pass serviceId to get correct token
-          );
+      const slackEventType =
+        eventType === 'triggered' || eventType === 'acknowledged' || eventType === 'resolved'
+          ? eventType
+          : null;
 
-          if (!slackResult.success) {
-            errors.push(`Slack channel notification failed: ${slackResult.error}`);
-          }
-        }
-        // Fallback to webhook if channel not configured but webhook URL exists
-        else if (incident.service.slackWebhookUrl && eventType !== 'updated') {
-          await notifySlackForIncident(
-            incidentId,
-            eventType === 'triggered'
-              ? 'triggered'
-              : eventType === 'acknowledged'
-                ? 'acknowledged'
-                : 'resolved'
-          ).catch(err => {
-            errors.push(`Slack webhook notification failed: ${err.message}`);
-          });
-        }
-      } catch (error: any) {
-        logger.error('Slack notification error', {
+      if (!slackEventType) {
+        logger.info('Slack notification skipped for unsupported event type', {
           incidentId,
-          error: error.message,
+          eventType,
         });
-        errors.push(`Slack notification failed: ${error.message}`);
+      } else {
+        try {
+          if (incident.service.slackChannel) {
+            const slackResult = await sendSlackMessageToChannel(
+              incident.service.slackChannel,
+              {
+                id: incident.id,
+                title: incident.title,
+                status: incident.status,
+                urgency: incident.urgency,
+                serviceName: incident.service.name,
+                assigneeName: incident.assignee?.name,
+              },
+              slackEventType,
+              true, // includeInteractiveButtons
+              incident.serviceId // Pass serviceId to get correct token
+            );
+
+            if (!slackResult.success) {
+              errors.push(`Slack channel notification failed: ${slackResult.error}`);
+            }
+          }
+
+          if (incident.service.slackWebhookUrl) {
+            await notifySlackForIncident(incidentId, slackEventType).catch(err => {
+              errors.push(`Slack webhook notification failed: ${err.message}`);
+            });
+          }
+        } catch (error: any) {
+          logger.error('Slack notification error', {
+            incidentId,
+            error: error.message,
+          });
+          errors.push(`Slack notification failed: ${error.message}`);
+        }
       }
     }
 

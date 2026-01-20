@@ -161,8 +161,9 @@ export async function POST(req: NextRequest) {
   });
 
   // Execute escalation policy to assign/notify per policy steps
+  let escalationResult: { escalated?: boolean; reason?: string } | null = null;
   try {
-    await executeEscalation(incident.id);
+    escalationResult = await executeEscalation(incident.id);
   } catch (e) {
     logger.error('api.incident.escalation_failed', {
       error: e instanceof Error ? e.message : String(e),
@@ -204,16 +205,30 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Trigger service-level notifications (Slack, Webhooks)
+  const hasEscalationPolicy = escalationResult?.reason !== 'No escalation policy configured';
+
+  // Trigger service-level notifications (Slack, Webhooks),
+  // or fall back to user notifications when no policy is configured.
   try {
-    const { sendIncidentNotifications } = await import('@/lib/user-notifications');
-    // Run in background, don't await to keep API fast
-    sendIncidentNotifications(incident.id, 'triggered').catch(err => {
-      logger.error('api.incident.service_notification_failed', {
-        error: err.message,
-        incidentId: incident.id,
+    if (hasEscalationPolicy) {
+      const { sendServiceNotifications } = await import('@/lib/service-notifications');
+      // Run in background, don't await to keep API fast
+      sendServiceNotifications(incident.id, 'triggered').catch(err => {
+        logger.error('api.incident.service_notification_failed', {
+          error: err.message,
+          incidentId: incident.id,
+        });
       });
-    });
+    } else {
+      const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+      // Run in background, don't await to keep API fast
+      sendIncidentNotifications(incident.id, 'triggered').catch(err => {
+        logger.error('api.incident.user_notification_failed', {
+          error: err.message,
+          incidentId: incident.id,
+        });
+      });
+    }
   } catch (e) {
     logger.error('api.incident.service_notification_import_failed', {
       error: e instanceof Error ? e.message : String(e),

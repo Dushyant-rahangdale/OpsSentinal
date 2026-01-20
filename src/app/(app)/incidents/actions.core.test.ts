@@ -9,8 +9,8 @@ vi.mock('@/lib/rbac', () => ({
   getCurrentUser: vi.fn().mockResolvedValue({ id: 'user-1', name: 'Test User' }),
 }));
 
-vi.mock('@/lib/user-notifications', () => ({
-  sendIncidentNotifications: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/service-notifications', () => ({
+  sendServiceNotifications: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/escalation', () => ({
