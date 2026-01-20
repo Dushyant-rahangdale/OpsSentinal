@@ -563,13 +563,10 @@ export async function createIncident(formData: FormData) {
   });
 
   // Execute escalation policy if service has one
-  let _escalatedUsers: string[] = [];
+  let escalationResult: { escalated?: boolean; reason?: string } | null = null;
   try {
     const { executeEscalation } = await import('@/lib/escalation');
-    const result = await executeEscalation(incident.id);
-    if (result.escalated && result.notifications) {
-      _escalatedUsers = result.notifications.map((n: any) => n.userId); // eslint-disable-line @typescript-eslint/no-explicit-any
-    }
+    escalationResult = await executeEscalation(incident.id);
   } catch (e) {
     logger.error('Escalation failed', {
       component: 'incidents-actions',
@@ -578,11 +575,18 @@ export async function createIncident(formData: FormData) {
     });
   }
 
-  // Send service-level notifications for new incident
-  // Uses user preferences for each recipient
+  const hasEscalationPolicy = escalationResult?.reason !== 'No escalation policy configured';
+
+  // Send service-level notifications for new incident (Slack/Webhook only),
+  // or fall back to user notifications when no policy is configured.
   try {
-    const { sendIncidentNotifications } = await import('@/lib/user-notifications');
-    await sendIncidentNotifications(incident.id, 'triggered', _escalatedUsers);
+    if (hasEscalationPolicy) {
+      const { sendServiceNotifications } = await import('@/lib/service-notifications');
+      await sendServiceNotifications(incident.id, 'triggered');
+    } else {
+      const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+      await sendIncidentNotifications(incident.id, 'triggered');
+    }
   } catch (e) {
     logger.error('Service notification failed', {
       component: 'incidents-actions',

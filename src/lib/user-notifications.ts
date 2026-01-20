@@ -10,7 +10,6 @@
 
 import prisma from './prisma';
 import { sendNotification, NotificationChannel } from './notifications';
-import { notifySlackForIncident } from './slack';
 import { isChannelAvailable, getEmailConfig } from './notification-providers';
 import { createInAppNotifications } from './in-app-notifications';
 import { logger } from './logger';
@@ -327,13 +326,6 @@ export async function sendIncidentNotifications(
           );
         }
       }
-    }
-
-    // Send service-level Slack notification (if configured legacy way)
-    if (incidentRecord.service.slackWebhookUrl && eventType !== 'updated') {
-      await notifySlackForIncident(incidentId, eventType).catch(err => {
-        errors.push(`Slack notification failed: ${err.message}`);
-      });
     }
 
     // Trigger Service Webhook Integrations (Slack/Generic/Teams)

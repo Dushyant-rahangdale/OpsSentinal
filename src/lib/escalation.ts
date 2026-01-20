@@ -384,6 +384,11 @@ export async function executeEscalation(incidentId: string, stepIndex?: number) 
     notifyOnlyTeamLead
   );
 
+  const manualAssigneeId = incident.assigneeId;
+  if (currentStepIndex === 0 && manualAssigneeId && !targetUserIds.includes(manualAssigneeId)) {
+    targetUserIds.push(manualAssigneeId);
+  }
+
   // Assign the incident immediately when the escalation step runs (before notifications)
   // Assign the incident immediately when the escalation step runs (before notifications)
   await runSerializableTransaction(async tx => {

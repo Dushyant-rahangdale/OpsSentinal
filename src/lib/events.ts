@@ -215,42 +215,71 @@ export async function processEvent(
       });
     }
 
-    // Send service-level notifications (to team members, assignee, etc.)
-    // Uses user preferences for each recipient
-    // Send service-level notifications (to team members, assignee, etc.)
-    // Uses user preferences for each recipient
-    // Send service-level notifications (to team members, assignee, etc.)
-    // Uses user preferences for each recipient
+    // Execute escalation policy, then choose the correct notification path.
     // PERF: Async dispatch (no await) prevents blocking the webhook response
     const notifyStart = performance.now();
-    import('./user-notifications')
-      .then(({ sendIncidentNotifications }) => {
-        sendIncidentNotifications(result.incident.id, 'triggered', [], result.incident)
-          .then(() => {
-            logger.info('api.event.notifications_sent', {
-              latencyMs: performance.now() - notifyStart,
-              incidentId: result.incident.id,
+    executeEscalation(result.incident.id)
+      .then(escalationResult => {
+        const hasEscalationPolicy = escalationResult?.reason !== 'No escalation policy configured';
+
+        if (hasEscalationPolicy) {
+          import('./service-notifications')
+            .then(({ sendServiceNotifications }) => {
+              sendServiceNotifications(result.incident.id, 'triggered')
+                .then(() => {
+                  logger.info('api.event.notifications_sent', {
+                    latencyMs: performance.now() - notifyStart,
+                    incidentId: result.incident.id,
+                  });
+                })
+                .catch(error => {
+                  logger.error('Service notification failed', {
+                    incidentId: result.incident.id,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    latencyMs: performance.now() - notifyStart,
+                  });
+                });
+            })
+            .catch(e => logger.error('Failed to load service-notifications', { error: e }));
+        } else {
+          import('./user-notifications')
+            .then(({ sendIncidentNotifications }) => {
+              sendIncidentNotifications(result.incident.id, 'triggered')
+                .then(() => {
+                  logger.info('api.event.user_notifications_sent', {
+                    latencyMs: performance.now() - notifyStart,
+                    incidentId: result.incident.id,
+                  });
+                })
+                .catch(error => {
+                  logger.error('User notification failed', {
+                    incidentId: result.incident.id,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    latencyMs: performance.now() - notifyStart,
+                  });
+                });
+            })
+            .catch(e => logger.error('Failed to load user-notifications', { error: e }));
+        }
+      })
+      .catch(error => {
+        logger.error('Escalation failed', {
+          incidentId: result.incident.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+
+        import('./service-notifications')
+          .then(({ sendServiceNotifications }) => {
+            sendServiceNotifications(result.incident.id, 'triggered').catch(err => {
+              logger.error('Service notification failed', {
+                incidentId: result.incident.id,
+                error: err instanceof Error ? err.message : 'Unknown error',
+                latencyMs: performance.now() - notifyStart,
+              });
             });
           })
-          .catch(error => {
-            logger.error('Service notification failed', {
-              incidentId: result.incident.id,
-              error: error instanceof Error ? error.message : 'Unknown error',
-              latencyMs: performance.now() - notifyStart,
-            });
-          });
-      })
-      .catch(e => logger.error('Failed to load user-notifications', { error: e }));
-
-    // Execute escalation policy - send notifications via policy steps
-    // Execute escalation policy - send notifications via policy steps
-    // PERF: Async dispatch (no await)
-    executeEscalation(result.incident.id).catch(error => {
-      logger.error('Escalation failed', {
-        incidentId: result.incident.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
+          .catch(e => logger.error('Failed to load service-notifications', { error: e }));
       });
-    });
   }
 
   if (result.action === 'resolved' && result.incident) {
