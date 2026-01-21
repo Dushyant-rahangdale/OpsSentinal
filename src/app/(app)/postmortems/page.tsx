@@ -8,14 +8,14 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
-import PostmortemCard from '@/components/PostmortemCard';
+import PostmortemsListTable from '@/components/postmortem/PostmortemsListTable';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 import { cn } from '@/lib/utils';
 
 export default async function PostmortemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   const session = await getServerSession(await getAuthOptions());
   if (!session) {
@@ -24,8 +24,9 @@ export default async function PostmortemsPage({
 
   const params = await searchParams;
   const status = params.status as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | undefined;
+  const page = params.page ? parseInt(params.page) : 1;
 
-  const postmortems = await getAllPostmortems(status);
+  const { postmortems, pagination } = await getAllPostmortems({ status, page });
   const permissions = await getUserPermissions();
   const canCreate = permissions.isResponderOrAbove;
 
@@ -65,7 +66,7 @@ export default async function PostmortemsPage({
   ]);
 
   return (
-    <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 [zoom:0.8]">
+    <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Metric Panel Header */}
       <div className="bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -166,55 +167,13 @@ export default async function PostmortemsPage({
         </div>
 
         {/* Postmortems List */}
-        {postmortems.length === 0 ? (
-          <Card className="border-dashed shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                <FileText className="w-6 h-6 text-muted-foreground/50" />
-              </div>
-              <h3 className="text-lg font-semibold text-foreground mb-1">No Postmortems Found</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mb-6">
-                {status
-                  ? `There are no ${status.toLowerCase()} postmortems at the moment.`
-                  : 'Get started by creating a postmortem for a resolved incident.'}
-              </p>
-
-              {resolvedIncidentsWithoutPostmortems.length > 0 && (
-                <div className="w-full max-w-sm bg-slate-50 rounded-lg border p-4">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 text-left">
-                    Ready for Postmortem
-                  </p>
-                  <div className="space-y-2">
-                    {resolvedIncidentsWithoutPostmortems.slice(0, 3).map(incident => (
-                      <Link
-                        key={incident.id}
-                        href={`/postmortems/${incident.id}`}
-                        className="flex items-center justify-between p-2 hover:bg-white hover:shadow-sm rounded-md transition-all group border border-transparent hover:border-slate-200"
-                      >
-                        <span className="text-sm font-medium truncate flex-1 text-left">
-                          {incident.title}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                        >
-                          →
-                        </Button>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(400px,1fr))] gap-6">
-            {postmortems.map(postmortem => (
-              <PostmortemCard key={postmortem.id} postmortem={postmortem} />
-            ))}
-          </div>
-        )}
+        {/* Postmortems List */}
+        <PostmortemsListTable
+          postmortems={postmortems}
+          pagination={pagination}
+          userTimeZone={userTimeZone}
+          canManage={canCreate}
+        />
       </div>
     </div>
   );

@@ -120,37 +120,55 @@ export async function getPostmortem(incidentId: string) {
 }
 
 /**
- * Get all postmortems
+ * Get all postmortems with pagination
  */
 export async function getAllPostmortems(
-  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-  limit: number = 50
+  options: {
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    page?: number;
+    limit?: number;
+  } = {}
 ) {
+  const { status, page = 1, limit = 50 } = options;
+  const skip = (page - 1) * limit;
+
   const where = status ? { status } : {};
 
-  const postmortems = await prisma.postmortem.findMany({
-    where,
-    include: {
-      createdBy: {
-        select: { id: true, name: true, email: true },
-      },
-      incident: {
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          service: {
-            select: { id: true, name: true },
+  const [postmortems, total] = await Promise.all([
+    prisma.postmortem.findMany({
+      where,
+      include: {
+        createdBy: {
+          select: { id: true, name: true, email: true, avatarUrl: true },
+        },
+        incident: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            service: {
+              select: { id: true, name: true },
+            },
+            resolvedAt: true,
           },
-          resolvedAt: true,
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.postmortem.count({ where }),
+  ]);
 
-  return postmortems;
+  return {
+    postmortems,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalItems: total,
+      itemsPerPage: limit,
+    },
+  };
 }
 
 /**

@@ -2,11 +2,11 @@
 
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
-import { IncidentStatus } from '@prisma/client';
+
 import { Badge } from '@/components/ui/shadcn/badge';
 
 type StatusBadgeProps = {
-  status: IncidentStatus;
+  status: string;
   size?: 'sm' | 'md' | 'lg';
   showDot?: boolean;
   className?: string;
@@ -19,10 +19,7 @@ function StatusBadge({ status, size = 'md', showDot = false, className }: Status
     lg: 'md',
   };
 
-  const statusVariantMap: Record<
-    string,
-    'success' | 'warning' | 'danger' | 'neutral' | 'info'
-  > = {
+  const statusVariantMap: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'info'> = {
     OPEN: 'danger',
     ACKNOWLEDGED: 'warning',
     RESOLVED: 'success',
@@ -31,6 +28,10 @@ function StatusBadge({ status, size = 'md', showDot = false, className }: Status
     OPERATIONAL: 'success',
     DEGRADED: 'warning',
     CRITICAL: 'danger',
+    // Postmortem statuses
+    DRAFT: 'neutral',
+    PUBLISHED: 'success',
+    ARCHIVED: 'warning',
   };
 
   const variant = statusVariantMap[status] ?? 'info';
@@ -56,11 +57,7 @@ function StatusBadge({ status, size = 'md', showDot = false, className }: Status
             : 'bg-slate-400';
 
   return (
-    <Badge
-      variant={variant}
-      size={sizeMap[size]}
-      className={cn('uppercase', toneClass, className)}
-    >
+    <Badge variant={variant} size={sizeMap[size]} className={cn('uppercase', toneClass, className)}>
       {showDot && <span className={cn('h-2 w-2 rounded-full', dotColor)} />}
       {status}
     </Badge>
