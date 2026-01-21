@@ -1,10 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, FormField } from '@/components/ui';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import { Label } from '@/components/ui/shadcn/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import { Badge } from '@/components/ui/shadcn/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import UserAvatar from '@/components/UserAvatar';
+import { cn } from '@/lib/utils';
+import { Calendar, Pencil, Trash2, Plus } from 'lucide-react';
 
 export type ActionItem = {
   id: string;
@@ -28,30 +42,41 @@ interface PostmortemActionItemsProps {
   }>;
 }
 
-const STATUS_COLORS = {
-  OPEN: '#3b82f6',
-  IN_PROGRESS: '#f59e0b',
-  COMPLETED: '#22c55e',
-  BLOCKED: '#ef4444',
+const STATUS_CONFIG = {
+  OPEN: {
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/20',
+    border: 'border-blue-500/40',
+    label: 'Open',
+    variant: 'info' as const,
+  },
+  IN_PROGRESS: {
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/20',
+    border: 'border-amber-500/40',
+    label: 'In Progress',
+    variant: 'warning' as const,
+  },
+  COMPLETED: {
+    color: 'text-green-500',
+    bg: 'bg-green-500/20',
+    border: 'border-green-500/40',
+    label: 'Completed',
+    variant: 'success' as const,
+  },
+  BLOCKED: {
+    color: 'text-red-500',
+    bg: 'bg-red-500/20',
+    border: 'border-red-500/40',
+    label: 'Blocked',
+    variant: 'danger' as const,
+  },
 };
 
-const STATUS_LABELS = {
-  OPEN: 'Open',
-  IN_PROGRESS: 'In Progress',
-  COMPLETED: 'Completed',
-  BLOCKED: 'Blocked',
-};
-
-const PRIORITY_COLORS = {
-  HIGH: '#ef4444',
-  MEDIUM: '#f59e0b',
-  LOW: '#6b7280',
-};
-
-const PRIORITY_LABELS = {
-  HIGH: 'High',
-  MEDIUM: 'Medium',
-  LOW: 'Low',
+const PRIORITY_CONFIG = {
+  HIGH: { color: 'text-red-500', bg: 'bg-red-500/20', label: 'High' },
+  MEDIUM: { color: 'text-amber-500', bg: 'bg-amber-500/20', label: 'Medium' },
+  LOW: { color: 'text-gray-500', bg: 'bg-gray-500/20', label: 'Low' },
 };
 
 export default function PostmortemActionItems({
@@ -98,322 +123,298 @@ export default function PostmortemActionItems({
   const completionRate = actionItems.length > 0 ? (completedCount / actionItems.length) * 100 : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
-      <div
-        style={{
-          padding: 'var(--spacing-4)',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid #e2e8f0',
-          borderRadius: 'var(--radius-md)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--spacing-3)',
-          }}
-        >
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: '600' }}>Action Items</h3>
-          {actionItems.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
-              <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
-                {completedCount}/{actionItems.length} completed
-              </span>
-              <div
-                style={{
-                  width: '100px',
-                  height: '8px',
-                  background: '#e2e8f0',
-                  borderRadius: 'var(--radius-sm)',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    width: `${completionRate}%`,
-                    height: '100%',
-                    background: completionRate === 100 ? '#22c55e' : '#3b82f6',
-                    transition: 'width 0.3s ease',
-                  }}
-                />
+    <div className="flex flex-col gap-4">
+      {/* Add New Item Form */}
+      <Card className="bg-gradient-to-br from-white to-slate-50">
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg">Action Items</CardTitle>
+            {actionItems.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {completedCount}/{actionItems.length} completed
+                </span>
+                <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full transition-all duration-300',
+                      completionRate === 100 ? 'bg-green-500' : 'bg-blue-500'
+                    )}
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-          <div
-            style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--spacing-2)' }}
-          >
-            <FormField
-              type="input"
-              inputType="text"
-              label="Title"
-              value={newItem.title || ''}
-              onChange={e => setNewItem({ ...newItem, title: e.target.value })}
-              placeholder="e.g., Add monitoring for service X"
-            />
-            <FormField
-              label="Priority"
-              type="select"
-              value={newItem.priority || 'MEDIUM'}
-              onChange={e => setNewItem({ ...newItem, priority: e.target.value as any })} // eslint-disable-line @typescript-eslint/no-explicit-any
-              options={Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label }))}
-            />
-            <FormField
-              label="Status"
-              type="select"
-              value={newItem.status || 'OPEN'}
-              onChange={e => setNewItem({ ...newItem, status: e.target.value as any })} // eslint-disable-line @typescript-eslint/no-explicit-any
-              options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
-            />
-          </div>
-          <FormField
-            label="Description"
-            type="textarea"
-            rows={2}
-            value={newItem.description || ''}
-            onChange={e => setNewItem({ ...newItem, description: e.target.value })}
-            placeholder="Detailed description of the action item..."
-          />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-2)' }}>
-            {users.length > 0 && (
-              <FormField
-                label="Owner"
-                type="select"
-                value={newItem.owner || ''}
-                onChange={e => setNewItem({ ...newItem, owner: e.target.value })}
-                options={[
-                  { value: '', label: 'Unassigned' },
-                  ...users.map(user => ({ value: user.id, label: user.name })),
-                ]}
-              />
             )}
-            <FormField
-              type="input"
-              inputType="date"
-              label="Due Date"
-              value={newItem.dueDate || ''}
-              onChange={e => setNewItem({ ...newItem, dueDate: e.target.value })}
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="grid grid-cols-[2fr_1fr_1fr] gap-2">
+            <div className="space-y-1.5">
+              <Label>Title</Label>
+              <Input
+                placeholder="e.g., Add monitoring for service X"
+                value={newItem.title || ''}
+                onChange={e => setNewItem({ ...newItem, title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Priority</Label>
+              <Select
+                value={newItem.priority || 'MEDIUM'}
+                onValueChange={value =>
+                  setNewItem({ ...newItem, priority: value as ActionItem['priority'] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PRIORITY_CONFIG).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select
+                value={newItem.status || 'OPEN'}
+                onValueChange={value =>
+                  setNewItem({ ...newItem, status: value as ActionItem['status'] })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STATUS_CONFIG).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Textarea
+              rows={2}
+              placeholder="Detailed description of the action item..."
+              value={newItem.description || ''}
+              onChange={e => setNewItem({ ...newItem, description: e.target.value })}
             />
           </div>
-          <Button type="button" variant="primary" onClick={addItem} disabled={!newItem.title}>
+          <div className="grid grid-cols-2 gap-2">
+            {users.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Owner</Label>
+                <Select
+                  value={newItem.owner || ''}
+                  onValueChange={value => setNewItem({ ...newItem, owner: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unassigned</SelectItem>
+                    {users.map(user => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Due Date</Label>
+              <Input
+                type="date"
+                value={newItem.dueDate || ''}
+                onChange={e => setNewItem({ ...newItem, dueDate: e.target.value })}
+              />
+            </div>
+          </div>
+          <Button onClick={addItem} disabled={!newItem.title} className="w-fit">
+            <Plus className="w-4 h-4 mr-2" />
             Add Action Item
           </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
+      {/* Action Items List */}
       {actionItems.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+        <div className="flex flex-col gap-2">
           {actionItems.map(item => {
             const isOverdue =
               item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'COMPLETED';
             const owner = users.find(u => u.id === item.owner);
+            const statusConfig = STATUS_CONFIG[item.status];
+            const priorityConfig = PRIORITY_CONFIG[item.priority];
 
             return (
-              <div
+              <Card
                 key={item.id}
-                style={{
-                  padding: 'var(--spacing-4)',
-                  background: 'white',
-                  border: `2px solid ${STATUS_COLORS[item.status]}40`,
-                  borderRadius: 'var(--radius-md)',
-                  borderLeft: `4px solid ${STATUS_COLORS[item.status]}`,
-                }}
+                className={cn('bg-white border-2 border-l-4', statusConfig.border)}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'start',
-                    marginBottom: 'var(--spacing-2)',
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--spacing-2)',
-                        marginBottom: 'var(--spacing-1)',
-                      }}
-                    >
-                      <span
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: 'var(--radius-sm)',
-                          fontSize: 'var(--font-size-xs)',
-                          fontWeight: '600',
-                          background: `${STATUS_COLORS[item.status]}20`,
-                          color: STATUS_COLORS[item.status],
-                        }}
-                      >
-                        {STATUS_LABELS[item.status]}
-                      </span>
-                      <span
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: 'var(--radius-sm)',
-                          fontSize: 'var(--font-size-xs)',
-                          fontWeight: '600',
-                          background: `${PRIORITY_COLORS[item.priority]}20`,
-                          color: PRIORITY_COLORS[item.priority],
-                        }}
-                      >
-                        {PRIORITY_LABELS[item.priority]} Priority
-                      </span>
-                      {isOverdue && (
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={statusConfig.variant} size="xs">
+                          {statusConfig.label}
+                        </Badge>
                         <span
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 'var(--font-size-xs)',
-                            fontWeight: '600',
-                            background: '#ef444420',
-                            color: '#ef4444',
-                          }}
+                          className={cn(
+                            'px-2 py-0.5 rounded text-xs font-semibold',
+                            priorityConfig.bg,
+                            priorityConfig.color
+                          )}
                         >
-                          Overdue
+                          {priorityConfig.label} Priority
                         </span>
+                        {isOverdue && (
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-500">
+                            Overdue
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-base font-semibold mb-1">{item.title}</h4>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground mb-1">{item.description}</p>
                       )}
+                      <div className="flex gap-3 text-xs text-muted-foreground">
+                        {owner && (
+                          <span className="flex items-center gap-1">
+                            <UserAvatar
+                              userId={owner.id}
+                              name={owner.name}
+                              gender={owner.gender}
+                              size="xs"
+                            />
+                            {owner.name}
+                          </span>
+                        )}
+                        {item.dueDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <h4
-                      style={{
-                        fontSize: 'var(--font-size-base)',
-                        fontWeight: '600',
-                        marginBottom: 'var(--spacing-1)',
-                      }}
-                    >
-                      {item.title}
-                    </h4>
-                    {item.description && (
-                      <p
-                        style={{
-                          fontSize: 'var(--font-size-sm)',
-                          color: 'var(--text-secondary)',
-                          marginBottom: 'var(--spacing-1)',
-                        }}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingId(editingId === item.id ? null : item.id)}
                       >
-                        {item.description}
-                      </p>
-                    )}
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 'var(--spacing-3)',
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      {owner && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <UserAvatar
-                            userId={owner.id}
-                            name={owner.name}
-                            gender={owner.gender}
-                            size="xs"
-                          />
-                          {owner.name}
-                        </span>
-                      )}
-                      {item.dueDate && (
-                        <span>
-                          📅 Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}
-                        </span>
-                      )}
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => deleteItem(item.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--spacing-2)' }}>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setEditingId(editingId === item.id ? null : item.id)}
-                    >
-                      {editingId === item.id ? 'Cancel' : 'Edit'}
-                    </Button>
-                    <Button type="button" variant="secondary" onClick={() => deleteItem(item.id)}>
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-                {editingId === item.id && (
-                  <div
-                    style={{
-                      marginTop: 'var(--spacing-3)',
-                      padding: 'var(--spacing-3)',
-                      background: 'var(--color-neutral-50)',
-                      borderRadius: 'var(--radius-sm)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 'var(--spacing-2)',
-                    }}
-                  >
-                    <FormField
-                      type="input"
-                      inputType="text"
-                      label="Title"
-                      value={item.title}
-                      onChange={e => updateItem(item.id, { title: e.target.value })}
-                    />
-                    <FormField
-                      label="Description"
-                      type="textarea"
-                      rows={2}
-                      value={item.description}
-                      onChange={e => updateItem(item.id, { description: e.target.value })}
-                    />
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: 'var(--spacing-2)',
-                      }}
-                    >
-                      <FormField
-                        label="Status"
-                        type="select"
-                        value={item.status}
-                        onChange={e => updateItem(item.id, { status: e.target.value as any })} // eslint-disable-line @typescript-eslint/no-explicit-any
-                        options={Object.entries(STATUS_LABELS).map(([value, label]) => ({
-                          value,
-                          label,
-                        }))}
-                      />
-                      <FormField
-                        label="Priority"
-                        type="select"
-                        value={item.priority}
-                        onChange={e => updateItem(item.id, { priority: e.target.value as any })} // eslint-disable-line @typescript-eslint/no-explicit-any
-                        options={Object.entries(PRIORITY_LABELS).map(([value, label]) => ({
-                          value,
-                          label,
-                        }))}
-                      />
+
+                  {/* Edit Form */}
+                  {editingId === item.id && (
+                    <div className="mt-3 p-3 bg-slate-50 rounded-md flex flex-col gap-2">
+                      <div className="space-y-1.5">
+                        <Label>Title</Label>
+                        <Input
+                          value={item.title}
+                          onChange={e => updateItem(item.id, { title: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Description</Label>
+                        <Textarea
+                          rows={2}
+                          value={item.description}
+                          onChange={e => updateItem(item.id, { description: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                          <Label>Status</Label>
+                          <Select
+                            value={item.status}
+                            onValueChange={value =>
+                              updateItem(item.id, { status: value as ActionItem['status'] })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(STATUS_CONFIG).map(([value, config]) => (
+                                <SelectItem key={value} value={value}>
+                                  {config.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Priority</Label>
+                          <Select
+                            value={item.priority}
+                            onValueChange={value =>
+                              updateItem(item.id, { priority: value as ActionItem['priority'] })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(PRIORITY_CONFIG).map(([value, config]) => (
+                                <SelectItem key={value} value={value}>
+                                  {config.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {users.length > 0 && (
+                        <div className="space-y-1.5">
+                          <Label>Owner</Label>
+                          <Select
+                            value={item.owner || ''}
+                            onValueChange={value => updateItem(item.id, { owner: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Unassigned</SelectItem>
+                              {users.map(user => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        <Label>Due Date</Label>
+                        <Input
+                          type="date"
+                          value={
+                            item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : ''
+                          }
+                          onChange={e => updateItem(item.id, { dueDate: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    {users.length > 0 && (
-                      <FormField
-                        label="Owner"
-                        type="select"
-                        value={item.owner || ''}
-                        onChange={e => updateItem(item.id, { owner: e.target.value })}
-                        options={[
-                          { value: '', label: 'Unassigned' },
-                          ...users.map(user => ({ value: user.id, label: user.name })),
-                        ]}
-                      />
-                    )}
-                    <FormField
-                      type="input"
-                      inputType="date"
-                      label="Due Date"
-                      value={item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : ''}
-                      onChange={e => updateItem(item.id, { dueDate: e.target.value })}
-                    />
-                  </div>
-                )}
-              </div>
+                  )}
+                </CardContent>
+              </Card>
             );
           })}
         </div>
