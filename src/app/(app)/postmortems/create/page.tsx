@@ -5,6 +5,10 @@ import PostmortemForm from '@/components/PostmortemForm';
 import { getUserPermissions } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 export default async function CreatePostmortemPage() {
   const session = await getServerSession(await getAuthOptions());
@@ -17,16 +21,11 @@ export default async function CreatePostmortemPage() {
 
   if (!canCreate) {
     return (
-      <div style={{ padding: 'var(--spacing-6)' }}>
-        <div
-          style={{
-            padding: 'var(--spacing-4)',
-            background: 'var(--color-warning-light)',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <p>You don't have permission to create postmortems.</p>
-        </div>
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>You don&apos;t have permission to create postmortems.</AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -56,67 +55,34 @@ export default async function CreatePostmortemPage() {
   });
 
   return (
-    <div style={{ padding: 'var(--spacing-6)' }}>
-      <div style={{ marginBottom: 'var(--spacing-6)' }}>
+    <div className="p-6">
+      <div className="mb-6">
         <Link
           href="/postmortems"
-          style={{
-            color: 'var(--text-muted)',
-            textDecoration: 'none',
-            fontSize: 'var(--font-size-sm)',
-            marginBottom: 'var(--spacing-2)',
-            display: 'inline-block',
-          }}
+          className="text-muted-foreground no-underline text-sm mb-2 inline-flex items-center gap-1 hover:text-foreground transition-colors"
         >
-          ← Back to Postmortems
+          <ArrowLeft className="w-4 h-4" />
+          Back to Postmortems
         </Link>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)' }}>
-          Create Postmortem
-        </h1>
-        <p style={{ color: 'var(--text-muted)' }}>
+        <h1 className="text-2xl font-bold mt-2">Create Postmortem</h1>
+        <p className="text-muted-foreground">
           Select a resolved incident and document the postmortem
         </p>
       </div>
 
       {resolvedIncidents.length === 0 ? (
-        <div
-          className="glass-panel"
-          style={{
-            padding: 'var(--spacing-8)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-            textAlign: 'center',
-          }}
-        >
-          <h3
-            style={{
-              fontSize: 'var(--font-size-lg)',
-              fontWeight: '600',
-              marginBottom: 'var(--spacing-2)',
-            }}
-          >
-            No Resolved Incidents Available
-          </h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--spacing-4)' }}>
-            There are no resolved incidents without postmortems. Resolve an incident first to create
-            a postmortem.
-          </p>
-          <Link
-            href="/incidents"
-            style={{
-              display: 'inline-block',
-              padding: 'var(--spacing-2) var(--spacing-4)',
-              background: 'var(--primary-color)',
-              color: 'white',
-              borderRadius: 'var(--radius-md)',
-              textDecoration: 'none',
-            }}
-          >
-            View Incidents
-          </Link>
-        </div>
+        <Card className="bg-gradient-to-br from-white to-slate-50 border-slate-200 shadow-md">
+          <CardContent className="py-8 text-center">
+            <h3 className="text-lg font-semibold mb-2">No Resolved Incidents Available</h3>
+            <p className="text-muted-foreground mb-4">
+              There are no resolved incidents without postmortems. Resolve an incident first to
+              create a postmortem.
+            </p>
+            <Link href="/incidents">
+              <Button>View Incidents</Button>
+            </Link>
+          </CardContent>
+        </Card>
       ) : (
         <PostmortemForm incidentId="" users={users} resolvedIncidents={resolvedIncidents} />
       )}

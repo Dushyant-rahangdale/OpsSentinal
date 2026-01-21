@@ -3,198 +3,149 @@
 import { ImpactMetrics } from './PostmortemImpactInput';
 import BarChart from '@/components/analytics/BarChart';
 import PieChart from '@/components/analytics/PieChart';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import { cn } from '@/lib/utils';
 
 interface PostmortemImpactMetricsProps {
-    metrics: ImpactMetrics;
+  metrics: ImpactMetrics;
 }
+
+const METRIC_COLORS = {
+  usersAffected: { color: 'text-blue-500', border: 'border-blue-500/40' },
+  downtime: { color: 'text-amber-500', border: 'border-amber-500/40' },
+  errorRate: { color: 'text-red-500', border: 'border-red-500/40' },
+  slaBreaches: { color: 'text-red-600', border: 'border-red-600/40' },
+};
 
 export default function PostmortemImpactMetrics({ metrics }: PostmortemImpactMetricsProps) {
-    if (!metrics || Object.keys(metrics).length === 0) {
-        return (
-            <div style={{ 
-                padding: 'var(--spacing-8)', 
-                textAlign: 'center',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid #e2e8f0',
-                borderRadius: 'var(--radius-md)',
-            }}>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-base)' }}>
-                    No impact metrics recorded
-                </p>
-            </div>
-        );
-    }
-
-    const metricCards = [
-        metrics.usersAffected && {
-            label: 'Users Affected',
-            value: metrics.usersAffected.toLocaleString(),
-            color: '#3b82f6',
-        },
-        metrics.downtimeMinutes && {
-            label: 'Downtime',
-            value: `${Math.floor(metrics.downtimeMinutes / 60)}h ${metrics.downtimeMinutes % 60}m`,
-            color: '#f59e0b',
-        },
-        metrics.errorRate && {
-            label: 'Error Rate',
-            value: `${metrics.errorRate.toFixed(1)}%`,
-            color: '#ef4444',
-        },
-        metrics.slaBreaches && {
-            label: 'SLA Breaches',
-            value: metrics.slaBreaches.toString(),
-            color: '#dc2626',
-        },
-    ].filter(Boolean) as Array<{ label: string; value: string; color: string }>;
-
-    const servicesData = metrics.servicesAffected && metrics.servicesAffected.length > 0
-        ? metrics.servicesAffected.map((service, index) => ({
-            key: `service-${index}`,
-            label: service,
-            count: 1,
-        }))
-        : [];
-
-    const impactDistribution = [
-        metrics.usersAffected && { label: 'Users', value: metrics.usersAffected, color: '#3b82f6' },
-        metrics.downtimeMinutes && { label: 'Downtime (min)', value: metrics.downtimeMinutes, color: '#f59e0b' },
-        metrics.errorRate && { label: 'Error Rate', value: metrics.errorRate * 10, color: '#ef4444' },
-    ].filter(Boolean) as Array<{ label: string; value: number; color: string }>;
-
+  if (!metrics || Object.keys(metrics).length === 0) {
     return (
-        <div style={{ 
-            padding: 'var(--spacing-6)', 
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-        }}>
-            <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700', marginBottom: 'var(--spacing-4)' }}>
-                Impact Metrics
-            </h3>
-
-            {/* Key Metrics Cards */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                gap: 'var(--spacing-4)',
-                marginBottom: 'var(--spacing-6)',
-            }}>
-                {metricCards.map((card, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            padding: 'var(--spacing-4)',
-                            background: 'white',
-                            border: `2px solid ${card.color}40`,
-                            borderRadius: 'var(--radius-md)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                        }}
-                    >
-                        <div style={{ 
-                            fontSize: 'var(--font-size-xs)', 
-                            color: 'var(--text-muted)',
-                            marginBottom: 'var(--spacing-1)',
-                        }}>
-                            {card.label}
-                        </div>
-                        <div style={{ 
-                            fontSize: 'var(--font-size-2xl)', 
-                            fontWeight: '700',
-                            color: card.color,
-                        }}>
-                            {card.value}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Charts */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-4)' }}>
-                {servicesData.length > 0 && (
-                    <div style={{
-                        padding: 'var(--spacing-4)',
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 'var(--radius-md)',
-                    }}>
-                        <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: '600', marginBottom: 'var(--spacing-3)' }}>
-                            Services Affected
-                        </h4>
-                        <BarChart
-                            data={servicesData}
-                            maxValue={1}
-                            height={120}
-                            showValues={true}
-                        />
-                    </div>
-                )}
-
-                {impactDistribution.length > 0 && (
-                    <div style={{
-                        padding: 'var(--spacing-4)',
-                        background: 'white',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 'var(--radius-md)',
-                    }}>
-                        <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: '600', marginBottom: 'var(--spacing-3)' }}>
-                            Impact Distribution
-                        </h4>
-                        <PieChart
-                            data={impactDistribution}
-                            size={150}
-                            showLegend={true}
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* Additional Metrics */}
-            {(metrics.apiErrors || metrics.performanceDegradation || metrics.revenueImpact) && (
-                <div style={{ 
-                    marginTop: 'var(--spacing-4)',
-                    padding: 'var(--spacing-4)',
-                    background: 'white',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 'var(--radius-md)',
-                }}>
-                    <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: '600', marginBottom: 'var(--spacing-3)' }}>
-                        Additional Metrics
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--spacing-3)' }}>
-                        {metrics.apiErrors && (
-                            <div>
-                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>API Errors</div>
-                                <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: '600' }}>{metrics.apiErrors.toLocaleString()}</div>
-                            </div>
-                        )}
-                        {metrics.performanceDegradation && (
-                            <div>
-                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Performance Impact</div>
-                                <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: '600', color: '#ef4444' }}>
-                                    {metrics.performanceDegradation.toFixed(1)}%
-                                </div>
-                            </div>
-                        )}
-                        {metrics.revenueImpact && (
-                            <div>
-                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Revenue Impact</div>
-                                <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: '600', color: '#dc2626' }}>
-                                    ${metrics.revenueImpact.toLocaleString()}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
+      <Card className="bg-gradient-to-br from-white to-slate-50">
+        <CardContent className="py-8 text-center">
+          <p className="text-muted-foreground">No impact metrics recorded</p>
+        </CardContent>
+      </Card>
     );
+  }
+
+  const metricCards = [
+    metrics.usersAffected && {
+      label: 'Users Affected',
+      value: metrics.usersAffected.toLocaleString(),
+      colorClass: 'text-blue-500',
+      borderClass: 'border-blue-500/40',
+    },
+    metrics.downtimeMinutes && {
+      label: 'Downtime',
+      value: `${Math.floor(metrics.downtimeMinutes / 60)}h ${metrics.downtimeMinutes % 60}m`,
+      colorClass: 'text-amber-500',
+      borderClass: 'border-amber-500/40',
+    },
+    metrics.errorRate && {
+      label: 'Error Rate',
+      value: `${metrics.errorRate.toFixed(1)}%`,
+      colorClass: 'text-red-500',
+      borderClass: 'border-red-500/40',
+    },
+    metrics.slaBreaches && {
+      label: 'SLA Breaches',
+      value: metrics.slaBreaches.toString(),
+      colorClass: 'text-red-600',
+      borderClass: 'border-red-600/40',
+    },
+  ].filter(Boolean) as Array<{
+    label: string;
+    value: string;
+    colorClass: string;
+    borderClass: string;
+  }>;
+
+  const servicesData =
+    metrics.servicesAffected && metrics.servicesAffected.length > 0
+      ? metrics.servicesAffected.map((service, index) => ({
+          key: `service-${index}`,
+          label: service,
+          count: 1,
+        }))
+      : [];
+
+  const impactDistribution = [
+    metrics.usersAffected && { label: 'Users', value: metrics.usersAffected, color: '#3b82f6' },
+    metrics.downtimeMinutes && {
+      label: 'Downtime (min)',
+      value: metrics.downtimeMinutes,
+      color: '#f59e0b',
+    },
+    metrics.errorRate && { label: 'Error Rate', value: metrics.errorRate * 10, color: '#ef4444' },
+  ].filter(Boolean) as Array<{ label: string; value: number; color: string }>;
+
+  return (
+    <Card className="bg-gradient-to-br from-white to-slate-50 shadow-md">
+      <CardHeader>
+        <CardTitle className="text-xl">Impact Metrics</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-6">
+          {metricCards.map((card, index) => (
+            <div
+              key={index}
+              className={cn('p-4 bg-white rounded-md shadow-sm border-2', card.borderClass)}
+            >
+              <div className="text-xs text-muted-foreground mb-1">{card.label}</div>
+              <div className={cn('text-2xl font-bold', card.colorClass)}>{card.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-2 gap-4">
+          {servicesData.length > 0 && (
+            <div className="p-4 bg-white border border-slate-200 rounded-md">
+              <h4 className="text-base font-semibold mb-3">Services Affected</h4>
+              <BarChart data={servicesData} maxValue={1} height={120} showValues={true} />
+            </div>
+          )}
+
+          {impactDistribution.length > 0 && (
+            <div className="p-4 bg-white border border-slate-200 rounded-md">
+              <h4 className="text-base font-semibold mb-3">Impact Distribution</h4>
+              <PieChart data={impactDistribution} size={150} showLegend={true} />
+            </div>
+          )}
+        </div>
+
+        {/* Additional Metrics */}
+        {(metrics.apiErrors || metrics.performanceDegradation || metrics.revenueImpact) && (
+          <div className="mt-4 p-4 bg-white border border-slate-200 rounded-md">
+            <h4 className="text-base font-semibold mb-3">Additional Metrics</h4>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+              {metrics.apiErrors && (
+                <div>
+                  <div className="text-xs text-muted-foreground">API Errors</div>
+                  <div className="text-lg font-semibold">{metrics.apiErrors.toLocaleString()}</div>
+                </div>
+              )}
+              {metrics.performanceDegradation && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Performance Impact</div>
+                  <div className="text-lg font-semibold text-red-500">
+                    {metrics.performanceDegradation.toFixed(1)}%
+                  </div>
+                </div>
+              )}
+              {metrics.revenueImpact && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Revenue Impact</div>
+                  <div className="text-lg font-semibold text-red-600">
+                    ${metrics.revenueImpact.toLocaleString()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
-
-
-
-
-
-
-

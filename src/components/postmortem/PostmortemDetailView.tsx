@@ -1,25 +1,37 @@
 'use client';
 
 import Link from 'next/link';
-import PostmortemTimeline, { type TimelineEvent } from './PostmortemTimeline';
+import PostmortemTimeline from './PostmortemTimeline';
 import PostmortemImpactMetrics from './PostmortemImpactMetrics';
-import type { ImpactMetrics } from './PostmortemImpactInput';
-import type { ActionItem } from './PostmortemActionItems';
-import { Badge, Button } from '@/components/ui';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Button } from '@/components/ui/shadcn/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import UserAvatar from '@/components/UserAvatar';
+import { cn } from '@/lib/utils';
+import { Calendar, Pencil } from 'lucide-react';
+import {
+  POSTMORTEM_STATUS_CONFIG,
+  ACTION_ITEM_STATUS_CONFIG,
+  ACTION_ITEM_PRIORITY_CONFIG,
+} from './shared';
+import {
+  type TimelineEvent,
+  type ImpactMetrics,
+  type ActionItem,
+} from '@/app/(app)/postmortems/actions';
 
 interface PostmortemDetailViewProps {
   postmortem: {
     id: string;
     title: string;
     summary?: string | null;
-    timeline?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    impact?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    timeline?: unknown; // JSON from database
+    impact?: unknown; // JSON from database
     rootCause?: string | null;
     resolution?: string | null;
-    actionItems?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    actionItems?: unknown; // JSON from database
     lessons?: string | null;
     status?: string;
     createdAt: Date;
@@ -46,30 +58,20 @@ interface PostmortemDetailViewProps {
   }>;
   canEdit?: boolean;
   incidentId: string;
+  isPublicView?: boolean;
 }
-
-const _STATUS_COLORS = {
-  DRAFT: '#6b7280',
-  PUBLISHED: '#22c55e',
-  ARCHIVED: '#9ca3af',
-};
-
-const STATUS_LABELS = {
-  DRAFT: 'Draft',
-  PUBLISHED: 'Published',
-  ARCHIVED: 'Archived',
-};
 
 export default function PostmortemDetailView({
   postmortem,
   users = [],
   canEdit = false,
   incidentId,
+  isPublicView = false,
 }: PostmortemDetailViewProps) {
   const { userTimeZone } = useTimezone();
 
   // Parse data
-  const parseTimeline = (timeline: any): TimelineEvent[] => {
+  const parseTimeline = (timeline: unknown): TimelineEvent[] => {
     if (!timeline || !Array.isArray(timeline)) return [];
     return timeline.map((e: any) => ({
       id: e.id || `event-${Date.now()}`,
@@ -77,25 +79,29 @@ export default function PostmortemDetailView({
       type: e.type || 'DETECTION',
       title: e.title || '',
       description: e.description || '',
-      actor: e.actor,
+      actor: isPublicView ? undefined : e.actor, // Anonymize actor in public view
     }));
   };
 
-  const parseImpact = (impact: any): ImpactMetrics => {
+  const parseImpact = (impact: unknown): ImpactMetrics => {
     if (!impact || typeof impact !== 'object') return {};
+    const imp = impact as any;
     return {
-      usersAffected: impact.usersAffected,
-      downtimeMinutes: impact.downtimeMinutes,
-      errorRate: impact.errorRate,
-      servicesAffected: Array.isArray(impact.servicesAffected) ? impact.servicesAffected : [],
-      slaBreaches: impact.slaBreaches,
-      revenueImpact: impact.revenueImpact,
-      apiErrors: impact.apiErrors,
-      performanceDegradation: impact.performanceDegradation,
+      usersAffected: imp.usersAffected,
+      downtimeMinutes: imp.downtimeMinutes,
+      errorRate: imp.errorRate,
+      servicesAffected: Array.isArray(imp.servicesAffected) ? imp.servicesAffected : [],
+      slaBreaches: isPublicView ? undefined : imp.slaBreaches, // Hide SLA details in public view
+      revenueImpact: isPublicView ? undefined : imp.revenueImpact, // Hide revenue in public view
+      apiErrors: imp.apiErrors,
+      performanceDegradation: imp.performanceDegradation,
     };
   };
 
-  const parseActionItems = (actionItems: any): ActionItem[] => {
+  const parseActionItems = (actionItems: unknown): ActionItem[] => {
+    // Hide action items completely in public view as they often contain internal context
+    if (isPublicView) return [];
+
     if (!actionItems || !Array.isArray(actionItems)) return [];
     return actionItems.map((item: any) => ({
       id: item.id || `action-${Date.now()}`,
@@ -116,180 +122,100 @@ export default function PostmortemDetailView({
   const totalActions = actionItems.length;
   const completionRate = totalActions > 0 ? (completedActions / totalActions) * 100 : 0;
 
+  const statusConfig =
+    POSTMORTEM_STATUS_CONFIG[postmortem.status as keyof typeof POSTMORTEM_STATUS_CONFIG] ||
+    POSTMORTEM_STATUS_CONFIG.DRAFT;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+    <div className="flex flex-col gap-6">
       {/* Hero Section */}
-      <div
-        className="glass-panel"
-        style={{
-          padding: 'var(--spacing-8)',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid #e2e8f0',
-          borderRadius: 'var(--radius-xl)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: '300px',
-            height: '300px',
-            background: 'radial-gradient(circle, rgba(211, 47, 47, 0.05) 0%, transparent 70%)',
-            borderRadius: '50%',
-            transform: 'translate(30%, -30%)',
-            pointerEvents: 'none',
-          }}
-        />
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'start',
-            marginBottom: 'var(--spacing-4)',
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <h1
-              style={{
-                fontSize: '2.25rem',
-                fontWeight: '800',
-                marginBottom: 'var(--spacing-3)',
-                background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                letterSpacing: '-0.02em',
-                lineHeight: '1.2',
-                position: 'relative',
-                zIndex: 1,
-              }}
-            >
-              {postmortem.title}
-            </h1>
-            <p
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: 'var(--font-size-base)',
-                marginBottom: 'var(--spacing-2)',
-              }}
-            >
-              Postmortem for{' '}
-              <Link
-                href={`/incidents/${postmortem.incident.id}`}
-                style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: '500' }}
-              >
-                {postmortem.incident.title}
-              </Link>
-            </p>
+      <Card className="bg-gradient-to-br from-white to-slate-50 shadow-lg overflow-hidden relative">
+        {/* Decorative gradient */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[radial-gradient(circle,rgba(211,47,47,0.05)_0%,transparent_70%)] rounded-full translate-x-[30%] -translate-y-[30%] pointer-events-none" />
+
+        <CardContent className="p-8">
+          <div className="flex justify-between items-start mb-4 relative z-10">
+            <div className="flex-1">
+              <h1 className="text-4xl font-extrabold mb-3 bg-gradient-to-br from-slate-800 to-slate-500 bg-clip-text text-transparent tracking-tight leading-tight">
+                {postmortem.title}
+              </h1>
+              <p className="text-muted-foreground">
+                Postmortem for{' '}
+                <Link
+                  href={isPublicView ? '#' : `/incidents/${postmortem.incident.id}`}
+                  className={cn(
+                    'text-primary font-medium',
+                    isPublicView ? 'cursor-default text-muted-foreground' : 'hover:underline'
+                  )}
+                >
+                  {postmortem.incident.title}
+                </Link>
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+              {canEdit && !isPublicView && (
+                <Link href={`/postmortems/${incidentId}?edit=true`}>
+                  <Button>
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Postmortem
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-            <Badge
-              variant={
-                postmortem.status === 'PUBLISHED'
-                  ? 'success'
-                  : postmortem.status === 'ARCHIVED'
-                    ? 'default'
-                    : 'warning'
-              }
-            >
-              {STATUS_LABELS[postmortem.status as keyof typeof STATUS_LABELS] || postmortem.status}
-            </Badge>
-            {canEdit && (
-              <Link href={`/postmortems/${incidentId}?edit=true`}>
-                <Button variant="primary">Edit Postmortem</Button>
-              </Link>
+          <div className="flex gap-4 pt-4 border-t border-slate-200 text-sm text-muted-foreground">
+            <span className="flex items-center gap-2">
+              {!isPublicView && (
+                <UserAvatar
+                  userId={postmortem.createdBy.id}
+                  name={postmortem.createdBy.name}
+                  gender={postmortem.createdBy.gender}
+                  size="xs"
+                />
+              )}
+              Created by{' '}
+              <strong>{isPublicView ? 'OpsKnight Team' : postmortem.createdBy.name}</strong>
+            </span>
+            <span>•</span>
+            <span>{formatDateTime(postmortem.createdAt, userTimeZone, { format: 'date' })}</span>
+            {postmortem.publishedAt && (
+              <>
+                <span>•</span>
+                <span>
+                  Published{' '}
+                  {formatDateTime(postmortem.publishedAt, userTimeZone, { format: 'date' })}
+                </span>
+              </>
+            )}
+            {postmortem.incident.resolvedAt && (
+              <>
+                <span>•</span>
+                <span>
+                  Resolved{' '}
+                  {formatDateTime(postmortem.incident.resolvedAt, userTimeZone, { format: 'date' })}
+                </span>
+              </>
             )}
           </div>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--spacing-4)',
-            paddingTop: 'var(--spacing-4)',
-            borderTop: '1px solid #e2e8f0',
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--text-muted)',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
-            <UserAvatar
-              userId={postmortem.createdBy.id}
-              name={postmortem.createdBy.name}
-              gender={postmortem.createdBy.gender}
-              size="xs"
-            />
-            Created by <strong>{postmortem.createdBy.name}</strong>
-          </span>
-          <span>•</span>
-          <span>{formatDateTime(postmortem.createdAt, userTimeZone, { format: 'date' })}</span>
-          {postmortem.publishedAt && (
-            <>
-              <span>•</span>
-              <span>
-                Published {formatDateTime(postmortem.publishedAt, userTimeZone, { format: 'date' })}
-              </span>
-            </>
-          )}
-          {postmortem.incident.resolvedAt && (
-            <>
-              <span>•</span>
-              <span>
-                Resolved{' '}
-                {formatDateTime(postmortem.incident.resolvedAt, userTimeZone, { format: 'date' })}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Executive Summary */}
       {postmortem.summary && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: 'var(--spacing-8)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: 'var(--radius-xl)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 'var(--font-size-xl)',
-              fontWeight: '700',
-              marginBottom: 'var(--spacing-4)',
-              color: 'var(--text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--spacing-2)',
-            }}
-          >
-            <span
-              style={{
-                width: '4px',
-                height: '24px',
-                background: 'linear-gradient(180deg, var(--primary-color) 0%, #ef4444 100%)',
-                borderRadius: '2px',
-              }}
-            />
-            Executive Summary
-          </h2>
-          <p
-            style={{
-              color: 'var(--text-primary)',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.8',
-              fontSize: 'var(--font-size-base)',
-              paddingLeft: 'var(--spacing-6)',
-            }}
-          >
-            {postmortem.summary}
-          </p>
-        </div>
+        <Card className="bg-gradient-to-br from-white to-slate-50 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <span className="w-1 h-6 bg-gradient-to-b from-primary to-red-500 rounded" />
+              Executive Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-foreground whitespace-pre-wrap leading-relaxed pl-6">
+              {postmortem.summary}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Timeline */}
@@ -308,233 +234,104 @@ export default function PostmortemDetailView({
 
       {/* Root Cause & Resolution */}
       {(postmortem.rootCause || postmortem.resolution) && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: 'var(--spacing-6)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 'var(--font-size-xl)',
-              fontWeight: '700',
-              marginBottom: 'var(--spacing-4)',
-            }}
-          >
-            Analysis
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+        <Card className="bg-gradient-to-br from-white to-slate-50 shadow-md">
+          <CardHeader>
+            <CardTitle className="text-xl">Analysis</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             {postmortem.rootCause && (
               <div>
-                <h3
-                  style={{
-                    fontSize: 'var(--font-size-lg)',
-                    fontWeight: '600',
-                    marginBottom: 'var(--spacing-2)',
-                  }}
-                >
-                  Root Cause
-                </h3>
-                <p
-                  style={{
-                    color: 'var(--text-primary)',
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: '1.8',
-                  }}
-                >
+                <h3 className="text-lg font-semibold mb-2">Root Cause</h3>
+                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
                   {postmortem.rootCause}
                 </p>
               </div>
             )}
             {postmortem.resolution && (
               <div>
-                <h3
-                  style={{
-                    fontSize: 'var(--font-size-lg)',
-                    fontWeight: '600',
-                    marginBottom: 'var(--spacing-2)',
-                  }}
-                >
-                  Resolution
-                </h3>
-                <p
-                  style={{
-                    color: 'var(--text-primary)',
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: '1.8',
-                  }}
-                >
+                <h3 className="text-lg font-semibold mb-2">Resolution</h3>
+                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
                   {postmortem.resolution}
                 </p>
               </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Action Items */}
       {actionItems.length > 0 && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: 'var(--spacing-6)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 'var(--spacing-4)',
-            }}
-          >
-            <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: '700' }}>Action Items</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
-              <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
-                {completedActions}/{totalActions} completed
-              </span>
-              <div
-                style={{
-                  width: '100px',
-                  height: '8px',
-                  background: '#e2e8f0',
-                  borderRadius: 'var(--radius-sm)',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    width: `${completionRate}%`,
-                    height: '100%',
-                    background: completionRate === 100 ? '#22c55e' : '#3b82f6',
-                    transition: 'width 0.3s ease',
-                  }}
-                />
+        <Card className="bg-gradient-to-br from-white to-slate-50 shadow-md">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl">Action Items</CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {completedActions}/{totalActions} completed
+                </span>
+                <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full transition-all duration-300',
+                      completionRate === 100 ? 'bg-green-500' : 'bg-blue-500'
+                    )}
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
             {actionItems.map(item => {
               const owner = users.find(u => u.id === item.owner);
               const isOverdue =
                 item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'COMPLETED';
-              const statusColors = {
-                OPEN: '#3b82f6',
-                IN_PROGRESS: '#f59e0b',
-                COMPLETED: '#22c55e',
-                BLOCKED: '#ef4444',
-              };
-              const priorityColors = {
-                HIGH: '#ef4444',
-                MEDIUM: '#f59e0b',
-                LOW: '#6b7280',
-              };
+              const statusCfg =
+                ACTION_ITEM_STATUS_CONFIG[item.status as keyof typeof ACTION_ITEM_STATUS_CONFIG];
+              const priorityCfg =
+                ACTION_ITEM_PRIORITY_CONFIG[
+                  item.priority as keyof typeof ACTION_ITEM_PRIORITY_CONFIG
+                ];
 
               return (
                 <div
                   key={item.id}
-                  style={{
-                    padding: 'var(--spacing-4)',
-                    background: 'white',
-                    border: `2px solid ${statusColors[item.status]}40`,
-                    borderRadius: 'var(--radius-md)',
-                    borderLeft: `4px solid ${statusColors[item.status]}`,
-                  }}
+                  className={cn('p-4 bg-white rounded-md border-2 border-l-4', statusCfg.border)}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'start',
-                      marginBottom: 'var(--spacing-2)',
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 'var(--spacing-2)',
-                          marginBottom: 'var(--spacing-1)',
-                        }}
-                      >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
                         <span
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 'var(--font-size-xs)',
-                            fontWeight: '600',
-                            background: `${statusColors[item.status]}20`,
-                            color: statusColors[item.status],
-                          }}
+                          className={cn(
+                            'px-2 py-0.5 rounded text-xs font-semibold',
+                            statusCfg.bg,
+                            statusCfg.color
+                          )}
                         >
                           {item.status.replace('_', ' ')}
                         </span>
                         <span
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 'var(--font-size-xs)',
-                            fontWeight: '600',
-                            background: `${priorityColors[item.priority]}20`,
-                            color: priorityColors[item.priority],
-                          }}
+                          className={cn(
+                            'px-2 py-0.5 rounded text-xs font-semibold',
+                            priorityCfg.bg,
+                            priorityCfg.color
+                          )}
                         >
                           {item.priority} Priority
                         </span>
                         {isOverdue && (
-                          <span
-                            style={{
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: 'var(--radius-sm)',
-                              fontSize: 'var(--font-size-xs)',
-                              fontWeight: '600',
-                              background: '#ef444420',
-                              color: '#ef4444',
-                            }}
-                          >
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-500">
                             Overdue
                           </span>
                         )}
                       </div>
-                      <h4
-                        style={{
-                          fontSize: 'var(--font-size-base)',
-                          fontWeight: '600',
-                          marginBottom: 'var(--spacing-1)',
-                        }}
-                      >
-                        {item.title}
-                      </h4>
+                      <h4 className="text-base font-semibold mb-1">{item.title}</h4>
                       {item.description && (
-                        <p
-                          style={{
-                            fontSize: 'var(--font-size-sm)',
-                            color: 'var(--text-secondary)',
-                            marginBottom: 'var(--spacing-1)',
-                          }}
-                        >
-                          {item.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mb-1">{item.description}</p>
                       )}
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: 'var(--spacing-3)',
-                          fontSize: 'var(--font-size-xs)',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
+                      <div className="flex gap-3 text-xs text-muted-foreground">
                         {owner && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span className="flex items-center gap-1">
                             <UserAvatar
                               userId={owner.id}
                               name={owner.name}
@@ -545,8 +342,9 @@ export default function PostmortemDetailView({
                           </span>
                         )}
                         {item.dueDate && (
-                          <span>
-                            📅 Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            Due: {formatDateTime(item.dueDate, userTimeZone, { format: 'date' })}
                           </span>
                         )}
                       </div>
@@ -555,42 +353,22 @@ export default function PostmortemDetailView({
                 </div>
               );
             })}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Lessons Learned */}
       {postmortem.lessons && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: 'var(--spacing-6)',
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-            border: '1px solid #e2e8f0',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 'var(--font-size-xl)',
-              fontWeight: '700',
-              marginBottom: 'var(--spacing-3)',
-            }}
-          >
-            Lessons Learned
-          </h2>
-          <p
-            style={{
-              color: 'var(--text-primary)',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.8',
-              fontSize: 'var(--font-size-base)',
-            }}
-          >
-            {postmortem.lessons}
-          </p>
-        </div>
+        <Card className="bg-gradient-to-br from-white to-slate-50 shadow-md">
+          <CardHeader>
+            <CardTitle className="text-xl">Lessons Learned</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+              {postmortem.lessons}
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

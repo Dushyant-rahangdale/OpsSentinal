@@ -8,6 +8,10 @@ import PostmortemDetailView from '@/components/postmortem/PostmortemDetailView';
 import { getUserPermissions } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
+import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
+import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 export default async function PostmortemPage({
   params,
@@ -52,66 +56,46 @@ export default async function PostmortemPage({
 
     if (incident.status !== 'RESOLVED') {
       return (
-        <div style={{ padding: 'var(--spacing-6)' }}>
-          <div style={{ textAlign: 'center', padding: 'var(--spacing-8)' }}>
-            <h2 style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--spacing-2)' }}>
-              Incident Not Resolved
-            </h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--spacing-4)' }}>
-              Postmortems can only be created for resolved incidents.
-            </p>
-            <Link
-              href={`/incidents/${incidentId}`}
-              style={{
-                display: 'inline-block',
-                padding: 'var(--spacing-2) var(--spacing-4)',
-                background: 'var(--primary-color)',
-                color: 'white',
-                borderRadius: 'var(--radius-md)',
-                textDecoration: 'none',
-              }}
-            >
-              View Incident
-            </Link>
-          </div>
+        <div className="p-6">
+          <Card className="text-center">
+            <CardContent className="py-8">
+              <h2 className="text-xl font-semibold mb-2">Incident Not Resolved</h2>
+              <p className="text-muted-foreground mb-4">
+                Postmortems can only be created for resolved incidents.
+              </p>
+              <Link href={`/incidents/${incidentId}`}>
+                <Button>View Incident</Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
       );
     }
 
     // Show create form for new postmortem
     return (
-      <div style={{ padding: 'var(--spacing-6)' }}>
-        <div style={{ marginBottom: 'var(--spacing-6)' }}>
+      <div className="p-6">
+        <div className="mb-6">
           <Link
             href="/postmortems"
-            style={{
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              fontSize: 'var(--font-size-sm)',
-              marginBottom: 'var(--spacing-2)',
-              display: 'inline-block',
-            }}
+            className="text-muted-foreground no-underline text-sm mb-2 inline-flex items-center gap-1 hover:text-foreground transition-colors"
           >
-            ← Back to Postmortems
+            <ArrowLeft className="w-4 h-4" />
+            Back to Postmortems
           </Link>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)' }}>
-            Create Postmortem
-          </h1>
-          <p style={{ color: 'var(--text-muted)' }}>For incident: {incident.title}</p>
+          <h1 className="text-2xl font-bold mt-2">Create Postmortem</h1>
+          <p className="text-muted-foreground">For incident: {incident.title}</p>
         </div>
 
         {canEdit ? (
           <PostmortemForm incidentId={incidentId} users={users} />
         ) : (
-          <div
-            style={{
-              padding: 'var(--spacing-4)',
-              background: 'var(--color-warning-light)',
-              borderRadius: 'var(--radius-md)',
-            }}
-          >
-            <p>You don&apos;t have permission to create postmortems.</p>
-          </div>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              You don&apos;t have permission to create postmortems.
+            </AlertDescription>
+          </Alert>
         )}
       </div>
     );
@@ -119,28 +103,21 @@ export default async function PostmortemPage({
 
   // Show existing postmortem
   return (
-    <div style={{ padding: 'var(--spacing-6)' }}>
-      <div style={{ marginBottom: 'var(--spacing-6)' }}>
+    <div className="p-6">
+      <div className="mb-6">
         <Link
           href="/postmortems"
-          style={{
-            color: 'var(--text-muted)',
-            textDecoration: 'none',
-            fontSize: 'var(--font-size-sm)',
-            marginBottom: 'var(--spacing-2)',
-            display: 'inline-block',
-          }}
+          className="text-muted-foreground no-underline text-sm mb-2 inline-flex items-center gap-1 hover:text-foreground transition-colors"
         >
-          ← Back to Postmortems
+          <ArrowLeft className="w-4 h-4" />
+          Back to Postmortems
         </Link>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)' }}>
-          {postmortem.title}
-        </h1>
-        <p style={{ color: 'var(--text-muted)' }}>
+        <h1 className="text-2xl font-bold mt-2">{postmortem.title}</h1>
+        <p className="text-muted-foreground">
           Postmortem for{' '}
           <Link
             href={`/incidents/${incidentId}`}
-            style={{ color: 'var(--primary)', textDecoration: 'none' }}
+            className="text-primary no-underline hover:underline"
           >
             {postmortem.incident.title}
           </Link>
@@ -159,18 +136,13 @@ export default async function PostmortemPage({
           />
         )
       ) : (
-        <div
-          style={{
-            padding: 'var(--spacing-4)',
-            background: 'var(--color-warning-light)',
-            borderRadius: 'var(--radius-md)',
-          }}
-        >
-          <p>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
             You don&apos;t have permission to view this postmortem. Only published postmortems are
             publicly viewable.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );
