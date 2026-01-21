@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/shadcn/button';
 
 import Pagination from '@/components/incident/Pagination';
-import { MoreHorizontal, FileText, CheckCircle2, Eye, Edit2 } from 'lucide-react';
+import { MoreHorizontal, FileText, CheckCircle2, Eye, Edit2, Globe, Lock } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ type PostmortemListItem = {
   id: string;
   title: string;
   status: string;
+  isPublic: boolean | null;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;
@@ -87,6 +88,7 @@ export default function PostmortemsListTable({
                 <th className="px-4 py-3 min-w-[200px]">Postmortem</th>
                 <th className="px-4 py-3 min-w-[200px]">Incident</th>
                 <th className="px-4 py-3 w-[120px]">Status</th>
+                <th className="px-4 py-3 w-[100px]">Visibility</th>
                 <th className="px-4 py-3 w-[150px]">Author</th>
                 <th className="px-4 py-3 w-[150px]">Date</th>
                 <th className="px-4 py-3 w-[60px]"></th>
@@ -129,6 +131,25 @@ export default function PostmortemsListTable({
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={pm.status} size="sm" showDot />
+                    </td>
+                    <td className="px-4 py-3">
+                      {pm.isPublic ? (
+                        <div
+                          className="flex items-center gap-1.5 text-slate-600"
+                          title="Publicly visible"
+                        >
+                          <Globe className="h-3.5 w-3.5" />
+                          <span className="text-xs font-medium">Public</span>
+                        </div>
+                      ) : (
+                        <div
+                          className="flex items-center gap-1.5 text-slate-400"
+                          title="Internal only"
+                        >
+                          <Lock className="h-3.5 w-3.5" />
+                          <span className="text-xs">Private</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
