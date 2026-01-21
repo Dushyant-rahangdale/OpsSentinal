@@ -212,14 +212,16 @@ export default function PostmortemActionItems({
               <div className="space-y-1.5">
                 <Label>Owner</Label>
                 <Select
-                  value={newItem.owner || ''}
-                  onValueChange={value => setNewItem({ ...newItem, owner: value })}
+                  value={newItem.owner || '_unassigned'}
+                  onValueChange={value =>
+                    setNewItem({ ...newItem, owner: value === '_unassigned' ? undefined : value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Unassigned" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="_unassigned">Unassigned</SelectItem>
                     {users.map(user => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name}
@@ -384,14 +386,18 @@ export default function PostmortemActionItems({
                         <div className="space-y-1.5">
                           <Label>Owner</Label>
                           <Select
-                            value={item.owner || ''}
-                            onValueChange={value => updateItem(item.id, { owner: value })}
+                            value={item.owner || '_unassigned'}
+                            onValueChange={value =>
+                              updateItem(item.id, {
+                                owner: value === '_unassigned' ? undefined : value,
+                              })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Unassigned" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Unassigned</SelectItem>
+                              <SelectItem value="_unassigned">Unassigned</SelectItem>
                               {users.map(user => (
                                 <SelectItem key={user.id} value={user.id}>
                                   {user.name}
