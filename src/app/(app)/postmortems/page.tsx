@@ -5,9 +5,11 @@ import { getAllPostmortems } from './actions';
 import { getUserPermissions } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
-import { Card, Button } from '@/components/ui';
+import { Card } from '@/components/ui/shadcn/card';
+import { Button } from '@/components/ui/shadcn/button';
 import PostmortemCard from '@/components/PostmortemCard';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
+import { cn } from '@/lib/utils';
 
 export default async function PostmortemsPage({
   searchParams,
@@ -54,62 +56,23 @@ export default async function PostmortemsPage({
     : [];
 
   return (
-    <div className="[zoom:0.8]" style={{ padding: 'var(--spacing-6)' }}>
-      <div
-        style={{
-          marginBottom: 'var(--spacing-8)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 'var(--spacing-4)',
-          paddingBottom: 'var(--spacing-6)',
-          borderBottom: '2px solid #e2e8f0',
-        }}
-      >
+    <div className="p-6 [zoom:0.8]">
+      {/* Header */}
+      <div className="mb-8 flex justify-between items-start gap-4 pb-6 border-b-2 border-slate-200">
         <div>
-          <h1
-            style={{
-              fontSize: '2.5rem',
-              fontWeight: '800',
-              marginBottom: 'var(--spacing-2)',
-              background: 'linear-gradient(135deg, #1e293b 0%, #475569 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '-0.02em',
-            }}
-          >
+          <h1 className="text-[2.5rem] font-extrabold mb-2 bg-gradient-to-br from-slate-800 to-slate-500 bg-clip-text text-transparent tracking-tight">
             Postmortems
           </h1>
-          <p
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: 'var(--font-size-base)',
-              lineHeight: '1.6',
-            }}
-          >
+          <p className="text-muted-foreground text-base leading-relaxed">
             Learn from incidents and improve your incident response process
           </p>
         </div>
         {resolvedIncidentsWithoutPostmortems.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--spacing-2)',
-              minWidth: '200px',
-            }}
-          >
+          <div className="flex flex-col gap-2 min-w-[200px]">
             <Link href="/postmortems/create">
-              <Button variant="primary">Create Postmortem</Button>
+              <Button>Create Postmortem</Button>
             </Link>
-            <p
-              style={{
-                fontSize: 'var(--font-size-xs)',
-                color: 'var(--text-muted)',
-                margin: 0,
-                textAlign: 'center',
-              }}
-            >
+            <p className="text-xs text-muted-foreground m-0 text-center">
               {resolvedIncidentsWithoutPostmortems.length} resolved incident
               {resolvedIncidentsWithoutPostmortems.length !== 1 ? 's' : ''} available
             </p>
@@ -118,63 +81,37 @@ export default async function PostmortemsPage({
       </div>
 
       {/* Filters */}
-      <div
-        style={{
-          marginBottom: 'var(--spacing-6)',
-          display: 'flex',
-          gap: 'var(--spacing-2)',
-          padding: 'var(--spacing-1)',
-          background: '#f8fafc',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid #e2e8f0',
-          width: 'fit-content',
-        }}
-      >
+      <div className="mb-6 flex gap-2 p-1 bg-slate-50 rounded-lg border border-slate-200 w-fit">
         <Link
           href="/postmortems"
-          style={{
-            padding: 'var(--spacing-2) var(--spacing-5)',
-            borderRadius: 'var(--radius-md)',
-            background: !status ? 'var(--primary-color)' : 'transparent',
-            color: !status ? 'white' : 'var(--text-primary)',
-            textDecoration: 'none',
-            fontSize: 'var(--font-size-sm)',
-            fontWeight: !status ? '600' : '500',
-            transition: 'all 0.2s ease',
-            boxShadow: !status ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
-          }}
+          className={cn(
+            'px-5 py-2 rounded-md text-sm no-underline transition-all duration-200',
+            !status
+              ? 'bg-primary text-primary-foreground font-semibold shadow-md'
+              : 'text-foreground font-medium hover:bg-slate-100'
+          )}
         >
           All
         </Link>
         <Link
           href="/postmortems?status=PUBLISHED"
-          style={{
-            padding: 'var(--spacing-2) var(--spacing-5)',
-            borderRadius: 'var(--radius-md)',
-            background: status === 'PUBLISHED' ? 'var(--primary-color)' : 'transparent',
-            color: status === 'PUBLISHED' ? 'white' : 'var(--text-primary)',
-            textDecoration: 'none',
-            fontSize: 'var(--font-size-sm)',
-            fontWeight: status === 'PUBLISHED' ? '600' : '500',
-            transition: 'all 0.2s ease',
-            boxShadow: status === 'PUBLISHED' ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
-          }}
+          className={cn(
+            'px-5 py-2 rounded-md text-sm no-underline transition-all duration-200',
+            status === 'PUBLISHED'
+              ? 'bg-primary text-primary-foreground font-semibold shadow-md'
+              : 'text-foreground font-medium hover:bg-slate-100'
+          )}
         >
           Published
         </Link>
         <Link
           href="/postmortems?status=DRAFT"
-          style={{
-            padding: 'var(--spacing-2) var(--spacing-5)',
-            borderRadius: 'var(--radius-md)',
-            background: status === 'DRAFT' ? 'var(--primary-color)' : 'transparent',
-            color: status === 'DRAFT' ? 'white' : 'var(--text-primary)',
-            textDecoration: 'none',
-            fontSize: 'var(--font-size-sm)',
-            fontWeight: status === 'DRAFT' ? '600' : '500',
-            transition: 'all 0.2s ease',
-            boxShadow: status === 'DRAFT' ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
-          }}
+          className={cn(
+            'px-5 py-2 rounded-md text-sm no-underline transition-all duration-200',
+            status === 'DRAFT'
+              ? 'bg-primary text-primary-foreground font-semibold shadow-md'
+              : 'text-foreground font-medium hover:bg-slate-100'
+          )}
         >
           Drafts
         </Link>
@@ -182,89 +119,39 @@ export default async function PostmortemsPage({
 
       {/* Postmortems List */}
       {postmortems.length === 0 ? (
-        <Card>
-          <div style={{ padding: 'var(--spacing-8)', textAlign: 'center' }}>
-            <p
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: 'var(--font-size-base)',
-                marginBottom: 'var(--spacing-4)',
-              }}
-            >
-              {status
-                ? `No ${status.toLowerCase()} postmortems found.`
-                : 'No postmortems found. Create one from a resolved incident.'}
-            </p>
-            {resolvedIncidentsWithoutPostmortems.length > 0 && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--spacing-3)',
-                  alignItems: 'center',
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 'var(--font-size-sm)',
-                    color: 'var(--text-muted)',
-                    marginBottom: 'var(--spacing-2)',
-                  }}
-                >
-                  Resolved incidents available for postmortem:
-                </p>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--spacing-2)',
-                    width: '100%',
-                    maxWidth: '400px',
-                  }}
-                >
-                  {resolvedIncidentsWithoutPostmortems.slice(0, 5).map(incident => (
-                    <Link
-                      key={incident.id}
-                      href={`/postmortems/${incident.id}`}
-                      style={{
-                        padding: 'var(--spacing-3)',
-                        background: 'var(--color-neutral-50)',
-                        border: '1px solid var(--color-neutral-200)',
-                        borderRadius: 'var(--radius-md)',
-                        textDecoration: 'none',
-                        display: 'block',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 'var(--font-weight-semibold)',
-                          color: 'var(--text-primary)',
-                          marginBottom: 'var(--spacing-1)',
-                        }}
-                      >
-                        {incident.title}
-                      </div>
-                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                        Resolved{' '}
-                        {incident.resolvedAt
-                          ? formatDateTime(incident.resolvedAt, userTimeZone, { format: 'date' })
-                          : 'N/A'}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground text-base mb-4">
+            {status
+              ? `No ${status.toLowerCase()} postmortems found.`
+              : 'No postmortems found. Create one from a resolved incident.'}
+          </p>
+          {resolvedIncidentsWithoutPostmortems.length > 0 && (
+            <div className="flex flex-col gap-3 items-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Resolved incidents available for postmortem:
+              </p>
+              <div className="flex flex-col gap-2 w-full max-w-[400px]">
+                {resolvedIncidentsWithoutPostmortems.slice(0, 5).map(incident => (
+                  <Link
+                    key={incident.id}
+                    href={`/postmortems/${incident.id}`}
+                    className="p-3 bg-slate-50 border border-slate-200 rounded-md no-underline block hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="font-semibold text-foreground mb-1">{incident.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Resolved{' '}
+                      {incident.resolvedAt
+                        ? formatDateTime(incident.resolvedAt, userTimeZone, { format: 'date' })
+                        : 'N/A'}
+                    </div>
+                  </Link>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </Card>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(500px, 1fr))',
-            gap: 'var(--spacing-5)',
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(500px,1fr))] gap-5">
           {postmortems.map(postmortem => (
             <PostmortemCard key={postmortem.id} postmortem={postmortem} />
           ))}

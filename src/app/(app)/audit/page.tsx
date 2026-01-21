@@ -4,6 +4,15 @@ import { getAuthOptions } from '@/lib/auth';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 import { DirectUserAvatar } from '@/components/UserAvatar';
 import { getDefaultAvatar } from '@/lib/avatar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/shadcn/table';
+import { Card } from '@/components/ui/shadcn/card';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,109 +41,46 @@ export default async function AuditLogPage() {
   });
 
   return (
-    <main className="[zoom:0.8]" style={{ padding: '1rem' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem',
-        }}
-      >
+    <main className="p-4 [zoom:0.8]">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-            Audit Log
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            User, team, and service configuration changes.
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Audit Log</h1>
+          <p className="text-muted-foreground">User, team, and service configuration changes.</p>
         </div>
       </div>
 
-      <div className="glass-panel" style={{ background: 'white', overflow: 'hidden' }}>
-        <div
-          style={{
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          <table
-            style={{
-              width: '100%',
-              minWidth: '800px',
-              borderCollapse: 'collapse',
-              fontSize: '0.9rem',
-            }}
-          >
-            <thead style={{ background: '#f9f9f9', borderBottom: '1px solid var(--border)' }}>
-              <tr>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '1rem',
-                    fontWeight: '600',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
+      {/* Audit Table */}
+      <Card className="bg-white overflow-hidden">
+        <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+          <Table className="min-w-[800px]">
+            <TableHeader className="bg-slate-50 border-b border-border">
+              <TableRow>
+                <TableHead className="text-left p-4 font-semibold text-muted-foreground">
                   Timestamp
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '1rem',
-                    fontWeight: '600',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
+                </TableHead>
+                <TableHead className="text-left p-4 font-semibold text-muted-foreground">
                   Actor
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '1rem',
-                    fontWeight: '600',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
+                </TableHead>
+                <TableHead className="text-left p-4 font-semibold text-muted-foreground">
                   Action
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '1rem',
-                    fontWeight: '600',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
+                </TableHead>
+                <TableHead className="text-left p-4 font-semibold text-muted-foreground">
                   Entity
-                </th>
-                <th
-                  style={{
-                    textAlign: 'left',
-                    padding: '1rem',
-                    fontWeight: '600',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
+                </TableHead>
+                <TableHead className="text-left p-4 font-semibold text-muted-foreground">
                   Details
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {logs.map(log => (
-                <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td
-                    style={{
-                      padding: '1rem',
-                      fontFamily: 'monospace',
-                      fontSize: '0.8rem',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
+                <TableRow key={log.id} className="border-b border-slate-100">
+                  <TableCell className="p-4 font-mono text-xs text-muted-foreground">
                     {formatDateTime(log.createdAt, userTimeZone, { format: 'datetime' })}
-                  </td>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  </TableCell>
+                  <TableCell className="p-4">
+                    <div className="flex items-center gap-3">
                       {log.actor ? (
                         <DirectUserAvatar
                           avatarUrl={
@@ -145,60 +91,39 @@ export default async function AuditLogPage() {
                           size="sm"
                         />
                       ) : (
-                        <div
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            background: '#e5e7eb',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            color: '#6b7280',
-                          }}
-                        >
+                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-[0.7rem] font-semibold text-gray-500">
                           SYS
                         </div>
                       )}
                       <div>
-                        <div style={{ fontWeight: '600' }}>{log.actor?.name || 'System'}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        <div className="font-semibold">{log.actor?.name || 'System'}</div>
+                        <div className="text-xs text-muted-foreground">
                           {log.actor?.email || '-'}
                         </div>
                       </div>
                     </div>
-                  </td>
-                  <td style={{ padding: '1rem', fontWeight: '600' }}>{log.action}</td>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ fontSize: '0.85rem' }}>{log.entityType}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {log.entityId || '-'}
-                    </div>
-                  </td>
-                  <td
-                    style={{ padding: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}
-                  >
+                  </TableCell>
+                  <TableCell className="p-4 font-semibold">{log.action}</TableCell>
+                  <TableCell className="p-4">
+                    <div className="text-sm">{log.entityType}</div>
+                    <div className="text-xs text-muted-foreground">{log.entityId || '-'}</div>
+                  </TableCell>
+                  <TableCell className="p-4 text-sm text-muted-foreground">
                     {log.details ? JSON.stringify(log.details) : '-'}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
               {logs.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="empty-state"
-                    style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}
-                  >
+                <TableRow>
+                  <TableCell colSpan={5} className="p-8 text-center text-muted-foreground">
                     No audit entries yet. Actions on users, teams, and services will appear here.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
-      </div>
+      </Card>
     </main>
   );
 }
