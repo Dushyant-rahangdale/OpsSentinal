@@ -5,18 +5,9 @@ import { useRouter } from 'next/navigation';
 import { formatDateTime } from '@/lib/timezone';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/shadcn/button';
-import { Badge } from '@/components/ui/shadcn/badge';
+
 import Pagination from '@/components/incident/Pagination';
-import {
-  MoreHorizontal,
-  FileText,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Archive,
-  Eye,
-  Edit2,
-} from 'lucide-react';
+import { MoreHorizontal, FileText, CheckCircle2, Eye, Edit2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/shadcn/dropdown-menu';
 import UserAvatar from '@/components/UserAvatar';
+import StatusBadge from '@/components/incident/StatusBadge';
 
 type PostmortemListItem = {
   id: string;
@@ -61,20 +53,6 @@ type PostmortemsListTableProps = {
   };
   userTimeZone: string;
   canManage: boolean;
-};
-
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-700 border-slate-200', icon: FileText },
-  PUBLISHED: {
-    label: 'Published',
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    icon: CheckCircle2,
-  },
-  ARCHIVED: {
-    label: 'Archived',
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
-    icon: Archive,
-  },
 };
 
 export default function PostmortemsListTable({
@@ -116,9 +94,6 @@ export default function PostmortemsListTable({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {postmortems.map(pm => {
-                const config = statusConfig[pm.status] || statusConfig['DRAFT'];
-                const StatusIcon = config.icon;
-
                 return (
                   <tr
                     key={pm.id}
@@ -153,13 +128,7 @@ export default function PostmortemsListTable({
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant="outline"
-                        className={cn('font-normal capitalize gap-1 pr-2.5', config.color)}
-                      >
-                        <StatusIcon className="h-3.5 w-3.5" />
-                        {config.label}
-                      </Badge>
+                      <StatusBadge status={pm.status} size="sm" showDot />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
