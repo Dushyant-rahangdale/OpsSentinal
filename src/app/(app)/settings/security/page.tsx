@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import SecurityForm from '@/components/settings/SecurityForm';
+import ActiveSessionsSection from '@/components/settings/ActiveSessionsSection';
 import { SettingsPageHeader } from '@/components/settings/layout/SettingsPageHeader';
 import { SettingsSection } from '@/components/settings/layout/SettingsSection';
 import { Badge } from '@/components/ui/shadcn/badge';
@@ -108,6 +109,18 @@ export default async function SecuritySettingsPage() {
         }
       >
         <SecurityForm hasPassword={hasPassword} />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Active Sessions"
+        description="Manage your active sessions across all devices."
+        footer={
+          <p className="text-sm text-muted-foreground">
+            Revoking all sessions will sign you out from every device immediately.
+          </p>
+        }
+      >
+        <ActiveSessionsSection />
       </SettingsSection>
     </div>
   );
