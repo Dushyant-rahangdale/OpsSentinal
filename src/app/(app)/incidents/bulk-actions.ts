@@ -32,58 +32,58 @@ export async function bulkAcknowledge(incidentIds: string[]) {
       },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId,
-          message: `Bulk acknowledged${user ? ` by ${user.name}` : ''}`,
-        },
-      });
+    await prisma.incidentEvent.createMany({
+      data: incidentIds.map(incidentId => ({
+        incidentId,
+        message: `Bulk acknowledged${user ? ` by ${user.name}` : ''}`,
+      })),
+    });
 
-      // Send notifications
-      try {
-        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
-        await sendIncidentNotifications(incidentId, 'acknowledged');
+    // Fetch all incidents in a single query for notifications and webhooks
+    const incidents = await prisma.incident.findMany({
+      where: { id: { in: incidentIds } },
+      include: {
+        service: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+      },
+    });
 
-        const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
-        await notifyStatusPageSubscribers(incidentId, 'acknowledged');
+    // Send notifications in parallel
+    const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+    const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+    const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
 
-        // Webhooks for ack? Usually incident.acknowledged
-        // Not strictly required by user request but good for consistency
-        const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
-        const incident = await prisma.incident.findUnique({
-          where: { id: incidentId },
-          include: {
-            service: { select: { id: true, name: true } },
-            assignee: { select: { id: true, name: true, email: true } },
-          },
-        });
-
-        if (incident) {
-          await triggerWebhooksForService(incident.serviceId, 'incident.acknowledged', {
-            id: incident.id,
-            title: incident.title,
-            description: incident.description,
-            status: incident.status,
-            urgency: incident.urgency,
-            priority: incident.priority,
-            service: incident.service,
-            assignee: incident.assignee,
-            createdAt: incident.createdAt.toISOString(),
-            acknowledgedAt: incident.acknowledgedAt?.toISOString() || new Date().toISOString(),
+    await Promise.allSettled(
+      incidents.map(async incident => {
+        try {
+          await Promise.all([
+            sendIncidentNotifications(incident.id, 'acknowledged'),
+            notifyStatusPageSubscribers(incident.id, 'acknowledged'),
+            triggerWebhooksForService(incident.serviceId, 'incident.acknowledged', {
+              id: incident.id,
+              title: incident.title,
+              description: incident.description,
+              status: incident.status,
+              urgency: incident.urgency,
+              priority: incident.priority,
+              service: incident.service,
+              assignee: incident.assignee,
+              createdAt: incident.createdAt.toISOString(),
+              acknowledgedAt: incident.acknowledgedAt?.toISOString() || new Date().toISOString(),
+            }),
+          ]);
+        } catch (e) {
+          logger.error('Failed to send notifications for incident', {
+            component: 'bulk-actions',
+            action: 'acknowledge',
+            error: e,
+            incidentId: incident.id,
           });
         }
-      } catch (e) {
-        logger.error('Failed to send notifications for incident', {
-          component: 'bulk-actions',
-          action: 'acknowledge',
-          error: e,
-          incidentId,
-        });
-      }
-    }
+      })
+    );
 
     revalidatePath('/incidents');
     revalidatePath('/');
@@ -119,57 +119,58 @@ export async function bulkResolve(incidentIds: string[]) {
       },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId,
-          message: `Bulk resolved${user ? ` by ${user.name}` : ''}`,
-        },
-      });
+    await prisma.incidentEvent.createMany({
+      data: incidentIds.map(incidentId => ({
+        incidentId,
+        message: `Bulk resolved${user ? ` by ${user.name}` : ''}`,
+      })),
+    });
 
-      // Send notifications
-      try {
-        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
-        await sendIncidentNotifications(incidentId, 'resolved');
+    // Fetch all incidents in a single query for notifications and webhooks
+    const incidents = await prisma.incident.findMany({
+      where: { id: { in: incidentIds } },
+      include: {
+        service: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+      },
+    });
 
-        const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
-        await notifyStatusPageSubscribers(incidentId, 'resolved');
+    // Send notifications in parallel
+    const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+    const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+    const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
 
-        const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
-        // Fetch incident details for webhook
-        const incident = await prisma.incident.findUnique({
-          where: { id: incidentId },
-          include: {
-            service: { select: { id: true, name: true } },
-            assignee: { select: { id: true, name: true, email: true } },
-          },
-        });
-
-        if (incident) {
-          await triggerWebhooksForService(incident.serviceId, 'incident.resolved', {
-            id: incident.id,
-            title: incident.title,
-            description: incident.description,
-            status: incident.status,
-            urgency: incident.urgency,
-            priority: incident.priority,
-            service: incident.service,
-            assignee: incident.assignee,
-            createdAt: incident.createdAt.toISOString(),
-            resolvedAt: incident.resolvedAt?.toISOString() || new Date().toISOString(),
+    await Promise.allSettled(
+      incidents.map(async incident => {
+        try {
+          await Promise.all([
+            sendIncidentNotifications(incident.id, 'resolved'),
+            notifyStatusPageSubscribers(incident.id, 'resolved'),
+            triggerWebhooksForService(incident.serviceId, 'incident.resolved', {
+              id: incident.id,
+              title: incident.title,
+              description: incident.description,
+              status: incident.status,
+              urgency: incident.urgency,
+              priority: incident.priority,
+              service: incident.service,
+              assignee: incident.assignee,
+              createdAt: incident.createdAt.toISOString(),
+              resolvedAt: incident.resolvedAt?.toISOString() || new Date().toISOString(),
+            }),
+          ]);
+        } catch (e) {
+          logger.error('Failed to send notifications for incident', {
+            component: 'bulk-actions',
+            action: 'resolve',
+            error: e,
+            incidentId: incident.id,
           });
         }
-      } catch (e) {
-        logger.error('Failed to send notifications for incident', {
-          component: 'bulk-actions',
-          action: 'resolve',
-          error: e,
-          incidentId,
-        });
-      }
-    }
+      })
+    );
 
     revalidatePath('/incidents');
     revalidatePath('/');
@@ -209,53 +210,55 @@ export async function bulkReassign(incidentIds: string[], assigneeId: string) {
       data: { assigneeId },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId,
-          message: `Bulk reassigned to ${assignee.name}${user ? ` by ${user.name}` : ''}`,
-        },
-      });
+    await prisma.incidentEvent.createMany({
+      data: incidentIds.map(incidentId => ({
+        incidentId,
+        message: `Bulk reassigned to ${assignee.name}${user ? ` by ${user.name}` : ''}`,
+      })),
+    });
 
-      // Send notifications
-      try {
-        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
-        await sendIncidentNotifications(incidentId, 'updated');
+    // Fetch all incidents in a single query for notifications and webhooks
+    const incidents = await prisma.incident.findMany({
+      where: { id: { in: incidentIds } },
+      include: {
+        service: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+      },
+    });
 
-        // Webhook for assignment change (incident.updated or incident.assigned if supported)
-        const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
-        const incident = await prisma.incident.findUnique({
-          where: { id: incidentId },
-          include: {
-            service: { select: { id: true, name: true } },
-            assignee: { select: { id: true, name: true, email: true } },
-          },
-        });
+    // Send notifications in parallel
+    const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+    const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
 
-        if (incident) {
-          await triggerWebhooksForService(incident.serviceId, 'incident.updated', {
-            id: incident.id,
-            title: incident.title,
-            description: incident.description,
-            status: incident.status,
-            urgency: incident.urgency,
-            priority: incident.priority,
-            service: incident.service,
-            assignee: incident.assignee,
-            createdAt: incident.createdAt.toISOString(),
+    await Promise.allSettled(
+      incidents.map(async incident => {
+        try {
+          await Promise.all([
+            sendIncidentNotifications(incident.id, 'updated'),
+            triggerWebhooksForService(incident.serviceId, 'incident.updated', {
+              id: incident.id,
+              title: incident.title,
+              description: incident.description,
+              status: incident.status,
+              urgency: incident.urgency,
+              priority: incident.priority,
+              service: incident.service,
+              assignee: incident.assignee,
+              createdAt: incident.createdAt.toISOString(),
+            }),
+          ]);
+        } catch (e) {
+          logger.error('Failed to send notifications for incident', {
+            component: 'bulk-actions',
+            action: 'reassign',
+            error: e,
+            incidentId: incident.id,
           });
         }
-      } catch (e) {
-        logger.error('Failed to send notifications for incident', {
-          component: 'bulk-actions',
-          action: 'reassign',
-          error: e,
-          incidentId,
-        });
-      }
-    }
+      })
+    );
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -290,16 +293,14 @@ export async function bulkUpdatePriority(incidentIds: string[], priority: string
       data: { priority: priority || null },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId,
-          message: `Bulk priority updated to ${priority || 'Auto'}${user ? ` by ${user.name}` : ''}`,
-        },
-      });
-    }
+    await prisma.incidentEvent.createMany({
+      data: incidentIds.map(incidentId => ({
+        incidentId,
+        message: `Bulk priority updated to ${priority || 'Auto'}${user ? ` by ${user.name}` : ''}`,
+      })),
+    });
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -347,19 +348,18 @@ export async function bulkSnooze(
       },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
     const userTimeZone = getUserTimeZone(user ?? undefined);
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent
-        .create({
-          data: {
-            incidentId,
-            message: `Bulk snoozed until ${formatDateTime(snoozedUntil, userTimeZone, { format: 'datetime' })}${reason ? `: ${reason}` : ''}${user ? ` by ${user.name}` : ''}`,
-          },
-        })
-        .catch(() => {}); // Ignore errors if incident was already resolved
-    }
+    await prisma.incidentEvent
+      .createMany({
+        data: incidentIds.map(incidentId => ({
+          incidentId,
+          message: `Bulk snoozed until ${formatDateTime(snoozedUntil, userTimeZone, { format: 'datetime' })}${reason ? `: ${reason}` : ''}${user ? ` by ${user.name}` : ''}`,
+        })),
+        skipDuplicates: true,
+      })
+      .catch(() => {}); // Ignore errors if incident was already resolved
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -401,18 +401,17 @@ export async function bulkUnsnooze(incidentIds: string[]) {
       },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent
-        .create({
-          data: {
-            incidentId,
-            message: `Bulk unsnoozed${user ? ` by ${user.name}` : ''}`,
-          },
-        })
-        .catch(() => {}); // Ignore errors if incident wasn't snoozed
-    }
+    await prisma.incidentEvent
+      .createMany({
+        data: incidentIds.map(incidentId => ({
+          incidentId,
+          message: `Bulk unsnoozed${user ? ` by ${user.name}` : ''}`,
+        })),
+        skipDuplicates: true,
+      })
+      .catch(() => {}); // Ignore errors if incident wasn't snoozed
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -447,18 +446,17 @@ export async function bulkSuppress(incidentIds: string[]) {
       },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent
-        .create({
-          data: {
-            incidentId,
-            message: `Bulk suppressed${user ? ` by ${user.name}` : ''}`,
-          },
-        })
-        .catch(() => {}); // Ignore errors if incident was already resolved
-    }
+    await prisma.incidentEvent
+      .createMany({
+        data: incidentIds.map(incidentId => ({
+          incidentId,
+          message: `Bulk suppressed${user ? ` by ${user.name}` : ''}`,
+        })),
+        skipDuplicates: true,
+      })
+      .catch(() => {}); // Ignore errors if incident was already resolved
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -493,18 +491,17 @@ export async function bulkUnsuppress(incidentIds: string[]) {
       },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent
-        .create({
-          data: {
-            incidentId,
-            message: `Bulk unsuppressed${user ? ` by ${user.name}` : ''}`,
-          },
-        })
-        .catch(() => {}); // Ignore errors if incident wasn't suppressed
-    }
+    await prisma.incidentEvent
+      .createMany({
+        data: incidentIds.map(incidentId => ({
+          incidentId,
+          message: `Bulk unsuppressed${user ? ` by ${user.name}` : ''}`,
+        })),
+        skipDuplicates: true,
+      })
+      .catch(() => {}); // Ignore errors if incident wasn't suppressed
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -534,16 +531,14 @@ export async function bulkUpdateUrgency(incidentIds: string[], urgency: 'HIGH' |
       data: { urgency },
     });
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId,
-          message: `Bulk urgency updated to ${urgency}${user ? ` by ${user.name}` : ''}`,
-        },
-      });
-    }
+    await prisma.incidentEvent.createMany({
+      data: incidentIds.map(incidentId => ({
+        incidentId,
+        message: `Bulk urgency updated to ${urgency}${user ? ` by ${user.name}` : ''}`,
+      })),
+    });
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };
@@ -647,74 +642,83 @@ export async function bulkUpdateStatus(
       });
     }
 
-    // Log events for each incident
+    // Log events for each incident (batch create)
     const user = await getCurrentUser();
-    for (const incidentId of incidentIds) {
-      await prisma.incidentEvent.create({
-        data: {
-          incidentId,
-          message: `Bulk status updated to ${status}${user ? ` by ${user.name}` : ''}`,
-        },
-      });
+    await prisma.incidentEvent.createMany({
+      data: incidentIds.map(incidentId => ({
+        incidentId,
+        message: `Bulk status updated to ${status}${user ? ` by ${user.name}` : ''}`,
+      })),
+    });
 
-      // Send notifications based on status
-      try {
-        const { sendIncidentNotifications } = await import('@/lib/user-notifications');
-        const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
-        const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+    // Fetch all incidents in a single query for notifications and webhooks
+    const incidents = await prisma.incident.findMany({
+      where: { id: { in: incidentIds } },
+      include: {
+        service: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+      },
+    });
 
-        if (status === 'ACKNOWLEDGED') {
-          await sendIncidentNotifications(incidentId, 'acknowledged');
-          await notifyStatusPageSubscribers(incidentId, 'acknowledged');
-        } else if (status === 'RESOLVED') {
-          await sendIncidentNotifications(incidentId, 'resolved');
-          await notifyStatusPageSubscribers(incidentId, 'resolved');
-        } else if (status === 'OPEN') {
-          await sendIncidentNotifications(incidentId, 'updated');
-          // Note: subscribers don't usually get "re-opened" emails unless we specifically want to
-          // But webhooks might care.
-        }
+    // Send notifications in parallel
+    const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+    const { notifyStatusPageSubscribers } = await import('@/lib/status-page-notifications');
+    const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
 
-        // Webhooks
-        const incident = await prisma.incident.findUnique({
-          where: { id: incidentId },
-          include: {
-            service: { select: { id: true, name: true } },
-            assignee: { select: { id: true, name: true, email: true } },
-          },
-        });
+    // Determine event type once
+    let eventType = 'incident.updated';
+    if (status === 'RESOLVED') eventType = 'incident.resolved';
+    else if (status === 'ACKNOWLEDGED') eventType = 'incident.acknowledged';
+    else if (status === 'SNOOZED') eventType = 'incident.snoozed';
+    else if (status === 'SUPPRESSED') eventType = 'incident.suppressed';
 
-        if (incident) {
-          let eventType = 'incident.updated';
-          if (status === 'RESOLVED') eventType = 'incident.resolved';
-          else if (status === 'ACKNOWLEDGED') eventType = 'incident.acknowledged';
-          else if (status === 'SNOOZED') eventType = 'incident.snoozed';
-          else if (status === 'SUPPRESSED') eventType = 'incident.suppressed';
+    await Promise.allSettled(
+      incidents.map(async incident => {
+        try {
+          const notificationPromises: Promise<unknown>[] = [];
 
-          await triggerWebhooksForService(incident.serviceId, eventType, {
-            id: incident.id,
-            title: incident.title,
-            description: incident.description,
-            status: incident.status,
-            urgency: incident.urgency,
-            priority: incident.priority,
-            service: incident.service,
-            assignee: incident.assignee,
-            createdAt: incident.createdAt.toISOString(),
-            acknowledgedAt: incident.acknowledgedAt?.toISOString() || null,
-            resolvedAt: incident.resolvedAt?.toISOString() || null,
+          if (status === 'ACKNOWLEDGED') {
+            notificationPromises.push(
+              sendIncidentNotifications(incident.id, 'acknowledged'),
+              notifyStatusPageSubscribers(incident.id, 'acknowledged')
+            );
+          } else if (status === 'RESOLVED') {
+            notificationPromises.push(
+              sendIncidentNotifications(incident.id, 'resolved'),
+              notifyStatusPageSubscribers(incident.id, 'resolved')
+            );
+          } else if (status === 'OPEN') {
+            notificationPromises.push(sendIncidentNotifications(incident.id, 'updated'));
+          }
+
+          notificationPromises.push(
+            triggerWebhooksForService(incident.serviceId, eventType, {
+              id: incident.id,
+              title: incident.title,
+              description: incident.description,
+              status: incident.status,
+              urgency: incident.urgency,
+              priority: incident.priority,
+              service: incident.service,
+              assignee: incident.assignee,
+              createdAt: incident.createdAt.toISOString(),
+              acknowledgedAt: incident.acknowledgedAt?.toISOString() || null,
+              resolvedAt: incident.resolvedAt?.toISOString() || null,
+            })
+          );
+
+          await Promise.all(notificationPromises);
+        } catch (e) {
+          logger.error('Failed to send notifications for incident', {
+            component: 'bulk-actions',
+            action: 'status-update',
+            error: e,
+            incidentId: incident.id,
+            status,
           });
         }
-      } catch (e) {
-        logger.error('Failed to send notifications for incident', {
-          component: 'bulk-actions',
-          action: 'status-update',
-          error: e,
-          incidentId,
-          status,
-        });
-      }
-    }
+      })
+    );
 
     revalidatePath('/incidents');
     return { success: true, count: incidentIds.length };

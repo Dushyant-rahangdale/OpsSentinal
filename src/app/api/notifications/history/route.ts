@@ -160,6 +160,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Add cache headers for notification history (short cache, private)
     return jsonOk(
       {
         notifications: formattedNotifications,
@@ -168,7 +169,10 @@ export async function GET(req: NextRequest) {
         offset,
         stats,
       },
-      200
+      200,
+      {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=30',
+      }
     );
   } catch (error) {
     logger.error('api.notifications.history.fetch_error', {

@@ -81,7 +81,6 @@ export default async function ActionItemsPage({
     const actionItems = postmortem.actionItems as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (Array.isArray(actionItems)) {
       actionItems.forEach((item: any) => {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         allActionItems.push({
           id: item.id || `action-${postmortem.id}-${Math.random()}`,
           title: item.title || '',
@@ -101,16 +100,41 @@ export default async function ActionItemsPage({
     }
   });
 
-  // Apply filters
-  let filteredItems = allActionItems;
-  if (status) {
-    filteredItems = filteredItems.filter(item => item.status === status);
-  }
-  if (owner) {
-    filteredItems = filteredItems.filter(item => item.owner === owner);
-  }
-  if (priority) {
-    filteredItems = filteredItems.filter(item => item.priority === priority);
+  // Single-pass filtering and stats calculation for better performance
+  const now = new Date();
+  const stats = {
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    completed: 0,
+    blocked: 0,
+    overdue: 0,
+    highPriority: 0,
+  };
+
+  const filteredItems: typeof allActionItems = [];
+
+  for (const item of allActionItems) {
+    // Calculate stats (always, regardless of filter)
+    stats.total++;
+    if (item.status === 'OPEN') stats.open++;
+    else if (item.status === 'IN_PROGRESS') stats.inProgress++;
+    else if (item.status === 'COMPLETED') stats.completed++;
+    else if (item.status === 'BLOCKED') stats.blocked++;
+
+    if (item.dueDate && item.status !== 'COMPLETED' && new Date(item.dueDate) < now) {
+      stats.overdue++;
+    }
+    if (item.priority === 'HIGH' && item.status !== 'COMPLETED') {
+      stats.highPriority++;
+    }
+
+    // Apply filters
+    if (status && item.status !== status) continue;
+    if (owner && item.owner !== owner) continue;
+    if (priority && item.priority !== priority) continue;
+
+    filteredItems.push(item);
   }
 
   // Get all users for owner filter
@@ -122,22 +146,6 @@ export default async function ActionItemsPage({
 
   const permissions = await getUserPermissions();
   const canManage = permissions.isResponderOrAbove;
-
-  // Calculate statistics
-  const stats = {
-    total: allActionItems.length,
-    open: allActionItems.filter(item => item.status === 'OPEN').length,
-    inProgress: allActionItems.filter(item => item.status === 'IN_PROGRESS').length,
-    completed: allActionItems.filter(item => item.status === 'COMPLETED').length,
-    blocked: allActionItems.filter(item => item.status === 'BLOCKED').length,
-    overdue: allActionItems.filter(item => {
-      if (!item.dueDate || item.status === 'COMPLETED') return false;
-      return new Date(item.dueDate) < new Date();
-    }).length,
-    highPriority: allActionItems.filter(
-      item => item.priority === 'HIGH' && item.status !== 'COMPLETED'
-    ).length,
-  };
 
   return (
     <div className="p-6">

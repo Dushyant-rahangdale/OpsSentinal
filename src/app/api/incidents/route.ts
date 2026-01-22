@@ -82,7 +82,10 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return jsonOk({ incidents }, 200);
+  // Add cache headers for incidents list (short cache, private)
+  return jsonOk({ incidents }, 200, {
+    'Cache-Control': 'private, max-age=5, stale-while-revalidate=15',
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -143,6 +146,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Use include in create() to fetch relations in single query instead of separate findUnique
   const incident = await prisma.incident.create({
     data: {
       title,
@@ -151,6 +155,10 @@ export async function POST(req: NextRequest) {
       priority,
       status: 'OPEN',
       serviceId,
+    },
+    include: {
+      service: { select: { id: true, name: true } },
+      assignee: { select: { id: true, name: true, email: true } },
     },
   });
 
@@ -173,31 +181,21 @@ export async function POST(req: NextRequest) {
 
   // Trigger status page webhooks for incident.created event
   try {
-    const incidentWithRelations = await prisma.incident.findUnique({
-      where: { id: incident.id },
-      include: {
-        service: { select: { id: true, name: true } },
-        assignee: { select: { id: true, name: true, email: true } },
+    const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
+    await triggerWebhooksForService(incident.serviceId, 'incident.created', {
+      id: incident.id,
+      title: incident.title,
+      description: incident.description,
+      status: incident.status,
+      urgency: incident.urgency,
+      priority: incident.priority,
+      service: {
+        id: incident.service.id,
+        name: incident.service.name,
       },
+      assignee: incident.assignee,
+      createdAt: incident.createdAt.toISOString(),
     });
-
-    if (incidentWithRelations) {
-      const { triggerWebhooksForService } = await import('@/lib/status-page-webhooks');
-      await triggerWebhooksForService(incident.serviceId, 'incident.created', {
-        id: incidentWithRelations.id,
-        title: incidentWithRelations.title,
-        description: incidentWithRelations.description,
-        status: incidentWithRelations.status,
-        urgency: incidentWithRelations.urgency,
-        priority: incidentWithRelations.priority,
-        service: {
-          id: incidentWithRelations.service.id,
-          name: incidentWithRelations.service.name,
-        },
-        assignee: incidentWithRelations.assignee,
-        createdAt: incidentWithRelations.createdAt.toISOString(),
-      });
-    }
   } catch (e) {
     // Log but don't fail the request
     logger.error('api.incident.webhook_trigger_failed', {

@@ -1,14 +1,32 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import ConfirmDialog from '@/components/settings/ConfirmDialog';
-import { Trash2, AlertTriangle, CheckCircle2, RotateCcw, Clock, BarChart3, Database, FileText, Bell, Loader2, XCircle } from 'lucide-react';
+import {
+  Trash2,
+  AlertTriangle,
+  CheckCircle2,
+  RotateCcw,
+  Clock,
+  BarChart3,
+  Database,
+  FileText,
+  Bell,
+  Loader2,
+  XCircle,
+} from 'lucide-react';
 
 interface RetentionPolicy {
   incidentRetentionDays: number;
@@ -49,7 +67,7 @@ const DEFAULT_POLICY: RetentionPolicy = {
   alertRetentionDays: 365,
   logRetentionDays: 90,
   metricsRetentionDays: 365,
-  realTimeWindowDays: 90
+  realTimeWindowDays: 90,
 };
 
 export default function RetentionPolicySettings() {
@@ -64,7 +82,9 @@ export default function RetentionPolicySettings() {
   const [success, setSuccess] = useState<string | null>(null);
 
   // Field-level validation errors
-  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof RetentionPolicy, string>>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Partial<Record<keyof RetentionPolicy, string>>
+  >({});
 
   // Confirm Dialog State
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -120,7 +140,17 @@ export default function RetentionPolicySettings() {
     return isValid;
   };
 
-  const isDirty = JSON.stringify(policy) !== JSON.stringify(initialPolicy);
+  // Use useMemo for dirty check instead of JSON.stringify on every render
+  const isDirty = useMemo(() => {
+    if (!policy || !initialPolicy) return false;
+    return (
+      policy.incidentRetentionDays !== initialPolicy.incidentRetentionDays ||
+      policy.alertRetentionDays !== initialPolicy.alertRetentionDays ||
+      policy.logRetentionDays !== initialPolicy.logRetentionDays ||
+      policy.metricsRetentionDays !== initialPolicy.metricsRetentionDays ||
+      policy.realTimeWindowDays !== initialPolicy.realTimeWindowDays
+    );
+  }, [policy, initialPolicy]);
 
   const handleSave = async () => {
     if (!policy) return;
@@ -222,7 +252,6 @@ export default function RetentionPolicySettings() {
     }
 
     if (value === '') {
-
       setPolicy({ ...policy, [field]: '' });
       return;
     }
@@ -273,10 +302,30 @@ export default function RetentionPolicySettings() {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0 divide-y md:divide-y-0 md:divide-x">
-              <CompactStatRowItem icon={<Database className="w-4 h-4 text-blue-600" />} label="Incidents" value={stats.incidents.total} oldest={stats.incidents.oldest} />
-              <CompactStatRowItem icon={<Bell className="w-4 h-4 text-orange-600" />} label="Alerts" value={stats.alerts.total} oldest={stats.alerts.oldest} />
-              <CompactStatRowItem icon={<FileText className="w-4 h-4 text-muted-foreground" />} label="Logs" value={stats.logs.total} oldest={stats.logs.oldest} />
-              <CompactStatRowItem icon={<BarChart3 className="w-4 h-4 text-purple-600" />} label="Metrics" value={stats.rollups.total} oldest={stats.rollups.oldest} />
+              <CompactStatRowItem
+                icon={<Database className="w-4 h-4 text-blue-600" />}
+                label="Incidents"
+                value={stats.incidents.total}
+                oldest={stats.incidents.oldest}
+              />
+              <CompactStatRowItem
+                icon={<Bell className="w-4 h-4 text-orange-600" />}
+                label="Alerts"
+                value={stats.alerts.total}
+                oldest={stats.alerts.oldest}
+              />
+              <CompactStatRowItem
+                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                label="Logs"
+                value={stats.logs.total}
+                oldest={stats.logs.oldest}
+              />
+              <CompactStatRowItem
+                icon={<BarChart3 className="w-4 h-4 text-purple-600" />}
+                label="Metrics"
+                value={stats.rollups.total}
+                oldest={stats.rollups.oldest}
+              />
             </div>
           </CardContent>
         </Card>
@@ -289,25 +338,19 @@ export default function RetentionPolicySettings() {
             {/* Presets */}
             <div className="flex bg-muted p-1 rounded-md gap-1">
               {presets.map(preset => {
-                const isActive = JSON.stringify({
-                  incidentRetentionDays: policy?.incidentRetentionDays,
-                  alertRetentionDays: policy?.alertRetentionDays,
-                  logRetentionDays: policy?.logRetentionDays,
-                  metricsRetentionDays: policy?.metricsRetentionDays,
-                  realTimeWindowDays: policy?.realTimeWindowDays
-                }) === JSON.stringify({
-                  incidentRetentionDays: preset.incidentRetentionDays,
-                  alertRetentionDays: preset.alertRetentionDays,
-                  logRetentionDays: preset.logRetentionDays,
-                  metricsRetentionDays: preset.metricsRetentionDays,
-                  realTimeWindowDays: preset.realTimeWindowDays
-                });
+                const isActive =
+                  policy &&
+                  policy.incidentRetentionDays === preset.incidentRetentionDays &&
+                  policy.alertRetentionDays === preset.alertRetentionDays &&
+                  policy.logRetentionDays === preset.logRetentionDays &&
+                  policy.metricsRetentionDays === preset.metricsRetentionDays &&
+                  policy.realTimeWindowDays === preset.realTimeWindowDays;
 
                 return (
                   <Button
                     key={preset.name}
                     type="button"
-                    variant={isActive ? "default" : "ghost"}
+                    variant={isActive ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => handlePresetClick(preset)}
                     disabled={saving}
@@ -329,7 +372,7 @@ export default function RetentionPolicySettings() {
                   label="Incident History"
                   description="Resolved incidents and postmortems."
                   value={policy.incidentRetentionDays}
-                  onChange={(v) => handleInputChange('incidentRetentionDays', v)}
+                  onChange={v => handleInputChange('incidentRetentionDays', v)}
                   min={30}
                   error={validationErrors.incidentRetentionDays}
                 />
@@ -338,7 +381,7 @@ export default function RetentionPolicySettings() {
                   label="Alert Logs"
                   description="Raw alerts from integrations."
                   value={policy.alertRetentionDays}
-                  onChange={(v) => handleInputChange('alertRetentionDays', v)}
+                  onChange={v => handleInputChange('alertRetentionDays', v)}
                   min={7}
                   error={validationErrors.alertRetentionDays}
                 />
@@ -347,7 +390,7 @@ export default function RetentionPolicySettings() {
                   label="System Logs"
                   description="Audit trails and debug events."
                   value={policy.logRetentionDays}
-                  onChange={(v) => handleInputChange('logRetentionDays', v)}
+                  onChange={v => handleInputChange('logRetentionDays', v)}
                   min={1}
                   error={validationErrors.logRetentionDays}
                 />
@@ -356,7 +399,7 @@ export default function RetentionPolicySettings() {
                   label="Metric Rollups"
                   description="Aggregated performance data (hourly/daily)."
                   value={policy.metricsRetentionDays}
-                  onChange={(v) => handleInputChange('metricsRetentionDays', v)}
+                  onChange={v => handleInputChange('metricsRetentionDays', v)}
                   min={30}
                   error={validationErrors.metricsRetentionDays}
                 />
@@ -365,7 +408,7 @@ export default function RetentionPolicySettings() {
                   label="High-Precision Metrics"
                   description="Raw, real-time metric data points."
                   value={policy.realTimeWindowDays}
-                  onChange={(v) => handleInputChange('realTimeWindowDays', v)}
+                  onChange={v => handleInputChange('realTimeWindowDays', v)}
                   min={1}
                   error={validationErrors.realTimeWindowDays}
                 />
@@ -388,8 +431,8 @@ export default function RetentionPolicySettings() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground max-w-xl">
-              Run the cleanup job to permanently delete data older than your configured retention policy.
-              We recommend running a <strong>Preview</strong> first.
+              Run the cleanup job to permanently delete data older than your configured retention
+              policy. We recommend running a <strong>Preview</strong> first.
             </p>
             <div className="flex gap-3">
               <Button
@@ -412,10 +455,14 @@ export default function RetentionPolicySettings() {
           </div>
 
           {cleanupResult && (
-            <Alert className={`mt-6 ${cleanupResult.dryRun ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
+            <Alert
+              className={`mt-6 ${cleanupResult.dryRun ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}
+            >
               <AlertDescription>
                 <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2">
-                  <h5 className={`text-sm font-semibold flex items-center gap-2 ${cleanupResult.dryRun ? 'text-blue-800' : 'text-green-800'}`}>
+                  <h5
+                    className={`text-sm font-semibold flex items-center gap-2 ${cleanupResult.dryRun ? 'text-blue-800' : 'text-green-800'}`}
+                  >
                     {cleanupResult.dryRun ? 'Simulation Result' : 'Cleanup Complete'}
                     <Badge variant="secondary" size="xs">
                       {cleanupResult.executionTimeMs}ms
@@ -461,21 +508,13 @@ export default function RetentionPolicySettings() {
                 Unsaved changes
               </Badge>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetChanges}
-            >
+            <Button variant="outline" size="sm" onClick={handleResetChanges}>
               Discard
             </Button>
           </>
         )}
 
-        <Button
-          onClick={handleSave}
-          disabled={saving || !isDirty}
-          size="sm"
-        >
+        <Button onClick={handleSave} disabled={saving || !isDirty} size="sm">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
         </Button>
@@ -503,7 +542,14 @@ export default function RetentionPolicySettings() {
 
 // Subcomponents
 
-function RetentionFieldRow({ label, description, value, onChange, min, error }: {
+function RetentionFieldRow({
+  label,
+  description,
+  value,
+  onChange,
+  min,
+  error,
+}: {
   label: string;
   description: string;
   value: number | string;
@@ -528,10 +574,12 @@ function RetentionFieldRow({ label, description, value, onChange, min, error }: 
           type="number"
           min={min}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={e => onChange(e.target.value)}
           className={`w-24 rounded-r-none border-r-0 ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
         />
-        <div className={`inline-flex items-center px-3 h-10 rounded-r-md border bg-muted text-muted-foreground text-xs font-medium ${error ? 'border-destructive bg-destructive/10' : ''}`}>
+        <div
+          className={`inline-flex items-center px-3 h-10 rounded-r-md border bg-muted text-muted-foreground text-xs font-medium ${error ? 'border-destructive bg-destructive/10' : ''}`}
+        >
           days
         </div>
       </div>
@@ -539,12 +587,22 @@ function RetentionFieldRow({ label, description, value, onChange, min, error }: 
   );
 }
 
-function CompactStatRowItem({ icon, label, value, oldest }: { icon: React.ReactNode, label: string, value: number, oldest: string | null }) {
+function CompactStatRowItem({
+  icon,
+  label,
+  value,
+  oldest,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  oldest: string | null;
+}) {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString(undefined, {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -552,10 +610,14 @@ function CompactStatRowItem({ icon, label, value, oldest }: { icon: React.ReactN
     <div className="flex-1 px-4 py-2 md:py-0 flex items-center justify-between md:block">
       <div className="flex items-center gap-2 mb-0 md:mb-1">
         {icon}
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          {label}
+        </span>
       </div>
       <div className="text-right md:text-left">
-        <div className="text-lg font-semibold text-foreground leading-none">{value.toLocaleString()}</div>
+        <div className="text-lg font-semibold text-foreground leading-none">
+          {value.toLocaleString()}
+        </div>
         {oldest && (
           <div className="text-[10px] text-muted-foreground mt-1 flex items-center justify-end md:justify-start gap-1">
             <Clock className="w-3 h-3" />
@@ -564,14 +626,14 @@ function CompactStatRowItem({ icon, label, value, oldest }: { icon: React.ReactN
         )}
       </div>
     </div>
-  )
+  );
 }
 
-function StatItem({ label, value }: { label: string, value: number }) {
+function StatItem({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col">
       <span className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</span>
       <span className="font-mono font-medium text-foreground">{value.toLocaleString()}</span>
     </div>
-  )
+  );
 }

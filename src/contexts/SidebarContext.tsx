@@ -12,31 +12,35 @@ type SidebarContextType = {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Initialize collapsed state from localStorage (lazy initialization)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved === '1';
+    } catch {
+      return false;
+    }
+  });
   const [isMobile, setIsMobile] = useState(false);
 
   // Check if mobile on mount and resize
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
-    const update = () => setIsMobile(mq.matches);
+    const update = () => {
+      const mobile = mq.matches;
+      setIsMobile(mobile);
+      // Reset collapsed state on mobile
+      if (mobile) {
+        setIsCollapsed(false);
+      }
+    };
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  // Load collapse preference from localStorage (desktop only)
-  useEffect(() => {
-    if (isMobile) return;
-    try {
-      const saved = localStorage.getItem('sidebarCollapsed');
-      if (saved === '1') setIsCollapsed(true);
-      if (saved === '0') setIsCollapsed(false);
-    } catch {
-      // ignore
-    }
-  }, [isMobile]);
-
-  // Persist collapse preference (desktop only)
+  // Persist collapse preference (desktop only) - combined into single effect
   useEffect(() => {
     if (isMobile) return;
     try {
@@ -45,11 +49,6 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, [isCollapsed, isMobile]);
-
-  // Reset collapsed state on mobile
-  useEffect(() => {
-    if (isMobile) setIsCollapsed(false);
-  }, [isMobile]);
 
   const toggleSidebar = useCallback(() => {
     setIsCollapsed(prev => !prev);

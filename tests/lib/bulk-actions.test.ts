@@ -15,9 +15,11 @@ vi.mock('@/lib/prisma', () => ({
     incident: {
       updateMany: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
     incidentEvent: {
       create: vi.fn(),
+      createMany: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -54,7 +56,8 @@ describe('Bulk Actions', () => {
     it('should acknowledge multiple incidents', async () => {
       const incidentIds = ['incident-1', 'incident-2'];
       vi.mocked(prisma.incident.updateMany).mockResolvedValue({ count: 2 });
-      vi.mocked(prisma.incidentEvent.create).mockResolvedValue({} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      vi.mocked(prisma.incidentEvent.createMany).mockResolvedValue({ count: 2 });
+      vi.mocked(prisma.incident.findMany).mockResolvedValue([]);
 
       const result = await bulkAcknowledge(incidentIds);
 
@@ -95,7 +98,8 @@ describe('Bulk Actions', () => {
     it('should resolve multiple incidents', async () => {
       const incidentIds = ['incident-1', 'incident-2'];
       vi.mocked(prisma.incident.updateMany).mockResolvedValue({ count: 2 });
-      vi.mocked(prisma.incidentEvent.create).mockResolvedValue({} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      vi.mocked(prisma.incidentEvent.createMany).mockResolvedValue({ count: 2 });
+      vi.mocked(prisma.incident.findMany).mockResolvedValue([]);
 
       const result = await bulkResolve(incidentIds);
 
@@ -119,7 +123,7 @@ describe('Bulk Actions', () => {
     it('should update urgency for multiple incidents', async () => {
       const incidentIds = ['incident-1', 'incident-2'];
       vi.mocked(prisma.incident.updateMany).mockResolvedValue({ count: 2 });
-      vi.mocked(prisma.incidentEvent.create).mockResolvedValue({} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      vi.mocked(prisma.incidentEvent.createMany).mockResolvedValue({ count: 2 });
 
       const result = await bulkUpdateUrgency(incidentIds, 'HIGH');
 
@@ -138,7 +142,8 @@ describe('Bulk Actions', () => {
     it('should update status to ACKNOWLEDGED with timestamp', async () => {
       const incidentIds = ['incident-1'];
       vi.mocked(prisma.incident.updateMany).mockResolvedValue({ count: 1 });
-      vi.mocked(prisma.incidentEvent.create).mockResolvedValue({} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      vi.mocked(prisma.incidentEvent.createMany).mockResolvedValue({ count: 1 });
+      vi.mocked(prisma.incident.findMany).mockResolvedValue([]);
 
       const result = await bulkUpdateStatus(incidentIds, 'ACKNOWLEDGED');
 
@@ -157,7 +162,8 @@ describe('Bulk Actions', () => {
     it('should update status to RESOLVED with proper data', async () => {
       const incidentIds = ['incident-1'];
       vi.mocked(prisma.incident.updateMany).mockResolvedValue({ count: 1 });
-      vi.mocked(prisma.incidentEvent.create).mockResolvedValue({} as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      vi.mocked(prisma.incidentEvent.createMany).mockResolvedValue({ count: 1 });
+      vi.mocked(prisma.incident.findMany).mockResolvedValue([]);
 
       const result = await bulkUpdateStatus(incidentIds, 'RESOLVED');
 

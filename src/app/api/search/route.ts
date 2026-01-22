@@ -314,7 +314,10 @@ export async function GET(req: NextRequest) {
       return 0;
     });
 
-    return jsonOk({ results }, 200);
+    // Add cache headers for search results (short cache, private)
+    return jsonOk({ results }, 200, {
+      'Cache-Control': 'private, max-age=10, stale-while-revalidate=30',
+    });
   } catch (error: any) {
     logger.error('api.search.error', {
       error: error instanceof Error ? error.message : String(error),

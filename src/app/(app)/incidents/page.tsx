@@ -85,13 +85,25 @@ export default async function IncidentsPage({
     assigneeId: currentUser?.id ?? permissions.id,
   };
 
-  const [mineCount, openCount, resolvedCount, snoozedCount, suppressedCount] = await Promise.all([
+  // Optimized: Use groupBy for status counts instead of 5 separate count() queries
+  const baseWhere = buildIncidentWhere({ filter: 'all', ...statsBase });
+  const [statusCounts, mineCount] = await Promise.all([
+    // Single groupBy query for all status counts
+    prisma.incident.groupBy({
+      by: ['status'],
+      where: baseWhere,
+      _count: { _all: true },
+    }),
+    // Separate query for "mine" since it has additional assigneeId filter
     prisma.incident.count({ where: buildIncidentWhere({ filter: 'mine', ...statsBase }) }),
-    prisma.incident.count({ where: buildIncidentWhere({ filter: 'all_open', ...statsBase }) }),
-    prisma.incident.count({ where: buildIncidentWhere({ filter: 'resolved', ...statsBase }) }),
-    prisma.incident.count({ where: buildIncidentWhere({ filter: 'snoozed', ...statsBase }) }),
-    prisma.incident.count({ where: buildIncidentWhere({ filter: 'suppressed', ...statsBase }) }),
   ]);
+
+  // Aggregate status counts from groupBy result
+  const statusCountMap = new Map(statusCounts.map(s => [s.status, s._count._all]));
+  const openCount = (statusCountMap.get('OPEN') || 0) + (statusCountMap.get('ACKNOWLEDGED') || 0);
+  const resolvedCount = statusCountMap.get('RESOLVED') || 0;
+  const snoozedCount = statusCountMap.get('SNOOZED') || 0;
+  const suppressedCount = statusCountMap.get('SUPPRESSED') || 0;
 
   const totalCount = await prisma.incident.count({ where });
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);

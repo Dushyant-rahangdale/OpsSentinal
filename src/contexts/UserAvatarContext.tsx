@@ -1,12 +1,24 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+  useMemo,
+  useRef,
+} from 'react';
 import { getDefaultAvatar } from '@/lib/avatar';
+
+// Maximum number of avatar entries to cache (LRU eviction beyond this)
+const MAX_CACHE_SIZE = 500;
 
 type AvatarCacheEntry = {
   avatarUrl: string | null;
   gender: string | null;
   name: string | null;
+  lastAccessed: number; // Timestamp for LRU tracking
 };
 
 type UserAvatarContextType = {
@@ -51,6 +63,7 @@ export function UserAvatarProvider({
 }: UserAvatarProviderProps) {
   const [avatarCache, setAvatarCache] = useState<Map<string, AvatarCacheEntry>>(() => {
     const cache = new Map<string, AvatarCacheEntry>();
+    const now = Date.now();
 
     // Initialize with current user if provided
     if (currentUserId) {
@@ -58,25 +71,80 @@ export function UserAvatarProvider({
         avatarUrl: currentUserAvatar,
         gender: currentUserGender,
         name: currentUserName,
+        lastAccessed: now,
       });
     }
 
-    // Initialize with any provided initial users
-    initialUsers.forEach(user => {
+    // Initialize with any provided initial users (limit to MAX_CACHE_SIZE)
+    const usersToCache = initialUsers.slice(0, MAX_CACHE_SIZE - (currentUserId ? 1 : 0));
+    usersToCache.forEach(user => {
       cache.set(user.id, {
         avatarUrl: user.avatarUrl ?? null,
         gender: user.gender ?? null,
         name: user.name ?? null,
+        lastAccessed: now,
       });
     });
 
     return cache;
   });
 
+  // Helper to evict LRU entries when cache exceeds max size
+  const evictLRU = useCallback(
+    (cache: Map<string, AvatarCacheEntry>, protectedId?: string | null) => {
+      if (cache.size <= MAX_CACHE_SIZE) return cache;
+
+      // Convert to array and sort by lastAccessed (oldest first)
+      const entries = Array.from(cache.entries())
+        .filter(([id]) => id !== protectedId) // Never evict current user
+        .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+
+      // Remove oldest entries until we're under the limit
+      const toRemove = cache.size - MAX_CACHE_SIZE;
+      for (let i = 0; i < toRemove && i < entries.length; i++) {
+        cache.delete(entries[i][0]);
+      }
+
+      return cache;
+    },
+    []
+  );
+
+  // Track access time updates without causing re-renders
+  const accessUpdateQueue = useRef<Set<string>>(new Set());
+  const accessUpdateScheduled = useRef(false);
+
   // Get avatar URL for a user, using cache or falling back to default
   const getAvatar = useCallback(
     (userId: string, gender?: string | null, fallbackName?: string | null): string => {
       const cached = avatarCache.get(userId);
+
+      // Queue access time update (batched to avoid frequent state updates)
+      if (cached && !accessUpdateQueue.current.has(userId)) {
+        accessUpdateQueue.current.add(userId);
+        if (!accessUpdateScheduled.current) {
+          accessUpdateScheduled.current = true;
+          // Batch access time updates
+          setTimeout(() => {
+            const idsToUpdate = Array.from(accessUpdateQueue.current);
+            accessUpdateQueue.current.clear();
+            accessUpdateScheduled.current = false;
+            if (idsToUpdate.length > 0) {
+              setAvatarCache(prev => {
+                const newCache = new Map(prev);
+                const now = Date.now();
+                idsToUpdate.forEach(id => {
+                  const entry = newCache.get(id);
+                  if (entry) {
+                    newCache.set(id, { ...entry, lastAccessed: now });
+                  }
+                });
+                return newCache;
+              });
+            }
+          }, 1000); // Batch updates every 1 second
+        }
+      }
 
       if (cached?.avatarUrl) {
         return cached.avatarUrl;
@@ -93,18 +161,22 @@ export function UserAvatarProvider({
   );
 
   // Update a user's avatar in the cache
-  const updateAvatar = useCallback((userId: string, newAvatarUrl: string | null) => {
-    setAvatarCache(prev => {
-      const newCache = new Map(prev);
-      const existing = newCache.get(userId);
-      newCache.set(userId, {
-        avatarUrl: newAvatarUrl,
-        gender: existing?.gender ?? null,
-        name: existing?.name ?? null,
+  const updateAvatar = useCallback(
+    (userId: string, newAvatarUrl: string | null) => {
+      setAvatarCache(prev => {
+        const newCache = new Map(prev);
+        const existing = newCache.get(userId);
+        newCache.set(userId, {
+          avatarUrl: newAvatarUrl,
+          gender: existing?.gender ?? null,
+          name: existing?.name ?? null,
+          lastAccessed: Date.now(),
+        });
+        return evictLRU(newCache, currentUserId);
       });
-      return newCache;
-    });
-  }, []);
+    },
+    [evictLRU, currentUserId]
+  );
 
   // Invalidate (remove) a user's avatar from cache to force refetch
   const invalidateAvatar = useCallback((userId: string) => {
@@ -127,6 +199,7 @@ export function UserAvatarProvider({
     ) => {
       setAvatarCache(prev => {
         const newCache = new Map(prev);
+        const now = Date.now();
         users.forEach(user => {
           // Only update if not already in cache or if new data has more info
           const existing = newCache.get(user.id);
@@ -135,13 +208,14 @@ export function UserAvatarProvider({
               avatarUrl: user.avatarUrl ?? existing?.avatarUrl ?? null,
               gender: user.gender ?? existing?.gender ?? null,
               name: user.name ?? existing?.name ?? null,
+              lastAccessed: now,
             });
           }
         });
-        return newCache;
+        return evictLRU(newCache, currentUserId);
       });
     },
-    []
+    [evictLRU, currentUserId]
   );
 
   // Update current user's avatar and optionally gender
@@ -156,6 +230,7 @@ export function UserAvatarProvider({
           avatarUrl: avatarUrl,
           gender: gender ?? existing?.gender ?? null,
           name: existing?.name ?? null,
+          lastAccessed: Date.now(),
         });
         return newCache;
       });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 type KeyboardHandlerProps = {
@@ -11,6 +11,24 @@ export default function GlobalKeyboardHandler({ onShortcutsToggle }: KeyboardHan
   const router = useRouter();
   const pathname = usePathname();
   const [gPressed, setGPressed] = useState(false);
+
+  // Use refs to avoid re-attaching event listeners when state/callbacks change
+  const gPressedRef = useRef(gPressed);
+  const pathnameRef = useRef(pathname);
+  const onShortcutsToggleRef = useRef(onShortcutsToggle);
+
+  // Keep refs in sync
+  useEffect(() => {
+    gPressedRef.current = gPressed;
+  }, [gPressed]);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    onShortcutsToggleRef.current = onShortcutsToggle;
+  }, [onShortcutsToggle]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -27,7 +45,7 @@ export default function GlobalKeyboardHandler({ onShortcutsToggle }: KeyboardHan
       }
 
       // If G was pressed, handle navigation
-      if (gPressed && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (gPressedRef.current && !e.ctrlKey && !e.metaKey && !e.altKey) {
         const key = e.key.toLowerCase();
         switch (key) {
           case 'd':
@@ -77,14 +95,14 @@ export default function GlobalKeyboardHandler({ onShortcutsToggle }: KeyboardHan
       }
 
       // Reset G state if another key is pressed
-      if (gPressed) {
+      if (gPressedRef.current) {
         setGPressed(false);
       }
 
       // ? key for shortcuts
       if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        onShortcutsToggle();
+        onShortcutsToggleRef.current();
       }
 
       // C key for Quick Create Menu
@@ -99,7 +117,7 @@ export default function GlobalKeyboardHandler({ onShortcutsToggle }: KeyboardHan
         !e.ctrlKey &&
         !e.metaKey &&
         !e.altKey &&
-        pathname?.startsWith('/incidents')
+        pathnameRef.current?.startsWith('/incidents')
       ) {
         e.preventDefault();
         router.push('/incidents/create');
@@ -108,7 +126,7 @@ export default function GlobalKeyboardHandler({ onShortcutsToggle }: KeyboardHan
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [router, pathname, gPressed, onShortcutsToggle]);
+  }, [router]); // Only router is needed as dependency since we use refs for others
 
   // Reset G state after timeout
   useEffect(() => {

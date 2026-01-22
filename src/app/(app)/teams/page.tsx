@@ -212,64 +212,95 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
   if (minMembers !== undefined) baseParams.set('minMembers', minMembers.toString());
   if (minServices !== undefined) baseParams.set('minServices', minServices.toString());
 
-  const teamsWithActivity = await Promise.all(
-    teams.map(async team => {
-      try {
-        const [activityLogs, activityTotal] = await Promise.all([
-          prisma.auditLog.findMany({
-            where: {
-              OR: [
-                { entityType: 'TEAM', entityId: team.id },
-                {
-                  entityType: 'TEAM_MEMBER',
-                  entityId: {
-                    not: null,
-                    startsWith: `${team.id}:`,
-                  },
-                },
-              ],
-            },
-            include: {
-              actor: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  avatarUrl: true,
-                  gender: true,
-                },
-              },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: ACTIVITY_PER_PAGE,
-          }),
-          prisma.auditLog.count({
-            where: {
-              OR: [
-                { entityType: 'TEAM', entityId: team.id },
-                {
-                  entityType: 'TEAM_MEMBER',
-                  entityId: {
-                    not: null,
-                    startsWith: `${team.id}:`,
-                  },
-                },
-              ],
-            },
-          }),
-        ]);
+  // Batch fetch all audit logs for all teams in a single query
+  const teamIds = teams.map(t => t.id);
+  let allAuditLogs: Awaited<ReturnType<typeof prisma.auditLog.findMany>> = [];
+  let auditLogCounts: { teamId: string; count: number }[] = [];
 
-        return { team, activityLogs, activityTotal };
-      } catch (error) {
-        logger.error(`Error fetching activity logs for team ${team.id}`, {
-          component: 'teams-page',
-          teamId: team.id,
-          error,
-        });
-        return { team, activityLogs: [], activityTotal: 0 };
+  if (teamIds.length > 0) {
+    try {
+      // Build OR conditions for all teams
+      const orConditions = teamIds.flatMap(teamId => [
+        { entityType: 'TEAM' as const, entityId: teamId },
+        {
+          entityType: 'TEAM_MEMBER' as const,
+          entityId: { startsWith: `${teamId}:` },
+        },
+      ]);
+
+      // Fetch logs - we fetch more than needed and group in memory
+      allAuditLogs = await prisma.auditLog.findMany({
+        where: { OR: orConditions },
+        include: {
+          actor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+              gender: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Count logs per team using aggregation
+      const countResults = await prisma.auditLog.groupBy({
+        by: ['entityType', 'entityId'],
+        where: { OR: orConditions },
+        _count: { _all: true },
+      });
+
+      // Aggregate counts by team
+      const countByTeam = new Map<string, number>();
+      for (const result of countResults) {
+        let teamId: string | null = null;
+        if (result.entityType === 'TEAM' && result.entityId) {
+          teamId = result.entityId;
+        } else if (result.entityType === 'TEAM_MEMBER' && result.entityId) {
+          teamId = result.entityId.split(':')[0];
+        }
+        if (teamId) {
+          countByTeam.set(teamId, (countByTeam.get(teamId) || 0) + result._count._all);
+        }
       }
-    })
-  );
+      auditLogCounts = teamIds.map(id => ({ teamId: id, count: countByTeam.get(id) || 0 }));
+    } catch (error) {
+      logger.error('Error fetching audit logs for teams', {
+        component: 'teams-page',
+        error,
+      });
+    }
+  }
+
+  // Group logs by team in memory
+  const logsByTeam = new Map<string, typeof allAuditLogs>();
+  for (const teamId of teamIds) {
+    logsByTeam.set(teamId, []);
+  }
+  for (const log of allAuditLogs) {
+    let teamId: string | null = null;
+    if (log.entityType === 'TEAM' && log.entityId) {
+      teamId = log.entityId;
+    } else if (log.entityType === 'TEAM_MEMBER' && log.entityId) {
+      teamId = log.entityId.split(':')[0];
+    }
+    if (teamId && logsByTeam.has(teamId)) {
+      const teamLogs = logsByTeam.get(teamId)!;
+      if (teamLogs.length < ACTIVITY_PER_PAGE) {
+        teamLogs.push(log);
+      }
+    }
+  }
+
+  // Build teamsWithActivity from the grouped data
+  const countMap = new Map(auditLogCounts.map(c => [c.teamId, c.count]));
+  const teamsWithActivity = teams.map(team => ({
+    team,
+    activityLogs: logsByTeam.get(team.id) || [],
+    activityTotal: countMap.get(team.id) || 0,
+  }));
 
   // Calculate stats
   const stats = {

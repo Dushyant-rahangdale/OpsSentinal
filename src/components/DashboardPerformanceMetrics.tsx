@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,33 @@ type PerformanceMetricsProps = {
   previousMttr?: number | null;
 };
 
+// Simple formatting functions don't need useCallback - they're lightweight
+const formatTime = (minutes: number | null) => {
+  if (minutes === null || minutes === 0) return '--';
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+};
+
+const formatTimeForDisplay = (minutes: number | null, color?: string) => {
+  if (minutes === null || minutes === 0) return <span style={{ color }}>--</span>;
+  if (minutes < 60) {
+    return <span style={{ color }}>{Math.round(minutes)}m</span>;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (mins > 0) {
+    return (
+      <div className="flex flex-col leading-tight">
+        <span style={{ color }}>{hours}h</span>
+        <span style={{ color }}>{mins}m</span>
+      </div>
+    );
+  }
+  return <span style={{ color }}>{hours}h</span>;
+};
+
 export default function DashboardPerformanceMetrics({
   mtta,
   mttr,
@@ -25,33 +52,6 @@ export default function DashboardPerformanceMetrics({
   previousMtta,
   previousMttr,
 }: PerformanceMetricsProps) {
-  // Memoize formatTime function to prevent recreation on every render
-  const formatTime = useCallback((minutes: number | null) => {
-    if (minutes === null || minutes === 0) return '--';
-    if (minutes < 60) return `${Math.round(minutes)}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  }, []);
-
-  const formatTimeForDisplay = useCallback((minutes: number | null, color?: string) => {
-    if (minutes === null || minutes === 0) return <span style={{ color }}>--</span>;
-    if (minutes < 60) {
-      return <span style={{ color }}>{Math.round(minutes)}m</span>;
-    }
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    if (mins > 0) {
-      return (
-        <div className="flex flex-col leading-tight">
-          <span style={{ color }}>{hours}h</span>
-          <span style={{ color }}>{mins}m</span>
-        </div>
-      );
-    }
-    return <span style={{ color }}>{hours}h</span>;
-  }, []);
-
   // Memoize trend indicator calculations
   const { mttaTrendData, mttrTrendData } = useMemo(() => {
     const getTrendIndicator = (
@@ -83,7 +83,7 @@ export default function DashboardPerformanceMetrics({
       mttaTrendData: getTrendIndicator(mtta, previousMtta ?? null, mttaTrend),
       mttrTrendData: getTrendIndicator(mttr, previousMttr ?? null, mttrTrend),
     };
-  }, [mtta, mttr, previousMtta, previousMttr, mttaTrend, mttrTrend, formatTime]);
+  }, [mtta, mttr, previousMtta, previousMttr, mttaTrend, mttrTrend]);
 
   return (
     <div className="grid grid-cols-2 gap-4">
