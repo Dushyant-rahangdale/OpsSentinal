@@ -95,6 +95,12 @@ enum IncidentVisibility {
   PRIVATE
 }
 
+enum DashboardVisibility {
+  PRIVATE
+  TEAM
+  PUBLIC
+}
+
 enum EscalationTargetType {
   USER
   TEAM
@@ -155,6 +161,7 @@ model User {
   oidcConfigs          OidcConfig[]
   oidcIdentities       OidcIdentity[]
   avatar               UserAvatar?
+  dashboards           Dashboard[]
 
   @@index([email]) // CRITICAL: Performance index for email lookups (fixes 2-4s queries)
   @@index([role, status]) // For filtering users by role and status
@@ -201,6 +208,7 @@ model Team {
   escalationRules   EscalationRule[]
   incidentTemplates IncidentTemplate[]
   incidents         Incident[] // Team-assigned incidents
+  dashboards        Dashboard[]        // Team-shared dashboards
   teamLeadId        String?
   teamLead          User?              @relation("TeamLead", fields: [teamLeadId], references: [id])
 }
@@ -1223,4 +1231,46 @@ model CronSchedulerState {
   updatedAt       DateTime  @updatedAt
   
   @@map("cron_scheduler_state")
+}
+
+// Executive Dashboard - Customizable report dashboards
+model Dashboard {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  visibility  DashboardVisibility @default(PRIVATE)
+  isDefault   Boolean             @default(false)  // User's default dashboard
+  isTemplate  Boolean             @default(false)  // Pre-built system template
+  templateId  String?             // ID of template this was cloned from
+  layout      Json                // Grid layout config: { columns: 4, rowHeight: 120 }
+  config      Json?               // Global settings: { timeRange: 7, refreshInterval: 60 }
+  userId      String
+  teamId      String?             // For team-shared dashboards
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team    Team?             @relation(fields: [teamId], references: [id])
+  widgets DashboardWidget[]
+
+  @@index([userId])
+  @@index([teamId])
+  @@index([isTemplate])
+}
+
+// Dashboard Widget - Individual widget configuration
+model DashboardWidget {
+  id          String   @id @default(cuid())
+  dashboardId String
+  widgetType  String   // "metric", "chart", "table", "gauge", "insights"
+  metricKey   String   // "totalIncidents", "mttr", "ackCompliance", etc.
+  title       String?  // Custom title override
+  position    Json     // Grid position: { x: 0, y: 0, w: 1, h: 1 }
+  config      Json     // Widget-specific config (chartType, variant, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dashboard Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  @@index([dashboardId])
 }
