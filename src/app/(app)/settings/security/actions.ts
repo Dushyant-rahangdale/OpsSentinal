@@ -247,3 +247,35 @@ export async function validateOidcConnectionAction(issuer: string) {
   const { validateOidcConnection } = await import('@/lib/oidc-validation');
   return await validateOidcConnection(issuer);
 }
+
+export async function revokeAllSessions(): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+
+    // Import revokeUserSessions from auth
+    const { revokeUserSessions } = await import('@/lib/auth');
+
+    // Revoke all sessions by incrementing tokenVersion
+    await revokeUserSessions(user.id);
+
+    // Log the action
+    await logAudit({
+      action: 'session.revoked_all',
+      entityType: 'USER',
+      entityId: user.id,
+      actorId: user.id,
+      details: {
+        reason: 'User initiated session revocation',
+      },
+    });
+
+    revalidatePath('/settings/security');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Security] Failed to revoke sessions:', error);
+    return {
+      error: error instanceof Error ? error.message : 'Failed to revoke sessions',
+    };
+  }
+}
