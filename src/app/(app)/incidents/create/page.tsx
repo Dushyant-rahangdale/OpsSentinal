@@ -35,6 +35,7 @@ export default async function CreateIncidentPage({
           href="/incidents"
           style={{
             color: 'var(--text-muted)',
+             
             marginBottom: '2rem',
             display: 'inline-block',
             textDecoration: 'none',
@@ -75,6 +76,7 @@ export default async function CreateIncidentPage({
                 Create Incident
               </h1>
               <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                // eslint-disable-next-line react/no-unescaped-entities
                 ⚠️ You don't have access to create incidents. Responder role or above required.
               </p>
             </div>

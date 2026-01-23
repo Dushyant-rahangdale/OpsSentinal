@@ -114,6 +114,7 @@ export default function RoleMappingEditor({ initialMappings, onChange }: Props) 
       </button>
 
       <p className="settings-help-text">
+        {/* eslint-disable-next-line react/no-unescaped-entities */}
         Rules are evaluated in order. The first match determines the user's role.
       </p>
 

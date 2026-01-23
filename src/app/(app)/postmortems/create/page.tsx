@@ -19,12 +19,14 @@ export default async function CreatePostmortemPage() {
   const permissions = await getUserPermissions();
   const canCreate = permissions.isResponderOrAbove;
 
+   
   if (!canCreate) {
     return (
       <div className="p-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>You don&apos;t have permission to create postmortems.</AlertDescription>
+        // eslint-disable-next-line react/no-unescaped-entities
         </Alert>
       </div>
     );

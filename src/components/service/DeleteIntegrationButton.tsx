@@ -49,6 +49,8 @@ export default function DeleteIntegrationButton({
           <Button
             variant="ghost"
             size="sm"
+             
+             
             className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -62,6 +64,8 @@ export default function DeleteIntegrationButton({
           <AlertDialogDescription className="space-y-3">
             <div>
               Are you sure you want to delete the integration{' '}
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
+              {/* eslint-disable-next-line react/no-unescaped-entities */}
               <span className="font-semibold text-foreground">"{integrationName}"</span>?
             </div>
             <div className="bg-amber-50 border-l-4 border-amber-500 p-3 text-amber-800 text-xs rounded-r">

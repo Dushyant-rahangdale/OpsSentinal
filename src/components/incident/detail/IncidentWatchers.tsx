@@ -19,7 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { Users, Lock, Trash2, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Users, Lock, Trash2, Check, ChevronsUpDown } from 'lucide-react';
 import UserAvatar from '@/components/UserAvatar';
 import { cn } from '@/lib/utils';
 
@@ -95,6 +95,7 @@ export default function IncidentWatchers({
                 <input type="hidden" name="watcherId" value={selectedUserId} />
 
                 <div className="flex-1 min-w-[140px]">
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
                   <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -120,6 +121,7 @@ export default function IncidentWatchers({
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
+                    {/* eslint-disable-next-line react/no-unescaped-entities */}
                     <PopoverContent
                       className="p-0 border shadow-md rounded-lg w-[320px]"
                       align="start"

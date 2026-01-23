@@ -253,10 +253,24 @@ async function main() {
     seededUsers.push({ id: user.id, name: user.name, email: user.email });
   }
 
+  function encryptWithKey(text: string, keyHex: string) {
+    const algorithm = 'aes-256-cbc';
+    const key = Buffer.from(keyHex, 'hex');
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return iv.toString('hex') + ':' + encrypted;
+  }
+
+  const seedKey = sha256('seed-encryption-key').slice(0, 64);
+  const canaryValue = 'OPS_KNIGHT_CRYPTO_CHECK';
+  const encryptedCanary = encryptWithKey(canaryValue, seedKey);
+
   await prisma.slackOAuthConfig.create({
     data: {
       clientId: '1234567890.1234567890',
-      clientSecret: sha256('slack-oauth-secret'),
+      clientSecret: encryptWithKey('slack-oauth-secret', seedKey),
       redirectUri: 'https://localhost:3000/api/slack/callback',
       enabled: true,
       updatedBy: admin.id,
@@ -267,7 +281,7 @@ async function main() {
     data: {
       issuer: 'https://login.example.com',
       clientId: 'opsknight-demo',
-      clientSecret: sha256('oidc-secret'),
+      clientSecret: encryptWithKey('oidc-secret', seedKey),
       enabled: true,
       autoProvision: true,
       allowedDomains: ['example.com'],
@@ -285,13 +299,20 @@ async function main() {
       {
         provider: 'resend',
         enabled: true,
-        config: { apiKey: sha256('resend-key'), sender: 'OpsKnight <noreply@example.com>' },
+        config: {
+          apiKey: encryptWithKey('resend-key', seedKey),
+          sender: 'OpsKnight <noreply@example.com>',
+        },
         updatedBy: admin.id,
       },
       {
         provider: 'twilio',
         enabled: true,
-        config: { accountSid: 'ACXXXXX', authToken: sha256('twilio-token'), from: '+15551234567' },
+        config: {
+          accountSid: 'ACXXXXX',
+          authToken: encryptWithKey('twilio-token', seedKey),
+          from: '+15551234567',
+        },
         updatedBy: admin.id,
       },
     ],
@@ -300,27 +321,13 @@ async function main() {
   await prisma.systemSettings.create({
     data: {
       appUrl: 'https://opsknight.local',
-      encryptionKey: sha256('seed-encryption-key').slice(0, 64),
+      encryptionKey: seedKey,
       incidentRetentionDays: 365,
       alertRetentionDays: 180,
       metricsRetentionDays: 180,
       realTimeWindowDays: 60,
     },
   });
-
-  function encryptWithKey(text: string, keyHex: string) {
-    const algorithm = 'aes-256-cbc';
-    const key = Buffer.from(keyHex, 'hex');
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(algorithm, key, iv);
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted;
-  }
-
-  const seedKey = sha256('seed-encryption-key').slice(0, 64);
-  const canaryValue = 'OPS_KNIGHT_CRYPTO_CHECK';
-  const encryptedCanary = encryptWithKey(canaryValue, seedKey);
 
   await prisma.systemConfig.createMany({
     data: [
@@ -485,8 +492,8 @@ async function main() {
     data: {
       workspaceId: 'T00000001',
       workspaceName: 'OpsKnight Demo',
-      botToken: sha256('xoxb-demo-token'),
-      signingSecret: sha256('slack-signing-secret'),
+      botToken: encryptWithKey('xoxb-demo-token', seedKey),
+      signingSecret: encryptWithKey('slack-signing-secret', seedKey),
       installedBy: admin.id,
       scopes: ['chat:write', 'channels:read', 'users:read'],
       enabled: true,
@@ -541,7 +548,7 @@ async function main() {
           name: `${service.name} Teams Webhook`,
           type: 'TEAMS',
           url: 'https://example.com/webhook/teams',
-          secret: sha256(`${service.id}-teams`),
+          secret: encryptWithKey(`${service.id}-teams`, seedKey),
           channel: 'incident-room',
           enabled: true,
         },

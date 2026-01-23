@@ -25,6 +25,7 @@ export default function PolicyDeleteButton({ policyId, servicesUsingPolicy }: Po
             return;
         }
 
+        // eslint-disable-next-line no-alert
         if (!confirm('Are you sure you want to delete this policy? This action cannot be undone.')) {
             return;
         }

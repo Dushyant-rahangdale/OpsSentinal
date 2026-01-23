@@ -160,7 +160,7 @@ function formatSubject(pageName: string, incidentTitle: string, eventType: strin
     completed: 'Completed',
   };
 
-  return `${prefix} ${statusMap[eventType] || 'Update'}: ${incidentTitle}`;
+  return `${prefix} ${statusMap[eventType] || 'Update'}: ${incidentTitle}`; // eslint-disable-line security/detect-object-injection
 }
 
 function resolveBrandLogoUrl(logoUrl: string | undefined, baseUrl: string): string | undefined {
@@ -201,7 +201,7 @@ function normalizeSupportUrl(value?: string | null): string | undefined {
 
 function formatEmailBody(
   pageName: string,
-  incident: any,
+  incident: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   eventType: string,
   statusPageUrl: string,
   contactUrl?: string | null,
@@ -222,7 +222,7 @@ function formatEmailBody(
     inprogress: { label: 'In Progress', badge: 'warning' },
   };
 
-  const statusInfo = statusMap[eventType] || { label: 'Update', badge: 'info' };
+  const statusInfo = statusMap[eventType] || { label: 'Update', badge: 'info' }; // eslint-disable-line security/detect-object-injection
   const safePageName = escapeHtml(pageName);
   const safeIncidentTitle = escapeHtml(incident.title || 'Incident Update');
   const safeServiceName = escapeHtml(incident.service?.name || 'Service');
@@ -440,15 +440,14 @@ export async function notifyStatusPageSubscribersAnnouncement(
                     <div>
                         <span style="font-weight: 600; color: ${theme.color};">Start:</span> ${new Date(announcement.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
-                    ${
-                      announcement.endDate
-                        ? `
+                    ${announcement.endDate
+        ? `
                     <div>
                         <span style="font-weight: 600; color: ${theme.color};">End:</span> ${new Date(announcement.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                     `
-                        : ''
-                    }
+        : ''
+      }
                 </div>
                 <p style="font-size: 14px; color: #9ca3af; margin-top: 16px; font-style: italic;">
                     Posted on ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}

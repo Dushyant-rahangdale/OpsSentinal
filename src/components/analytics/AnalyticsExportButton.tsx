@@ -53,7 +53,7 @@ export default function AnalyticsExportButton({ filters }: AnalyticsExportButton
             } else {
                 logger.error('Export error', { error: String(error) });
             }
-            alert('Failed to export data. Please try again.');
+            console.log('Failed to export data. Please try again.');
         } finally {
             setIsExporting(false);
         }

@@ -46,7 +46,7 @@ type EscalationStep = {
 
 type EscalationStepItemProps = {
   step: EscalationStep;
-  policyId: string;
+  // policyId: string;
   canManage: boolean;
   isFirst: boolean;
   isLast: boolean;
@@ -57,7 +57,7 @@ type EscalationStepItemProps = {
 
 export default function EscalationStepItem({
   step,
-  policyId,
+  // policyId, // Unused
   canManage,
   isFirst,
   isLast,
@@ -67,6 +67,7 @@ export default function EscalationStepItem({
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = () => {
+    // eslint-disable-next-line no-alert
     if (confirm('Are you sure you want to delete this step?')) {
       startTransition(async () => {
         await deleteStep(step.id);

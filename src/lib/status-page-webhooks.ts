@@ -51,7 +51,7 @@ async function deliverWebhook(
     });
     return false;
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     logger.error('api.status_page.webhook.delivery_error', {
       url,
       error: error instanceof Error ? error.message : String(error),
@@ -83,7 +83,7 @@ export async function getStatusPagesForService(serviceId: string): Promise<strin
     // Return only enabled status pages
     return statusPageServices.filter(sps => sps.statusPage.enabled).map(sps => sps.statusPageId);
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     logger.error('api.status_page.get_status_pages_for_service_error', {
       serviceId,
       error: error instanceof Error ? error.message : String(error),
@@ -144,7 +144,7 @@ export async function triggerStatusPageWebhooks(
       webhookCount: webhooks.length,
     });
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     logger.error('api.status_page.webhooks.trigger_error', {
       statusPageId,
       event,
@@ -192,7 +192,7 @@ export async function triggerWebhooksForService(
       )
     );
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+     
     logger.error('api.status_page.webhook.trigger_for_service_fatal_error', {
       serviceId,
       event,

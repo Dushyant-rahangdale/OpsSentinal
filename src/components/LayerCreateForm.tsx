@@ -109,6 +109,8 @@ export default function LayerCreateForm({
                 size="sm"
                 onClick={() => setQuickDuration(24)}
                 className="text-xs"
+               
+               
               >
                 Daily
               </Button>

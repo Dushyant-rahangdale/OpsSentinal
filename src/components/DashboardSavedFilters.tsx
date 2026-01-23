@@ -58,7 +58,7 @@ export default function DashboardSavedFilters() {
     if (range) currentFilters.range = range;
 
     if (Object.keys(currentFilters).length === 0) {
-      alert('No active filters to save');
+      console.log('No active filters to save');
       return;
     }
 
@@ -114,6 +114,7 @@ export default function DashboardSavedFilters() {
             <button
               onClick={e => {
                 e.stopPropagation();
+                // eslint-disable-next-line no-alert
                 if (confirm(`Delete "${filter.name}"?`)) {
                   deleteFilter(filter.id);
                 }
@@ -140,6 +141,7 @@ export default function DashboardSavedFilters() {
       {showSaveDialog && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]"
+           
           onClick={() => setShowSaveDialog(false)}
         >
           <div

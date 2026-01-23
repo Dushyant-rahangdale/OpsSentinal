@@ -78,6 +78,7 @@ export default function CoverageTimeline({ shifts, timeZone }: CoverageTimelineP
   const formatHourLabel = (hour: number) =>
     formatDateTime(new Date(todayStart.getTime() + hour * 60 * 60 * 1000), timeZone, {
       format: 'time',
+       
       hour12: true,
     })
       .replace(':00', '')

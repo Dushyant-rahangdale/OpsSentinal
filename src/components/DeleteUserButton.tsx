@@ -27,6 +27,7 @@ export default function DeleteUserButton({
             return;
         }
 
+        // eslint-disable-next-line no-alert
         if (!window.confirm(confirmText)) {
             event.preventDefault();
         }

@@ -1,4 +1,5 @@
 import 'server-only';
+import prisma from '@/lib/prisma';
 import { logger } from './logger';
 import { getRetentionPolicy } from './retention-policy';
 import { cleanupOldRollups } from './metric-rollup';
@@ -30,7 +31,7 @@ export interface CleanupResult {
  */
 export async function performDataCleanup(dryRun: boolean = false): Promise<CleanupResult> {
   const startTime = Date.now();
-  const { default: prisma } = await import('./prisma');
+  // const { default: prisma } = await import('./prisma'); // Removed shadowing import
   const policy = await getRetentionPolicy();
 
   logger.info('[DataCleanup] Starting cleanup', {
@@ -153,6 +154,13 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
     });
     logCount = logsDeleted.count;
 
+    // Delete old audit logs (using same retention as system logs for now, or could use separate policy)
+    // The UI labels 'logRetentionDays' as "System Logs: Audit trails and debug events", so this is correct.
+    const auditLogsDeleted = await prisma.auditLog.deleteMany({
+      where: { createdAt: { lt: logCutoff } },
+    });
+    const auditLogCount = auditLogsDeleted.count;
+
     // Cleanup old metric rollups (telemetry)
     metricsCount = await cleanupOldRollups();
 
@@ -166,6 +174,7 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
       events: eventCount,
       alerts: alertCount,
       logs: logCount,
+      auditLogs: auditLogCount,
       metrics: metricsCount,
       slaRollups: slaRollupsDeleted,
       executionTimeMs,
@@ -174,7 +183,7 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
     return {
       incidents: incidentCount,
       alerts: alertCount,
-      logs: logCount,
+      logs: logCount + auditLogCount, // Combine logs for result summary
       metrics: metricsCount,
       events: eventCount,
       executionTimeMs,
@@ -190,7 +199,7 @@ export async function performDataCleanup(dryRun: boolean = false): Promise<Clean
  * Cleanup old SLA metric rollups based on retention policy
  */
 export async function cleanupOldSLARollups(): Promise<number> {
-  const { default: prisma } = await import('./prisma');
+  // const { default: prisma } = await import('./prisma');
   const policy = await getRetentionPolicy();
 
   const cutoffDate = new Date();
@@ -221,7 +230,7 @@ export async function cleanupOldSLARollups(): Promise<number> {
  * For production use - preserves data for compliance
  */
 export async function archiveOldIncidents(): Promise<number> {
-  const { default: prisma } = await import('./prisma');
+  // const { default: prisma } = await import('./prisma');
   const policy = await getRetentionPolicy();
 
   const cutoff = new Date();
@@ -253,7 +262,7 @@ export async function getStorageStats(): Promise<{
   logs: { total: number; oldest: Date | null };
   rollups: { total: number; oldest: Date | null };
 }> {
-  const { default: prisma } = await import('./prisma');
+  // const { default: prisma } = await import('./prisma');
 
   const [
     incidentTotal,

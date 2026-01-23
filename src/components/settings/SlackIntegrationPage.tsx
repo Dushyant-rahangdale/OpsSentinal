@@ -115,6 +115,7 @@ export default function SlackIntegrationPage({
       return 'Slack workspace is inactive. Reactivate the workspace or reconnect.';
     }
     if (normalized === 'not_authed') {
+       
       return 'Slack authorization failed. Reconnect the app to reauthorize.';
     }
     return `Slack error: ${errorCode.replace(/_/g, ' ')}`;
@@ -135,6 +136,7 @@ export default function SlackIntegrationPage({
         throw new Error(errorMessage);
       }
       if (data.channels) {
+         
         setChannels(data.channels);
         setLastChannelsSync(new Date());
       }
@@ -191,6 +193,7 @@ export default function SlackIntegrationPage({
       const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
       if (!response.ok) {
         throw new Error('Failed to disconnect Slack. Try again.');
+       
       }
       window.location.href = '/api/slack/oauth';
     } catch (error) {
@@ -296,6 +299,7 @@ export default function SlackIntegrationPage({
         message: 'Network error',
       });
       toast.error('Test failed', { description: 'Network error' });
+     
     } finally {
       setTestingChannelId(null);
       setTimeout(() => setTestResult(null), 3000);
@@ -506,16 +510,7 @@ export default function SlackIntegrationPage({
           </Alert>
         )}
 
-        {!isOAuthConfigured && isAdmin && (
-          <div className="flex justify-end">
-            <Button asChild>
-              <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Create Slack App
-              </a>
-            </Button>
-          </div>
-        )}
+
       </SettingsSection>
 
       {/* Workspace Connection Section */}
@@ -666,6 +661,8 @@ export default function SlackIntegrationPage({
                             onJoin={() => void handleJoinChannel(ch)}
                             onLeave={() => void handleLeaveChannel(ch)}
                             onTest={() => void handleTestChannel(ch)}
+                             
+                             
                             isJoining={joiningChannelId === ch.id}
                             isLeaving={leavingChannelId === ch.id}
                             isTesting={testingChannelId === ch.id}

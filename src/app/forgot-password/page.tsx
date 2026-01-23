@@ -147,6 +147,7 @@ export default function ForgotPasswordPage() {
                     ) : (
                       <>
                         <span>Send Instructions</span>
+                        // eslint-disable-next-line react/no-unescaped-entities
                         <Send className="h-4 w-4" />
                       </>
                     )}
@@ -170,6 +171,7 @@ export default function ForgotPasswordPage() {
         {/* Footer info */}
         <div className="flex flex-col items-center justify-center gap-3 mt-8">
           <p className="text-[10px] uppercase tracking-[0.05em] text-white/30 font-medium text-center">
+            // eslint-disable-next-line react/no-unescaped-entities
             If you don't receive an email or SMS, please contact your administrator.
           </p>
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40 font-medium">

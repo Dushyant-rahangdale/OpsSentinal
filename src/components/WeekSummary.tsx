@@ -94,6 +94,7 @@ export default function WeekSummary({ shifts, timeZone }: WeekSummaryProps) {
                         margin: 0,
                         marginBottom: '0.25rem'
                     }}>
+                        {/* eslint-disable-next-line react/no-unescaped-entities */}
                         This Week's Schedule
                     </h3>
                     <p style={{ 

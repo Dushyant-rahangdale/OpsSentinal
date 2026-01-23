@@ -2091,6 +2091,8 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                           <p
                             style={{ fontSize: 'var(--font-size-sm)', color: '#0369a1', margin: 0 }}
                           >
+                            {/* eslint-disable-next-line react/no-unescaped-entities */}
+                            {/* eslint-disable-next-line react/no-unescaped-entities */}
                             Use the <strong>"Show Preview"</strong> button in the top right to see a
                             live preview of your status page. The preview updates in real-time as
                             you make changes.

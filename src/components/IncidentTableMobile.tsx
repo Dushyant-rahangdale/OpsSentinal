@@ -74,23 +74,25 @@ export default function IncidentTableMobile({
   };
 
   const handleBulkAcknowledge = () => {
+     
     startTransition(async () => {
       const result = await bulkAcknowledge(Array.from(selectedIds));
       if (result.success) {
         setSelectedIds(new Set());
       } else {
-        alert(result.error || 'Failed to acknowledge incidents');
+        console.log(result.error || 'Failed to acknowledge incidents');
       }
     });
   };
 
   const handleBulkResolve = () => {
+     
     startTransition(async () => {
       const result = await bulkResolve(Array.from(selectedIds));
       if (result.success) {
         setSelectedIds(new Set());
       } else {
-        alert(result.error || 'Failed to resolve incidents');
+        console.log(result.error || 'Failed to resolve incidents');
       }
     });
   };

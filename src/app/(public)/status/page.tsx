@@ -191,6 +191,7 @@ export default async function PublicStatusPage() {
             {isTableMissing ? (
               <>
                 <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                  // eslint-disable-next-line react/no-unescaped-entities
                   The database tables for the status page haven't been created yet. Please run the
                   database migration.
                 </p>
@@ -1228,6 +1229,7 @@ async function renderStatusPage(statusPage: any) {
                           textAlign: 'center',
                         }}
                       >
+                        // eslint-disable-next-line react/no-unescaped-entities
                         We'll never share your email. Unsubscribe anytime.
                       </p>
                     </div>

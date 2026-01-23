@@ -60,6 +60,7 @@ export default function OverrideForm({
   const handleQuickDuration = (hours: number) => {
     const now = new Date();
     // Round up to next 15 mins for cleanliness
+     
     const remainder = 15 - (now.getMinutes() % 15);
     now.setMinutes(now.getMinutes() + remainder);
 

@@ -33,7 +33,7 @@ describe('Webhook System', () => {
 
     it('should include timestamp in webhook payload', () => {
       const createWebhookPayload = (event: string, data: any) => ({
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+         
         event,
         timestamp: new Date().toISOString(),
         data,

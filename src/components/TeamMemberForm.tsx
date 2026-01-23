@@ -60,6 +60,7 @@ export default function TeamMemberForm({
         showToast(result.error, 'error');
       } else {
         showToast(`${userName} added as ${selectedRole}`, 'success');
+         
         setSelectedUserId('');
         setSelectedRole('MEMBER');
       }

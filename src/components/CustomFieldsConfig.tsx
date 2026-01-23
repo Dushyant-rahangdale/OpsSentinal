@@ -89,6 +89,7 @@ export default function CustomFieldsConfig({ customFields: initialFields }: Cust
                     required: false,
                     defaultValue: '',
                     options: '',
+                     
                     showInList: false,
                 });
             } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any

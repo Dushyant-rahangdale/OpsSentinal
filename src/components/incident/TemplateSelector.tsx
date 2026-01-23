@@ -93,6 +93,7 @@ export default function TemplateSelector({
           <a
             href="/incidents/templates"
             style={{
+               
               padding: '0.75rem 1rem',
               background: 'white',
               border: '1px solid var(--border)',
@@ -104,6 +105,7 @@ export default function TemplateSelector({
               whiteSpace: 'nowrap',
             }}
           >
+            {/* eslint-disable-next-line react/no-unescaped-entities */}
             Manage Templates ƒ+'
           </a>
         )}

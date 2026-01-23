@@ -24,6 +24,7 @@ function getBaseUrl(): string {
     return window.location.origin;
   }
   return 'https://yourdomain.com';
+ 
 }
 
 export default function GuidedSlackSetup() {
@@ -47,10 +48,12 @@ export default function GuidedSlackSetup() {
     try {
       const formData = new FormData();
       formData.append('clientId', clientId);
+       
       formData.append('clientSecret', clientSecret);
       formData.append('redirectUri', redirectUri);
       formData.append('enabled', 'true');
 
+       
       const response = await fetch('/api/settings/slack-oauth', {
         method: 'POST',
         body: formData,
@@ -60,6 +63,7 @@ export default function GuidedSlackSetup() {
         toast.success('OAuth configuration saved!');
         router.refresh();
         setStep(3);
+       
       } else {
         const error = await response.json();
         toast.error('Failed to save configuration', {

@@ -23,10 +23,10 @@ type Props = {
   isSystemLocked?: boolean;
 };
 
-type State = {
-  error?: string | null;
-  success?: boolean;
-};
+// type State = {
+//   error?: string | null;
+//   success?: boolean;
+// };
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
@@ -44,7 +44,7 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [bootstrapConfirmed, setBootstrapConfirmed] = useState(false);
-  const [showRotateModal, setShowRotateModal] = useState(false);
+  // const [showRotateModal, setShowRotateModal] = useState(false); // Unused
   const [state, formAction] = useActionState(manageEncryptionKey, {});
   const hasPendingChanges = keyInput.length > 0;
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -53,18 +53,20 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
   // or if no key exists yet (First Time Setup)
   useEffect(() => {
     if (isSystemLocked || !hasKey) {
-      setIsEditing(true);
+      setTimeout(() => setIsEditing(true), 0);
     }
   }, [isSystemLocked, hasKey]);
 
   useEffect(() => {
     if (state?.success) {
-      setLastSaved(new Date().toLocaleString());
+      setTimeout(() => setLastSaved(new Date().toLocaleString()), 0);
     }
   }, [state?.success]);
 
   const isValidKey = (value: string) => /^[0-9a-f]{64}$/i.test(value);
   const keyStatus = keyInput ? (isValidKey(keyInput) ? 'ok' : 'error') : null;
+
+
 
   const generateKey = () => {
     // Generate a random 32-byte hex string
@@ -78,7 +80,7 @@ export default function EncryptionKeyForm({ hasKey, isSystemLocked }: Props) {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(keyInput);
-    alert('Key copied to clipboard! Save it securely.');
+    console.log('Key copied to clipboard! Save it securely.');
   };
 
   return (

@@ -327,6 +327,7 @@ export default function IncidentHeader({ incident, users, teams, canManage }: In
               <div className="flex items-center gap-1.5 text-amber-600">
                 <CheckCircle2 className="h-3 w-3" />
                 <span>
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
                   Ack'd{' '}
                   {formatDateTime(incident.acknowledgedAt, userTimeZone, { format: 'relative' })}
                 </span>

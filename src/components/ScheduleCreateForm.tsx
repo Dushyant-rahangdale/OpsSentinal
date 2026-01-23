@@ -44,6 +44,7 @@ function SubmitButton() {
       ) : (
         <>
           <Plus className="h-4 w-4" />
+          // eslint-disable-next-line react/no-unescaped-entities
           Create Schedule
         </>
       )}

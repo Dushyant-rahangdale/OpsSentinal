@@ -11,11 +11,10 @@ export default function SettingsNav({ isAdmin = false }: Props) {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/settings/profile', label: 'Profile', description: 'Name, email, and role' },
     {
-      href: '/settings/preferences',
-      label: 'Preferences',
-      description: 'Timezone and notifications',
+      href: '/settings/profile',
+      label: 'Profile',
+      description: 'Personal info, timezone, and notifications',
     },
     { href: '/settings/security', label: 'Security', description: 'Password and sessions' },
     { href: '/settings/api-keys', label: 'API keys', description: 'Integration credentials' },

@@ -148,6 +148,9 @@
   "bin": {
     "OpsKnight": "./scripts/OpsKnight.mjs"
   },
+  "overrides": {
+    "lodash": "^4.17.23"
+  },
   "prisma": {
     "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
   }

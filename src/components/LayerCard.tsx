@@ -310,6 +310,7 @@ export default function LayerCard({
                       Rotation (hrs)
                       <HelpTip>How long each person is on-call before the next takes over.</HelpTip>
                     </Label>
+                    // eslint-disable-next-line react/no-unescaped-entities
                     <Input
                       name="rotationLengthHours"
                       type="number"
@@ -350,6 +351,7 @@ export default function LayerCard({
                     type="button"
                     variant="ghost"
                     size="sm"
+                     
                     onClick={() => setIsEditOpen(false)}
                     className="h-7 text-xs"
                   >
@@ -381,6 +383,7 @@ export default function LayerCard({
                   <HelpTip>
                     <p>
                       <strong>Responders:</strong> Team members in this rotation. Order determines
+                      // eslint-disable-next-line react/no-unescaped-entities
                       who's on-call first.
                     </p>
                   </HelpTip>

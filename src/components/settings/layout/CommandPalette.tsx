@@ -71,7 +71,7 @@ export function CommandPalette() {
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Settings">
-            <CommandItem onSelect={() => runCommand(() => router.push('/settings/preferences'))}>
+            <CommandItem onSelect={() => runCommand(() => router.push('/settings/profile'))}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Preferences</span>
             </CommandItem>

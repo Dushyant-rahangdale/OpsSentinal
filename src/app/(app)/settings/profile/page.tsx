@@ -2,18 +2,22 @@ import prisma from '@/lib/prisma';
 import { getAuthOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth';
 import ProfileForm from '@/components/settings/ProfileForm';
+import PreferencesForm from '@/components/settings/PreferencesForm';
+import NotificationPreferencesForm from '@/components/settings/NotificationPreferencesForm';
 import { SettingsPageHeader } from '@/components/settings/layout/SettingsPageHeader';
+import { SettingsSection } from '@/components/settings/layout/SettingsSection';
 import { getUserTimeZone, formatDateTime } from '@/lib/timezone';
 
 export default async function ProfileSettingsPage() {
   const session = await getServerSession(await getAuthOptions());
   const email = session?.user?.email ?? null;
 
-  // Fetch user data from database to get the latest name
+  // Fetch user data from database (combined from profile + preferences)
   const user = email
     ? await prisma.user.findUnique({
         where: { email },
         select: {
+          // Profile fields
           name: true,
           role: true,
           createdAt: true,
@@ -23,6 +27,14 @@ export default async function ProfileSettingsPage() {
           avatarUrl: true,
           gender: true,
           lastOidcSync: true,
+          // Preferences fields
+          dailySummary: true,
+          incidentDigest: true,
+          emailNotificationsEnabled: true,
+          smsNotificationsEnabled: true,
+          pushNotificationsEnabled: true,
+          whatsappNotificationsEnabled: true,
+          phoneNumber: true,
         },
       })
     : null;
@@ -40,23 +52,57 @@ export default async function ProfileSettingsPage() {
   return (
     <div className="space-y-6">
       <SettingsPageHeader
-        title="Profile"
-        description="Identity details tied to your OpsKnight account."
+        title="Profile & Preferences"
+        description="Manage your identity and personalize your OpsKnight experience."
         backHref="/settings"
         backLabel="Back to Settings"
       />
 
-      <ProfileForm
-        name={name}
-        email={email}
-        role={role}
-        memberSince={memberSince}
-        department={user?.department}
-        jobTitle={user?.jobTitle}
-        avatarUrl={user?.avatarUrl}
-        lastOidcSync={lastOidcSync}
-        gender={user?.gender}
-      />
+      <SettingsSection
+        title="Profile"
+        description="Identity details tied to your OpsKnight account."
+      >
+        <ProfileForm
+          name={name}
+          email={email}
+          role={role}
+          memberSince={memberSince}
+          department={user?.department}
+          jobTitle={user?.jobTitle}
+          avatarUrl={user?.avatarUrl}
+          lastOidcSync={lastOidcSync}
+          gender={user?.gender}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="General Preferences"
+        description="Set your timezone and summary preferences."
+      >
+        <PreferencesForm
+          timeZone={user?.timeZone ?? 'UTC'}
+          dailySummary={user?.dailySummary ?? true}
+          incidentDigest={(user?.incidentDigest as string) ?? 'HIGH'}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Notification Preferences"
+        description="Choose how you want to receive incident notifications."
+        footer={
+          <p className="text-sm text-muted-foreground">
+            Preference updates apply to this workspace once saved.
+          </p>
+        }
+      >
+        <NotificationPreferencesForm
+          emailEnabled={user?.emailNotificationsEnabled ?? false}
+          smsEnabled={user?.smsNotificationsEnabled ?? false}
+          pushEnabled={user?.pushNotificationsEnabled ?? false}
+          whatsappEnabled={user?.whatsappNotificationsEnabled ?? false}
+          phoneNumber={user?.phoneNumber ?? null}
+        />
+      </SettingsSection>
     </div>
   );
 }

@@ -49,7 +49,7 @@ export default function SendTestAlertPage() {
       const data = await res.json();
       setResponse({ status: res.status, data });
     } catch (err: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
+       
       setError(err.message);
     } finally {
       setLoading(false);

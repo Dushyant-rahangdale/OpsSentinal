@@ -92,6 +92,7 @@ export default function IncidentCustomFields({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                       
                       customFieldId: field.id,
                       value: newValue,
                     }),
@@ -106,7 +107,7 @@ export default function IncidentCustomFields({
                   } else {
                     logger.error('Failed to update custom field', { error: String(error) });
                   }
-                  alert('Failed to update custom field');
+                  console.log('Failed to update custom field');
                 }
               }}
             />

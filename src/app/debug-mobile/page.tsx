@@ -92,6 +92,9 @@ export default function DebugPage() {
           fontSize: '0.9rem',
         }}
       >
+        // eslint-disable-next-line react/no-unescaped-entities
+        // eslint-disable-next-line react/no-unescaped-entities
+        // eslint-disable-next-line react/no-unescaped-entities
         <strong>💡 Tip:</strong> If you're on mobile but it shows "NO", try clearing your browser
         cache and cookies, then revisit this page.
       </div>

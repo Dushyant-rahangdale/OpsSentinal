@@ -125,6 +125,7 @@ export default function AddIntegrationGrid({ serviceId }: AddIntegrationGridProp
           </div>
           <h3 className="text-lg font-medium text-slate-900">No integrations found</h3>
           <p className="text-slate-500 mt-1">
+            {/* eslint-disable-next-line react/no-unescaped-entities */}
             Try adjusting your search or filter to find what you're looking for.
           </p>
           <Button

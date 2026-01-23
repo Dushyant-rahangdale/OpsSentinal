@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/shadcn/alert-dialog';
+ 
 import { Trash2, Loader2 } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { useToast } from '@/components/ToastProvider';
@@ -31,6 +32,7 @@ export default function DeleteWebhookButton({ deleteAction, redirectTo }: Props)
 
   const handleDelete = async () => {
     setIsDeleting(true);
+     
     try {
       await deleteAction();
       showToast('Webhook deleted successfully', 'success');

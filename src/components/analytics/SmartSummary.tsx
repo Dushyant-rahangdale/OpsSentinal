@@ -87,7 +87,7 @@ export default function SmartSummary({ metrics, windowDays, trendSeries }: Smart
   const copyToClipboard = () => {
     const text = `Weekly Operations Summary:\n${insights.map(i => `- ${i.text}`).join('\n')}`;
     navigator.clipboard.writeText(text);
-    alert('Summary copied to clipboard');
+    console.log('Summary copied to clipboard');
   };
 
   return (

@@ -81,6 +81,7 @@ export default function BulkUserActionsForm({
     }
 
     if (selectedAction === 'setRole' && !selectedRole) {
+       
       setLocalError('Select a role.');
       event.preventDefault();
       return;
@@ -88,6 +89,7 @@ export default function BulkUserActionsForm({
 
     if (
       selectedAction === 'delete' &&
+      // eslint-disable-next-line no-alert
       !window.confirm('Delete selected users? This cannot be undone.')
     ) {
       event.preventDefault();

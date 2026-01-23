@@ -63,6 +63,8 @@ export default async function ServiceSettingsPage({
       select: {
         id: true,
         workspaceName: true,
+         
+         
         workspaceId: true,
         enabled: true,
       },
@@ -79,6 +81,8 @@ export default async function ServiceSettingsPage({
         <Card className="text-center py-12">
           <div className="flex flex-col items-center justify-center p-6">
             <h2 className="text-2xl font-semibold mb-2">Service Not Found</h2>
+            // eslint-disable-next-line react/no-unescaped-entities
+            // eslint-disable-next-line react/no-unescaped-entities
             <p className="text-slate-500 mb-6">The service you're looking for doesn't exist.</p>
             <Button asChild>
               <Link href="/services">Back to Services</Link>

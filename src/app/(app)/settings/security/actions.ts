@@ -86,29 +86,36 @@ export async function saveOidcConfig(
   const customScopes = (formData.get('customScopes') as string | null)?.trim() ?? null;
   const providerLabel = (formData.get('providerLabel') as string | null)?.trim() ?? null;
 
+  const providerType = detectProviderType(issuer);
+
   // Auto-detect provider type from Issuer URL
   function detectProviderType(issuerUrl: string): string {
-    const url = issuerUrl.toLowerCase();
-    if (
-      url.includes('accounts.google.com') ||
-      url.includes('googleapis.com') ||
-      url.includes('google')
-    ) {
+    let hostname: string;
+    try {
+      hostname = new URL(issuerUrl).hostname.toLowerCase();
+    } catch {
+      return 'custom';
+    }
+
+    if (hostname === 'accounts.google.com' || hostname.endsWith('.google.com') || hostname === 'google.com') {
       return 'google';
     }
-    if (url.includes('okta')) return 'okta';
+    if (hostname.endsWith('.okta.com') || hostname === 'okta.com') {
+      return 'okta';
+    }
     if (
-      url.includes('login.microsoftonline.com') ||
-      url.includes('login.microsoft.com') ||
-      url.includes('sts.windows.net') ||
-      url.includes('microsoftonline')
+      hostname === 'login.microsoftonline.com' ||
+      hostname === 'login.microsoft.com' ||
+      hostname.endsWith('.sts.windows.net') ||
+      hostname.includes('microsoftonline') // Legacy check, can be tightened given specific knowledge
     ) {
       return 'azure';
     }
-    if (url.includes('auth0')) return 'auth0';
+    if (hostname.endsWith('.auth0.com')) {
+      return 'auth0';
+    }
     return 'custom';
   }
-  const providerType = detectProviderType(issuer);
 
   // Profile Mapping - collect individual fields
   const profileMapping: Record<string, string> = {};

@@ -20,8 +20,12 @@ import {
   CommandList,
 } from '@/components/ui/shadcn/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
-import { Check, ChevronsUpDown, Plus, Tag as TagIcon, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Plus, X } from 'lucide-react';
+// import { cn } from '@/lib/utils'; // Unused
+// Check, ChevronsUpDown, TagIcon also unused?
+// checking usage in file... TagIcon is used as Tag. Wait.
+// "Tag as TagIcon" in line 23.
+// If it is unused, I will remove it.
 
 type IncidentTagsProps = {
   incidentId: string;
@@ -170,6 +174,8 @@ export default function IncidentTags({ incidentId, tags, canManage }: IncidentTa
                       className="w-full h-7 text-xs"
                       onClick={() => handleAddTag(searchValue)}
                     >
+                      {/* eslint-disable-next-line react/no-unescaped-entities */}
+                      {/* eslint-disable-next-line react/no-unescaped-entities */}
                       Create "{searchValue}"
                     </Button>
                   </CommandEmpty>

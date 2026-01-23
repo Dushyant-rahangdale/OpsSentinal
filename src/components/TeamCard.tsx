@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import ConfirmDialog from './ConfirmDialog';
+// import ConfirmDialog from './ConfirmDialog'; // Unused
 import TeamMemberCard from './TeamMemberCard';
 import TeamMemberSearch from './TeamMemberSearch';
 import TeamActivityLog from './TeamActivityLog';
@@ -272,6 +272,7 @@ export default function TeamCard({
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 text-orange-900 mb-2">
                   <AlertTriangle className="h-5 w-5" />
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
                   <p className="text-sm font-medium">You don't have permission to edit this team</p>
                 </div>
                 <p className="text-xs text-orange-700">Admin or Responder role required.</p>
@@ -325,6 +326,7 @@ export default function TeamCard({
                                 receiveNotifications: boolean
                               ) => {
                                 return await updateTeamMemberNotifications(
+
                                   member.id,
                                   receiveNotifications
                                 );

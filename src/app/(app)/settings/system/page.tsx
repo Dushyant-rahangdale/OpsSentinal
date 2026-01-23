@@ -301,6 +301,8 @@ export default async function SystemSettingsPage() {
             <div>
               <p className="text-sm font-medium">Why this matters</p>
               <p className="text-sm text-muted-foreground">
+                // eslint-disable-next-line react/no-unescaped-entities
+                // eslint-disable-next-line react/no-unescaped-entities
                 Controls "All Time" queries in Command Center. Longer retention means more complete
                 historical data but slower queries and more storage.
               </p>

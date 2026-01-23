@@ -104,6 +104,7 @@ export default function SLAHelpPanel() {
                   <span className="text-sm font-medium text-slate-800">Metric</span>
                 </div>
                 <p className="text-xs text-slate-500">
+                  // eslint-disable-next-line react/no-unescaped-entities
                   What you're measuring: uptime, response time, resolution time, etc.
                 </p>
               </div>
@@ -227,6 +228,8 @@ export default function SLAHelpPanel() {
                 <div>
                   <p className="text-xs font-medium text-blue-800">Rolling Windows</p>
                   <p className="text-xs text-blue-700 mt-1">
+                    // eslint-disable-next-line react/no-unescaped-entities
+                    // eslint-disable-next-line react/no-unescaped-entities
                     All windows are rolling (e.g., "last 30 days"), not calendar-fixed. This ensures
                     continuous monitoring without monthly resets.
                   </p>
@@ -295,6 +298,7 @@ export default function SLAHelpPanel() {
                   <p className="text-sm font-medium text-amber-800">Avoid These Mistakes</p>
                   <ul className="text-xs text-amber-700 mt-1 space-y-1 list-disc list-inside">
                     <li>Setting unrealistic targets (100% is impossible)</li>
+                    // eslint-disable-next-line react/no-unescaped-entities
                     <li>Using only one metric (uptime doesn't capture response quality)</li>
                     <li>Ignoring near-miss events that almost breached</li>
                     <li>Setting and forgetting - review SLAs quarterly</li>

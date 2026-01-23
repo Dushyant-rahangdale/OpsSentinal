@@ -151,7 +151,7 @@ export async function retryFailedNotifications(): Promise<{
         });
       }
     } catch (error: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
+       
       failed++;
       logger.error('notification.retry.error', {
         notificationId: notification.id,

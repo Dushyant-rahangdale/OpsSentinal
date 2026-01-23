@@ -21,6 +21,7 @@ export default function ConfirmSubmitButton({
             className={className}
             style={style}
             onClick={(e) => {
+                // eslint-disable-next-line no-alert
                 if (!confirm(confirmMessage)) {
                     e.preventDefault();
                 }

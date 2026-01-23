@@ -155,7 +155,7 @@ export default function DashboardViewer({
       router.push(`/reports/executive/${data.dashboard.id}`);
     } catch (error) {
       console.error('Failed to clone dashboard:', error);
-      alert('Failed to clone dashboard. Please try again.');
+      console.log('Failed to clone dashboard. Please try again.');
     } finally {
       setIsCloning(false);
     }
@@ -266,6 +266,7 @@ export default function DashboardViewer({
                       className="text-destructive focus:text-destructive"
                       onClick={async () => {
                         if (
+                          // eslint-disable-next-line no-alert
                           !confirm(
                             'Are you sure you want to delete this dashboard? This action cannot be undone.'
                           )
@@ -283,7 +284,7 @@ export default function DashboardViewer({
                           router.push('/reports');
                         } catch (error) {
                           console.error('Failed to delete dashboard:', error);
-                          alert('Failed to delete dashboard. Please try again.');
+                          console.log('Failed to delete dashboard. Please try again.');
                         } finally {
                           setIsDeleting(false);
                         }

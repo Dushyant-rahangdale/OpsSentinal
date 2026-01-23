@@ -55,7 +55,10 @@ function getStatusColor(status: string): string {
     SUPPRESSED: '#7c3aed',
     RESOLVED: '#16a34a',
   };
-  return colors[status] || '#6b7280';
+  if (!status || !Object.prototype.hasOwnProperty.call(colors, status)) {
+    return '#6b7280';
+  }
+  return colors[status];
 }
 
 function buildSparklinePath(values: number[], width: number = 72, height: number = 24): string {
@@ -115,12 +118,12 @@ export default async function AnalyticsV2Page({
     typeof params?.assignee === 'string' && params.assignee !== 'ALL' ? params.assignee : undefined;
   const statusFilter =
     typeof params?.status === 'string' &&
-    allowedStatus.includes(params.status as (typeof allowedStatus)[number])
+      allowedStatus.includes(params.status as (typeof allowedStatus)[number])
       ? (params.status as (typeof allowedStatus)[number])
       : undefined;
   const urgencyFilter =
     typeof params?.urgency === 'string' &&
-    allowedUrgency.includes(params.urgency as (typeof allowedUrgency)[number])
+      allowedUrgency.includes(params.urgency as (typeof allowedUrgency)[number])
       ? (params.urgency as (typeof allowedUrgency)[number])
       : undefined;
   const windowCandidate = Number(params?.window ?? 7);
@@ -479,10 +482,10 @@ export default async function AnalyticsV2Page({
           detail="SLA compliance"
           variant={
             getComplianceStatus(metrics.resolveCompliance) as
-              | 'success'
-              | 'warning'
-              | 'danger'
-              | 'default'
+            | 'success'
+            | 'warning'
+            | 'danger'
+            | 'default'
           }
           icon={<Shield className="w-5 h-5" />}
           href="/incidents?status=RESOLVED"
@@ -505,10 +508,10 @@ export default async function AnalyticsV2Page({
           detail="Within target"
           variant={
             getComplianceStatus(metrics.ackCompliance) as
-              | 'success'
-              | 'warning'
-              | 'danger'
-              | 'default'
+            | 'success'
+            | 'warning'
+            | 'danger'
+            | 'default'
           }
           icon={<Shield className="w-5 h-5" />}
           href="/incidents"

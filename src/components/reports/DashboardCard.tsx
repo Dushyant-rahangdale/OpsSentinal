@@ -55,7 +55,7 @@ export default function DashboardCard({
       router.refresh();
     } catch (error) {
       console.error('Failed to delete dashboard:', error);
-      alert('Failed to delete dashboard. Please try again.');
+      console.log('Failed to delete dashboard. Please try again.');
     } finally {
       setIsDeleting(false);
     }

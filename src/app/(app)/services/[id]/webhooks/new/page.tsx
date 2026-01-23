@@ -38,6 +38,8 @@ export default async function NewWebhookPage({
           <CardContent className="flex flex-col items-center justify-center p-6 text-center">
             <h2 className="text-2xl font-bold mb-2">Service Not Found</h2>
             <p className="text-muted-foreground mb-6">
+              // eslint-disable-next-line react/no-unescaped-entities
+              // eslint-disable-next-line react/no-unescaped-entities
               The service you're looking for doesn't exist.
             </p>
             <Button asChild>

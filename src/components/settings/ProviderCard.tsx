@@ -150,7 +150,7 @@ export default function ProviderCard({
 
     // Check if provider is configured before enabling
     if (newEnabled && !hasRequiredConfig) {
-      alert(
+      console.log(
         'Please configure this provider first before enabling it. Click "Configure" to add required settings.'
       );
       return;
@@ -198,7 +198,7 @@ export default function ProviderCard({
       setTimeout(() => window.location.reload(), 500);
     } catch (err) {
       setEnabled(!newEnabled);
-      alert(
+      console.log(
         `Failed to ${newEnabled ? 'enable' : 'disable'} provider: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
     }

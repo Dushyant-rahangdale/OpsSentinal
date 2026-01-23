@@ -30,7 +30,7 @@ export default function CreateBlankDashboardButton() {
       window.location.href = `/reports/executive/${data.dashboard.id}`;
     } catch (error) {
       console.error('Failed to create dashboard:', error);
-      alert('Failed to create dashboard. Please try again.');
+      console.log('Failed to create dashboard. Please try again.');
       setIsCreating(false);
     }
   };

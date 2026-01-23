@@ -20,16 +20,17 @@ import {
   Search,
   ArrowRight,
   Lock,
+  type LucideIcon,
 } from 'lucide-react';
 
-const sectionIcons: Record<string, any> = {
+const sectionIcons: Record<string, LucideIcon> = {
   account: User,
   workspace: Building2,
   integrations: Puzzle,
   advanced: Settings,
 };
 
-const itemIcons: Record<string, any> = {
+const itemIcons: Record<string, LucideIcon> = {
   profile: User,
   preferences: Settings,
   security: Shield,
@@ -73,7 +74,7 @@ export default async function SettingsOverviewPage() {
         <CardContent className="space-y-6">
           <SettingsSearch
             items={SETTINGS_NAV_ITEMS}
-            placeholder="Search settings, integrations, billing..."
+            placeholder="Search settings, integrations..."
           />
 
           {/* Quick Links */}

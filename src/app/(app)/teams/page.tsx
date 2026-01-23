@@ -304,6 +304,7 @@ export default async function TeamsPage({ searchParams }: TeamsPageProps) {
 
   // Calculate stats
   const stats = {
+     
     total: adjustedTotalCount,
     totalMembers: filteredTeams.reduce((sum, team) => sum + team._count.members, 0),
     totalServices: filteredTeams.reduce((sum, team) => sum + team._count.services, 0),
