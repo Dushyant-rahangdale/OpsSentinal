@@ -208,7 +208,7 @@ export async function updatePreferences(
       },
     });
 
-    revalidatePath('/settings/preferences');
+    revalidatePath('/settings/profile');
     return { success: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'Unable to update preferences.' };
@@ -299,7 +299,7 @@ export async function updateNotificationPreferences(
       },
     });
 
-    revalidatePath('/settings/preferences');
+    revalidatePath('/settings/profile');
     return { success: true };
   } catch (error) {
     return {

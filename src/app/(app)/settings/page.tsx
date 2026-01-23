@@ -73,7 +73,7 @@ export default async function SettingsOverviewPage() {
         <CardContent className="space-y-6">
           <SettingsSearch
             items={SETTINGS_NAV_ITEMS}
-            placeholder="Search settings, integrations, billing..."
+            placeholder="Search settings, integrations..."
           />
 
           {/* Quick Links */}

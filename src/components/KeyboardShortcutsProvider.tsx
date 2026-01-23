@@ -92,7 +92,6 @@ export function KeyboardShortcutsProvider({ children }: KeyboardShortcutsProvide
   useSequenceShortcut(['g', 'e'], () => router.push('/settings/security'));
   useSequenceShortcut(['g', 'a'], () => router.push('/settings/api-keys'));
   useSequenceShortcut(['g', 'n'], () => router.push('/settings/notifications'));
-  useSequenceShortcut(['g', 'w'], () => router.push('/settings/workspace'));
 
   // Focus search on "/"
   useKeyboardShortcut({
