@@ -37,6 +37,9 @@ const itemIcons: Record<string, any> = {
   'notifications-admin': Bell,
 };
 
+import SettingsSearch from '@/components/settings/SettingsSearch';
+import '@/styles/pages/settings.css';
+
 export default async function SettingsOverviewPage() {
   const permissions = await getUserPermissions();
 
@@ -68,15 +71,10 @@ export default async function SettingsOverviewPage() {
           <CardDescription>Quickly jump to the page you need</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search settings, integrations, billing..."
-              className="pl-10"
-            />
-          </div>
+          <SettingsSearch
+            items={SETTINGS_NAV_ITEMS}
+            placeholder="Search settings, integrations, billing..."
+          />
 
           {/* Quick Links */}
           <div>
