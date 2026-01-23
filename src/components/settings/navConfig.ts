@@ -58,6 +58,14 @@ export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
         icon: 'shield',
         keywords: ['password', 'sessions', 'sso', 'mfa'],
       },
+      {
+        id: 'active-sessions',
+        label: 'Active Sessions',
+        description: 'View and revoke active sessions',
+        href: '/settings/security',
+        icon: 'shield',
+        keywords: ['sessions', 'revoke', 'logout', 'devices'],
+      },
     ],
   },
   {
