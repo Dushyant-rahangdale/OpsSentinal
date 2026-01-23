@@ -33,7 +33,7 @@ services:
       - DATABASE_URL=postgresql://opsknight:opsknight_secure_password_change_me@opsknight-db:5432/opsknight_db
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=dev-secret-key-for-development-only
-      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
+      - NEXTAUTH_SECRET=dev-secret-key-for-development-only
       # NOTE: Notification providers (Twilio, Email, Push) are configured via UI
       # Environment variables are NOT used - configure at Settings → System → Notification Providers
     volumes:
