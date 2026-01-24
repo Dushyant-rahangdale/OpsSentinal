@@ -1,160 +1,88 @@
----
-order: 8
-title: Architecture
-description: How OpsKnight is built in code today
----
-
 # System Architecture
 
-## Overview
+OpsKnight is designed as a **monolithic Next.js application** for simplicity and performance, backed by robust infrastructure for reliability.
 
-OpsKnight is a Next.js App Router application that combines server-rendered UI, API routes, and
-background processing on top of a single PostgreSQL database. The product is split into three
-primary runtime surfaces:
+## High-Level Overview
 
-- **Web App**: `src/app/(app)` and shared UI/components
-- **Mobile Web/PWA**: `src/app/(mobile)/m` (PWA support is wired via `next-pwa`, but SW caching is
-  disabled by default in `next.config.ts`)
-- **Public Status Page**: `src/app/status` + `src/app/api/status-page/*`
+The system runs as a single service (`opsknight-app`) handling both the frontend (React server components) and the backend (API routes, job processing).
 
-The backend logic lives in `src/lib` and is invoked by server components, API routes, and the
-internal cron scheduler.
+### Components
 
----
+```mermaid
+flowchart LR
+    %% Styles
+    classDef client fill:#f9f9f9,stroke:#333,stroke-width:2px,rx:10;
+    classDef service fill:#e3f2fd,stroke:#2196f3,stroke-width:2px,rx:5;
+    classDef db fill:#fff3e0,stroke:#ff9800,stroke-width:2px,rx:5;
+    classDef ext fill:#e8f5e9,stroke:#4caf50,stroke-width:2px,rx:5;
 
-## High-Level Flow
+    subgraph Clients
+        User((User)):::client
+        Monitor[Monitor]:::client
+    end
 
+    subgraph Core
+        LB[Ingress]:::service
+        NextJS[Next.js App]:::service
+        API[API]:::service
+        Worker[Worker]:::service
+    end
+
+    subgraph Data
+        PG[(DB)]:::db
+        Redis[(Cache)]:::db
+    end
+
+    subgraph Channels
+        Slack[Slack]:::ext
+        SMS[Twilio SMS]:::ext
+        WA[WhatsApp]:::ext
+        Email[Email]:::ext
+        Push[Push]:::ext
+    end
+
+    %% Flows
+    User --> LB --> NextJS --> API
+    Monitor -->|Webhook| LB
+    API --> PG & Redis
+    API -->|Job| Worker
+    Worker -->|Poll| PG
+    Worker -->|Dispatch| Slack & SMS & WA & Email & Push
 ```
-Clients
-  ├─ Web App (App Router)
-  ├─ Mobile Web/PWA
-  ├─ Status Page
-  └─ API Clients / Integrations
-           │
-           ▼
-Next.js Application (App Router)
-  ├─ UI (server + client components)
-  ├─ API routes (/api/*)
-  ├─ Server actions
-  └─ Internal cron scheduler (src/lib/cron-scheduler.ts)
-           │
-           ▼
-PostgreSQL (Prisma)
-  ├─ Users / Teams / Services
-  ├─ Incidents / Alerts / Events
-  ├─ On-call & Escalations
-  ├─ Notifications & Providers
-  ├─ Status Page config
-  ├─ SLA & Analytics rollups
-  └─ Background jobs (queue + scheduler state)
-           │
-           ▼
-Outbound Channels
-  ├─ Email (Resend / SendGrid / SMTP / SES)
-  ├─ SMS + WhatsApp (Twilio or AWS SNS)
-  ├─ Web Push (PWA)
-  ├─ Slack
-  └─ Webhooks
-```
 
 ---
 
-## Technology Stack (from `OpsKnight/package.json`)
+## 🏗️ Core Layers
 
-| Layer            | Technology                                   |
-| ---------------- | -------------------------------------------- |
-| Web framework    | Next.js 16.x (App Router)                    |
-| UI               | React 19, Tailwind CSS, Radix UI             |
-| Auth             | NextAuth (Credentials + optional OIDC)       |
-| DB/ORM           | PostgreSQL + Prisma                          |
-| Charts           | Recharts                                     |
-| Forms/Validation | React Hook Form + Zod                        |
-| PWA              | `@ducanh2912/next-pwa` (disabled by default) |
+### 1. Application Layer (Next.js)
 
----
+- **Frontend**: Built with React 19 and Tailwind CSS. Fully server-rendered where possible (RSC) for speed.
+- **API**: Next.js API Routes serve as the backend interface for the frontend and external webhooks (Prometheus, Datadog).
+- **Worker**: A background polling mechanism (or job queue consumer) running within the node process to handle async tasks like customized escalation timeouts.
 
-## Core Subsystems (code-driven)
+### 2. Data Persistence
 
-### Incident Intake & Deduplication
+- **PostgreSQL**: The source of truth for all data (Incidents, Users, Schedules).
+- **Prisma**: Type-safe ORM used for all database access.
+- **Redis (Optional)**: Used for caching status pages and session storage in high-scale deployments.
 
-- **Events API**: `src/app/api/events/route.ts`
-- **Processor**: `src/lib/events.ts`
-- **Behavior**: writes `Alert`, deduplicates by `dedupKey`, creates/updates `Incident`, logs
-  `IncidentEvent`, and triggers follow-up actions.
+### 3. Notification Engine
 
-### Integrations
+The engine handles the logic of "Who to notify next?".
 
-- **Inbound webhooks**: `src/app/api/integrations/*`
-- **Normalization**: `src/lib/integrations/*` + `src/lib/integrations/handler.ts`
+1.  **Trigger**: Incident created via Webhook.
+2.  **Determine Policy**: Lookout up the Service's Escalation Policy.
+3.  **Find On-Call**: Calculate who is currently on-call for that policy step.
+4.  **Dispatch**: Send the alert via the user's preferred channel (Slack, SMS, etc.).
 
-### Escalations & On-call
+## 🔄 Data Flow
 
-- **Engine**: `src/lib/escalation.ts`, `src/lib/oncall.ts`
-- **Persistence**: `Incident.nextEscalationAt`, `EscalationPolicy`, `OnCallSchedule`
-- **Queueing**: `src/lib/jobs/queue.ts` (Postgres-backed jobs)
+1.  **Inbound**: `POST /api/webhooks/prometheus` receives an alert payload.
+2.  **Processing**: The API verifies the signature, creates an `Incident` record in Postgres, and enqueues a `ProcessIncident` job.
+3.  **Outbound**: The worker picks up the job, resolves the `EscalationPolicy`, and dispatches a notification to the `Channels`.
 
-### Notifications
+## 🛡️ Security
 
-- **Core**: `src/lib/notifications.ts`, `src/lib/notification-providers.ts`
-- **Channels**: `src/lib/email.ts`, `src/lib/sms.ts`, `src/lib/whatsapp.ts`, `src/lib/push.ts`,
-  `src/lib/slack.ts`, `src/lib/status-page-notifications.ts`
-
-### Analytics & SLA
-
-- **Metrics engine**: `src/lib/sla-server.ts`, `src/lib/analytics-metrics.ts`
-- **Rollups**: `src/lib/metric-rollup.ts`, `IncidentMetricRollup` model
-- **Retention**: `src/lib/retention-policy.ts`, `SystemSettings` model
-- **Breach checks**: `src/lib/sla-breach-monitor.ts`
-
-### Status Page
-
-- **UI**: `src/app/status/*`
-- **API**: `src/app/api/status-page/*` and related helpers in `src/lib/status-page-*`
-
----
-
-## Data Model Highlights (Prisma)
-
-Key tables that define the current system:
-
-- **Core**: `User`, `Team`, `Service`, `Incident`, `Alert`, `IncidentEvent`, `IncidentNote`
-- **Escalation & On-call**: `EscalationPolicy`, `EscalationRule`, `OnCallSchedule`, `OnCallShift`
-- **Notifications**: `Notification`, `NotificationProvider`, `InAppNotification`
-- **Jobs & Scheduler**: `BackgroundJob`, `CronSchedulerState`
-- **Analytics/SLA**: `IncidentMetricRollup`, `SLADefinition`, `SLASnapshot`, `SLAPerformanceLog`
-- **Status Page**: `StatusPage`, `StatusPageService`, `StatusPageAnnouncement`, `StatusPageWebhook`
-
----
-
-## Background Jobs & Internal Scheduler
-
-OpsKnight runs background work inside the Next.js runtime (non-edge) using:
-
-- **Scheduler**: `src/lib/cron-scheduler.ts` (DB-backed lock via `CronSchedulerState`)
-- **Queue**: `src/lib/jobs/queue.ts` + `BackgroundJob` model
-- **Job types**: `ESCALATION`, `NOTIFICATION`, `AUTO_UNSNOOZE`, `SCHEDULED_TASK`
-
-The scheduler also handles periodic maintenance such as SLA breach checks, retrying failed
-notifications, and token cleanup.
-
----
-
-## Real-Time Streams (SSE)
-
-Server-Sent Events endpoints used by the UI:
-
-- `/api/realtime/stream` (dashboard)
-- `/api/events/stream`
-- `/api/notifications/stream`
-- `/api/widgets/stream`
-- `/api/sla/stream` (batched SLA data)
-
----
-
-## Where To Look
-
-- **App routes**: `src/app/(app)` and `src/app/(mobile)`
-- **API routes**: `src/app/api`
-- **Business logic**: `src/lib`
-- **UI components**: `src/components`
-- **Database schema**: `prisma/schema.prisma`
+- **Authentication**: Usage of NextAuth.js (Auth.js) for secure session management.
+- **RBAC**: Role-Based Access Control logic ensures only authorized users can acknowledge or resolve incidents.
+- **API Keys**: Service-level API tokens are hashed and validated for ingestion.
