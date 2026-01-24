@@ -1,161 +1,258 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/dushyant-rahangdale/opsknight/main/public/banner.png" alt="OpsKnight banner" width="100%">
+<img src="https://raw.githubusercontent.com/dushyant-rahangdale/opsknight/main/public/banner.png" alt="OpsKnight Banner" width="100%">
 
-# 🛡️ OpsKnight
+# OpsKnight
 
-**Open-source incident & on-call platform with status pages and a mobile PWA.**
+**The Open Source Incident Command Center.**<br>
+_Your entire incident lifecycle, on-call schedules, and status pages in one powerful platform._
 
-[![Website](https://img.shields.io/badge/Website-opsknight.com-10b981?style=for-the-badge&logo=google-chrome&logoColor=white)](https://opsknight.com)
-[![Docs](https://img.shields.io/badge/Docs-opsknight.com%2Fdocs-2563eb?style=for-the-badge&logo=mdbook&logoColor=white)](https://opsknight.com/docs)
-[![Live Demo](https://img.shields.io/badge/Live_Demo-try_now-f97316?style=for-the-badge&logo=vercel&logoColor=white)](https://opsknight.com)
-[![License](https://img.shields.io/badge/License-Apache_2.0-111827?style=for-the-badge)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](docs/v1/deployment/docker.md)
-[![Helm](https://img.shields.io/badge/Helm-ready-0f62fe?style=for-the-badge&logo=helm&logoColor=white)](docs/v1/deployment/helm.md)
+[**opsknight.com**](https://opsknight.com)
 
-> **Beta:** rapid releases until stable v1 in **February 2026**.
+[![Website](https://img.shields.io/badge/Website-opsknight.com-10b981?style=flat&logo=google-chrome&logoColor=white)](https://opsknight.com)
+[![Docs](https://img.shields.io/badge/Docs-Read-2563eb?style=flat&logo=book&logoColor=white)](https://opsknight.com/docs)
+[![License](https://img.shields.io/badge/License-Apache_2.0-111827?style=flat)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker&logoColor=white)](docs/v1/deployment/docker.md)
+[![Status](https://img.shields.io/badge/Status-Beta-orange?style=flat)](ROADMAP.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=flat&logo=github&logoColor=white)](https://github.com/sponsors/dushyant-rahangdale)
+[![Tests](https://github.com/dushyant-rahangdale/opsknight/actions/workflows/tests.yml/badge.svg)](https://github.com/dushyant-rahangdale/opsknight/actions/workflows/tests.yml)
+[![Security](https://github.com/dushyant-rahangdale/opsknight/actions/workflows/security.yml/badge.svg)](https://github.com/dushyant-rahangdale/opsknight/actions/workflows/security.yml)
 
-<p>
-  <a href="https://opsknight.com">🌐 Website</a> •
-  <a href="https://opsknight.com/docs">📚 Docs (hosted)</a> •
-  <a href="https://github.com/dushyant-rahangdale/opsknight/discussions">🧭 Discussions</a>
-</p>
-
-</div>
-
----
-
-## Quick Links
-
-- 🌐 Website: <https://opsknight.com>
-- 📚 Hosted Docs: <https://opsknight.com/docs>
-- ▶️ Live Demo: <https://opsknight.com>
-- 🚀 One-command start: see **Run It Your Way** below
-
----
-
-## TL;DR
-
-- One stack: incident command center, on-call rotations, public status pages.
-- Mobile-first: installable PWA with rich push for iOS/Android/desktop.
-- Deploy anywhere: Docker Compose, Helm chart, or Kustomize overlays (GitOps-ready).
-- Deep integrations: Slack, Email/SMS/Voice, Prometheus, Datadog, CloudWatch, Sentry, Grafana, webhooks.
-- Open-source = predictable costs and no data captivity.
-
----
-
-## See It
+<br>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/dushyant-rahangdale/opsknight/main/docs/v1/assets/dashboard-command-center-1200.jpg" alt="OpsKnight command center dashboard" width="90%">
-  <br><em>Command Center: incidents, service health, and responder status.</em>
-  <br><br>
-  <img src="https://raw.githubusercontent.com/dushyant-rahangdale/opsknight/main/docs/v1/assets/mobile-dashboard.png" alt="OpsKnight mobile PWA dashboard" width="35%">
-  <img src="https://raw.githubusercontent.com/dushyant-rahangdale/opsknight/main/docs/v1/assets/push-notification.png" alt="OpsKnight push notification example" width="35%">
-  <br><em>Installable PWA + actionable push notifications.</em>
+  <h3>🚀 Want to try it right now?</h3>
+  <p>Spin up a full, private OpsKnight instance in your browser. <strong>No installation required.</strong></p>
+  <a href="https://codespaces.new/dushyant-rahangdale/opsknight">
+    <img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" height="40">
+  </a>
+  <p><sub><em>(Free via GitHub Codespaces • 1-click setup • 60 hours/month free)</em></sub></p>
+</div>
+
+</div>
+
 </div>
 
 ---
 
-## Highlights
+## 📑 Table of Contents
 
-- **Incident lifecycle** — timelines, assignments, runbooks, postmortems, SLA (MTTA/MTTR).
-- **On-call** — rotations, overrides, time zones, fair distribution to avoid burnout.
-- **Escalations** — retry, fan-out, auto-ack, failover across channels.
-- **Alerts** — Slack, Email, SMS, Voice, Push, Webhooks (per-step/per-policy).
-- **Status pages** — subscriber emails, component health, planned maintenance windows.
-- **Security** — RBAC, audit logs, SSO/OIDC, secrets isolation (see docs/security).
-
----
-
-## Who It's For
-
-- SRE and Platform teams needing affordable, self-hosted incident management.
-- SaaS & API providers who must publish status pages and keep customers informed.
-- Managed service providers supporting multiple tenants with strict SLAs.
-- Startups that want PagerDuty-class capabilities without per-seat pricing.
+- [Why OpsKnight?](#-why-opsknight)
+- [Key Features](#-key-features)
+- [Mobile Command Center](#-mobile-command-center)
+- [Built With](#-built-with)
+- [Quick Start](#-quick-start)
+- [Deployment Options](#-deployment-options)
+- [Architecture](#-architecture)
+- [Documentation](#-documentation)
+- [Roadmap](#-roadmap)
+- [Community & Support](#-community--support)
 
 ---
 
-## Common Use Cases
+## ⚡ Why OpsKnight?
 
-- Replace PagerDuty/OpsGenie with an open-source, self-hosted stack.
-- Run on-call for microservices across time zones with fair, automated rotations.
-- Automate escalations from monitoring/observability tools (Prometheus, Datadog, CloudWatch, Sentry, Grafana).
-- Publish public status pages with subscriber notifications during incidents and maintenance.
-- Handle incidents from mobile: receive push, ack, reassign, and run playbooks from the PWA.
+**Stop paying per-seat for reliability.**
+
+OpsKnight is the open-source alternative to PagerDuty and OpsGenie, designed for teams that want full control over their incident management stack without the massive SaaS bill. From the first alert to the final post-mortem, OpsKnight unifies your entire reliability workflow into a single, cohesive developer experience.
+
+Whether you are an SRE team at a startup maintaining 99.99% uptime or a Platform Engineer at a large enterprise, OpsKnight gives you the tools to **detect, respond, and resolve** faster.
+
+| Feature             |        OpsKnight 🛡️         |   Proprietary SaaS 💸    |
+| :------------------ | :-------------------------: | :----------------------: |
+| **Hosting**         | Self-Hosted / Private Cloud |    Public Cloud Only     |
+| **Cost**            |     Free (Open Source)      | $20-$100 / user / month  |
+| **Users**           |        **Unlimited**        |     Per-Seat Pricing     |
+| **Status Pages**    |  **Included (Unlimited)**   |        Extra Cost        |
+| **Custom Branding** |       ✅ Full Control       |        ❌ Limited        |
+| **Data Privacy**    |    ✅ 100% Owned by You     | ❌ Third-Party Processed |
 
 ---
 
-## Integrations (native)
+## ✨ Key Features
 
-- Alerting/Observability: Prometheus, Alertmanager, Datadog, CloudWatch, Sentry, Grafana, Webhooks.
-- Communications: Slack, Email, SMS, Voice, Push (PWA).
-- Platform: Kubernetes/Helm/Kustomize deploys, REST API for automation.
+<table>
+  <tr>
+    <td width="50%">
+      <h3>🚨 Unified Command Center</h3>
+      <p>Manage incidents, responders, and runbooks from a single real-time dashboard. Track SLAs (MTTA/MTTR) and automate assignments.</p>
+    </td>
+    <td width="50%">
+      <h3>📅 Fair On-Call Rotations</h3>
+      <p>Flexible scheduling with daily, weekly, or custom rotations. Handle time zones, overrides, and escalation policies with ease.</p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h3>📢 Global Escalations</h3>
+      <p>Never miss a critical alert. Multi-channel notifications via <strong>Slack, SMS, Voice, Email, and Push</strong> ensure the right person is woken up.</p>
+    </td>
+    <td>
+      <h3>📱 Mobile PWA</h3>
+      <p>Full incident management in your pocket. Installable on iOS/Android with <strong>Push Notifications</strong> and biometric security.</p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h3>📊 Public Status Pages</h3>
+      <p>Keep your users informed with beautiful public status pages. Automate updates and subscriber notifications during incidents.</p>
+    </td>
+    <td>
+      <h3>🔌 Deep Integrations</h3>
+      <p>Native support for Prometheus, Datadog, Sentry, CloudWatch, and Grafana. Seamless two-way sync with Slack.</p>
+    </td>
+  </tr>
+</table>
 
-See more in [docs/v1/integrations](docs/v1/integrations/README.md).
+<div align="center">
+  <img src="https://raw.githubusercontent.com/dushyant-rahangdale/opsknight/main/docs/v1/assets/dashboard-command-center-1200.jpg" alt="OpsKnight Dashboard" width="100%">
+  <sub><em>The Incident Command Center: Real-time observability and response coordination.</em></sub>
+</div>
+
+</div>
 
 ---
 
-## Supported Deployments (pick your path)
+## 📱 Mobile Command Center
 
-- **Docker Compose** — fastest local eval; ships with sensible defaults.
-- **Helm chart** — production-ready; includes HPA/PDB/ingress knobs.
-- **Kustomize** — GitOps-friendly overlays; drop into ArgoCD/Flux.
-- **BYO Postgres** — point to managed databases via env vars.
+**Respond to incidents from anywhere.** OpsKnight includes a fully installable Progressive Web App (PWA) for iOS and Android.
 
-Docs: [Deployment guides](docs/v1/deployment/README.md) • [Docker](docs/v1/deployment/docker.md) • [Helm](docs/v1/deployment/helm.md) • [Kustomize](docs/v1/deployment/kubernetes.md)
+- **🔔 Push Notifications**: Get critical alerts instantly on your device.
+- **👆 One-Tap Install**: No App Store required. Just "Add to Home Screen".
+- **🔒 Secure**: Supports biometric authentication (FaceID/TouchID).
 
-## Run It Your Way
+<div align="center">
+  <img src="docs/v1/assets/mobile-dashboard-mockup-transparent.png" alt="Mobile Dashboard" height="400">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/v1/assets/push-notification-mockup-transparent.png" alt="Push Notifications" height="400">
+</div>
+
+<div align="center">
+  <a href="docs/v1/mobile/setup.md"><strong>Explore Mobile Setup Guide →</strong></a>
+</div>
+
+---
+
+## 🛠️ Built With
+
+OpsKnight is built on a modern, type-safe stack designed for performance and developer experience.
+
+- **Framework**: [Next.js 15](https://nextjs.org/) (React 19)
+- **Database**: [Prisma ORM](https://www.prisma.io/) (PostgreSQL)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Containerization**: Docker & Kubernetes
+
+---
+
+## 🚀 Quick Start
+
+Get OpsKnight up and running locally in under 60 seconds.
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Git
+
+### Run it
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/dushyant-rahangdale/opsknight.git
 cd opsknight
+
+# 2. Setup Environment
 cp env.example .env
+
+# 3. Start the stack
 docker compose up -d
 ```
 
-- Helm (prod): `helm repo add opsknight https://charts.opsknight.com && helm install opsknight opsknight/opsknight -n opsknight --create-namespace`
-- Kustomize (GitOps): `kubectl apply -k k8s/`
-- More: [Deployment guides](docs/v1/deployment/README.md)
-
-**Deployment at a glance**
-
-- Local eval: Docker Compose (fastest path).
-- Production single-cluster: Helm chart with HPA, PDB, and ingress examples.
-- GitOps: Kustomize overlays; works with ArgoCD/Flux.
-- Cloud DBs: Bring your own Postgres via env vars (see deployment docs).
+Visit `http://localhost:3000` and start managing incidents.
 
 ---
 
-## Mobile PWA
+## 📦 Deployment Options
 
-- One-tap install (Safari/Chrome) — no app-store wait.
-- Push notifications with incident context and quick actions.
-- Works the same on desktop for unified responder experience.
-- Guides: [Mobile setup](docs/v1/mobile/setup.md) · [Push notifications](docs/v1/mobile/README.md)
+We support multiple deployment strategies to fit your infrastructure needs.
 
----
+| Method             | Best For                            | Guide                                          |
+| :----------------- | :---------------------------------- | :--------------------------------------------- |
+| **Docker Compose** | Local Development, small teams      | [Read Guide](docs/v1/deployment/docker.md)     |
+| **Helm Chart**     | Production Kubernetes (Recommended) | [Read Guide](docs/v1/deployment/helm.md)       |
+| **Kustomize**      | GitOps (ArgoCD/Flux)                | [Read Guide](docs/v1/deployment/kubernetes.md) |
 
-## Docs & Links
-
-- Hosted docs (latest): https://opsknight.com/docs
-- In-repo entry points: [Getting started](docs/v1/getting-started/README.md) · [Core concepts](docs/v1/core-concepts/README.md) · [Integrations](docs/v1/integrations/README.md) · [API](docs/v1/api/README.md) · [Security](docs/v1/security/README.md)
+> **Note:** For production, we recommend using an external managed PostgreSQL database.
 
 ---
 
-## Community & Support
+## 🏗️ Architecture
 
-- Q&A: [GitHub Discussions](https://github.com/dushyant-rahangdale/opsknight/discussions)
-- Issues: [Bug reports](https://github.com/dushyant-rahangdale/opsknight/issues)
-- Updates: [Twitter/X](https://twitter.com/opsknight)
-
----
-
-## License
-
-OpsKnight is licensed under the [Apache License 2.0](LICENSE).
+OpsKnight runs as a single Next.js application (UI + API routes + server actions) with an internal DB-backed scheduler and a Postgres-backed job queue.
 
 <div align="center">
-  <sub>Built with ❤️ for incident responders and SRE teams everywhere.</sub>
+  <img src="docs/v1/assets/images/opsknight-architecture.svg" alt="OpsKnight architecture diagram" width="100%">
+  <sub><em>High-level architecture: clients → app (Next.js) → PostgreSQL (Prisma) → outbound channels.</em></sub>
 </div>
+
+- Full details: [Architecture docs](docs/v1/architecture/README.md)
+
+---
+
+## 📚 Documentation
+
+Everything you need to configure and extend OpsKnight.
+
+- **[Hosted Documentation](https://opsknight.com/docs)** (Recommended)
+- **In-Repo Guides**:
+  - [⚡ Getting Started](docs/v1/getting-started/README.md)
+  - [🧩 Core Concepts](docs/v1/core-concepts/README.md)
+  - [🔌 Integrations](docs/v1/integrations/README.md)
+  - [🛡️ Security](docs/v1/security/README.md)
+  - [📡 API Reference](docs/v1/api/README.md)
+
+---
+
+## 🗺️ Roadmap
+
+We are actively building towards **Version 1.0 (February 2026)**.
+
+- [x] Core Incident Management & On-Call
+- [x] Slack Integration & Webhooks
+- [x] Basic Status Pages
+- [ ] **Voice/Call Escalations** (In Progress)
+- [ ] **Advanced Analytics & Reports**
+- [ ] **Jira/ServiceNow Integrations**
+
+See the full [ROADMAP.md](ROADMAP.md) for details.
+
+---
+
+## 🤝 Community & Support
+
+Join the OpsKnight community to get help, suggest features, or contribute.
+
+- **📧 Email**: [help@opsknight.com](mailto:help@opsknight.com) - Feedback, support, and feature requests.
+- **💬 Discussions**: [GitHub Discussions](https://github.com/dushyant-rahangdale/opsknight/discussions)
+- **🐛 Issues**: [Report a Bug](https://github.com/dushyant-rahangdale/opsknight/issues)
+
+We love contributors! Please check our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+---
+
+## ❤️ Support the Project
+
+OpsKnight is an independent open-source project. If it helps you sleep better at night, consider supporting its development.
+
+- **🌟 Star the repo**: It helps others find us.
+- **💝 Sponsor**: [Become a Sponsor](https://github.com/sponsors/dushyant-rahangdale)
+
+Built with ❤️ by [Dushyant Rahangdale](https://github.com/dushyant-rahangdale) and contributors.
+
+<a href="https://github.com/dushyant-rahangdale/opsknight/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=dushyant-rahangdale/opsknight" />
+</a>
+
+<br>
+
+[![Star History Chart](https://api.star-history.com/svg?repos=dushyant-rahangdale/opsknight&type=Date)](https://star-history.com/#dushyant-rahangdale/opsknight&Date)
