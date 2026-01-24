@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # This is the "Dev Container" where VS Code runs.
   # It is separate from the application container ("opsknight-app") so you get a full tooling environment.
