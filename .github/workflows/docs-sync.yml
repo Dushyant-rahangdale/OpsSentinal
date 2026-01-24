@@ -6,7 +6,6 @@ on:
     paths:
       - 'docs/**'
       - 'scripts/sync-docs-to-website.sh'
-      - 'scripts/sync-website-docs-to-app.sh'
       - '.github/workflows/docs-sync.yml'
 
 permissions:
@@ -46,17 +45,4 @@ jobs:
             git push origin HEAD:main
           else
             echo "No website changes to commit."
-          fi
-
-      - name: Sync website docs back to app repo
-        run: ./scripts/sync-website-docs-to-app.sh ./opsknight-website
-
-      - name: Commit app repo changes
-        run: |
-          if [ -n "$(git status --porcelain docs/website)" ]; then
-            git add docs/website
-            git commit -m "sync website docs [skip docs-sync]"
-            git push origin HEAD:main
-          else
-            echo "No app repo changes to commit."
           fi

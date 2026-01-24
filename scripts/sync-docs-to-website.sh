@@ -25,26 +25,39 @@ sync_docs_dir() {
   rsync -av --delete \
     --exclude 'coreconcepts/**' \
     --exclude 'core-concepts/**' \
-    --exclude 'website/**' \
     --exclude '.DS_Store' \
     "$src/" "$dest/"
+}
+
+sync_assets() {
+  src="$1/assets"
+  dest="$2/assets"
+  if [ -d "$src" ]; then
+    mkdir -p "$dest"
+    rsync -av --delete --exclude '.DS_Store' "$src/" "$dest/"
+  fi
 }
 
 found_versions=0
 for version_dir in "$SRC_DIR"/v*; do
   if [ -d "$version_dir" ]; then
     version="$(basename "$version_dir")"
-    dest_dir="$WEBSITE_DIR/content/docs/$version/app"
+    dest_dir="$WEBSITE_DIR/content/docs/$version"
+    public_assets_dir="$WEBSITE_DIR/public/docs/$version"
     echo " - $version -> $dest_dir"
     sync_docs_dir "$version_dir" "$dest_dir"
+    sync_assets "$version_dir" "$public_assets_dir"
     found_versions=1
   fi
 done
 
 if [ "$found_versions" -eq 0 ]; then
-  dest_dir="$WEBSITE_DIR/content/docs/v1/app"
-  echo " - v1 (fallback) -> $dest_dir"
+  version="v1"
+  dest_dir="$WEBSITE_DIR/content/docs/$version"
+  public_assets_dir="$WEBSITE_DIR/public/docs/$version"
+  echo " - $version (fallback) -> $dest_dir"
   sync_docs_dir "$SRC_DIR" "$dest_dir"
+  sync_assets "$SRC_DIR" "$public_assets_dir"
 fi
 
 echo "Done."
