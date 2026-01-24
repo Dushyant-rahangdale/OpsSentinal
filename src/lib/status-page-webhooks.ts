@@ -21,6 +21,14 @@ async function deliverWebhook(
   payload: WebhookPayload
 ): Promise<boolean> {
   try {
+    // SSRF Protection: Validate webhook URL before making request
+    const { validateWebhookUrl } = await import('./network-security');
+    const isValidUrl = await validateWebhookUrl(url);
+    if (!isValidUrl) {
+      logger.warn('api.status_page.webhook.blocked_ssrf', { url });
+      return false;
+    }
+
     const payloadString = JSON.stringify(payload);
     const signature = crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
 
@@ -51,7 +59,6 @@ async function deliverWebhook(
     });
     return false;
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.webhook.delivery_error', {
       url,
       error: error instanceof Error ? error.message : String(error),
@@ -83,7 +90,6 @@ export async function getStatusPagesForService(serviceId: string): Promise<strin
     // Return only enabled status pages
     return statusPageServices.filter(sps => sps.statusPage.enabled).map(sps => sps.statusPageId);
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.get_status_pages_for_service_error', {
       serviceId,
       error: error instanceof Error ? error.message : String(error),
@@ -144,7 +150,6 @@ export async function triggerStatusPageWebhooks(
       webhookCount: webhooks.length,
     });
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.webhooks.trigger_error', {
       statusPageId,
       event,
@@ -192,7 +197,6 @@ export async function triggerWebhooksForService(
       )
     );
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.webhook.trigger_for_service_fatal_error', {
       serviceId,
       event,
