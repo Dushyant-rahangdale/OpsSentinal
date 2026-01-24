@@ -8,7 +8,7 @@ description: Manage user accounts, roles, permissions, and notification preferen
 
 Users are the people who interact with OpsKnight — from responders handling incidents to administrators managing the platform. This guide covers user management, roles, permissions, and personal settings.
 
-![Users management](../assets/users-page.png)
+![Users management](/users-page.png)
 
 ---
 
@@ -16,10 +16,10 @@ Users are the people who interact with OpsKnight — from responders handling in
 
 | Without Proper User Management | With Proper User Management |
 | ------------------------------ | --------------------------- |
-| Everyone has full access       | Role-based access control   |
-| No accountability              | Clear audit trail           |
-| Alert fatigue for all          | Targeted notifications      |
-| Manual onboarding              | Streamlined invite flow     |
+| Everyone has full access | Role-based access control |
+| No accountability | Clear audit trail |
+| Alert fatigue for all | Targeted notifications |
+| Manual onboarding | Streamlined invite flow |
 
 ---
 
@@ -27,37 +27,37 @@ Users are the people who interact with OpsKnight — from responders handling in
 
 OpsKnight has three user roles with different permission levels:
 
-| Role          | Description                    | Best For                            |
-| ------------- | ------------------------------ | ----------------------------------- |
-| **ADMIN**     | Full platform access           | Platform administrators, team leads |
-| **RESPONDER** | Incident handling capabilities | On-call engineers, SREs             |
-| **USER**      | Read-only access               | Stakeholders, managers              |
+| Role | Description | Best For |
+| ---- | ----------- | -------- |
+| **ADMIN** | Full platform access | Platform administrators, team leads |
+| **RESPONDER** | Incident handling capabilities | On-call engineers, SREs |
+| **USER** | Read-only access | Stakeholders, managers |
 
 ### Role Permissions Matrix
 
-| Permission                     | Admin | Responder | User |
-| ------------------------------ | :---: | :-------: | :--: |
-| **View Dashboard**             |  ✅   |    ✅     |  ✅  |
-| **View Incidents**             |  ✅   |    ✅     |  ✅  |
-| **View Services**              |  ✅   |    ✅     |  ✅  |
-| **Acknowledge Incidents**      |  ✅   |    ✅     |  ❌  |
-| **Resolve Incidents**          |  ✅   |    ✅     |  ❌  |
-| **Reassign Incidents**         |  ✅   |    ✅     |  ❌  |
-| **Add Notes to Incidents**     |  ✅   |    ✅     |  ❌  |
-| **Create Incidents**           |  ✅   |    ✅     |  ❌  |
-| **Manage Schedules**           |  ✅   |    ✅     |  ❌  |
-| **Create Overrides**           |  ✅   |    ✅     |  ❌  |
-| **Create Services**            |  ✅   |    ❌     |  ❌  |
-| **Edit Services**              |  ✅   |    ❌     |  ❌  |
-| **Delete Services**            |  ✅   |    ❌     |  ❌  |
-| **Manage Teams**               |  ✅   |    ❌     |  ❌  |
-| **Manage Escalation Policies** |  ✅   |    ❌     |  ❌  |
-| **Manage Integrations**        |  ✅   |    ❌     |  ❌  |
-| **Invite Users**               |  ✅   |    ❌     |  ❌  |
-| **Manage User Roles**          |  ✅   |    ❌     |  ❌  |
-| **System Settings**            |  ✅   |    ❌     |  ❌  |
-| **View Analytics**             |  ✅   |    ✅     |  ✅  |
-| **Export Data**                |  ✅   |    ✅     |  ❌  |
+| Permission | Admin | Responder | User |
+| ---------- | :---: | :-------: | :--: |
+| **View Dashboard** | ✅ | ✅ | ✅ |
+| **View Incidents** | ✅ | ✅ | ✅ |
+| **View Services** | ✅ | ✅ | ✅ |
+| **Acknowledge Incidents** | ✅ | ✅ | ❌ |
+| **Resolve Incidents** | ✅ | ✅ | ❌ |
+| **Reassign Incidents** | ✅ | ✅ | ❌ |
+| **Add Notes to Incidents** | ✅ | ✅ | ❌ |
+| **Create Incidents** | ✅ | ✅ | ❌ |
+| **Manage Schedules** | ✅ | ✅ | ❌ |
+| **Create Overrides** | ✅ | ✅ | ❌ |
+| **Create Services** | ✅ | ❌ | ❌ |
+| **Edit Services** | ✅ | ❌ | ❌ |
+| **Delete Services** | ✅ | ❌ | ❌ |
+| **Manage Teams** | ✅ | ❌ | ❌ |
+| **Manage Escalation Policies** | ✅ | ❌ | ❌ |
+| **Manage Integrations** | ✅ | ❌ | ❌ |
+| **Invite Users** | ✅ | ❌ | ❌ |
+| **Manage User Roles** | ✅ | ❌ | ❌ |
+| **System Settings** | ✅ | ❌ | ❌ |
+| **View Analytics** | ✅ | ✅ | ✅ |
+| **Export Data** | ✅ | ✅ | ❌ |
 
 ---
 
@@ -65,11 +65,11 @@ OpsKnight has three user roles with different permission levels:
 
 Users move through different statuses in their lifecycle:
 
-| Status       | Description                         | Can Login |
-| ------------ | ----------------------------------- | :-------: |
-| **INVITED**  | Invitation sent, pending acceptance |    ❌     |
-| **ACTIVE**   | Account active and functional       |    ✅     |
-| **DISABLED** | Account deactivated                 |    ❌     |
+| Status | Description | Can Login |
+| ------ | ----------- | :-------: |
+| **INVITED** | Invitation sent, pending acceptance | ❌ |
+| **ACTIVE** | Account active and functional | ✅ |
+| **DISABLED** | Account deactivated | ❌ |
 
 ### Status Flow
 
@@ -105,11 +105,11 @@ The recommended way to add users:
 2. Click **Invite User**
 3. Fill in the invitation form:
 
-| Field     | Required | Description               |
-| --------- | :------: | ------------------------- |
-| **Email** |   Yes    | User's email address      |
-| **Name**  |   Yes    | Display name              |
-| **Role**  |   Yes    | ADMIN, RESPONDER, or USER |
+| Field | Required | Description |
+| ----- | :------: | ----------- |
+| **Email** | Yes | User's email address |
+| **Name** | Yes | Display name |
+| **Role** | Yes | ADMIN, RESPONDER, or USER |
 
 4. Click **Send Invitation**
 
@@ -140,15 +140,15 @@ Each user has a profile with personal information and preferences.
 
 ### Profile Fields
 
-| Field        | Description                | Editable By |
-| ------------ | -------------------------- | ----------- |
-| **Email**    | Login identifier           | Admin only  |
-| **Name**     | Display name               | User, Admin |
-| **Phone**    | Phone number for SMS       | User, Admin |
-| **Timezone** | User's local timezone      | User, Admin |
-| **Avatar**   | Profile picture (Gravatar) | Automatic   |
-| **Role**     | Permission level           | Admin only  |
-| **Status**   | Account status             | Admin only  |
+| Field | Description | Editable By |
+| ----- | ----------- | ----------- |
+| **Email** | Login identifier | Admin only |
+| **Name** | Display name | User, Admin |
+| **Phone** | Phone number for SMS | User, Admin |
+| **Timezone** | User's local timezone | User, Admin |
+| **Avatar** | Profile picture (Gravatar) | Automatic |
+| **Role** | Permission level | Admin only |
+| **Status** | Account status | Admin only |
 
 ### Viewing Your Profile
 
@@ -244,7 +244,7 @@ Generate personal API tokens for automation.
 1. Go to **Settings** → **Profile & Preferences**
 2. Click **API Tokens** (if available)
 
-_Note: API Token management is currently restricted to Administrators._
+*Note: API Token management is currently restricted to Administrators.*
 
 ---
 

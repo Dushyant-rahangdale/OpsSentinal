@@ -10,10 +10,9 @@ OpsKnight provides a full-featured mobile experience through a Progressive Web A
 
 Start here: **[Mobile Setup](./setup)** — install the PWA and enable push notifications.
 
-![OpsKnight mobile dashboard](../assets/mobile-dashboard.png)
+![OpsKnight mobile dashboard](/mobile-dashboard.png)
 
 **Built for on-call in the real world**
-
 - Installable PWA on iOS, Android, and desktop
 - Fast, touch-first UI for incident response
 - Push notifications with rich incident context
@@ -24,14 +23,14 @@ Start here: **[Mobile Setup](./setup)** — install the PWA and enable push noti
 
 A Progressive Web App provides the best of both worlds:
 
-| Feature                | PWA                     | Native App         |
-| ---------------------- | ----------------------- | ------------------ |
-| **Installation**       | Instant from browser    | App store review   |
-| **Updates**            | Automatic               | Manual update      |
-| **Push Notifications** | Yes                     | Yes                |
-| **Offline Support**    | Basic                   | Full               |
-| **Cross-Platform**     | iOS + Android + Desktop | Separate codebases |
-| **Development**        | Single codebase         | Multiple codebases |
+| Feature | PWA | Native App |
+|---------|-----|------------|
+| **Installation** | Instant from browser | App store review |
+| **Updates** | Automatic | Manual update |
+| **Push Notifications** | Yes | Yes |
+| **Offline Support** | Basic | Full |
+| **Cross-Platform** | iOS + Android + Desktop | Separate codebases |
+| **Development** | Single codebase | Multiple codebases |
 
 ---
 
@@ -76,7 +75,7 @@ The mobile dashboard provides a quick overview:
 - **Your Queue** — Incidents assigned to you
 - **On-Call Status** — Who's currently on-call
 
-![Mobile dashboard metrics](../assets/mobile-dashboard.png)
+![Mobile dashboard metrics](/mobile-dashboard.png)
 
 ### Incident Management
 
@@ -109,7 +108,7 @@ Receive push notifications for:
 
 ## Push Notifications
 
-![OpsKnight push notification on iOS](../assets/push-notification.png)
+![OpsKnight push notification on iOS](/push-notification.png)
 
 ### Enabling Push Notifications
 
@@ -123,12 +122,12 @@ Receive push notifications for:
 
 ### Notification Types
 
-| Notification           | When                              |
-| ---------------------- | --------------------------------- |
-| **Incident Triggered** | You're on-call or assigned        |
-| **Incident Escalated** | Escalation reached your step      |
-| **SLA Breach Warning** | SLA about to breach               |
-| **Incident Resolved**  | Incident you're watching resolved |
+| Notification | When |
+|--------------|------|
+| **Incident Triggered** | You're on-call or assigned |
+| **Incident Escalated** | Escalation reached your step |
+| **SLA Breach Warning** | SLA about to breach |
+| **Incident Resolved** | Incident you're watching resolved |
 
 ### Managing Notifications
 
@@ -147,12 +146,12 @@ Control what notifications you receive:
 
 The mobile interface uses a bottom navigation bar:
 
-| Icon          | Page          | Function                  |
-| ------------- | ------------- | ------------------------- |
-| **Home**      | Dashboard     | Overview and quick access |
+| Icon | Page | Function |
+|------|------|----------|
+| **Home** | Dashboard | Overview and quick access |
 | **Incidents** | Incident List | View and manage incidents |
-| **Schedules** | Schedules     | On-call rotations         |
-| **More**      | Menu          | Additional features       |
+| **Schedules** | Schedules | On-call rotations |
+| **More** | Menu | Additional features |
 
 ### More Menu
 
@@ -171,13 +170,13 @@ Access additional features:
 
 The PWA provides basic offline functionality:
 
-| Feature                   | Offline Behavior          |
-| ------------------------- | ------------------------- |
-| **View cached incidents** | Yes                       |
-| **View cached schedules** | Yes                       |
-| **Acknowledge**           | Queued, syncs when online |
-| **Add notes**             | Queued, syncs when online |
-| **Create incident**       | Requires connection       |
+| Feature | Offline Behavior |
+|---------|------------------|
+| **View cached incidents** | Yes |
+| **View cached schedules** | Yes |
+| **Acknowledge** | Queued, syncs when online |
+| **Add notes** | Queued, syncs when online |
+| **Create incident** | Requires connection |
 
 > **Note**: Push notifications require an internet connection.
 

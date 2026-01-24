@@ -8,7 +8,7 @@ description: Build flexible rotation schedules with layers, overrides, and timez
 
 On-call schedules define who is responsible for responding to incidents during specific time periods. They're the backbone of reliable incident response, ensuring there's always someone available to help.
 
-![On-call schedule overview](../assets/schedule-main.png)
+![On-call schedule overview](/schedule-main.png)
 
 ---
 
@@ -38,7 +38,6 @@ A schedule is a container that defines on-call coverage for a specific purpose (
 A layer represents a rotation pattern within a schedule. Schedules can have multiple layers for complex coverage scenarios.
 
 **Why multiple layers?**
-
 - **Primary/Secondary** — Different responders for initial vs. backup
 - **Business hours/After hours** — Different coverage by time of day
 - **Holiday coverage** — Special rotations for holidays
@@ -65,11 +64,9 @@ An override is a temporary change to the normal rotation, used for:
 ## Creating a Schedule
 
 ### Step 1: Navigate to Schedules
-
 1. Click **Schedules** in the sidebar
 
 ### Step 2: Create New Schedule
-
 1. Click **Create Schedule**
 2. Enter schedule details:
    - **Name**: `Platform Team Primary`
@@ -77,11 +74,9 @@ An override is a temporary change to the normal rotation, used for:
 3. Click **Create**
 
 <!-- placeholder:create-schedule -->
-
-![Create schedule](../assets/schedule-create.png)
+![Create schedule](/schedule-create.png)
 
 ### Step 3: Add a Layer
-
 1. Click **Add Layer**
 2. Configure layer settings:
    - **Name**: `Weekly Rotation`
@@ -89,7 +84,6 @@ An override is a temporary change to the normal rotation, used for:
    - **Start Time**: When the rotation should begin
 
 ### Step 4: Add Users
-
 1. Click **Add User** in the layer
 2. Select team members in rotation order
 3. Drag to reorder if needed
@@ -163,11 +157,9 @@ Result:  Alice  Bob    Bob    Alice  Alice
 ### Example: Primary + Secondary
 
 **Layer 1 (Primary)**:
-
 - Weekly rotation: Alice → Bob → Charlie
 
 **Layer 2 (Secondary)**:
-
 - Weekly rotation: Bob → Charlie → Alice
 
 When escalation looks for "Primary On-Call," it gets Layer 1.
@@ -176,11 +168,9 @@ When escalation looks for "Secondary On-Call," it gets Layer 2.
 ### Example: Business Hours Override
 
 **Layer 1 (24x7 Coverage)**:
-
 - Weekly rotation among night team
 
 **Layer 2 (Business Hours Only)**:
-
 - Time window: 9am - 6pm
 - Daily rotation among day team
 
@@ -189,11 +179,9 @@ During business hours, Layer 2 takes over. Outside business hours, Layer 1 is ac
 ### Example: Holiday Coverage
 
 **Layer 1 (Normal Rotation)**:
-
 - Standard weekly rotation
 
 **Layer 2 (Holiday)**:
-
 - Time window: Dec 24 - Jan 1
 - Special rotation: Volunteers who signed up for holiday coverage
 
@@ -214,13 +202,11 @@ Overrides let you make temporary changes without modifying the base rotation.
    - **Replaces** (optional): Whose shift is being covered
 
 <!-- placeholder:create-override -->
-
-![Create override](../assets/schedule-override.png)
+![Create override](/schedule-override.png)
 
 ### Common Override Scenarios
 
 #### Vacation Coverage
-
 Alice is on vacation next week. Bob agrees to cover:
 
 ```yaml
@@ -232,7 +218,6 @@ Override:
 ```
 
 #### Shift Swap
-
 Charlie wants to swap Tuesday with Diana:
 
 ```yaml
@@ -250,7 +235,6 @@ Override 2:
 ```
 
 #### Emergency Gap Coverage
-
 The scheduled person is suddenly unavailable:
 
 ```yaml
@@ -283,7 +267,6 @@ Schedule: `Platform Team On-Call`
 Timezone: `America/New_York` (EST/EDT)
 
 If the rotation starts at "9am Monday":
-
 - This means 9am Eastern Time
 - NOT 9am in the viewer's local timezone
 
@@ -292,7 +275,6 @@ If the rotation starts at "9am Monday":
 For follow-the-sun coverage, you have two options:
 
 **Option 1: One schedule, multiple layers**
-
 ```
 Schedule: Global On-Call (UTC)
   Layer 1: APAC team (active 9am-5pm JST = 0am-8am UTC)
@@ -301,7 +283,6 @@ Schedule: Global On-Call (UTC)
 ```
 
 **Option 2: Separate schedules per region**
-
 ```
 Schedule: APAC On-Call (Asia/Tokyo)
 Schedule: EU On-Call (Europe/London)
@@ -374,7 +355,6 @@ Schedules become useful when connected to escalation policies:
 **Cause**: Gap in coverage at the queried time
 
 **Fix**:
-
 1. Check layer configurations for gaps
 2. Verify rotation start times
 3. Add users to layers
@@ -385,7 +365,6 @@ Schedules become useful when connected to escalation policies:
 **Cause**: Override or layer precedence issue
 
 **Fix**:
-
 1. Check active overrides
 2. Review layer priority (higher layers win)
 3. Verify timezone settings
@@ -395,7 +374,6 @@ Schedules become useful when connected to escalation policies:
 **Cause**: Timezone mismatch
 
 **Fix**:
-
 1. Verify schedule timezone setting
 2. Remember times display in schedule timezone, not your local time
 3. Adjust layer time windows if needed
