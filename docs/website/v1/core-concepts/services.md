@@ -8,19 +8,19 @@ description: Centralized service registry for health monitoring, ownership, and 
 
 Services are the foundation of OpsKnight's incident management model. They represent the components of your infrastructure — APIs, databases, microservices, and applications — that can experience incidents. Every incident is linked to a service, enabling clear ownership, proper routing, and meaningful analytics.
 
-![Service Directory Overview](/service-directory.png)
+![Service Directory Overview](../assets/service-directory.png)
 
 ---
 
 ## Why Services Matter
 
-| Without Services | With Services |
-| ---------------- | ------------- |
-| Alerts are orphaned with no context | Every incident has a home |
-| Unclear who owns what | Clear team ownership |
-| No way to prioritize | SLA tiers guide response |
-| Incidents go to everyone | Targeted escalation routing |
-| No health visibility | Real-time service health dashboard |
+| Without Services                    | With Services                      |
+| ----------------------------------- | ---------------------------------- |
+| Alerts are orphaned with no context | Every incident has a home          |
+| Unclear who owns what               | Clear team ownership               |
+| No way to prioritize                | SLA tiers guide response           |
+| Incidents go to everyone            | Targeted escalation routing        |
+| No health visibility                | Real-time service health dashboard |
 
 ---
 
@@ -38,12 +38,12 @@ The Service Directory is your centralized registry of all monitored components.
 
 The top panel provides an immediate SITREP (Situation Report):
 
-| Metric | Description |
-| ------ | ----------- |
-| **Total Services** | Complete count of registered services |
-| **Operational** | Services with no active incidents |
-| **Degraded** | Services with non-critical active incidents |
-| **Critical** | Services with HIGH urgency active incidents |
+| Metric             | Description                                 |
+| ------------------ | ------------------------------------------- |
+| **Total Services** | Complete count of registered services       |
+| **Operational**    | Services with no active incidents           |
+| **Degraded**       | Services with non-critical active incidents |
+| **Critical**       | Services with HIGH urgency active incidents |
 
 <!-- Add: Screenshot of the Service Directory header with health metrics -->
 
@@ -55,11 +55,11 @@ Service health is calculated dynamically based on active incidents.
 
 ### Health States
 
-| Status | Visual | Condition | Action |
-| ------ | ------ | --------- | ------ |
-| **Operational** | 🟢 Green | No active incidents | None needed |
-| **Degraded** | 🟡 Yellow | Active LOW/MEDIUM incidents | Monitor closely |
-| **Critical** | 🔴 Red | Active HIGH urgency incident | Immediate response |
+| Status          | Visual    | Condition                    | Action             |
+| --------------- | --------- | ---------------------------- | ------------------ |
+| **Operational** | 🟢 Green  | No active incidents          | None needed        |
+| **Degraded**    | 🟡 Yellow | Active LOW/MEDIUM incidents  | Monitor closely    |
+| **Critical**    | 🔴 Red    | Active HIGH urgency incident | Immediate response |
 
 ### Health Calculation Logic
 
@@ -70,6 +70,7 @@ ELSE → OPERATIONAL
 ```
 
 **Notes**:
+
 - **Snoozed** incidents don't affect health status
 - **Suppressed** incidents don't affect health status
 - Health updates in real-time as incidents change
@@ -77,6 +78,7 @@ ELSE → OPERATIONAL
 ### Status on Service Cards
 
 Each service card displays:
+
 - **Left border color** — Quick visual health indicator
 - **Status badge** — Current health state
 - **Incident count** — Number of active incidents
@@ -89,23 +91,23 @@ Each service card displays:
 
 ### Required Fields
 
-| Field | Description | Example |
-| ----- | ----------- | ------- |
-| **Name** | Unique service identifier | `payment-api` |
+| Field          | Description                       | Example                |
+| -------------- | --------------------------------- | ---------------------- |
+| **Name**       | Unique service identifier         | `payment-api`          |
 | **Owner Team** | Team responsible for this service | `Platform Engineering` |
 
 ### Optional Fields
 
-| Field | Description | Example |
-| ----- | ----------- | ------- |
-| **Description** | Brief explanation of the service's purpose | `Handles all payment processing` |
-| **Region** | Deployment location | `us-east-1`, `eu-west-1` |
-| **SLA Tier** | Criticality/SLA level | `Platinum 99.99%`, `Gold 99.9%` |
-| **Escalation Policy** | Policy for incident routing | `Payment API Escalation` |
-| **Slack Channel** | Channel for this service's alerts | `#payment-alerts` |
-| **Runbook URL** | Link to operational documentation | `https://wiki.example.com/payment-api` |
-| **Repository URL** | Link to source code | `https://github.com/company/payment-api` |
-| **Dashboard URL** | Link to monitoring dashboard | `https://grafana.example.com/payment` |
+| Field                 | Description                                | Example                                  |
+| --------------------- | ------------------------------------------ | ---------------------------------------- |
+| **Description**       | Brief explanation of the service's purpose | `Handles all payment processing`         |
+| **Region**            | Deployment location                        | `us-east-1`, `eu-west-1`                 |
+| **SLA Tier**          | Criticality/SLA level                      | `Platinum 99.99%`, `Gold 99.9%`          |
+| **Escalation Policy** | Policy for incident routing                | `Payment API Escalation`                 |
+| **Slack Channel**     | Channel for this service's alerts          | `#payment-alerts`                        |
+| **Runbook URL**       | Link to operational documentation          | `https://wiki.example.com/payment-api`   |
+| **Repository URL**    | Link to source code                        | `https://github.com/company/payment-api` |
+| **Dashboard URL**     | Link to monitoring dashboard               | `https://grafana.example.com/payment`    |
 
 ---
 
@@ -126,13 +128,14 @@ Each service card displays:
 
 ### Service Naming Best Practices
 
-| Pattern | Example | Why |
-| ------- | ------- | --- |
-| **Component-based** | `payment-api`, `user-service` | Clear purpose |
-| **Environment-prefixed** | `prod-payment-api` | Distinguishes environments |
-| **Team-prefixed** | `platform-kafka` | Shows ownership |
+| Pattern                  | Example                       | Why                        |
+| ------------------------ | ----------------------------- | -------------------------- |
+| **Component-based**      | `payment-api`, `user-service` | Clear purpose              |
+| **Environment-prefixed** | `prod-payment-api`            | Distinguishes environments |
+| **Team-prefixed**        | `platform-kafka`              | Shows ownership            |
 
 **Avoid**:
+
 - Generic names (`api`, `service`)
 - Abbreviations that aren't universal (`pmt-svc`)
 - Special characters (stick to letters, numbers, hyphens)
@@ -162,18 +165,19 @@ Click any service to open its detail page with full information and actions.
 
 ### Properties Panel
 
-| Property | Description |
-| -------- | ----------- |
-| **Owner Team** | Team responsible (links to team page) |
-| **Escalation Policy** | Active policy (links to policy page) |
-| **Region** | Deployment region |
-| **SLA Tier** | Service tier with uptime target |
-| **Created** | When the service was created |
-| **Last Incident** | Most recent incident timestamp |
+| Property              | Description                           |
+| --------------------- | ------------------------------------- |
+| **Owner Team**        | Team responsible (links to team page) |
+| **Escalation Policy** | Active policy (links to policy page)  |
+| **Region**            | Deployment region                     |
+| **SLA Tier**          | Service tier with uptime target       |
+| **Created**           | When the service was created          |
+| **Last Incident**     | Most recent incident timestamp        |
 
 ### Active Incidents
 
 List of currently open incidents for this service:
+
 - Incident title and urgency
 - Current status
 - Assignee
@@ -182,6 +186,7 @@ List of currently open incidents for this service:
 ### Recent Incidents
 
 Historical incidents with:
+
 - Incident title
 - Resolution status
 - MTTR for this incident
@@ -190,6 +195,7 @@ Historical incidents with:
 ### Metrics
 
 Service-level metrics over time:
+
 - **Incident count** (30/60/90 days)
 - **MTTA** (Mean Time to Acknowledge)
 - **MTTR** (Mean Time to Resolve)
@@ -209,6 +215,7 @@ Link an escalation policy to determine who gets notified:
 4. Save changes
 
 **What happens**:
+
 - New incidents trigger this policy
 - Existing incidents continue with their assigned policy
 
@@ -216,18 +223,19 @@ Link an escalation policy to determine who gets notified:
 
 Set the service's SLA tier for reporting and prioritization:
 
-| Tier | Typical Uptime | Use Case |
-| ---- | -------------- | -------- |
-| **Platinum** | 99.99% | Customer-facing critical systems |
-| **Gold** | 99.9% | Important production services |
-| **Silver** | 99.5% | Internal tools, non-critical |
-| **Bronze** | 99.0% | Development, low-priority |
+| Tier         | Typical Uptime | Use Case                         |
+| ------------ | -------------- | -------------------------------- |
+| **Platinum** | 99.99%         | Customer-facing critical systems |
+| **Gold**     | 99.9%          | Important production services    |
+| **Silver**   | 99.5%          | Internal tools, non-critical     |
+| **Bronze**   | 99.0%          | Development, low-priority        |
 
 1. Open service settings
 2. Select **SLA Tier**
 3. Save
 
 SLA tiers affect:
+
 - SLA breach calculations
 - Reporting categorization
 - Prioritization suggestions
@@ -241,6 +249,7 @@ Route this service's alerts to a specific Slack channel:
 3. Save
 
 **Behavior**:
+
 - Incidents for this service post to this channel
 - If not set, uses organization default channel
 
@@ -261,18 +270,19 @@ Services connect to monitoring tools via integrations.
 
 ### Integration Types
 
-| Type | Purpose |
-| ---- | ------- |
-| **Datadog** | Receive alerts from Datadog monitors |
-| **Prometheus** | Receive alerts from Alertmanager |
-| **Grafana** | Receive alerts from Grafana alerts |
-| **Custom Webhook** | Generic HTTP integration |
+| Type               | Purpose                              |
+| ------------------ | ------------------------------------ |
+| **Datadog**        | Receive alerts from Datadog monitors |
+| **Prometheus**     | Receive alerts from Alertmanager     |
+| **Grafana**        | Receive alerts from Grafana alerts   |
+| **Custom Webhook** | Generic HTTP integration             |
 
 Each integration gets a unique **routing key** that directs incoming alerts to this service.
 
 ### Multiple Integrations
 
 A service can have multiple integrations:
+
 - Different monitoring tools
 - Different alert sources
 - Test vs. production alerts
@@ -298,6 +308,7 @@ To change a service's owner:
 3. Save
 
 **Considerations**:
+
 - New team takes over future incidents
 - Historical incidents retain original team context
 - Ensure new team has appropriate escalation policy
@@ -305,6 +316,7 @@ To change a service's owner:
 ### Orphaned Services
 
 Services without valid teams (team deleted):
+
 - Show warning indicator
 - Should be reassigned immediately
 - May affect incident routing
@@ -316,12 +328,14 @@ Services without valid teams (team deleted):
 ### Search
 
 Type in the search box to filter by:
+
 - Service name
 - Description text
 
 ### Team Filter
 
 Filter services by owner team:
+
 1. Click **Team** dropdown
 2. Select one or more teams
 3. View only their services
@@ -329,6 +343,7 @@ Filter services by owner team:
 ### Status Filter
 
 Filter by health status:
+
 - **All** — Show all services
 - **Critical** — Only critical services
 - **Degraded** — Only degraded services
@@ -336,13 +351,13 @@ Filter by health status:
 
 ### Sorting Options
 
-| Sort | Description |
-| ---- | ----------- |
-| **Name (A-Z)** | Alphabetical order |
-| **Name (Z-A)** | Reverse alphabetical |
-| **Status (Health)** | Critical → Degraded → Operational |
-| **Most Incidents** | Noisiest services first |
-| **Recently Created** | Newest services first |
+| Sort                 | Description                       |
+| -------------------- | --------------------------------- |
+| **Name (A-Z)**       | Alphabetical order                |
+| **Name (Z-A)**       | Reverse alphabetical              |
+| **Status (Health)**  | Critical → Degraded → Operational |
+| **Most Incidents**   | Noisiest services first           |
+| **Recently Created** | Newest services first             |
 
 ---
 
@@ -361,15 +376,15 @@ The list view uses cards optimized for quick scanning.
 └────────────────────────────────────────────────┘
 ```
 
-| Element | Description |
-| ------- | ----------- |
-| **Color bar** | Left border indicates health |
-| **Name** | Service name (bold) |
-| **Region** | Deployment region badge |
-| **Description** | Service purpose |
-| **Team** | Owner team |
-| **SLA Tier** | Service tier badge |
-| **Incident count** | Active incident count |
+| Element            | Description                  |
+| ------------------ | ---------------------------- |
+| **Color bar**      | Left border indicates health |
+| **Name**           | Service name (bold)          |
+| **Region**         | Deployment region badge      |
+| **Description**    | Service purpose              |
+| **Team**           | Owner team                   |
+| **SLA Tier**       | Service tier badge           |
+| **Incident count** | Active incident count        |
 
 ### Card Interactions
 
@@ -389,6 +404,7 @@ Uptime % = (Total Minutes - Incident Minutes) / Total Minutes × 100
 ```
 
 **What counts as downtime**:
+
 - Active incidents (OPEN, ACKNOWLEDGED)
 - Does NOT count: SNOOZED, SUPPRESSED, RESOLVED
 
@@ -415,6 +431,7 @@ MTTR = Sum(Resolve Time - Create Time) / Count of Resolved Incidents
 3. Select time range (7d, 30d, 90d)
 
 Metrics are also available via:
+
 - **Analytics** dashboard (filtered by service)
 - **API** (`/api/services/{id}/metrics`)
 
@@ -494,4 +511,3 @@ Content-Type: application/json
 - [Escalation Policies](./escalation-policies) — Alert routing
 - [Integrations](./integrations) — Connecting monitoring tools
 - [Analytics](./analytics) — Service-level metrics
-

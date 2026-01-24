@@ -8,18 +8,18 @@ description: Command Center overview with real-time system health, smart insight
 
 The **Command Center** is your operational headquarters — a real-time executive summary of your organization's incident health. While individual incident pages focus on specific issues, the Dashboard reveals the big picture: systemic risks, workload bottlenecks, and patterns that are invisible when looking at single tickets.
 
-![Command Center Dashboard](/dashboard-command-center-1200.jpg)
+![Command Center Dashboard](../assets/dashboard-command-center-1200.jpg)
 
 ---
 
 ## Why the Dashboard Matters
 
-| Without Dashboard | With Dashboard |
-| ----------------- | -------------- |
+| Without Dashboard             | With Dashboard                       |
+| ----------------------------- | ------------------------------------ |
 | Only see individual incidents | See the "forest fire" not just trees |
-| Manual health checks | Real-time system status |
-| Missed patterns | AI-powered insights |
-| Scattered metrics | Unified operational view |
+| Manual health checks          | Real-time system status              |
+| Missed patterns               | AI-powered insights                  |
+| Scattered metrics             | Unified operational view             |
 
 ---
 
@@ -35,11 +35,11 @@ The **System Status** badge in the top-left provides an at-a-glance health indic
 
 ### Status States
 
-| Status | Visual | Condition |
-| ------ | ------ | --------- |
-| **CRITICAL** | 🔴 Red | Any active HIGH urgency incident exists |
-| **DEGRADED** | 🟡 Yellow | No HIGH urgency, but active MEDIUM/LOW incidents exist |
-| **OPERATIONAL** | 🟢 Green | No active incidents |
+| Status          | Visual    | Condition                                              |
+| --------------- | --------- | ------------------------------------------------------ |
+| **CRITICAL**    | 🔴 Red    | Any active HIGH urgency incident exists                |
+| **DEGRADED**    | 🟡 Yellow | No HIGH urgency, but active MEDIUM/LOW incidents exist |
+| **OPERATIONAL** | 🟢 Green  | No active incidents                                    |
 
 ### Status Logic
 
@@ -67,36 +67,36 @@ The four hero cards provide immediate quantification of your current operational
 
 ### TOTAL
 
-| Metric | Description |
-| ------ | ----------- |
-| **Scope** | All incidents within selected time range |
-| **Default Range** | Last 30 days |
-| **Includes** | All statuses (OPEN, ACKNOWLEDGED, RESOLVED, etc.) |
+| Metric            | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| **Scope**         | All incidents within selected time range          |
+| **Default Range** | Last 30 days                                      |
+| **Includes**      | All statuses (OPEN, ACKNOWLEDGED, RESOLVED, etc.) |
 
 ### OPEN
 
-| Metric | Description |
-| ------ | ----------- |
-| **Scope** | Incidents with status `OPEN` only |
-| **Excludes** | ACKNOWLEDGED, SNOOZED, SUPPRESSED |
-| **Purpose** | Shows "To-Do" pile requiring action |
+| Metric       | Description                         |
+| ------------ | ----------------------------------- |
+| **Scope**    | Incidents with status `OPEN` only   |
+| **Excludes** | ACKNOWLEDGED, SNOOZED, SUPPRESSED   |
+| **Purpose**  | Shows "To-Do" pile requiring action |
 
 ### UNASSIGNED
 
-| Metric | Description |
-| ------ | ----------- |
-| **Scope** | Incidents with no assignee |
+| Metric         | Description                                   |
+| -------------- | --------------------------------------------- |
+| **Scope**      | Incidents with no assignee                    |
 | **Time Range** | **All time** (not filtered by range selector) |
-| **Rationale** | Ensures old unassigned tickets aren't hidden |
+| **Rationale**  | Ensures old unassigned tickets aren't hidden  |
 
 > **Note**: A retention warning badge appears if your query exceeds the data retention limit.
 
 ### CRITICAL
 
-| Metric | Description |
-| ------ | ----------- |
-| **Scope** | Active incidents with HIGH urgency |
-| **Purpose** | Immediate attention counter |
+| Metric          | Description                             |
+| --------------- | --------------------------------------- |
+| **Scope**       | Active incidents with HIGH urgency      |
+| **Purpose**     | Immediate attention counter             |
 | **Alert Level** | Most urgent issues in your organization |
 
 ### Card Interactions
@@ -164,6 +164,7 @@ The dashboard runs a rules engine against your live incident data to surface act
 ### Insight Priority
 
 Insights display in priority order:
+
 1. **Critical Spike** (most urgent)
 2. **Workload Risk**
 3. **Root Cause Hint**
@@ -181,31 +182,31 @@ The **Ops Pulse** is a unified feed showing your most relevant operational infor
 
 Your personal incident workload:
 
-| Item | Description |
-| ---- | ----------- |
-| **Assigned to you** | Incidents where you're the assignee |
-| **Your teams** | Incidents assigned to teams you belong to |
-| **On-call now** | Incidents routed via schedules where you're on-call |
+| Item                | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| **Assigned to you** | Incidents where you're the assignee                 |
+| **Your teams**      | Incidents assigned to teams you belong to           |
+| **On-call now**     | Incidents routed via schedules where you're on-call |
 
 ### Critical Focus
 
 High-priority items needing immediate attention:
 
-| Item | Criteria |
-| ---- | -------- |
-| **HIGH urgency** | All active HIGH urgency incidents |
+| Item              | Criteria                          |
+| ----------------- | --------------------------------- |
+| **HIGH urgency**  | All active HIGH urgency incidents |
 | **SLA breaching** | Incidents approaching or past SLA |
-| **Long-running** | OPEN incidents older than 4 hours |
+| **Long-running**  | OPEN incidents older than 4 hours |
 
 ### Services at Risk
 
 Services currently experiencing issues:
 
-| Status | Description |
-| ------ | ----------- |
+| Status       | Description                          |
+| ------------ | ------------------------------------ |
 | **Critical** | Services with HIGH urgency incidents |
-| **Degraded** | Services with any active incidents |
-| **Count** | Number of affected services |
+| **Degraded** | Services with any active incidents   |
+| **Count**    | Number of affected services          |
 
 ### Ops Pulse Interactions
 
@@ -229,24 +230,24 @@ Week 3: ░░░ ░░░ ░░░ ░░░ ███ ░░░ ░░░
 ...
 ```
 
-| Intensity | Meaning |
-| --------- | ------- |
-| Empty | No incidents |
-| Light | Below average |
-| Medium | Average |
-| Dark | Above average |
-| Darkest | High incident day |
+| Intensity | Meaning           |
+| --------- | ----------------- |
+| Empty     | No incidents      |
+| Light     | Below average     |
+| Medium    | Average           |
+| Dark      | Above average     |
+| Darkest   | High incident day |
 
 ### Pattern Recognition
 
 Use the heatmap to identify:
 
-| Pattern | What It Reveals |
-| ------- | --------------- |
-| **Wednesday spikes** | Release day issues |
-| **Weekend quiet** | Business hours correlation |
-| **Monthly clusters** | Month-end processing issues |
-| **Holiday dips** | Traffic-correlated incidents |
+| Pattern              | What It Reveals              |
+| -------------------- | ---------------------------- |
+| **Wednesday spikes** | Release day issues           |
+| **Weekend quiet**    | Business hours correlation   |
+| **Monthly clusters** | Month-end processing issues  |
+| **Holiday dips**     | Traffic-correlated incidents |
 
 ### Heatmap Interactions
 
@@ -262,25 +263,25 @@ Filter dashboard data by time period.
 
 ### Available Ranges
 
-| Range | Description |
-| ----- | ----------- |
-| **Last 24 hours** | Today's activity |
-| **Last 7 days** | Weekly view |
-| **Last 30 days** | Monthly view (default) |
-| **Last 90 days** | Quarterly view |
-| **Custom** | Specific date range |
+| Range             | Description            |
+| ----------------- | ---------------------- |
+| **Last 24 hours** | Today's activity       |
+| **Last 7 days**   | Weekly view            |
+| **Last 30 days**  | Monthly view (default) |
+| **Last 90 days**  | Quarterly view         |
+| **Custom**        | Specific date range    |
 
 ### What's Affected
 
-| Component | Time-Filtered |
-| --------- | :-----------: |
-| TOTAL metric | ✅ |
-| OPEN metric | ✅ |
+| Component         |    Time-Filtered     |
+| ----------------- | :------------------: |
+| TOTAL metric      |          ✅          |
+| OPEN metric       |          ✅          |
 | UNASSIGNED metric | ❌ (always all-time) |
-| CRITICAL metric | ✅ |
-| Smart Insights | ✅ |
-| Ops Pulse | ❌ (always current) |
-| Heatmap | ❌ (always 365 days) |
+| CRITICAL metric   |          ✅          |
+| Smart Insights    |          ✅          |
+| Ops Pulse         | ❌ (always current)  |
+| Heatmap           | ❌ (always 365 days) |
 
 ### Retention Warning
 
@@ -314,12 +315,12 @@ Perfect for NOC displays or wall monitors:
 
 ### Auto-Refresh Behavior
 
-| Event | Behavior |
-| ----- | -------- |
-| **Refresh tick** | All metrics and insights update |
-| **User interaction** | Timer resets |
-| **Browser tab inactive** | Pauses to save resources |
-| **Tab becomes active** | Immediate refresh, timer resumes |
+| Event                    | Behavior                         |
+| ------------------------ | -------------------------------- |
+| **Refresh tick**         | All metrics and insights update  |
+| **User interaction**     | Timer resets                     |
+| **Browser tab inactive** | Pauses to save resources         |
+| **Tab becomes active**   | Immediate refresh, timer resumes |
 
 ---
 
@@ -327,23 +328,23 @@ Perfect for NOC displays or wall monitors:
 
 ### From Dashboard
 
-| Action | How |
-| ------ | --- |
-| **View all incidents** | Click TOTAL card |
-| **View open incidents** | Click OPEN card |
-| **View unassigned** | Click UNASSIGNED card |
-| **View critical** | Click CRITICAL card |
-| **Create incident** | Click **+ Create** button |
+| Action                  | How                       |
+| ----------------------- | ------------------------- |
+| **View all incidents**  | Click TOTAL card          |
+| **View open incidents** | Click OPEN card           |
+| **View unassigned**     | Click UNASSIGNED card     |
+| **View critical**       | Click CRITICAL card       |
+| **Create incident**     | Click **+ Create** button |
 
 ### Keyboard Shortcuts
 
-| Shortcut | Action |
-| -------- | ------ |
-| `R` | Refresh dashboard |
-| `N` | New incident |
-| `I` | Go to incidents |
-| `S` | Go to services |
-| `?` | Show keyboard help |
+| Shortcut | Action             |
+| -------- | ------------------ |
+| `R`      | Refresh dashboard  |
+| `N`      | New incident       |
+| `I`      | Go to incidents    |
+| `S`      | Go to services     |
+| `?`      | Show keyboard help |
 
 ---
 
@@ -368,6 +369,7 @@ Focus on specific services:
 ### Combining Filters
 
 Filters can be combined:
+
 - Team: "Platform Engineering" AND Service: "Payment API"
 - Results show only matching data
 
@@ -375,11 +377,11 @@ Filters can be combined:
 
 ## Dashboard Permissions
 
-| Role | Can View Dashboard |
-| ---- | :----------------: |
-| **ADMIN** | ✅ Full data |
-| **RESPONDER** | ✅ Full data |
-| **USER** | ✅ Full data |
+| Role          | Can View Dashboard |
+| ------------- | :----------------: |
+| **ADMIN**     |    ✅ Full data    |
+| **RESPONDER** |    ✅ Full data    |
+| **USER**      |    ✅ Full data    |
 
 All users can view the dashboard. Data visibility depends on team memberships when team filtering is applied.
 
@@ -387,13 +389,13 @@ All users can view the dashboard. Data visibility depends on team memberships wh
 
 ## Dashboard vs. Other Views
 
-| Need | Use |
-| ---- | --- |
-| **Executive overview** | Dashboard |
-| **Work on specific incidents** | Incident List |
-| **Service health details** | Service Directory |
-| **Historical metrics** | Analytics |
-| **On-call information** | Schedules |
+| Need                           | Use               |
+| ------------------------------ | ----------------- |
+| **Executive overview**         | Dashboard         |
+| **Work on specific incidents** | Incident List     |
+| **Service health details**     | Service Directory |
+| **Historical metrics**         | Analytics         |
+| **On-call information**        | Schedules         |
 
 ---
 
@@ -402,6 +404,7 @@ All users can view the dashboard. Data visibility depends on team memberships wh
 ### Future Customization (Roadmap)
 
 Planned enhancements:
+
 - Drag-and-drop widget arrangement
 - Custom metric cards
 - Saved dashboard layouts

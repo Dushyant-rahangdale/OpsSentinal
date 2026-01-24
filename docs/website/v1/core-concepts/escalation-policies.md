@@ -8,18 +8,18 @@ description: Define who gets notified, when, and how incidents escalate
 
 Escalation policies are the rules that determine who gets notified when an incident occurs and how alerts escalate if no one responds. They're the backbone of reliable incident response.
 
-![Escalation policies list](/escalation-policies.png)
+![Escalation policies list](../assets/escalation-policies.png)
 
 ---
 
 ## Why Escalation Policies Matter
 
-| Without Policies | With Policies |
-| ---------------- | ------------- |
-| Alerts go to fixed users | Dynamic routing to on-call |
+| Without Policies         | With Policies                      |
+| ------------------------ | ---------------------------------- |
+| Alerts go to fixed users | Dynamic routing to on-call         |
 | No escalation if ignored | Automatic escalation after timeout |
-| Single point of failure | Multi-tier redundancy |
-| Manual notification | Automated multi-channel delivery |
+| Single point of failure  | Multi-tier redundancy              |
+| Manual notification      | Automated multi-channel delivery   |
 
 ---
 
@@ -46,17 +46,18 @@ Payment API Escalation Policy
 
 Each step in a policy defines:
 
-| Field | Description | Required |
-| ----- | ----------- | -------- |
-| **Target Type** | USER, TEAM, or SCHEDULE | Yes |
-| **Target** | The specific user, team, or schedule | Yes |
-| **Delay** | Minutes to wait before moving to next step | Yes |
-| **Notification Channels** | Override default channels (optional) | No |
-| **Notify Team Lead Only** | For TEAM targets, only notify the lead | No |
+| Field                     | Description                                | Required |
+| ------------------------- | ------------------------------------------ | -------- |
+| **Target Type**           | USER, TEAM, or SCHEDULE                    | Yes      |
+| **Target**                | The specific user, team, or schedule       | Yes      |
+| **Delay**                 | Minutes to wait before moving to next step | Yes      |
+| **Notification Channels** | Override default channels (optional)       | No       |
+| **Notify Team Lead Only** | For TEAM targets, only notify the lead     | No       |
 
 ### Step Order
 
 Steps execute in order (0-indexed internally):
+
 - **Step 1** executes immediately when incident triggers
 - **Step 2** executes after Step 1's delay (if not acknowledged)
 - And so on...
@@ -69,10 +70,10 @@ Steps execute in order (0-indexed internally):
 
 Notify a specific individual directly.
 
-| Use Case | Example |
-| -------- | ------- |
-| Backup escalation | Notify team lead after primary fails |
-| Subject matter expert | Notify database admin for DB issues |
+| Use Case              | Example                               |
+| --------------------- | ------------------------------------- |
+| Backup escalation     | Notify team lead after primary fails  |
+| Subject matter expert | Notify database admin for DB issues   |
 | Management escalation | Notify manager for critical incidents |
 
 ```
@@ -85,10 +86,10 @@ Delay: 10 minutes
 
 Notify team members who have team notifications enabled.
 
-| Option | Behavior |
-| ------ | -------- |
-| **All Members** | Every team member with notifications enabled |
-| **Team Lead Only** | Only the designated team lead |
+| Option             | Behavior                                     |
+| ------------------ | -------------------------------------------- |
+| **All Members**    | Every team member with notifications enabled |
+| **Team Lead Only** | Only the designated team lead                |
 
 ```
 Target Type: TEAM
@@ -103,11 +104,11 @@ Delay: 15 minutes
 
 Notify whoever is currently on-call in a schedule.
 
-| Behavior | Description |
-| -------- | ----------- |
+| Behavior                 | Description                           |
+| ------------------------ | ------------------------------------- |
 | **Real-time Resolution** | Determines on-call at escalation time |
-| **Layer Support** | Considers all schedule layers |
-| **Override Support** | Respects active overrides |
+| **Layer Support**        | Considers all schedule layers         |
+| **Override Support**     | Respects active overrides             |
 
 ```
 Target Type: SCHEDULE
@@ -123,24 +124,25 @@ This is the most common target type for initial escalation steps.
 
 The **delay** determines how long to wait before escalating to the next step:
 
-| Delay | Behavior |
-| ----- | -------- |
-| **0 minutes** | Execute immediately (no delay after previous step) |
-| **5 minutes** | Wait 5 minutes before escalating |
-| **10+ minutes** | Standard escalation window |
+| Delay           | Behavior                                           |
+| --------------- | -------------------------------------------------- |
+| **0 minutes**   | Execute immediately (no delay after previous step) |
+| **5 minutes**   | Wait 5 minutes before escalating                   |
+| **10+ minutes** | Standard escalation window                         |
 
 ### Timing Guidelines
 
-| Step | Recommended Delay | Rationale |
-| ---- | ----------------- | --------- |
-| Step 1 | 0 min | Immediate notification |
-| Step 2 | 5-10 min | Give primary time to respond |
-| Step 3 | 10-15 min | Backup escalation |
-| Final | 15-30 min | Management/team-wide |
+| Step   | Recommended Delay | Rationale                    |
+| ------ | ----------------- | ---------------------------- |
+| Step 1 | 0 min             | Immediate notification       |
+| Step 2 | 5-10 min          | Give primary time to respond |
+| Step 3 | 10-15 min         | Backup escalation            |
+| Final  | 15-30 min         | Management/team-wide         |
 
 ### What Stops Escalation
 
 Escalation stops when:
+
 - Incident is **acknowledged**
 - Incident is **resolved**
 - Incident is **snoozed**
@@ -154,14 +156,14 @@ By default, users receive notifications via their personal preferences. Steps ca
 
 ### Available Channels
 
-| Channel | Description |
-| ------- | ----------- |
-| **EMAIL** | Email notification |
-| **SMS** | Text message |
-| **PUSH** | Mobile/browser push |
-| **SLACK** | Slack message |
-| **WEBHOOK** | Custom webhook |
-| **WHATSAPP** | WhatsApp message |
+| Channel      | Description         |
+| ------------ | ------------------- |
+| **EMAIL**    | Email notification  |
+| **SMS**      | Text message        |
+| **PUSH**     | Mobile/browser push |
+| **SLACK**    | Slack message       |
+| **WEBHOOK**  | Custom webhook      |
+| **WHATSAPP** | WhatsApp message    |
 
 ### Per-Step Override
 
@@ -205,7 +207,8 @@ When channels are specified, only those channels are used (user preferences igno
 3. Repeat for additional steps
 
 <!-- placeholder:policy-step-form -->
-![Escalation step configuration](/escalation-step.png)
+
+![Escalation step configuration](../assets/escalation-step.png)
 
 ### Step 3: Review & Save
 
@@ -264,9 +267,9 @@ Policies must be linked to services to take effect:
 
 The final step can be configured to repeat:
 
-| Behavior | Description |
-| -------- | ----------- |
-| **Stop** | Escalation ends after final step |
+| Behavior   | Description                      |
+| ---------- | -------------------------------- |
+| **Stop**   | Escalation ends after final step |
 | **Repeat** | Loop back to Step 1 and continue |
 
 ### Repeat Configuration
@@ -278,6 +281,7 @@ Step 3: Team → wait 15 min → REPEAT
 ```
 
 With repeat enabled:
+
 - After Step 3 delay, escalation returns to Step 1
 - Continues until acknowledged/resolved
 - Ensures someone eventually responds
@@ -398,11 +402,11 @@ Policy: "Global Support"
 
 ### Channel Strategy
 
-| Step | Channels | Rationale |
-| ---- | -------- | --------- |
+| Step    | Channels        | Rationale             |
+| ------- | --------------- | --------------------- |
 | Initial | User preference | Respect user settings |
-| Backup | SMS + Push | Ensure delivery |
-| Final | All channels | Maximum reach |
+| Backup  | SMS + Push      | Ensure delivery       |
+| Final   | All channels    | Maximum reach         |
 
 ### Policy Organization
 

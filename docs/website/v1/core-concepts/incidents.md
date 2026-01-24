@@ -9,28 +9,31 @@ description: Master the Incident List, Bulk Actions, and SLAs.
 The **Incident List** is the tactical workspace for responders.
 
 ### Why is this needed?
+
 Alerts are typically noisy and raw; Incidents represent the actual "Work" to be done. This page turns chaotic noise into a structured queue. It ensures nothing slips through the cracks by enforcing **Assignment** (Who is fixing it?) and **SLAs** (When must it be fixed?).
 
-![Incident List Interface](/incident-list-v2.png)
+![Incident List Interface](../assets/incident-list-v2.png)
 
 ## 1. The Interface at a Glance
 
 Each row in the incident list is packed with real-time operational data.
 
 ### Visual State Indicators
-*   **Status Borders**: The left border color-codes the state at a glance:
-    *   <span class="text-red-500 font-bold">Red</span>: **Open** (Needs attention)
-    *   <span class="text-amber-500 font-bold">Amber</span>: **Acknowledged** (Someone is working on it)
-    *   <span class="text-emerald-500 font-bold">Green</span>: **Resolved** (Fixed)
-    *   <span class="text-slate-400 font-bold">Grey</span>: **Snoozed / Suppressed** (Hidden)
-*   **SLA Countdowns**: Two distinct SLAs are tracked:
-    *   **Time to Ack**: How long until someone *must* look at it.
-    *   **Time to Resolve**: How long until the issue *must* be fixed.
-    *   *Visuals*: Shows "20m left" (Warning) or "Breached" (Critical) badges inline.
+
+- **Status Borders**: The left border color-codes the state at a glance:
+  - <span class="text-red-500 font-bold">Red</span>: **Open** (Needs attention)
+  - <span class="text-amber-500 font-bold">Amber</span>: **Acknowledged** (Someone is working on it)
+  - <span class="text-emerald-500 font-bold">Green</span>: **Resolved** (Fixed)
+  - <span class="text-slate-400 font-bold">Grey</span>: **Snoozed / Suppressed** (Hidden)
+- **SLA Countdowns**: Two distinct SLAs are tracked:
+  - **Time to Ack**: How long until someone _must_ look at it.
+  - **Time to Resolve**: How long until the issue _must_ be fixed.
+  - _Visuals_: Shows "20m left" (Warning) or "Breached" (Critical) badges inline.
 
 ### Navigation & Interaction
-*   **Keyboard Navigation**: Use `Up` / `Down` arrows to highlight rows, and `Enter` or `Space` to open details.
-*   **Quick Preview**: Clicking a row shows an "Opening..." spinner overlay while pre-fetching data.
+
+- **Keyboard Navigation**: Use `Up` / `Down` arrows to highlight rows, and `Enter` or `Space` to open details.
+- **Quick Preview**: Clicking a row shows an "Opening..." spinner overlay while pre-fetching data.
 
 ---
 
@@ -38,13 +41,13 @@ Each row in the incident list is packed with real-time operational data.
 
 The filter bar allows for complex querying of the incident database.
 
-*   **Deep Search**: Queries against `Title`, `Description`, and `Incident ID` (e.g., `#5A261`).
-*   **Context Filters**:
-    *   **Mine / My Teams**: Quickly toggle between your personal queue and your squad's workload.
-    *   **UrgencyChips**: Filter by specific `High`, `Medium`, or `Low` urgency levels.
-*   **URL Addressable**: Every filter state is reflected in the URL.
-    *   *Example*: `?urgency=HIGH&status=OPEN&sort=priority`
-    *   *Pro Tip*: Bookmark your team's specific view for distinct dashboards.
+- **Deep Search**: Queries against `Title`, `Description`, and `Incident ID` (e.g., `#5A261`).
+- **Context Filters**:
+  - **Mine / My Teams**: Quickly toggle between your personal queue and your squad's workload.
+  - **UrgencyChips**: Filter by specific `High`, `Medium`, or `Low` urgency levels.
+- **URL Addressable**: Every filter state is reflected in the URL.
+  - _Example_: `?urgency=HIGH&status=OPEN&sort=priority`
+  - _Pro Tip_: Bookmark your team's specific view for distinct dashboards.
 
 ---
 
@@ -52,28 +55,30 @@ The filter bar allows for complex querying of the incident database.
 
 Manage "Alert Storms" effectively with the sticky command bar.
 
-![Bulk Actions Bar](/bulk-actions.png)
+![Bulk Actions Bar](../assets/bulk-actions.png)
 
 ### Selection Logic
-*   **Smart Hints**: The bar analyzes your selection and displays hints like *"Selected contains SUPPRESSED"* if you've accidentally grabbed hidden items.
+
+- **Smart Hints**: The bar analyzes your selection and displays hints like _"Selected contains SUPPRESSED"_ if you've accidentally grabbed hidden items.
 
 ### Command Reference
 
-| Action | Description |
-| :--- | :--- |
-| **Acknowledge** | Mark as seen. Stops escalation notifications. |
-| **Resolve** | Close the incident. |
-| **Reassign** | Transfer ownership to a **User** OR a **Team**. |
-| **Snooze** | Hide for a duration (15m, 30m, 1h, 4h, 8h, 24h). |
-| **Priority** | Mass-update severity (P1 - P5). |
-| **Urgency** | Update urgency classification (High/Medium/Low). |
-| **Status** | Force a specific status update. |
+| Action          | Description                                      |
+| :-------------- | :----------------------------------------------- |
+| **Acknowledge** | Mark as seen. Stops escalation notifications.    |
+| **Resolve**     | Close the incident.                              |
+| **Reassign**    | Transfer ownership to a **User** OR a **Team**.  |
+| **Snooze**      | Hide for a duration (15m, 30m, 1h, 4h, 8h, 24h). |
+| **Priority**    | Mass-update severity (P1 - P5).                  |
+| **Urgency**     | Update urgency classification (High/Medium/Low). |
+| **Status**      | Force a specific status update.                  |
 
 ### Advanced Actions ("More" Menu)
-*   **Unsnooze**: Bring snoozed items back to the active queue immediately.
-*   **Suppress**: Mark as noise/false alarm (hides from default view without resolving).
-*   **Unsuppress**: Restore suppressed items.
-*   **Unacknowledge**: Revert an incident from Acknowledged back to Open (useful if accidental).
+
+- **Unsnooze**: Bring snoozed items back to the active queue immediately.
+- **Suppress**: Mark as noise/false alarm (hides from default view without resolving).
+- **Unsuppress**: Restore suppressed items.
+- **Unacknowledge**: Revert an incident from Acknowledged back to Open (useful if accidental).
 
 ---
 
@@ -81,12 +86,12 @@ Manage "Alert Storms" effectively with the sticky command bar.
 
 You don't always need to open the full details page.
 
-*   **Quick Reassign**: Click the assignee avatar in the list to open a search popover. You can assign to:
-    *   **Specific Users** (Search by name/email)
-    *   **Entire Teams** (Search by team name)
-*   **Status Toggles**: Use the "meatball" menu (`...`) on the right of any row to quickly **Resolve**, **Snooze**, or **Ack** that single item.
+- **Quick Reassign**: Click the assignee avatar in the list to open a search popover. You can assign to:
+  - **Specific Users** (Search by name/email)
+  - **Entire Teams** (Search by team name)
+- **Status Toggles**: Use the "meatball" menu (`...`) on the right of any row to quickly **Resolve**, **Snooze**, or **Ack** that single item.
 
-    ![Incident Actions Menu](/incident-actions-menu.png)
+  ![Incident Actions Menu](../assets/incident-actions-menu.png)
 
 ---
 
@@ -94,13 +99,13 @@ You don't always need to open the full details page.
 
 Incidents move through a defined lifecycle with five possible statuses:
 
-| Status | Description | Visual |
-| :----- | :---------- | :----- |
-| **OPEN** | New incident requiring attention. Escalation is active. | Red border |
-| **ACKNOWLEDGED** | Someone is working on it. Escalation paused. | Amber border |
-| **SNOOZED** | Temporarily hidden. Auto-reopens after snooze period. | Grey border |
-| **SUPPRESSED** | Marked as noise/false positive. Hidden from default view. | Grey border |
-| **RESOLVED** | Issue fixed. Incident closed. | Green border |
+| Status           | Description                                               | Visual       |
+| :--------------- | :-------------------------------------------------------- | :----------- |
+| **OPEN**         | New incident requiring attention. Escalation is active.   | Red border   |
+| **ACKNOWLEDGED** | Someone is working on it. Escalation paused.              | Amber border |
+| **SNOOZED**      | Temporarily hidden. Auto-reopens after snooze period.     | Grey border  |
+| **SUPPRESSED**   | Marked as noise/false positive. Hidden from default view. | Grey border  |
+| **RESOLVED**     | Issue fixed. Incident closed.                             | Green border |
 
 ### Status Transitions
 
@@ -143,21 +148,23 @@ Click any incident to open the full detail view with rich context and actions.
 
 ### Properties Panel
 
-| Property | Description |
-| :------- | :---------- |
-| **Urgency** | Impact level: `HIGH`, `MEDIUM`, or `LOW` |
-| **Priority** | Business priority: `P1` (critical) through `P5` (minimal) |
-| **Assignee** | Current owner — can be a **User** OR a **Team** |
-| **Service** | The service this incident belongs to |
-| **Escalation Policy** | The policy handling notifications |
+| Property              | Description                                               |
+| :-------------------- | :-------------------------------------------------------- |
+| **Urgency**           | Impact level: `HIGH`, `MEDIUM`, or `LOW`                  |
+| **Priority**          | Business priority: `P1` (critical) through `P5` (minimal) |
+| **Assignee**          | Current owner — can be a **User** OR a **Team**           |
+| **Service**           | The service this incident belongs to                      |
+| **Escalation Policy** | The policy handling notifications                         |
 
 ### Reassigning Incidents
 
 Incidents can be assigned to:
+
 - **Individual Users**: Direct assignment to a specific person
 - **Teams**: Assignment to a team (any member can work on it)
 
 To reassign:
+
 1. Click the assignee field
 2. Search by name/email (for users) or team name
 3. Select the new assignee
@@ -170,22 +177,23 @@ The timeline is the complete audit trail of everything that happened during the 
 
 ### Timeline Events
 
-| Event Type | Description |
-| :--------- | :---------- |
-| **Triggered** | Incident was created |
-| **Acknowledged** | Someone acknowledged the incident |
-| **Resolved** | Incident was marked resolved |
-| **Escalated** | Notification escalated to next step |
+| Event Type            | Description                         |
+| :-------------------- | :---------------------------------- |
+| **Triggered**         | Incident was created                |
+| **Acknowledged**      | Someone acknowledged the incident   |
+| **Resolved**          | Incident was marked resolved        |
+| **Escalated**         | Notification escalated to next step |
 | **Notification Sent** | Alert sent via Email/SMS/Push/Slack |
-| **Note Added** | User added a comment |
-| **Reassigned** | Assignee changed |
-| **Priority Changed** | Priority level updated |
-| **Urgency Changed** | Urgency level updated |
-| **Snoozed** | Incident was snoozed |
-| **Unsnoozed** | Incident returned from snooze |
-| **Suppressed** | Incident marked as noise |
+| **Note Added**        | User added a comment                |
+| **Reassigned**        | Assignee changed                    |
+| **Priority Changed**  | Priority level updated              |
+| **Urgency Changed**   | Urgency level updated               |
+| **Snoozed**           | Incident was snoozed                |
+| **Unsnoozed**         | Incident returned from snooze       |
+| **Suppressed**        | Incident marked as noise            |
 
 Each event shows:
+
 - **Timestamp**: When it occurred
 - **Actor**: Who/what triggered it (user or system)
 - **Details**: Additional context
@@ -230,12 +238,12 @@ Tags help categorize and filter incidents for better organization and reporting.
 
 ### Common Tag Patterns
 
-| Pattern | Example Tags |
-| :------ | :----------- |
-| **Environment** | `prod`, `staging`, `dev` |
-| **Region** | `us-east`, `eu-west`, `apac` |
-| **Category** | `database`, `network`, `auth` |
-| **Root Cause** | `config-change`, `capacity`, `dependency` |
+| Pattern         | Example Tags                              |
+| :-------------- | :---------------------------------------- |
+| **Environment** | `prod`, `staging`, `dev`                  |
+| **Region**      | `us-east`, `eu-west`, `apac`              |
+| **Category**    | `database`, `network`, `auth`             |
+| **Root Cause**  | `config-change`, `capacity`, `dependency` |
 
 ---
 
@@ -272,15 +280,15 @@ For significant incidents, create a postmortem to conduct a structured retrospec
 
 ### Postmortem Sections
 
-| Section | Purpose |
-| :------ | :------ |
-| **Summary** | Brief description of what happened |
-| **Impact** | Users/services affected, duration |
-| **Timeline** | Chronological sequence of events |
-| **Root Cause** | The underlying cause(s) |
-| **Resolution** | How the incident was fixed |
-| **Action Items** | Follow-up tasks to prevent recurrence |
-| **Lessons Learned** | What the team learned |
+| Section             | Purpose                               |
+| :------------------ | :------------------------------------ |
+| **Summary**         | Brief description of what happened    |
+| **Impact**          | Users/services affected, duration     |
+| **Timeline**        | Chronological sequence of events      |
+| **Root Cause**      | The underlying cause(s)               |
+| **Resolution**      | How the incident was fixed            |
+| **Action Items**    | Follow-up tasks to prevent recurrence |
+| **Lessons Learned** | What the team learned                 |
 
 ### Postmortem Workflow
 
