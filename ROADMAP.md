@@ -1,36 +1,37 @@
 # 🗺️ OpsKnight Roadmap
 
-This document outlines the high-level goals and upcoming features for OpsKnight.
+This roadmap outlines our path to building the ultimate open-source incident management platform.
 
-> **Note:** This roadmap is subject to change based on community feedback and priorities.
+> **Current Status:** We are laser-focused on **Stability** and **Reliability**.
 
-## 📍 Current Focus (Q1 2026) -> V1 Release
+## 🏗 Phase 1: Foundation & Stability (Current Focus)
 
-The main goal for Q1 is to stabilize the platform for the **V1.0.0 Release in February 2026**.
+Our immediate goal is to stabilize the existing feature set and ensure rock-solid reliability for the V1 Release.
 
-- [ ] **Core Stability**: Extensive testing of the alerting pipeline.
-- [ ] **Documentation**: Complete API reference and deployment guides.
-- [ ] **On-Call**: Refine rotation algorithms and override logic.
+- [ ] **Core Reliability**: Exhaustive testing of the alerting pipeline and escalation engine.
+- [ ] **Mobile PWA**: Polish the existing Progressive Web App (Offline support & Notifications).
+- [ ] **Documentation**: Comprehensive guides for APIs, deployment, and configuration.
+- [ ] **User Experience**: Polishing the UI/UX for Schedules and Incident Command.
 
-## 🚀 Upcoming Features (Post-V1)
+## 🚀 Phase 2: Expanding Communication
 
-### Q2 2026 - Ecosystem & Integrations
+Once the core is stable, we will expand our alerting capabilities to make OpsKnight more "feature-rich".
 
-- [ ] **New Integrations**: Jira, ServiceNow, GitLab, Azure Monitor.
-- [ ] **Mobile App**: Beta release of iOS and Android native apps.
-- [ ] **Terraform Provider**: Official provider for managing OpsKnight resources.
+- [ ] **Voice Call Alerts**: Native support for phone call escalations ([#9](https://github.com/dushyant-rahangdale/opsknight/issues/9)).
+- [ ] **Conference Bridge**: Auto-create Jitsi/Zoom rooms for incidents ([#10](https://github.com/dushyant-rahangdale/opsknight/issues/10)).
+- [ ] **Two-Way Slack**: Interactive Slack messages (Ack/Resolve directly from Slack).
 
-### Q3 2026 - Advanced Intelligence
+## 🔌 Phase 3: Ecosystem & Intelligence
 
-- [ ] **Incident correlation**: AI-driven grouping of related alerts.
-- [ ] **Post-Mortem Generator**: Auto-generate reports from incident timelines.
-- [ ] **Analytics**: Advanced dashboards for MTTA/MTTR trends.
+Long-term goals to make OpsKnight the smartest tool in your stack.
 
-## 🔮 Long Term (Backlog)
-
-- [ ] Multi-Region High Availability options.
-- [ ] Custom Plugin Architecture.
-- [ ] Enterprise SSO (SAML/SCIM) enhancements.
+- [ ] **SLA Engine**:
+  - [ ] Implement Business Hours logic (The Weekend Trap) ([#64](https://github.com/dushyant-rahangdale/opsknight/issues/64))
+  - [ ] Manual SLA overrides per incident ([#65](https://github.com/dushyant-rahangdale/opsknight/issues/65))
+- [ ] **Advanced Status Pages**: Support for multiple public/private status pages ([#12](https://github.com/dushyant-rahangdale/opsknight/issues/12)).
+- [ ] **Custom Workflows**: Configurable incident state transitions ([#11](https://github.com/dushyant-rahangdale/opsknight/issues/11)).
+- [ ] **Advanced Integrations**: Jira, ServiceNow, GitLab, Azure Monitor.
+- [ ] **Incident Intelligence**: AI-driven alert correlation and automated post-mortems.
 
 ---
 

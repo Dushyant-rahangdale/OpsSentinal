@@ -241,7 +241,7 @@ export default async function ScheduleDetailPage({
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
                   <Calendar className="h-5 w-5" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight tracking-tight text-white">
                   {schedule.name}
                 </h1>
               </div>

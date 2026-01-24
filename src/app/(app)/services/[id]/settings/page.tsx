@@ -112,7 +112,9 @@ export default async function ServiceSettingsPage({
       <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg p-4 md:p-6 shadow-lg">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Service Settings</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+              Service Settings
+            </h1>
             <p className="text-xs md:text-sm opacity-90 mt-1">
               Manage configuration, ownership, and notifications for {service.name}
             </p>

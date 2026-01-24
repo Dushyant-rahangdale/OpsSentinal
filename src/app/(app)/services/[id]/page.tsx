@@ -265,7 +265,9 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
             </div>
 
             <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">{service.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+                {service.name}
+              </h1>
               {service.description && (
                 <p className="text-xs md:text-sm opacity-90 max-w-3xl">{service.description}</p>
               )}
