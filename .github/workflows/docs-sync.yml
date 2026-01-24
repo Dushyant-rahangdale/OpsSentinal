@@ -33,6 +33,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Configure git author (website repo)
+        working-directory: opsknight-website
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Sync app docs to website
         run: ./scripts/sync-docs-to-website.sh ./opsknight-website
 
