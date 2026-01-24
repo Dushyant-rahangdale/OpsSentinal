@@ -1,0 +1,62 @@
+name: Sync Docs With Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/sync-docs-to-website.sh'
+      - 'scripts/sync-website-docs-to-app.sh'
+      - '.github/workflows/docs-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: ${{ !contains(github.event.head_commit.message, '[skip docs-sync]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout website repo
+        uses: actions/checkout@v4
+        with:
+          repository: Dushyant-rahangdale/OpsKnight-website
+          token: ${{ secrets.OPSKNIGHT_WEBSITE_PAT }}
+          path: opsknight-website
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync app docs to website
+        run: ./scripts/sync-docs-to-website.sh ./opsknight-website
+
+      - name: Commit website changes
+        working-directory: opsknight-website
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "sync docs from app repo"
+            git push origin HEAD:main
+          else
+            echo "No website changes to commit."
+          fi
+
+      - name: Sync website docs back to app repo
+        run: ./scripts/sync-website-docs-to-app.sh ./opsknight-website
+
+      - name: Commit app repo changes
+        run: |
+          if [ -n "$(git status --porcelain docs/website)" ]; then
+            git add docs/website
+            git commit -m "sync website docs [skip docs-sync]"
+            git push origin HEAD:main
+          else
+            echo "No app repo changes to commit."
+          fi

@@ -52,7 +52,8 @@
     "prisma:migrate:safe": "npm run prisma:validate && npm run prisma:health && npx prisma migrate deploy",
     "prepare": "husky install",
     "security:check": "npm audit && npm run lint:check",
-    "lint:report": "eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif"
+    "lint:report": "eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/security.sarif",
+    "docs:sync": "scripts/sync-docs-to-website.sh"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.971.0",
