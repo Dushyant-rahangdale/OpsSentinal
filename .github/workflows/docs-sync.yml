@@ -45,6 +45,8 @@ jobs:
       - name: Commit website changes
         working-directory: opsknight-website
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
             git add -A
             git commit -m "sync docs from app repo"
