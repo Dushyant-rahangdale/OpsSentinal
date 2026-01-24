@@ -164,11 +164,17 @@ const setupBaseMocks = ({
     realTimeWindowDays: 30,
   });
   prismaMock.incident.count.mockResolvedValueOnce(resolved24hCount);
+
+  // 1. activeIncidentsData
+  // 2. displayIncidentsRaw (recentIncidents)
+  // 3. previousPeriodAggregates (no longer finds many, it's a raw query too, but check implementation)
+  // Wait, previousPeriodAggregates is $queryRaw (line 833).
+  // So there are only 2 incident.findMany calls in the Promise.all.
+
   prismaMock.incident.findMany
     .mockResolvedValueOnce(activeIncidents)
-    .mockResolvedValueOnce(heatmapIncidents)
-    .mockResolvedValueOnce(recentIncidents)
-    .mockResolvedValueOnce(previousIncidents);
+    .mockResolvedValueOnce(recentIncidents);
+
   prismaMock.alert.count.mockResolvedValueOnce(0);
   prismaMock.alert.groupBy.mockResolvedValueOnce([]);
   prismaMock.incidentNote.groupBy.mockResolvedValueOnce([]);
@@ -178,18 +184,56 @@ const setupBaseMocks = ({
     .mockResolvedValueOnce([]);
   prismaMock.onCallOverride.count.mockResolvedValueOnce(0);
   prismaMock.incident.groupBy
-    .mockResolvedValueOnce([])
-    .mockResolvedValueOnce([])
-    .mockResolvedValueOnce([])
-    .mockResolvedValueOnce([]);
+    .mockResolvedValueOnce([]) // muted counts
+    .mockResolvedValueOnce([]) // status trends
+    .mockResolvedValueOnce([]) // assignee counts
+    .mockResolvedValueOnce([]) // title counts
+    .mockResolvedValueOnce([]); // urgency counts
+
   prismaMock.service.findMany.mockResolvedValueOnce([]);
   prismaMock.incidentEvent.findMany
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce(escalationEvents)
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([]);
+
+  // Mock $queryRaw to return heatmap data when requested
+  // The implementation calls $queryRaw multiple times:
+  // 1. aggregateResult (if useDbAggregation) - likely skipped in this test case
+  // 2. percentileResult (if useDbAggregation)
+  // 3. eventCountsResult (if useDbAggregation)
+  // 4. heatmapAggregates (ALWAYS CALLED)
+  // 5. previousPeriodAggregates (ALWAYS CALLED)
+
+  // We need to be careful with the order or use mockImplementation to return based on query strings if possible,
+  // but sequential mocks are easier if we know the order.
+
+  // In the Promise.all:
+  // ...
+  // heatmapAggregates (index 10)
+  // ...
+  // previousPeriodAggregates (index 15)
+
+  const heatmapRaw = heatmapIncidents.map(i => ({
+    date: i.createdAt.toISOString().split('T')[0],
+    count: BigInt(1),
+  }));
+
+  prismaMock.$queryRaw
+    .mockResolvedValueOnce(heatmapRaw) // heatmapAggregates
+    .mockResolvedValueOnce([
+      {
+        // previousPeriodAggregates
+        total_count: BigInt(previousIncidents.length),
+        high_urgency_count: BigInt(0),
+        avg_mtta_ms: null,
+        avg_mttr_ms: null,
+        ack_count: BigInt(0),
+        resolve_count: BigInt(0),
+      },
+    ]);
+
   prismaMock.$executeRaw.mockResolvedValue(0);
-  prismaMock.$queryRaw.mockResolvedValue([]);
   prismaMock.sLADefinition.findMany.mockResolvedValue([]);
 };
 
