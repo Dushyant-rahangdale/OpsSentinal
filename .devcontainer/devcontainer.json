@@ -1,8 +1,8 @@
 {
   "name": "OpsKnight Dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-18-bullseye",
   "dockerComposeFile": ["../docker-compose.yml"],
-  "service": "opsknight-app",
-  "workspaceFolder": "/app",
+  "workspaceFolder": "/workspaces/OpsKnight",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "18"
@@ -14,6 +14,7 @@
       "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "prisma.prisma"]
     }
   },
-  "postCreateCommand": "npm install && npx prisma generate && npx prisma migrate deploy",
-  "remoteUser": "node"
+  "postCreateCommand": "npm install",
+  "remoteUser": "node",
+  "forwardPorts": [3000]
 }
