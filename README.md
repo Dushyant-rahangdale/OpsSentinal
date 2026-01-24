@@ -20,27 +20,9 @@ _Your entire incident lifecycle, on-call schedules, and status pages in one powe
 
 <br>
 
-<div align="center">
-  <h3>🚀 Want to try it right now?</h3>
-  <p>Spin up a full, private OpsKnight instance in your browser. <strong>No installation required.</strong></p>
-  <a href="https://codespaces.new/dushyant-rahangdale/opsknight">
-    <img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" height="40">
-  </a>
-  <p><sub><em>(Free via GitHub Codespaces • 1-click setup • 60 hours/month free)</em></sub></p>
 </div>
 
-<div align="center">
-  <h3>☁️ Or deploy to the cloud</h3>
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdushyant-rahangdale%2Fopsknight&env=DATABASE_URL,NEXTAUTH_SECRET%2CNEXTAUTH_URL">
-    <img src="https://vercel.com/button" alt="Deploy with Vercel" height="40">
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://railway.app/template/new?template-url=https%3A%2F%2Fgithub.com%2Fdushyant-rahangdale%2Fopsknight&envs=DATABASE_URL%2CNEXTAUTH_SECRET%2CNEXTAUTH_URL&optionalEnvs=CRON_SECRET">
-    <img src="https://railway.app/button.svg" alt="Deploy on Railway" height="40">
-  </a>
-</div>
-
-</div>
+---
 
 </div>
 
