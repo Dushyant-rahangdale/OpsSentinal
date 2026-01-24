@@ -1,11 +1,8 @@
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/rbac';
-import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { retryFetch } from '@/lib/retry';
-import { decrypt } from '@/lib/encryption';
+import { getSlackBotToken } from '@/lib/slack';
 
 /**
  * POST /api/slack/test
@@ -26,28 +23,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Channel ID is required' }, { status: 400 });
     }
 
-    // Get bot token from global integration
-    const globalIntegration = await prisma.slackIntegration.findFirst({
-      where: {
-        enabled: true,
-        service: null,
-      },
-    });
+    // Get bot token (global or env fallback)
+    const botToken = await getSlackBotToken();
 
-    if (!globalIntegration?.botToken) {
+    if (!botToken) {
       return NextResponse.json(
         { error: 'Slack not configured. Connect Slack workspace first.' },
         { status: 503 }
-      );
-    }
-
-    let botToken: string;
-    try {
-      botToken = await decrypt(globalIntegration.botToken);
-    } catch {
-      return NextResponse.json(
-        { error: 'Failed to decrypt Slack token. Reconnect workspace.' },
-        { status: 500 }
       );
     }
 

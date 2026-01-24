@@ -365,7 +365,12 @@ export async function sendSlackMessageToChannel(
   const blocks = buildSlackBlocks(incident, eventType, undefined, includeInteractiveButtons);
 
   const payload = {
-    channel: channel.startsWith('#') ? channel : `#${channel}`,
+    // Use ID directly if it looks like an ID (C/G/D/U...), otherwise ensure # prefix for names
+    channel: /^[CGDU][A-Z0-9]+$/.test(channel)
+      ? channel
+      : channel.startsWith('#')
+        ? channel
+        : `#${channel}`,
     blocks,
     attachments: [
       {

@@ -41,6 +41,16 @@ import {
 } from '@/components/settings/slack';
 import GuidedSlackSetup from '@/components/settings/GuidedSlackSetup';
 import { Badge } from '@/components/ui/shadcn/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/shadcn/alert-dialog';
 
 interface SlackIntegration {
   id: string;
@@ -86,6 +96,20 @@ export default function SlackIntegrationPage({
     message: string;
   } | null>(null);
 
+  const [confirmation, setConfirmation] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    action: () => Promise<void> | void;
+    variant?: 'default' | 'destructive';
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    action: () => {},
+    variant: 'default',
+  });
+
   const requiredScopes = ['chat:write', 'channels:read', 'channels:join'];
   const optionalScopes = ['groups:read'];
   const scopeSet = useMemo(() => new Set(integration?.scopes ?? []), [integration]);
@@ -99,7 +123,7 @@ export default function SlackIntegrationPage({
         description: 'You can now configure channels for your services.',
       });
       window.history.replaceState({}, '', window.location.pathname);
-      setTimeout(() => router.refresh(), 1000);
+      setTimeout(() => router.refresh(), 500);
     }
   }, [router]);
 
@@ -156,15 +180,7 @@ export default function SlackIntegrationPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [integration?.id]);
 
-  const handleDisconnect = async () => {
-    if (
-      // eslint-disable-next-line no-alert
-      !window.confirm(
-        'Disconnect Slack integration? This will remove Slack notifications for all services.'
-      )
-    ) {
-      return;
-    }
+  const performDisconnect = async () => {
     try {
       const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
       if (!response.ok) {
@@ -178,15 +194,18 @@ export default function SlackIntegrationPage({
     }
   };
 
-  const handleReplaceWorkspace = async () => {
-    if (
-      // eslint-disable-next-line no-alert
-      !window.confirm(
-        'Disconnect the current workspace and connect a new one? This affects all services.'
-      )
-    ) {
-      return;
-    }
+  const handleDisconnectClick = () => {
+    setConfirmation({
+      isOpen: true,
+      title: 'Disconnect Slack integration?',
+      description:
+        'This will remove Slack notifications for all services. You can reconnect at any time.',
+      variant: 'destructive',
+      action: performDisconnect,
+    });
+  };
+
+  const performReplaceWorkspace = async () => {
     try {
       const response = await fetch('/api/slack/disconnect', { method: 'DELETE' });
       if (!response.ok) {
@@ -197,6 +216,17 @@ export default function SlackIntegrationPage({
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error('Replace failed', { description: errorMessage });
     }
+  };
+
+  const handleReplaceWorkspaceClick = () => {
+    setConfirmation({
+      isOpen: true,
+      title: 'Connect a different workspace?',
+      description:
+        'This will disconnect the current workspace and affect all services using it. You will be redirected to Slack to connect a new workspace.',
+      variant: 'destructive',
+      action: performReplaceWorkspace,
+    });
   };
 
   useEffect(() => {
@@ -238,9 +268,7 @@ export default function SlackIntegrationPage({
     }
   };
 
-  const handleLeaveChannel = async (channel: SlackChannel) => {
-    // eslint-disable-next-line no-alert
-    if (!window.confirm(`Are you sure you want the bot to leave #${channel.name}?`)) return;
+  const performLeaveChannel = async (channel: SlackChannel) => {
     setLeavingChannelId(channel.id);
     try {
       const response = await fetch('/api/slack/channels/leave', {
@@ -261,6 +289,17 @@ export default function SlackIntegrationPage({
     } finally {
       setLeavingChannelId(null);
     }
+  };
+
+  const handleLeaveChannelClick = (channel: SlackChannel) => {
+    setConfirmation({
+      isOpen: true,
+      title: `Leave #${channel.name}?`,
+      description:
+        'The bot will leave this channel and will no longer see messages or be able to send notifications to it.',
+      variant: 'destructive',
+      action: () => performLeaveChannel(channel),
+    });
   };
 
   const handleTestChannel = async (channel: SlackChannel) => {
@@ -477,16 +516,18 @@ export default function SlackIntegrationPage({
               variant="ghost"
               size="sm"
               className="text-destructive hover:text-destructive"
-              onClick={async () => {
-                if (
-                  // eslint-disable-next-line no-alert
-                  window.confirm(
-                    'Are you sure you want to reset the Slack App configuration? This will require you to re-enter Client ID and Secret.'
-                  )
-                ) {
-                  await fetch('/api/settings/slack-oauth', { method: 'DELETE' });
-                  window.location.reload();
-                }
+              onClick={() => {
+                setConfirmation({
+                  isOpen: true,
+                  title: 'Reset App Credentials?',
+                  description:
+                    'Are you sure you want to reset the Slack App configuration? This will require you to re-enter Client ID and Secret.',
+                  variant: 'destructive',
+                  action: async () => {
+                    await fetch('/api/settings/slack-oauth', { method: 'DELETE' });
+                    window.location.reload();
+                  },
+                });
               }}
             >
               Reset App Credentials
@@ -555,7 +596,7 @@ export default function SlackIntegrationPage({
                 onReconnect={() => {
                   window.location.href = '/api/slack/oauth';
                 }}
-                onReplaceWorkspace={handleReplaceWorkspace}
+                onReplaceWorkspace={handleReplaceWorkspaceClick}
               />
 
               {/* Missing Scopes Alert */}
@@ -664,7 +705,7 @@ export default function SlackIntegrationPage({
                             key={ch.id}
                             channel={ch}
                             onJoin={() => void handleJoinChannel(ch)}
-                            onLeave={() => void handleLeaveChannel(ch)}
+                            onLeave={() => void handleLeaveChannelClick(ch)}
                             onTest={() => void handleTestChannel(ch)}
                             isJoining={joiningChannelId === ch.id}
                             isLeaving={leavingChannelId === ch.id}
@@ -746,12 +787,41 @@ export default function SlackIntegrationPage({
           }
         >
           <div className="py-4">
-            <Button variant="destructive" onClick={handleDisconnect}>
+            <Button variant="destructive" onClick={handleDisconnectClick}>
               Disconnect Integration
             </Button>
           </div>
         </SettingsSection>
       )}
+
+      <AlertDialog
+        open={confirmation.isOpen}
+        onOpenChange={isOpen => setConfirmation(prev => ({ ...prev, isOpen }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmation.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmation.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                confirmation.variant === 'destructive'
+                  ? 'bg-destructive hover:bg-destructive/90'
+                  : ''
+              }
+              onClick={async e => {
+                e.preventDefault(); // Prevent auto close to handle async
+                await confirmation.action();
+                setConfirmation(prev => ({ ...prev, isOpen: false }));
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,13 +1,8 @@
-/**
- * Slack Channels API
- * Lists available Slack channels for UI dropdown
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/rbac';
-import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { retryFetch } from '@/lib/retry';
+import { getSlackBotToken } from '@/lib/slack';
 
 type SlackApiChannel = {
   id: string;
@@ -20,44 +15,6 @@ type SlackApiChannel = {
 
 const SLACK_CHANNEL_TYPES = 'public_channel,private_channel';
 
-async function resolveSlackBotToken(serviceId: string | null): Promise<string | null> {
-  // Prefer global integration for centralized configuration
-  const globalIntegration = await prisma.slackIntegration.findFirst({
-    where: {
-      enabled: true,
-      service: null,
-    },
-  });
-
-  if (globalIntegration?.botToken) {
-    try {
-      const { decrypt } = await import('@/lib/encryption');
-      return await decrypt(globalIntegration.botToken);
-    } catch (error) {
-      logger.error('[Slack] Failed to decrypt global token', { error });
-    }
-  }
-
-  // Backward-compatible: service-specific integration fallback
-  if (serviceId) {
-    const service = await prisma.service.findUnique({
-      where: { id: serviceId },
-      include: { slackIntegration: true },
-    });
-
-    if (service?.slackIntegration?.enabled && service.slackIntegration.botToken) {
-      try {
-        const { decrypt } = await import('@/lib/encryption');
-        return await decrypt(service.slackIntegration.botToken);
-      } catch (error) {
-        logger.error('[Slack] Failed to decrypt token', { serviceId, error });
-      }
-    }
-  }
-
-  return process.env.SLACK_BOT_TOKEN || null;
-}
-
 export async function GET(request: NextRequest) {
   try {
     // Require authentication
@@ -69,7 +26,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const serviceId = searchParams.get('serviceId');
 
-    const botToken = await resolveSlackBotToken(serviceId);
+    const botToken = await getSlackBotToken(serviceId || undefined);
 
     if (!botToken) {
       return NextResponse.json(
@@ -147,7 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Channel ID is required' }, { status: 400 });
     }
 
-    const botToken = await resolveSlackBotToken(serviceId);
+    const botToken = await getSlackBotToken(serviceId || undefined);
     if (!botToken) {
       return NextResponse.json(
         { error: 'Slack bot token not configured. Please connect Slack workspace first.' },
