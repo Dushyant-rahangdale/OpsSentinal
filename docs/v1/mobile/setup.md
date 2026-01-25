@@ -8,7 +8,7 @@ title: Mobile Setup
 Get OpsKnight running on your phone in minutes. Install the PWA, enable push notifications, and
 start responding on the go.
 
-![OpsKnight mobile dashboard](/mobile-dashboard.png)
+![OpsKnight mobile dashboard](../assets/mobile.png)
 
 ---
 
@@ -44,7 +44,7 @@ When prompted, tap **Allow** for notifications. Then verify your device is regis
 2. Confirm your device appears in the list
 3. Ask your admin to enable **Push** in **Settings → Notification Providers**
 
-![OpsKnight push notification on iOS](/push-notification.png)
+![OpsKnight mobile dashboard](../assets/mobile.png)
 
 ---
 
