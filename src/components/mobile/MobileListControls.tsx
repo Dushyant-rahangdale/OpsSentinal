@@ -96,7 +96,7 @@ export default function MobileListControls({
           </label>
           <select
             id="mobile-sort"
-            className="w-full flex-1 bg-transparent text-xs font-semibold text-[color:var(--text-primary)] focus:outline-none"
+            className="mobile-sort-select w-full flex-1 bg-transparent text-xs font-semibold text-[color:var(--text-primary)] focus:outline-none"
             value={activeSort}
             onChange={event => handleSortChange(event.target.value)}
           >

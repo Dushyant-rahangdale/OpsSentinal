@@ -3011,3 +3011,30 @@ a {
     background: rgba(107, 114, 128, 0.15);
     color: #d1d5db;
 }
+/* Force transparency on mobile inputs to prevent white background override */
+.mobile-search-input,
+.mobile-sort-select {
+    background-color: transparent !important;
+    appearance: none;
+    -webkit-appearance: none;
+    border: none !important;
+}
+
+.mobile-sort-select {
+    padding-right: 20px;
+}
+
+/* GLOBAL FORM RESET FOR MOBILE */
+/* Overrides any desktop global styles causing white backgrounds */
+.mobile-shell input:not([type="radio"]):not([type="checkbox"]):not(.mobile-search-input):not(.mobile-sort-select),
+.mobile-shell select:not(.mobile-sort-select),
+.mobile-shell textarea {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border);
+}
+
+.mobile-shell input::placeholder,
+.mobile-shell textarea::placeholder {
+    color: var(--text-muted) !important;
+}
