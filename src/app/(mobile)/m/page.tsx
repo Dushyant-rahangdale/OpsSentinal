@@ -2,41 +2,19 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
-import {
-  AlertTriangle,
-  Plus,
-  List,
-  Phone,
-  ChevronRight,
-  Zap,
-  CheckCircle2,
-  Clock,
-} from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_STYLES: Record<string, string> = {
-  OPEN: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  ACKNOWLEDGED: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-  RESOLVED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-  SNOOZED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
-  SUPPRESSED: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
-};
-
-const URGENCY_STYLES: Record<string, string> = {
-  HIGH: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  MEDIUM: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-  LOW: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-};
 
 export default async function MobileDashboard() {
   const session = await getServerSession(await getAuthOptions());
   const userId = session?.user?.id;
 
+  // Fetch key metrics and on-call status
   const { calculateSLAMetrics } = await import('@/lib/sla-server');
   const slaMetrics = await calculateSLAMetrics({ includeAllTime: true });
 
   const [currentOnCallShift] = await Promise.all([
+    // Check if current user is on-call
     userId
       ? prisma.onCallShift.findFirst({
           where: {
@@ -53,13 +31,17 @@ export default async function MobileDashboard() {
 
   const openIncidents = slaMetrics.openCount;
   const criticalIncidents = slaMetrics.criticalCount;
-  const acknowledgedCount = slaMetrics.acknowledgedCount;
 
+  // Use the last trend point for 'Today' count
   const resolvedToday =
     slaMetrics.trendSeries.length > 0
       ? slaMetrics.trendSeries[slaMetrics.trendSeries.length - 1].resolveCount
       : slaMetrics.manualResolvedCount + slaMetrics.autoResolvedCount;
 
+  const recentIncidents = []; // Unused old variable
+
+  // Actually, mobile dashboard wants the actual list of incidents too.
+  // Let's keep the findMany for incidents but use slaMetrics for counts.
   const incidentList = await prisma.incident.findMany({
     where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
     orderBy: { createdAt: 'desc' },
@@ -79,193 +61,178 @@ export default async function MobileDashboard() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="flex flex-col gap-5 p-4 pb-24">
-      {/* Greeting Section */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+    <div className="mobile-dashboard">
+      {/* Greeting */}
+      <div style={{ marginBottom: '0.5rem' }}>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>
           {greeting}, {userName}!
         </h1>
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
           Here&apos;s your incident overview
         </p>
-        <div className="p-2 bg-yellow-100 text-yellow-800 text-xs font-mono rounded border border-yellow-200">
-          DEBUG: Found {incidentList.length} incidents. IDs:{' '}
-          {incidentList.map(i => i.id.substring(0, 4)).join(', ')}
-        </div>
       </div>
 
       {/* On-Call Widget */}
       {currentOnCallShift && (
         <Link
           href={`/m/schedules/${currentOnCallShift.scheduleId}`}
-          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 dark:from-emerald-700 dark:to-emerald-600 p-5 text-white shadow-lg shadow-emerald-500/20 dark:shadow-emerald-900/30 transition-all active:scale-[0.98]"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.875rem 1rem',
+            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+            borderRadius: '12px',
+            marginBottom: '1rem',
+            textDecoration: 'none',
+            color: 'white',
+            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
+          }}
         >
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 shadow-inner backdrop-blur-sm dark:bg-slate-900/60">
-              <Phone className="h-6 w-6" />
-            </div>
-            <div className="flex-1">
-              <div className="font-bold">You&apos;re On-Call</div>
-              <div className="text-xs font-medium text-emerald-100 opacity-90">
-                {currentOnCallShift.schedule.name} • Until {formatShiftEnd(currentOnCallShift.end)}
-              </div>
-            </div>
-            <ChevronRight className="h-5 w-5 text-emerald-100 opacity-70 transition-transform group-hover:translate-x-1" />
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'rgba(255,255,255,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+            }}
+          >
+            📞
           </div>
-          <div className="absolute -right-4 -top-12 h-24 w-24 rounded-full border-[3px] border-emerald-400/20" />
-          <div className="absolute -right-8 -top-16 h-32 w-32 rounded-full border-[3px] border-emerald-400/10" />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>You&apos;re On-Call</div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+              {currentOnCallShift.schedule.name} • Until {formatShiftEnd(currentOnCallShift.end)}
+            </div>
+          </div>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </Link>
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          href="/m/incidents/create"
-          className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-center shadow-sm transition-all active:scale-[0.98] active:bg-slate-50 dark:active:bg-slate-800"
-        >
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 dark:bg-primary/20 text-primary">
-            <Plus className="h-5 w-5" />
-          </div>
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">New Incident</span>
+      <div className="mobile-quick-actions">
+        <Link href="/m/incidents/create" className="mobile-quick-action">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
+          </svg>
+          New Incident
         </Link>
-        <Link
-          href="/m/incidents"
-          className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-center shadow-sm transition-all active:scale-[0.98] active:bg-slate-50 dark:active:bg-slate-800"
-        >
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-            <List className="h-5 w-5" />
-          </div>
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">View All</span>
+        <Link href="/m/incidents" className="mobile-quick-action secondary">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12 3 2.5 20h19L12 3Zm0 6 4.5 9h-9L12 9Z" strokeLinecap="round" />
+          </svg>
+          View All
         </Link>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Open Incidents */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-rose-500" />
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {openIncidents}
-          </div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Open
-          </div>
+      {/* Key Metrics */}
+      <div className="mobile-metrics-grid">
+        <div className="mobile-metric-card">
+          <div className="mobile-metric-value">{openIncidents}</div>
+          <div className="mobile-metric-label">Open</div>
         </div>
-
-        {/* Critical */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-600 to-red-600" />
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-              <Zap className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
+        <div className="mobile-metric-card" style={{ borderLeft: '3px solid #dc2626' }}>
+          <div className="mobile-metric-value" style={{ color: '#dc2626' }}>
             {criticalIncidents}
           </div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Critical
-          </div>
+          <div className="mobile-metric-label">Critical</div>
         </div>
-
-        {/* Acknowledged */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-500" />
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-              <Clock className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
-            {acknowledgedCount}
-          </div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Acknowledged
-          </div>
-        </div>
-
-        {/* Resolved */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-500" />
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+        <div className="mobile-metric-card" style={{ borderLeft: '3px solid #16a34a' }}>
+          <div className="mobile-metric-value" style={{ color: '#16a34a' }}>
             {resolvedToday}
           </div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Resolved
-          </div>
+          <div className="mobile-metric-label">Resolved Today</div>
+        </div>
+        <div className="mobile-metric-card">
+          <div className="mobile-metric-value">{openIncidents + resolvedToday}</div>
+          <div className="mobile-metric-label">Total Active</div>
         </div>
       </div>
 
       {/* Recent Incidents */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Recent Incidents
-          </h2>
-          <Link
-            href="/m/incidents"
-            className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
+      <div style={{ marginTop: '1.5rem' }}>
+        <div className="mobile-section-header">
+          <h2 className="mobile-section-title">Recent Incidents</h2>
+          <Link href="/m/incidents" className="mobile-section-link">
             See all →
           </Link>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="mobile-incident-list">
           {incidentList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 py-10 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="font-semibold text-slate-700 dark:text-slate-300">All clear!</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">No open incidents</p>
-              </div>
+            <div
+              style={{
+                padding: '2rem',
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                background: 'var(--bg-secondary)',
+                borderRadius: '12px',
+                border: '1px solid var(--border)',
+              }}
+            >
+              <p style={{ margin: 0 }}>No open incidents 🎉</p>
             </div>
           ) : (
             incidentList.map(incident => (
               <Link
                 key={incident.id}
                 href={`/m/incidents/${incident.id}`}
-                className="group flex flex-col gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm transition-all hover:border-primary/30 dark:hover:border-primary/30 hover:shadow-md active:scale-[0.99]"
+                className="mobile-incident-card"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLES[incident.status] || STATUS_STYLES.OPEN}`}
-                    >
-                      {incident.status}
+                <div className="mobile-incident-header">
+                  <span className={`mobile-incident-status ${incident.status.toLowerCase()}`}>
+                    {incident.status}
+                  </span>
+                  {incident.urgency && (
+                    <span className={`mobile-incident-urgency ${incident.urgency.toLowerCase()}`}>
+                      {incident.urgency}
                     </span>
-                    {incident.urgency && (
-                      <span
-                        className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${URGENCY_STYLES[incident.urgency] || URGENCY_STYLES.LOW}`}
-                      >
-                        {incident.urgency}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 shrink-0">
-                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-                    {formatOpenDuration(incident.createdAt)}
+                  )}
+                  {/* Duration Timer */}
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '0.7rem',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    ⏱️ {formatOpenDuration(incident.createdAt)}
                   </span>
                 </div>
-
-                <h3 className="font-semibold leading-snug text-slate-900 dark:text-white line-clamp-2">
-                  {incident.title}
-                </h3>
-
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  <span className="truncate">{incident.service.name}</span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                <div className="mobile-incident-title">{incident.title}</div>
+                <div className="mobile-incident-meta">
+                  <span>{incident.service.name}</span>
+                  <span>•</span>
                   <span>{formatTimeAgo(incident.createdAt)}</span>
                 </div>
               </Link>
@@ -275,10 +242,7 @@ export default async function MobileDashboard() {
       </div>
 
       {/* Desktop Version Link */}
-      <Link
-        href="/api/prefer-desktop"
-        className="mt-2 block text-center text-xs font-semibold text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-      >
+      <Link href="/api/prefer-desktop" className="mobile-desktop-link">
         Switch to Desktop Version
       </Link>
     </div>

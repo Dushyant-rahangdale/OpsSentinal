@@ -16,12 +16,26 @@ export default function MobileThemeToggle() {
   if (!mounted) {
     return (
       <MobileCard variant="default" padding="md">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🎨</span>
-            <span className="text-sm font-semibold text-slate-900 dark:text-white">Appearance</span>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: '28px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            <span className="mobile-menu-icon">🎨</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Appearance</span>
           </div>
-          <div className="h-7 w-12 rounded-full bg-slate-100 dark:bg-slate-800" />
+          <div
+            style={{
+              width: '52px',
+              height: '28px',
+              background: 'var(--bg-secondary)',
+              borderRadius: '14px',
+            }}
+          />
         </div>
       </MobileCard>
     );
@@ -46,21 +60,18 @@ export default function MobileThemeToggle() {
   return (
     <MobileCard variant="default" padding="md">
       <div
-        className="flex items-center justify-between"
-        onClick={handleToggle}
-        role="button"
-        tabIndex={0}
-        onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            handleToggle();
-          }
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
         }}
+        onClick={handleToggle}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-lg">{isDark ? '🌙' : '☀️'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+          <span className="mobile-menu-icon">{isDark ? '🌙' : '☀️'}</span>
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
               {isDark ? 'Dark Mode' : 'Light Mode'}
             </div>
             {!isSystemTheme && (
@@ -69,7 +80,15 @@ export default function MobileThemeToggle() {
                   e.stopPropagation();
                   handleSystemReset();
                 }}
-                className="mt-1 text-[11px] font-semibold text-primary"
+                style={{
+                  fontSize: '0.7rem',
+                  color: 'var(--primary-color)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                }}
               >
                 Reset to System
               </button>
@@ -77,19 +96,49 @@ export default function MobileThemeToggle() {
           </div>
         </div>
 
+        {/* iOS-style Toggle Switch */}
         <div
-          className={`relative h-8 w-14 rounded-full p-1 transition ${
-            isDark
-              ? 'bg-slate-900 shadow-[0_4px_10px_rgba(0,0,0,0.45)]'
-              : 'bg-slate-200 dark:bg-slate-900'
-          }`}
+          style={{
+            flexShrink: 0,
+            width: '52px',
+            height: '32px',
+            background: isDark
+              ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+              : 'rgba(120, 120, 128, 0.16)',
+            borderRadius: '16px',
+            position: 'relative',
+            transition: 'background 0.25s ease',
+            boxShadow: isDark
+              ? '0 2px 8px rgba(99, 102, 241, 0.3)'
+              : 'inset 0 0 0 1px rgba(0,0,0,0.1)',
+          }}
         >
           <div
-            className={`absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs shadow transition dark:bg-slate-800 ${
-              isDark ? 'translate-x-7' : 'translate-x-1'
-            }`}
+            style={{
+              width: '28px',
+              height: '28px',
+              background: '#ffffff',
+              borderRadius: '50%',
+              position: 'absolute',
+              top: '2px',
+              left: isDark ? '22px' : '2px',
+              transition: 'left 0.25s cubic-bezier(0.4, 0.0, 0.2, 1), box-shadow 0.25s ease',
+              boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            {isDark ? '🌙' : '☀️'}
+            {/* Icon inside toggle */}
+            <span
+              style={{
+                fontSize: '14px',
+                transition: 'opacity 0.2s ease',
+                opacity: 0.8,
+              }}
+            >
+              {isDark ? '🌙' : '☀️'}
+            </span>
           </div>
         </div>
       </div>

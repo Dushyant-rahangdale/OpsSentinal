@@ -15,11 +15,10 @@ function AppThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider
-      attribute="data-theme"
-      defaultTheme="system"
-      enableSystem
+      attribute="class"
+      defaultTheme="light"
+      enableSystem={false}
       disableTransitionOnChange
-      {...themeProps}
     >
       {children}
     </ThemeProvider>

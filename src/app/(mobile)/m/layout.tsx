@@ -6,11 +6,14 @@ import MobileNav from '@/components/mobile/MobileNav';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import { ToastProvider } from '@/components/ToastProvider';
 import '@/app/globals.css';
+import './mobile.css';
+import './mobile-premium.css';
 import PullToRefresh from '@/components/mobile/PullToRefresh';
 import MobileSwipeNavigator from '@/components/mobile/MobileSwipeNavigator';
 import MobileNetworkBanner from '@/components/mobile/MobileNetworkBanner';
 import { TimezoneProvider } from '@/contexts/TimezoneContext';
 import { UserAvatarProvider } from '@/contexts/UserAvatarContext';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
 // Force all app routes to be dynamic
 export const dynamic = 'force-dynamic';
@@ -79,25 +82,18 @@ export default async function MobileLayout({ children }: { children: React.React
           currentUserGender={dbUser.gender}
           currentUserName={dbUser.name || 'User'}
         >
-          <div
-            className={`mobile-shell flex min-h-[100dvh] flex-col bg-background transition-colors ${
-              systemStatus === 'danger'
-                ? 'bg-red-50/30 dark:bg-red-950/10'
-                : systemStatus === 'warning'
-                  ? 'bg-amber-50/30 dark:bg-amber-950/10'
-                  : ''
-            }`}
-            data-status={systemStatus}
-          >
-            <MobileHeader systemStatus={systemStatus} />
-            <main className="flex-1 overflow-y-auto pb-[calc(70px+env(safe-area-inset-bottom))]">
-              <MobileNetworkBanner />
-              <MobileSwipeNavigator>
-                <PullToRefresh>{children}</PullToRefresh>
-              </MobileSwipeNavigator>
-            </main>
-            <MobileNav />
-          </div>
+          <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+            <div className="mobile-shell" data-status={systemStatus}>
+              <MobileHeader systemStatus={systemStatus} />
+              <main className="mobile-content">
+                <MobileNetworkBanner />
+                <MobileSwipeNavigator>
+                  <PullToRefresh>{children}</PullToRefresh>
+                </MobileSwipeNavigator>
+              </main>
+              <MobileNav />
+            </div>
+          </ThemeProvider>
         </UserAvatarProvider>
       </TimezoneProvider>
     </ToastProvider>

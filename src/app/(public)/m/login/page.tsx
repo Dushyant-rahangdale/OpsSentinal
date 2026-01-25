@@ -1,4 +1,5 @@
 import MobileLoginClient from './MobileLoginClient';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { getOidcConfig, getOidcPublicConfig } from '@/lib/oidc-config';
@@ -90,14 +91,16 @@ export default async function MobileLoginPage({
   const passwordSet = awaitedSearchParams?.password === '1';
 
   return (
-    <MobileLoginClient
-      callbackUrl={callbackUrl}
-      errorCode={errorCode}
-      passwordSet={passwordSet}
-      ssoError={ssoError}
-      ssoEnabled={ssoEnabled}
-      ssoProviderType={ssoConfig?.providerType}
-      ssoProviderLabel={ssoConfig?.providerLabel}
-    />
+    <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+      <MobileLoginClient
+        callbackUrl={callbackUrl}
+        errorCode={errorCode}
+        passwordSet={passwordSet}
+        ssoError={ssoError}
+        ssoEnabled={ssoEnabled}
+        ssoProviderType={ssoConfig?.providerType}
+        ssoProviderLabel={ssoConfig?.providerLabel}
+      />
+    </ThemeProvider>
   );
 }
