@@ -2,6 +2,7 @@
 
 import { useState, useRef, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/shadcn/input';
 
 type MobileSearchProps = {
   placeholder?: string;
@@ -53,84 +54,104 @@ export default function MobileSearch({
   };
 
   return (
-    <div className="relative">
-      <form onSubmit={handleSubmit}>
-        <div
-          className={cn(
-            'mobile-search flex items-center gap-3 rounded-xl border-2 border-[color:var(--border)] bg-[color:var(--bg-secondary)] text-[color:var(--text-primary)] px-4 py-3 transition',
-            isFocused && 'mobile-search--focused ring-1 ring-primary/20'
-          )}
-          data-focused={isFocused ? 'true' : 'false'}
-        >
+    <div className="relative w-full group">
+      <form onSubmit={handleSubmit} className="relative w-full flex items-center">
+        {/* Left Icon - Absolutely positioned */}
+        <div className="absolute left-3 z-10 text-muted-foreground">
           {leftIcon || (
             <svg
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              className="mobile-search-icon"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
           )}
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={e => handleChange(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            placeholder={placeholder}
-            autoFocus={autoFocus}
-            className="mobile-search-input flex-1 bg-[color:var(--bg-surface)] text-sm font-medium text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none"
-          />
-
-          {value && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="mobile-search-clear flex h-5 w-5 items-center justify-center rounded-full transition"
-              aria-label="Clear search"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-              >
-                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-
-          {rightAction}
         </div>
+
+        {/* Shadcn Input Component */}
+        <Input
+          ref={inputRef}
+          type="search"
+          name="q"
+          value={value}
+          onChange={e => handleChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          className="flex-1 min-w-0 pl-9 pr-9 h-11 bg-background text-foreground border-input focus-visible:ring-primary shadow-sm"
+        />
+
+        {/* Clear Button - Absolutely positioned */}
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Clear search"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+
+        {rightAction && <div className="ml-2">{rightAction}</div>}
       </form>
 
-      {/* Suggestions Dropdown */}
+      {/* Suggestions Dropdown - Floating Panel style */}
       {showSuggestions && (
-        <div className="mobile-search-suggestions absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] shadow-xl">
-          {filteredSuggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                handleChange(suggestion);
-                onSearch?.(suggestion);
-              }}
-              className={cn(
-                'mobile-search-suggestion w-full px-4 py-3 text-left text-sm font-medium transition',
-                index < filteredSuggestions.length - 1 && 'border-b border-[color:var(--border)]'
-              )}
-            >
-              {suggestion}
-            </button>
-          ))}
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] shadow-2xl ring-1 ring-black/5">
+          <div className="px-2 py-2">
+            {filteredSuggestions.map((suggestion, index) => (
+              <button
+                key={suggestion}
+                onClick={() => {
+                  handleChange(suggestion);
+                  onSearch?.(suggestion);
+                }}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors',
+                  'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)] hover:text-[color:var(--text-primary)]'
+                )}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--bg-secondary)]/50 text-[color:var(--text-muted)]">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                </div>
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -153,14 +174,25 @@ export function MobileFilterChip({
     <button
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition',
+        'inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-all',
         active
-          ? 'border-transparent bg-primary text-white shadow-sm'
-          : 'border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-secondary)]'
+          ? 'border-primary bg-primary text-white shadow-md shadow-primary/25'
+          : 'border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-secondary)] hover:border-[color:var(--border-hover)] hover:bg-[color:var(--bg-secondary)]'
       )}
     >
       {label}
-      {count !== undefined && <span className="text-[0.65rem] opacity-70">{count}</span>}
+      {count !== undefined && (
+        <span
+          className={cn(
+            'flex h-4 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold',
+            active
+              ? 'bg-white/20 text-white'
+              : 'bg-[color:var(--bg-primary)] text-[color:var(--text-muted)]'
+          )}
+        >
+          {count}
+        </span>
+      )}
     </button>
   );
 }

@@ -3013,7 +3013,6 @@ a {
 }
 
 /* Force transparency on mobile inputs to prevent white background override */
-.mobile-search-input,
 .mobile-sort-select {
     background-color: var(--bg-surface) !important;
     color: var(--text-primary) !important;
@@ -3050,6 +3049,8 @@ input:-webkit-autofill:active {
     -webkit-text-fill-color: var(--text-primary) !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+
 
 /* Ensure Search wrapper is dark in dark mode */
 [data-theme='dark'] .mobile-search {

@@ -53,12 +53,19 @@ export default function MobileNav() {
   return (
     <nav
       className="mobile-nav"
-      style={{ '--mobile-nav-count': MOBILE_NAV_ITEMS.length } as CSSProperties}
+      style={
+        {
+          display: 'grid',
+          gridTemplateColumns: `repeat(${MOBILE_NAV_ITEMS.length}, 1fr)`,
+          '--mobile-nav-count': MOBILE_NAV_ITEMS.length,
+        } as CSSProperties
+      }
     >
       {/* Animated active indicator */}
       <div
         className="mobile-nav-slider"
         style={{
+          width: '100%',
           transform: `translateX(${sliderIndex * 100}%)`,
         }}
       />
@@ -69,6 +76,7 @@ export default function MobileNav() {
             key={item.href}
             href={item.href}
             className={`mobile-nav-item ${active ? 'active' : ''}`}
+            style={{ maxWidth: 'unset' }}
           >
             <span className="mobile-nav-icon" style={{ position: 'relative' }}>
               {active ? item.iconActive : item.icon}

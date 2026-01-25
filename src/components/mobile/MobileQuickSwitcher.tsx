@@ -1,11 +1,20 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
-import MobileSearch from '@/components/mobile/MobileSearch';
-import { Skeleton } from '@/components/mobile/SkeletonLoader';
+import { useRouter } from 'next/navigation';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/shadcn/command';
+import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
+import { Search } from 'lucide-react';
 
 type ResultType = 'incident' | 'service' | 'team' | 'user' | 'policy' | 'postmortem';
 
@@ -43,14 +52,14 @@ const typeTones: Record<ResultType, string> = {
 
 const typeIcons: Record<ResultType, ReactElement> = {
   incident: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <path d="M12 3l9 16H3l9-16Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 9v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       <circle cx="12" cy="17" r="1" fill="currentColor" />
     </svg>
   ),
   service: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <rect
         x="4"
         y="5"
@@ -74,7 +83,7 @@ const typeIcons: Record<ResultType, ReactElement> = {
     </svg>
   ),
   team: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <circle cx="17" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path
@@ -87,7 +96,7 @@ const typeIcons: Record<ResultType, ReactElement> = {
     </svg>
   ),
   user: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path
         d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"
@@ -99,7 +108,7 @@ const typeIcons: Record<ResultType, ReactElement> = {
     </svg>
   ),
   policy: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <path
         d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"
         fill="none"
@@ -117,7 +126,7 @@ const typeIcons: Record<ResultType, ReactElement> = {
     </svg>
   ),
   postmortem: (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
       <path d="M7 3h7l4 4v14H7z" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path
         d="M14 3v5h5"
@@ -145,12 +154,12 @@ const quickLinks = [
 ];
 
 const toneClasses: Record<string, string> = {
-  danger: 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400',
-  blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
-  teal: 'bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-300',
-  slate: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  amber: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-  purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300',
+  danger: 'text-red-600 dark:text-red-400',
+  blue: 'text-blue-600 dark:text-blue-400',
+  teal: 'text-teal-600 dark:text-teal-300',
+  slate: 'text-slate-600 dark:text-slate-300',
+  amber: 'text-amber-700 dark:text-amber-400',
+  purple: 'text-purple-600 dark:text-purple-300',
 };
 
 function mapToMobileHref(result: SearchResult) {
@@ -202,6 +211,7 @@ export default function MobileQuickSwitcher() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recents, setRecents] = useState<RecentItem[]>([]);
+  const router = useRouter();
 
   const hasQuery = query.trim().length >= MIN_QUERY_LENGTH;
 
@@ -256,30 +266,6 @@ export default function MobileQuickSwitcher() {
     };
   }, [open, query, hasQuery]);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
   const recentItems = useMemo(() => recents.slice(0, 5), [recents]);
 
   const handleSelect = (item: SearchResult) => {
@@ -290,6 +276,12 @@ export default function MobileQuickSwitcher() {
     setRecents(updated);
     writeRecents(updated);
     setOpen(false);
+    router.push(mapToMobileHref(item));
+  };
+
+  const handleQuickLink = (href: string) => {
+    setOpen(false);
+    router.push(href);
   };
 
   return (
@@ -300,183 +292,93 @@ export default function MobileQuickSwitcher() {
         aria-label="Open quick switcher"
         onClick={() => setOpen(true)}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M21 21l-4-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
+        <Search className="h-5 w-5" />
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-[120] flex items-end bg-black/40 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="w-full rounded-t-3xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] shadow-2xl"
-            onClick={event => event.stopPropagation()}
+      <Dialog open={open} onOpenChange={setOpen}>
+        {/* Custom DialogContent to position below header (top-aligned) */}
+        <DialogContent className="fixed left-[50%] top-[4rem] z-[150] grid w-[95%] max-w-lg translate-x-[-50%] translate-y-0 gap-4 border border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-primary)] p-0 shadow-lg duration-200 sm:rounded-lg">
+          <Command
+            shouldFilter={false}
+            className="!bg-[color:var(--bg-surface)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
           >
-            <div className="p-4">
-              <MobileSearch
-                placeholder="Search incidents, services, teams..."
-                value={query}
-                onChange={setQuery}
-                autoFocus
-                rightAction={
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-[color:var(--text-muted)]"
-                    onClick={() => setOpen(false)}
-                  >
-                    Cancel
-                  </button>
-                }
-              />
-              <div className="mt-2 text-xs font-medium text-[color:var(--text-muted)]">
-                {hasQuery ? 'Search results' : 'Start typing to search'}
-              </div>
-            </div>
+            <CommandInput
+              placeholder="Type a command or search..."
+              value={query}
+              onValueChange={setQuery}
+            />
+            <CommandList className="max-h-[70vh]">
+              <CommandEmpty>{isLoading ? 'Searching...' : 'No results found.'}</CommandEmpty>
 
-            <div className="px-4 pb-5">
-              {!hasQuery ? (
+              {!hasQuery && (
                 <>
-                  <div className="mb-4">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
-                      Recent
-                    </div>
-                    {recentItems.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-[color:var(--border)] bg-[color:var(--bg-secondary)] p-4 text-center text-xs text-[color:var(--text-muted)]">
-                        No recent items yet.
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {recentItems.map(item => (
-                          <Link
-                            key={`${item.type}-${item.id}`}
-                            href={mapToMobileHref(item)}
-                            className="flex items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] p-3 text-[color:var(--text-primary)] transition hover:bg-[color:var(--bg-secondary)]"
-                            onClick={() => handleSelect(item)}
-                          >
-                            <span
-                              className={cn(
-                                'flex h-9 w-9 items-center justify-center rounded-xl',
-                                toneClasses[typeTones[item.type]]
-                              )}
-                            >
-                              {typeIcons[item.type]}
-                            </span>
-                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              <span className="truncate text-sm font-semibold">{item.title}</span>
-                              {item.subtitle && (
-                                <span className="truncate text-xs text-[color:var(--text-muted)]">
-                                  {item.subtitle}
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                              {typeLabels[item.type]}
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
-                      Explore
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {quickLinks.map(link => (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-3 text-center text-xs font-semibold text-[color:var(--text-primary)] transition hover:bg-[color:var(--bg-secondary)]"
-                        >
-                          {link.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {isLoading && (
-                    <div className="flex flex-col gap-2">
-                      {Array.from({ length: 3 }).map((_, index) => (
-                        <div
-                          key={`qs-skeleton-${index}`}
-                          className="flex items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] p-3"
-                        >
-                          <span
-                            className={cn(
-                              'flex h-9 w-9 items-center justify-center rounded-xl',
-                              toneClasses.slate
-                            )}
-                          >
-                            <Skeleton width="20px" height="20px" borderRadius="6px" />
-                          </span>
-                          <span className="flex min-w-0 flex-1 flex-col gap-1">
-                            <Skeleton width="70%" height="12px" borderRadius="4px" />
-                            <Skeleton width="45%" height="10px" borderRadius="4px" />
-                          </span>
-                          <Skeleton width="40px" height="10px" borderRadius="4px" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {!isLoading && results.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-[color:var(--border)] bg-[color:var(--bg-secondary)] p-4 text-center text-sm text-[color:var(--text-muted)]">
-                      No matches found. Try a different keyword.
-                    </div>
-                  )}
-
-                  {!isLoading && results.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      {results.map(item => (
-                        <Link
+                  {recentItems.length > 0 && (
+                    <CommandGroup heading="Recent">
+                      {recentItems.map(item => (
+                        <CommandItem
                           key={`${item.type}-${item.id}`}
-                          href={mapToMobileHref(item)}
-                          className="flex items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] p-3 text-[color:var(--text-primary)] transition hover:bg-[color:var(--bg-secondary)]"
-                          onClick={() => handleSelect(item)}
+                          onSelect={() => handleSelect(item)}
+                          className="gap-3"
                         >
-                          <span
-                            className={cn(
-                              'flex h-9 w-9 items-center justify-center rounded-xl',
-                              toneClasses[typeTones[item.type]]
-                            )}
-                          >
+                          <span className={cn('flex shrink-0', toneClasses[typeTones[item.type]])}>
                             {typeIcons[item.type]}
                           </span>
-                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="truncate text-sm font-semibold">{item.title}</span>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{item.title}</span>
                             {item.subtitle && (
-                              <span className="truncate text-xs text-slate-500 dark:text-slate-400">
-                                {item.subtitle}
-                              </span>
+                              <span className="text-xs text-muted-foreground">{item.subtitle}</span>
                             )}
-                          </span>
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          </div>
+                          <span className="ml-auto text-[10px] uppercase text-muted-foreground">
                             {typeLabels[item.type]}
                           </span>
-                        </Link>
+                        </CommandItem>
                       ))}
-                    </div>
+                      <CommandSeparator />
+                    </CommandGroup>
                   )}
+
+                  <CommandGroup heading="Explore">
+                    {quickLinks.map(link => (
+                      <CommandItem key={link.href} onSelect={() => handleQuickLink(link.href)}>
+                        <span className="flex shrink-0 text-slate-500">
+                          <Search className="h-4 w-4" />
+                        </span>
+                        <span className="ml-2 font-medium">{link.label}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      )}
+
+              {hasQuery && results.length > 0 && (
+                <CommandGroup heading="Results">
+                  {results.map(item => (
+                    <CommandItem
+                      key={`${item.type}-${item.id}`}
+                      onSelect={() => handleSelect(item)}
+                      className="gap-3"
+                    >
+                      <span className={cn('flex shrink-0', toneClasses[typeTones[item.type]])}>
+                        {typeIcons[item.type]}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{item.title}</span>
+                        {item.subtitle && (
+                          <span className="text-xs text-muted-foreground">{item.subtitle}</span>
+                        )}
+                      </div>
+                      <span className="ml-auto text-[10px] uppercase text-muted-foreground">
+                        {typeLabels[item.type]}
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

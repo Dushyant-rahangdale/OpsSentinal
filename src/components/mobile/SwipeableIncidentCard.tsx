@@ -97,6 +97,7 @@ export default function SwipeableIncidentCard({
 
   return (
     <div
+      data-swipe-ignore="true"
       className={cn(
         'relative rounded-xl overflow-hidden',
         translateX < 0 && 'bg-gradient-to-r from-transparent via-transparent to-amber-500/20',
