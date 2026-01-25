@@ -55,18 +55,18 @@ export default async function MobilePolicyDetailPage({ params }: PageProps) {
         </Link>
 
         <div className="space-y-2">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-xl font-bold tracking-tight text-[color:var(--text-primary)]">
             {policy.name}
           </h1>
           {policy.description && (
-            <div className="text-xs text-slate-500 dark:text-slate-400">{policy.description}</div>
+            <div className="text-xs text-[color:var(--text-muted)]">{policy.description}</div>
           )}
         </div>
       </div>
 
       {/* Steps */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
           Escalation Steps
         </h3>
 
@@ -81,7 +81,7 @@ export default async function MobilePolicyDetailPage({ params }: PageProps) {
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
                   {stepOrder + 1}
                 </div>
-                <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                <span className="text-sm font-semibold text-[color:var(--text-primary)]">
                   Wait {rules[0].delayMinutes}m
                 </span>
               </div>
@@ -97,7 +97,7 @@ export default async function MobilePolicyDetailPage({ params }: PageProps) {
                           : '👥'}
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <div className="text-sm font-semibold text-[color:var(--text-primary)]">
                         {rule.targetType === 'USER' && rule.targetUser
                           ? rule.targetUser.name || rule.targetUser.email
                           : rule.targetType === 'SCHEDULE' && rule.targetSchedule
@@ -106,7 +106,7 @@ export default async function MobilePolicyDetailPage({ params }: PageProps) {
                               ? rule.targetTeam.name
                               : 'Unknown Target'}
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="text-[11px] text-[color:var(--text-muted)]">
                         {rule.targetType === 'USER'
                           ? 'User'
                           : rule.targetType === 'SCHEDULE'
@@ -133,7 +133,7 @@ export default async function MobilePolicyDetailPage({ params }: PageProps) {
               <Link
                 key={service.id}
                 href={`/m/services/${service.id}`}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800/60"
+                className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[color:var(--text-secondary)] transition hover:bg-[color:var(--bg-secondary)]"
               >
                 {service.name}
               </Link>

@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MobileAvatar } from '@/components/mobile/MobileUtils';
+import { getDefaultAvatar } from '@/lib/avatar';
 import MobileCard from '@/components/mobile/MobileCard';
 import { ArrowLeft } from 'lucide-react';
 
@@ -21,7 +22,15 @@ export default async function MobileScheduleDetailPage({ params }: PageProps) {
         include: {
           users: {
             include: {
-              user: { select: { id: true, name: true, email: true } },
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatarUrl: true,
+                  gender: true,
+                },
+              },
             },
             orderBy: { position: 'asc' },
           },
@@ -34,7 +43,15 @@ export default async function MobileScheduleDetailPage({ params }: PageProps) {
           end: { gte: new Date() },
         },
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+              gender: true,
+            },
+          },
         },
         take: 1,
       },
@@ -62,13 +79,13 @@ export default async function MobileScheduleDetailPage({ params }: PageProps) {
       {/* Schedule Header */}
       <MobileCard padding="lg">
         <div className="space-y-2">
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white">{schedule.name}</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <h1 className="text-lg font-bold text-[color:var(--text-primary)]">{schedule.name}</h1>
+          <p className="text-xs text-[color:var(--text-muted)]">
             📅 {schedule.layers.length} layer{schedule.layers.length !== 1 ? 's' : ''} • 👥{' '}
             {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}
           </p>
           {schedule.timeZone && (
-            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+            <p className="text-[11px] text-[color:var(--text-muted)]">
               🌍 Timezone: {schedule.timeZone}
             </p>
           )}
@@ -81,7 +98,14 @@ export default async function MobileScheduleDetailPage({ params }: PageProps) {
               CURRENTLY ON-CALL
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <MobileAvatar name={currentOnCall.name || currentOnCall.email} size="sm" />
+              <MobileAvatar
+                name={currentOnCall.name || currentOnCall.email}
+                size="sm"
+                src={
+                  currentOnCall.avatarUrl ||
+                  getDefaultAvatar(currentOnCall.gender, currentOnCall.id)
+                }
+              />
               <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                 {currentOnCall.name || currentOnCall.email}
               </span>
@@ -92,17 +116,17 @@ export default async function MobileScheduleDetailPage({ params }: PageProps) {
 
       {/* Layers Section */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
           Rotation Layers
         </h3>
         <div className="flex flex-col gap-3">
           {schedule.layers.map((layer, index) => (
             <MobileCard key={layer.id} padding="md">
               <div className="mb-3">
-                <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="text-sm font-semibold text-[color:var(--text-primary)]">
                   {layer.name || `Layer ${index + 1}`}
                 </div>
-                <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">
                   ⏱️ {layer.rotationLengthHours}h rotation • {layer.users.length} participants
                 </div>
               </div>
@@ -112,13 +136,20 @@ export default async function MobileScheduleDetailPage({ params }: PageProps) {
                 {layer.users.map((layerUser, userIndex) => (
                   <div
                     key={layerUser.id}
-                    className="flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-2 dark:bg-slate-800"
+                    className="flex items-center gap-2 rounded-lg bg-[color:var(--bg-secondary)] px-2.5 py-2"
                   >
-                    <span className="w-6 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                    <span className="w-6 text-[10px] font-semibold text-[color:var(--text-muted)]">
                       #{userIndex + 1}
                     </span>
-                    <MobileAvatar name={layerUser.user.name || layerUser.user.email} size="sm" />
-                    <span className="text-sm text-slate-900 dark:text-slate-100">
+                    <MobileAvatar
+                      name={layerUser.user.name || layerUser.user.email}
+                      size="sm"
+                      src={
+                        layerUser.user.avatarUrl ||
+                        getDefaultAvatar(layerUser.user.gender, layerUser.user.id)
+                      }
+                    />
+                    <span className="text-sm text-[color:var(--text-primary)]">
                       {layerUser.user.name || layerUser.user.email}
                     </span>
                   </div>
