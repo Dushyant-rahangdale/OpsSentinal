@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { haptics } from '@/lib/haptics';
 
 export default function PullToRefresh({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -14,6 +15,14 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
   const pullThreshold = 70;
   const maxPull = 100;
 
+  const isInteractiveTarget = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    const closest = target.closest(
+      'input, textarea, select, button, [contenteditable="true"], [role="textbox"], [data-disable-pull]'
+    );
+    return closest instanceof Element;
+  };
+
   useEffect(() => {
     return () => {
       if (refreshTimeoutRef.current) {
@@ -24,10 +33,7 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
 
   const initLoading = async () => {
     setRefreshing(true);
-    // Haptic feedback on supported devices
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
-    }
+    haptics.success();
     // Trigger Next.js router refresh
     router.refresh();
 
@@ -43,6 +49,11 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isInteractiveTarget(e.target)) {
+      startPointRef.current = null;
+      return;
+    }
+
     const scrollParent = containerRef.current?.closest('.mobile-content');
     const scrollTop = scrollParent
       ? scrollParent.scrollTop
@@ -54,6 +65,14 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (isInteractiveTarget(e.target)) {
+      if (pullChange !== 0) {
+        setPullChange(0);
+      }
+      startPointRef.current = null;
+      return;
+    }
+
     const scrollParent = containerRef.current?.closest('.mobile-content');
     const scrollTop = scrollParent
       ? scrollParent.scrollTop

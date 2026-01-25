@@ -10,13 +10,13 @@
    ======================================== */
 
 :root {
-    color-scheme: light only;
+    color-scheme: light;
     forced-color-adjust: none;
     -ms-high-contrast-adjust: none;
 }
 
 html {
-    color-scheme: light only !important;
+    color-scheme: light !important;
     filter: none !important;
     -webkit-filter: none !important;
     forced-color-adjust: none;
@@ -24,7 +24,7 @@ html {
 }
 
 body {
-    color-scheme: light only !important;
+    color-scheme: light !important;
     filter: none !important;
     -webkit-filter: none !important;
     forced-color-adjust: none;
@@ -45,74 +45,36 @@ body {
         radial-gradient(circle at 80% 0%, rgba(148, 163, 184, 0.05) 0%, transparent 35%);
 }
 
+html[data-theme='dark'] {
+    color-scheme: dark !important;
+}
+
+html[data-theme='dark'] body {
+    color-scheme: dark !important;
+}
+
 /* Comprehensive browser dark mode override */
 @media (prefers-color-scheme: dark) {
-    :root,
-    html,
-    body {
-        color-scheme: light only !important;
+    html:not([data-theme='dark']),
+    html:not([data-theme='dark']) body {
+        color-scheme: light !important;
         filter: none !important;
         -webkit-filter: none !important;
     }
 
-    /* Force all elements to maintain their colors */
-    *,
-    *::before,
-    *::after {
-        color-scheme: light only;
+    /* Keep OS dark mode from overriding light theme colors */
+    html:not([data-theme='dark']) *,
+    html:not([data-theme='dark']) *::before,
+    html:not([data-theme='dark']) *::after {
+        color-scheme: light;
         forced-color-adjust: none;
         filter: none !important;
         -webkit-filter: none !important;
     }
 
-    /* Preserve background colors */
-    body {
+    html:not([data-theme='dark']) body {
         background-color: var(--bg-primary) !important;
         color: var(--text-primary) !important;
-    }
-
-    /* Cards and surfaces */
-    .card,
-    [class*="card"],
-    .bg-white,
-    .bg-background,
-    [class*="bg-slate-"],
-    [class*="bg-gray-"] {
-        background-color: inherit;
-        filter: none !important;
-    }
-
-    /* Text elements - preserve colors */
-    h1, h2, h3, h4, h5, h6,
-    p, span, div, a, label,
-    .text-primary,
-    .text-secondary,
-    .text-muted,
-    [class*="text-slate-"],
-    [class*="text-gray-"] {
-        color: inherit;
-        filter: none !important;
-    }
-
-    /* Form elements */
-    input, textarea, select, button {
-        color-scheme: light only !important;
-        background-color: inherit;
-        color: inherit;
-        filter: none !important;
-    }
-
-    /* SVG icons */
-    svg {
-        filter: none !important;
-        color: inherit;
-    }
-
-    /* Tables */
-    table, thead, tbody, tr, th, td {
-        background-color: inherit;
-        color: inherit;
-        filter: none !important;
     }
 
     /* ========================================
@@ -283,7 +245,6 @@ body {
     }
 }
 
-.dark body,
 [data-theme='dark'] body {
     background-image:
         radial-gradient(circle at 10% 10%, rgba(15, 23, 42, 0.35) 0%, transparent 45%),
@@ -355,7 +316,6 @@ select option {
     z-index: 0;
 }
 
-.dark .page-shell::before,
 [data-theme='dark'] .page-shell::before {
     background:
         radial-gradient(circle at 15% 0%, rgba(15, 23, 42, 0.4), transparent 55%),

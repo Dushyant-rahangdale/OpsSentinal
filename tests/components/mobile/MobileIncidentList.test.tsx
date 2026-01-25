@@ -2,47 +2,62 @@ import { render, fireEvent, waitFor, screen } from '@testing-library/react';
 import { act } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import MobileIncidentList from '@/components/mobile/MobileIncidentList';
-import { updateIncidentStatus } from '@/app/(app)/incidents/actions';
-
 vi.mock('next/navigation', () => ({
-    useRouter: () => ({
-        refresh: vi.fn(),
-    }),
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
 }));
 
-vi.mock('@/app/(app)/incidents/actions', () => ({
-    updateIncidentStatus: vi.fn(),
+// Mock the child component to isolate logic testing from animation libraries
+vi.mock('@/components/mobile/SwipeableIncidentCard', () => ({
+  default: ({ incident, onAcknowledge, onSnooze, onResolve }: any) => (
+    <div data-testid={`incident-card-${incident.id}`}>
+      <span>{incident.title}</span>
+      {onAcknowledge && <button onClick={() => onAcknowledge(incident.id)}>Acknowledge</button>}
+    </div>
+  ),
 }));
 
 describe('MobileIncidentList', () => {
-    it('acknowledges incident on swipe left', async () => {
-        vi.mocked(updateIncidentStatus).mockResolvedValue(undefined);
+  it('acknowledges incident when action is triggered', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
 
-        render(
-            <MobileIncidentList
-                incidents={[
-                    {
-                        id: 'inc-1',
-                        title: 'API Down',
-                        status: 'OPEN',
-                        urgency: 'HIGH',
-                        createdAt: new Date().toISOString(),
-                        service: { name: 'Payments' },
-                    },
-                ]}
-            />
-        );
+    render(
+      <MobileIncidentList
+        incidents={[
+          {
+            id: 'inc-1',
+            title: 'API Down',
+            status: 'OPEN',
+            urgency: 'HIGH',
+            createdAt: new Date().toISOString(),
+            service: { name: 'Payments' },
+          },
+        ]}
+        filter="open"
+      />
+    );
 
-        const card = screen.getByTestId('incident-card-inc-1');
+    // Wait for render
+    const card = await screen.findByTestId('incident-card-inc-1');
+    expect(card).toBeDefined();
 
-        await act(async () => {
-            fireEvent.touchStart(card, { touches: [{ clientX: 200 }] });
-            fireEvent.touchMove(card, { touches: [{ clientX: 80 }] });
-            fireEvent.touchEnd(card);
-        });
-
-        await waitFor(() => {
-            expect(updateIncidentStatus).toHaveBeenCalledWith('inc-1', 'ACKNOWLEDGED');
-        });
+    // Trigger action via mock button
+    const ackBtn = screen.getByText('Acknowledge');
+    await act(async () => {
+      fireEvent.click(ackBtn);
     });
+
+    await waitFor(() => {
+      const expectedUrl = new URL(
+        '/api/mobile/incidents/inc-1/status',
+        window.location.origin
+      ).toString();
+      expect(fetchMock).toHaveBeenCalledWith(
+        expectedUrl,
+        expect.objectContaining({ method: 'PATCH' })
+      );
+    });
+  });
 });

@@ -2,6 +2,10 @@ import '@testing-library/jest-dom';
 import { afterEach, afterAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
+if (typeof HTMLElement !== 'undefined' && !HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+}
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();

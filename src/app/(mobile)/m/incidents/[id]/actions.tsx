@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MobileBottomSheet from '@/components/mobile/MobileBottomSheet';
 import { logger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 import {
   updateIncidentStatus,
   addNote,
@@ -205,34 +206,53 @@ export default function MobileIncidentActions({
       : ['content']
   ) satisfies Array<'content' | 'full' | 'half'>;
 
+  const actionBase =
+    'flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60';
+
+  const sheetButtonBase =
+    'rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-2.5 text-sm font-semibold text-[color:var(--text-secondary)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60';
+
   return (
-    <div className="mobile-incident-actions">
-      <div className="mobile-incident-action-row">
+    <div className="flex flex-col gap-3">
+      <div className={cn('flex gap-2', status === 'OPEN' ? 'flex-col' : 'flex-row')}>
         {status === 'OPEN' && (
           <button
             onClick={() => handleAction('ACKNOWLEDGE')}
             disabled={loading}
-            className="mobile-incident-action-button warning"
+            className={cn(
+              actionBase,
+              'w-full bg-amber-500 text-white hover:bg-amber-600 shadow-sm'
+            )}
           >
             {loading ? '...' : 'Acknowledge'}
           </button>
         )}
-        {status !== 'RESOLVED' && (
+        <div className="flex gap-2 flex-1">
+          {status !== 'RESOLVED' && (
+            <button
+              onClick={() => openSheet('resolve')}
+              disabled={loading}
+              className={cn(actionBase, 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm')}
+            >
+              Resolve
+            </button>
+          )}
           <button
-            onClick={() => openSheet('resolve')}
-            disabled={loading}
-            className="mobile-incident-action-button success"
+            onClick={() => openSheet('more')}
+            className={cn(
+              actionBase,
+              'border border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)] shadow-sm'
+            )}
           >
-            Resolve
+            More
           </button>
-        )}
-        <button onClick={() => openSheet('more')} className="mobile-incident-action-button neutral">
-          More
-        </button>
+        </div>
       </div>
 
       {errorMessage && sheetMode === null && (
-        <div className="mobile-incident-action-error">{errorMessage}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+          {errorMessage}
+        </div>
       )}
 
       <MobileBottomSheet
@@ -242,36 +262,35 @@ export default function MobileIncidentActions({
         snapPoints={snapPoints}
       >
         {showBack && (
-          <button className="mobile-incident-sheet-back" onClick={() => openSheet('more')}>
+          <button
+            className="mb-3 inline-flex items-center text-xs font-semibold text-primary"
+            onClick={() => openSheet('more')}
+          >
             Back to actions
           </button>
         )}
 
-        {errorMessage && <div className="mobile-incident-sheet-error">{errorMessage}</div>}
+        {errorMessage && (
+          <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+            {errorMessage}
+          </div>
+        )}
 
         {sheetMode === 'more' && (
-          <div className="mobile-incident-sheet-grid">
-            <button onClick={() => openSheet('note')} className="mobile-incident-sheet-button">
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => openSheet('note')} className={sheetButtonBase}>
               Add note
             </button>
-            <button
-              onClick={handleUrgencyToggle}
-              disabled={loading}
-              className="mobile-incident-sheet-button"
-            >
+            <button onClick={handleUrgencyToggle} disabled={loading} className={sheetButtonBase}>
               {urgency === 'LOW' ? 'Raise urgency' : 'Lower urgency'}
             </button>
             {(!assigneeId || assigneeId !== currentUserId) && (
-              <button
-                onClick={handleTakeOwnership}
-                disabled={loading}
-                className="mobile-incident-sheet-button"
-              >
+              <button onClick={handleTakeOwnership} disabled={loading} className={sheetButtonBase}>
                 Take ownership
               </button>
             )}
             {status !== 'RESOLVED' && status !== 'SNOOZED' && (
-              <button onClick={() => openSheet('snooze')} className="mobile-incident-sheet-button">
+              <button onClick={() => openSheet('snooze')} className={sheetButtonBase}>
                 Snooze
               </button>
             )}
@@ -279,32 +298,34 @@ export default function MobileIncidentActions({
               <button
                 onClick={() => handleAction('OPEN')}
                 disabled={loading}
-                className="mobile-incident-sheet-button"
+                className={sheetButtonBase}
               >
                 Unsnooze
               </button>
             )}
-            <button onClick={() => openSheet('reassign')} className="mobile-incident-sheet-button">
+            <button onClick={() => openSheet('reassign')} className={sheetButtonBase}>
               Reassign
             </button>
           </div>
         )}
 
         {sheetMode === 'resolve' && (
-          <div className="mobile-incident-sheet-stack">
+          <div className="flex flex-col gap-3">
             <textarea
               placeholder="Describe root cause, fix applied, or summary... (min 10 chars)"
               value={resolutionNote}
               onChange={e => setResolutionNote(e.target.value)}
-              className="mobile-incident-sheet-textarea"
+              className="min-h-[140px] w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-secondary)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            <div className="mobile-incident-sheet-helper">
+            <div className="text-[11px] font-medium text-[color:var(--text-muted)]">
               {resolutionNote.length}/1000 characters (min {RESOLUTION_MIN})
             </div>
             <button
               onClick={handleResolve}
               disabled={loading || resolutionNote.trim().length < RESOLUTION_MIN}
-              className="mobile-incident-sheet-submit"
+              className={cn(
+                'rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60'
+              )}
             >
               {loading ? 'Resolving...' : 'Resolve incident'}
             </button>
@@ -312,21 +333,24 @@ export default function MobileIncidentActions({
         )}
 
         {sheetMode === 'note' && (
-          <div className="mobile-incident-sheet-stack">
+          <div className="flex flex-col gap-3">
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}
               placeholder="Add a note..."
-              className="mobile-incident-sheet-textarea"
+              className="min-h-[140px] w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-secondary)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            <div className="mobile-incident-sheet-actions">
-              <button onClick={() => openSheet('more')} className="mobile-incident-sheet-secondary">
+            <div className="flex gap-2">
+              <button
+                onClick={() => openSheet('more')}
+                className="flex-1 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[color:var(--text-secondary)] transition hover:bg-[color:var(--bg-secondary)]"
+              >
                 Cancel
               </button>
               <button
                 onClick={handleAddNote}
                 disabled={loading || !note.trim()}
-                className="mobile-incident-sheet-submit"
+                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Save note
               </button>
@@ -335,15 +359,17 @@ export default function MobileIncidentActions({
         )}
 
         {sheetMode === 'snooze' && (
-          <div className="mobile-incident-sheet-stack">
-            <p className="mobile-incident-sheet-label">Snooze for</p>
-            <div className="mobile-incident-sheet-grid">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              Snooze for
+            </p>
+            <div className="grid grid-cols-3 gap-2">
               {[1, 4, 24].map(hours => (
                 <button
                   key={hours}
                   onClick={() => handleSnooze(hours)}
                   disabled={loading}
-                  className="mobile-incident-sheet-button"
+                  className={sheetButtonBase}
                 >
                   {hours}h
                 </button>
@@ -353,12 +379,14 @@ export default function MobileIncidentActions({
         )}
 
         {sheetMode === 'reassign' && (
-          <div className="mobile-incident-sheet-stack">
-            <label className="mobile-incident-sheet-label">Assign to user</label>
+          <div className="flex flex-col gap-3">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              Assign to user
+            </label>
             <select
               onChange={e => e.target.value && handleReassign(e.target.value)}
               disabled={loading}
-              className="mobile-incident-sheet-select"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
               defaultValue=""
             >
               <option value="">Select a user...</option>
@@ -369,11 +397,13 @@ export default function MobileIncidentActions({
               ))}
             </select>
 
-            <label className="mobile-incident-sheet-label">Assign to team</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+              Assign to team
+            </label>
             <select
               onChange={e => e.target.value && handleReassign('', e.target.value)}
               disabled={loading}
-              className="mobile-incident-sheet-select"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
               defaultValue=""
             >
               <option value="">Select a team...</option>
@@ -387,7 +417,7 @@ export default function MobileIncidentActions({
             <button
               onClick={() => handleReassign('', '')}
               disabled={loading}
-              className="mobile-incident-sheet-secondary"
+              className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-4 py-2.5 text-sm font-semibold text-[color:var(--text-secondary)] transition hover:bg-[color:var(--bg-secondary)]"
             >
               Unassign
             </button>

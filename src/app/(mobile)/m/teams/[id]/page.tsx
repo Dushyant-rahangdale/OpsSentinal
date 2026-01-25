@@ -2,7 +2,9 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MobileAvatar } from '@/components/mobile/MobileUtils';
+import { getDefaultAvatar } from '@/lib/avatar';
 import MobileCard from '@/components/mobile/MobileCard';
+import { ArrowLeft } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +21,14 @@ export default async function MobileTeamDetailPage({ params }: PageProps) {
       members: {
         include: {
           user: {
-            select: { id: true, name: true, email: true, role: true },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              avatarUrl: true,
+              gender: true,
+            },
           },
         },
       },
@@ -38,109 +47,55 @@ export default async function MobileTeamDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="mobile-dashboard">
+    <div className="flex flex-col gap-4 p-4 pb-24">
       {/* Header */}
-      <div style={{ marginBottom: '1rem' }}>
+      <div className="space-y-3">
         <Link
           href="/m/teams"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            color: 'var(--primary-color)',
-            textDecoration: 'none',
-            fontSize: '0.85rem',
-            fontWeight: '600',
-            marginBottom: '0.75rem',
-          }}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ArrowLeft className="h-4 w-4" />
           Back to Teams
         </Link>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'var(--gradient-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: '700',
-              fontSize: '1.25rem',
-              flexShrink: 0,
-            }}
-          >
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-lg font-bold text-white dark:from-slate-200 dark:to-slate-50 dark:text-slate-900">
             {team.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>{team.name}</h1>
+            <h1 className="text-lg font-bold text-[color:var(--text-primary)]">{team.name}</h1>
             {team.description && (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
-                {team.description}
-              </p>
+              <p className="mt-1 text-xs text-[color:var(--text-muted)]">{team.description}</p>
             )}
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.75rem',
-                fontSize: '0.75rem',
-                color: 'var(--text-secondary)',
-                marginTop: '0.25rem',
-              }}
-            >
-              <span>
-                👥 {team.members.length} member{team.members.length !== 1 ? 's' : ''}
-              </span>
+            <div className="mt-2 text-[11px] text-[color:var(--text-muted)]">
+              👥 {team.members.length} member{team.members.length !== 1 ? 's' : ''}
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="flex flex-col gap-3">
         {/* Team Members */}
-        <div>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', margin: '0 0 0.75rem' }}>Members</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="flex flex-col gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
+            Members
+          </h3>
+          <div className="flex flex-col gap-2">
             {team.members.map(member => (
               <MobileCard key={member.id} padding="sm">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <MobileAvatar name={member.user.name || member.user.email} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: '600',
-                        fontSize: '0.9rem',
-                        color: 'var(--text-primary)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
+                <div className="flex items-center gap-3">
+                  <MobileAvatar
+                    name={member.user.name || member.user.email}
+                    src={
+                      member.user.avatarUrl || getDefaultAvatar(member.user.gender, member.user.id)
+                    }
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                       {member.user.name || 'Unknown'}
                     </div>
-                    <div
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
+                    <div className="truncate text-[11px] text-[color:var(--text-muted)]">
                       {member.role || 'Member'}
                     </div>
                   </div>

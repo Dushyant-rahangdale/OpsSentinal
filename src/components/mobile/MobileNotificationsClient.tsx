@@ -7,6 +7,14 @@ import { Skeleton } from '@/components/mobile/SkeletonLoader';
 import { MobileEmptyIcon, MobileEmptyState } from '@/components/mobile/MobileUtils';
 import { MobileFilterChip } from '@/components/mobile/MobileSearch';
 import { logger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatDayLabel } from '@/lib/mobile-time';
+import MobileTime from '@/components/mobile/MobileTime';
+import { haptics } from '@/lib/haptics';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
+import { enqueueRequest } from '@/lib/offline-queue';
+import { readCache, writeCache } from '@/lib/mobile-cache';
 
 type NotificationItem = {
   id: string;
@@ -45,24 +53,6 @@ const typeActionMap = new Map<NotificationItem['type'], string>([
 const getTypeLabel = (type: NotificationItem['type']) => typeLabelMap.get(type) ?? 'Notification';
 const getTypeAction = (type: NotificationItem['type']) => typeActionMap.get(type) ?? 'Open';
 
-const formatDayLabel = (date: Date) => {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfYesterday = new Date(startOfToday);
-  startOfYesterday.setDate(startOfToday.getDate() - 1);
-
-  if (date >= startOfToday) return 'Today';
-  if (date >= startOfYesterday) return 'Yesterday';
-
-  const formatter = new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
-  });
-
-  return formatter.format(date);
-};
-
 const resolveNotificationHref = (notification: NotificationItem) => {
   if (notification.incidentId) {
     return `/m/incidents/${notification.incidentId}`;
@@ -77,24 +67,24 @@ const resolveNotificationHref = (notification: NotificationItem) => {
 };
 
 const NotificationSkeleton = () => (
-  <MobileCard className="mobile-notification-card mobile-notifications-skeleton">
-    <div className="mobile-notification-main">
-      <div className="mobile-notification-icon tone-service">
+  <MobileCard className="p-4">
+    <div className="flex items-start gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--bg-secondary)]">
         <Skeleton width="18px" height="18px" borderRadius="6px" />
       </div>
-      <div className="mobile-notification-body">
-        <div className="mobile-notification-title-row">
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
           <Skeleton width="60%" height="14px" borderRadius="4px" />
           <Skeleton width="12px" height="12px" borderRadius="999px" />
         </div>
         <Skeleton width="90%" height="12px" borderRadius="4px" />
-        <div className="mobile-notification-meta">
+        <div className="flex items-center gap-2">
           <Skeleton width="80px" height="10px" borderRadius="4px" />
           <Skeleton width="40px" height="10px" borderRadius="4px" />
         </div>
       </div>
     </div>
-    <div className="mobile-notification-actions">
+    <div className="mt-3 flex gap-2">
       <Skeleton width="70px" height="24px" borderRadius="999px" />
       <Skeleton width="70px" height="24px" borderRadius="999px" />
     </div>
@@ -103,43 +93,131 @@ const NotificationSkeleton = () => (
 
 export default function MobileNotificationsClient() {
   const router = useRouter();
+  const { userTimeZone } = useTimezone();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all');
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [usePolling, setUsePolling] = useState(false);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage('');
-    try {
-      const response = await fetch(`/api/notifications?unreadOnly=${activeFilter === 'unread'}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
+  const fetchNotifications = useCallback(
+    async (showLoading = true) => {
+      const unreadOnly = activeFilter === 'unread';
+      if (showLoading) {
+        setLoading(true);
+        setErrorMessage('');
       }
-      const data = (await response.json()) as NotificationResponse;
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-    } catch (error) {
-      logger.error('mobile.notifications.fetch_failed', {
-        component: 'MobileNotificationsClient',
-        error,
-      });
-      setErrorMessage('Unable to load notifications.');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeFilter]);
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        if (showLoading) {
+          setLoading(false);
+        }
+        return;
+      }
+      try {
+        const response = await fetch(`/api/notifications?unreadOnly=${unreadOnly}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications');
+        }
+        const data = (await response.json()) as NotificationResponse;
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
+        setErrorMessage('');
+      } catch (error) {
+        logger.error('mobile.notifications.fetch_failed', {
+          component: 'MobileNotificationsClient',
+          error,
+        });
+        if (showLoading) {
+          setErrorMessage('Unable to load notifications.');
+        }
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [activeFilter]
+  );
 
   useEffect(() => {
-    void fetchNotifications();
+    void fetchNotifications(true);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const loadCache = async () => {
+      if (!navigator.onLine) {
+        const cached = await readCache<NotificationResponse>('mobile-notifications');
+        if (
+          cached &&
+          cached.notifications &&
+          Array.isArray(cached.notifications) &&
+          cached.notifications.length > 0
+        ) {
+          setNotifications(cached.notifications);
+          setUnreadCount(cached.unreadCount);
+          setLoading(false);
+        }
+      }
+    };
+    void loadCache();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      await writeCache('mobile-notifications', {
+        notifications,
+        unreadCount,
+        total: notifications.length,
+      });
+    })();
+  }, [notifications, unreadCount]);
+
+  const handleIncomingNotifications = useCallback(
+    (incoming: NotificationItem[]) => {
+      if (!incoming.length) return;
+      const relevant = activeFilter === 'unread' ? incoming.filter(item => item.unread) : incoming;
+      if (!relevant.length) return;
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(item => item.id));
+        const fresh = relevant.filter(item => !existingIds.has(item.id));
+        if (fresh.length === 0) return prev;
+        return [...fresh, ...prev].slice(0, 50);
+      });
+      const unreadDelta = incoming.filter(item => item.unread).length;
+      if (unreadDelta > 0) {
+        setUnreadCount(prev => prev + unreadDelta);
+      }
+    },
+    [activeFilter]
+  );
+
+  useNotificationStream({
+    enabled: !usePolling,
+    onNotifications: handleIncomingNotifications,
+    onUnreadCount: count => setUnreadCount(count),
+    onError: () => setUsePolling(true),
+  });
+
+  useEffect(() => {
+    if (!usePolling) return;
+    const interval = setInterval(() => {
+      void fetchNotifications(false);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications, usePolling]);
 
   const handleMarkAllRead = async () => {
     if (isUpdating || unreadCount === 0) return;
+    haptics.tap();
     setIsUpdating(true);
     setErrorMessage('');
+    const previousNotifications = notifications;
+    const previousUnread = unreadCount;
+    setNotifications(prev => prev.map(item => ({ ...item, unread: false })));
+    setUnreadCount(0);
     try {
       const response = await fetch('/api/notifications', {
         method: 'PATCH',
@@ -149,16 +227,28 @@ export default function MobileNotificationsClient() {
       if (!response.ok) {
         throw new Error('Failed to mark all as read');
       }
-      setNotifications(prev =>
-        activeFilter === 'unread' ? [] : prev.map(item => ({ ...item, unread: false }))
-      );
-      setUnreadCount(0);
     } catch (error) {
       logger.error('mobile.notifications.mark_all_failed', {
         component: 'MobileNotificationsClient',
         error,
       });
-      setErrorMessage('Unable to mark all as read.');
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        try {
+          await enqueueRequest({
+            url: '/api/notifications',
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markAllAsRead: true }),
+          });
+        } catch {
+          // Ignore queue failures
+        }
+        setErrorMessage('Offline. Mark-all queued and will sync automatically.');
+      } else {
+        setNotifications(previousNotifications);
+        setUnreadCount(previousUnread);
+        setErrorMessage('Unable to mark all as read.');
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -166,8 +256,15 @@ export default function MobileNotificationsClient() {
 
   const handleMarkRead = async (notificationId: string) => {
     if (isUpdating) return;
+    haptics.tap();
     setIsUpdating(true);
     setErrorMessage('');
+    const previousNotifications = notifications;
+    const previousUnread = unreadCount;
+    setNotifications(prev =>
+      prev.map(item => (item.id === notificationId ? { ...item, unread: false } : item))
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
     try {
       const response = await fetch('/api/notifications', {
         method: 'PATCH',
@@ -177,19 +274,28 @@ export default function MobileNotificationsClient() {
       if (!response.ok) {
         throw new Error('Failed to mark as read');
       }
-      setNotifications(prev => {
-        if (activeFilter === 'unread') {
-          return prev.filter(item => item.id !== notificationId);
-        }
-        return prev.map(item => (item.id === notificationId ? { ...item, unread: false } : item));
-      });
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       logger.error('mobile.notifications.mark_failed', {
         component: 'MobileNotificationsClient',
         error,
       });
-      setErrorMessage('Unable to update notification.');
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        try {
+          await enqueueRequest({
+            url: '/api/notifications',
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationIds: [notificationId] }),
+          });
+        } catch {
+          // Ignore queue failures
+        }
+        setErrorMessage('Offline. Update queued and will sync automatically.');
+      } else {
+        setNotifications(previousNotifications);
+        setUnreadCount(previousUnread);
+        setErrorMessage('Unable to update notification.');
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -202,13 +308,20 @@ export default function MobileNotificationsClient() {
     return 'No notifications yet.';
   }, [activeFilter]);
 
+  const filteredNotifications = useMemo(() => {
+    if (activeFilter === 'unread') {
+      return notifications.filter(notification => notification.unread);
+    }
+    return notifications;
+  }, [activeFilter, notifications]);
+
   const groupedNotifications = useMemo(() => {
     const groups = new Map<string, NotificationItem[]>();
 
-    notifications.forEach(notification => {
+    filteredNotifications.forEach(notification => {
       const parsedDate = new Date(notification.createdAt);
       const safeDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
-      const label = formatDayLabel(safeDate);
+      const label = formatDayLabel(safeDate, userTimeZone);
       const bucket = groups.get(label) ?? [];
       if (!groups.has(label)) {
         groups.set(label, bucket);
@@ -220,20 +333,35 @@ export default function MobileNotificationsClient() {
       label,
       items,
     }));
-  }, [notifications]);
+  }, [filteredNotifications, userTimeZone]);
+
+  const iconTone = (type: NotificationItem['type']) => {
+    switch (type) {
+      case 'incident':
+        return 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400';
+      case 'service':
+        return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400';
+      case 'schedule':
+        return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
+      default:
+        return 'bg-[color:var(--bg-secondary)] text-[color:var(--text-muted)]';
+    }
+  };
 
   return (
-    <div className="mobile-notifications-page">
-      <div className="mobile-notifications-header">
+    <div className="flex flex-col gap-4 p-4 pb-24">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="mobile-notifications-title">Notifications</h1>
-          <p className="mobile-notifications-subtitle">
+          <h1 className="text-xl font-bold tracking-tight text-[color:var(--text-primary)]">
+            Notifications
+          </h1>
+          <p className="mt-0.5 text-xs font-medium text-[color:var(--text-muted)]">
             {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
           </p>
         </div>
         <button
           type="button"
-          className="mobile-notifications-action"
+          className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[color:var(--text-secondary)] transition hover:bg-[color:var(--bg-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleMarkAllRead}
           disabled={unreadCount === 0 || isUpdating}
         >
@@ -241,26 +369,33 @@ export default function MobileNotificationsClient() {
         </button>
       </div>
 
-      <div className="mobile-notifications-filters">
+      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
         {filters.map(filter => (
           <MobileFilterChip
             key={filter.value}
             label={filter.label}
             active={activeFilter === filter.value}
-            onClick={() => setActiveFilter(filter.value as 'all' | 'unread')}
+            onClick={() => {
+              haptics.soft();
+              setActiveFilter(filter.value as 'all' | 'unread');
+            }}
           />
         ))}
       </div>
 
-      {errorMessage && <div className="mobile-notifications-error">{errorMessage}</div>}
+      {errorMessage && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
+          {errorMessage}
+        </div>
+      )}
 
       {loading ? (
-        <div className="mobile-notifications-skeleton-list" data-testid="notifications-skeleton">
+        <div className="flex flex-col gap-3" data-testid="notifications-skeleton">
           <NotificationSkeleton />
           <NotificationSkeleton />
           <NotificationSkeleton />
         </div>
-      ) : notifications.length === 0 ? (
+      ) : filteredNotifications.length === 0 ? (
         <MobileEmptyState
           icon={<MobileEmptyIcon />}
           title={emptyMessage}
@@ -269,15 +404,21 @@ export default function MobileNotificationsClient() {
             <>
               <button
                 type="button"
-                className="mobile-empty-action primary"
-                onClick={() => router.push('/m/incidents')}
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition active:scale-[0.98]"
+                onClick={() => {
+                  haptics.tap();
+                  router.push('/m/incidents');
+                }}
               >
                 View incidents
               </button>
               <button
                 type="button"
-                className="mobile-empty-action"
-                onClick={() => router.push('/m/services')}
+                className="inline-flex items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[color:var(--text-secondary)] transition active:scale-[0.98]"
+                onClick={() => {
+                  haptics.tap();
+                  router.push('/m/services');
+                }}
               >
                 Check services
               </button>
@@ -285,68 +426,91 @@ export default function MobileNotificationsClient() {
           }
         />
       ) : (
-        <div className="mobile-notifications-list">
+        <div className="flex flex-col gap-4">
           {groupedNotifications.map(group => (
-            <div key={group.label} className="mobile-notifications-group">
-              <div className="mobile-notifications-group-title">{group.label}</div>
-              {group.items.map(notification => {
-                const href = resolveNotificationHref(notification);
-                const typeLabel = getTypeLabel(notification.type);
-                const typeAction = getTypeAction(notification.type);
-                return (
-                  <MobileCard
-                    key={notification.id}
-                    className={`mobile-notification-card${notification.unread ? ' unread' : ''}`}
-                    onClick={href ? () => router.push(href) : undefined}
-                  >
-                    <div className="mobile-notification-main">
-                      <div className={`mobile-notification-icon tone-${notification.type}`}>
-                        <span>{typeLabel.charAt(0)}</span>
-                      </div>
-                      <div className="mobile-notification-body">
-                        <div className="mobile-notification-title-row">
-                          <span className="mobile-notification-title">{notification.title}</span>
-                          {notification.unread && <span className="mobile-notification-dot" />}
-                        </div>
-                        <p className="mobile-notification-message">{notification.message}</p>
-                        <div className="mobile-notification-meta">
-                          <span>{typeLabel}</span>
-                          <span>-</span>
-                          <span>{notification.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mobile-notification-actions">
-                      {href && (
-                        <button
-                          type="button"
-                          className="mobile-notification-link"
-                          onClick={event => {
-                            event.preventDefault();
-                            event.stopPropagation();
+            <div key={group.label} className="flex flex-col gap-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
+                {group.label}
+              </div>
+              <div className="flex flex-col gap-2">
+                {group.items.map(notification => {
+                  const href = resolveNotificationHref(notification);
+                  const typeLabel = getTypeLabel(notification.type);
+                  const typeAction = getTypeAction(notification.type);
+                  return (
+                    <MobileCard
+                      key={notification.id}
+                      className={notification.unread ? 'ring-1 ring-primary/20' : undefined}
+                      onClick={
+                        href
+                          ? () => {
+                            haptics.soft();
                             router.push(href);
-                          }}
+                          }
+                          : undefined
+                      }
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            'flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold',
+                            iconTone(notification.type)
+                          )}
                         >
-                          {typeAction}
-                        </button>
-                      )}
-                      {notification.unread && (
-                        <button
-                          type="button"
-                          className="mobile-notification-mark"
-                          onClick={event => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            void handleMarkRead(notification.id);
-                          }}
-                        >
-                          Mark read
-                        </button>
-                      )}
-                    </div>
-                  </MobileCard>
-                );
-              })}
+                          {typeLabel.charAt(0)}
+                        </div>
+                        <div className="flex flex-1 flex-col gap-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-semibold text-[color:var(--text-primary)]">
+                              {notification.title}
+                            </span>
+                            {notification.unread && (
+                              <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                            )}
+                          </div>
+                          <p className="text-xs text-[color:var(--text-secondary)]">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] font-medium text-[color:var(--text-muted)]">
+                            <span>{typeLabel}</span>
+                            <span>•</span>
+                            <MobileTime value={notification.createdAt} format="relative-short" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {href && (
+                          <button
+                            type="button"
+                            className="rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-1 text-[11px] font-semibold text-[color:var(--text-secondary)] transition hover:bg-[color:var(--bg-secondary)]"
+                            onClick={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              haptics.soft();
+                              router.push(href);
+                            }}
+                          >
+                            {typeAction}
+                          </button>
+                        )}
+                        {notification.unread && (
+                          <button
+                            type="button"
+                            className="rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-primary/90"
+                            onClick={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void handleMarkRead(notification.id);
+                            }}
+                          >
+                            Mark read
+                          </button>
+                        )}
+                      </div>
+                    </MobileCard>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>

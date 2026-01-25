@@ -2,16 +2,33 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
+import MobileTime from '@/components/mobile/MobileTime';
+import NewIncidentButton from '@/components/mobile/NewIncidentButton';
+import { formatDurationShort } from '@/lib/mobile-time';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MobileDashboard() {
   const session = await getServerSession(await getAuthOptions());
   const userId = session?.user?.id;
+  const lastUpdated = new Date();
 
   // Fetch key metrics and on-call status
+  const metricsWindowDays = 90;
   const { calculateSLAMetrics } = await import('@/lib/sla-server');
-  const slaMetrics = await calculateSLAMetrics({ includeAllTime: true });
+  const slaMetrics = await calculateSLAMetrics({
+    windowDays: metricsWindowDays,
+    includeAllTime: false,
+    includeActiveIncidents: true,
+  });
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const effectiveWindowDays = Math.max(
+    1,
+    Math.ceil((slaMetrics.effectiveEnd.getTime() - slaMetrics.effectiveStart.getTime()) / dayMs)
+  );
+  const windowLabelDays = slaMetrics.isClipped ? effectiveWindowDays : metricsWindowDays;
+  const windowLabelSuffix = slaMetrics.isClipped ? ' (retention limit)' : '';
 
   const [currentOnCallShift] = await Promise.all([
     // Check if current user is on-call
@@ -31,30 +48,24 @@ export default async function MobileDashboard() {
 
   const openIncidents = slaMetrics.openCount;
   const criticalIncidents = slaMetrics.criticalCount;
+  const resolved24h = slaMetrics.resolved24h;
+  const totalActive =
+    slaMetrics.openCount +
+    slaMetrics.acknowledgedCount +
+    slaMetrics.snoozedCount +
+    slaMetrics.suppressedCount;
 
-  // Use the last trend point for 'Today' count
-  const resolvedToday =
-    slaMetrics.trendSeries.length > 0
-      ? slaMetrics.trendSeries[slaMetrics.trendSeries.length - 1].resolveCount
-      : slaMetrics.manualResolvedCount + slaMetrics.autoResolvedCount;
-
-  const recentIncidents = []; // Unused old variable
-
-  // Actually, mobile dashboard wants the actual list of incidents too.
-  // Let's keep the findMany for incidents but use slaMetrics for counts.
-  const incidentList = await prisma.incident.findMany({
-    where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'SNOOZED', 'SUPPRESSED'] } },
-    orderBy: { createdAt: 'desc' },
-    take: 5,
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      urgency: true,
-      createdAt: true,
-      service: { select: { name: true } },
-    },
-  });
+  const activeIncidentList = (slaMetrics.activeIncidentSummaries || [])
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 5)
+    .map(incident => ({
+      id: incident.id,
+      title: incident.title,
+      status: incident.status,
+      urgency: incident.urgency,
+      createdAt: incident.createdAt,
+      service: { name: incident.serviceName },
+    }));
 
   const userName = session?.user?.name?.split(' ')[0] || 'there';
   const hour = new Date().getHours();
@@ -76,6 +87,7 @@ export default async function MobileDashboard() {
       {currentOnCallShift && (
         <Link
           href={`/m/schedules/${currentOnCallShift.scheduleId}`}
+          className="mobile-enter delay-100"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -106,7 +118,8 @@ export default async function MobileDashboard() {
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>You&apos;re On-Call</div>
             <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-              {currentOnCallShift.schedule.name} • Until {formatShiftEnd(currentOnCallShift.end)}
+              {currentOnCallShift.schedule.name} • Until{' '}
+              <MobileTime value={currentOnCallShift.end} format="shift-end" />
             </div>
           </div>
           <svg
@@ -123,20 +136,8 @@ export default async function MobileDashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="mobile-quick-actions">
-        <Link href="/m/incidents/create" className="mobile-quick-action">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
-          </svg>
-          New Incident
-        </Link>
+      <div className="mobile-quick-actions mobile-enter delay-200">
+        <NewIncidentButton />
         <Link href="/m/incidents" className="mobile-quick-action secondary">
           <svg
             width="18"
@@ -153,7 +154,7 @@ export default async function MobileDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="mobile-metrics-grid">
+      <div className="mobile-metrics-grid mobile-enter delay-300">
         <div className="mobile-metric-card">
           <div className="mobile-metric-value">{openIncidents}</div>
           <div className="mobile-metric-label">Open</div>
@@ -166,18 +167,25 @@ export default async function MobileDashboard() {
         </div>
         <div className="mobile-metric-card" style={{ borderLeft: '3px solid #16a34a' }}>
           <div className="mobile-metric-value" style={{ color: '#16a34a' }}>
-            {resolvedToday}
+            {resolved24h}
           </div>
-          <div className="mobile-metric-label">Resolved Today</div>
+          <div className="mobile-metric-label">Resolved (24h)</div>
         </div>
         <div className="mobile-metric-card">
-          <div className="mobile-metric-value">{openIncidents + resolvedToday}</div>
+          <div className="mobile-metric-value">{totalActive}</div>
           <div className="mobile-metric-label">Total Active</div>
         </div>
       </div>
+      <p className="text-[11px] font-medium text-[color:var(--text-muted)] mobile-enter delay-300">
+        Metrics reflect the last {windowLabelDays} days{windowLabelSuffix}. Active counts are
+        current; resolved is the last 24 hours.
+      </p>
+      <p className="text-[11px] text-[color:var(--text-muted)] mobile-enter delay-300">
+        Last updated <MobileTime value={lastUpdated} format="time" />
+      </p>
 
       {/* Recent Incidents */}
-      <div style={{ marginTop: '1.5rem' }}>
+      <div style={{ marginTop: '1.5rem' }} className="mobile-enter delay-400">
         <div className="mobile-section-header">
           <h2 className="mobile-section-title">Recent Incidents</h2>
           <Link href="/m/incidents" className="mobile-section-link">
@@ -186,57 +194,73 @@ export default async function MobileDashboard() {
         </div>
 
         <div className="mobile-incident-list">
-          {incidentList.length === 0 ? (
-            <div
-              style={{
-                padding: '2rem',
-                textAlign: 'center',
-                color: 'var(--text-muted)',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                border: '1px solid var(--border)',
-              }}
-            >
-              <p style={{ margin: 0 }}>No open incidents 🎉</p>
+          {activeIncidentList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[color:var(--border)] bg-[color:var(--bg-primary)] py-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100/50 dark:bg-emerald-900/20">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <path d="M22 4L12 14.01l-3-3" />
+                  </svg>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[color:var(--text-primary)]">All Clear!</h3>
+                <p className="text-xs text-[color:var(--text-muted)]">
+                  No active incidents right now.
+                </p>
+              </div>
             </div>
           ) : (
-            incidentList.map(incident => (
-              <Link
-                key={incident.id}
-                href={`/m/incidents/${incident.id}`}
-                className="mobile-incident-card"
-              >
-                <div className="mobile-incident-header">
-                  <span className={`mobile-incident-status ${incident.status.toLowerCase()}`}>
-                    {incident.status}
-                  </span>
-                  {incident.urgency && (
-                    <span className={`mobile-incident-urgency ${incident.urgency.toLowerCase()}`}>
-                      {incident.urgency}
+            activeIncidentList.map(incident => {
+              const serviceName = incident.service?.name ?? 'Unknown service';
+              return (
+                <Link
+                  key={incident.id}
+                  href={`/m/incidents/${incident.id}`}
+                  className="mobile-incident-card"
+                >
+                  <div className="mobile-incident-header">
+                    <span className={`mobile-incident-status ${incident.status.toLowerCase()}`}>
+                      {incident.status}
                     </span>
-                  )}
-                  {/* Duration Timer */}
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: '0.7rem',
-                      color: 'var(--text-muted)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                    }}
-                  >
-                    ⏱️ {formatOpenDuration(incident.createdAt)}
-                  </span>
-                </div>
-                <div className="mobile-incident-title">{incident.title}</div>
-                <div className="mobile-incident-meta">
-                  <span>{incident.service.name}</span>
-                  <span>•</span>
-                  <span>{formatTimeAgo(incident.createdAt)}</span>
-                </div>
-              </Link>
-            ))
+                    {incident.urgency && (
+                      <span className={`mobile-incident-urgency ${incident.urgency.toLowerCase()}`}>
+                        {incident.urgency}
+                      </span>
+                    )}
+                    {/* Duration Timer */}
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        fontSize: '0.7rem',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                      }}
+                    >
+                      ⏱️ {formatDurationShort(incident.createdAt)}
+                    </span>
+                  </div>
+                  <div className="mobile-incident-title">{incident.title}</div>
+                  <div className="mobile-incident-meta">
+                    <span>{serviceName}</span>
+                    <span>•</span>
+                    <MobileTime value={incident.createdAt} format="relative-short" />
+                  </div>
+                </Link>
+              );
+            })
           )}
         </div>
       </div>
@@ -247,49 +271,4 @@ export default async function MobileDashboard() {
       </Link>
     </div>
   );
-}
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
-}
-
-function formatShiftEnd(date: Date): string {
-  const endDate = new Date(date);
-  const now = new Date();
-  const isToday = endDate.toDateString() === now.toDateString();
-  const isTomorrow = endDate.toDateString() === new Date(now.getTime() + 86400000).toDateString();
-
-  const time = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-
-  if (isToday) return `Today ${time}`;
-  if (isTomorrow) return `Tomorrow ${time}`;
-  return (
-    endDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
-    ` ${time}`
-  );
-}
-
-function formatOpenDuration(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) {
-    const mins = diffMins % 60;
-    return mins > 0 ? `${diffHours}h ${mins}m` : `${diffHours}h`;
-  }
-  const hours = diffHours % 24;
-  return hours > 0 ? `${diffDays}d ${hours}h` : `${diffDays}d`;
 }

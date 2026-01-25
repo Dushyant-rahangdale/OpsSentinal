@@ -9,6 +9,8 @@ import prisma from './prisma';
 import { getPushConfig } from './notification-providers';
 import { getBaseUrl } from './env-validation';
 import { logger } from './logger';
+import { getUserTimeZone } from './timezone';
+import { formatPushTimestamp } from './mobile-time';
 import webpush from 'web-push';
 
 // Configure Web Push if keys are present
@@ -139,8 +141,8 @@ export async function sendPush(
           title: options.title,
           body: options.body,
           data: options.data,
-          icon: '/icons/android-chrome-192x192.png',
-          badge: options.data?.badge || '/icons/android-chrome-192x192.png',
+          icon: '/icons/app-icon-192.png',
+          badge: options.data?.badge || '/icons/app-icon-192.png',
           url: options.data?.url || '/m',
           actions: options.data?.actions ? JSON.parse(options.data.actions) : undefined,
         });
@@ -261,6 +263,7 @@ export async function sendIncidentPush(
         include: {
           service: true,
           assignee: true,
+          team: true,
         },
       }),
     ]);
@@ -272,20 +275,11 @@ export async function sendIncidentPush(
     const baseUrl = getBaseUrl();
     const incidentUrl = `${baseUrl}/incidents/${incidentId}`;
 
-    // Format timestamps
-    const formatTime = (date: Date) => {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }).format(date);
-    };
+    const userTimeZone = getUserTimeZone(user ?? undefined);
 
     // Enhanced emoji logic based on urgency and event
     let titleEmoji = '';
-    let badge = '/icons/android-chrome-192x192.png';
+    let badge = '/icons/app-icon-192.png';
 
     if (eventType === 'triggered') {
       titleEmoji = incident.urgency === 'HIGH' ? '🔴' : incident.urgency === 'MEDIUM' ? '🟡' : '🔵';
@@ -299,20 +293,38 @@ export async function sendIncidentPush(
     const urgencyLabel =
       incident.urgency === 'HIGH' ? 'CRITICAL' : incident.urgency === 'MEDIUM' ? 'MEDIUM' : 'LOW';
 
-    // Build enhanced title
+    const eventLabel =
+      eventType === 'triggered'
+        ? 'Triggered'
+        : eventType === 'acknowledged'
+          ? 'Acknowledged'
+          : 'Resolved';
+
     const title =
       eventType === 'triggered'
-        ? `${titleEmoji} ${urgencyLabel} | ${incident.title}`
-        : eventType === 'acknowledged'
-          ? `${titleEmoji} Acknowledged | ${incident.title}`
-          : `${titleEmoji} Resolved | ${incident.title}`;
+        ? `${titleEmoji} ${urgencyLabel} • ${incident.title}`
+        : `${titleEmoji} ${eventLabel} • ${incident.title}`;
 
-    // Build cleaner body with structured format
-    let body = `Service: ${incident.service.name}`;
-    if (incident.assignee) {
-      body += `\nAssignee: ${incident.assignee.name}`;
+    const eventTime =
+      eventType === 'acknowledged'
+        ? incident.acknowledgedAt || incident.updatedAt || incident.createdAt
+        : eventType === 'resolved'
+          ? incident.resolvedAt || incident.updatedAt || incident.createdAt
+          : incident.createdAt;
+
+    const timeLabel = formatPushTimestamp(eventTime, userTimeZone);
+    const ownerLabel =
+      incident.assignee?.name || incident.assignee?.email || incident.team?.name || 'Unassigned';
+
+    const serviceName = incident.service?.name || 'Unknown service';
+    let body = `Service: ${serviceName}`;
+    body += `\nStatus: ${eventLabel}`;
+    body += `\nOwner: ${ownerLabel}`;
+    body += `\nWhen: ${timeLabel}`;
+
+    if (incident.urgency) {
+      body += `\nUrgency: ${urgencyLabel}`;
     }
-    body += `\nTime: ${formatTime(incident.createdAt)}`;
 
     if (incident.description) {
       const shortDesc =
@@ -326,14 +338,14 @@ export async function sendIncidentPush(
     const actions =
       eventType === 'triggered'
         ? [
-            { action: 'view', title: '👁️ View', icon: '/icons/android-chrome-192x192.png' },
+            { action: 'view', title: '👁️ View', icon: '/icons/app-icon-192.png' },
             {
               action: 'acknowledge',
               title: '✓ Acknowledge',
-              icon: '/icons/android-chrome-192x192.png',
+              icon: '/icons/app-icon-192.png',
             },
           ]
-        : [{ action: 'view', title: '👁️ View', icon: '/icons/android-chrome-192x192.png' }];
+        : [{ action: 'view', title: '👁️ View', icon: '/icons/app-icon-192.png' }];
 
     return await sendPush({
       userId,

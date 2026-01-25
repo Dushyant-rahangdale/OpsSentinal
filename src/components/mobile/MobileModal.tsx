@@ -1,6 +1,8 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { lockBodyScroll } from '@/lib/body-scroll-lock';
+import { trapFocus } from '@/lib/focus-trap';
 
 type MobileModalProps = {
   isOpen: boolean;
@@ -17,14 +19,19 @@ export default function MobileModal({
   children,
   footer,
 }: MobileModalProps) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
+    return lockBodyScroll();
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!dialogRef.current) return;
+    return trapFocus(dialogRef.current, onClose);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -58,6 +65,12 @@ export default function MobileModal({
           flexDirection: 'column',
           animation: 'slideUp 0.3s ease',
         }}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : 'Dialog'}
+        tabIndex={-1}
       >
         {/* Handle */}
         <div
@@ -94,6 +107,7 @@ export default function MobileModal({
                 fontSize: '1.1rem',
                 fontWeight: '700',
               }}
+              id={titleId}
             >
               {title}
             </h2>

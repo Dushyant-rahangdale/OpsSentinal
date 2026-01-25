@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import MobileCard from '@/components/mobile/MobileCard';
+import { ArrowLeft } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,79 +33,51 @@ export default async function MobilePostmortemDetailPage({ params }: PageProps) 
   }
 
   return (
-    <div className="mobile-dashboard">
+    <div className="flex flex-col gap-4 p-4 pb-24">
       {/* Header */}
-      <div>
+      <div className="space-y-2">
         <Link
           href="/m/postmortems"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            color: 'var(--primary-color)',
-            textDecoration: 'none',
-            fontSize: '0.85rem',
-            fontWeight: '600',
-            marginBottom: '0.75rem',
-          }}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ArrowLeft className="h-4 w-4" />
           Back to Postmortems
         </Link>
 
-        <div style={{ marginBottom: '1rem' }}>
+        <div className="space-y-2">
           <div
-            style={{
-              display: 'inline-block',
-              fontSize: '0.7rem',
-              fontWeight: '700',
-              textTransform: 'uppercase',
-              padding: '0.2rem 0.6rem',
-              borderRadius: '4px',
-              background:
-                pm.status === 'PUBLISHED' ? 'var(--badge-success-bg)' : 'var(--badge-neutral-bg)',
-              color:
-                pm.status === 'PUBLISHED'
-                  ? 'var(--badge-success-text)'
-                  : 'var(--badge-neutral-text)',
-              marginBottom: '0.5rem',
-            }}
+            className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase ${
+              pm.status === 'PUBLISHED'
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                : 'bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]'
+            }`}
           >
             {pm.status}
           </div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, lineHeight: 1.3 }}>
+          <h1 className="text-lg font-bold text-[color:var(--text-primary)]">
             Postmortem: {pm.incident.title}
           </h1>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+          <div className="text-xs text-[color:var(--text-muted)]">
             Author: {pm.createdBy.name || pm.createdBy.email}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="flex flex-col gap-3">
         <MobileCard>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
             Executive Summary
           </h3>
-          <div style={{ fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+          <div className="text-sm leading-relaxed text-[color:var(--text-secondary)]">
             {pm.summary || 'No summary provided.'}
           </div>
         </MobileCard>
 
         <MobileCard>
-          <h3 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '0.5rem' }}>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
             Root Cause
           </h3>
-          <div style={{ fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+          <div className="text-sm leading-relaxed text-[color:var(--text-secondary)]">
             {pm.rootCause || 'No root cause analysis provided.'}
           </div>
         </MobileCard>

@@ -73,11 +73,11 @@ export default function MobileListControls({
   };
 
   return (
-    <div className="mobile-list-controls">
+    <div className="flex flex-col gap-3">
       <MobileSearch placeholder={placeholder} value={term} onChange={setTerm} />
 
-      <div className="mobile-filter-toolbar">
-        <div className="mobile-filter-row">
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
           {filters.map(filter => (
             <MobileFilterChip
               key={filter.label}
@@ -87,13 +87,16 @@ export default function MobileListControls({
             />
           ))}
         </div>
-        <div className="mobile-filter-row secondary">
-          <label className="mobile-filter-label" htmlFor="mobile-sort">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-2">
+          <label
+            className="text-[0.7rem] font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
+            htmlFor="mobile-sort"
+          >
             Sort
           </label>
           <select
             id="mobile-sort"
-            className="mobile-filter-select"
+            className="mobile-sort-select w-full flex-1 bg-transparent text-xs font-semibold text-[color:var(--text-primary)] focus:outline-none"
             value={activeSort}
             onChange={event => handleSortChange(event.target.value)}
           >

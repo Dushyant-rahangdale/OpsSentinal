@@ -85,15 +85,7 @@ export function MobileFilterWithParams({
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: '0.5rem',
-        overflowX: 'auto',
-        paddingBottom: '0.5rem',
-        scrollbarWidth: 'none',
-      }}
-    >
+    <div className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none]">
       {filters.map(filter => (
         <MobileFilterChip
           key={filter.label}

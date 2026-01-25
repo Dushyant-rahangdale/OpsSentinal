@@ -70,40 +70,29 @@ export default function PwaInstallCard() {
   if (!shouldShow) return null;
 
   return (
-    <MobileCard padding="md">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Install OpsKnight</div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-          Add the app to your Home Screen for faster access and alerts.
-        </div>
-
-        {deferredPrompt ? (
-          <button
-            onClick={handleInstallClick}
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              background: 'var(--accent)',
-              color: 'var(--accent-foreground, white)',
-              fontWeight: 500,
-              fontSize: '0.85rem',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-          >
-            Install App
-          </button>
-        ) : (
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Tap <span style={{ fontWeight: 600 }}>Share</span>, scroll down, then tap{' '}
-            <span style={{ fontWeight: 600 }}>Add to Home Screen</span>.
-          </div>
-        )}
+    <MobileCard padding="md" className="space-y-2">
+      <div className="text-sm font-semibold text-[color:var(--text-primary)]">
+        Install OpsKnight
       </div>
+      <div className="text-xs text-[color:var(--text-muted)]">
+        Add the app to your Home Screen for faster access and alerts.
+      </div>
+
+      {deferredPrompt ? (
+        <button
+          onClick={handleInstallClick}
+          className="mt-1 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition hover:bg-primary/90"
+        >
+          Install App
+        </button>
+      ) : (
+        <div className="mt-1 text-xs text-[color:var(--text-muted)]">
+          Tap <span className="font-semibold text-[color:var(--text-primary)]">Share</span>, scroll
+          down, then tap{' '}
+          <span className="font-semibold text-[color:var(--text-primary)]">Add to Home Screen</span>
+          .
+        </div>
+      )}
     </MobileCard>
   );
 }

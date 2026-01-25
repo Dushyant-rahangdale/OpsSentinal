@@ -5,54 +5,26 @@ import MobileButton from '@/components/mobile/MobileButton';
 import { logger } from '@/lib/logger';
 
 export default function MobileError({
-    error,
-    reset,
+  error,
+  reset,
 }: {
-    error: Error & { digest?: string };
-    reset: () => void;
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
-    useEffect(() => {
-        logger.error('Mobile error boundary triggered', { error });
-    }, [error]);
+  useEffect(() => {
+    logger.error('Mobile error boundary triggered', { error });
+  }, [error]);
 
-    return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '60vh',
-            padding: '2rem',
-            textAlign: 'center',
-        }}>
-            <div style={{
-                fontSize: '3rem',
-                marginBottom: '1rem',
-            }}>
-                😟
-            </div>
-            <h2 style={{
-                fontSize: '1.25rem',
-                fontWeight: '700',
-                marginBottom: '0.5rem',
-                color: 'var(--text-primary)',
-            }}>
-                Something went wrong
-            </h2>
-            <p style={{
-                fontSize: '0.9rem',
-                color: 'var(--text-muted)',
-                marginBottom: '1.5rem',
-                maxWidth: '280px',
-            }}>
-                We encountered an error while loading this page.
-            </p>
-            <MobileButton
-                onClick={reset}
-                variant="primary"
-            >
-                Try Again
-            </MobileButton>
-        </div>
-    );
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="text-3xl">😟</div>
+      <h2 className="text-xl font-bold text-[color:var(--text-primary)]">Something went wrong</h2>
+      <p className="max-w-[280px] text-sm text-[color:var(--text-muted)]">
+        We encountered an error while loading this page.
+      </p>
+      <MobileButton onClick={reset} variant="primary">
+        Try Again
+      </MobileButton>
+    </div>
+  );
 }

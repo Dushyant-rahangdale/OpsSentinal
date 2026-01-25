@@ -2,7 +2,9 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MobileAvatar } from '@/components/mobile/MobileUtils';
+import { getDefaultAvatar } from '@/lib/avatar';
 import MobileCard from '@/components/mobile/MobileCard';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,130 +48,76 @@ export default async function MobileUserDetailPage({ params }: PageProps) {
   }
 
   return (
-    <div className="mobile-dashboard">
+    <div className="flex flex-col gap-4 p-4 pb-24">
       {/* Back Button */}
       <Link
         href="/m/users"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.375rem',
-          color: 'var(--primary-color)',
-          textDecoration: 'none',
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          marginBottom: '1rem',
-        }}
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <ArrowLeft className="h-4 w-4" />
         Back to Users
       </Link>
 
       {/* User Header */}
-      <MobileCard padding="lg" className="mobile-incident-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <MobileAvatar name={user.name || user.email} size="lg" />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>
-              {user.name || 'Unknown User'}
-            </h1>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
-              {user.email}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: '600',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '6px',
-                  background:
-                    user.role === 'ADMIN' ? 'var(--badge-warning-bg)' : 'var(--bg-secondary)',
-                  color:
-                    user.role === 'ADMIN' ? 'var(--badge-warning-text)' : 'var(--text-secondary)',
-                  textTransform: 'capitalize',
-                }}
-              >
-                {user.role.toLowerCase()}
-              </span>
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: '600',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '6px',
-                  background:
-                    user.status === 'ACTIVE' ? 'var(--badge-success-bg)' : 'var(--badge-error-bg)',
-                  color:
-                    user.status === 'ACTIVE'
-                      ? 'var(--badge-success-text)'
-                      : 'var(--badge-error-text)',
-                }}
-              >
-                {user.status}
-              </span>
-            </div>
+      <MobileCard padding="lg" className="flex items-center gap-4">
+        <MobileAvatar
+          name={user.name || user.email}
+          size="lg"
+          src={user.avatarUrl || getDefaultAvatar(user.gender, user.id)}
+        />
+        <div className="flex-1">
+          <h1 className="text-lg font-bold text-[color:var(--text-primary)]">
+            {user.name || 'Unknown User'}
+          </h1>
+          <p className="mt-1 text-xs text-[color:var(--text-muted)]">{user.email}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span
+              className={`rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                user.role === 'ADMIN'
+                  ? 'bg-[color:var(--badge-warning-bg)] text-[color:var(--badge-warning-text)]'
+                  : 'bg-[color:var(--badge-neutral-bg)] text-[color:var(--badge-neutral-text)]'
+              }`}
+            >
+              {user.role.toLowerCase()}
+            </span>
+            <span
+              className={`rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                user.status === 'ACTIVE'
+                  ? 'bg-[color:var(--badge-success-bg)] text-[color:var(--badge-success-text)]'
+                  : 'bg-[color:var(--badge-error-bg)] text-[color:var(--badge-error-text)]'
+              }`}
+            >
+              {user.status}
+            </span>
           </div>
         </div>
       </MobileCard>
 
       {/* Teams Section */}
-      <div style={{ marginTop: '1.5rem' }}>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: '700', margin: '0 0 0.75rem' }}>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
           Teams ({user.teamMemberships.length})
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="flex flex-col gap-2">
           {user.teamMemberships.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No team memberships</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">No team memberships</p>
           ) : (
             user.teamMemberships.map(membership => (
               <Link
                 key={membership.id}
                 href={`/m/teams/${membership.team.id}`}
-                style={{ textDecoration: 'none' }}
+                className="no-underline"
               >
-                <MobileCard padding="sm">
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontWeight: '600',
-                          fontSize: '0.9rem',
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        {membership.team.name}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {membership.role}
-                      </div>
+                <MobileCard padding="sm" className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-[color:var(--text-primary)]">
+                      {membership.team.name}
                     </div>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--text-muted)"
-                      strokeWidth="2"
-                    >
-                      <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <div className="text-[11px] text-[color:var(--text-muted)]">
+                      {membership.role}
+                    </div>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-[color:var(--text-muted)]" />
                 </MobileCard>
               </Link>
             ))
@@ -178,62 +126,26 @@ export default async function MobileUserDetailPage({ params }: PageProps) {
       </div>
 
       {/* Open Incidents Section */}
-      <div style={{ marginTop: '1.5rem' }}>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: '700', margin: '0 0 0.75rem' }}>
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Open Incidents ({user.assignedIncidents.length})
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="flex flex-col gap-2">
           {user.assignedIncidents.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No open incidents</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">No open incidents</p>
           ) : (
             user.assignedIncidents.map(incident => (
-              <Link
-                key={incident.id}
-                href={`/m/incidents/${incident.id}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <MobileCard padding="sm">
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: '600',
-                          fontSize: '0.85rem',
-                          color: 'var(--text-primary)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {incident.title}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '0.75rem',
-                          color: 'var(--text-muted)',
-                          marginTop: '0.125rem',
-                        }}
-                      >
-                        {incident.service.name} • {incident.status}
-                      </div>
+              <Link key={incident.id} href={`/m/incidents/${incident.id}`} className="no-underline">
+                <MobileCard padding="sm" className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
+                      {incident.title}
                     </div>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--text-muted)"
-                      strokeWidth="2"
-                    >
-                      <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">
+                      {incident.service.name} • {incident.status}
+                    </div>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-[color:var(--text-muted)]" />
                 </MobileCard>
               </Link>
             ))

@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import MobileCard from '@/components/mobile/MobileCard';
 import Link from 'next/link';
+import MobileTime from '@/components/mobile/MobileTime';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,26 +33,13 @@ type Announcement = {
 
 export default async function MobileStatusPage() {
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const metricsWindowDays = 90;
 
   // Get status page config
+  // Get status page config (optional for internal view)
   const statusPage = await prisma.statusPage.findFirst({
     where: { enabled: true },
     include: {
-      services: {
-        where: { showOnPage: true },
-        include: {
-          service: {
-            include: {
-              incidents: {
-                where: { status: { in: ['OPEN', 'ACKNOWLEDGED'] } },
-                select: { id: true, urgency: true },
-              },
-            },
-          },
-        },
-        orderBy: { order: 'asc' },
-      },
       announcements: {
         where: {
           isActive: true,
@@ -63,116 +51,149 @@ export default async function MobileStatusPage() {
     },
   });
 
-  if (!statusPage) {
-    return (
-      <div className="mobile-dashboard">
-        <h1
-          style={{
-            fontSize: '1.25rem',
-            fontWeight: '700',
-            marginBottom: '1rem',
-            color: 'var(--text-primary)',
-          }}
-        >
-          Status
-        </h1>
-        <MobileCard>
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
-            <p>Status page not configured.</p>
-            <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              Contact your administrator to set up a status page.
-            </p>
-          </div>
-        </MobileCard>
-      </div>
-    );
+  // Fetch ALL services for internal dashboard view
+  const services = await prisma.service.findMany({
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, targetAckMinutes: true, targetResolveMinutes: true },
+  });
+
+  // Verify active incidents directly to ensure status accuracy
+  const activeIncidentCounts = await prisma.incident.groupBy({
+    by: ['serviceId', 'urgency'],
+    where: {
+      status: { in: ['OPEN', 'ACKNOWLEDGED'] },
+    },
+    _count: { id: true },
+  });
+
+  const verifiedCounts = new Map<string, { active: number; critical: number }>();
+  for (const group of activeIncidentCounts) {
+    const current = verifiedCounts.get(group.serviceId) || { active: 0, critical: 0 };
+    current.active += group._count.id;
+    if (group.urgency === 'HIGH') current.critical += group._count.id;
+    verifiedCounts.set(group.serviceId, current);
   }
 
   const { calculateSLAMetrics, getExternalStatusLabel } = await import('@/lib/sla-server');
+  const { getServiceDynamicStatus } = await import('@/lib/service-status');
 
-  // Optimized: Use a single call to get metrics for all services
-  const serviceIds = statusPage.services.map(sp => sp.serviceId);
-  const metrics = await calculateSLAMetrics({ serviceId: serviceIds });
+  // Use all services for metrics
+  const serviceIds = services.map(s => s.id);
+  const metrics = await calculateSLAMetrics({
+    serviceId: serviceIds,
+    windowDays: metricsWindowDays,
+    includeActiveIncidents: true,
+    includeIncidents: true,
+    incidentLimit: 50,
+    visibility: 'ALL',
+  });
 
-  const serviceStatuses: ServiceStatus[] = statusPage.services.map(sp => {
-    const serviceMetric = metrics.serviceMetrics.find(m => m.id === sp.serviceId);
+  const dayMs = 24 * 60 * 60 * 1000;
+  const effectiveWindowDays = Math.max(
+    1,
+    Math.ceil((metrics.effectiveEnd.getTime() - metrics.effectiveStart.getTime()) / dayMs)
+  );
+  const windowLabelDays = metrics.isClipped ? effectiveWindowDays : metricsWindowDays;
+  const windowLabelSuffix = metrics.isClipped ? ' (retention limit)' : '';
+
+  const serviceStatuses: ServiceStatus[] = services.map(service => {
+    const serviceMetric = metrics.serviceMetrics.find(m => m.id === service.id);
+    const verified = verifiedCounts.get(service.id) || { active: 0, critical: 0 };
+
+    // Use the higher count between direct DB query and SLA metrics (safety net)
+    const activeCount = Math.max(serviceMetric?.activeCount || 0, verified.active);
+    const criticalCount = Math.max(serviceMetric?.criticalCount || 0, verified.critical);
+
+    // Recalculate status based on verified counts
+    const dynamicStatus = getServiceDynamicStatus({
+      openIncidentCount: activeCount,
+      hasCritical: criticalCount > 0,
+    });
+
     return {
-      id: sp.service.id,
-      name: sp.service.name,
-      status: getExternalStatusLabel(serviceMetric?.dynamicStatus || 'OPERATIONAL'),
-      incidentCount: serviceMetric?.activeCount || 0,
+      id: service.id,
+      name: service.name,
+      status: getExternalStatusLabel(dynamicStatus),
+      incidentCount: activeCount,
     };
   });
+
+  const operationalCount = serviceStatuses.filter(s => s.status === 'OPERATIONAL').length;
+  const degradedCount = serviceStatuses.filter(s => s.status === 'PARTIAL_OUTAGE').length;
+  const majorCount = serviceStatuses.filter(s => s.status === 'MAJOR_OUTAGE').length;
+  const totalServices = serviceStatuses.length;
 
   // Overall status from aggregate metrics
   const overallStatus = getExternalStatusLabel(metrics.dynamicStatus);
 
   // Get active incidents with details
-  const activeIncidents: ActiveIncident[] =
-    serviceIds.length > 0
-      ? await prisma.incident
-          .findMany({
-            where: {
-              serviceId: { in: serviceIds },
-              status: { in: ['OPEN', 'ACKNOWLEDGED'] },
-            },
-            include: {
-              service: { select: { name: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 10,
-          })
-          .then(incidents =>
-            incidents.map(inc => ({
-              id: inc.id,
-              title: inc.title,
-              status: inc.status,
-              urgency: inc.urgency,
-              serviceName: inc.service.name,
-              createdAt: inc.createdAt,
-              updatedAt: inc.updatedAt,
-            }))
-          )
-      : [];
+  const activeIncidents: ActiveIncident[] = (metrics.activeIncidentSummaries || [])
+    .filter(incident => serviceIds.includes(incident.serviceId))
+    .slice(0, 10)
+    .map(incident => ({
+      id: incident.id,
+      title: incident.title,
+      status: incident.status,
+      urgency: incident.urgency ?? 'LOW',
+      serviceName: incident.serviceName,
+      createdAt: incident.createdAt,
+      updatedAt: incident.createdAt,
+    }));
 
   // Get recent resolved incidents (history)
-  const recentHistory =
-    serviceIds.length > 0
-      ? await prisma.incident.findMany({
-          where: {
-            serviceId: { in: serviceIds },
-            status: 'RESOLVED',
-            resolvedAt: { gte: thirtyDaysAgo },
-          },
-          include: {
-            service: { select: { name: true } },
-          },
-          orderBy: { resolvedAt: 'desc' },
-          take: 10,
-        })
-      : [];
+  const recentHistory = (metrics.recentIncidents || [])
+    .filter(
+      incident =>
+        incident.status === 'RESOLVED' &&
+        incident.resolvedAt &&
+        serviceIds.includes(incident.service.id)
+    )
+    .sort(
+      (a, b) => new Date(b.resolvedAt as Date).getTime() - new Date(a.resolvedAt as Date).getTime()
+    )
+    .slice(0, 10);
 
   // Announcements
-  const announcements: Announcement[] = statusPage.announcements.map(a => ({
-    id: a.id,
-    title: a.title,
-    type: a.type,
-    message: a.message,
-    startDate: a.startDate,
-    endDate: a.endDate,
-  }));
+  const announcements: Announcement[] =
+    statusPage?.announcements.map(a => ({
+      id: a.id,
+      title: a.title,
+      type: a.type,
+      message: a.message,
+      startDate: a.startDate,
+      endDate: a.endDate,
+    })) || [];
 
-  const getStatusColor = (status: string) => {
+  const getStatusTone = (status: string) => {
     switch (status) {
       case 'OPERATIONAL':
-        return '#16a34a';
+        return {
+          border: 'border-emerald-500',
+          bg: 'bg-emerald-50/70 dark:bg-emerald-950/40',
+          text: 'text-emerald-700 dark:text-emerald-300',
+          dot: 'bg-emerald-500',
+        };
       case 'PARTIAL_OUTAGE':
-        return '#d97706';
+        return {
+          border: 'border-amber-500',
+          bg: 'bg-amber-50/70 dark:bg-amber-950/40',
+          text: 'text-amber-700 dark:text-amber-300',
+          dot: 'bg-amber-500',
+        };
       case 'MAJOR_OUTAGE':
-        return '#dc2626';
+        return {
+          border: 'border-red-500',
+          bg: 'bg-red-50/70 dark:bg-red-950/40',
+          text: 'text-red-700 dark:text-red-300',
+          dot: 'bg-red-500',
+        };
       default:
-        return '#6b7280';
+        return {
+          border: 'border-slate-400',
+          bg: 'bg-slate-50/70 dark:bg-slate-900/50',
+          text: 'text-slate-600 dark:text-slate-400',
+          dot: 'bg-slate-400',
+        };
     }
   };
 
@@ -204,12 +225,21 @@ export default async function MobileStatusPage() {
 
   const getUrgencyBadge = (urgency: string) => {
     if (urgency === 'HIGH') {
-      return { bg: 'var(--badge-error-bg)', text: 'var(--badge-error-text)', label: 'High' };
+      return {
+        label: 'High',
+        classes: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+      };
     }
     if (urgency === 'MEDIUM') {
-      return { bg: 'var(--badge-warning-bg)', text: 'var(--badge-warning-text)', label: 'Medium' };
+      return {
+        label: 'Medium',
+        classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+      };
     }
-    return { bg: 'var(--badge-success-bg)', text: 'var(--badge-success-text)', label: 'Low' };
+    return {
+      label: 'Low',
+      classes: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    };
   };
 
   const getAnnouncementIcon = (type: string) => {
@@ -225,226 +255,154 @@ export default async function MobileStatusPage() {
     }
   };
 
-  const formatTimeAgo = (date: Date) => {
-    const diff = now.getTime() - new Date(date).getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
-  };
-
   return (
-    <div className="mobile-dashboard">
+    <div className="flex flex-col gap-4 p-4 pb-24">
       {/* Page Title */}
-      <h1
-        style={{
-          fontSize: '1.25rem',
-          fontWeight: '700',
-          marginBottom: '1rem',
-          color: 'var(--text-primary)',
-        }}
-      >
-        {statusPage.name || 'System Status'}
-      </h1>
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-[color:var(--text-primary)]">
+          {statusPage?.name || 'System Health'}
+        </h1>
+        <div className="mt-2 text-[11px] text-[color:var(--text-muted)]">
+          Metrics reflect the last {windowLabelDays} days{windowLabelSuffix}.
+        </div>
+      </div>
 
       {/* Overall Status Banner */}
       <MobileCard
-        style={{
-          marginBottom: '1.25rem',
-          borderLeft: `4px solid ${getStatusColor(overallStatus)}`,
-          background:
-            overallStatus === 'OPERATIONAL'
-              ? 'linear-gradient(135deg, rgba(22, 163, 74, 0.08) 0%, var(--card-bg) 100%)'
-              : overallStatus === 'MAJOR_OUTAGE'
-                ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, var(--card-bg) 100%)'
-                : 'linear-gradient(135deg, rgba(217, 119, 6, 0.08) 0%, var(--card-bg) 100%)',
-        }}
+        className={`relative overflow-hidden border-l-4 ${getStatusTone(overallStatus).border} ${getStatusTone(overallStatus).bg}`}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 0' }}>
-          <div style={{ fontSize: '2.5rem' }}>{getStatusIcon(overallStatus)}</div>
-          <div style={{ flex: 1 }}>
-            <h2
-              style={{
-                fontSize: '1.1rem',
-                fontWeight: '700',
-                margin: 0,
-                color: 'var(--text-primary)',
-              }}
-            >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            background:
+              overallStatus === 'OPERATIONAL'
+                ? 'radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.25), transparent 60%)'
+                : overallStatus === 'PARTIAL_OUTAGE'
+                  ? 'radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.25), transparent 60%)'
+                  : 'radial-gradient(circle at 20% 20%, rgba(239, 68, 68, 0.25), transparent 60%)',
+          }}
+        />
+        <div className="flex items-center gap-3">
+          <div className="text-3xl">{getStatusIcon(overallStatus)}</div>
+          <div className="flex-1">
+            <h2 className="text-base font-bold text-[color:var(--text-primary)]">
               {overallStatus === 'OPERATIONAL'
                 ? 'All Systems Operational'
                 : getStatusLabel(overallStatus)}
             </h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
+            <p className="mt-1 text-xs text-[color:var(--text-muted)]">
               {activeIncidents.length === 0
                 ? 'No active incidents'
                 : `${activeIncidents.length} active incident${activeIncidents.length > 1 ? 's' : ''}`}
             </p>
-            <p
-              style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}
-              suppressHydrationWarning
-            >
-              Updated {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <p className="mt-1 text-[11px] text-[color:var(--text-muted)]" suppressHydrationWarning>
+              Updated <MobileTime value={now} format="time" />
             </p>
           </div>
         </div>
       </MobileCard>
 
+      {/* Status Overview */}
+      <section className="grid grid-cols-2 gap-3">
+        <MobileCard className="space-y-1">
+          <div className="text-xs font-semibold text-[color:var(--text-muted)]">Services</div>
+          <div className="text-2xl font-bold text-[color:var(--text-primary)]">{totalServices}</div>
+          <div className="text-[11px] text-[color:var(--text-muted)]">
+            {operationalCount} ok · {degradedCount} degraded · {majorCount} major
+          </div>
+        </MobileCard>
+        <MobileCard className="space-y-1">
+          <div className="text-xs font-semibold text-[color:var(--text-muted)]">
+            Active Incidents
+          </div>
+          <div className="text-2xl font-bold text-[color:var(--text-primary)]">
+            {metrics.activeCount}
+          </div>
+          <div className="text-[11px] text-[color:var(--text-muted)]">
+            {metrics.criticalCount} critical · {metrics.resolved24h} resolved 24h
+          </div>
+        </MobileCard>
+      </section>
+
       {/* Announcements */}
       {announcements.length > 0 && (
-        <section style={{ marginBottom: '1.5rem' }}>
-          <h3
-            style={{
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              marginBottom: '0.75rem',
-              color: 'var(--text-primary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
+        <section className="flex flex-col gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
             📢 Announcements
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {announcements.map(announcement => (
-              <MobileCard
-                key={announcement.id}
-                padding="sm"
-                style={{
-                  borderLeft: `3px solid ${announcement.type === 'MAINTENANCE' ? '#3b82f6' : announcement.type === 'INCIDENT' ? '#dc2626' : '#6b7280'}`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <span style={{ fontSize: '1.25rem' }}>
-                    {getAnnouncementIcon(announcement.type)}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontWeight: '600',
-                        fontSize: '0.9rem',
-                        color: 'var(--text-primary)',
-                        marginBottom: '0.25rem',
-                      }}
-                    >
-                      {announcement.title}
-                    </div>
-                    <p
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--text-secondary)',
-                        margin: 0,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {announcement.message}
-                    </p>
-                    <div
-                      style={{
-                        fontSize: '0.7rem',
-                        color: 'var(--text-muted)',
-                        marginTop: '0.5rem',
-                      }}
-                    >
-                      {new Date(announcement.startDate).toLocaleDateString()}
-                      {announcement.endDate &&
-                        ` - ${new Date(announcement.endDate).toLocaleDateString()}`}
+          <div className="flex flex-col gap-3">
+            {announcements.map(announcement => {
+              const tone =
+                announcement.type === 'MAINTENANCE'
+                  ? 'border-blue-400'
+                  : announcement.type === 'INCIDENT'
+                    ? 'border-red-400'
+                    : 'border-slate-400';
+              return (
+                <MobileCard key={announcement.id} padding="sm" className={`border-l-4 ${tone}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg">{getAnnouncementIcon(announcement.type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-[color:var(--text-primary)]">
+                        {announcement.title}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs text-[color:var(--text-muted)]">
+                        {announcement.message}
+                      </p>
+                      <div className="mt-2 text-[11px] text-[color:var(--text-muted)]">
+                        <MobileTime value={announcement.startDate} format="date" />
+                        {announcement.endDate && (
+                          <>
+                            {' '}
+                            - <MobileTime value={announcement.endDate} format="date" />
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </MobileCard>
-            ))}
+                </MobileCard>
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* Active Incidents */}
       {activeIncidents.length > 0 && (
-        <section style={{ marginBottom: '1.5rem' }}>
-          <h3
-            style={{
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              marginBottom: '0.75rem',
-              color: 'var(--text-primary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
+        <section className="flex flex-col gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
             🚨 Active Incidents
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="flex flex-col gap-3">
             {activeIncidents.map(incident => {
               const urgencyBadge = getUrgencyBadge(incident.urgency);
+              const urgencyBorder =
+                incident.urgency === 'HIGH'
+                  ? 'border-red-400'
+                  : incident.urgency === 'MEDIUM'
+                    ? 'border-amber-400'
+                    : 'border-emerald-400';
               return (
                 <Link
                   key={incident.id}
                   href={`/m/incidents/${incident.id}`}
-                  style={{ textDecoration: 'none' }}
+                  className="no-underline"
                 >
-                  <MobileCard
-                    padding="sm"
-                    style={{
-                      borderLeft: `3px solid ${
-                        incident.urgency === 'HIGH'
-                          ? '#dc2626'
-                          : incident.urgency === 'MEDIUM'
-                            ? '#d97706'
-                            : '#16a34a'
-                      }`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontWeight: '600',
-                            fontSize: '0.9rem',
-                            color: 'var(--text-primary)',
-                            marginBottom: '0.25rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
+                  <MobileCard padding="sm" className={`border-l-4 ${urgencyBorder}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                           {incident.title}
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <div className="text-xs text-[color:var(--text-muted)]">
                           {incident.serviceName}
                         </div>
-                        <div
-                          style={{
-                            fontSize: '0.75rem',
-                            color: 'var(--text-muted)',
-                            marginTop: '0.25rem',
-                          }}
-                        >
-                          {formatTimeAgo(incident.createdAt)}
+                        <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">
+                          <MobileTime value={incident.createdAt} format="relative-short" />
                         </div>
                       </div>
                       <span
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '4px',
-                          fontSize: '0.7rem',
-                          fontWeight: '600',
-                          background: urgencyBadge.bg,
-                          color: urgencyBadge.text,
-                          flexShrink: 0,
-                        }}
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase ${urgencyBadge.classes}`}
                       >
                         {urgencyBadge.label}
                       </span>
@@ -458,75 +416,34 @@ export default async function MobileStatusPage() {
       )}
 
       {/* Services */}
-      <section style={{ marginBottom: '1.5rem' }}>
-        <h3
-          style={{
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            marginBottom: '0.75rem',
-            color: 'var(--text-primary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}
-        >
+      <section className="flex flex-col gap-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
           🖥️ Services ({serviceStatuses.length})
         </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {serviceStatuses.map(service => (
-            <MobileCard
-              key={service.id}
-              padding="sm"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  flex: 1,
-                  minWidth: 0,
-                }}
+        <div className="flex flex-col gap-2">
+          {serviceStatuses.map(service => {
+            const tone = getStatusTone(service.status);
+            return (
+              <MobileCard
+                key={service.id}
+                padding="sm"
+                className="flex items-center justify-between"
               >
-                <span
-                  style={{
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    backgroundColor: getStatusColor(service.status),
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontWeight: '500',
-                    color: 'var(--text-primary)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {service.name}
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={`h-2.5 w-2.5 rounded-full ${tone.dot}`} />
+                  <span className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
+                    {service.name}
+                  </span>
+                </div>
+                <span className={`text-[11px] font-semibold ${tone.text}`}>
+                  {getStatusLabel(service.status)}
                 </span>
-              </div>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  color: getStatusColor(service.status),
-                  flexShrink: 0,
-                }}
-              >
-                {getStatusLabel(service.status)}
-              </span>
-            </MobileCard>
-          ))}
+              </MobileCard>
+            );
+          })}
           {serviceStatuses.length === 0 && (
             <MobileCard padding="sm">
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>
+              <div className="py-3 text-center text-xs text-slate-500 dark:text-slate-400">
                 No services configured
               </div>
             </MobileCard>
@@ -536,70 +453,25 @@ export default async function MobileStatusPage() {
 
       {/* Recent History */}
       {recentHistory.length > 0 && (
-        <section style={{ marginBottom: '1.5rem' }}>
-          <h3
-            style={{
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              marginBottom: '0.75rem',
-              color: 'var(--text-primary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-          >
-            📜 Recent History (
-            {metrics.isClipped ? `${metrics.retentionDays} days - retention limit` : '30 days'})
+        <section className="flex flex-col gap-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
+            📜 Recent History ({windowLabelDays} days{windowLabelSuffix})
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div className="flex flex-col gap-2">
             {recentHistory.map(incident => (
-              <Link
-                key={incident.id}
-                href={`/m/incidents/${incident.id}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <MobileCard padding="sm" style={{ opacity: 0.85 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: '500',
-                          fontSize: '0.85rem',
-                          color: 'var(--text-primary)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+              <Link key={incident.id} href={`/m/incidents/${incident.id}`} className="no-underline">
+                <MobileCard padding="sm" className="opacity-90">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
                         {incident.title}
                       </div>
-                      <div
-                        style={{
-                          fontSize: '0.75rem',
-                          color: 'var(--text-muted)',
-                          marginTop: '0.15rem',
-                        }}
-                      >
-                        {incident.service.name} • Resolved {formatTimeAgo(incident.resolvedAt!)}
+                      <div className="mt-1 text-[11px] text-[color:var(--text-muted)]">
+                        {incident.service.name} • Resolved{' '}
+                        <MobileTime value={incident.resolvedAt!} format="relative-short" />
                       </div>
                     </div>
-                    <span
-                      style={{
-                        padding: '0.15rem 0.4rem',
-                        borderRadius: '4px',
-                        fontSize: '0.65rem',
-                        fontWeight: '600',
-                        background: 'var(--badge-success-bg)',
-                        color: 'var(--badge-success-text)',
-                        flexShrink: 0,
-                      }}
-                    >
+                    <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                       Resolved
                     </span>
                   </div>
@@ -611,17 +483,8 @@ export default async function MobileStatusPage() {
       )}
 
       {/* Footer */}
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '1rem 0',
-          borderTop: '1px solid var(--border)',
-          marginTop: '1rem',
-        }}
-      >
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-          Powered by OpsKnight
-        </p>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-secondary)] p-3 text-center text-[11px] text-[color:var(--text-muted)]">
+        For deep analysis, use the Analytics page.
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import MobileCard from '@/components/mobile/MobileCard';
+import { haptics } from '@/lib/haptics';
 
 export default function MobileThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -46,6 +47,7 @@ export default function MobileThemeToggle() {
   const isSystemTheme = theme === 'system';
 
   const handleToggle = () => {
+    haptics.impact('light');
     if (isDark) {
       setTheme('light');
     } else {

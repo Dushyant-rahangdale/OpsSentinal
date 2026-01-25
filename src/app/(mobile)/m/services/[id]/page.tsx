@@ -1,6 +1,10 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeft, Plus } from 'lucide-react';
+import MobileCard from '@/components/mobile/MobileCard';
+import MobileTime from '@/components/mobile/MobileTime';
+import type { ReactNode } from 'react';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,71 +48,34 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
   const isHealthy = service._count.incidents === 0;
 
   return (
-    <div className="mobile-dashboard">
+    <div className="flex flex-col gap-4 p-4 pb-24">
       {/* Back Button */}
       <Link
         href="/m/services"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.375rem',
-          color: 'var(--primary-color)',
-          textDecoration: 'none',
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          marginBottom: '1rem',
-        }}
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <ArrowLeft className="h-4 w-4" />
         Back to Services
       </Link>
 
       {/* Service Header */}
-      <div className="mobile-metric-card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+      <MobileCard className="relative overflow-hidden">
+        <div
+          className={`absolute inset-x-0 top-0 h-1 ${isHealthy ? 'bg-gradient-to-r from-emerald-500 to-green-500' : 'bg-gradient-to-r from-red-500 to-rose-500'}`}
+        />
+        <div className="flex items-start gap-3">
           {/* Health Indicator */}
           <div
-            style={{
-              width: '14px',
-              height: '14px',
-              borderRadius: '50%',
-              background: isHealthy ? 'var(--color-success)' : 'var(--color-error)',
-              boxShadow: isHealthy
-                ? '0 0 10px rgba(22, 163, 74, 0.4)'
-                : '0 0 10px rgba(220, 38, 38, 0.4)',
-              marginTop: '4px',
-              flexShrink: 0,
-            }}
+            className={`mt-1 h-3.5 w-3.5 shrink-0 rounded-full ${isHealthy ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'}`}
           />
 
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: '0 0 0.25rem' }}>
-              {service.name}
-            </h1>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-[color:var(--text-primary)]">{service.name}</h1>
             {service.description && (
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {service.description}
-              </p>
+              <p className="mt-1 text-xs text-[color:var(--text-muted)]">{service.description}</p>
             )}
             <div
-              style={{
-                marginTop: '0.75rem',
-                padding: '0.5rem 0.75rem',
-                background: isHealthy ? 'var(--badge-success-bg)' : 'var(--badge-error-bg)',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                color: isHealthy ? 'var(--badge-success-text)' : 'var(--badge-error-text)',
-              }}
+              className={`mt-3 inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold ${isHealthy ? 'bg-[color:var(--badge-success-bg)] text-[color:var(--badge-success-text)]' : 'bg-[color:var(--badge-error-bg)] text-[color:var(--badge-error-text)]'}`}
             >
               {isHealthy
                 ? '✓ Operational'
@@ -116,66 +83,71 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-      </div>
+      </MobileCard>
 
       {/* Quick Actions */}
-      <div style={{ marginBottom: '1rem' }}>
-        <Link
-          href={`/m/incidents/create?serviceId=${service.id}`}
-          className="mobile-quick-action"
-          style={{ display: 'flex', width: '100%' }}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
-          </svg>
-          New Incident
-        </Link>
-      </div>
+      <Link
+        href={`/m/incidents/create?serviceId=${service.id}`}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary/20 transition active:scale-[0.98]"
+      >
+        <Plus className="h-4 w-4" />
+        New Incident
+      </Link>
 
       {/* Service Info */}
-      <div className="mobile-metric-card" style={{ marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '0.85rem', fontWeight: '700', margin: '0 0 0.75rem' }}>Details</h3>
+      <MobileCard>
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
+          Details
+        </h3>
         <DetailRow label="Escalation Policy" value={service.policy?.name || 'None'} />
-        <DetailRow label="Created" value={formatDate(service.createdAt)} />
-      </div>
+        <DetailRow label="Created" value={<MobileTime value={service.createdAt} format="date" />} />
+      </MobileCard>
 
       {/* Open Incidents */}
       {service.incidents.length > 0 && (
-        <div>
-          <div className="mobile-section-header">
-            <h2 className="mobile-section-title">Open Incidents</h2>
-            <Link href={`/m/incidents?serviceId=${service.id}`} className="mobile-section-link">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]">
+              Open Incidents
+            </h2>
+            <Link
+              href={`/m/incidents?serviceId=${service.id}`}
+              className="text-xs font-semibold text-primary"
+            >
               See all →
             </Link>
           </div>
 
-          <div className="mobile-incident-list">
+          <div className="flex flex-col gap-3">
             {service.incidents.map(incident => (
               <Link
                 key={incident.id}
                 href={`/m/incidents/${incident.id}`}
-                className="mobile-incident-card"
+                className="flex flex-col gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] p-4 shadow-sm transition hover:bg-[color:var(--bg-secondary)]"
               >
-                <div className="mobile-incident-header">
-                  <span className={`mobile-incident-status ${incident.status.toLowerCase()}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-md bg-[color:var(--bg-secondary)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[color:var(--text-muted)]">
                     {incident.status}
                   </span>
                   {incident.urgency && (
-                    <span className={`mobile-incident-urgency ${incident.urgency.toLowerCase()}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                        incident.urgency === 'HIGH'
+                          ? 'bg-[color:var(--badge-error-bg)] text-[color:var(--badge-error-text)]'
+                          : incident.urgency === 'MEDIUM'
+                            ? 'bg-[color:var(--badge-warning-bg)] text-[color:var(--badge-warning-text)]'
+                            : 'bg-[color:var(--badge-success-bg)] text-[color:var(--badge-success-text)]'
+                      }`}
+                    >
                       {incident.urgency}
                     </span>
                   )}
                 </div>
-                <div className="mobile-incident-title">{incident.title}</div>
-                <div className="mobile-incident-meta">
-                  <span>{formatTimeAgo(incident.createdAt)}</span>
+                <div className="text-sm font-semibold text-[color:var(--text-primary)]">
+                  {incident.title}
+                </div>
+                <div className="text-[11px] text-[color:var(--text-muted)]">
+                  <MobileTime value={incident.createdAt} format="relative-short" />
                 </div>
               </Link>
             ))}
@@ -186,40 +158,11 @@ export default async function MobileServiceDetailPage({ params }: PageProps) {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '0.5rem 0',
-        borderBottom: '1px solid var(--border)',
-        fontSize: '0.85rem',
-      }}
-    >
-      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ fontWeight: '500' }}>{value}</span>
+    <div className="flex items-center justify-between border-b border-[color:var(--border)] py-2 text-xs">
+      <span className="text-[color:var(--text-muted)]">{label}</span>
+      <span className="font-semibold text-[color:var(--text-primary)]">{value}</span>
     </div>
   );
-}
-
-function formatDate(date: Date): string {
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
 }

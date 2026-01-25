@@ -3,110 +3,105 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { MobileAvatar, MobileEmptyState } from '@/components/mobile/MobileUtils';
 import { MobileSearchWithParams } from '@/components/mobile/MobileSearchParams';
+import { getDefaultAvatar } from '@/lib/avatar';
 import MobileCard from '@/components/mobile/MobileCard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MobileUsersPage({
-    searchParams,
+  searchParams,
 }: {
-    searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }): Promise<JSX.Element> {
-    const params = await searchParams;
-    const query = params.q || '';
+  const params = await searchParams;
+  const query = params.q || '';
 
-    const users = await prisma.user.findMany({
-        where: query ? {
-            OR: [
-                { name: { contains: query, mode: 'insensitive' } },
-                { email: { contains: query, mode: 'insensitive' } },
-            ]
-        } : undefined,
-        orderBy: { name: 'asc' },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-        },
-    });
+  const users = await prisma.user.findMany({
+    where: query
+      ? {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+          ],
+        }
+      : undefined,
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatarUrl: true,
+      gender: true,
+    },
+  });
 
-    return (
-        <div className="mobile-dashboard">
-            {/* Header */}
-            <div style={{ marginBottom: '1rem' }}>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>Users</h1>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
-                    {users.length} member{users.length !== 1 ? 's' : ''}
-                </p>
-            </div>
+  return (
+    <div className="flex flex-col gap-4 p-4 pb-24">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-[color:var(--text-primary)]">Users</h1>
+        <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">
+          {users.length} member{users.length !== 1 ? 's' : ''}
+        </p>
+      </div>
 
-            {/* Search */}
-            <MobileSearchWithParams placeholder="Search users by name or email..." />
-            <div style={{ height: '0.75rem' }} />
+      {/* Search */}
+      <MobileSearchWithParams placeholder="Search users by name or email..." />
 
-            {/* User List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {users.length === 0 ? (
-                    <MobileEmptyState
-                        icon="!"
-                        title="No users found"
-                        description="Invite team members to get started"
-                    />
-                ) : (
-                    users.map((user) => (
-                        <Link key={user.id} href={`/m/users/${user.id}`} style={{ textDecoration: 'none' }}>
-                            <MobileCard padding="md">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <MobileAvatar name={user.name || user.email} />
+      {/* User List */}
+      <div className="flex flex-col gap-3">
+        {users.length === 0 ? (
+          <MobileEmptyState
+            icon="!"
+            title="No users found"
+            description="Invite team members to get started"
+          />
+        ) : (
+          users.map(user => (
+            <Link key={user.id} href={`/m/users/${user.id}`} className="no-underline">
+              <MobileCard className="flex items-center gap-3">
+                <MobileAvatar
+                  name={user.name || user.email}
+                  src={user.avatarUrl || getDefaultAvatar(user.gender, user.id)}
+                />
 
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{
-                                            fontWeight: '600',
-                                            fontSize: '0.95rem',
-                                            color: 'var(--text-primary)',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
-                                        }}>
-                                            {user.name || 'Unknown'}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '0.8rem',
-                                            color: 'var(--text-muted)',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
-                                        }}>
-                                            {user.email}
-                                        </div>
-                                    </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-[color:var(--text-primary)]">
+                    {user.name || 'Unknown'}
+                  </div>
+                  <div className="truncate text-xs text-[color:var(--text-secondary)]">
+                    {user.email}
+                  </div>
+                </div>
 
-                                    <div style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: '600',
-                                        padding: '0.25rem 0.5rem',
-                                        borderRadius: '6px',
-                                        background: user.role === 'ADMIN'
-                                            ? 'var(--badge-warning-bg)'
-                                            : 'var(--bg-secondary)',
-                                        color: user.role === 'ADMIN'
-                                            ? 'var(--badge-warning-text)'
-                                            : 'var(--text-secondary)',
-                                        textTransform: 'capitalize'
-                                    }}>
-                                        {user.role.toLowerCase()}
-                                    </div>
+                <div
+                  className={`rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    user.role === 'ADMIN'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                      : 'bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]'
+                  }`}
+                >
+                  {user.role.toLowerCase()}
+                </div>
 
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-                                        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </div>
-                            </MobileCard>
-                        </Link>
-                    ))
-                )}
-            </div>
-        </div>
-    );
+                <span className="text-[color:var(--text-muted)]">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </MobileCard>
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }

@@ -2,8 +2,6 @@
    Dark Theme Variables
    Extracted from globals.css
    ======================================== */
-:root.dark,
-.dark,
 [data-theme='dark'] {
     /* Slate Dark Theme Override - App Wide */
     --primary: #f8fafc;
@@ -13,6 +11,46 @@
     --primary-light: #94a3b8;
     /* Slate 400 */
     --primary-dark: #ffffff;
+
+    /* Shadcn Dark Mode Overrides - Slate Theme matched (HSL) */
+    --background: 222.2 84% 4.9%;
+    /* Slate 950 #020617 */
+    --foreground: 210 40% 98%;
+    /* Slate 50 #f8fafc */
+    --card: 222.2 84% 4.9%;
+    /* Slate 950 */
+    --card-foreground: 210 40% 98%;
+    /* Slate 50 */
+    --popover: 222.2 84% 4.9%;
+    /* Slate 950 */
+    --popover-foreground: 210 40% 98%;
+    /* Slate 50 */
+    --primary: 210 40% 98%;
+    /* Slate 50 */
+    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Slate 900 */
+    --secondary: 217.2 32.6% 17.5%;
+    /* Slate 800 */
+    --secondary-foreground: 210 40% 98%;
+    /* Slate 50 */
+    --muted: 217.2 32.6% 17.5%;
+    /* Slate 800 */
+    --muted-foreground: 215 20.2% 65.1%;
+    /* Slate 400 */
+    --accent: 217.2 32.6% 17.5%;
+    /* Slate 800 */
+    --accent-foreground: 210 40% 98%;
+    /* Slate 50 */
+    --destructive: 0 62.8% 30.6%;
+    /* Red 900 */
+    --destructive-foreground: 210 40% 98%;
+    /* Slate 50 */
+    --border: 217.2 32.6% 17.5%;
+    /* Slate 800 */
+    --input: 217.2 32.6% 17.5%;
+    /* Slate 800 */
+    --ring: 212.7 26.8% 83.9%;
+    /* Slate 300 */
 
     --secondary: #94a3b8;
     /* Slate 400 */

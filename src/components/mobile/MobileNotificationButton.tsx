@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatRelativeShort } from '@/lib/mobile-time';
 
 interface Notification {
   id: string;
   title: string;
   message: string;
   time: string;
+  createdAt?: string;
   unread: boolean;
   type: 'incident' | 'service' | 'schedule';
   incidentId?: string;
@@ -19,11 +22,13 @@ interface Notification {
  */
 export default function MobileNotificationButton() {
   const router = useRouter();
-  const pathname = usePathname();
+  const { userTimeZone } = useTimezone();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -38,7 +43,10 @@ export default function MobileNotificationButton() {
         // Check if there are new notifications
         if (newNotifications.some((n: Notification) => n.unread)) {
           setHasNewNotification(true);
-          setTimeout(() => setHasNewNotification(false), 3000);
+          if (pulseTimeoutRef.current) {
+            clearTimeout(pulseTimeoutRef.current);
+          }
+          pulseTimeoutRef.current = setTimeout(() => setHasNewNotification(false), 3000);
         }
 
         setNotifications(newNotifications);
@@ -49,20 +57,68 @@ export default function MobileNotificationButton() {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      if (interval) return;
+      fetchNotifications();
+      interval = setInterval(fetchNotifications, 30000);
+    };
+    const stopPolling = () => {
+      if (!interval) return;
+      clearInterval(interval);
+      interval = null;
+    };
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+        pulseTimeoutRef.current = null;
+      }
+    };
   }, [fetchNotifications]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside interaction (touch + mouse)
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleOutside = (e: Event) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    if ('PointerEvent' in window) {
+      document.addEventListener('pointerdown', handleOutside, { passive: true });
+      return () => document.removeEventListener('pointerdown', handleOutside);
+    }
+
+    document.addEventListener('touchstart', handleOutside, { passive: true });
+    document.addEventListener('mousedown', handleOutside);
+    return () => {
+      document.removeEventListener('touchstart', handleOutside);
+      document.removeEventListener('mousedown', handleOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduceMotion(media.matches);
+    update();
+    if (media.addEventListener) {
+      media.addEventListener('change', update);
+      return () => media.removeEventListener('change', update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
   }, []);
 
   const handleNotificationClick = (notification: Notification) => {
@@ -70,6 +126,13 @@ export default function MobileNotificationButton() {
     if (notification.incidentId) {
       router.push(`/m/incidents/${notification.incidentId}`);
     }
+  };
+
+  const getNotificationTime = (notification: Notification) => {
+    if (notification.createdAt) {
+      return formatRelativeShort(notification.createdAt, userTimeZone);
+    }
+    return notification.time;
   };
 
   const markAllAsRead = async () => {
@@ -109,6 +172,12 @@ export default function MobileNotificationButton() {
                     from { opacity: 0; transform: translateY(-4px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
+                @media (prefers-reduced-motion: reduce) {
+                    .notification-btn,
+                    .notification-dropdown {
+                        animation: none !important;
+                    }
+                }
             `}</style>
 
       {/* Notification Button */}
@@ -139,7 +208,7 @@ export default function MobileNotificationButton() {
                 height: '8px',
                 borderRadius: '50%',
                 background: 'var(--primary-color)',
-                animation: 'radarPulse 1.5s ease-out infinite',
+                animation: reduceMotion ? 'none' : 'radarPulse 1.5s ease-out infinite',
               }}
             />
             <span
@@ -149,7 +218,7 @@ export default function MobileNotificationButton() {
                 height: '8px',
                 borderRadius: '50%',
                 background: 'var(--primary-color)',
-                animation: 'radarPulse 1.5s ease-out infinite 0.5s',
+                animation: reduceMotion ? 'none' : 'radarPulse 1.5s ease-out infinite 0.5s',
               }}
             />
           </>
@@ -159,7 +228,7 @@ export default function MobileNotificationButton() {
         <div
           style={{
             position: 'relative',
-            animation: hasNewNotification ? 'iconPop 0.3s ease' : 'none',
+            animation: hasNewNotification && !reduceMotion ? 'iconPop 0.3s ease' : 'none',
           }}
         >
           {/* Radar/Signal Icon */}
@@ -350,7 +419,7 @@ export default function MobileNotificationButton() {
                           opacity: 0.7,
                         }}
                       >
-                        {notification.time}
+                        {getNotificationTime(notification)}
                       </div>
                     </div>
                   </div>

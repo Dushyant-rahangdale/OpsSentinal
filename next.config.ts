@@ -4,7 +4,8 @@ import type { NextConfig } from 'next';
 
 const withPWA = require('@ducanh2912/next-pwa').default({
   dest: 'public',
-  disable: true, // Disable SW/PWA caching to prevent stale navigation in prod
+  // Disable in dev to avoid caching issues; allow explicit override.
+  disable: process.env.NODE_ENV === 'development' || process.env.DISABLE_PWA === 'true',
   register: true,
   skipWaiting: true,
   sw: 'sw.js', // Use auto-generated SW but we'll add push handlers via workbox
@@ -62,6 +63,20 @@ const nextConfig: NextConfig = {
         : false,
   },
   // Security headers
+  images: {
+    localPatterns: [
+      {
+        pathname: '/api/avatar',
+        search: '?**',
+      },
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+      },
+    ],
+  },
   async headers() {
     return [
       {

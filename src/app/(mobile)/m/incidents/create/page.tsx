@@ -5,31 +5,29 @@ import prisma from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export default async function MobileCreateIncidentPage() {
-    const [services, users] = await Promise.all([
-        prisma.service.findMany({
-            orderBy: { name: 'asc' },
-            select: { id: true, name: true }
-        }),
-        prisma.user.findMany({
-            orderBy: { name: 'asc' },
-            select: { id: true, name: true, email: true }
-        }),
-    ]);
+  const [services, users] = await Promise.all([
+    prisma.service.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+    prisma.user.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, email: true },
+    }),
+  ]);
 
-    return (
-        <div className="mobile-dashboard">
-            <div style={{ marginBottom: '1rem' }}>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0 }}>New Incident</h1>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
-                    Report a new issue
-                </p>
-            </div>
+  return (
+    <div className="flex flex-col gap-4 p-4 pb-24">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-[color:var(--text-primary)]">
+          New Incident
+        </h1>
+        <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">
+          Report a new issue
+        </p>
+      </div>
 
-            <MobileCreateIncidentClient
-                services={services}
-                users={users}
-                createAction={createIncident}
-            />
-        </div>
-    );
+      <MobileCreateIncidentClient services={services} users={users} createAction={createIncident} />
+    </div>
+  );
 }

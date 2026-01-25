@@ -228,6 +228,79 @@ body {
     gap: 0.5rem;
 }
 
+/* Mobile shared card styles */
+.mobile-card {
+    background: var(--bg-surface);
+    border-color: var(--border);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.mobile-card--default {
+    box-shadow: var(--shadow-sm);
+}
+
+.mobile-card--elevated {
+    box-shadow: var(--shadow-lg);
+}
+
+.mobile-card--outlined {
+    background: transparent;
+    box-shadow: none;
+}
+
+.mobile-card--gradient {
+    background: var(--gradient-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Mobile search theming */
+.mobile-search {
+    background: var(--bg-secondary);
+    border-color: transparent;
+    color: var(--text-primary);
+}
+
+.mobile-search--focused {
+    background: var(--bg-surface);
+    border-color: var(--accent);
+    box-shadow: var(--shadow-sm);
+}
+
+.mobile-search-icon {
+    color: var(--text-muted);
+}
+
+.mobile-search-input {
+    color: var(--text-primary);
+}
+
+.mobile-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.mobile-search-clear {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.mobile-search-clear:hover {
+    background: var(--border-hover);
+}
+
+.mobile-search-suggestions {
+    background: var(--bg-surface);
+    border-color: var(--border);
+}
+
+.mobile-search-suggestion {
+    color: var(--text-secondary);
+}
+
+.mobile-search-suggestion:hover {
+    background: var(--bg-secondary);
+}
+
 /* Mobile Content Area */
 .mobile-content {
     flex: 1;
@@ -580,6 +653,12 @@ body {
     background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.05) 0%, transparent 100%);
 }
 
+[data-theme='dark'] .mobile-nav-item.active {
+    color: #ffffff;
+    /* Make active icon white in dark mode for visibility */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+}
+
 .mobile-nav-item.active::before {
     content: '';
     position: absolute;
@@ -590,6 +669,11 @@ body {
     border-radius: 0 0 4px 4px;
     background: var(--primary-color);
     box-shadow: 0 1px 6px rgba(var(--primary-rgb), 0.4);
+}
+
+[data-theme='dark'] .mobile-nav-item.active::before {
+    background: #ffffff;
+    box-shadow: 0 1px 6px rgba(255, 255, 255, 0.4);
 }
 
 .mobile-nav-icon {
@@ -1997,12 +2081,18 @@ body {
 
 /* Dark mode refinements */
 [data-theme='dark'] .mobile-metric-card,
+[data-theme='dark'] .mobile-card,
 [data-theme='dark'] .mobile-incident-card,
 [data-theme='dark'] .mobile-incidents-pagination,
-[data-theme='dark'] .mobile-notification-card {
-    background: rgba(15, 23, 42, 0.7);
+[data-theme='dark'] .mobile-notification-card,
+[data-theme='dark'] .mobile-qs-panel,
+[data-theme='dark'] .mobile-qs-item,
+[data-theme='dark'] .mobile-menu-group,
+[data-theme='dark'] .mobile-menu-item {
+    background: var(--bg-surface) !important;
     border-color: rgba(148, 163, 184, 0.18);
     box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+    color: var(--text-primary) !important;
 }
 
 [data-theme='dark'] .mobile-filter-select,
@@ -2051,6 +2141,31 @@ body {
 
     100% {
         transform: translateX(120%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .mobile-route-buffer-skeleton,
+    .mobile-route-buffer-bar,
+    .mobile-nav-badge,
+    .mobile-header-status::before,
+    .mobile-status-icon svg path:last-child,
+    .mobile-qs-loading-bar span,
+    .mobile-swipe-navigator[data-hint='true']::before,
+    .mobile-swipe-navigator[data-hint='true']::after {
+        animation: none !important;
+    }
+
+    .mobile-route-transition,
+    .mobile-nav-item,
+    .mobile-card,
+    .mobile-search,
+    .mobile-more-hero::before,
+    .mobile-more-hero::after,
+    .mobile-incident-card,
+    .mobile-metric-card {
+        transition: none !important;
     }
 }
 
@@ -2931,4 +3046,87 @@ a {
 [data-theme='dark'] .icon-gray {
     background: rgba(107, 114, 128, 0.15);
     color: #d1d5db;
+}
+
+/* Force transparency on mobile inputs to prevent white background override */
+.mobile-sort-select {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    appearance: none;
+    -webkit-appearance: none;
+    border: none !important;
+}
+
+.mobile-sort-select {
+    padding-right: 20px;
+}
+
+/* GLOBAL FORM RESET FOR MOBILE */
+/* Overrides any desktop global styles causing white backgrounds */
+.mobile-shell input:not([type="radio"]):not([type="checkbox"]):not(.mobile-search-input):not(.mobile-sort-select),
+.mobile-shell select:not(.mobile-sort-select),
+.mobile-shell textarea {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border);
+}
+
+.mobile-shell input::placeholder,
+.mobile-shell textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Fix browser autofill white background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--bg-surface) inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+
+
+/* Ensure Search wrapper is dark in dark mode */
+[data-theme='dark'] .mobile-search {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Entry Animations */
+@keyframes mobileEnter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mobile-enter {
+    opacity: 0;
+    animation: mobileEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.delay-100 {
+    animation-delay: 100ms;
+}
+
+.delay-200 {
+    animation-delay: 200ms;
+}
+
+.delay-300 {
+    animation-delay: 300ms;
+}
+
+.delay-400 {
+    animation-delay: 400ms;
+}
+
+.delay-500 {
+    animation-delay: 500ms;
 }

@@ -125,7 +125,7 @@ export default function LoginClient({
             ) : (
               <span className="flex items-center gap-3">
                 <span className="w-1.5 h-6 bg-white/20 rounded-full" />
-                System Authentication
+                OpsKnight Secure Access
               </span>
             )}
           </h2>
@@ -208,7 +208,7 @@ export default function LoginClient({
                       if (error) setError('');
                     }}
                     onBlur={() => setEmailTouched(true)}
-                    className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
+                    className="auth-input w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
                     placeholder="you@opsknight.com"
                     disabled={isSubmitting || isSuccess}
                   />
@@ -263,7 +263,7 @@ export default function LoginClient({
                         setCapsLockOn(false);
                       }
                     }}
-                    className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
+                    className="auth-input w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
                     placeholder="••••••••"
                     disabled={isSubmitting || isSuccess}
                   />

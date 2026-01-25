@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 // Status Badge component
 export function MobileStatusBadge({
@@ -14,51 +15,40 @@ export function MobileStatusBadge({
   const statusConfig = (() => {
     switch (status) {
       case 'open':
-        return { bg: 'var(--badge-error-bg)', color: 'var(--badge-error-text)', label: 'Open' };
+        return {
+          label: 'Open',
+          classes: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+        };
       case 'acknowledged':
         return {
-          bg: 'var(--badge-warning-bg)',
-          color: 'var(--badge-warning-text)',
           label: 'Acknowledged',
+          classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
         };
       case 'resolved':
         return {
-          bg: 'var(--badge-success-bg)',
-          color: 'var(--badge-success-text)',
           label: 'Resolved',
+          classes: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
         };
       case 'snoozed':
         return {
-          bg: 'var(--badge-snoozed-bg)',
-          color: 'var(--badge-snoozed-text)',
           label: 'Snoozed',
+          classes: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
         };
       case 'suppressed':
         return {
-          bg: 'var(--badge-neutral-bg)',
-          color: 'var(--badge-neutral-text)',
           label: 'Suppressed',
+          classes: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
         };
     }
   })();
 
-  // ...
-
-  const sizeStyles =
-    size === 'sm'
-      ? { padding: '0.15rem 0.4rem', fontSize: '0.6rem' }
-      : { padding: '0.2rem 0.5rem', fontSize: '0.7rem' };
-
   return (
     <span
-      style={{
-        ...sizeStyles,
-        background: statusConfig.bg,
-        color: statusConfig.color,
-        fontWeight: '700',
-        borderRadius: '4px',
-        textTransform: 'uppercase',
-      }}
+      className={cn(
+        'inline-flex items-center rounded-md font-bold uppercase tracking-wide',
+        size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]',
+        statusConfig.classes
+      )}
     >
       {statusConfig.label}
     </span>
@@ -76,29 +66,21 @@ export function MobileUrgencyBadge({
   const urgencyConfig = (() => {
     switch (urgency) {
       case 'high':
-        return { bg: 'var(--badge-error-bg)', color: 'var(--badge-error-text)' };
+        return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
       case 'medium':
-        return { bg: 'var(--badge-warning-bg)', color: 'var(--badge-warning-text)' };
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
       case 'low':
-        return { bg: 'var(--badge-success-bg)', color: 'var(--badge-success-text)' };
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
     }
   })();
 
-  const sizeStyles =
-    size === 'sm'
-      ? { padding: '0.1rem 0.35rem', fontSize: '0.55rem' }
-      : { padding: '0.15rem 0.4rem', fontSize: '0.6rem' };
-
   return (
     <span
-      style={{
-        ...sizeStyles,
-        background: urgencyConfig.bg,
-        color: urgencyConfig.color,
-        fontWeight: '700',
-        borderRadius: '999px',
-        textTransform: 'uppercase',
-      }}
+      className={cn(
+        'inline-flex items-center rounded-full font-bold uppercase tracking-wide',
+        size === 'sm' ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]',
+        urgencyConfig
+      )}
     >
       {urgency}
     </span>
@@ -115,23 +97,30 @@ export function MobileAvatar({
   src?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
-  const sizeStyle = (() => {
+  const sizeClass = (() => {
     switch (size) {
       case 'sm':
-        return { size: 28, fontSize: '0.7rem' };
+        return 'h-7 w-7 text-[11px]';
       case 'md':
-        return { size: 36, fontSize: '0.85rem' };
+        return 'h-9 w-9 text-[13px]';
       case 'lg':
-        return { size: 48, fontSize: '1rem' };
+        return 'h-12 w-12 text-base';
       case 'xl':
-        return { size: 64, fontSize: '1.25rem' };
+        return 'h-16 w-16 text-lg';
     }
   })();
-  const avatarStyle = {
-    width: `${sizeStyle.size}px`,
-    height: `${sizeStyle.size}px`,
-    fontSize: sizeStyle.fontSize,
-  };
+  const imageSize = (() => {
+    switch (size) {
+      case 'sm':
+        return 28;
+      case 'md':
+        return 36;
+      case 'lg':
+        return 48;
+      case 'xl':
+        return 64;
+    }
+  })();
   const initials = name
     .split(' ')
     .map(n => n[0])
@@ -144,25 +133,21 @@ export function MobileAvatar({
       <Image
         src={src}
         alt={name}
-        width={sizeStyle.size}
-        height={sizeStyle.size}
-        style={{ borderRadius: '50%', objectFit: 'cover' }}
+        width={imageSize}
+        height={imageSize}
+        className={cn('rounded-full object-cover', sizeClass)}
+        unoptimized
       />
     );
   }
 
   return (
     <div
-      style={{
-        ...avatarStyle,
-        borderRadius: '50%',
-        background: 'var(--gradient-primary)',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: '700',
-      }}
+      className={cn(
+        'flex items-center justify-center rounded-full font-bold text-white',
+        sizeClass,
+        'bg-gradient-to-br from-slate-200 to-slate-50 dark:from-slate-700 dark:to-slate-900 text-[color:var(--text-primary)]'
+      )}
     >
       {initials}
     </div>
@@ -179,38 +164,35 @@ export function MobileHealthIndicator({
   size?: 'sm' | 'md' | 'lg';
   pulse?: boolean;
 }) {
-  const color = (() => {
+  const colorClass = (() => {
     switch (status) {
       case 'healthy':
-        return '#16a34a';
+        return 'bg-emerald-500';
       case 'degraded':
-        return '#d97706';
+        return 'bg-amber-500';
       case 'critical':
-        return '#dc2626';
+        return 'bg-red-500';
     }
   })();
   const indicatorSize = (() => {
     switch (size) {
       case 'sm':
-        return '8px';
+        return 'h-2 w-2';
       case 'md':
-        return '10px';
+        return 'h-2.5 w-2.5';
       case 'lg':
-        return '12px';
+        return 'h-3 w-3';
     }
   })();
 
   return (
     <span
-      style={{
-        display: 'inline-block',
-        width: indicatorSize,
-        height: indicatorSize,
-        borderRadius: '50%',
-        background: color,
-        boxShadow: pulse ? `0 0 8px ${color}66` : 'none',
-        animation: pulse && status !== 'healthy' ? 'pulse 2s infinite' : 'none',
-      }}
+      className={cn(
+        'inline-block rounded-full',
+        indicatorSize,
+        colorClass,
+        pulse && status !== 'healthy' && 'animate-pulse'
+      )}
     />
   );
 }
@@ -234,46 +216,29 @@ export function MobileProgressBar({
   const barColor = (() => {
     switch (variant) {
       case 'primary':
-        return 'var(--primary-color)';
+        return 'bg-primary';
       case 'success':
-        return '#16a34a';
+        return 'bg-emerald-500';
       case 'warning':
-        return '#d97706';
+        return 'bg-amber-500';
       case 'danger':
-        return '#dc2626';
+        return 'bg-red-500';
     }
   })();
 
   return (
     <div>
       <div
-        style={{
-          width: '100%',
-          height,
-          background: 'var(--border)',
-          borderRadius: '999px',
-          overflow: 'hidden',
-        }}
+        className="w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+        style={{ height }}
       >
         <div
-          style={{
-            width: `${percentage}%`,
-            height: '100%',
-            background: barColor,
-            borderRadius: '999px',
-            transition: 'width 0.3s ease',
-          }}
+          className={cn('h-full rounded-full transition-all', barColor)}
+          style={{ width: `${percentage}%` }}
         />
       </div>
       {showLabel && (
-        <div
-          style={{
-            fontSize: '0.75rem',
-            color: 'var(--text-muted)',
-            marginTop: '0.25rem',
-            textAlign: 'right',
-          }}
-        >
+        <div className="mt-1 text-right text-[11px] font-medium text-[color:var(--text-muted)]">
           {Math.round(percentage)}%
         </div>
       )}
@@ -294,18 +259,22 @@ export function MobileEmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="mobile-empty-state">
-      {icon && <div className="mobile-empty-icon">{icon}</div>}
-      <h3 className="mobile-empty-title">{title}</h3>
-      {description && <p className="mobile-empty-desc">{description}</p>}
-      {action && <div className="mobile-empty-actions">{action}</div>}
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[color:var(--border)] bg-[color:var(--bg-secondary)] px-4 py-10 text-center">
+      {icon && (
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--bg-secondary)] text-2xl text-[color:var(--text-muted)]">
+          {icon}
+        </div>
+      )}
+      <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">{title}</h3>
+      {description && <p className="text-xs text-[color:var(--text-muted)]">{description}</p>}
+      {action && <div className="mt-2 flex flex-col gap-2">{action}</div>}
     </div>
   );
 }
 
 export function MobileEmptyIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
       <path
         d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3Z"
         fill="none"
@@ -348,12 +317,13 @@ export function MobileSkeleton({
 
   return (
     <div
-      className={className}
+      className={cn('animate-[shimmer_1.5s_infinite]', className)}
       style={{
         width: variant === 'circular' ? height : width,
         height,
         borderRadius,
-        background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
+        background:
+          'linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-surface) 50%, var(--bg-secondary) 75%)',
         backgroundSize: '200% 100%',
         animation: 'shimmer 1.5s infinite',
       }}
@@ -382,30 +352,13 @@ export function MobileDivider({
 
   if (label) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          margin: `${spacingValue} 0`,
-        }}
-      >
-        <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
-          {label}
-        </span>
-        <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+      <div className="flex items-center gap-3" style={{ margin: `${spacingValue} 0` }}>
+        <div className="h-px flex-1 bg-[color:var(--border)]" />
+        <span className="text-[11px] font-semibold text-[color:var(--text-muted)]">{label}</span>
+        <div className="h-px flex-1 bg-[color:var(--border)]" />
       </div>
     );
   }
 
-  return (
-    <div
-      style={{
-        height: '1px',
-        background: 'var(--border)',
-        margin: `${spacingValue} 0`,
-      }}
-    />
-  );
+  return <div className="h-px bg-[color:var(--border)]" style={{ margin: `${spacingValue} 0` }} />;
 }

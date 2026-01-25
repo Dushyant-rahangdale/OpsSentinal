@@ -1,217 +1,142 @@
 'use client';
 
-import { ReactNode, ButtonHTMLAttributes, CSSProperties } from 'react';
+import { ReactNode, ButtonHTMLAttributes } from 'react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 type MobileButtonProps = {
-    children: ReactNode;
-    variant?: ButtonVariant;
-    size?: ButtonSize;
-    fullWidth?: boolean;
-    icon?: ReactNode;
-    iconPosition?: 'left' | 'right';
-    loading?: boolean;
-    href?: string;
-    className?: string;
-    style?: CSSProperties;
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'style'>;
+  children: ReactNode;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  icon?: ReactNode;
+  iconPosition?: 'left' | 'right';
+  loading?: boolean;
+  href?: string;
+  className?: string;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
 
-const variantStyles: Record<ButtonVariant, CSSProperties> = {
-    primary: {
-        background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%)',
-        color: 'white',
-        border: 'none',
-        boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35), 0 1px 3px rgba(0, 0, 0, 0.1)',
-    },
-    secondary: {
-        background: 'var(--bg-secondary)',
-        color: 'var(--text-primary)',
-        border: '1px solid var(--border)',
-        boxShadow: 'none',
-    },
-    danger: {
-        background: '#fee2e2',
-        color: '#dc2626',
-        border: 'none',
-        boxShadow: 'none',
-    },
-    success: {
-        background: '#dcfce7',
-        color: '#16a34a',
-        border: 'none',
-        boxShadow: 'none',
-    },
-    warning: {
-        background: '#fef3c7',
-        color: '#d97706',
-        border: 'none',
-        boxShadow: 'none',
-    },
-    ghost: {
-        background: 'transparent',
-        color: 'var(--text-secondary)',
-        border: 'none',
-        boxShadow: 'none',
-    },
+const variantStyles: Record<ButtonVariant, string> = {
+  primary: 'bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90',
+  secondary:
+    'border border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)]',
+  danger: 'bg-red-600 text-white hover:bg-red-700',
+  success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+  warning: 'bg-amber-500 text-white hover:bg-amber-600',
+  ghost: 'bg-transparent text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)]',
 };
 
-const sizeStyles: Record<ButtonSize, CSSProperties> = {
-    sm: {
-        padding: '0.5rem 0.875rem',
-        fontSize: '0.8rem',
-        borderRadius: '8px',
-    },
-    md: {
-        padding: '0.75rem 1.25rem',
-        fontSize: '0.875rem',
-        borderRadius: '10px',
-    },
-    lg: {
-        padding: '1rem 1.5rem',
-        fontSize: '1rem',
-        borderRadius: '12px',
-    },
+const sizeStyles: Record<ButtonSize, string> = {
+  sm: 'px-3 py-1.5 text-xs rounded-lg',
+  md: 'px-4 py-2.5 text-sm rounded-xl',
+  lg: 'px-5 py-3 text-base rounded-2xl',
 };
 
 export default function MobileButton({
-    children,
-    variant = 'primary',
-    size = 'md',
-    fullWidth = false,
-    icon,
-    iconPosition = 'left',
-    loading = false,
-    href,
-    className = '',
-    style = {},
-    disabled,
-    ...props
+  children,
+  variant = 'primary',
+  size = 'md',
+  fullWidth = false,
+  icon,
+  iconPosition = 'left',
+  loading = false,
+  href,
+  className = '',
+  disabled,
+  ...props
 }: MobileButtonProps) {
-    const baseStyles: CSSProperties = {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.5rem',
-        fontWeight: '600',
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        opacity: disabled || loading ? 0.6 : 1,
-        transition: 'all 0.2s ease',
-        width: fullWidth ? '100%' : 'auto',
-        textDecoration: 'none',
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-        ...style,
-    };
+  const baseClasses = cn(
+    'inline-flex items-center justify-center gap-2 font-semibold transition active:scale-[0.98]',
+    disabled || loading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+    fullWidth && 'w-full',
+    variantStyles[variant],
+    sizeStyles[size],
+    className
+  );
 
-    const content = (
+  const content = (
+    <>
+      {loading ? (
+        <span className="flex items-center">
+          <LoadingSpinner />
+        </span>
+      ) : (
         <>
-            {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center' }}>
-                    <LoadingSpinner />
-                </span>
-            ) : (
-                <>
-                    {icon && iconPosition === 'left' && <span style={{ display: 'flex' }}>{icon}</span>}
-                    <span>{children}</span>
-                    {icon && iconPosition === 'right' && <span style={{ display: 'flex' }}>{icon}</span>}
-                </>
-            )}
+          {icon && iconPosition === 'left' && <span className="flex">{icon}</span>}
+          <span>{children}</span>
+          {icon && iconPosition === 'right' && <span className="flex">{icon}</span>}
         </>
-    );
+      )}
+    </>
+  );
 
-    if (href && !disabled) {
-        return (
-            <Link href={href} className={className} style={baseStyles}>
-                {content}
-            </Link>
-        );
-    }
-
+  if (href && !disabled) {
     return (
-        <button
-            className={className}
-            style={baseStyles}
-            disabled={disabled || loading}
-            {...props}
-        >
-            {content}
-        </button>
+      <Link href={href} className={baseClasses}>
+        {content}
+      </Link>
     );
+  }
+
+  return (
+    <button className={baseClasses} disabled={disabled || loading} {...props}>
+      {content}
+    </button>
+  );
 }
 
 function LoadingSpinner() {
-    return (
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            style={{ animation: 'spin 1s linear infinite' }}
-        >
-            <circle
-                cx="8"
-                cy="8"
-                r="6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeDasharray="28"
-                strokeDashoffset="8"
-            />
-        </svg>
-    );
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="animate-spin">
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray="28"
+        strokeDashoffset="8"
+      />
+    </svg>
+  );
 }
 
 // Icon Button variant
 export function MobileIconButton({
-    icon,
-    variant = 'ghost',
-    size = 'md',
-    badge,
-    ...props
+  icon,
+  variant = 'ghost',
+  size = 'md',
+  badge,
+  ...props
 }: {
-    icon: ReactNode;
-    badge?: number | string;
+  icon: ReactNode;
+  badge?: number | string;
 } & Omit<MobileButtonProps, 'children'>) {
-    const iconSizes: Record<ButtonSize, CSSProperties> = {
-        sm: { padding: '0.5rem', width: '36px', height: '36px' },
-        md: { padding: '0.625rem', width: '42px', height: '42px' },
-        lg: { padding: '0.75rem', width: '48px', height: '48px' },
-    };
+  const iconSizes: Record<ButtonSize, string> = {
+    sm: 'h-9 w-9',
+    md: 'h-11 w-11',
+    lg: 'h-12 w-12',
+  };
 
-    return (
-        <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <MobileButton
-                variant={variant}
-                size={size}
-                style={{ ...iconSizes[size], borderRadius: '50%' }}
-                {...props}
-            >
-                {icon}
-            </MobileButton>
-            {badge !== undefined && (
-                <span style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    minWidth: '18px',
-                    height: '18px',
-                    padding: '0 5px',
-                    background: '#dc2626',
-                    color: 'white',
-                    fontSize: '0.65rem',
-                    fontWeight: '700',
-                    borderRadius: '999px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    {badge}
-                </span>
-            )}
-        </div>
-    );
+  return (
+    <div className="relative inline-flex">
+      <MobileButton
+        variant={variant}
+        size={size}
+        className={cn('rounded-full p-0', iconSizes[size])}
+        {...props}
+      >
+        {icon}
+      </MobileButton>
+      {badge !== undefined && (
+        <span className="absolute -right-1 -top-1 flex h-5 min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold text-white">
+          {badge}
+        </span>
+      )}
+    </div>
+  );
 }

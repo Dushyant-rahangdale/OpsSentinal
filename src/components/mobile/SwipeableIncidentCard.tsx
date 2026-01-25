@@ -2,294 +2,288 @@
 
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { useTimezone } from '@/contexts/TimezoneContext';
+import { formatRelativeShort } from '@/lib/mobile-time';
+import { haptics } from '@/lib/haptics';
+import { motion, useMotionValue, useTransform, PanInfo, useAnimation } from 'framer-motion';
 
 interface SwipeableIncidentCardProps {
-    incident: {
-        id: string;
-        title: string;
-        status: string;
-        urgency?: string | null;
-        createdAt: string | Date;
-        service?: { name: string } | null;
-    };
-    onAcknowledge?: (id: string) => void;
-    onResolve?: (id: string) => void;
-    isUpdating?: boolean;
+  incident: {
+    id: string;
+    title: string;
+    status: string;
+    urgency?: string | null;
+    createdAt: string | Date;
+    service?: { name: string } | null;
+  };
+  onAcknowledge?: (id: string) => void;
+  onSnooze?: (id: string) => void;
+  onResolve?: (id: string) => void;
+  isUpdating?: boolean;
 }
 
-/**
- * Swipeable incident card for mobile
- * Swipe left to acknowledge, swipe right to resolve
- */
+const resolveStatusStyle = (statusKey: string) => {
+  switch (statusKey) {
+    case 'open':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
+    case 'acknowledged':
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+    case 'resolved':
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
+    case 'snoozed':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400';
+    case 'suppressed':
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+    default:
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+  }
+};
+
+const resolveUrgencyStyle = (urgencyKey: string) => {
+  switch (urgencyKey) {
+    case 'high':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
+    case 'medium':
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+    case 'low':
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
+    default:
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+  }
+};
+
 export default function SwipeableIncidentCard({
-    incident,
-    onAcknowledge,
-    onResolve,
-    isUpdating = false
+  incident,
+  onAcknowledge,
+  onSnooze,
+  onResolve,
+  isUpdating = false,
 }: SwipeableIncidentCardProps) {
-    const router = useRouter();
-    const cardRef = useRef<HTMLDivElement>(null);
-    const [translateX, setTranslateX] = useState(0);
-    const translateXRef = useRef(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const isDraggingRef = useRef(false);
-    const startX = useRef(0);
-    const threshold = 80;
+  const router = useRouter();
+  const { userTimeZone } = useTimezone();
+  const [swipedAction, setSwipedAction] = useState<'left' | 'right' | null>(null);
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        startX.current = e.touches[0].clientX;
-        isDraggingRef.current = true;
-        setIsDragging(true);
-    };
+  const statusKey = incident.status.toLowerCase();
+  const urgencyKey = (incident.urgency || 'low').toLowerCase();
+  const createdAt = new Date(incident.createdAt);
+  const timeAgo = formatRelativeShort(createdAt, userTimeZone);
+  const statusStyle = resolveStatusStyle(statusKey);
+  const urgencyStyle = resolveUrgencyStyle(urgencyKey);
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isDraggingRef.current) return;
-        const deltaX = e.touches[0].clientX - startX.current;
-        // Limit swipe range
-        const maxSwipe = 120;
-        const newTranslateX = Math.max(-maxSwipe, Math.min(maxSwipe, deltaX));
-        translateXRef.current = newTranslateX;
-        setTranslateX(newTranslateX);
-    };
+  const controls = useAnimation();
+  const x = useMotionValue(0);
+  const swipeThreshold = 80;
 
-    const handleTouchEnd = () => {
-        isDraggingRef.current = false;
-        setIsDragging(false);
+  const leftAction =
+    statusKey === 'open' && onAcknowledge
+      ? { label: 'ACK', tone: 'amber', handler: onAcknowledge }
+      : null;
 
-        if (isUpdating) {
-            translateXRef.current = 0;
-            setTranslateX(0);
-            return;
-        }
+  const rightAction =
+    statusKey === 'open' && onSnooze
+      ? { label: 'SNOOZE', tone: 'blue', handler: onSnooze }
+      : statusKey !== 'resolved' && onResolve
+        ? { label: 'RESOLVE', tone: 'emerald', handler: onResolve }
+        : null;
 
-        const finalTranslateX = translateXRef.current;
-        if (finalTranslateX < -threshold && onAcknowledge) {
-            // Swiped left - Acknowledge
-            onAcknowledge(incident.id);
-        } else if (finalTranslateX > threshold && onResolve) {
-            // Swiped right - Resolve
-            onResolve(incident.id);
-        }
+  // Background color based on swipe direction
+  const background = useTransform(
+    x,
+    [-150, 0, 150],
+    [
+      rightAction
+        ? rightAction.tone === 'blue'
+          ? 'rgba(59, 130, 246, 0.2)'
+          : 'rgba(16, 185, 129, 0.2)'
+        : 'transparent',
+      'transparent',
+      leftAction ? 'rgba(245, 158, 11, 0.2)' : 'transparent',
+    ]
+  );
 
-        // Reset position
-        translateXRef.current = 0;
-        setTranslateX(0);
-    };
+  const handleDragEnd = async (_: unknown, info: PanInfo) => {
+    const offset = info.offset.x;
 
-    const handleClick = () => {
-        if (isUpdating) return;
-        if (Math.abs(translateX) < 10) {
-            router.push(`/m/incidents/${incident.id}`);
-        }
-    };
+    if (offset > swipeThreshold && leftAction) {
+      setSwipedAction('right'); // Swiped right (revealing left action)
+      haptics.success();
+      leftAction.handler(incident.id);
+      await controls.start({ x: 0 }); // Reset after action
+      setSwipedAction(null);
+    } else if (offset < -swipeThreshold && rightAction) {
+      setSwipedAction('left'); // Swiped left (revealing right action)
+      haptics.success();
+      rightAction.handler(incident.id);
+      await controls.start({ x: 0 }); // Reset after action
+      setSwipedAction(null);
+    } else {
+      controls.start({ x: 0 });
+    }
+  };
 
-    const getStatusColor = () => {
-        switch (incident.status.toLowerCase()) {
-            case 'open': return { bg: 'var(--badge-error-bg)', text: 'var(--badge-error-text)' };
-            case 'acknowledged': return { bg: 'var(--badge-warning-bg)', text: 'var(--badge-warning-text)' };
-            case 'resolved': return { bg: 'var(--badge-success-bg)', text: 'var(--badge-success-text)' };
-            case 'snoozed': return { bg: 'var(--badge-snoozed-bg)', text: 'var(--badge-snoozed-text)' };
-            default: return { bg: 'var(--badge-neutral-bg)', text: 'var(--badge-neutral-text)' };
-        }
-    };
+  const handleOpenDetails = () => {
+    if (isUpdating) return;
+    haptics.soft();
+    router.push(`/m/incidents/${incident.id}`);
+  };
 
-    const getUrgencyColor = () => {
-        const urgencyValue = incident.urgency?.toLowerCase() || 'low';
-        switch (urgencyValue) {
-            case 'high': return { bg: 'var(--badge-error-bg)', text: 'var(--badge-error-text)' };
-            case 'medium': return { bg: 'var(--badge-warning-bg)', text: 'var(--badge-warning-text)' };
-            case 'low': return { bg: 'var(--badge-success-bg)', text: 'var(--badge-success-text)' };
-            default: return { bg: 'var(--badge-neutral-bg)', text: 'var(--badge-neutral-text)' };
-        }
-    };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleOpenDetails();
+    }
+    // Keyboard shortcuts for actions could be added here if desired,
+    // but navigating to details is the primary keyboard flow.
+  };
 
-    const statusColors = getStatusColor();
-    const urgencyColors = getUrgencyColor();
-    const createdAt = new Date(incident.createdAt);
-    const timeAgo = getTimeAgo(createdAt);
-
-    // Calculate background reveal colors based on swipe direction
-    const revealBg = translateX < 0
-        ? 'linear-gradient(90deg, transparent 60%, rgba(251, 191, 36, 0.3) 100%)' // Acknowledge - yellow
-        : translateX > 0
-            ? 'linear-gradient(270deg, transparent 60%, rgba(34, 197, 94, 0.3) 100%)' // Resolve - green
-            : 'transparent';
-
-    return (
-        <div style={{
-            position: 'relative',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            background: revealBg
-        }}>
-            {/* Action hints */}
-            {translateX !== 0 && (
-                <>
-                    {translateX < -20 && (
-                        <div style={{
-                            position: 'absolute',
-                            right: '1rem',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            color: '#fbbf24',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            opacity: Math.min(1, Math.abs(translateX) / threshold)
-                        }}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            ACK
-                        </div>
-                    )}
-                    {translateX > 20 && (
-                        <div style={{
-                            position: 'absolute',
-                            left: '1rem',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            color: '#22c55e',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            opacity: Math.min(1, Math.abs(translateX) / threshold)
-                        }}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            RESOLVE
-                        </div>
-                    )}
-                </>
-            )}
-
-            {/* Card */}
-            <div
-                ref={cardRef}
-                data-testid={`incident-card-${incident.id}`}
-                onClick={handleClick}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem',
-                    padding: '1rem',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    transform: `translateX(${translateX}px)`,
-                    transition: isDragging ? 'none' : 'transform 0.2s ease-out',
-                    cursor: isUpdating ? 'progress' : 'pointer',
-                    touchAction: 'pan-y'
-                }}
-            >
-                {/* Header */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.5rem'
-                }}>
-                    <span style={{
-                        padding: '0.2rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.65rem',
-                        fontWeight: '700',
-                        textTransform: 'uppercase',
-                        background: statusColors.bg,
-                        color: statusColors.text
-                    }}>
-                        {incident.status}
-                    </span>
-                    {incident.urgency && (
-                        <span style={{
-                            padding: '0.15rem 0.4rem',
-                            borderRadius: '999px',
-                            fontSize: '0.6rem',
-                            fontWeight: '700',
-                            textTransform: 'uppercase',
-                            background: urgencyColors.bg,
-                            color: urgencyColors.text
-                        }}>
-                            {incident.urgency}
-                        </span>
-                    )}
-                </div>
-
-                {/* Title */}
-                <div style={{
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)',
-                    lineHeight: '1.3',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
-                }}>
-                    {incident.title}
-                </div>
-
-                {/* Meta */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.75rem',
-                    color: 'var(--text-muted)'
-                }}>
-                    {incident.service?.name && (
-                        <>
-                            <span>{incident.service.name}</span>
-                            <span>•</span>
-                        </>
-                    )}
-                    <span>{timeAgo}</span>
-                </div>
-
-                {/* Swipe hint */}
-                {incident.status.toLowerCase() === 'open' && (
-                    <div style={{
-                        fontSize: '0.65rem',
-                        color: 'var(--text-muted)',
-                        opacity: 0.6,
-                        textAlign: 'center',
-                        marginTop: '0.25rem'
-                    }}>
-                        ← Acknowledge • Resolve →
-                    </div>
-                )}
-            </div>
-
-            {isUpdating && (
-                <div className="mobile-incident-card-overlay">
-                    Updating...
-                </div>
-            )}
+  return (
+    <div className="relative rounded-xl overflow-hidden bg-[color:var(--bg-surface)]">
+      {/* Background Actions Layer */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-between px-6 pointer-events-none"
+        style={{ background }}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-2 font-bold transition-opacity',
+            leftAction ? 'text-amber-500' : 'opacity-0'
+          )}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+          {leftAction?.label}
         </div>
-    );
-}
 
-function getTimeAgo(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
+        <div
+          className={cn(
+            'flex items-center gap-2 font-bold transition-opacity',
+            rightAction
+              ? rightAction.tone === 'blue'
+                ? 'text-blue-500'
+                : 'text-emerald-500'
+              : 'opacity-0'
+          )}
+        >
+          {rightAction?.label}
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {rightAction?.tone === 'emerald' ? (
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            ) : (
+              <circle cx="12" cy="12" r="10" />
+            )}
+            {rightAction?.tone === 'emerald' && <path d="M22 4L12 14.01l-3-3" />}
+            {rightAction?.tone === 'blue' && <path d="M12 6v6l4 2" />}
+          </svg>
+        </div>
+      </motion.div>
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+      {/* Foreground Card */}
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.7}
+        onDragEnd={handleDragEnd}
+        animate={controls}
+        style={{ x }}
+        whileTap={{ cursor: 'grabbing' }}
+        onClick={handleOpenDetails}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label={`Incident: ${incident.title}. Status: ${incident.status}. Swipe right to ${leftAction?.label || 'acknowledge'}, swipe left to ${rightAction?.label || 'snooze/resolve'}`}
+        className={cn(
+          'relative flex flex-col gap-2 p-4 rounded-xl border transition-colors bg-[var(--bg-surface)] z-10',
+          'border-[color:var(--border)]',
+          isUpdating
+            ? 'cursor-wait opacity-60'
+            : 'cursor-grab active:cursor-grabbing focus:ring-2 focus:ring-primary focus:outline-none'
+        )}
+      >
+        {/* Header with status and urgency */}
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className={cn(
+              'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
+              statusStyle
+            )}
+          >
+            {incident.status}
+          </span>
+          {incident.urgency && (
+            <span
+              className={cn(
+                'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide',
+                urgencyStyle
+              )}
+            >
+              {incident.urgency}
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h3 className="text-sm font-semibold text-[color:var(--text-primary)] leading-snug line-clamp-2">
+          {incident.title}
+        </h3>
+
+        {/* Meta info */}
+        <div className="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+          {incident.service?.name && (
+            <>
+              <span className="truncate">{incident.service.name}</span>
+              <span className="text-[color:var(--text-disabled)]">•</span>
+            </>
+          )}
+          <span suppressHydrationWarning>{timeAgo}</span>
+        </div>
+
+        {/* Accessible Swipe Hint (Visible on Focus / Screen Readers) */}
+        <div className="sr-only">
+          Press Enter to view details.
+          {leftAction && ` Swipe right to ${leftAction.label.toLowerCase()}.`}
+          {rightAction && ` Swipe left to ${rightAction.label.toLowerCase()}.`}
+        </div>
+      </motion.div>
+
+      {/* Updating Overlay */}
+      {isUpdating && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 bg-background/50 backdrop-blur-[1px] rounded-xl">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground animate-pulse">
+            <div
+              className="w-2 h-2 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: '0ms' }}
+            />
+            <div
+              className="w-2 h-2 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: '150ms' }}
+            />
+            <div
+              className="w-2 h-2 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: '300ms' }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

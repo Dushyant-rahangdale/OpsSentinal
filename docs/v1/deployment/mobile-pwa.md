@@ -11,6 +11,8 @@ OpsKnight works as a Progressive Web App for mobile access.
 - 📱 Install on home screen
 - 🔔 Push notifications
 - 📶 Offline support
+- 🔒 **Biometric App Lock**
+- 🔍 **Spotlight Search**
 - ⚡ Fast, app-like experience
 
 ## Installation
@@ -67,6 +69,24 @@ When offline:
 - Cannot create new incidents
 - Cannot receive new alerts
 - Data may be stale
+
+## Security & Navigation
+
+### Biometric App Lock
+
+OpsKnight Mobile includes a privacy screen feature:
+
+1. Go to **More → Preferences**.
+2. Toggle **App Lock**.
+3. When you switch apps or minimize OpsKnight, it instantly locks.
+4. Unlock using your device's native FaceID/TouchID/PIN.
+
+### Spotlight Search
+
+Quickly jump to any incident, service, or team:
+
+- **Mobile**: Tap the Search icon in the header.
+- **Keyboard**: Press `Cmd+K` (Mac) or `Ctrl+K` (Windows).
 
 ## Requirements
 

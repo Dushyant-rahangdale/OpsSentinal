@@ -8,7 +8,7 @@ export function ToastProvider() {
 
   return (
     <Toaster
-      position="top-right"
+      position="top-center"
       expand={false}
       richColors
       closeButton

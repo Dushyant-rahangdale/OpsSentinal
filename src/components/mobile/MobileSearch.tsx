@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/shadcn/input';
 
 type MobileSearchProps = {
   placeholder?: string;
@@ -52,127 +54,104 @@ export default function MobileSearch({
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <form onSubmit={handleSubmit}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: isFocused ? 'var(--bg-surface)' : 'var(--bg-secondary)',
-            border: isFocused ? '2px solid var(--primary-color)' : '2px solid transparent',
-            borderRadius: '12px',
-            padding: '0.75rem 1rem',
-            transition: 'all 0.2s ease',
-          }}
-        >
+    <div className="relative w-full group">
+      <form onSubmit={handleSubmit} className="relative w-full flex items-center">
+        {/* Left Icon - Absolutely positioned */}
+        <div className="absolute left-3 z-10 text-muted-foreground">
           {leftIcon || (
             <svg
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="var(--text-muted)"
+              stroke="currentColor"
               strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
           )}
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={e => handleChange(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            placeholder={placeholder}
-            autoFocus={autoFocus}
-            style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              outline: 'none',
-              fontSize: '0.95rem',
-              color: 'var(--text-primary)',
-            }}
-          />
-
-          {value && (
-            <button
-              type="button"
-              onClick={handleClear}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '20px',
-                height: '20px',
-                background: 'var(--text-muted)',
-                border: 'none',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-              >
-                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-
-          {rightAction}
         </div>
+
+        {/* Shadcn Input Component */}
+        <Input
+          ref={inputRef}
+          type="search"
+          name="q"
+          value={value}
+          onChange={e => handleChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          className="flex-1 min-w-0 pl-9 pr-9 h-11 bg-background text-foreground border-input focus-visible:ring-primary shadow-sm"
+        />
+
+        {/* Clear Button - Absolutely positioned */}
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Clear search"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+
+        {rightAction && <div className="ml-2">{rightAction}</div>}
       </form>
 
-      {/* Suggestions Dropdown */}
+      {/* Suggestions Dropdown - Floating Panel style */}
       {showSuggestions && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            marginTop: '0.5rem',
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            overflow: 'hidden',
-            zIndex: 100,
-          }}
-        >
-          {filteredSuggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                handleChange(suggestion);
-                onSearch?.(suggestion);
-              }}
-              style={{
-                width: '100%',
-                padding: '0.875rem 1rem',
-                background: 'none',
-                border: 'none',
-                borderBottom:
-                  index < filteredSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
-                textAlign: 'left',
-                fontSize: '0.9rem',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-              }}
-            >
-              {suggestion}
-            </button>
-          ))}
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] shadow-2xl ring-1 ring-black/5">
+          <div className="px-2 py-2">
+            {filteredSuggestions.map((suggestion, index) => (
+              <button
+                key={suggestion}
+                onClick={() => {
+                  handleChange(suggestion);
+                  onSearch?.(suggestion);
+                }}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition-colors',
+                  'text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-secondary)] hover:text-[color:var(--text-primary)]'
+                )}
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--bg-secondary)]/50 text-[color:var(--text-muted)]">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                </div>
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -194,29 +173,22 @@ export function MobileFilterChip({
   return (
     <button
       onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.375rem',
-        padding: '0.5rem 0.875rem',
-        background: active ? 'var(--accent)' : 'var(--bg-secondary)',
-        color: active ? 'white' : 'var(--text-secondary)',
-        border: active ? 'none' : '1px solid var(--border)',
-        borderRadius: '999px',
-        fontSize: '0.8rem',
-        fontWeight: '600',
-        whiteSpace: 'nowrap',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      }}
+      className={cn(
+        'inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-all',
+        active
+          ? 'border-primary bg-primary text-white shadow-md shadow-primary/25'
+          : 'border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-secondary)] hover:border-[color:var(--border-hover)] hover:bg-[color:var(--bg-secondary)]'
+      )}
     >
       {label}
       {count !== undefined && (
         <span
-          style={{
-            opacity: 0.8,
-            fontSize: '0.7rem',
-          }}
+          className={cn(
+            'flex h-4 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold',
+            active
+              ? 'bg-white/20 text-white'
+              : 'bg-[color:var(--bg-primary)] text-[color:var(--text-muted)]'
+          )}
         >
           {count}
         </span>

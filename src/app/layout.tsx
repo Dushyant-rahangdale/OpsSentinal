@@ -45,9 +45,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className="light" data-theme="light">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="color-scheme" content="light only" />
+        <meta name="color-scheme" content="light dark" />
         <meta name="darkreader-lock" />
       </head>
       <body className={`${manrope.variable} antialiased`}>
