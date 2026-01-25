@@ -68,7 +68,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.95rem 1.1rem;
+    padding: calc(0.95rem + env(safe-area-inset-top, 0)) 1.1rem 0.95rem;
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
@@ -311,7 +311,7 @@ body {
     flex: 1;
     overflow-y: auto;
     padding: 1rem;
-    padding-top: calc(70px + env(safe-area-inset-top, 0));
+    padding-top: calc(90px + env(safe-area-inset-top, 0));
     padding-bottom: calc(70px + env(safe-area-inset-bottom, 0));
     background: var(--bg-primary);
     background-image: radial-gradient(120% 60% at 15% -20%, var(--status-bg-1), transparent 55%),
@@ -333,7 +333,7 @@ body {
 
 .mobile-network-banner {
     position: sticky;
-    top: 0;
+    top: calc(90px + env(safe-area-inset-top, 0));
     z-index: 20;
     display: flex;
     align-items: center;
