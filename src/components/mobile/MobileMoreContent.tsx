@@ -327,7 +327,7 @@ export default function MobileMoreContent({
       tone: 'slate',
     },
     {
-      href: '/help',
+      href: '/m/help',
       label: 'Help & Documentation',
       description: 'Guides and support',
       icon: iconHelp,

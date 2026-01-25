@@ -468,9 +468,9 @@ export default function Sidebar(
           {!isDesktopCollapsed && (
             <div className="grid grid-cols-4 gap-1 mt-3">
               <Link
-                href="/docs"
+                href="/help"
                 className="flex items-center justify-center h-8 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
-                title="Documentation"
+                title="Help & Support"
               >
                 <HelpCircle className="h-4 w-4" />
               </Link>

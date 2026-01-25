@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import MobileButton from '@/components/mobile/MobileButton';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type Service = { id: string; name: string };
 type User = { id: string; name: string | null; email: string };
@@ -33,9 +34,11 @@ export default function MobileCreateIncidentClient({
     try {
       const result = await createAction(formData);
       if (result && result.id) {
+        toast.success('Incident created successfully');
         // Ensure we redirect to the MOBILE view
         router.push(`/m/incidents/${result.id}`);
       } else {
+        toast.success('Incident created');
         // Fallback if no ID returned (shouldn't happen)
         router.push('/m/incidents');
       }

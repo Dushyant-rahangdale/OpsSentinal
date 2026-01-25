@@ -87,6 +87,7 @@ export default async function MobileDashboard() {
       {currentOnCallShift && (
         <Link
           href={`/m/schedules/${currentOnCallShift.scheduleId}`}
+          className="mobile-enter delay-100"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -135,7 +136,7 @@ export default async function MobileDashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="mobile-quick-actions">
+      <div className="mobile-quick-actions mobile-enter delay-200">
         <NewIncidentButton />
         <Link href="/m/incidents" className="mobile-quick-action secondary">
           <svg
@@ -153,7 +154,7 @@ export default async function MobileDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="mobile-metrics-grid">
+      <div className="mobile-metrics-grid mobile-enter delay-300">
         <div className="mobile-metric-card">
           <div className="mobile-metric-value">{openIncidents}</div>
           <div className="mobile-metric-label">Open</div>
@@ -175,16 +176,16 @@ export default async function MobileDashboard() {
           <div className="mobile-metric-label">Total Active</div>
         </div>
       </div>
-      <p className="text-[11px] font-medium text-[color:var(--text-muted)]">
+      <p className="text-[11px] font-medium text-[color:var(--text-muted)] mobile-enter delay-300">
         Metrics reflect the last {windowLabelDays} days{windowLabelSuffix}. Active counts are
         current; resolved is the last 24 hours.
       </p>
-      <p className="text-[11px] text-[color:var(--text-muted)]">
+      <p className="text-[11px] text-[color:var(--text-muted)] mobile-enter delay-300">
         Last updated <MobileTime value={lastUpdated} format="time" />
       </p>
 
       {/* Recent Incidents */}
-      <div style={{ marginTop: '1.5rem' }}>
+      <div style={{ marginTop: '1.5rem' }} className="mobile-enter delay-400">
         <div className="mobile-section-header">
           <h2 className="mobile-section-title">Recent Incidents</h2>
           <Link href="/m/incidents" className="mobile-section-link">
@@ -194,17 +195,30 @@ export default async function MobileDashboard() {
 
         <div className="mobile-incident-list">
           {activeIncidentList.length === 0 ? (
-            <div
-              style={{
-                padding: '2rem',
-                textAlign: 'center',
-                color: 'var(--text-muted)',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                border: '1px solid var(--border)',
-              }}
-            >
-              <p style={{ margin: 0 }}>No active incidents 🎉</p>
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[color:var(--border)] bg-[color:var(--bg-primary)] py-12 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100/50 dark:bg-emerald-900/20">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <path d="M22 4L12 14.01l-3-3" />
+                  </svg>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[color:var(--text-primary)]">All Clear!</h3>
+                <p className="text-xs text-[color:var(--text-muted)]">
+                  No active incidents right now.
+                </p>
+              </div>
             </div>
           ) : (
             activeIncidentList.map(incident => {

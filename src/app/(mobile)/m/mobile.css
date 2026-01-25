@@ -2145,6 +2145,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .mobile-route-buffer-skeleton,
     .mobile-route-buffer-bar,
     .mobile-nav-badge,
@@ -3090,4 +3091,42 @@ input:-webkit-autofill:active {
 /* Ensure Search wrapper is dark in dark mode */
 [data-theme='dark'] .mobile-search {
     background-color: var(--bg-secondary) !important;
+}
+
+/* Entry Animations */
+@keyframes mobileEnter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mobile-enter {
+    opacity: 0;
+    animation: mobileEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.delay-100 {
+    animation-delay: 100ms;
+}
+
+.delay-200 {
+    animation-delay: 200ms;
+}
+
+.delay-300 {
+    animation-delay: 300ms;
+}
+
+.delay-400 {
+    animation-delay: 400ms;
+}
+
+.delay-500 {
+    animation-delay: 500ms;
 }
