@@ -67,8 +67,25 @@ export default async function MobileDashboard() {
       service: { name: incident.serviceName },
     }));
 
-  const userName = session?.user?.name?.split(' ')[0] || 'there';
-  const hour = new Date().getHours();
+  // Fetch user details for timezone
+  const dbUser = session?.user?.email
+    ? await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { timeZone: true, name: true },
+      })
+    : null;
+
+  const userTimeZone = dbUser?.timeZone || 'UTC';
+  const userName = dbUser?.name?.split(' ')[0] || session?.user?.name?.split(' ')[0] || 'there';
+
+  // Get hour in user's timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: userTimeZone,
+  });
+  const hour = parseInt(formatter.format(new Date()), 10);
+
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
