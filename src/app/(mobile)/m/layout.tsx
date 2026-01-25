@@ -5,7 +5,6 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import MobileNav from '@/components/mobile/MobileNav';
 import MobileHeader from '@/components/mobile/MobileHeader';
-import MobileHeaderLoader from '@/components/mobile/MobileHeaderLoader';
 import '@/app/globals.css';
 import './mobile.css';
 import './mobile-premium.css';
