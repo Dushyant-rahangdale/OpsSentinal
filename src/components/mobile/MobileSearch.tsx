@@ -57,9 +57,8 @@ export default function MobileSearch({
       <form onSubmit={handleSubmit}>
         <div
           className={cn(
-            'mobile-search flex items-center gap-3 rounded-xl border-2 px-4 py-3 transition',
-            'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
-            isFocused && 'border-primary dark:border-primary ring-2 ring-primary/20'
+            'mobile-search flex items-center gap-3 rounded-xl border-2 border-[color:var(--border)] px-4 py-3 transition',
+            isFocused && 'mobile-search--focused'
           )}
           data-focused={isFocused ? 'true' : 'false'}
         >
@@ -87,7 +86,7 @@ export default function MobileSearch({
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             placeholder={placeholder}
             autoFocus={autoFocus}
-            className="mobile-search-input flex-1 bg-transparent text-sm font-medium focus:outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+            className="mobile-search-input flex-1 bg-transparent text-sm font-medium focus:outline-none"
           />
 
           {value && (
@@ -157,7 +156,7 @@ export function MobileFilterChip({
         'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition',
         active
           ? 'border-transparent bg-primary text-white shadow-sm'
-          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+          : 'border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-secondary)]'
       )}
     >
       {label}

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import MobileSearch, { MobileFilterChip } from '@/components/mobile/MobileSearch';
-import { ChevronDown } from 'lucide-react';
 
 type MobileListControlsProps = {
   basePath: string;
@@ -88,32 +87,25 @@ export default function MobileListControls({
             />
           ))}
         </div>
-        <div className="relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-3 py-2">
           <label
-            className="text-[0.7rem] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
+            className="text-[0.7rem] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
             htmlFor="mobile-sort"
           >
             Sort
           </label>
-          <div className="relative flex-1">
-            <select
-              id="mobile-sort"
-              className="w-full appearance-none bg-transparent text-xs font-semibold text-slate-900 dark:text-slate-100 focus:outline-none pr-6 text-right"
-              value={activeSort}
-              onChange={event => handleSortChange(event.target.value)}
-            >
-              {sortOptions.map(option => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                  className="text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900"
-                >
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
-          </div>
+          <select
+            id="mobile-sort"
+            className="w-full flex-1 bg-transparent text-xs font-semibold text-[color:var(--text-primary)] focus:outline-none"
+            value={activeSort}
+            onChange={event => handleSortChange(event.target.value)}
+          >
+            {sortOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
