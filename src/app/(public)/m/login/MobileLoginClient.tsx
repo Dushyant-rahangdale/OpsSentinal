@@ -169,18 +169,18 @@ export default function MobileLoginClient({
   return (
     <div className="min-h-[100dvh] w-full bg-slate-50 text-slate-900 flex flex-col">
       {/* Header */}
-      <div className="relative w-full bg-gradient-to-b from-indigo-50/50 to-slate-50 pt-12 pb-6 rounded-b-[2rem]">
+      <div className="relative w-full bg-gradient-to-b from-indigo-50/50 to-slate-50 pt-8 pb-4 rounded-b-[1.5rem]">
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col items-center justify-center gap-2"
+          className="flex flex-col items-center justify-center gap-1.5"
         >
           <Link href="/" className="relative group">
             <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-            <img src="/logo.svg" alt="OpsKnight" className="relative h-16 w-16 drop-shadow-lg" />
+            <img src="/logo.svg" alt="OpsKnight" className="relative h-12 w-12 drop-shadow-lg" />
           </Link>
-          <span className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 font-display drop-shadow-sm">
+          <span className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 font-display drop-shadow-sm">
             OpsKnight
           </span>
         </motion.div>
