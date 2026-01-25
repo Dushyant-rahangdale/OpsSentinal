@@ -148,21 +148,25 @@ export default function MobileNotificationsClient() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!navigator.onLine) {
-      const cached = readCache<NotificationResponse>('mobile-notifications');
-      if (cached) {
-        setNotifications(cached.notifications);
-        setUnreadCount(cached.unreadCount);
-        setLoading(false);
-      }
+      void (async () => {
+        const cached = await readCache<NotificationResponse>('mobile-notifications');
+        if (cached) {
+          setNotifications(cached.notifications);
+          setUnreadCount(cached.unreadCount);
+          setLoading(false);
+        }
+      })();
     }
   }, []);
 
   useEffect(() => {
-    writeCache('mobile-notifications', {
-      notifications,
-      unreadCount,
-      total: notifications.length,
-    });
+    void (async () => {
+      await writeCache('mobile-notifications', {
+        notifications,
+        unreadCount,
+        total: notifications.length,
+      });
+    })();
   }, [notifications, unreadCount]);
 
   const handleIncomingNotifications = useCallback(
