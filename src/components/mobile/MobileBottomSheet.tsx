@@ -92,7 +92,7 @@ export default function MobileBottomSheet({
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className="fixed inset-x-0 bottom-0 z-50 flex flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-bottom-6"
+        className="fixed inset-x-0 bottom-0 z-[150] flex flex-col overflow-hidden rounded-t-3xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] shadow-2xl transition-transform duration-300 ease-out animate-in slide-in-from-bottom-6"
         style={{
           maxHeight: getMaxHeight(),
           transform: `translateY(${translateY}px)`,

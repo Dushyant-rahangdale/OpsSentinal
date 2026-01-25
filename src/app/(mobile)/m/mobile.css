@@ -653,6 +653,12 @@ body {
     background: linear-gradient(180deg, rgba(var(--primary-rgb), 0.05) 0%, transparent 100%);
 }
 
+[data-theme='dark'] .mobile-nav-item.active {
+    color: #ffffff;
+    /* Make active icon white in dark mode for visibility */
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+}
+
 .mobile-nav-item.active::before {
     content: '';
     position: absolute;
@@ -663,6 +669,11 @@ body {
     border-radius: 0 0 4px 4px;
     background: var(--primary-color);
     box-shadow: 0 1px 6px rgba(var(--primary-rgb), 0.4);
+}
+
+[data-theme='dark'] .mobile-nav-item.active::before {
+    background: #ffffff;
+    box-shadow: 0 1px 6px rgba(255, 255, 255, 0.4);
 }
 
 .mobile-nav-icon {
