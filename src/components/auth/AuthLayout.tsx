@@ -36,26 +36,21 @@ export function AuthLayout({
       <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-[1920px] flex-col px-4 py-4 sm:px-12 lg:px-16 xl:px-24">
         {/* Header - Enhanced Branding */}
         {/* Header - Enhanced Branding */}
-        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-5 py-4 sm:px-8 bg-transparent">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-4 py-4 px-6 bg-transparent">
+          <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="group flex items-center justify-center transition-opacity hover:opacity-90"
+              className="flex items-center justify-center transition-opacity hover:opacity-80"
             >
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 shadow-[0_8px_24px_rgba(15,23,42,0.35)] backdrop-blur">
-                <img src="/logo.svg" alt="OpsKnight" className="h-7 w-7 drop-shadow-sm" />
-              </div>
+              <img src="/logo.svg" alt="OpsKnight" className="h-10 w-10" />
             </Link>
-            <div className="-ml-0.5">
+            <div>
               <h1
-                className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-md"
+                className="text-2xl font-extrabold tracking-tight text-white drop-shadow-md"
                 style={{ letterSpacing: '-0.02em' }}
               >
                 OpsKnight
               </h1>
-              <p className="text-[10px] sm:text-xs text-white/60 tracking-[0.28em] uppercase">
-                Secure Console
-              </p>
             </div>
           </div>
 
