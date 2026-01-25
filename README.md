@@ -115,7 +115,7 @@ Whether you are an SRE team at a startup maintaining 99.99% uptime or a Platform
 - **🔒 Secure**: Supports biometric authentication (FaceID/TouchID).
 
 <div align="center">
-  <img src="docs/v1/assets/mobile.png" alt="Mobile Dashboard" width="400">
+  <img src="docs/v1/assets/mobile.png" alt="Mobile Dashboard" width="100%">
 </div>
 
 <div align="center">
