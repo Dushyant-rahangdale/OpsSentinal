@@ -11,7 +11,12 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/shadcn/command';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/shadcn/dialog';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
@@ -299,6 +304,9 @@ export default function MobileQuickSwitcher() {
         {/* Custom DialogContent to position below header (top-aligned) */}
         <DialogContent className="fixed left-[50%] top-[4rem] z-[150] grid w-[95%] max-w-lg translate-x-[-50%] translate-y-0 gap-4 border border-[color:var(--border)] bg-[color:var(--bg-surface)] text-[color:var(--text-primary)] p-0 shadow-lg duration-200 sm:rounded-lg">
           <DialogTitle className="sr-only">Quick switcher</DialogTitle>
+          <DialogDescription className="sr-only">
+            Search incidents, services, teams, and more.
+          </DialogDescription>
           <Command
             shouldFilter={false}
             className="!bg-[color:var(--bg-surface)] [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"

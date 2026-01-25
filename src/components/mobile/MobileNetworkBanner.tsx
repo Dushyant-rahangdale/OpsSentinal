@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { flushQueuedRequests } from '@/lib/offline-queue';
 
 type ConnectionInfo = {
   effectiveType?: string;
@@ -29,15 +30,26 @@ export default function MobileNetworkBanner() {
 
     updateOnline();
     updateConnection();
+    if (navigator.onLine) {
+      void flushQueuedRequests();
+    }
 
-    window.addEventListener('online', updateOnline);
+    const handleOnline = () => {
+      updateOnline();
+      void flushQueuedRequests();
+      if (navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SYNC_OFFLINE_QUEUE' });
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
     window.addEventListener('offline', updateOnline);
 
     const connection = (navigator as unknown as { connection?: ConnectionInfo }).connection;
     connection?.addEventListener?.('change', updateConnection);
 
     return () => {
-      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', updateOnline);
       connection?.removeEventListener?.('change', updateConnection);
     };

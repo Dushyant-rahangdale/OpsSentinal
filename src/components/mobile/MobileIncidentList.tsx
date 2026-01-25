@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import SwipeableIncidentCard from '@/components/mobile/SwipeableIncidentCard';
-import { updateIncidentStatus } from '@/app/(app)/incidents/actions';
 import { logger } from '@/lib/logger';
+import { enqueueRequest } from '@/lib/offline-queue';
+import { readCache, writeCache } from '@/lib/mobile-cache';
 
 type IncidentListItem = {
   id: string;
@@ -15,21 +15,92 @@ type IncidentListItem = {
   service: { name: string };
 };
 
-export default function MobileIncidentList({ incidents }: { incidents: IncidentListItem[] }) {
-  const router = useRouter();
+type IncidentFilter = 'all' | 'open' | 'resolved';
+
+export default function MobileIncidentList({
+  incidents,
+  filter,
+}: {
+  incidents: IncidentListItem[];
+  filter: IncidentFilter;
+}) {
+  const [localIncidents, setLocalIncidents] = useState<IncidentListItem[]>(incidents);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleStatusUpdate = async (id: string, status: 'ACKNOWLEDGED' | 'RESOLVED') => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!navigator.onLine) {
+      const cached = readCache<IncidentListItem[]>('mobile-incidents');
+      if (cached?.length) {
+        setLocalIncidents(cached);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !navigator.onLine && incidents.length === 0) {
+      return;
+    }
+    setLocalIncidents(incidents);
+    writeCache('mobile-incidents', incidents);
+  }, [incidents]);
+
+  useEffect(() => {
+    writeCache('mobile-incidents', localIncidents);
+  }, [localIncidents]);
+
+  const handleStatusUpdate = async (
+    id: string,
+    status: 'ACKNOWLEDGED' | 'RESOLVED' | 'SNOOZED'
+  ) => {
     if (updatingId) return;
     setUpdatingId(id);
     setErrorMessage('');
+    const previous = localIncidents;
+    setLocalIncidents(prev => {
+      const updated = prev.map(incident =>
+        incident.id === id ? { ...incident, status } : incident
+      );
+      if (filter === 'open' && status === 'RESOLVED') {
+        return updated.filter(incident => incident.id !== id);
+      }
+      if (filter === 'resolved' && status !== 'RESOLVED') {
+        return updated.filter(incident => incident.id !== id);
+      }
+      return updated;
+    });
     try {
-      await updateIncidentStatus(id, status);
-      router.refresh();
+      const requestUrl =
+        typeof window !== 'undefined'
+          ? new URL(`/api/mobile/incidents/${id}/status`, window.location.origin).toString()
+          : `/api/mobile/incidents/${id}/status`;
+      const response = await fetch(requestUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update incident');
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to update incident';
-      setErrorMessage(message);
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        try {
+          await enqueueRequest({
+            url: requestUrl,
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          });
+        } catch {
+          // Ignore queue failures
+        }
+        setErrorMessage('Offline. Update queued and will sync automatically.');
+      } else {
+        setLocalIncidents(previous);
+        setErrorMessage(message);
+      }
       logger.error('mobile.incidentList.statusUpdateFailed', {
         component: 'MobileIncidentList',
         error,
@@ -48,13 +119,18 @@ export default function MobileIncidentList({ incidents }: { incidents: IncidentL
           {errorMessage}
         </div>
       )}
-      {incidents.map(incident => (
+      {localIncidents.map(incident => (
         <SwipeableIncidentCard
           key={incident.id}
           incident={incident}
           onAcknowledge={
             incident.status === 'OPEN'
               ? () => handleStatusUpdate(incident.id, 'ACKNOWLEDGED')
+              : undefined
+          }
+          onSnooze={
+            incident.status === 'OPEN'
+              ? () => handleStatusUpdate(incident.id, 'SNOOZED')
               : undefined
           }
           onResolve={

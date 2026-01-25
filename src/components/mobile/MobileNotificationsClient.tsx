@@ -11,6 +11,10 @@ import { cn } from '@/lib/utils';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDayLabel } from '@/lib/mobile-time';
 import MobileTime from '@/components/mobile/MobileTime';
+import { haptics } from '@/lib/haptics';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
+import { enqueueRequest } from '@/lib/offline-queue';
+import { readCache, writeCache } from '@/lib/mobile-cache';
 
 type NotificationItem = {
   id: string;
@@ -96,37 +100,114 @@ export default function MobileNotificationsClient() {
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [usePolling, setUsePolling] = useState(false);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage('');
-    try {
-      const response = await fetch(`/api/notifications?unreadOnly=${activeFilter === 'unread'}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
+  const fetchNotifications = useCallback(
+    async (showLoading = true) => {
+      const unreadOnly = activeFilter === 'unread';
+      if (showLoading) {
+        setLoading(true);
+        setErrorMessage('');
       }
-      const data = (await response.json()) as NotificationResponse;
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-    } catch (error) {
-      logger.error('mobile.notifications.fetch_failed', {
-        component: 'MobileNotificationsClient',
-        error,
-      });
-      setErrorMessage('Unable to load notifications.');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeFilter]);
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        if (showLoading) {
+          setLoading(false);
+        }
+        return;
+      }
+      try {
+        const response = await fetch(`/api/notifications?unreadOnly=${unreadOnly}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications');
+        }
+        const data = (await response.json()) as NotificationResponse;
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
+        setErrorMessage('');
+      } catch (error) {
+        logger.error('mobile.notifications.fetch_failed', {
+          component: 'MobileNotificationsClient',
+          error,
+        });
+        if (showLoading) {
+          setErrorMessage('Unable to load notifications.');
+        }
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [activeFilter]
+  );
 
   useEffect(() => {
-    void fetchNotifications();
+    void fetchNotifications(true);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!navigator.onLine) {
+      const cached = readCache<NotificationResponse>('mobile-notifications');
+      if (cached) {
+        setNotifications(cached.notifications);
+        setUnreadCount(cached.unreadCount);
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    writeCache('mobile-notifications', {
+      notifications,
+      unreadCount,
+      total: notifications.length,
+    });
+  }, [notifications, unreadCount]);
+
+  const handleIncomingNotifications = useCallback(
+    (incoming: NotificationItem[]) => {
+      if (!incoming.length) return;
+      const relevant = activeFilter === 'unread' ? incoming.filter(item => item.unread) : incoming;
+      if (!relevant.length) return;
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(item => item.id));
+        const fresh = relevant.filter(item => !existingIds.has(item.id));
+        if (fresh.length === 0) return prev;
+        return [...fresh, ...prev].slice(0, 50);
+      });
+      const unreadDelta = incoming.filter(item => item.unread).length;
+      if (unreadDelta > 0) {
+        setUnreadCount(prev => prev + unreadDelta);
+      }
+    },
+    [activeFilter]
+  );
+
+  useNotificationStream({
+    enabled: !usePolling,
+    onNotifications: handleIncomingNotifications,
+    onUnreadCount: count => setUnreadCount(count),
+    onError: () => setUsePolling(true),
+  });
+
+  useEffect(() => {
+    if (!usePolling) return;
+    const interval = setInterval(() => {
+      void fetchNotifications(false);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications, usePolling]);
 
   const handleMarkAllRead = async () => {
     if (isUpdating || unreadCount === 0) return;
+    haptics.tap();
     setIsUpdating(true);
     setErrorMessage('');
+    const previousNotifications = notifications;
+    const previousUnread = unreadCount;
+    setNotifications(prev => prev.map(item => ({ ...item, unread: false })));
+    setUnreadCount(0);
     try {
       const response = await fetch('/api/notifications', {
         method: 'PATCH',
@@ -136,16 +217,28 @@ export default function MobileNotificationsClient() {
       if (!response.ok) {
         throw new Error('Failed to mark all as read');
       }
-      setNotifications(prev =>
-        activeFilter === 'unread' ? [] : prev.map(item => ({ ...item, unread: false }))
-      );
-      setUnreadCount(0);
     } catch (error) {
       logger.error('mobile.notifications.mark_all_failed', {
         component: 'MobileNotificationsClient',
         error,
       });
-      setErrorMessage('Unable to mark all as read.');
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        try {
+          await enqueueRequest({
+            url: '/api/notifications',
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markAllAsRead: true }),
+          });
+        } catch {
+          // Ignore queue failures
+        }
+        setErrorMessage('Offline. Mark-all queued and will sync automatically.');
+      } else {
+        setNotifications(previousNotifications);
+        setUnreadCount(previousUnread);
+        setErrorMessage('Unable to mark all as read.');
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -153,8 +246,15 @@ export default function MobileNotificationsClient() {
 
   const handleMarkRead = async (notificationId: string) => {
     if (isUpdating) return;
+    haptics.tap();
     setIsUpdating(true);
     setErrorMessage('');
+    const previousNotifications = notifications;
+    const previousUnread = unreadCount;
+    setNotifications(prev =>
+      prev.map(item => (item.id === notificationId ? { ...item, unread: false } : item))
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
     try {
       const response = await fetch('/api/notifications', {
         method: 'PATCH',
@@ -164,19 +264,28 @@ export default function MobileNotificationsClient() {
       if (!response.ok) {
         throw new Error('Failed to mark as read');
       }
-      setNotifications(prev => {
-        if (activeFilter === 'unread') {
-          return prev.filter(item => item.id !== notificationId);
-        }
-        return prev.map(item => (item.id === notificationId ? { ...item, unread: false } : item));
-      });
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       logger.error('mobile.notifications.mark_failed', {
         component: 'MobileNotificationsClient',
         error,
       });
-      setErrorMessage('Unable to update notification.');
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        try {
+          await enqueueRequest({
+            url: '/api/notifications',
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationIds: [notificationId] }),
+          });
+        } catch {
+          // Ignore queue failures
+        }
+        setErrorMessage('Offline. Update queued and will sync automatically.');
+      } else {
+        setNotifications(previousNotifications);
+        setUnreadCount(previousUnread);
+        setErrorMessage('Unable to update notification.');
+      }
     } finally {
       setIsUpdating(false);
     }
@@ -189,10 +298,17 @@ export default function MobileNotificationsClient() {
     return 'No notifications yet.';
   }, [activeFilter]);
 
+  const filteredNotifications = useMemo(() => {
+    if (activeFilter === 'unread') {
+      return notifications.filter(notification => notification.unread);
+    }
+    return notifications;
+  }, [activeFilter, notifications]);
+
   const groupedNotifications = useMemo(() => {
     const groups = new Map<string, NotificationItem[]>();
 
-    notifications.forEach(notification => {
+    filteredNotifications.forEach(notification => {
       const parsedDate = new Date(notification.createdAt);
       const safeDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
       const label = formatDayLabel(safeDate, userTimeZone);
@@ -207,7 +323,7 @@ export default function MobileNotificationsClient() {
       label,
       items,
     }));
-  }, [notifications, userTimeZone]);
+  }, [filteredNotifications, userTimeZone]);
 
   const iconTone = (type: NotificationItem['type']) => {
     switch (type) {
@@ -249,7 +365,10 @@ export default function MobileNotificationsClient() {
             key={filter.value}
             label={filter.label}
             active={activeFilter === filter.value}
-            onClick={() => setActiveFilter(filter.value as 'all' | 'unread')}
+            onClick={() => {
+              haptics.soft();
+              setActiveFilter(filter.value as 'all' | 'unread');
+            }}
           />
         ))}
       </div>
@@ -266,7 +385,7 @@ export default function MobileNotificationsClient() {
           <NotificationSkeleton />
           <NotificationSkeleton />
         </div>
-      ) : notifications.length === 0 ? (
+      ) : filteredNotifications.length === 0 ? (
         <MobileEmptyState
           icon={<MobileEmptyIcon />}
           title={emptyMessage}
@@ -276,14 +395,20 @@ export default function MobileNotificationsClient() {
               <button
                 type="button"
                 className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition active:scale-[0.98]"
-                onClick={() => router.push('/m/incidents')}
+                onClick={() => {
+                  haptics.tap();
+                  router.push('/m/incidents');
+                }}
               >
                 View incidents
               </button>
               <button
                 type="button"
                 className="inline-flex items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-4 py-2 text-xs font-semibold text-[color:var(--text-secondary)] transition active:scale-[0.98]"
-                onClick={() => router.push('/m/services')}
+                onClick={() => {
+                  haptics.tap();
+                  router.push('/m/services');
+                }}
               >
                 Check services
               </button>
@@ -306,7 +431,14 @@ export default function MobileNotificationsClient() {
                     <MobileCard
                       key={notification.id}
                       className={notification.unread ? 'ring-1 ring-primary/20' : undefined}
-                      onClick={href ? () => router.push(href) : undefined}
+                      onClick={
+                        href
+                          ? () => {
+                              haptics.soft();
+                              router.push(href);
+                            }
+                          : undefined
+                      }
                     >
                       <div className="flex items-start gap-3">
                         <div
@@ -344,6 +476,7 @@ export default function MobileNotificationsClient() {
                             onClick={event => {
                               event.preventDefault();
                               event.stopPropagation();
+                              haptics.soft();
                               router.push(href);
                             }}
                           >

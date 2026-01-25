@@ -151,7 +151,7 @@ export default function MobileSwipeNavigator({ children }: MobileSwipeNavigatorP
         <div
           key={pathname}
           className={cn(
-            'transition-transform duration-150',
+            'mobile-route-transition transition-transform duration-150',
             snapDirection === 'left' && '-translate-x-2',
             snapDirection === 'right' && 'translate-x-2'
           )}
@@ -161,7 +161,7 @@ export default function MobileSwipeNavigator({ children }: MobileSwipeNavigatorP
       ]}
       {showHint && (
         <div
-          className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-4 py-2 text-[11px] font-semibold text-[color:var(--text-secondary)] shadow-sm backdrop-blur opacity-90"
+          className="mobile-swipe-hint pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-surface)] px-4 py-2 text-[11px] font-semibold text-[color:var(--text-secondary)] shadow-sm backdrop-blur opacity-90"
           aria-hidden="true"
         >
           <span className="text-[color:var(--text-muted)]">←</span>

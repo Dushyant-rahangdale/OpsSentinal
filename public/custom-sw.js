@@ -4,6 +4,89 @@
 // Import Workbox (provided by Next.js PWA)
 importScripts();
 
+const OFFLINE_DB = 'opsknight-offline';
+const OFFLINE_STORE = 'request-queue';
+
+const openOfflineDb = () =>
+    new Promise((resolve, reject) => {
+        const request = indexedDB.open(OFFLINE_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(OFFLINE_STORE)) {
+                const store = db.createObjectStore(OFFLINE_STORE, { keyPath: 'id' });
+                store.createIndex('createdAt', 'createdAt', { unique: false });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+
+const listQueuedRequests = async () => {
+    const db = await openOfflineDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(OFFLINE_STORE, 'readonly');
+        const store = tx.objectStore(OFFLINE_STORE);
+        const index = store.index('createdAt');
+        const items = [];
+        const cursor = index.openCursor();
+        cursor.onsuccess = () => {
+            const current = cursor.result;
+            if (current) {
+                items.push(current.value);
+                current.continue();
+            }
+        };
+        tx.oncomplete = () => resolve(items);
+        tx.onerror = () => reject(tx.error);
+    });
+};
+
+const removeQueuedRequest = async (id) => {
+    const db = await openOfflineDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+        const store = tx.objectStore(OFFLINE_STORE);
+        store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+};
+
+const isRetryableStatus = (status) => {
+    if (status >= 500) return true;
+    if (status === 408 || status === 429) return true;
+    return false;
+};
+
+const flushQueuedRequests = async () => {
+    try {
+        const queue = await listQueuedRequests();
+        for (const item of queue) {
+            try {
+                const response = await fetch(item.url, {
+                    method: item.method,
+                    headers: item.headers,
+                    body: item.body || undefined,
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    await removeQueuedRequest(item.id);
+                    continue;
+                }
+                if (!isRetryableStatus(response.status)) {
+                    await removeQueuedRequest(item.id);
+                    continue;
+                }
+                break;
+            } catch {
+                break;
+            }
+        }
+    } catch (error) {
+        console.warn('[Service Worker] Offline queue flush failed', error);
+    }
+};
+
 // Listen for push events
 self.addEventListener('push', function (event) {
     console.log('[Service Worker] Push received', event);
@@ -103,6 +186,18 @@ self.addEventListener('install', function (event) {
 self.addEventListener('activate', function (event) {
     console.log('[Service Worker] Activating');
     event.waitUntil(clients.claim()); // Take control immediately
+});
+
+self.addEventListener('sync', function (event) {
+    if (event.tag === 'opsknight-sync') {
+        event.waitUntil(flushQueuedRequests());
+    }
+});
+
+self.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'SYNC_OFFLINE_QUEUE') {
+        event.waitUntil(flushQueuedRequests());
+    }
 });
 
 console.log('[Service Worker] Custom SW loaded with push handlers');

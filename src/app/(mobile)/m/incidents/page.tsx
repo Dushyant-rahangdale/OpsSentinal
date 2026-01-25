@@ -156,7 +156,7 @@ export default async function MobileIncidentsPage(props: {
           </div>
         </div>
       ) : (
-        <MobileIncidentList incidents={incidents} />
+        <MobileIncidentList incidents={incidents} filter={filter} />
       )}
 
       {/* Pagination */}

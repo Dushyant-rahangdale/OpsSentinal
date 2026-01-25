@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { haptics } from '@/lib/haptics';
 
 export default function PullToRefresh({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -16,11 +17,10 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
 
   const isInteractiveTarget = (target: EventTarget | null) => {
     if (!(target instanceof Element)) return false;
-    return Boolean(
-      target.closest(
-        'input, textarea, select, button, [contenteditable="true"], [role="textbox"], [data-disable-pull]'
-      )
+    const closest = target.closest(
+      'input, textarea, select, button, [contenteditable="true"], [role="textbox"], [data-disable-pull]'
     );
+    return closest instanceof Element;
   };
 
   useEffect(() => {
@@ -33,10 +33,7 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
 
   const initLoading = async () => {
     setRefreshing(true);
-    // Haptic feedback on supported devices
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
-    }
+    haptics.success();
     // Trigger Next.js router refresh
     router.refresh();
 

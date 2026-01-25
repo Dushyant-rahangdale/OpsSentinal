@@ -105,6 +105,8 @@ Receive push notifications for:
 - **Escalations** — When incident escalates to you
 - **Updates** — When incidents you're watching change
 
+While the app is open, the notification list updates in real time and falls back to periodic refresh if the live stream is unavailable.
+
 ---
 
 ## Push Notifications
@@ -169,15 +171,17 @@ Access additional features:
 
 ## Offline Support
 
-The PWA provides basic offline functionality:
+The PWA supports offline-friendly workflows:
 
-| Feature                   | Offline Behavior          |
-| ------------------------- | ------------------------- |
-| **View cached incidents** | Yes                       |
-| **View cached schedules** | Yes                       |
-| **Acknowledge**           | Queued, syncs when online |
-| **Add notes**             | Queued, syncs when online |
-| **Create incident**       | Requires connection       |
+| Feature                     | Offline Behavior          |
+| --------------------------- | ------------------------- |
+| **View cached incidents**   | Yes                       |
+| **View cached schedules**   | Yes                       |
+| **View cached services**    | Yes                       |
+| **View cached teams**       | Yes                       |
+| **Update incident status**  | Queued, syncs when online |
+| **Mark notifications read** | Queued, syncs when online |
+| **Create incident**         | Requires connection       |
 
 > **Note**: Push notifications require an internet connection.
 
@@ -198,7 +202,12 @@ All interactive elements are sized for touch:
 Some views support swipe gestures:
 
 - **Pull to refresh** — Update incident list
-- **Swipe to action** — Quick acknowledge/resolve (where enabled)
+- **Swipe to action** — Quick acknowledge/snooze/resolve (where enabled)
+
+### Haptics & Feedback
+
+- **Haptic feedback** — Subtle tap feedback for primary actions
+- **Skeleton loading** — Placeholder layouts reduce perceived load time
 
 ### Responsive Layout
 

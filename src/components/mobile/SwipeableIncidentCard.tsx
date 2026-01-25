@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatRelativeShort } from '@/lib/mobile-time';
+import { haptics } from '@/lib/haptics';
 
 interface SwipeableIncidentCardProps {
   incident: {
@@ -16,27 +17,45 @@ interface SwipeableIncidentCardProps {
     service?: { name: string } | null;
   };
   onAcknowledge?: (id: string) => void;
+  onSnooze?: (id: string) => void;
   onResolve?: (id: string) => void;
   isUpdating?: boolean;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  open: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  acknowledged: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-  resolved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-  snoozed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
-  suppressed: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+const resolveStatusStyle = (statusKey: string) => {
+  switch (statusKey) {
+    case 'open':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
+    case 'acknowledged':
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+    case 'resolved':
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
+    case 'snoozed':
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400';
+    case 'suppressed':
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+    default:
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+  }
 };
 
-const URGENCY_STYLES: Record<string, string> = {
-  high: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-  low: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+const resolveUrgencyStyle = (urgencyKey: string) => {
+  switch (urgencyKey) {
+    case 'high':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400';
+    case 'medium':
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+    case 'low':
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400';
+    default:
+      return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
+  }
 };
 
 export default function SwipeableIncidentCard({
   incident,
   onAcknowledge,
+  onSnooze,
   onResolve,
   isUpdating = false,
 }: SwipeableIncidentCardProps) {
@@ -49,6 +68,24 @@ export default function SwipeableIncidentCard({
   const isDraggingRef = useRef(false);
   const startX = useRef(0);
   const threshold = 80;
+  const statusKey = incident.status.toLowerCase();
+  const urgencyKey = (incident.urgency || 'low').toLowerCase();
+  const createdAt = new Date(incident.createdAt);
+  const timeAgo = formatRelativeShort(createdAt, userTimeZone);
+  const statusStyle = resolveStatusStyle(statusKey);
+  const urgencyStyle = resolveUrgencyStyle(urgencyKey);
+
+  const leftAction =
+    statusKey === 'open' && onAcknowledge
+      ? { label: 'ACK', tone: 'amber', handler: onAcknowledge }
+      : null;
+
+  const rightAction =
+    statusKey === 'open' && onSnooze
+      ? { label: 'SNOOZE', tone: 'blue', handler: onSnooze }
+      : statusKey !== 'resolved' && onResolve
+        ? { label: 'RESOLVE', tone: 'emerald', handler: onResolve }
+        : null;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -76,10 +113,12 @@ export default function SwipeableIncidentCard({
     }
 
     const finalTranslateX = translateXRef.current;
-    if (finalTranslateX < -threshold && onAcknowledge) {
-      onAcknowledge(incident.id);
-    } else if (finalTranslateX > threshold && onResolve) {
-      onResolve(incident.id);
+    if (finalTranslateX < -threshold && leftAction?.handler) {
+      haptics.success();
+      leftAction.handler(incident.id);
+    } else if (finalTranslateX > threshold && rightAction?.handler) {
+      haptics.success();
+      rightAction.handler(incident.id);
     }
 
     translateXRef.current = 0;
@@ -89,14 +128,10 @@ export default function SwipeableIncidentCard({
   const handleClick = () => {
     if (isUpdating) return;
     if (Math.abs(translateX) < 10) {
+      haptics.soft();
       router.push(`/m/incidents/${incident.id}`);
     }
   };
-
-  const statusKey = incident.status.toLowerCase();
-  const urgencyKey = (incident.urgency || 'low').toLowerCase();
-  const createdAt = new Date(incident.createdAt);
-  const timeAgo = formatRelativeShort(createdAt, userTimeZone);
 
   return (
     <div
@@ -104,13 +139,16 @@ export default function SwipeableIncidentCard({
       className={cn(
         'relative rounded-xl overflow-hidden',
         translateX < 0 && 'bg-gradient-to-r from-transparent via-transparent to-amber-500/20',
-        translateX > 0 && 'bg-gradient-to-l from-transparent via-transparent to-emerald-500/20'
+        translateX > 0 &&
+          (rightAction?.tone === 'blue'
+            ? 'bg-gradient-to-l from-transparent via-transparent to-blue-500/20'
+            : 'bg-gradient-to-l from-transparent via-transparent to-emerald-500/20')
       )}
     >
       {/* Swipe action hints */}
       {translateX !== 0 && (
         <>
-          {translateX < -20 && (
+          {translateX < -20 && leftAction && (
             <div
               className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-amber-500 dark:text-amber-400 text-xs font-bold"
               style={{ opacity: Math.min(1, Math.abs(translateX) / threshold) }}
@@ -125,12 +163,17 @@ export default function SwipeableIncidentCard({
               >
                 <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              ACK
+              {leftAction.label}
             </div>
           )}
-          {translateX > 20 && (
+          {translateX > 20 && rightAction && (
             <div
-              className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-emerald-500 dark:text-emerald-400 text-xs font-bold"
+              className={cn(
+                'absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs font-bold',
+                rightAction.tone === 'blue'
+                  ? 'text-blue-500 dark:text-blue-400'
+                  : 'text-emerald-500 dark:text-emerald-400'
+              )}
               style={{ opacity: Math.min(1, Math.abs(translateX) / threshold) }}
             >
               <svg
@@ -144,7 +187,7 @@ export default function SwipeableIncidentCard({
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              RESOLVE
+              {rightAction.label}
             </div>
           )}
         </>
@@ -176,8 +219,7 @@ export default function SwipeableIncidentCard({
           <span
             className={cn(
               'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
-              STATUS_STYLES[statusKey] ||
-                'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              statusStyle
             )}
           >
             {incident.status}
@@ -186,8 +228,7 @@ export default function SwipeableIncidentCard({
             <span
               className={cn(
                 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide',
-                URGENCY_STYLES[urgencyKey] ||
-                  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                urgencyStyle
               )}
             >
               {incident.urgency}
@@ -212,9 +253,10 @@ export default function SwipeableIncidentCard({
         </div>
 
         {/* Swipe hint for open incidents */}
-        {statusKey === 'open' && (
+        {statusKey === 'open' && leftAction && rightAction && (
           <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center mt-1 opacity-70">
-            ← Acknowledge • Resolve →
+            ← {leftAction.label === 'ACK' ? 'Acknowledge' : leftAction.label} •{' '}
+            {rightAction.label === 'SNOOZE' ? 'Snooze' : rightAction.label} →
           </div>
         )}
       </div>

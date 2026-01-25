@@ -2,34 +2,44 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect, type CSSProperties, useCallback } from 'react';
 import { MOBILE_NAV_ITEMS, MOBILE_MORE_ROUTES } from '@/components/mobile/mobileNavItems';
+import { haptics } from '@/lib/haptics';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
 
 export default function MobileNav() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const moreIndex = MOBILE_NAV_ITEMS.findIndex(item => item.href === '/m/more');
 
-  // Fetch notification count
-  useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const res = await fetch('/api/notifications?limit=1');
-        if (res.ok) {
-          const data = await res.json();
-          const unread = (data.notifications || []).filter(
-            (n: { unread: boolean }) => n.unread
-          ).length;
-          setUnreadCount(data.unreadCount || unread);
-        }
-      } catch {
-        // Silent fail
+  const fetchCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications?limit=1');
+      if (res.ok) {
+        const data = await res.json();
+        const unread = (data.notifications || []).filter(
+          (n: { unread: boolean }) => n.unread
+        ).length;
+        setUnreadCount(data.unreadCount || unread);
       }
-    };
+    } catch {
+      // Silent fail
+    }
+  }, []);
+
+  const [usePolling, setUsePolling] = useState(false);
+
+  useNotificationStream({
+    enabled: !usePolling,
+    onUnreadCount: count => setUnreadCount(count),
+    onError: () => setUsePolling(true),
+  });
+
+  useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
     const startPolling = () => {
       if (interval) return;
-      fetchCount();
       interval = setInterval(fetchCount, 30000);
     };
     const stopPolling = () => {
@@ -40,18 +50,29 @@ export default function MobileNav() {
     const handleVisibility = () => {
       if (document.hidden) {
         stopPolling();
-      } else {
+      } else if (usePolling) {
         startPolling();
       }
     };
 
-    startPolling();
-    document.addEventListener('visibilitychange', handleVisibility);
+    initialTimer = setTimeout(() => {
+      void fetchCount();
+    }, 0);
+
+    if (usePolling) {
+      startPolling();
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+
     return () => {
       stopPolling();
+      if (initialTimer) {
+        clearTimeout(initialTimer);
+        initialTimer = null;
+      }
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, []);
+  }, [fetchCount, usePolling]);
 
   const resolveActiveIndex = () => {
     const directIndex = MOBILE_NAV_ITEMS.findIndex(item => {
@@ -99,6 +120,7 @@ export default function MobileNav() {
             href={item.href}
             className={`mobile-nav-item ${active ? 'active' : ''}`}
             style={{ maxWidth: 'unset' }}
+            onClick={() => haptics.soft()}
           >
             <span className="mobile-nav-icon" style={{ position: 'relative' }}>
               {active ? item.iconActive : item.icon}
