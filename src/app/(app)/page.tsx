@@ -286,7 +286,14 @@ export default async function Dashboard({
         ? { label: 'DEGRADED', color: 'var(--color-warning)', bg: 'rgba(245, 158, 11, 0.1)' }
         : { label: 'OPERATIONAL', color: 'var(--color-success)', bg: 'rgba(34, 197, 94, 0.1)' };
 
-  const hour = new Date().getHours();
+  // Get hour in user's timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: userTimeZone,
+  });
+  const hour = parseInt(formatter.format(new Date()), 10);
+
   const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
   const totalInRange = metricsTotalCount;
   const rangeBadgeLabel =
