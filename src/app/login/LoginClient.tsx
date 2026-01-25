@@ -125,7 +125,7 @@ export default function LoginClient({
             ) : (
               <span className="flex items-center gap-3">
                 <span className="w-1.5 h-6 bg-white/20 rounded-full" />
-                System Authentication
+                OpsKnight Secure Access
               </span>
             )}
           </h2>

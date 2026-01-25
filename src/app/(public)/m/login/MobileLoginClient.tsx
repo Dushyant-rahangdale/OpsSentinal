@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import SsoButton from '@/components/auth/SsoButton';
 import Spinner from '@/components/ui/Spinner';
 import {
@@ -168,12 +169,22 @@ export default function MobileLoginClient({
   return (
     <div className="min-h-[100dvh] w-full bg-slate-50 text-slate-900 flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-center pt-12 pb-8">
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.svg" alt="OpsKnight" className="h-10 w-10" />
-          <span className="text-xl font-bold tracking-tight text-slate-900">OpsKnight</span>
-        </Link>
-      </header>
+      <div className="relative w-full bg-gradient-to-b from-indigo-50/50 to-slate-50 pt-12 pb-6 rounded-b-[2rem]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col items-center justify-center gap-2"
+        >
+          <Link href="/" className="relative group">
+            <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <img src="/logo.svg" alt="OpsKnight" className="relative h-16 w-16 drop-shadow-lg" />
+          </Link>
+          <span className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 font-display drop-shadow-sm">
+            OpsKnight
+          </span>
+        </motion.div>
+      </div>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col px-6 pb-8">
