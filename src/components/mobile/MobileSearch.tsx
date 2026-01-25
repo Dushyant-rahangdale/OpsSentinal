@@ -86,7 +86,7 @@ export default function MobileSearch({
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             placeholder={placeholder}
             autoFocus={autoFocus}
-            className="mobile-search-input flex-1 bg-transparent text-sm font-medium text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none"
+            className="mobile-search-input flex-1 bg-[color:var(--bg-surface)] text-sm font-medium text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none"
           />
 
           {value && (
