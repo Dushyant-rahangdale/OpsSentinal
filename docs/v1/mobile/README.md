@@ -10,7 +10,7 @@ OpsKnight provides a full-featured mobile experience through a Progressive Web A
 
 Start here: **[Mobile Setup](./setup)** — install the PWA and enable push notifications.
 
-![OpsKnight mobile dashboard](/mobile-dashboard.png)
+![OpsKnight mobile dashboard](../assets/mobile.png)
 
 **Built for on-call in the real world**
 
@@ -76,7 +76,7 @@ The mobile dashboard provides a quick overview:
 - **Your Queue** — Incidents assigned to you
 - **On-Call Status** — Who's currently on-call
 
-![Mobile dashboard metrics](/mobile-dashboard.png)
+![Mobile dashboard metrics](../assets/mobile.png)
 
 ### Incident Management
 
@@ -111,7 +111,7 @@ While the app is open, the notification list updates in real time and falls back
 
 ## Push Notifications
 
-![OpsKnight push notification on iOS](/push-notification.png)
+![OpsKnight push notification on iOS](../assets/mobile.png)
 
 ### Enabling Push Notifications
 

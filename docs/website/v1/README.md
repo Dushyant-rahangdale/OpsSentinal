@@ -8,9 +8,10 @@ description: The complete guide to mastering incident management with OpsKnight
 
 Welcome to OpsKnight — the open-source incident management platform built for modern DevOps and SRE teams. This documentation will guide you from initial setup to advanced configuration, helping you build a world-class incident response capability.
 
-![OpsKnight mobile PWA dashboard](/mobile-dashboard.png)
+![OpsKnight mobile PWA dashboard](../../v1/assets/mobile.png)
 
 **Mobile PWA + Push notifications**
+
 - Install OpsKnight on iOS/Android as a PWA (no app store wait)
 - Receive push notifications with incident context
 - Take action from anywhere, instantly
@@ -24,6 +25,7 @@ When an incident strikes, every second counts. OpsKnight ensures the right perso
 **The Problem**: Alert fatigue, missed notifications, unclear ownership, and slow response times cost businesses millions in downtime and erode customer trust.
 
 **The Solution**: OpsKnight provides a unified incident management platform that:
+
 - Routes alerts intelligently to on-call responders
 - Escalates automatically when incidents go unacknowledged
 - Provides complete visibility through dashboards and analytics
@@ -33,17 +35,17 @@ When an incident strikes, every second counts. OpsKnight ensures the right perso
 
 ## Documentation Sections
 
-| Section | Description | Start Here If... |
-|---------|-------------|------------------|
-| [Getting Started](./getting-started/) | Installation, configuration, and your first incident | You're new to OpsKnight |
-| [Core Concepts](./core-concepts/) | Services, incidents, schedules, escalation policies | You want to understand how things work |
-| [Integrations](./integrations/) | Connect 20+ monitoring tools, Slack, and custom webhooks | You need to route alerts from your stack |
-| [Administration](./administration/) | Notifications, audit logs, data retention, custom fields | You're setting up for a team |
-| [API Reference](./api/) | Events API, incident management, CLI tooling | You're building automations |
-| [Deployment](./deployment/) | Docker, Kubernetes, Helm, and PWA setup | You're ready for production |
-| [Security](./security/) | SSO/OIDC, encryption, access control | Security and compliance matter |
-| [Architecture](./architecture/) | System design, observability, and scaling | You need to understand the internals |
-| [Mobile](./mobile/) | PWA features, mobile UX, push notifications | You need on-call on the go |
+| Section                               | Description                                              | Start Here If...                         |
+| ------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| [Getting Started](./getting-started/) | Installation, configuration, and your first incident     | You're new to OpsKnight                  |
+| [Core Concepts](./core-concepts/)     | Services, incidents, schedules, escalation policies      | You want to understand how things work   |
+| [Integrations](./integrations/)       | Connect 20+ monitoring tools, Slack, and custom webhooks | You need to route alerts from your stack |
+| [Administration](./administration/)   | Notifications, audit logs, data retention, custom fields | You're setting up for a team             |
+| [API Reference](./api/)               | Events API, incident management, CLI tooling             | You're building automations              |
+| [Deployment](./deployment/)           | Docker, Kubernetes, Helm, and PWA setup                  | You're ready for production              |
+| [Security](./security/)               | SSO/OIDC, encryption, access control                     | Security and compliance matter           |
+| [Architecture](./architecture/)       | System design, observability, and scaling                | You need to understand the internals     |
+| [Mobile](./mobile/)                   | PWA features, mobile UX, push notifications              | You need on-call on the go               |
 
 ---
 
@@ -52,24 +54,30 @@ When an incident strikes, every second counts. OpsKnight ensures the right perso
 OpsKnight is a complete incident management solution with six core pillars:
 
 ### 1. Incident Management
+
 Turn noisy alerts into actionable incidents with full lifecycle tracking from trigger to resolution.
 
 <!-- placeholder:incident-lifecycle -->
 <!-- Add: Diagram showing OPEN → ACKNOWLEDGED → RESOLVED flow -->
 
 ### 2. On-Call Scheduling
+
 Build flexible rotation schedules with multiple layers, timezone support, and easy overrides.
 
 ### 3. Escalation Policies
+
 Define multi-tier escalation chains that ensure incidents always reach someone who can help.
 
 ### 4. Multi-Channel Notifications
+
 Reach responders through Email, SMS, Push, Slack, WhatsApp, or custom webhooks.
 
 ### 5. Public Status Pages
+
 Keep customers informed with beautiful, real-time status pages showing service health.
 
 ### 6. Analytics & SLA Tracking
+
 Measure MTTA, MTTR, and SLA compliance to continuously improve your incident response.
 
 ---
@@ -116,6 +124,7 @@ Understanding the relationship between OpsKnight components helps you design eff
 ```
 
 **The Flow**:
+
 1. **Alert sources** (monitoring tools) send events to OpsKnight via webhooks
 2. **Services** represent your systems and route alerts to the right escalation policy
 3. **Incidents** are created and tracked through their lifecycle
@@ -151,24 +160,28 @@ Access OpsKnight at **http://localhost:3000** — you'll be directed to the `/se
 ## Key Features at a Glance
 
 ### For Responders
+
 - **Mobile-first PWA** — Handle incidents from anywhere
 - **One-click acknowledge** — Stop the pager with a single tap
 - **Rich context** — See timeline, notes, and related alerts
 - **Smart notifications** — Get notified through your preferred channel
 
 ### For Team Leads
+
 - **Fair scheduling** — Balanced on-call rotations with easy overrides
 - **Escalation assurance** — Incidents never fall through the cracks
 - **Team dashboards** — See your team's incident load at a glance
 - **Post-mortems** — Learn from incidents with structured retrospectives
 
 ### For Operations
+
 - **20+ integrations** — Connect your entire monitoring stack
 - **Custom webhooks** — Integrate with any tool via generic webhooks
 - **API-first** — Automate everything with comprehensive APIs
 - **Self-hosted** — Keep your data on your infrastructure
 
 ### For Leadership
+
 - **SLA tracking** — Monitor MTTA/MTTR against targets
 - **Analytics dashboards** — Trend analysis and insights
 - **Status pages** — Transparent communication with customers
@@ -180,14 +193,14 @@ Access OpsKnight at **http://localhost:3000** — you'll be directed to the `/se
 
 OpsKnight is built on modern, battle-tested technologies:
 
-| Component | Technology | Why |
-|-----------|------------|-----|
-| **Frontend** | Next.js 16 + React 19 | Server-side rendering, great DX |
-| **UI Components** | Radix UI + Tailwind CSS | Accessible, beautiful design |
-| **Database** | PostgreSQL 14+ | Reliable, performant, self-hosted |
-| **ORM** | Prisma | Type-safe database access |
-| **Auth** | NextAuth + OIDC | Flexible authentication |
-| **Deployment** | Docker, Kubernetes, Helm | Deploy anywhere |
+| Component         | Technology               | Why                               |
+| ----------------- | ------------------------ | --------------------------------- |
+| **Frontend**      | Next.js 16 + React 19    | Server-side rendering, great DX   |
+| **UI Components** | Radix UI + Tailwind CSS  | Accessible, beautiful design      |
+| **Database**      | PostgreSQL 14+           | Reliable, performant, self-hosted |
+| **ORM**           | Prisma                   | Type-safe database access         |
+| **Auth**          | NextAuth + OIDC          | Flexible authentication           |
+| **Deployment**    | Docker, Kubernetes, Helm | Deploy anywhere                   |
 
 **No external dependencies required** — OpsKnight uses a Postgres-based job queue, eliminating the need for Redis or other services.
 
