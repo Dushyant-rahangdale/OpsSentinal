@@ -184,7 +184,10 @@ export default function HeatmapCalendar({
         const date = new Date(weekStart);
         date.setDate(weekStart.getDate() + dayOfWeek);
 
-        const dateKey = date.toISOString().split('T')[0];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
         const inRange = date >= normalizedStart && date <= rangeEnd;
         const count = inRange ? dataMap.get(dateKey) || 0 : -1;
         const x = weekIndex * (effectiveCellSize + effectiveGap);
