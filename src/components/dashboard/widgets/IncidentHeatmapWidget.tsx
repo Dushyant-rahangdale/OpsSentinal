@@ -86,7 +86,7 @@ export function IncidentHeatmapWidget({
     const safeGap = widthPerWeek < 12 ? 1 : 2;
 
     // Cell size is the remainder. Ensure at least 2px.
-    const scaledCell = Math.max(2, Math.min(28, Math.floor(widthPerWeek - safeGap)));
+    const scaledCell = Math.max(2, Math.min(40, Math.floor(widthPerWeek - safeGap)));
 
     // Recalculate actual gap used (in case floor changed things)
     const scaledGap = safeGap;
@@ -260,7 +260,7 @@ export function IncidentHeatmapWidget({
 
         {/* Heatmap Grid Container */}
         <div
-          className="relative overflow-x-auto pb-2 -mx-1 px-1"
+          className="relative overflow-x-auto pb-2 -mx-1 px-1 flex justify-center"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className="w-full flex flex-col">
