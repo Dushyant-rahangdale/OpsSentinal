@@ -61,7 +61,7 @@ export default async function Dashboard({
     typeof awaitedSearchParams.status === 'string' ? awaitedSearchParams.status : undefined;
   const status =
     statusParam &&
-      ['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED'].includes(statusParam)
+    ['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED'].includes(statusParam)
       ? statusParam
       : undefined;
   const assigneeParam =
@@ -102,9 +102,9 @@ export default async function Dashboard({
   const email = session?.user?.email ?? null;
   const user = email
     ? await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, name: true, timeZone: true },
-    })
+        where: { email },
+        select: { id: true, name: true, timeZone: true },
+      })
     : null;
   const userName = user?.name || 'there';
   const userTimeZone = user?.timeZone || 'UTC';
@@ -239,17 +239,17 @@ export default async function Dashboard({
     // Fail-safe wrapper for Widget Data
     user
       ? getWidgetData(user.id, 'user', {
-        serviceId: service,
-        assigneeId: assigneeFilter,
-        urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
-        status: status as IncidentStatus | undefined,
-        startDate: metricsStartDate,
-        endDate: metricsEndDate,
-        includeAllTime: range === 'all',
-      }).catch(err => {
-        console.error('Failed to load widget data:', err);
-        return null;
-      })
+          serviceId: service,
+          assigneeId: assigneeFilter,
+          urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
+          status: status as IncidentStatus | undefined,
+          startDate: metricsStartDate,
+          endDate: metricsEndDate,
+          includeAllTime: range === 'all',
+        }).catch(err => {
+          console.error('Failed to load widget data:', err);
+          return null;
+        })
       : Promise.resolve(null),
   ]);
 
@@ -342,9 +342,9 @@ export default async function Dashboard({
   const criticalFocus = criticalIncidents.slice(0, 3);
   const myQueueItems = user
     ? activeIncidents
-      .filter(incident => incident.assigneeId === user.id)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .slice(0, 3)
+        .filter(incident => incident.assigneeId === user.id)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, 3)
     : [];
   const servicesAtRisk = slaMetrics.serviceMetrics
     .filter(serviceMetric => (serviceMetric.activeCount ?? 0) > 0)
@@ -673,12 +673,7 @@ export default async function Dashboard({
             </div>
 
             {/* Incident Heatmap (Heartmap - User Requested) */}
-            <IncidentHeatmapWidget
-              data={heatmapData}
-              rangeLabel={heatmapLabel}
-              startDate={heatmapStartIso}
-              endDate={heatmapEndIso}
-            />
+            <IncidentHeatmapWidget data={heatmapData} year={new Date().getFullYear()} />
 
             <IncidentsListTable
               incidents={recentIncidentListItems}

@@ -18,11 +18,13 @@ interface HeatmapDataPoint {
 interface IncidentHeatmapWidgetProps {
   data?: HeatmapDataPoint[];
   year?: number;
+  variant?: 'dashboard' | 'analytics';
 }
 
 export function IncidentHeatmapWidget({
   data = [],
   year = new Date().getFullYear(),
+  variant = 'dashboard',
 }: IncidentHeatmapWidgetProps) {
   const { weeks, monthLabels, totalCount, maxCount } = useMemo(() => {
     const map = new Map<string, number>();
@@ -58,7 +60,7 @@ export function IncidentHeatmapWidget({
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    const weeks: typeof days[] = [];
+    const weeks: (typeof days)[] = [];
     for (let i = 0; i < days.length; i += 7) {
       weeks.push(days.slice(i, i + 7));
     }
@@ -95,9 +97,18 @@ export function IncidentHeatmapWidget({
 
   return (
     <TooltipProvider>
-      <div className="group relative rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-white to-primary/5 shadow-sm overflow-hidden p-4 sm:p-6">
-        {/* Accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/60" />
+      <div
+        className={cn(
+          'group relative overflow-hidden p-4 sm:p-6',
+          variant === 'dashboard'
+            ? 'rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-white to-primary/5 shadow-sm'
+            : 'rounded-xl border border-border/50 bg-background/50 shadow-none'
+        )}
+      >
+        {/* Accent bar - Only for dashboard variant */}
+        {variant === 'dashboard' && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/60" />
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -166,15 +177,15 @@ export function IncidentHeatmapWidget({
           <span>Less</span>
           <div className="flex gap-[3px]">
             {/* 0 incidents */}
-            <div className={cn("w-3 h-3 rounded-[2px]", "bg-slate-200 dark:bg-slate-800")} />
+            <div className={cn('w-3 h-3 rounded-[2px]', 'bg-slate-200 dark:bg-slate-800')} />
             {/* Low intensity (<25%) */}
-            <div className={cn("w-3 h-3 rounded-[2px]", "bg-green-300 dark:bg-green-900")} />
+            <div className={cn('w-3 h-3 rounded-[2px]', 'bg-green-300 dark:bg-green-900')} />
             {/* Medium intensity (<50%) */}
-            <div className={cn("w-3 h-3 rounded-[2px]", "bg-yellow-300 dark:bg-yellow-800")} />
+            <div className={cn('w-3 h-3 rounded-[2px]', 'bg-yellow-300 dark:bg-yellow-800')} />
             {/* High intensity (<75%) */}
-            <div className={cn("w-3 h-3 rounded-[2px]", "bg-orange-400 dark:bg-orange-700")} />
+            <div className={cn('w-3 h-3 rounded-[2px]', 'bg-orange-400 dark:bg-orange-700')} />
             {/* Critical intensity (>75%) */}
-            <div className={cn("w-3 h-3 rounded-[2px]", "bg-red-500 dark:bg-red-800")} />
+            <div className={cn('w-3 h-3 rounded-[2px]', 'bg-red-500 dark:bg-red-800')} />
           </div>
           <span>More</span>
         </div>
