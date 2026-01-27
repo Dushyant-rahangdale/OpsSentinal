@@ -157,7 +157,10 @@ export async function getWidgetData(
   });
 
   // Identify SLA breach alerts using calculated deadlines
+  // SAFETY: Explicitly filter out resolved incidents to prevent false alerts
   const slaBreachAlerts = activeIncidentsData.filter(inc => {
+    if (inc.status === 'RESOLVED' || inc.resolvedAt) return false;
+
     const nowMs = now.getTime();
 
     // Check ACK breach alert

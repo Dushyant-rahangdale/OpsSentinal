@@ -302,8 +302,8 @@ export async function sendIncidentPush(
 
     const title =
       eventType === 'triggered'
-        ? `${titleEmoji} ${urgencyLabel} • ${incident.title}`
-        : `${titleEmoji} ${eventLabel} • ${incident.title}`;
+        ? `${titleEmoji} ${incident.urgency === 'HIGH' ? 'CRITICAL' : 'Incident'} • ${incident.service?.name}`
+        : `${titleEmoji} ${eventLabel} • ${incident.service?.name}`;
 
     const eventTime =
       eventType === 'acknowledged'
@@ -316,14 +316,15 @@ export async function sendIncidentPush(
     const ownerLabel =
       incident.assignee?.name || incident.assignee?.email || incident.team?.name || 'Unassigned';
 
-    const serviceName = incident.service?.name || 'Unknown service';
-    let body = `Service: ${serviceName}`;
-    body += `\nStatus: ${eventLabel}`;
-    body += `\nOwner: ${ownerLabel}`;
-    body += `\nWhen: ${timeLabel}`;
+    // Premium Concise Body:
+    // "Title of the incident..."
+    // "Status • Owner • Time"
 
-    if (incident.urgency) {
-      body += `\nUrgency: ${urgencyLabel}`;
+    let body = `${incident.title}`;
+    body += `\n${eventLabel} • ${ownerLabel} • ${timeLabel}`;
+
+    if (incident.urgency === 'HIGH') {
+      body += `\n🚨 Urgent Action Required`;
     }
 
     if (incident.description) {

@@ -753,12 +753,29 @@ export async function reassignIncident(incidentId: string, assigneeId: string, t
       if (teamWithMembers) {
         const incident = await prisma.incident.findUnique({
           where: { id: incidentId },
-          select: { title: true },
+          include: {
+            // Fetch service info for notification context
+            service: {
+              include: {
+                team: {
+                  include: { members: { include: { user: true } } },
+                },
+              },
+            },
+            assignee: true,
+          },
         });
 
         const message = `[OpsKnight] ${incident?.title || 'Incident'} assigned to your team: ${teamWithMembers.name}`;
         for (const member of teamWithMembers.members) {
           await sendUserNotification(incidentId, member.userId, message);
+        }
+
+        // --- ADDED: Send Service-Level Notification for Reassignment (Team) ---
+        if (incident) {
+          const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+          // 'updated' is a catch-all that triggers service notifications
+          await sendIncidentNotifications(incident.id, 'updated', [], incident);
         }
       }
     } catch (error) {
@@ -800,6 +817,14 @@ export async function reassignIncident(incidentId: string, assigneeId: string, t
         },
       });
     });
+
+    // --- ADDED: Send Service-Level Notification for Reassignment (User) ---
+    try {
+      const { sendIncidentNotifications } = await import('@/lib/user-notifications');
+      await sendIncidentNotifications(incidentId, 'updated');
+    } catch (error) {
+      logger.error('Failed to send reassignment notification', { error, incidentId });
+    }
 
     revalidatePath(`/incidents/${incidentId}`);
     revalidatePath('/incidents');

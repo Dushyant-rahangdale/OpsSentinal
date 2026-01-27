@@ -304,8 +304,8 @@ describe('Notification System Tests', () => {
       const payload = formatGoogleChatPayload(incident, 'triggered', 'https://example.com');
 
       expect(payload.cards).toBeDefined();
-      expect(payload.cards[0].header.title).toContain('Incident TRIGGERED');
-      expect(payload.cards[0].header.subtitle).toBe('Test Service');
+      expect(payload.cards[0].header.title).toContain('Incident Triggered');
+      expect(payload.cards[0].header.subtitle).toBe('Test Service • HIGH');
     });
 
     it('should format Microsoft Teams payload correctly', () => {
@@ -346,7 +346,7 @@ describe('Notification System Tests', () => {
       const payload = formatDiscordPayload(incident, 'triggered', 'https://example.com');
 
       expect(payload.embeds).toBeDefined();
-      expect(payload.embeds[0].title).toContain('Incident TRIGGERED');
+      expect(payload.embeds[0].title).toContain('Incident Triggered');
       expect(payload.embeds[0].color).toBe(0xd32f2f); // Red for triggered
     });
   });

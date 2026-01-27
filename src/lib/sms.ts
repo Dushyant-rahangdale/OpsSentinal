@@ -344,16 +344,16 @@ export async function sendIncidentSMS(
     // Line 4: Link
     const message =
       eventType === 'resolved'
-        ? `[OpsKnight] ${eventEmoji} RESOLVED\n${title}\n✓ ${service}\n${incidentUrl}`
+        ? `[OpsKnight] ${eventEmoji} Resolved: ${title}\n✓ ${service}\n${incidentUrl}`
         : eventType === 'acknowledged'
-          ? `[OpsKnight] ${eventEmoji} ACKNOWLEDGED\n${title}\n⚡ ${service}\n${incidentUrl}`
+          ? `[OpsKnight] ${eventEmoji} Acknowledged: ${title}\n⚡ ${service}\n${incidentUrl}`
           : `[OpsKnight] ${eventEmoji} ${
               incident.urgency === 'HIGH'
-                ? 'CRITICAL ALERT'
+                ? 'CRITICAL'
                 : incident.urgency === 'MEDIUM'
-                  ? 'ELEVATED INCIDENT'
-                  : 'INCIDENT'
-            }\n${title}\n⚠ ${service}\n${incidentUrl}`;
+                  ? 'Elevated'
+                  : 'Incident'
+            }: ${title}\n⚠ ${service}\n${incidentUrl}`;
 
     // Format phone number to E.164 format if needed
     let phoneNumber = user.phoneNumber.trim();

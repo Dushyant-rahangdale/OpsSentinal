@@ -55,14 +55,12 @@ export default async function IncidentsPage({
   });
 
   const userTeamIds = currentUser?.teamMemberships.map(t => t.teamId) || [];
-  const userTeams =
-    userTeamIds.length > 0
-      ? await prisma.team.findMany({
-          where: { id: { in: userTeamIds } },
-          select: { id: true, name: true },
-          orderBy: { name: 'asc' },
-        })
-      : [];
+
+  // FIX: Fetch ALL teams for the filter dropdown, not just teams the user is in
+  const allTeams = await prisma.team.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
 
   const where = buildIncidentWhere({
     filter: currentFilter,
@@ -193,7 +191,7 @@ export default async function IncidentsPage({
           currentUrgency={currentUrgency}
           currentSearch={currentSearch}
           currentTeamId={currentTeamId}
-          teams={userTeams}
+          teams={allTeams}
           canCreateIncident={canCreateIncident}
         />
 

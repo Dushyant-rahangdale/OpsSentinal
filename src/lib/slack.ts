@@ -226,6 +226,9 @@ export async function notifySlackForIncident(
 /**
  * Build Slack message blocks with interactive buttons
  */
+/**
+ * Build Slack message blocks with interactive buttons (Premium Design)
+ */
 function buildSlackBlocks(
   incident: IncidentDetails,
   eventType: SlackEventType,
@@ -236,14 +239,37 @@ function buildSlackBlocks(
   const appUrl = getBaseUrl();
   const incidentUrl = `${appUrl}/incidents/${incident.id}`;
 
+  // Format timestamps if not already present in details (assuming current time for event)
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // Status mapping to human-readable strings
+  const statusLabels: Record<string, string> = {
+    triggered: 'Triggered',
+    acknowledged: 'Acknowledged',
+    resolved: 'Resolved',
+  };
+  const eventLabel = statusLabels[eventType] || eventType.toUpperCase();
+
   const blocks: SlackBlock[] = [
     {
       type: 'header',
       text: {
         type: 'plain_text',
-        text: `${emoji} Incident ${eventType.toUpperCase()}: ${incident.title}`,
+        text: `${emoji} Incident ${eventLabel}: ${incident.title}`,
         emoji: true,
       },
+    },
+    {
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `*OpsKnight*  |  <!date^${timestamp}^{date} at {time}|${new Date().toLocaleString()}>`,
+        },
+      ],
+    },
+    {
+      type: 'divider',
     },
     {
       type: 'section',
@@ -254,11 +280,11 @@ function buildSlackBlocks(
         },
         {
           type: 'mrkdwn',
-          text: `*Urgency:*\n${incident.urgency}`,
+          text: `*Status:*\n${incident.status}`,
         },
         {
           type: 'mrkdwn',
-          text: `*Status:*\n${incident.status}`,
+          text: `*Urgency:*\n${incident.urgency}`,
         },
         {
           type: 'mrkdwn',
@@ -273,13 +299,66 @@ function buildSlackBlocks(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: additionalMessage,
+        text: `*Note:*\n${additionalMessage}`,
       },
     });
   }
 
-  // Add interactive buttons for ack/resolve (only for triggered/acknowledged incidents)
-  if (includeInteractiveButtons && (eventType === 'triggered' || eventType === 'acknowledged')) {
+  // Action Buttons
+  if (includeInteractiveButtons) {
+    const elements = [];
+
+    // Ack button (only for triggered)
+    if (eventType === 'triggered') {
+      elements.push({
+        type: 'button',
+        text: {
+          type: 'plain_text',
+          text: '👀 Acknowledge',
+          emoji: true,
+        },
+        style: 'primary',
+        value: JSON.stringify({ action: 'ack', incidentId: incident.id }),
+        action_id: 'ack_incident',
+      });
+    }
+
+    // Resolve button (only for acked)
+    if (eventType === 'acknowledged') {
+      elements.push({
+        type: 'button',
+        text: {
+          type: 'plain_text',
+          text: '✅ Resolve',
+          emoji: true,
+        },
+        style: 'primary',
+        value: JSON.stringify({ action: 'resolve', incidentId: incident.id }),
+        action_id: 'resolve_incident',
+      });
+    }
+
+    // View Incident Button (Always present)
+    elements.push({
+      type: 'button',
+      text: {
+        type: 'plain_text',
+        text: 'View Details ↗', // Arrow for external link feel
+        emoji: true,
+      },
+      url: incidentUrl,
+    });
+
+    blocks.push({
+      type: 'divider',
+    });
+
+    blocks.push({
+      type: 'actions',
+      elements: elements,
+    });
+  } else {
+    // If no interactive buttons, at least provide the View Link
     blocks.push({
       type: 'actions',
       elements: [
@@ -287,57 +366,14 @@ function buildSlackBlocks(
           type: 'button',
           text: {
             type: 'plain_text',
-            text: 'Acknowledge',
+            text: 'View Details ↗',
             emoji: true,
           },
-          style: 'primary',
-          value: JSON.stringify({ action: 'ack', incidentId: incident.id }),
-          action_id: 'ack_incident',
+          url: incidentUrl,
         },
-        ...(eventType === 'acknowledged'
-          ? [
-              {
-                type: 'button',
-                text: {
-                  type: 'plain_text',
-                  text: 'Resolve',
-                  emoji: true,
-                },
-                style: 'danger',
-                value: JSON.stringify({ action: 'resolve', incidentId: incident.id }),
-                action_id: 'resolve_incident',
-              },
-            ]
-          : []),
       ],
     });
   }
-
-  blocks.push({
-    type: 'actions',
-    elements: [
-      {
-        type: 'button',
-        text: {
-          type: 'plain_text',
-          text: 'View Incident',
-          emoji: true,
-        },
-        url: incidentUrl,
-        style: 'primary',
-      },
-    ],
-  });
-
-  blocks.push({
-    type: 'context',
-    elements: [
-      {
-        type: 'mrkdwn',
-        text: `*OpsKnight* | Incident #${incident.id.slice(-5).toUpperCase()}`,
-      },
-    ],
-  });
 
   return blocks;
 }
@@ -350,7 +386,8 @@ export async function sendSlackMessageToChannel(
   incident: IncidentDetails,
   eventType: SlackEventType,
   includeInteractiveButtons: boolean = true,
-  serviceId?: string
+  serviceId?: string,
+  additionalMessage?: string
 ): Promise<{ success: boolean; error?: string }> {
   // Get bot token (from OAuth integration or env fallback)
   const botToken = await getSlackBotToken(serviceId);
@@ -358,11 +395,16 @@ export async function sendSlackMessageToChannel(
   if (!botToken) {
     logger.warn('[Slack] No bot token configured, falling back to webhook');
     // Fallback to webhook if API token not available
-    return sendSlackNotification(eventType, incident, undefined, undefined);
+    return sendSlackNotification(eventType, incident, additionalMessage, undefined);
   }
 
   const color = getStatusColor(eventType);
-  const blocks = buildSlackBlocks(incident, eventType, undefined, includeInteractiveButtons);
+  const blocks = buildSlackBlocks(
+    incident,
+    eventType,
+    additionalMessage,
+    includeInteractiveButtons
+  );
 
   const payload = {
     // Use ID directly if it looks like an ID (C/G/D/U...), otherwise ensure # prefix for names

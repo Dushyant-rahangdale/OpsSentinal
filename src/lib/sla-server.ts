@@ -793,7 +793,11 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     }),
     prisma.incident.groupBy({
       by: ['assigneeId'],
-      where: { ...recentIncidentWhere, assigneeId: { not: null } },
+      where: {
+        ...recentIncidentWhere,
+        assigneeId: { not: null },
+        status: { notIn: ['RESOLVED', 'SNOOZED', 'SUPPRESSED'] as const },
+      },
       _count: { _all: true },
       orderBy: { _count: { id: 'desc' } },
       take: 6,

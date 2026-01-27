@@ -30,8 +30,8 @@ import {
   Clock,
 } from 'lucide-react';
 import GaugeChart from '@/components/analytics/GaugeChart';
-import HeatmapCalendar from '@/components/analytics/HeatmapCalendar';
 import LineChart from '@/components/analytics/LineChart';
+import { IncidentHeatmapWidget } from '@/components/dashboard/widgets/IncidentHeatmapWidget';
 import ServiceHealthTable from '@/components/analytics/ServiceHealthTable';
 
 import './analytics-v2.css';
@@ -1447,33 +1447,11 @@ export default async function AnalyticsV2Page({
       </section>
 
       <section className="activity-panel mb-8">
-        <div className="activity-github-header">
-          <div className="activity-github-title">
-            <span className="activity-github-icon">
-              <Clock className="w-4 h-4" />
-            </span>
-            <div>
-              <span className="activity-github-eyebrow">Historical Activity</span>
-              <h3>Incident frequency over the last year</h3>
-            </div>
-          </div>
-          <span className="activity-github-meta">Timezone: {userTimeZone}</span>
-        </div>
-
-        <div className="activity-github-body">
-          <div className="activity-github-heatmap">
-            <HeatmapCalendar data={metrics.heatmapData} days={365} fitWidth />
-          </div>
-          <div className="activity-github-legend">
-            <span>Less</span>
-            <div className="activity-github-legend-swatch">
-              <span />
-              <span />
-              <span />
-            </div>
-            <span>More</span>
-          </div>
-        </div>
+        <IncidentHeatmapWidget
+          data={metrics.heatmapData}
+          year={new Date().getFullYear()}
+          variant="analytics"
+        />
       </section>
     </main>
   );

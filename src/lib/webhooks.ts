@@ -229,6 +229,9 @@ export function generateIncidentWebhookPayload(
 /**
  * Format payload for Google Chat
  */
+/**
+ * Format payload for Google Chat (Premium)
+ */
 export function formatGoogleChatPayload(
   incident: {
     id: string;
@@ -246,51 +249,48 @@ export function formatGoogleChatPayload(
   baseUrl: string
 ): Record<string, any> {
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
-  const _statusColor =
+
+  // Status mapping
+  const statusIcon =
     eventType === 'triggered'
-      ? '#d32f2f'
+      ? '🔥'
       : eventType === 'acknowledged'
-        ? '#f9a825'
+        ? '⚠️'
         : eventType === 'resolved'
-          ? '#388e3c'
-          : '#757575';
+          ? '✅'
+          : 'ℹ️';
 
   return {
     cards: [
       {
         header: {
-          title: `Incident ${eventType.toUpperCase()}: ${incident.title}`,
-          subtitle: incident.service.name,
-          imageUrl: '',
+          title: `Incident ${eventType.charAt(0).toUpperCase() + eventType.slice(1)}`,
+          subtitle: `${incident.service.name} • ${incident.urgency}`,
+          imageUrl:
+            'https://raw.githubusercontent.com/google/material-design-icons/master/png/alert/error_outline/materialicons/24dp/2x/baseline_error_outline_black_24dp.png', // Generic alert icon
           imageStyle: 'AVATAR',
         },
         sections: [
           {
+            header: 'Details',
             widgets: [
               {
+                textParagraph: {
+                  text: `<b>${statusIcon} ${incident.title}</b>`,
+                },
+              },
+              {
                 keyValue: {
-                  topLabel: 'Status',
+                  topLabel: 'Current Status',
                   content: incident.status,
-                  contentMultiline: false,
-                  bottomLabel: incident.urgency,
                   icon: 'DESCRIPTION',
-                  button: {
-                    textButton: {
-                      text: 'VIEW INCIDENT',
-                      onClick: {
-                        openLink: {
-                          url: incidentUrl,
-                        },
-                      },
-                    },
-                  },
                 },
               },
               {
                 keyValue: {
                   topLabel: 'Assignee',
                   content: incident.assignee?.name || 'Unassigned',
-                  contentMultiline: false,
+                  icon: 'PERSON',
                 },
               },
             ],
@@ -301,13 +301,31 @@ export function formatGoogleChatPayload(
                   widgets: [
                     {
                       textParagraph: {
-                        text: incident.description,
+                        text: `<b>Description:</b><br>${incident.description.substring(0, 500)}${incident.description.length > 500 ? '...' : ''}`,
                       },
                     },
                   ],
                 },
               ]
             : []),
+          {
+            widgets: [
+              {
+                buttons: [
+                  {
+                    textButton: {
+                      text: 'VIEW INCIDENT',
+                      onClick: {
+                        openLink: {
+                          url: incidentUrl,
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
         ],
       },
     ],
@@ -316,6 +334,9 @@ export function formatGoogleChatPayload(
 
 /**
  * Format payload for Microsoft Teams (Adaptive Card)
+ */
+/**
+ * Format payload for Microsoft Teams (Adaptive Card Premium)
  */
 export function formatMicrosoftTeamsPayload(
   incident: {
@@ -334,14 +355,23 @@ export function formatMicrosoftTeamsPayload(
   baseUrl: string
 ): Record<string, any> {
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
-  const _accentColor =
+  const accentColor =
     eventType === 'triggered'
-      ? '#d32f2f'
+      ? 'Attention' // Red
       : eventType === 'acknowledged'
-        ? '#f9a825'
+        ? 'Warning' // Yellow/Orange
         : eventType === 'resolved'
-          ? '#388e3c'
-          : '#757575';
+          ? 'Good' // Green
+          : 'Default';
+
+  const statusEmoji =
+    eventType === 'triggered'
+      ? '🔥'
+      : eventType === 'acknowledged'
+        ? '⚠️'
+        : eventType === 'resolved'
+          ? '✅'
+          : 'ℹ️';
 
   return {
     type: 'message',
@@ -353,49 +383,78 @@ export function formatMicrosoftTeamsPayload(
           version: '1.4',
           body: [
             {
+              type: 'Container',
+              style: accentColor,
+              items: [
+                {
+                  type: 'TextBlock',
+                  text: `${statusEmoji} Incident ${eventType.charAt(0).toUpperCase() + eventType.slice(1)}`,
+                  weight: 'Bolder',
+                  size: 'Medium',
+                  color: 'Light',
+                },
+              ],
+            },
+            {
               type: 'TextBlock',
-              text: `Incident ${eventType.toUpperCase()}: ${incident.title}`,
+              text: incident.title,
               weight: 'Bolder',
-              size: 'Large',
+              size: 'ExtraLarge',
               wrap: true,
+              spacing: 'Small',
             },
             {
               type: 'FactSet',
               facts: [
-                {
-                  title: 'Service:',
-                  value: incident.service.name,
-                },
-                {
-                  title: 'Status:',
-                  value: incident.status,
-                },
-                {
-                  title: 'Urgency:',
-                  value: incident.urgency,
-                },
-                {
-                  title: 'Assignee:',
-                  value: incident.assignee?.name || 'Unassigned',
-                },
+                { title: 'Service', value: incident.service.name },
+                { title: 'Status', value: incident.status },
+                { title: 'Urgency', value: incident.urgency },
+                { title: 'Assignee', value: incident.assignee?.name || 'Unassigned' },
               ],
+              spacing: 'Medium',
             },
             ...(incident.description
               ? [
                   {
-                    type: 'TextBlock',
-                    text: incident.description,
-                    wrap: true,
-                    spacing: 'Medium',
+                    type: 'Container',
+                    separator: true,
+                    items: [
+                      {
+                        type: 'TextBlock',
+                        text: 'Description',
+                        weight: 'Bolder',
+                        size: 'Small',
+                      },
+                      {
+                        type: 'TextBlock',
+                        text: incident.description,
+                        wrap: true,
+                        isSubtle: true,
+                      },
+                    ],
                   },
                 ]
               : []),
+            {
+              type: 'Container',
+              separator: true,
+              items: [
+                {
+                  type: 'TextBlock',
+                  text: `Updated: ${new Date().toLocaleString()}`,
+                  size: 'Small',
+                  isSubtle: true,
+                  horizontalAlignment: 'Right',
+                },
+              ],
+            },
           ],
           actions: [
             {
               type: 'Action.OpenUrl',
               title: 'View Incident',
               url: incidentUrl,
+              style: 'positive',
             },
           ],
           $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
@@ -407,6 +466,9 @@ export function formatMicrosoftTeamsPayload(
 
 /**
  * Format payload for Discord (Embed)
+ */
+/**
+ * Format payload for Discord (Embed Premium)
  */
 export function formatDiscordPayload(
   incident: {
@@ -427,45 +489,54 @@ export function formatDiscordPayload(
   const incidentUrl = `${baseUrl}/incidents/${incident.id}`;
   const color =
     eventType === 'triggered'
-      ? 0xd32f2f
+      ? 0xd32f2f // Red
       : eventType === 'acknowledged'
-        ? 0xf9a825
+        ? 0xf9a825 // Yellow
         : eventType === 'resolved'
-          ? 0x388e3c
-          : 0x757575;
+          ? 0x388e3c // Green
+          : 0x757575; // Grey
+
+  const statusEmoji =
+    eventType === 'triggered'
+      ? '🔴'
+      : eventType === 'acknowledged'
+        ? '🟡'
+        : eventType === 'resolved'
+          ? '🟢'
+          : 'ℹ️';
 
   return {
     embeds: [
       {
-        title: `Incident ${eventType.toUpperCase()}: ${incident.title}`,
-        description: incident.description || undefined,
+        title: `${statusEmoji} Incident ${eventType.charAt(0).toUpperCase() + eventType.slice(1)}`,
+        description: `**${incident.title}**\n\n${incident.description ? incident.description.substring(0, 1000) : '_No description provided_'}`,
         url: incidentUrl,
         color: color,
         fields: [
           {
-            name: 'Service',
-            value: incident.service.name,
+            name: '🏢 Service',
+            value: `\`${incident.service.name}\``,
             inline: true,
           },
           {
-            name: 'Status',
-            value: incident.status,
+            name: '🚦 Urgency',
+            value: `\`${incident.urgency}\``,
             inline: true,
           },
           {
-            name: 'Urgency',
-            value: incident.urgency,
+            name: '📡 Status',
+            value: `\`${incident.status}\``,
             inline: true,
           },
           {
-            name: 'Assignee',
-            value: incident.assignee?.name || 'Unassigned',
+            name: '👤 Assignee',
+            value: incident.assignee?.name || '_Unassigned_',
             inline: true,
           },
         ],
         timestamp: new Date().toISOString(),
         footer: {
-          text: 'OpsKnight',
+          text: `OpsKnight • ${incident.id}`,
         },
       },
     ],

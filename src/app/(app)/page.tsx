@@ -391,7 +391,10 @@ export default async function Dashboard({
 
   return (
     <DashboardRealtimeWrapper>
-      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 min-h-screen space-y-4 sm:space-y-6">
+      <div
+        className="w-full px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 min-h-screen space-y-4 sm:space-y-6"
+        style={{ zoom: 0.95 }}
+      >
         <DashboardCommandCenter
           systemStatus={systemStatus}
           allOpenIncidentsCount={allOpenIncidentsCount}
@@ -670,12 +673,7 @@ export default async function Dashboard({
             </div>
 
             {/* Incident Heatmap (Heartmap - User Requested) */}
-            <IncidentHeatmapWidget
-              data={heatmapData}
-              rangeLabel={heatmapLabel}
-              startDate={heatmapStartIso}
-              endDate={heatmapEndIso}
-            />
+            <IncidentHeatmapWidget data={heatmapData} year={new Date().getFullYear()} />
 
             <IncidentsListTable
               incidents={recentIncidentListItems}
