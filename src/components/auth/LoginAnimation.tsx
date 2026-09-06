@@ -28,61 +28,10 @@ function generateStars(count: number) {
 
 const STARS = generateStars(110);
 
-import { EARTH_LAND_PATH } from './earthPaths';
-
-// Geographically accurate Earth landmasses (800x400) with realistic biome gradients,
-// shallow coastal shelf outlines, mountain ridges, and night city lights.
-const CONTINENTS_SVG = `
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
-  <defs>
-    <!-- Natural biome gradient from Arctic ice to boreal forests, deserts, and jungles -->
-    <linearGradient id='biomeGrad' x1='0' y1='0' x2='0' y2='1'>
-      <stop offset='0%' stop-color='#dbeafe' />    <!-- Arctic ice & tundra -->
-      <stop offset='12%' stop-color='#1f402c' />   <!-- Boreal / Taiga forests -->
-      <stop offset='30%' stop-color='#336040' />   <!-- Temperate mixed forests -->
-      <stop offset='45%' stop-color='#4b6a44' />   <!-- Mediterranean & grasslands -->
-      <stop offset='54%' stop-color='#84724a' />   <!-- Sahara / Arabian / Gobi desert ochre -->
-      <stop offset='64%' stop-color='#184a2a' />   <!-- Equatorial rainforest (Amazon, Congo, SE Asia) -->
-      <stop offset='80%' stop-color='#3a6144' />   <!-- Southern temperate savannah & forests -->
-      <stop offset='92%' stop-color='#254332' />   <!-- Patagonia & subantarctic tundra -->
-      <stop offset='100%' stop-color='#dbeafe' />  <!-- Antarctic glaciers -->
-    </linearGradient>
-  </defs>
-
-  <!-- Dual-layer shallow coastal continental shelf (turquoise satellite glow) -->
-  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#105268' stroke-width='6' stroke-linejoin='round' opacity='0.7' />
-  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#1b728e' stroke-width='2.5' stroke-linejoin='round' opacity='0.9' />
-
-  <!-- Authentic Continents -->
-  <path d='${EARTH_LAND_PATH}' fill='url(#biomeGrad)' />
-
-  <!-- Mountain ridges / elevation accent -->
-  <path d='${EARTH_LAND_PATH}' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.5' />
-
-  <!-- City Night Lights (Clusters of luminous golden/white lights at major global metros) -->
-  <g fill='#fef08a' opacity='0.85'>
-    <!-- North America: US East Coast, West Coast, Midwest -->
-    <circle cx='185' cy='140' r='1.2' /><circle cx='188' cy='138' r='1.4' /><circle cx='183' cy='143' r='1.2' />
-    <circle cx='128' cy='144' r='1.3' /><circle cx='124' cy='150' r='1.4' /><circle cx='165' cy='145' r='1.1' />
-    <circle cx='162' cy='160' r='1.2' /><circle cx='178' cy='158' r='1.1' /><circle cx='172' cy='142' r='1.1' />
-    <!-- Europe: London, Paris, Benelux, Germany, Po Valley -->
-    <circle cx='400' cy='112' r='1.5' /><circle cx='406' cy='116' r='1.4' /><circle cx='414' cy='112' r='1.4' />
-    <circle cx='422' cy='114' r='1.3' /><circle cx='420' cy='124' r='1.2' /><circle cx='395' cy='128' r='1.2' />
-    <circle cx='435' cy='116' r='1.1' /><circle cx='428' cy='122' r='1.2' />
-    <!-- Asia: Tokyo, Beijing, Shanghai, Guangzhou, Seoul, Mumbai, Delhi -->
-    <circle cx='680' cy='126' r='1.6' /><circle cx='674' cy='130' r='1.4' /><circle cx='635' cy='132' r='1.3' />
-    <circle cx='646' cy='144' r='1.4' /><circle cx='638' cy='156' r='1.4' /><circle cx='562' cy='158' r='1.4' />
-    <circle cx='556' cy='166' r='1.3' /><circle cx='600' cy='188' r='1.2' /><circle cx='670' cy='118' r='1.3' />
-    <!-- South America & Australia: São Paulo, Rio, Buenos Aires, Sydney, Melbourne -->
-    <circle cx='288' cy='258' r='1.4' /><circle cx='294' cy='256' r='1.3' /><circle cx='276' cy='272' r='1.2' />
-    <circle cx='702' cy='264' r='1.3' /><circle cx='694' cy='272' r='1.2' />
-  </g>
-</svg>`.trim();
-
-const CONTINENTS_BG = `url("data:image/svg+xml,${encodeURIComponent(CONTINENTS_SVG)}")`;
-
-// Photographic satellite cloud texture from NASA Blue Marble
-const CLOUDS_IMG_URL = "url('/earth-clouds.jpg')";
+// Pre-rendered geographically accurate continents and NASA satellite clouds
+// Loaded as static cached assets for instantaneous login page load and minimal JS bundle
+const CONTINENTS_IMG_URL = "url('/earth-continents.svg')";
+const CLOUDS_IMG_URL = "url('/earth-clouds.webp')";
 
 // Incident markers on the globe
 const INCIDENT_MARKERS = [
@@ -210,18 +159,20 @@ export default function LoginAnimation() {
                 'radial-gradient(circle at 35% 30%, #175472 0%, #0c334b 35%, #071e30 65%, #030c16 100%)',
             }}
           />
-          {/* Rotating continents strip */}
+          {/* Rotating continents strip — GPU accelerated */}
           <div
-            className="absolute inset-0 opacity-90"
+            className="absolute inset-0 opacity-90 pointer-events-none"
             style={{
-              backgroundImage: CONTINENTS_BG,
+              backgroundImage: CONTINENTS_IMG_URL,
               backgroundRepeat: 'repeat-x',
               backgroundSize: '800px 400px',
               backgroundPosition: '0 4%',
               animation: 'rotate-globe 55s linear infinite',
+              willChange: 'background-position',
+              transform: 'translateZ(0)',
             }}
           />
-          {/* NASA Photographic Satellite Cloud Systems — true meteorological swirls and cyclone vortexes */}
+          {/* NASA Photographic Satellite Cloud Systems — GPU accelerated */}
           <div
             className="absolute inset-0 opacity-55 mix-blend-screen pointer-events-none"
             style={{
@@ -230,6 +181,8 @@ export default function LoginAnimation() {
               backgroundSize: '800px 400px',
               backgroundPosition: '0 4%',
               animation: 'rotate-clouds 68s linear infinite',
+              willChange: 'background-position',
+              transform: 'translateZ(0)',
             }}
           />
           {/* Volumetric shading — deep night terminator shadow */}
