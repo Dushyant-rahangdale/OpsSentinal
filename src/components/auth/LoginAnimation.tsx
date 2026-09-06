@@ -1,369 +1,501 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 
-/**
- * LoginAnimation Component
- *
- * "Active Threat Response System"
- * - Visualization: Holographic map of infrastructure.
- * - Narrative: System detects an issue (Red), Auto-remediates (Beam), and Resolves (Green).
- * - Aesthetic: Premium, glassmorphic, incident-focused.
- */
+interface ServiceNodeData {
+  id: string;
+  label: string;
+  sublabel: string;
+  iconType: 'services' | 'databases' | 'applications' | 'cloud' | 'incidents' | 'teams';
+  status: 'healthy' | 'monitoring' | 'protected' | 'aligned' | 'incident';
+  posClass: string;
+  wirePath: string;
+}
+
+const INITIAL_NODES: ServiceNodeData[] = [
+  {
+    id: 'services',
+    label: 'SERVICES',
+    sublabel: 'Healthy',
+    iconType: 'services',
+    status: 'healthy',
+    posClass: 'left-6 top-8',
+    wirePath: 'M 260 165 C 190 165, 160 90, 110 90',
+  },
+  {
+    id: 'databases',
+    label: 'DATABASES',
+    sublabel: 'Healthy',
+    iconType: 'databases',
+    status: 'healthy',
+    posClass: 'left-2 top-36',
+    wirePath: 'M 260 165 C 180 165, 140 180, 90 180',
+  },
+  {
+    id: 'applications',
+    label: 'APPLICATIONS',
+    sublabel: 'Monitoring',
+    iconType: 'applications',
+    status: 'monitoring',
+    posClass: 'left-8 bottom-6',
+    wirePath: 'M 260 165 C 200 165, 180 260, 130 260',
+  },
+  {
+    id: 'cloud',
+    label: 'CLOUD',
+    sublabel: 'Protected',
+    iconType: 'cloud',
+    status: 'protected',
+    posClass: 'right-8 top-8',
+    wirePath: 'M 260 165 C 330 165, 360 90, 410 90',
+  },
+  {
+    id: 'incidents',
+    label: 'INCIDENTS',
+    sublabel: 'Detected',
+    iconType: 'incidents',
+    status: 'incident',
+    posClass: 'right-2 top-36',
+    wirePath: 'M 260 165 C 340 165, 370 180, 420 180',
+  },
+  {
+    id: 'teams',
+    label: 'TEAMS',
+    sublabel: 'Aligned',
+    iconType: 'teams',
+    status: 'aligned',
+    posClass: 'right-8 bottom-6',
+    wirePath: 'M 260 165 C 320 165, 340 260, 390 260',
+  },
+];
+
 export default function LoginAnimation() {
-  const [mounted, setMounted] = useState(false);
-  const [activeIncident, setActiveIncident] = useState<number | null>(null); // Index of node having incident
-  const [isFixing, setIsFixing] = useState(false); // Beam active
-  const [nodes, setNodes] = useState([
-    { id: 0, label: 'API_GATEWAY', angle: 0, status: 'healthy', radius: 140 },
-    { id: 1, label: 'AUTH_SERVICE', angle: 72, status: 'healthy', radius: 140 },
-    { id: 2, label: 'DB_PRIMARY', angle: 144, status: 'healthy', radius: 140 },
-    { id: 3, label: 'PAYMENTS', angle: 216, status: 'healthy', radius: 140 },
-    { id: 4, label: 'WORKERS', angle: 288, status: 'healthy', radius: 140 },
-  ]);
+  const [nodes, setNodes] = useState<ServiceNodeData[]>(INITIAL_NODES);
+  const [activeIncidentId, setActiveIncidentId] = useState<string>('incidents');
+  const [isFixing, setIsFixing] = useState<boolean>(false);
 
-  // Live UTC Clock
-  const [currentTime, setCurrentTime] = useState('');
+  // Lightweight incident simulation loop
+  const triggerSimulationStep = useCallback(() => {
+    setIsFixing(true);
+    setTimeout(() => {
+      const candidates = ['incidents', 'databases', 'services'];
+      const nextId = candidates[(candidates.indexOf(activeIncidentId) + 1) % candidates.length];
 
-  // Animated Uptime Counter
-  const [uptime, setUptime] = useState(99.95);
+      setNodes(prev =>
+        prev.map(node => {
+          if (node.id === nextId) {
+            return {
+              ...node,
+              status: 'incident',
+              sublabel: 'Detected',
+            };
+          }
+          return {
+            ...node,
+            status:
+              node.id === 'applications'
+                ? 'monitoring'
+                : node.id === 'cloud'
+                  ? 'protected'
+                  : node.id === 'teams'
+                    ? 'aligned'
+                    : 'healthy',
+            sublabel:
+              node.id === 'applications'
+                ? 'Monitoring'
+                : node.id === 'cloud'
+                  ? 'Protected'
+                  : node.id === 'teams'
+                    ? 'Aligned'
+                    : 'Healthy',
+          };
+        })
+      );
+      setActiveIncidentId(nextId);
+      setIsFixing(false);
+    }, 2000);
+  }, [activeIncidentId]);
 
   useEffect(() => {
-    setMounted(true);
-
-    // Simulation Loop
-    const interval = setInterval(() => {
-      // Randomly pick a node to "fail"
-      const victimIdx = Math.floor(Math.random() * 5);
-      setActiveIncident(victimIdx);
-
-      // 1. Trigger Incident
-      setNodes(prev => prev.map((n, i) => (i === victimIdx ? { ...n, status: 'critical' } : n)));
-
-      // 2. Start Fixing (Visual Beam) after 1s
-      setTimeout(() => {
-        setIsFixing(true);
-      }, 1000);
-
-      // 3. Resolve Incident after 2.5s
-      setTimeout(() => {
-        setNodes(prev => prev.map((n, i) => (i === victimIdx ? { ...n, status: 'healthy' } : n)));
-        setIsFixing(false);
-        setActiveIncident(null);
-      }, 2500);
-    }, 8000); // Every 8 seconds (slower for less distraction)
-
+    const interval = setInterval(triggerSimulationStep, 7000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Live Clock Effect
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setCurrentTime(now.toISOString().slice(11, 19) + ' UTC');
-    };
-    updateClock();
-    const clockInterval = setInterval(updateClock, 1000);
-    return () => clearInterval(clockInterval);
-  }, []);
-
-  // Animated Uptime Effect
-  useEffect(() => {
-    const uptimeInterval = setInterval(() => {
-      setUptime(prev => {
-        if (prev >= 99.99) return 99.95;
-        return Math.min(99.99, prev + 0.01);
-      });
-    }, 500);
-    return () => clearInterval(uptimeInterval);
-  }, []);
-
-  // Parallax Effect State with throttling
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const rafRef = useRef<number | null>(null);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (rafRef.current) return; // Skip if already scheduled
-    rafRef.current = requestAnimationFrame(() => {
-      const x = (e.clientX / window.innerWidth) * 2 - 1;
-      const y = (e.clientY / window.innerHeight) * 2 - 1;
-      setMousePos({ x, y });
-      rafRef.current = null;
-    });
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [handleMouseMove]);
-
-  if (!mounted) return null;
+  }, [triggerSimulationStep]);
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden cursor-crosshair select-none">
-      {/* 1. Deep Space Grid Background with Parallax */}
+    <div className="relative h-full w-full flex flex-col justify-between p-8 lg:p-12 select-none overflow-hidden bg-[#06080b]">
+      {/* Background Subtle Space Grid */}
       <div
-        className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.05)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_100%)] transition-transform duration-100 ease-out"
-        style={{ transform: `translate(${mousePos.x * 20}px, ${mousePos.y * 20}px)` }}
+        className="absolute inset-0 opacity-20 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)
+          `,
+          backgroundSize: '54px 54px',
+        }}
       />
 
-      {/* Floating Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-cyan-500/30 animate-[float-particle_15s_ease-in-out_infinite]"
-            style={{
-              left: `${(i * 5) % 100}%`,
-              top: `${(i * 7 + 20) % 100}%`,
-              animationDelay: `${i * 0.7}s`,
-              animationDuration: `${12 + (i % 8)}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* 2. HUD Corners - Filling the Void */}
-      {/* Top Left: System ID */}
-      <div className="absolute top-12 left-12 flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 bg-cyan-500 animate-pulse" />
-          <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-widest">
-            SENTINEL_CORE_V4
-          </span>
-        </div>
-        <div className="h-[1px] w-24 bg-cyan-500/30" />
-        <span className="text-[9px] text-cyan-500/50 font-mono">LIVE_TELEMETRY_STREAM</span>
-      </div>
-
-      {/* Top Right: Uptime / Clock */}
-      <div className="absolute top-12 right-12 text-right">
-        <span className="block text-[10px] font-mono text-cyan-500/70 tracking-widest">UPTIME</span>
-        <div className="flex items-center justify-end gap-2">
-          <span className="text-xl font-mono text-cyan-400 font-bold tracking-widest leading-none">
-            {uptime.toFixed(2)}%
-          </span>
-        </div>
-        <div className="text-[9px] font-mono text-cyan-500/50 mt-1">{currentTime}</div>
-      </div>
-
-      {/* Bottom Left: Coordinates */}
-      <div className="absolute bottom-12 left-12 font-mono text-[9px] text-cyan-500/40 space-y-1">
-        <div className="flex gap-4">
-          <span>LAT: 34.0522 N</span>
-          <span>LNG: 118.2437 W</span>
-        </div>
-        <div className="flex gap-2 items-center">
-          <span>NODE: US-WEST-1</span>
-          <span className="animate-pulse text-emerald-500">● ONLINE</span>
-        </div>
-      </div>
-
-      {/* Bottom Right: Network Traffic */}
-      <div className="absolute bottom-12 right-12 text-right">
-        <div className="flex flex-col items-end gap-1">
-          <span className="text-[9px] font-mono text-cyan-500/60 uppercase tracking-widest">
-            Net Throughput
-          </span>
-          <div className="flex items-end gap-[2px] h-8">
-            {[4, 6, 3, 7, 5, 8, 4, 6, 3].map((h, i) => (
-              <div
-                key={i}
-                className="w-1 bg-cyan-500/40 animate-pulse"
-                style={{ height: `${h * 10}%`, animationDelay: `${i * 0.1}s` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
-
-      {/* Background Terminal: Ping Simulation (Locked to Center) */}
+      {/* 3D Earth Globe Graphics at the bottom with illuminated horizon */}
       <div
-        className="absolute flex items-center justify-center z-0 pointer-events-none transition-transform duration-75 ease-out"
-        style={{ transform: `translate(${mousePos.x * -10}px, ${mousePos.y * -10}px)` }}
-      >
-        <div className="w-[600px] h-[400px] opacity-100 mask-image-[radial-gradient(circle,black_40%,transparent_100%)]">
-          <TerminalPing />
-        </div>
-      </div>
-
-      {/* Central Connectivity Mesh */}
-      <div
-        className="relative h-[400px] w-[400px] flex items-center justify-center z-10 transition-transform duration-300 ease-out"
-        style={{ transform: `translate(${mousePos.x * 5}px, ${mousePos.y * 5}px)` }}
-      >
-        {/* Rotating Hexagon Field */}
-        <div className="absolute inset-0 animate-[spin_60s_linear_infinite] opacity-20">
-          <svg viewBox="0 0 400 400" className="h-full w-full">
-            <circle
-              cx="200"
-              cy="200"
-              r="140"
-              className="fill-none stroke-cyan-500/30 stroke-dashed"
-            />
-            <circle cx="200" cy="200" r="190" className="fill-none stroke-cyan-500/10" />
-
-            {/* Added Extra Rings for Density */}
-            <circle
-              cx="200"
-              cy="200"
-              r="240"
-              className="fill-none stroke-cyan-500/5 stroke-dotted"
-            />
-          </svg>
-        </div>
-
-        {/* The Core: Sentinel Eye */}
-        <div className="z-20 flex h-20 w-20 items-center justify-center rounded-full bg-slate-950 border border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.2)] animate-[pulse-glow_3s_ease-in-out_infinite]">
-          <div
-            className={`h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_15px_#22d3ee] transition-all duration-300 ${activeIncident !== null ? 'bg-rose-500 shadow-rose-500 scale-125 animate-ping' : 'animate-[pulse_2s_ease-in-out_infinite]'}`}
-          />
-          {/* Scanning Beam */}
-          <div className="absolute inset-0 animate-[spin_4s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(6,182,212,0.2)_360deg)]" />
-        </div>
-
-        {/* Nodes */}
-        {nodes.map((node, i) => (
-          <ServiceNode
-            key={node.id}
-            {...node}
-            isTarget={activeIncident === i}
-            isFixing={isFixing && activeIncident === i}
-          />
-        ))}
-      </div>
-
-      {/* Terminal Status - Status Badge */}
-      <div className="absolute bottom-24 lg:bottom-12 left-0 right-0 flex justify-center z-20">
-        <div className="glass-panel px-4 py-2 rounded-full border border-white/10 bg-black/40 backdrop-blur-md flex items-center gap-3 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-          <div
-            className={`h-2 w-2 rounded-full ${activeIncident !== null ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`}
-          />
-          <span className="text-[10px] font-mono tracking-widest text-white/90 uppercase">
-            {activeIncident !== null
-              ? `INCIDENT DETECTED: ${nodes[activeIncident].label}`
-              : 'SYSTEM SECURE • MONITORING ACTIVE'}
-          </span>
-        </div>
-      </div>
-
-      {/* CRT Scanline Overlay */}
-      <div className="absolute inset-0 z-50 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_2px,3px_100%] opacity-20" />
-      <div className="absolute inset-0 z-50 pointer-events-none bg-[radial-gradient(circle,transparent_50%,rgba(0,0,0,0.4)_100%)]" />
-    </div>
-  );
-}
-
-function ServiceNode({ label, angle, status, radius, isTarget, isFixing }: any) {
-  // Calculate Position (Fixed Angle)
-  // We strictly position them using styles to avoid rotation issues
-  const rad = (angle * Math.PI) / 180;
-  const x = Math.cos(rad) * radius; // Center is 0,0 relative to container
-  const y = Math.sin(rad) * radius;
-
-  // Status Styles
-  const isCrit = status === 'critical';
-  const colorClass = isCrit
-    ? 'border-rose-500 bg-rose-500/10 text-rose-200 shadow-rose-900/50'
-    : 'border-cyan-500/30 bg-slate-950/80 text-cyan-200 shadow-cyan-900/20';
-  const dotColor = isCrit ? 'bg-rose-500' : 'bg-cyan-400';
-
-  return (
-    <>
-      {/* Connection Line to Center */}
-      {isFixing && (
-        <div
-          className="absolute top-1/2 left-1/2 h-[2px] bg-gradient-to-r from-cyan-400 to-transparent origin-left z-0 animate-pulse"
-          style={{
-            width: `${radius}px`,
-            transform: `rotate(${angle}deg)`,
-            marginTop: '-1px',
-          }}
-        />
-      )}
-
-      {/* The Node */}
-      <div
-        className={`absolute z-10 flex flex-col items-center justify-center transition-all duration-500`}
+        className="absolute left-1/2 -translate-x-1/2 pointer-events-none rounded-full"
         style={{
-          top: '50%',
-          left: '50%',
-          transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+          bottom: '-160px',
+          width: '840px',
+          height: '460px',
+          background: 'radial-gradient(ellipse at 50% 30%, #0d131e 0%, #06080c 70%, #020305 100%)',
+          boxShadow:
+            '0 -20px 60px -10px rgba(220, 38, 38, 0.35), 0 -4px 20px 0 rgba(239, 68, 68, 0.2), inset 0 2px 20px rgba(239, 68, 68, 0.3)',
+          borderTop: '1px solid rgba(239, 68, 68, 0.45)',
         }}
       >
-        <div
-          className={`relative flex items-center gap-2 rounded-lg border px-3 py-1.5 backdrop-blur-md shadow-lg transition-colors duration-300 ${colorClass}`}
-        >
-          <div
-            className={`h-1.5 w-1.5 rounded-full shadow-[0_0_8px_currentColor] ${dotColor} ${isCrit ? 'animate-ping' : ''}`}
-          />
-          <span className="text-[9px] font-bold tracking-wider">{label}</span>
+        <svg className="w-full h-full opacity-60" viewBox="0 0 840 460" fill="none">
+          <defs>
+            <linearGradient id="arcGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
+              <stop offset="50%" stopColor="#ef4444" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.2" />
+            </linearGradient>
+          </defs>
 
-          {/* Active Mitigation Badge */}
-          {isFixing && (
-            <div className="absolute -top-3 -right-2 px-1.5 py-0.5 bg-emerald-500 text-[8px] text-black font-bold rounded animate-bounce">
-              FIXING
-            </div>
-          )}
+          {/* Latitude curves */}
+          <ellipse
+            cx="420"
+            cy="150"
+            rx="370"
+            ry="85"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="1"
+          />
+          <ellipse
+            cx="420"
+            cy="210"
+            rx="350"
+            ry="80"
+            stroke="rgba(255,255,255,0.04)"
+            strokeWidth="1"
+          />
+          <ellipse
+            cx="420"
+            cy="270"
+            rx="310"
+            ry="70"
+            stroke="rgba(255,255,255,0.03)"
+            strokeWidth="1"
+          />
+
+          {/* Longitude meridians */}
+          <path
+            d="M 420 0 C 330 90, 330 280, 420 380"
+            stroke="rgba(255,255,255,0.04)"
+            strokeWidth="1"
+          />
+          <path
+            d="M 420 0 C 510 90, 510 280, 420 380"
+            stroke="rgba(255,255,255,0.04)"
+            strokeWidth="1"
+          />
+          <path
+            d="M 420 0 C 230 90, 230 280, 420 380"
+            stroke="rgba(255,255,255,0.03)"
+            strokeWidth="1"
+          />
+          <path
+            d="M 420 0 C 610 90, 610 280, 420 380"
+            stroke="rgba(255,255,255,0.03)"
+            strokeWidth="1"
+          />
+
+          {/* Interconnecting Red Telemetry Arcs */}
+          <path
+            d="M 280 170 Q 360 110 490 140"
+            stroke="url(#arcGlow)"
+            strokeWidth="1.5"
+            strokeDasharray="4 2"
+          />
+          <path d="M 490 140 Q 570 130 630 190" stroke="url(#arcGlow)" strokeWidth="1.2" />
+          <path d="M 230 200 Q 310 150 380 190" stroke="url(#arcGlow)" strokeWidth="1.2" />
+
+          {/* Glowing City / Data Center Points */}
+          <circle cx="280" cy="170" r="3" fill="#ef4444" opacity="0.9" />
+          <circle cx="280" cy="170" r="7" fill="#ef4444" opacity="0.25" />
+          <circle cx="490" cy="140" r="3" fill="#ef4444" opacity="0.9" />
+          <circle cx="490" cy="140" r="9" fill="#ef4444" opacity="0.25" />
+          <circle cx="630" cy="190" r="2.5" fill="#ef4444" opacity="0.8" />
+          <circle cx="380" cy="190" r="3" fill="#ef4444" opacity="0.9" />
+          <circle cx="230" cy="200" r="2.5" fill="#ef4444" opacity="0.8" />
+        </svg>
+      </div>
+
+      {/* Top Header */}
+      <div className="relative z-10 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
+            <Image
+              src="/logo-mark.png"
+              alt="OpsKnight"
+              width={28}
+              height={28}
+              className="h-6 w-6 object-contain"
+              priority
+              unoptimized
+            />
+          </div>
+          <span className="font-extrabold text-lg tracking-tight text-white">OpsKnight</span>
+        </div>
+
+        <div className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">
+          DETECT &nbsp;|&nbsp; COORDINATE &nbsp;|&nbsp; RESOLVE &nbsp;|&nbsp; STAY AHEAD
         </div>
       </div>
-    </>
+
+      {/* Central Animated Sentinel Node Network */}
+      <div className="relative z-10 w-full h-[320px] my-auto flex items-center justify-center">
+        {/* Concentric Radar Orbits */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[260px] h-[260px] rounded-full border border-slate-700/20 animate-[spin_40s_linear_infinite]" />
+          <div className="w-[320px] h-[320px] rounded-full border border-slate-700/10" />
+        </div>
+
+        {/* Dynamic Trace Wires */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 520 330">
+          {nodes.map(node => {
+            const isIncident = node.id === activeIncidentId;
+            return (
+              <path
+                key={`wire-${node.id}`}
+                d={node.wirePath}
+                stroke={isIncident ? '#ef4444' : '#1f2937'}
+                strokeWidth={isIncident ? 2 : 1.5}
+                fill="none"
+                className={isIncident ? 'animate-pulse' : ''}
+                strokeDasharray={isIncident ? '6 4' : undefined}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Central Sentinel Shield Hub */}
+        <div className="relative z-20 flex items-center justify-center">
+          <div className="relative w-28 h-32 flex items-center justify-center">
+            {/* SVG Shield with dual neon glow (ice left, crimson right) matching reference */}
+            <svg
+              viewBox="0 0 100 120"
+              className="absolute inset-0 w-full h-full drop-shadow-[0_0_22px_rgba(239,68,68,0.4)]"
+            >
+              <defs>
+                <filter id="shieldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#111827" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#06080b" stopOpacity="0.98" />
+                </linearGradient>
+              </defs>
+
+              {/* Shield Base Fill */}
+              <path
+                d="M 50 10 C 68 10, 84 14, 86 34 C 88 64, 72 88, 50 108 C 28 88, 12 64, 14 34 C 16 14, 32 10, 50 10 Z"
+                fill="url(#shieldFill)"
+                stroke="#1e293b"
+                strokeWidth="1.5"
+              />
+
+              {/* Left Rim: Cold Ice / Neon Glow */}
+              <path
+                d="M 50 10 C 32 10, 16 14, 14 34 C 12 64, 28 88, 50 108"
+                fill="none"
+                stroke="#67e8f9"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                opacity="0.9"
+                filter="url(#shieldGlow)"
+              />
+
+              {/* Right Rim: Red Sentinel Glow */}
+              <path
+                d="M 50 10 C 68 10, 84 14, 86 34 C 88 64, 72 88, 50 108"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                filter="url(#shieldGlow)"
+              />
+
+              {/* Center Vertical Seam */}
+              <line
+                x1="50"
+                y1="14"
+                x2="50"
+                y2="102"
+                stroke="#334155"
+                strokeWidth="1"
+                strokeDasharray="2 3"
+                opacity="0.6"
+              />
+            </svg>
+
+            {/* OpsKnight Knight Helm inside shield */}
+            <Image
+              src="/logo-mark.png"
+              alt="Sentinel Core"
+              width={48}
+              height={48}
+              className="h-12 w-12 object-contain relative z-10 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+              priority
+              unoptimized
+            />
+
+            {isFixing && (
+              <div className="absolute -top-3 z-30 px-2 py-0.5 rounded-full bg-emerald-500 text-[8px] font-bold text-black uppercase tracking-wider animate-bounce shadow-[0_0_10px_rgba(16,185,129,0.8)]">
+                Remediating
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Orbiting Service Nodes */}
+        {nodes.map(node => {
+          const isIncident = node.id === activeIncidentId;
+          return (
+            <div
+              key={node.id}
+              className={`absolute flex items-center gap-2.5 rounded-xl px-3 py-2 backdrop-blur-sm shadow-md transition-all duration-300 ${
+                node.posClass
+              } ${
+                isIncident
+                  ? 'bg-red-950/60 border border-red-500/70 shadow-[0_0_20px_rgba(239,68,68,0.35)]'
+                  : 'bg-[#0c1017]/80 border border-[#1e2738]'
+              }`}
+            >
+              <div
+                className={`p-1.5 rounded-lg ${
+                  isIncident ? 'bg-red-900/60 text-red-300' : 'bg-[#141b27] text-slate-300'
+                }`}
+              >
+                <NodeIcon type={node.iconType} />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wider ${
+                      isIncident ? 'text-red-200' : 'text-white'
+                    }`}
+                  >
+                    {node.label}
+                  </span>
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isIncident ? 'bg-red-500 animate-ping' : 'bg-emerald-500'
+                    }`}
+                  />
+                </div>
+                <span
+                  className={`text-[9px] font-medium ${
+                    isIncident ? 'text-red-300 font-semibold' : 'text-slate-400'
+                  }`}
+                >
+                  {node.sublabel}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Bottom Editorial Tagline */}
+      <div className="relative z-10 mt-auto">
+        <div className="w-7 h-[2px] bg-red-600 mb-3" />
+        <h2 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.2]">
+          On watch when you{' '}
+          <span className="text-red-500 italic font-serif text-[38px] lg:text-[46px] font-normal">
+            need it most.
+          </span>
+        </h2>
+        <p className="text-xs lg:text-sm text-slate-400 mt-2 max-w-sm leading-relaxed">
+          Calm, coordinated incident response for modern engineering teams.
+        </p>
+      </div>
+
+      {/* Footer System Badges */}
+      <div className="relative z-10 flex items-center justify-between pt-4 mt-6 border-t border-slate-800/60 text-[10px] font-mono tracking-wider text-slate-400">
+        <div>Open source &nbsp;•&nbsp; Self-hosted</div>
+        <div>SYSTEMS STAY STRONGER TOGETHER</div>
+      </div>
+    </div>
   );
 }
 
-function TerminalPing() {
-  const [lines, setLines] = useState<string[]>([]);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Initial header simulating real terminal startup
-    setLines([
-      'root@ops-knight:~# ping -c 999 opsknight.com',
-      'PING opsknight.com (104.21.55.2) 56(84) bytes of data.',
-    ]);
-
-    let seq = 1;
-    const interval = setInterval(() => {
-      setLines(prev => {
-        const newLines = [...prev];
-        // Keep max 15 lines to stay within view but allow scrolling feel
-        if (newLines.length > 15) newLines.shift();
-
-        const time = (12 + Math.random() * 8).toFixed(1);
-        newLines.push(`64 bytes from 104.21.55.2: icmp_seq=${seq} ttl=58 time=${time} ms`);
-        seq++;
-        return newLines;
-      });
-    }, 1000); // Standard ping interval is 1s
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Auto-scroll effect
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [lines]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="flex flex-col justify-center items-center h-full w-full font-mono text-xs leading-relaxed text-emerald-500/90 overflow-hidden text-center"
-      style={{ fontFamily: "'JetBrains Mono', 'Fira Code', monospace" }}
-    >
-      {lines.map((line, i) => (
-        <div key={i} className="whitespace-nowrap">
-          {line}
-        </div>
-      ))}
-      <div className="animate-pulse bg-emerald-500 h-4 w-2.5 mt-1" />
-    </div>
-  );
+function NodeIcon({ type }: { type: ServiceNodeData['iconType'] }) {
+  switch (type) {
+    case 'services':
+      return (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
+          />
+        </svg>
+      );
+    case 'databases':
+      return (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+          />
+        </svg>
+      );
+    case 'applications':
+      return (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+          />
+        </svg>
+      );
+    case 'cloud':
+      return (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"
+          />
+        </svg>
+      );
+    case 'incidents':
+      return (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+      );
+    case 'teams':
+      return (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }

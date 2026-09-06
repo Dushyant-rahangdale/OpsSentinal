@@ -72,12 +72,12 @@ const providerConfig: Record<
     ),
   },
   custom: {
-    classes: 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md',
+    classes: 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs',
     defaultLabel: 'SSO',
     icon: (
       <svg
-        width="20"
-        height="20"
+        width="18"
+        height="18"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -85,7 +85,7 @@ const providerConfig: Record<
         aria-hidden="true"
       >
         <path
-          d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z"
+          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -113,11 +113,11 @@ export default function SsoButton({
       disabled={loading || disabled}
       aria-label={`Sign in with ${label}`}
       className={`
-        relative w-full flex items-center justify-center gap-3 px-5 py-3.5 
-        rounded-xl text-[0.95rem] font-semibold border
+        relative w-full flex items-center justify-center gap-2.5 px-4 py-2.5 
+        rounded-xl text-sm font-semibold border
         transition-all duration-200 transform
         active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed
-        shadow-sm hover:shadow-md
+        shadow-2xs hover:shadow-xs
         ${config.classes}
       `}
     >
