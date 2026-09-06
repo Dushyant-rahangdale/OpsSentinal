@@ -400,6 +400,15 @@ textarea:focus-visible {
   }
 }
 
+@keyframes rotate-cirrus {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 800px;
+  }
+}
+
 @keyframes twinkle {
   0%,
   100% {

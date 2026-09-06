@@ -35,20 +35,23 @@ import { EARTH_LAND_PATH } from './earthPaths';
 const CONTINENTS_SVG = `
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
   <defs>
+    <!-- Natural biome gradient from Arctic ice to boreal forests, deserts, and jungles -->
     <linearGradient id='biomeGrad' x1='0' y1='0' x2='0' y2='1'>
-      <stop offset='0%' stop-color='#294736' />
-      <stop offset='25%' stop-color='#3d6849' />
-      <stop offset='45%' stop-color='#4b6b47' />
-      <stop offset='55%' stop-color='#695e42' />
-      <stop offset='68%' stop-color='#355b40' />
-      <stop offset='85%' stop-color='#3c6348' />
-      <stop offset='100%' stop-color='#264132' />
+      <stop offset='0%' stop-color='#dbeafe' />    <!-- Arctic ice & tundra -->
+      <stop offset='12%' stop-color='#1f402c' />   <!-- Boreal / Taiga forests -->
+      <stop offset='30%' stop-color='#336040' />   <!-- Temperate mixed forests -->
+      <stop offset='45%' stop-color='#4b6a44' />   <!-- Mediterranean & grasslands -->
+      <stop offset='54%' stop-color='#84724a' />   <!-- Sahara / Arabian / Gobi desert ochre -->
+      <stop offset='64%' stop-color='#184a2a' />   <!-- Equatorial rainforest (Amazon, Congo, SE Asia) -->
+      <stop offset='80%' stop-color='#3a6144' />   <!-- Southern temperate savannah & forests -->
+      <stop offset='92%' stop-color='#254332' />   <!-- Patagonia & subantarctic tundra -->
+      <stop offset='100%' stop-color='#dbeafe' />  <!-- Antarctic glaciers -->
     </linearGradient>
   </defs>
 
-  <!-- Shallow coastal continental shelf -->
-  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#16566e' stroke-width='5' stroke-linejoin='round' opacity='0.75' />
-  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#1c6d8a' stroke-width='2' stroke-linejoin='round' opacity='0.9' />
+  <!-- Dual-layer shallow coastal continental shelf (turquoise satellite glow) -->
+  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#105268' stroke-width='6' stroke-linejoin='round' opacity='0.7' />
+  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#1b728e' stroke-width='2.5' stroke-linejoin='round' opacity='0.9' />
 
   <!-- Authentic Continents -->
   <path d='${EARTH_LAND_PATH}' fill='url(#biomeGrad)' />
@@ -56,36 +59,37 @@ const CONTINENTS_SVG = `
   <!-- Mountain ridges / elevation accent -->
   <path d='${EARTH_LAND_PATH}' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.5' />
 
-  <!-- City Night Lights -->
+  <!-- City Night Lights (Clusters of luminous golden/white lights at major global metros) -->
   <g fill='#fef08a' opacity='0.85'>
-    <!-- North America -->
+    <!-- North America: US East Coast, West Coast, Midwest -->
     <circle cx='185' cy='140' r='1.2' /><circle cx='188' cy='138' r='1.4' /><circle cx='183' cy='143' r='1.2' />
     <circle cx='128' cy='144' r='1.3' /><circle cx='124' cy='150' r='1.4' /><circle cx='165' cy='145' r='1.1' />
-    <circle cx='162' cy='160' r='1.2' /><circle cx='178' cy='158' r='1.1' />
-    <!-- Europe -->
+    <circle cx='162' cy='160' r='1.2' /><circle cx='178' cy='158' r='1.1' /><circle cx='172' cy='142' r='1.1' />
+    <!-- Europe: London, Paris, Benelux, Germany, Po Valley -->
     <circle cx='400' cy='112' r='1.5' /><circle cx='406' cy='116' r='1.4' /><circle cx='414' cy='112' r='1.4' />
     <circle cx='422' cy='114' r='1.3' /><circle cx='420' cy='124' r='1.2' /><circle cx='395' cy='128' r='1.2' />
-    <!-- Asia -->
+    <circle cx='435' cy='116' r='1.1' /><circle cx='428' cy='122' r='1.2' />
+    <!-- Asia: Tokyo, Beijing, Shanghai, Guangzhou, Seoul, Mumbai, Delhi -->
     <circle cx='680' cy='126' r='1.6' /><circle cx='674' cy='130' r='1.4' /><circle cx='635' cy='132' r='1.3' />
     <circle cx='646' cy='144' r='1.4' /><circle cx='638' cy='156' r='1.4' /><circle cx='562' cy='158' r='1.4' />
-    <circle cx='556' cy='166' r='1.3' /><circle cx='600' cy='188' r='1.2' />
-    <!-- South America & Australia -->
-    <circle cx='288' cy='258' r='1.4' /><circle cx='294' cy='256' r='1.3' /><circle cx='702' cy='264' r='1.3' />
-    <circle cx='694' cy='272' r='1.2' />
+    <circle cx='556' cy='166' r='1.3' /><circle cx='600' cy='188' r='1.2' /><circle cx='670' cy='118' r='1.3' />
+    <!-- South America & Australia: São Paulo, Rio, Buenos Aires, Sydney, Melbourne -->
+    <circle cx='288' cy='258' r='1.4' /><circle cx='294' cy='256' r='1.3' /><circle cx='276' cy='272' r='1.2' />
+    <circle cx='702' cy='264' r='1.3' /><circle cx='694' cy='272' r='1.2' />
   </g>
 </svg>`.trim();
 
 const CONTINENTS_BG = `url("data:image/svg+xml,${encodeURIComponent(CONTINENTS_SVG)}")`;
 
-// Realistic wispy atmospheric cloud deck
+// Primary realistic atmospheric weather/cyclone cloud deck
 const CLOUDS_SVG = `
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
   <defs>
     <filter id='cloudBlur'>
-      <feGaussianBlur stdDeviation='3' />
+      <feGaussianBlur stdDeviation='3.5' />
     </filter>
   </defs>
-  <g fill='rgba(255,255,255,0.7)' filter='url(#cloudBlur)'>
+  <g fill='rgba(255,255,255,0.72)' filter='url(#cloudBlur)'>
     <!-- Equatorial cloud band (ITCZ) -->
     <ellipse cx='120' cy='190' rx='90' ry='12' />
     <ellipse cx='280' cy='195' rx='110' ry='14' />
@@ -93,18 +97,36 @@ const CLOUDS_SVG = `
     <ellipse cx='640' cy='192' rx='120' ry='15' />
 
     <!-- Northern mid-latitude cyclone storm swirls -->
-    <path d='M80,120 C140,105 220,135 290,110 C340,90 380,130 460,115 C540,100 620,130 700,108 C750,95 780,120 800,112' stroke='rgba(255,255,255,0.55)' stroke-width='22' fill='none' stroke-linecap='round' />
+    <path d='M80,120 C140,105 220,135 290,110 C340,90 380,130 460,115 C540,100 620,130 700,108 C750,95 780,120 800,112' stroke='rgba(255,255,255,0.6)' stroke-width='22' fill='none' stroke-linecap='round' />
     <ellipse cx='220' cy='115' rx='60' ry='18' transform='rotate(-8 220 115)' />
     <ellipse cx='580' cy='110' rx='75' ry='22' transform='rotate(10 580 110)' />
 
     <!-- Southern storm belt -->
-    <path d='M0,290 C100,280 200,305 320,295 C440,285 560,310 680,290 C740,280 780,300 800,292' stroke='rgba(255,255,255,0.5)' stroke-width='18' fill='none' stroke-linecap='round' />
+    <path d='M0,290 C100,280 200,305 320,295 C440,285 560,310 680,290 C740,280 780,300 800,292' stroke='rgba(255,255,255,0.52)' stroke-width='18' fill='none' stroke-linecap='round' />
     <ellipse cx='380' cy='295' rx='80' ry='16' />
     <ellipse cx='720' cy='300' rx='90' ry='18' />
   </g>
 </svg>`.trim();
 
 const CLOUDS_BG = `url("data:image/svg+xml,${encodeURIComponent(CLOUDS_SVG)}")`;
+
+// High-altitude cirrus cloud filaments for multi-speed orbital parallax
+const CIRRUS_SVG = `
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
+  <defs>
+    <filter id='cirrusBlur'>
+      <feGaussianBlur stdDeviation='2' />
+    </filter>
+  </defs>
+  <g stroke='rgba(255,255,255,0.45)' stroke-linecap='round' filter='url(#cirrusBlur)'>
+    <!-- Cirrus streaks -->
+    <path d='M40,90 Q120,70 200,85 T360,80 T520,75 T680,90 T790,80' stroke-width='7' fill='none' />
+    <path d='M10,140 Q90,155 180,145 T340,150 T500,135 T660,148 T790,140' stroke-width='5' fill='none' />
+    <path d='M60,240 Q160,225 260,240 T460,230 T640,245 T780,235' stroke-width='6' fill='none' />
+  </g>
+</svg>`.trim();
+
+const CIRRUS_BG = `url("data:image/svg+xml,${encodeURIComponent(CIRRUS_SVG)}")`;
 
 // Incident markers on the globe
 const INCIDENT_MARKERS = [
@@ -205,12 +227,23 @@ export default function LoginAnimation() {
           <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-red-300/80 shadow-[0_0_8px_2px_rgba(252,165,165,0.5)]" />
         </div>
 
+        {/* Outer Rayleigh Atmospheric Aura */}
+        <div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            margin: '-4%',
+            background:
+              'radial-gradient(circle at 35% 30%, rgba(56,189,248,0.22) 50%, rgba(14,165,233,0.08) 68%, transparent 76%)',
+            filter: 'blur(20px)',
+          }}
+        />
+
         {/* The globe itself */}
         <div
           className="absolute inset-0 rounded-full overflow-hidden"
           style={{
             boxShadow:
-              '0 0 70px 8px rgba(56,189,248,0.28), 0 0 0 1px rgba(186,230,253,0.22), inset 0 0 60px rgba(0,0,0,0.6)',
+              '0 0 75px 10px rgba(56,189,248,0.32), 0 0 0 1.5px rgba(186,230,253,0.28), inset 0 0 60px rgba(0,0,0,0.6)',
           }}
         >
           {/* Ocean base — realistic deep satellite ocean */}
@@ -232,7 +265,7 @@ export default function LoginAnimation() {
               animation: 'rotate-globe 55s linear infinite',
             }}
           />
-          {/* Rotating atmospheric cloud deck — parallax rotation */}
+          {/* Primary atmospheric cloud deck */}
           <div
             className="absolute inset-0 opacity-45 mix-blend-screen"
             style={{
@@ -243,20 +276,47 @@ export default function LoginAnimation() {
               animation: 'rotate-clouds 68s linear infinite',
             }}
           />
-          {/* Volumetric shading — sun specular reflection & deep night terminator */}
+          {/* High-altitude cirrus filaments — multi-speed parallax */}
+          <div
+            className="absolute inset-0 opacity-35 mix-blend-screen"
+            style={{
+              backgroundImage: CIRRUS_BG,
+              backgroundRepeat: 'repeat-x',
+              backgroundSize: '800px 400px',
+              backgroundPosition: '0 4%',
+              animation: 'rotate-cirrus 84s linear infinite',
+            }}
+          />
+          {/* Volumetric shading — deep night terminator shadow */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(circle at 33% 28%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 24%, transparent 45%), radial-gradient(circle at 74% 78%, rgba(2,5,10,0.85) 0%, rgba(2,5,10,0.45) 45%, transparent 72%)',
+                'radial-gradient(circle at 74% 78%, rgba(2,5,10,0.85) 0%, rgba(2,5,10,0.45) 45%, transparent 72%)',
             }}
           />
-          {/* Terminator rim light & Rayleigh limb scattering */}
+          {/* Liquid ocean sun-glint specular reflection */}
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none mix-blend-screen"
+            style={{
+              background:
+                'radial-gradient(ellipse at 32% 28%, rgba(255,255,255,0.4) 0%, rgba(186,230,253,0.18) 16%, transparent 36%)',
+            }}
+          />
+          {/* Rayleigh limb scattering ring */}
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(circle at 35% 30%, transparent 62%, rgba(56,189,248,0.15) 86%, rgba(186,230,253,0.38) 97%, transparent 100%)',
+            }}
+          />
+          {/* Terminator rim light */}
           <div
             className="absolute inset-0 rounded-full"
             style={{
               boxShadow:
-                'inset 8px -8px 40px rgba(0,0,0,0.7), inset -5px 5px 34px rgba(186,230,253,0.32)',
+                'inset 8px -8px 42px rgba(0,0,0,0.7), inset -5px 5px 34px rgba(186,230,253,0.35)',
             }}
           />
           {/* Radar sweep — a slow rotating scan beam, reinforcing "under watch" */}
