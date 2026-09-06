@@ -381,24 +381,9 @@ textarea:focus-visible {
   animation: shake 0.5s ease-in-out;
 }
 
-/* Login page — rotating earth globe */
-@keyframes rotate-globe {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: 800px;
-  }
-}
-
-@keyframes rotate-clouds {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: 800px;
-  }
-}
+/* Login page — the globe's surface/cloud/city-light rotation is driven from a
+   single requestAnimationFrame clock in LoginAnimation.tsx (not CSS), so that
+   incident markers stay locked to the landmass instead of drifting. */
 
 @keyframes rotate-cirrus {
   from {

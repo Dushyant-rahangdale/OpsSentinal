@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 // Deterministic pseudo-random star field — seeded so the server-rendered and
@@ -28,20 +28,202 @@ function generateStars(count: number) {
 
 const STARS = generateStars(110);
 
-// Pre-rendered geographically accurate continents and NASA satellite clouds
-// Loaded as static cached assets for instantaneous login page load and minimal JS bundle
+// Pre-rendered geographically accurate continents + NASA satellite clouds,
+// served as static cached assets. City lights are a separate layer so they can
+// be masked to the night side only (see the lights layer below).
 const CONTINENTS_IMG_URL = "url('/earth-continents.svg')";
+const CITY_LIGHTS_IMG_URL = "url('/earth-city-lights.svg')";
 const CLOUDS_IMG_URL = "url('/earth-clouds.webp')";
 
-// Incident markers on the globe
-const INCIDENT_MARKERS = [
-  { top: '32%', left: '38%', delay: '0s' },
-  { top: '58%', left: '62%', delay: '-3.5s' },
-  { top: '68%', left: '30%', delay: '-7s' },
-  { top: '25%', left: '68%', delay: '-10.5s' },
+// The map textures are equirectangular 800x400. Every layer — land, lights,
+// clouds — and every incident marker is positioned in this same coordinate
+// space, and all of them are driven by ONE rotation clock below. That shared
+// clock is what keeps markers glued to the landmass instead of drifting.
+const TILE_W = 800;
+const TILE_H = 400;
+const CONTINENT_PERIOD_S = 55; // seconds for one full revolution of the map
+const CLOUD_PERIOD_S = 68; // weather drifts slower than the surface (parallax)
+const BG_POS_Y_PCT = 0.04; // matches backgroundPosition '0 4%' on the layers
+const SPOTLIGHT_MS = 7000; // how long each incident ticket stays on screen
+
+type IncidentMarker = {
+  /** Column/row in the 800x400 equirectangular map. */
+  u: number;
+  v: number;
+  id: string;
+  service: string;
+  status: string;
+  color: string;
+  pulseDelay: string;
+};
+
+// Anchored to real city coordinates lifted from the map asset's own annotated
+// light positions, so a marker always sits on land — never open ocean.
+const INCIDENT_MARKERS: IncidentMarker[] = [
+  {
+    u: 185,
+    v: 140,
+    id: 'INC-2481',
+    service: 'Payments API',
+    status: 'Acknowledged',
+    color: '#f59e0b',
+    pulseDelay: '0s',
+  }, // New York
+  {
+    u: 406,
+    v: 116,
+    id: 'INC-3390',
+    service: 'Auth Gateway',
+    status: 'Resolved',
+    color: '#10b981',
+    pulseDelay: '-3.5s',
+  }, // London
+  {
+    u: 680,
+    v: 126,
+    id: 'INC-5127',
+    service: 'Checkout Service',
+    status: 'Triggered',
+    color: '#ef4444',
+    pulseDelay: '-7s',
+  }, // Tokyo
+  {
+    u: 562,
+    v: 158,
+    id: 'INC-6642',
+    service: 'Notification Queue',
+    status: 'Acknowledged',
+    color: '#f59e0b',
+    pulseDelay: '-10.5s',
+  }, // Mumbai
+  {
+    u: 288,
+    v: 258,
+    id: 'INC-7215',
+    service: 'Search Cluster',
+    status: 'Resolved',
+    color: '#10b981',
+    pulseDelay: '-14s',
+  }, // São Paulo
 ];
 
 export default function LoginAnimation() {
+  const globeRef = useRef<HTMLDivElement | null>(null);
+  const continentsRef = useRef<HTMLDivElement | null>(null);
+  const lightsRef = useRef<HTMLDivElement | null>(null);
+  const cloudsRef = useRef<HTMLDivElement | null>(null);
+  // Keyed by incident id rather than array index — the rAF loop only ever
+  // looks nodes up by id, so there is no positional coupling to maintain.
+  const nodesRef = useRef(
+    new Map<string, { marker: HTMLDivElement | null; label: HTMLDivElement | null }>()
+  );
+
+  const registerNode = (id: string, key: 'marker' | 'label', el: HTMLDivElement | null): void => {
+    const existing = nodesRef.current.get(id) ?? { marker: null, label: null };
+    nodesRef.current.set(
+      id,
+      key === 'marker' ? { ...existing, marker: el } : { ...existing, label: el }
+    );
+  };
+
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let boxW = globe.clientWidth;
+    const resizeObserver = new ResizeObserver(() => {
+      boxW = globe.clientWidth;
+    });
+    resizeObserver.observe(globe);
+
+    let rafId = 0;
+    let startTs = 0;
+    let spotlightId: string | null = null;
+    let nextSpotlightAt = 0;
+
+    const frame = (now: number) => {
+      if (!startTs) startTs = now;
+      const elapsed = prefersReducedMotion ? 0 : (now - startTs) / 1000;
+
+      // One clock → every layer and every marker derive from this.
+      const surfaceOffset = (elapsed / CONTINENT_PERIOD_S) * TILE_W;
+      const cloudOffset = (elapsed / CLOUD_PERIOD_S) * TILE_W;
+
+      if (continentsRef.current)
+        continentsRef.current.style.backgroundPositionX = `${surfaceOffset}px`;
+      // Lights share the surface offset exactly — they must stay on their cities.
+      if (lightsRef.current) lightsRef.current.style.backgroundPositionX = `${surfaceOffset}px`;
+      if (cloudsRef.current) cloudsRef.current.style.backgroundPositionX = `${cloudOffset}px`;
+
+      const radius = boxW / 2;
+      const centreX = boxW / 2;
+      const centreY = boxW / 2;
+      // background-position-y percentages resolve against (box height - image height)
+      const yOffset = (boxW - TILE_H) * BG_POS_Y_PCT;
+
+      const placements = new Map<string, { bx: number; by: number; alpha: number }>();
+
+      for (const m of INCIDENT_MARKERS) {
+        const bx = (((m.u + surfaceOffset) % TILE_W) + TILE_W) % TILE_W;
+        const by = m.v + yOffset;
+        let alpha = 0;
+        if (bx <= boxW) {
+          const dist = Math.hypot(bx - centreX, by - centreY);
+          // Fade out across the outer 14% of the disc so markers dissolve at
+          // the limb as they rotate out of view rather than popping off.
+          alpha = Math.max(0, Math.min(1, (radius - dist) / (radius * 0.14)));
+        }
+        placements.set(m.id, { bx, by, alpha });
+
+        const node = nodesRef.current.get(m.id);
+        if (node?.marker) {
+          node.marker.style.opacity = String(alpha);
+          node.marker.style.transform = `translate3d(${bx}px, ${by}px, 0)`;
+        }
+      }
+
+      // Spotlight: exactly one incident ticket visible at a time, and only on a
+      // marker sitting comfortably inside the disc (never out at the limb).
+      const isWellPlaced = (id: string) => {
+        const p = placements.get(id);
+        return !!p && p.alpha >= 1 && p.bx > boxW * 0.18 && p.bx < boxW * 0.82;
+      };
+
+      if (now >= nextSpotlightAt) {
+        const currentIdx = INCIDENT_MARKERS.findIndex(m => m.id === spotlightId);
+        // Rotate the candidate order so we always advance to the *next* marker.
+        const order = [
+          ...INCIDENT_MARKERS.slice(currentIdx + 1),
+          ...INCIDENT_MARKERS.slice(0, currentIdx + 1),
+        ];
+        const next = order.find(m => isWellPlaced(m.id));
+        if (next) {
+          spotlightId = next.id;
+          nextSpotlightAt = now + SPOTLIGHT_MS;
+        }
+      }
+
+      for (const m of INCIDENT_MARKERS) {
+        const node = nodesRef.current.get(m.id);
+        if (!node?.label) continue;
+        const visible = m.id === spotlightId && (placements.get(m.id)?.alpha ?? 0) >= 1;
+        node.label.style.opacity = visible ? '1' : '0';
+      }
+
+      if (!prefersReducedMotion) rafId = requestAnimationFrame(frame);
+    };
+
+    rafId = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#04060d] select-none">
       {/* Starfield */}
@@ -145,6 +327,7 @@ export default function LoginAnimation() {
 
         {/* The globe itself */}
         <div
+          ref={globeRef}
           className="absolute inset-0 rounded-full overflow-hidden"
           style={{
             boxShadow:
@@ -159,28 +342,47 @@ export default function LoginAnimation() {
                 'radial-gradient(circle at 35% 30%, #175472 0%, #0c334b 35%, #071e30 65%, #030c16 100%)',
             }}
           />
-          {/* Rotating continents strip — GPU accelerated */}
+          {/* Rotating continents strip — offset driven by the shared clock */}
           <div
+            ref={continentsRef}
             className="absolute inset-0 opacity-90 pointer-events-none"
             style={{
               backgroundImage: CONTINENTS_IMG_URL,
               backgroundRepeat: 'repeat-x',
               backgroundSize: '800px 400px',
               backgroundPosition: '0 4%',
-              animation: 'rotate-globe 55s linear infinite',
               willChange: 'background-position',
               transform: 'translateZ(0)',
             }}
           />
-          {/* NASA Photographic Satellite Cloud Systems — GPU accelerated */}
+          {/* City lights — same offset as the land so they stay on their cities,
+              masked to reveal only on the night side of the terminator. */}
           <div
+            ref={lightsRef}
+            className="absolute inset-0 pointer-events-none mix-blend-screen"
+            style={{
+              backgroundImage: CITY_LIGHTS_IMG_URL,
+              backgroundRepeat: 'repeat-x',
+              backgroundSize: '800px 400px',
+              backgroundPosition: '0 4%',
+              WebkitMaskImage:
+                'radial-gradient(circle at 32% 28%, transparent 42%, rgba(0,0,0,0.5) 64%, #000 84%)',
+              maskImage:
+                'radial-gradient(circle at 32% 28%, transparent 42%, rgba(0,0,0,0.5) 64%, #000 84%)',
+              filter: 'drop-shadow(0 0 2px rgba(255,190,120,0.85))',
+              willChange: 'background-position',
+              transform: 'translateZ(0)',
+            }}
+          />
+          {/* NASA Photographic Satellite Cloud Systems */}
+          <div
+            ref={cloudsRef}
             className="absolute inset-0 opacity-55 mix-blend-screen pointer-events-none"
             style={{
               backgroundImage: CLOUDS_IMG_URL,
               backgroundRepeat: 'repeat-x',
               backgroundSize: '800px 400px',
               backgroundPosition: '0 4%',
-              animation: 'rotate-clouds 68s linear infinite',
               willChange: 'background-position',
               transform: 'translateZ(0)',
             }}
@@ -226,20 +428,69 @@ export default function LoginAnimation() {
             }}
           />
 
-          {/* Incident lifecycle markers — pulse OPEN -> ACKNOWLEDGED -> RESOLVED */}
-          {INCIDENT_MARKERS.map((m, i) => (
-            <div key={i} className="absolute" style={{ top: m.top, left: m.left }}>
+          {/* Incident markers — pinned to map coordinates, so they ride the
+              surface as it rotates and dissolve at the limb. */}
+          {INCIDENT_MARKERS.map(m => (
+            <div
+              key={m.id}
+              ref={el => registerNode(m.id, 'marker', el)}
+              className="absolute top-0 left-0 opacity-0"
+              style={{ willChange: 'transform, opacity' }}
+            >
+              {/* expanding "detected" ping */}
               <span
-                className="absolute -inset-1.5 rounded-full bg-red-500"
-                style={{ animation: `incident-ring 9s ease-out infinite`, animationDelay: m.delay }}
-              />
-              <span
-                className="relative block h-1.5 w-1.5 rounded-full"
+                className="absolute rounded-full bg-red-500"
                 style={{
-                  animation: `incident-pulse 9s ease-in-out infinite`,
-                  animationDelay: m.delay,
+                  left: -9,
+                  top: -9,
+                  width: 18,
+                  height: 18,
+                  animation: 'incident-ring 9s ease-out infinite',
+                  animationDelay: m.pulseDelay,
                 }}
               />
+              {/* the marker dot, cycling OPEN -> ACKNOWLEDGED -> RESOLVED */}
+              <span
+                className="absolute rounded-full"
+                style={{
+                  left: -3,
+                  top: -3,
+                  width: 6,
+                  height: 6,
+                  animation: 'incident-pulse 9s ease-in-out infinite',
+                  animationDelay: m.pulseDelay,
+                }}
+              />
+
+              {/* Ticket callout — tracks its marker; only one is shown at a time */}
+              <div
+                ref={el => registerNode(m.id, 'label', el)}
+                className="absolute whitespace-nowrap rounded-md border border-white/10 bg-[#0a0e18]/95 px-2.5 py-1.5 shadow-lg opacity-0"
+                style={{
+                  left: 0,
+                  bottom: 14,
+                  transform: 'translateX(-50%)',
+                  transition: 'opacity 600ms ease',
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: m.color }}
+                  />
+                  <span className="text-[10px] font-mono font-semibold text-white">{m.id}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 mt-0.5">
+                  <span className="text-[9px] text-slate-400">{m.service}</span>
+                  <span className="text-[9px] font-semibold" style={{ color: m.color }}>
+                    {m.status}
+                  </span>
+                </div>
+                <div
+                  className="absolute left-1/2 top-full -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent"
+                  style={{ borderTopColor: '#0a0e18' }}
+                />
+              </div>
             </div>
           ))}
         </div>
