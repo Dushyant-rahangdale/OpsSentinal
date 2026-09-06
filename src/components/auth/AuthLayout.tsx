@@ -33,7 +33,7 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
             {/* If on mobile, show brand badge */}
             <div className="flex lg:hidden items-center gap-2">
               <Image
-                src="/logo-mark.png"
+                src="/logo.png"
                 alt="OpsKnight"
                 width={28}
                 height={28}

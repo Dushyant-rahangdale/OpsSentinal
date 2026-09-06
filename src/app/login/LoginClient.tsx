@@ -144,7 +144,7 @@ export default function LoginClient({
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2.5 mb-4">
             <Image
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="OpsKnight"
               width={32}
               height={32}

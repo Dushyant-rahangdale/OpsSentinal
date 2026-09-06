@@ -141,7 +141,7 @@ export default function LoginAnimation() {
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
             <Image
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="OpsKnight"
               width={28}
               height={28}
@@ -160,219 +160,90 @@ export default function LoginAnimation() {
 
       {/* Central Animated Sentinel Node Network with Earth in Background */}
       <div className="relative z-10 w-full max-w-[540px] h-[440px] mx-auto my-auto flex items-center justify-center">
-        {/* 3D Curved Earth Globe Canvas in the Background */}
+        {/* 3D Earth Horizon - Clean, Cinematic & Minimal */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 top-[160px] pointer-events-none rounded-full z-0 overflow-hidden"
+          className="absolute left-1/2 -translate-x-1/2 pointer-events-none rounded-full z-0 overflow-hidden"
           style={{
-            width: '880px',
-            height: '880px',
+            top: '210px',
+            width: '920px',
+            height: '920px',
             background:
-              'radial-gradient(circle at 50% 12%, #0e1624 0%, #080d16 35%, #04060a 75%, #020305 100%)',
+              'radial-gradient(circle at 50% 8%, #0d1420 0%, #070a10 40%, #030407 75%, #020305 100%)',
             boxShadow:
-              '0 -25px 60px -5px rgba(220, 38, 38, 0.5), 0 -4px 20px 0 rgba(239, 68, 68, 0.4), inset 0 4px 30px rgba(239, 68, 68, 0.35)',
-            borderTop: '2px solid rgba(239, 68, 68, 0.75)',
+              '0 -18px 50px -5px rgba(220, 38, 38, 0.3), inset 0 2px 20px rgba(239, 68, 68, 0.2)',
+            borderTop: '1.5px solid rgba(239, 68, 68, 0.6)',
           }}
         >
-          <svg className="w-full h-full opacity-80" viewBox="0 0 880 880" fill="none">
-            <defs>
-              <linearGradient id="arcRed" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
-                <stop offset="50%" stopColor="#ef4444" stopOpacity="0.9" />
-                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.2" />
-              </linearGradient>
-            </defs>
-
-            {/* Latitude Grid Lines (curved across the sphere) */}
+          {/* Faint subtle grid & horizon telemetry - clean, non-competing */}
+          <svg className="w-full h-full opacity-25" viewBox="0 0 920 920" fill="none">
+            {/* Subtle atmospheric curved latitude guides */}
             <ellipse
-              cx="440"
-              cy="90"
-              rx="340"
+              cx="460"
+              cy="120"
+              rx="400"
               ry="70"
               stroke="rgba(255,255,255,0.08)"
               strokeWidth="1"
+              strokeDasharray="4 8"
             />
             <ellipse
-              cx="440"
-              cy="180"
-              rx="400"
+              cx="460"
+              cy="240"
+              rx="440"
               ry="85"
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth="1"
-            />
-            <ellipse
-              cx="440"
-              cy="280"
-              rx="430"
-              ry="95"
               stroke="rgba(255,255,255,0.05)"
               strokeWidth="1"
+              strokeDasharray="4 8"
             />
-            <ellipse
-              cx="440"
-              cy="390"
-              rx="435"
-              ry="100"
+
+            {/* Faint subtle longitude guides */}
+            <path
+              d="M 460 0 C 380 120, 380 350, 460 550"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="1"
+              strokeDasharray="2 6"
+            />
+            <path
+              d="M 460 0 C 540 120, 540 350, 460 550"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="1"
+              strokeDasharray="2 6"
+            />
+            <path
+              d="M 460 0 C 260 120, 260 350, 460 550"
               stroke="rgba(255,255,255,0.04)"
               strokeWidth="1"
-            />
-
-            {/* Longitude Meridians (sweeping downward) */}
-            <path
-              d="M 440 0 C 360 120, 360 400, 440 650"
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth="1"
+              strokeDasharray="2 6"
             />
             <path
-              d="M 440 0 C 520 120, 520 400, 440 650"
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth="1"
-            />
-            <path
-              d="M 440 0 C 270 120, 270 400, 440 650"
+              d="M 460 0 C 660 120, 660 350, 460 550"
               stroke="rgba(255,255,255,0.04)"
               strokeWidth="1"
+              strokeDasharray="2 6"
             />
+
+            {/* 2 Clean global telemetry hubs on horizon */}
+            <circle cx="320" cy="95" r="2.5" fill="#ef4444" opacity="0.8" />
+            <circle cx="600" cy="95" r="2.5" fill="#ef4444" opacity="0.8" />
             <path
-              d="M 440 0 C 610 120, 610 400, 440 650"
-              stroke="rgba(255,255,255,0.04)"
+              d="M 320 95 Q 460 60 600 95"
+              stroke="#ef4444"
               strokeWidth="1"
+              strokeDasharray="4 4"
+              opacity="0.5"
             />
-            <path
-              d="M 440 0 C 180 120, 180 400, 440 650"
-              stroke="rgba(255,255,255,0.03)"
-              strokeWidth="1"
-            />
-            <path
-              d="M 440 0 C 700 120, 700 400, 440 650"
-              stroke="rgba(255,255,255,0.03)"
-              strokeWidth="1"
-            />
-
-            {/* Continental Landmass Dots */}
-            {/* Americas */}
-            <circle cx="280" cy="190" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="290" cy="180" r="1.5" fill="#94a3b8" opacity="0.7" />
-            <circle cx="270" cy="210" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="305" cy="205" r="1.5" fill="#94a3b8" opacity="0.7" />
-            <circle cx="320" cy="225" r="1.5" fill="#94a3b8" opacity="0.5" />
-            <circle cx="285" cy="240" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="300" cy="260" r="1.5" fill="#94a3b8" opacity="0.5" />
-
-            {/* Europe & Africa */}
-            <circle cx="440" cy="140" r="1.5" fill="#94a3b8" opacity="0.7" />
-            <circle cx="455" cy="130" r="1.5" fill="#94a3b8" opacity="0.8" />
-            <circle cx="430" cy="160" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="460" cy="155" r="1.5" fill="#94a3b8" opacity="0.8" />
-            <circle cx="445" cy="180" r="1.5" fill="#94a3b8" opacity="0.7" />
-            <circle cx="435" cy="220" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="450" cy="250" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="470" cy="270" r="1.5" fill="#94a3b8" opacity="0.5" />
-            <circle cx="440" cy="300" r="1.5" fill="#94a3b8" opacity="0.5" />
-
-            {/* Asia */}
-            <circle cx="570" cy="160" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="590" cy="150" r="1.5" fill="#94a3b8" opacity="0.7" />
-            <circle cx="610" cy="170" r="1.5" fill="#94a3b8" opacity="0.7" />
-            <circle cx="580" cy="190" r="1.5" fill="#94a3b8" opacity="0.6" />
-            <circle cx="620" cy="210" r="1.5" fill="#94a3b8" opacity="0.5" />
-
-            {/* Interconnecting Red Telemetry Arcs */}
-            <path
-              d="M 290 180 Q 370 110 455 130"
-              stroke="url(#arcRed)"
-              strokeWidth="1.8"
-              strokeDasharray="5 3"
-              className="animate-pulse"
-            />
-            <path
-              d="M 455 130 Q 530 100 610 170"
-              stroke="url(#arcRed)"
-              strokeWidth="1.8"
-              strokeDasharray="5 3"
-              className="animate-pulse"
-            />
-            <path
-              d="M 305 205 Q 380 170 445 180"
-              stroke="url(#arcRed)"
-              strokeWidth="1.4"
-              strokeDasharray="4 2"
-            />
-            <path
-              d="M 445 180 Q 510 190 580 190"
-              stroke="url(#arcRed)"
-              strokeWidth="1.4"
-              strokeDasharray="4 2"
-            />
-            <path
-              d="M 450 250 Q 510 240 580 190"
-              stroke="url(#arcRed)"
-              strokeWidth="1.2"
-              strokeDasharray="3 2"
-            />
-
-            {/* Active Data Hubs (Red Pulsing Beacons) */}
-            <circle cx="290" cy="180" r="3.5" fill="#ef4444" />
-            <circle
-              cx="290"
-              cy="180"
-              r="9"
-              fill="#ef4444"
-              opacity="0.25"
-              className="animate-ping"
-            />
-
-            <circle cx="455" cy="130" r="4" fill="#ef4444" />
-            <circle
-              cx="455"
-              cy="130"
-              r="12"
-              fill="#ef4444"
-              opacity="0.3"
-              className="animate-ping"
-            />
-
-            <circle cx="610" cy="170" r="3.5" fill="#ef4444" />
-            <circle cx="610" cy="170" r="9" fill="#ef4444" opacity="0.25" />
-
-            <circle cx="305" cy="205" r="3" fill="#ef4444" opacity="0.9" />
-            <circle cx="445" cy="180" r="3" fill="#ef4444" opacity="0.9" />
-            <circle cx="580" cy="190" r="3" fill="#ef4444" opacity="0.9" />
-
-            {/* Incident Flare Beacon on Earth */}
-            {activeIncidentId === 'incidents' && (
-              <g className="animate-pulse">
-                <circle cx="590" cy="150" r="6" fill="#ef4444" />
-                <circle
-                  cx="590"
-                  cy="150"
-                  r="20"
-                  fill="#ef4444"
-                  opacity="0.4"
-                  className="animate-ping"
-                />
-                <line
-                  x1="590"
-                  y1="150"
-                  x2="590"
-                  y2="60"
-                  stroke="#ef4444"
-                  strokeWidth="1.5"
-                  strokeDasharray="3 2"
-                />
-              </g>
-            )}
           </svg>
         </div>
 
-        {/* Concentric Radar Orbits */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="w-[280px] h-[280px] rounded-full border border-slate-700/20 animate-[spin_40s_linear_infinite]" />
-          <div className="w-[360px] h-[360px] rounded-full border border-slate-700/10" />
+        {/* Subtle Concentric Radar Rings */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-5">
+          <div className="w-[260px] h-[260px] rounded-full border border-slate-800/40" />
+          <div className="w-[340px] h-[340px] rounded-full border border-slate-800/20" />
         </div>
 
-        {/* Dynamic Trace Wires */}
+        {/* Clean, Dynamic Trace Wires */}
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none z-15"
+          className="absolute inset-0 w-full h-full pointer-events-none z-10"
           viewBox="0 0 540 440"
         >
           {nodes.map(node => {
@@ -381,11 +252,11 @@ export default function LoginAnimation() {
               <path
                 key={`wire-${node.id}`}
                 d={node.wirePath}
-                stroke={isIncident ? (isFixing ? '#10b981' : '#ef4444') : '#253043'}
-                strokeWidth={isIncident ? 2.5 : 1.5}
+                stroke={isIncident ? (isFixing ? '#10b981' : '#ef4444') : '#1e293b'}
+                strokeWidth={isIncident ? 2 : 1.2}
+                strokeOpacity={isIncident ? 1 : 0.7}
                 fill="none"
                 className={isIncident ? 'animate-pulse' : ''}
-                strokeDasharray={isIncident ? '6 4' : undefined}
               />
             );
           })}
@@ -393,72 +264,17 @@ export default function LoginAnimation() {
 
         {/* Central Sentinel Shield Hub */}
         <div className="relative z-20 flex items-center justify-center">
-          <div className="relative w-28 h-32 flex items-center justify-center">
-            {/* SVG Shield with dual neon glow (ice left, crimson right) matching reference */}
-            <svg
-              viewBox="0 0 100 120"
-              className="absolute inset-0 w-full h-full drop-shadow-[0_0_22px_rgba(239,68,68,0.4)]"
-            >
-              <defs>
-                <filter id="shieldGlow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="2.5" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-                <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#111827" stopOpacity="0.95" />
-                  <stop offset="100%" stopColor="#06080b" stopOpacity="0.98" />
-                </linearGradient>
-              </defs>
+          <div className="relative w-24 h-24 flex items-center justify-center">
+            {/* Ambient atmospheric red pulse glow */}
+            <div className="absolute inset-0 rounded-full bg-red-600/20 blur-xl pointer-events-none animate-pulse" />
 
-              {/* Shield Base Fill */}
-              <path
-                d="M 50 10 C 68 10, 84 14, 86 34 C 88 64, 72 88, 50 108 C 28 88, 12 64, 14 34 C 16 14, 32 10, 50 10 Z"
-                fill="url(#shieldFill)"
-                stroke="#1e293b"
-                strokeWidth="1.5"
-              />
-
-              {/* Left Rim: Cold Ice / Neon Glow */}
-              <path
-                d="M 50 10 C 32 10, 16 14, 14 34 C 12 64, 28 88, 50 108"
-                fill="none"
-                stroke="#67e8f9"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                opacity="0.9"
-                filter="url(#shieldGlow)"
-              />
-
-              {/* Right Rim: Red Sentinel Glow */}
-              <path
-                d="M 50 10 C 68 10, 84 14, 86 34 C 88 64, 72 88, 50 108"
-                fill="none"
-                stroke="#ef4444"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                filter="url(#shieldGlow)"
-              />
-
-              {/* Center Vertical Seam */}
-              <line
-                x1="50"
-                y1="14"
-                x2="50"
-                y2="102"
-                stroke="#334155"
-                strokeWidth="1"
-                strokeDasharray="2 3"
-                opacity="0.6"
-              />
-            </svg>
-
-            {/* OpsKnight Knight Helm inside shield */}
+            {/* Official OpsKnight Knight Shield Emblem */}
             <Image
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="Sentinel Core"
-              width={48}
-              height={48}
-              className="h-12 w-12 object-contain relative z-10 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+              width={84}
+              height={84}
+              className="h-20 w-20 object-contain relative z-10 drop-shadow-[0_0_24px_rgba(220,38,38,0.55)] transition-transform duration-300 hover:scale-105"
               priority
               unoptimized
             />
