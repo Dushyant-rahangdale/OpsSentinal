@@ -20,8 +20,8 @@ const INITIAL_NODES: ServiceNodeData[] = [
     sublabel: 'Healthy',
     iconType: 'services',
     status: 'healthy',
-    posClass: 'left-6 top-8',
-    wirePath: 'M 260 165 C 190 165, 160 90, 110 90',
+    posClass: 'left-4 top-2',
+    wirePath: 'M 270 220 C 180 220, 130 45, 95 45',
   },
   {
     id: 'databases',
@@ -29,8 +29,8 @@ const INITIAL_NODES: ServiceNodeData[] = [
     sublabel: 'Healthy',
     iconType: 'databases',
     status: 'healthy',
-    posClass: 'left-2 top-36',
-    wirePath: 'M 260 165 C 180 165, 140 180, 90 180',
+    posClass: 'left-1 top-[185px]',
+    wirePath: 'M 270 220 C 180 220, 130 205, 80 205',
   },
   {
     id: 'applications',
@@ -38,8 +38,8 @@ const INITIAL_NODES: ServiceNodeData[] = [
     sublabel: 'Monitoring',
     iconType: 'applications',
     status: 'monitoring',
-    posClass: 'left-8 bottom-6',
-    wirePath: 'M 260 165 C 200 165, 180 260, 130 260',
+    posClass: 'left-6 bottom-4',
+    wirePath: 'M 270 220 C 190 220, 150 395, 100 395',
   },
   {
     id: 'cloud',
@@ -47,8 +47,8 @@ const INITIAL_NODES: ServiceNodeData[] = [
     sublabel: 'Protected',
     iconType: 'cloud',
     status: 'protected',
-    posClass: 'right-8 top-8',
-    wirePath: 'M 260 165 C 330 165, 360 90, 410 90',
+    posClass: 'right-4 top-2',
+    wirePath: 'M 270 220 C 360 220, 410 45, 445 45',
   },
   {
     id: 'incidents',
@@ -56,8 +56,8 @@ const INITIAL_NODES: ServiceNodeData[] = [
     sublabel: 'Detected',
     iconType: 'incidents',
     status: 'incident',
-    posClass: 'right-2 top-36',
-    wirePath: 'M 260 165 C 340 165, 370 180, 420 180',
+    posClass: 'right-1 top-[185px]',
+    wirePath: 'M 270 220 C 360 220, 410 205, 460 205',
   },
   {
     id: 'teams',
@@ -65,8 +65,8 @@ const INITIAL_NODES: ServiceNodeData[] = [
     sublabel: 'Aligned',
     iconType: 'teams',
     status: 'aligned',
-    posClass: 'right-8 bottom-6',
-    wirePath: 'M 260 165 C 320 165, 340 260, 390 260',
+    posClass: 'right-6 bottom-4',
+    wirePath: 'M 270 220 C 350 220, 390 395, 440 395',
   },
 ];
 
@@ -136,99 +136,8 @@ export default function LoginAnimation() {
         }}
       />
 
-      {/* 3D Earth Globe Graphics at the bottom with illuminated horizon */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 pointer-events-none rounded-full"
-        style={{
-          bottom: '-160px',
-          width: '840px',
-          height: '460px',
-          background: 'radial-gradient(ellipse at 50% 30%, #0d131e 0%, #06080c 70%, #020305 100%)',
-          boxShadow:
-            '0 -20px 60px -10px rgba(220, 38, 38, 0.35), 0 -4px 20px 0 rgba(239, 68, 68, 0.2), inset 0 2px 20px rgba(239, 68, 68, 0.3)',
-          borderTop: '1px solid rgba(239, 68, 68, 0.45)',
-        }}
-      >
-        <svg className="w-full h-full opacity-60" viewBox="0 0 840 460" fill="none">
-          <defs>
-            <linearGradient id="arcGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
-              <stop offset="50%" stopColor="#ef4444" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.2" />
-            </linearGradient>
-          </defs>
-
-          {/* Latitude curves */}
-          <ellipse
-            cx="420"
-            cy="150"
-            rx="370"
-            ry="85"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="1"
-          />
-          <ellipse
-            cx="420"
-            cy="210"
-            rx="350"
-            ry="80"
-            stroke="rgba(255,255,255,0.04)"
-            strokeWidth="1"
-          />
-          <ellipse
-            cx="420"
-            cy="270"
-            rx="310"
-            ry="70"
-            stroke="rgba(255,255,255,0.03)"
-            strokeWidth="1"
-          />
-
-          {/* Longitude meridians */}
-          <path
-            d="M 420 0 C 330 90, 330 280, 420 380"
-            stroke="rgba(255,255,255,0.04)"
-            strokeWidth="1"
-          />
-          <path
-            d="M 420 0 C 510 90, 510 280, 420 380"
-            stroke="rgba(255,255,255,0.04)"
-            strokeWidth="1"
-          />
-          <path
-            d="M 420 0 C 230 90, 230 280, 420 380"
-            stroke="rgba(255,255,255,0.03)"
-            strokeWidth="1"
-          />
-          <path
-            d="M 420 0 C 610 90, 610 280, 420 380"
-            stroke="rgba(255,255,255,0.03)"
-            strokeWidth="1"
-          />
-
-          {/* Interconnecting Red Telemetry Arcs */}
-          <path
-            d="M 280 170 Q 360 110 490 140"
-            stroke="url(#arcGlow)"
-            strokeWidth="1.5"
-            strokeDasharray="4 2"
-          />
-          <path d="M 490 140 Q 570 130 630 190" stroke="url(#arcGlow)" strokeWidth="1.2" />
-          <path d="M 230 200 Q 310 150 380 190" stroke="url(#arcGlow)" strokeWidth="1.2" />
-
-          {/* Glowing City / Data Center Points */}
-          <circle cx="280" cy="170" r="3" fill="#ef4444" opacity="0.9" />
-          <circle cx="280" cy="170" r="7" fill="#ef4444" opacity="0.25" />
-          <circle cx="490" cy="140" r="3" fill="#ef4444" opacity="0.9" />
-          <circle cx="490" cy="140" r="9" fill="#ef4444" opacity="0.25" />
-          <circle cx="630" cy="190" r="2.5" fill="#ef4444" opacity="0.8" />
-          <circle cx="380" cy="190" r="3" fill="#ef4444" opacity="0.9" />
-          <circle cx="230" cy="200" r="2.5" fill="#ef4444" opacity="0.8" />
-        </svg>
-      </div>
-
       {/* Top Header */}
-      <div className="relative z-10 flex items-center justify-between">
+      <div className="relative z-20 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
             <Image
@@ -249,24 +158,231 @@ export default function LoginAnimation() {
         </div>
       </div>
 
-      {/* Central Animated Sentinel Node Network */}
-      <div className="relative z-10 w-full h-[320px] my-auto flex items-center justify-center">
+      {/* Central Animated Sentinel Node Network with Earth in Background */}
+      <div className="relative z-10 w-full max-w-[540px] h-[440px] mx-auto my-auto flex items-center justify-center">
+        {/* 3D Curved Earth Globe Canvas in the Background */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 top-[160px] pointer-events-none rounded-full z-0 overflow-hidden"
+          style={{
+            width: '880px',
+            height: '880px',
+            background:
+              'radial-gradient(circle at 50% 12%, #0e1624 0%, #080d16 35%, #04060a 75%, #020305 100%)',
+            boxShadow:
+              '0 -25px 60px -5px rgba(220, 38, 38, 0.5), 0 -4px 20px 0 rgba(239, 68, 68, 0.4), inset 0 4px 30px rgba(239, 68, 68, 0.35)',
+            borderTop: '2px solid rgba(239, 68, 68, 0.75)',
+          }}
+        >
+          <svg className="w-full h-full opacity-80" viewBox="0 0 880 880" fill="none">
+            <defs>
+              <linearGradient id="arcRed" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
+                <stop offset="50%" stopColor="#ef4444" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.2" />
+              </linearGradient>
+            </defs>
+
+            {/* Latitude Grid Lines (curved across the sphere) */}
+            <ellipse
+              cx="440"
+              cy="90"
+              rx="340"
+              ry="70"
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth="1"
+            />
+            <ellipse
+              cx="440"
+              cy="180"
+              rx="400"
+              ry="85"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+            <ellipse
+              cx="440"
+              cy="280"
+              rx="430"
+              ry="95"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="1"
+            />
+            <ellipse
+              cx="440"
+              cy="390"
+              rx="435"
+              ry="100"
+              stroke="rgba(255,255,255,0.04)"
+              strokeWidth="1"
+            />
+
+            {/* Longitude Meridians (sweeping downward) */}
+            <path
+              d="M 440 0 C 360 120, 360 400, 440 650"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+            <path
+              d="M 440 0 C 520 120, 520 400, 440 650"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+            <path
+              d="M 440 0 C 270 120, 270 400, 440 650"
+              stroke="rgba(255,255,255,0.04)"
+              strokeWidth="1"
+            />
+            <path
+              d="M 440 0 C 610 120, 610 400, 440 650"
+              stroke="rgba(255,255,255,0.04)"
+              strokeWidth="1"
+            />
+            <path
+              d="M 440 0 C 180 120, 180 400, 440 650"
+              stroke="rgba(255,255,255,0.03)"
+              strokeWidth="1"
+            />
+            <path
+              d="M 440 0 C 700 120, 700 400, 440 650"
+              stroke="rgba(255,255,255,0.03)"
+              strokeWidth="1"
+            />
+
+            {/* Continental Landmass Dots */}
+            {/* Americas */}
+            <circle cx="280" cy="190" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="290" cy="180" r="1.5" fill="#94a3b8" opacity="0.7" />
+            <circle cx="270" cy="210" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="305" cy="205" r="1.5" fill="#94a3b8" opacity="0.7" />
+            <circle cx="320" cy="225" r="1.5" fill="#94a3b8" opacity="0.5" />
+            <circle cx="285" cy="240" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="300" cy="260" r="1.5" fill="#94a3b8" opacity="0.5" />
+
+            {/* Europe & Africa */}
+            <circle cx="440" cy="140" r="1.5" fill="#94a3b8" opacity="0.7" />
+            <circle cx="455" cy="130" r="1.5" fill="#94a3b8" opacity="0.8" />
+            <circle cx="430" cy="160" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="460" cy="155" r="1.5" fill="#94a3b8" opacity="0.8" />
+            <circle cx="445" cy="180" r="1.5" fill="#94a3b8" opacity="0.7" />
+            <circle cx="435" cy="220" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="450" cy="250" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="470" cy="270" r="1.5" fill="#94a3b8" opacity="0.5" />
+            <circle cx="440" cy="300" r="1.5" fill="#94a3b8" opacity="0.5" />
+
+            {/* Asia */}
+            <circle cx="570" cy="160" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="590" cy="150" r="1.5" fill="#94a3b8" opacity="0.7" />
+            <circle cx="610" cy="170" r="1.5" fill="#94a3b8" opacity="0.7" />
+            <circle cx="580" cy="190" r="1.5" fill="#94a3b8" opacity="0.6" />
+            <circle cx="620" cy="210" r="1.5" fill="#94a3b8" opacity="0.5" />
+
+            {/* Interconnecting Red Telemetry Arcs */}
+            <path
+              d="M 290 180 Q 370 110 455 130"
+              stroke="url(#arcRed)"
+              strokeWidth="1.8"
+              strokeDasharray="5 3"
+              className="animate-pulse"
+            />
+            <path
+              d="M 455 130 Q 530 100 610 170"
+              stroke="url(#arcRed)"
+              strokeWidth="1.8"
+              strokeDasharray="5 3"
+              className="animate-pulse"
+            />
+            <path
+              d="M 305 205 Q 380 170 445 180"
+              stroke="url(#arcRed)"
+              strokeWidth="1.4"
+              strokeDasharray="4 2"
+            />
+            <path
+              d="M 445 180 Q 510 190 580 190"
+              stroke="url(#arcRed)"
+              strokeWidth="1.4"
+              strokeDasharray="4 2"
+            />
+            <path
+              d="M 450 250 Q 510 240 580 190"
+              stroke="url(#arcRed)"
+              strokeWidth="1.2"
+              strokeDasharray="3 2"
+            />
+
+            {/* Active Data Hubs (Red Pulsing Beacons) */}
+            <circle cx="290" cy="180" r="3.5" fill="#ef4444" />
+            <circle
+              cx="290"
+              cy="180"
+              r="9"
+              fill="#ef4444"
+              opacity="0.25"
+              className="animate-ping"
+            />
+
+            <circle cx="455" cy="130" r="4" fill="#ef4444" />
+            <circle
+              cx="455"
+              cy="130"
+              r="12"
+              fill="#ef4444"
+              opacity="0.3"
+              className="animate-ping"
+            />
+
+            <circle cx="610" cy="170" r="3.5" fill="#ef4444" />
+            <circle cx="610" cy="170" r="9" fill="#ef4444" opacity="0.25" />
+
+            <circle cx="305" cy="205" r="3" fill="#ef4444" opacity="0.9" />
+            <circle cx="445" cy="180" r="3" fill="#ef4444" opacity="0.9" />
+            <circle cx="580" cy="190" r="3" fill="#ef4444" opacity="0.9" />
+
+            {/* Incident Flare Beacon on Earth */}
+            {activeIncidentId === 'incidents' && (
+              <g className="animate-pulse">
+                <circle cx="590" cy="150" r="6" fill="#ef4444" />
+                <circle
+                  cx="590"
+                  cy="150"
+                  r="20"
+                  fill="#ef4444"
+                  opacity="0.4"
+                  className="animate-ping"
+                />
+                <line
+                  x1="590"
+                  y1="150"
+                  x2="590"
+                  y2="60"
+                  stroke="#ef4444"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 2"
+                />
+              </g>
+            )}
+          </svg>
+        </div>
+
         {/* Concentric Radar Orbits */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[260px] h-[260px] rounded-full border border-slate-700/20 animate-[spin_40s_linear_infinite]" />
-          <div className="w-[320px] h-[320px] rounded-full border border-slate-700/10" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="w-[280px] h-[280px] rounded-full border border-slate-700/20 animate-[spin_40s_linear_infinite]" />
+          <div className="w-[360px] h-[360px] rounded-full border border-slate-700/10" />
         </div>
 
         {/* Dynamic Trace Wires */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 520 330">
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none z-15"
+          viewBox="0 0 540 440"
+        >
           {nodes.map(node => {
             const isIncident = node.id === activeIncidentId;
             return (
               <path
                 key={`wire-${node.id}`}
                 d={node.wirePath}
-                stroke={isIncident ? '#ef4444' : '#1f2937'}
-                strokeWidth={isIncident ? 2 : 1.5}
+                stroke={isIncident ? (isFixing ? '#10b981' : '#ef4444') : '#253043'}
+                strokeWidth={isIncident ? 2.5 : 1.5}
                 fill="none"
                 className={isIncident ? 'animate-pulse' : ''}
                 strokeDasharray={isIncident ? '6 4' : undefined}
@@ -405,7 +521,7 @@ export default function LoginAnimation() {
       </div>
 
       {/* Bottom Editorial Tagline */}
-      <div className="relative z-10 mt-auto">
+      <div className="relative z-20 mt-auto pt-4 bg-gradient-to-t from-[#06080b] via-[#06080b]/90 to-transparent">
         <div className="w-7 h-[2px] bg-red-600 mb-3" />
         <h2 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.2]">
           On watch when you{' '}
