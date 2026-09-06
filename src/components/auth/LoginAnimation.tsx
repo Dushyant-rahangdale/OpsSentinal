@@ -28,28 +28,85 @@ function generateStars(count: number) {
 
 const STARS = generateStars(110);
 
-// A loose, stylized set of landmasses, tiled horizontally via CSS
-// background-repeat and scrolled with background-position — this is what
-// makes the globe read as "rotating" without any 3D engine, just a scrolling
-// background-image inside a circular, shaded mask.
+import { EARTH_LAND_PATH } from './earthPaths';
+
+// Geographically accurate Earth landmasses (800x400) with realistic biome gradients,
+// shallow coastal shelf outlines, mountain ridges, and night city lights.
 const CONTINENTS_SVG = `
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 300'>
-  <g fill='#56916b'>
-    <path d='M58,42 C92,18 132,26 144,58 C156,82 150,102 168,122 C186,142 178,178 148,190 C158,218 136,252 112,244 C90,238 92,208 72,202 C46,208 26,182 38,152 C12,140 18,106 44,92 C32,72 40,52 58,42 Z'/>
-    <path d='M258,28 C308,6 382,18 408,48 C438,66 424,96 396,106 C428,120 442,152 414,172 C440,192 422,222 388,216 C392,242 362,258 336,242 C310,252 282,236 288,210 C258,204 244,174 264,150 C240,138 236,108 258,92 C244,72 244,48 258,28 Z'/>
-    <path d='M468,158 C494,142 530,148 544,174 C560,192 548,218 522,222 C528,244 502,260 476,248 C452,254 432,232 442,208 C422,196 428,170 450,166 C454,162 462,160 468,158 Z'/>
-    <ellipse cx='140' cy='245' rx='15' ry='8' transform='rotate(-12 140 245)'/>
-    <ellipse cx='470' cy='55' rx='11' ry='6' transform='rotate(20 470 55)'/>
-    <ellipse cx='555' cy='210' rx='9' ry='5'/>
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
+  <defs>
+    <linearGradient id='biomeGrad' x1='0' y1='0' x2='0' y2='1'>
+      <stop offset='0%' stop-color='#294736' />
+      <stop offset='25%' stop-color='#3d6849' />
+      <stop offset='45%' stop-color='#4b6b47' />
+      <stop offset='55%' stop-color='#695e42' />
+      <stop offset='68%' stop-color='#355b40' />
+      <stop offset='85%' stop-color='#3c6348' />
+      <stop offset='100%' stop-color='#264132' />
+    </linearGradient>
+  </defs>
+
+  <!-- Shallow coastal continental shelf -->
+  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#16566e' stroke-width='5' stroke-linejoin='round' opacity='0.75' />
+  <path d='${EARTH_LAND_PATH}' fill='none' stroke='#1c6d8a' stroke-width='2' stroke-linejoin='round' opacity='0.9' />
+
+  <!-- Authentic Continents -->
+  <path d='${EARTH_LAND_PATH}' fill='url(#biomeGrad)' />
+
+  <!-- Mountain ridges / elevation accent -->
+  <path d='${EARTH_LAND_PATH}' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.5' />
+
+  <!-- City Night Lights -->
+  <g fill='#fef08a' opacity='0.85'>
+    <!-- North America -->
+    <circle cx='185' cy='140' r='1.2' /><circle cx='188' cy='138' r='1.4' /><circle cx='183' cy='143' r='1.2' />
+    <circle cx='128' cy='144' r='1.3' /><circle cx='124' cy='150' r='1.4' /><circle cx='165' cy='145' r='1.1' />
+    <circle cx='162' cy='160' r='1.2' /><circle cx='178' cy='158' r='1.1' />
+    <!-- Europe -->
+    <circle cx='400' cy='112' r='1.5' /><circle cx='406' cy='116' r='1.4' /><circle cx='414' cy='112' r='1.4' />
+    <circle cx='422' cy='114' r='1.3' /><circle cx='420' cy='124' r='1.2' /><circle cx='395' cy='128' r='1.2' />
+    <!-- Asia -->
+    <circle cx='680' cy='126' r='1.6' /><circle cx='674' cy='130' r='1.4' /><circle cx='635' cy='132' r='1.3' />
+    <circle cx='646' cy='144' r='1.4' /><circle cx='638' cy='156' r='1.4' /><circle cx='562' cy='158' r='1.4' />
+    <circle cx='556' cy='166' r='1.3' /><circle cx='600' cy='188' r='1.2' />
+    <!-- South America & Australia -->
+    <circle cx='288' cy='258' r='1.4' /><circle cx='294' cy='256' r='1.3' /><circle cx='702' cy='264' r='1.3' />
+    <circle cx='694' cy='272' r='1.2' />
   </g>
 </svg>`.trim();
 
 const CONTINENTS_BG = `url("data:image/svg+xml,${encodeURIComponent(CONTINENTS_SVG)}")`;
 
-// Incident markers on the globe — each cycles through the same lifecycle
-// states/colors as the product itself (OPEN -> ACKNOWLEDGED -> RESOLVED),
-// staggered so they read as a steady stream of incidents being handled
-// somewhere in the world, not a synchronized blink.
+// Realistic wispy atmospheric cloud deck
+const CLOUDS_SVG = `
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
+  <defs>
+    <filter id='cloudBlur'>
+      <feGaussianBlur stdDeviation='3' />
+    </filter>
+  </defs>
+  <g fill='rgba(255,255,255,0.7)' filter='url(#cloudBlur)'>
+    <!-- Equatorial cloud band (ITCZ) -->
+    <ellipse cx='120' cy='190' rx='90' ry='12' />
+    <ellipse cx='280' cy='195' rx='110' ry='14' />
+    <ellipse cx='460' cy='188' rx='95' ry='10' />
+    <ellipse cx='640' cy='192' rx='120' ry='15' />
+
+    <!-- Northern mid-latitude cyclone storm swirls -->
+    <path d='M80,120 C140,105 220,135 290,110 C340,90 380,130 460,115 C540,100 620,130 700,108 C750,95 780,120 800,112' stroke='rgba(255,255,255,0.55)' stroke-width='22' fill='none' stroke-linecap='round' />
+    <ellipse cx='220' cy='115' rx='60' ry='18' transform='rotate(-8 220 115)' />
+    <ellipse cx='580' cy='110' rx='75' ry='22' transform='rotate(10 580 110)' />
+
+    <!-- Southern storm belt -->
+    <path d='M0,290 C100,280 200,305 320,295 C440,285 560,310 680,290 C740,280 780,300 800,292' stroke='rgba(255,255,255,0.5)' stroke-width='18' fill='none' stroke-linecap='round' />
+    <ellipse cx='380' cy='295' rx='80' ry='16' />
+    <ellipse cx='720' cy='300' rx='90' ry='18' />
+  </g>
+</svg>`.trim();
+
+const CLOUDS_BG = `url("data:image/svg+xml,${encodeURIComponent(CLOUDS_SVG)}")`;
+
+// Incident markers on the globe
 const INCIDENT_MARKERS = [
   { top: '32%', left: '38%', delay: '0s' },
   { top: '58%', left: '62%', delay: '-3.5s' },
@@ -153,42 +210,53 @@ export default function LoginAnimation() {
           className="absolute inset-0 rounded-full overflow-hidden"
           style={{
             boxShadow:
-              '0 0 70px 6px rgba(96,140,255,0.28), 0 0 0 1px rgba(148,180,255,0.18), inset 0 0 60px rgba(0,0,0,0.55)',
+              '0 0 70px 8px rgba(56,189,248,0.28), 0 0 0 1px rgba(186,230,253,0.22), inset 0 0 60px rgba(0,0,0,0.6)',
           }}
         >
-          {/* Ocean base */}
+          {/* Ocean base — realistic deep satellite ocean */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(circle at 38% 32%, #1c5f7a 0%, #103a52 42%, #081f30 72%, #04121e 100%)',
+                'radial-gradient(circle at 35% 30%, #175472 0%, #0c334b 35%, #071e30 65%, #030c16 100%)',
             }}
           />
           {/* Rotating continents strip */}
           <div
-            className="absolute inset-0 opacity-85"
+            className="absolute inset-0 opacity-90"
             style={{
               backgroundImage: CONTINENTS_BG,
               backgroundRepeat: 'repeat-x',
-              backgroundSize: '600px 300px',
+              backgroundSize: '800px 400px',
               backgroundPosition: '0 4%',
               animation: 'rotate-globe 55s linear infinite',
             }}
           />
-          {/* Volumetric shading — sunlit upper-left, shadowed lower-right */}
+          {/* Rotating atmospheric cloud deck — parallax rotation */}
+          <div
+            className="absolute inset-0 opacity-45 mix-blend-screen"
+            style={{
+              backgroundImage: CLOUDS_BG,
+              backgroundRepeat: 'repeat-x',
+              backgroundSize: '800px 400px',
+              backgroundPosition: '0 4%',
+              animation: 'rotate-clouds 68s linear infinite',
+            }}
+          />
+          {/* Volumetric shading — sun specular reflection & deep night terminator */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.22), transparent 42%), radial-gradient(circle at 72% 78%, rgba(0,0,0,0.65), transparent 62%)',
+                'radial-gradient(circle at 33% 28%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.06) 24%, transparent 45%), radial-gradient(circle at 74% 78%, rgba(2,5,10,0.85) 0%, rgba(2,5,10,0.45) 45%, transparent 72%)',
             }}
           />
-          {/* Terminator rim light */}
+          {/* Terminator rim light & Rayleigh limb scattering */}
           <div
             className="absolute inset-0 rounded-full"
             style={{
               boxShadow:
-                'inset 8px -8px 36px rgba(0,0,0,0.55), inset -4px 5px 30px rgba(180,220,255,0.28)',
+                'inset 8px -8px 40px rgba(0,0,0,0.7), inset -5px 5px 34px rgba(186,230,253,0.32)',
             }}
           />
           {/* Radar sweep — a slow rotating scan beam, reinforcing "under watch" */}

@@ -387,7 +387,16 @@ textarea:focus-visible {
     background-position-x: 0;
   }
   to {
-    background-position-x: 600px;
+    background-position-x: 800px;
+  }
+}
+
+@keyframes rotate-clouds {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 800px;
   }
 }
 
