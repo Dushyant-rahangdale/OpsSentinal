@@ -18,7 +18,8 @@ const providerConfig: Record<
   { classes: string; icon: React.ReactNode; defaultLabel: string }
 > = {
   google: {
-    classes: 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200',
+    classes:
+      'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800',
     defaultLabel: 'Google',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -72,7 +73,8 @@ const providerConfig: Record<
     ),
   },
   custom: {
-    classes: 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs',
+    classes:
+      'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-800 shadow-2xs',
     defaultLabel: 'SSO',
     icon: (
       <svg

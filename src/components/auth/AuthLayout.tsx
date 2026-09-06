@@ -21,10 +21,10 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
           </section>
         )}
 
-        {/* Right Side: Clean White Auth Container */}
+        {/* Right Side: Clean Auth Container with Dark Mode Support */}
         <section
           className={cn(
-            'flex flex-col justify-between w-full bg-white text-slate-900 overflow-y-auto px-6 py-8 sm:px-12 lg:px-16',
+            'flex flex-col justify-between w-full bg-white dark:bg-[#07090e] text-slate-900 dark:text-slate-100 overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 transition-colors duration-200',
             showAnimation ? 'lg:w-1/2' : 'w-full'
           )}
         >
@@ -40,7 +40,7 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
                 className="h-7 w-7 object-contain"
                 unoptimized
               />
-              <span className="font-extrabold text-lg tracking-tight text-slate-950">
+              <span className="font-extrabold text-lg tracking-tight text-slate-950 dark:text-white">
                 OpsKnight
               </span>
             </div>
@@ -50,9 +50,9 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
           <div className="w-full flex items-center justify-center my-auto">{children}</div>
 
           {/* Bottom security badge */}
-          <div className="text-center text-[11px] text-slate-500 font-medium py-3 flex items-center justify-center gap-1.5">
+          <div className="text-center text-[11px] text-slate-500 dark:text-slate-400 font-medium py-3 flex items-center justify-center gap-1.5">
             <svg
-              className="h-3.5 w-3.5 text-slate-400"
+              className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

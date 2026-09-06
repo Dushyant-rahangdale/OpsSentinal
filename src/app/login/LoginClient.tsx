@@ -152,12 +152,14 @@ export default function LoginClient({
               priority
               unoptimized
             />
-            <span className="font-extrabold text-2xl tracking-tight text-slate-950">OpsKnight</span>
+            <span className="font-extrabold text-2xl tracking-tight text-slate-950 dark:text-white">
+              OpsKnight
+            </span>
           </div>
-          <h2 className="text-3xl font-serif text-slate-950 mb-1.5 font-normal tracking-tight">
+          <h2 className="text-3xl font-serif text-slate-950 dark:text-white mb-1.5 font-normal tracking-tight">
             {isSuccess ? 'Access Granted' : 'Welcome back'}
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {isSuccess ? 'Redirecting to secure console...' : 'Sign in to your OpsKnight instance.'}
           </p>
         </div>
@@ -165,18 +167,20 @@ export default function LoginClient({
         {/* Global Error Alert */}
         {error && (
           <div
-            className={`mb-6 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5 ${
+            className={`mb-6 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs flex items-start gap-2.5 ${
               isShaking ? 'animate-shake' : ''
             }`}
           >
             <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-red-800 mb-0.5">Authentication Error</p>
-              <p className="text-red-600">{error}</p>
+              <p className="font-semibold text-red-800 dark:text-red-200 mb-0.5">
+                Authentication Error
+              </p>
+              <p className="text-red-600 dark:text-red-400">{error}</p>
             </div>
             <button
               onClick={() => setError('')}
-              className="text-red-400 hover:text-red-600 transition"
+              className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition"
               aria-label="Dismiss error"
             >
               <X className="h-3.5 w-3.5" />
@@ -190,13 +194,15 @@ export default function LoginClient({
             <label
               className={cn(
                 'block text-xs font-semibold mb-1.5 transition-colors',
-                emailTouched && email && !isEmailValid ? 'text-red-600' : 'text-slate-800'
+                emailTouched && email && !isEmailValid
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-slate-800 dark:text-slate-200'
               )}
             >
               Work email
             </label>
             <div className="relative flex items-center">
-              <div className="absolute left-3.5 text-slate-400 pointer-events-none">
+              <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none">
                 <Mail className="h-4 w-4" />
               </div>
               <input
@@ -208,7 +214,7 @@ export default function LoginClient({
                   if (error) setError('');
                 }}
                 onBlur={() => setEmailTouched(true)}
-                className="w-full pl-11 pr-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50/40 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 transition-all shadow-xs"
+                className="w-full pl-11 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
                 placeholder="you@company.com"
                 disabled={isSubmitting || isSuccess}
               />
@@ -219,7 +225,7 @@ export default function LoginClient({
               )}
             </div>
             {emailTouched && email && !isEmailValid && (
-              <p className="text-[10px] text-red-500 font-medium pl-1 mt-1">
+              <p className="text-[10px] text-red-500 dark:text-red-400 font-medium pl-1 mt-1">
                 Please enter a valid email address
               </p>
             )}
@@ -227,9 +233,11 @@ export default function LoginClient({
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-semibold text-slate-800 mb-1.5">Password</label>
+            <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+              Password
+            </label>
             <div className="relative flex items-center">
-              <div className="absolute left-3.5 text-slate-400 pointer-events-none">
+              <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none">
                 <Lock className="h-4 w-4" />
               </div>
               <input
@@ -243,14 +251,14 @@ export default function LoginClient({
                 onKeyDown={e => {
                   setCapsLockOn(e.getModifierState('CapsLock'));
                 }}
-                className="w-full pl-11 pr-10 py-2.5 rounded-lg border border-slate-200 bg-slate-50/40 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 transition-all shadow-xs"
+                className="w-full pl-11 pr-10 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
                 placeholder="Enter your password"
                 disabled={isSubmitting || isSuccess}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 aria-label="Toggle password visibility"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -268,14 +276,16 @@ export default function LoginClient({
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
                   disabled={isSubmitting || isSuccess}
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-red-600 focus:ring-red-500/20"
+                  className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-700 bg-transparent text-red-600 focus:ring-red-500/20"
                 />
-                <span className="text-[11px] text-slate-500 font-medium">Remember me</span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  Remember me
+                </span>
               </label>
 
               <Link
                 href="/forgot-password"
-                className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline transition-colors"
+                className="text-xs font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors"
               >
                 Forgot password?
               </Link>
@@ -330,9 +340,11 @@ export default function LoginClient({
             <>
               <div className="relative my-4 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-slate-200 dark:border-slate-800" />
                 </div>
-                <span className="relative px-3 text-xs text-slate-400 bg-white">or</span>
+                <span className="relative px-3 text-xs text-slate-400 dark:text-slate-500 bg-white dark:bg-[#07090e]">
+                  or
+                </span>
               </div>
 
               <div>
@@ -343,7 +355,7 @@ export default function LoginClient({
                   loading={isSSOLoading}
                   disabled={isSubmitting || isSuccess}
                 />
-                <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
+                <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-2 font-medium">
                   Supports OIDC SSO
                 </p>
               </div>
@@ -351,11 +363,11 @@ export default function LoginClient({
           )}
 
           {/* Setup Guide Link */}
-          <div className="text-center text-xs text-slate-500 font-medium pt-3">
+          <div className="text-center text-xs text-slate-500 dark:text-slate-400 font-medium pt-3">
             New here?{' '}
             <Link
               href="/help"
-              className="text-red-600 hover:text-red-700 hover:underline font-bold ml-1"
+              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline font-bold ml-1"
             >
               View setup guide →
             </Link>

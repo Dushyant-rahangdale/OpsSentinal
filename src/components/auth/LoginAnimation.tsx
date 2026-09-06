@@ -107,11 +107,28 @@ const INCIDENT_MARKERS: IncidentMarker[] = [
   }, // São Paulo
 ];
 
+type NetworkRoute = {
+  id: string;
+  fromId: string;
+  toId: string;
+  color: string;
+};
+
+const NETWORK_ROUTES: NetworkRoute[] = [
+  { id: 'route-ny-lon', fromId: 'INC-2481', toId: 'INC-3390', color: '#38bdf8' }, // New York -> London
+  { id: 'route-lon-mum', fromId: 'INC-3390', toId: 'INC-6642', color: '#ef4444' }, // London -> Mumbai
+  { id: 'route-mum-tok', fromId: 'INC-6642', toId: 'INC-5127', color: '#38bdf8' }, // Mumbai -> Tokyo
+  { id: 'route-ny-sp', fromId: 'INC-2481', toId: 'INC-7215', color: '#f59e0b' }, // New York -> São Paulo
+];
+
 export default function LoginAnimation() {
   const globeRef = useRef<HTMLDivElement | null>(null);
   const continentsRef = useRef<HTMLDivElement | null>(null);
   const lightsRef = useRef<HTMLDivElement | null>(null);
   const cloudsRef = useRef<HTMLDivElement | null>(null);
+  const cloudShadowRef = useRef<HTMLDivElement | null>(null);
+  const routePathsRef = useRef(new Map<string, SVGPathElement | null>());
+  const routePacketsRef = useRef(new Map<string, SVGCircleElement | null>());
   // Keyed by incident id rather than array index — the rAF loop only ever
   // looks nodes up by id, so there is no positional coupling to maintain.
   const nodesRef = useRef(
@@ -158,6 +175,8 @@ export default function LoginAnimation() {
       // Lights share the surface offset exactly — they must stay on their cities.
       if (lightsRef.current) lightsRef.current.style.backgroundPositionX = `${surfaceOffset}px`;
       if (cloudsRef.current) cloudsRef.current.style.backgroundPositionX = `${cloudOffset}px`;
+      if (cloudShadowRef.current)
+        cloudShadowRef.current.style.backgroundPositionX = `${cloudOffset}px`;
 
       const radius = boxW / 2;
       const centreX = boxW / 2;
@@ -212,6 +231,53 @@ export default function LoginAnimation() {
         if (!node?.label) continue;
         const visible = m.id === spotlightId && (placements.get(m.id)?.alpha ?? 0) >= 1;
         node.label.style.opacity = visible ? '1' : '0';
+      }
+
+      // Dynamic network routes between cities — locked to the rotating globe surface
+      for (const [i, route] of NETWORK_ROUTES.entries()) {
+        const p1 = placements.get(route.fromId);
+        const p2 = placements.get(route.toId);
+        const pathEl = routePathsRef.current.get(route.id);
+        const packetEl = routePacketsRef.current.get(route.id);
+
+        if (!p1 || !p2 || !pathEl || !packetEl) continue;
+
+        const dx = p2.bx - p1.bx;
+        const dy = p2.by - p1.by;
+        const dist = Math.hypot(dx, dy);
+
+        // Both cities must be visible on the same cylindrical wrap without crossing seam
+        const wrappedSeam = Math.abs(dx) > TILE_W * 0.45;
+        const routeAlpha = Math.min(p1.alpha, p2.alpha);
+
+        if (!wrappedSeam && routeAlpha > 0.05 && dist > 15 && dist < boxW * 0.72) {
+          const mx = (p1.bx + p2.bx) / 2;
+          const my = (p1.by + p2.by) / 2;
+          // Arch upward towards space
+          const arch = Math.min(46, dist * 0.22);
+          const cpx = mx;
+          const cpy = my - arch;
+
+          pathEl.setAttribute(
+            'd',
+            `M ${p1.bx.toFixed(1)},${p1.by.toFixed(1)} Q ${cpx.toFixed(1)},${cpy.toFixed(1)} ${p2.bx.toFixed(1)},${p2.by.toFixed(1)}`
+          );
+          pathEl.style.opacity = String(routeAlpha * 0.75);
+
+          // Animated pulse packet bead traveling along the curve
+          const speed = 0.0007;
+          const t = (now * speed + i * 0.25) % 1;
+          const omt = 1 - t;
+          const px = omt * omt * p1.bx + 2 * omt * t * cpx + t * t * p2.bx;
+          const py = omt * omt * p1.by + 2 * omt * t * cpy + t * t * p2.by;
+
+          packetEl.setAttribute('cx', px.toFixed(1));
+          packetEl.setAttribute('cy', py.toFixed(1));
+          packetEl.style.opacity = String(routeAlpha * 0.95);
+        } else {
+          pathEl.style.opacity = '0';
+          packetEl.style.opacity = '0';
+        }
       }
 
       if (!prefersReducedMotion) rafId = requestAnimationFrame(frame);
@@ -271,19 +337,32 @@ export default function LoginAnimation() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(59,70,130,0.22),transparent_60%)]" />
 
       {/* Top brand header */}
-      <div className="relative z-20 flex items-center gap-2.5 p-8 lg:p-12 pb-0">
-        <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
-          <Image
-            src="/logo.png"
-            alt="OpsKnight"
-            width={28}
-            height={28}
-            className="h-6 w-6 object-contain"
-            priority
-            unoptimized
-          />
+      <div className="relative z-20 flex items-center justify-between p-8 lg:p-10 pb-0">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
+            <Image
+              src="/logo.png"
+              alt="OpsKnight"
+              width={28}
+              height={28}
+              className="h-6 w-6 object-contain"
+              priority
+              unoptimized
+            />
+          </div>
+          <span className="font-extrabold text-lg tracking-tight text-white">OpsKnight</span>
         </div>
-        <span className="font-extrabold text-lg tracking-tight text-white">OpsKnight</span>
+
+        {/* Operational Doctrine Tracker (from reference mock) */}
+        <div className="hidden xl:flex items-center gap-2 text-[10px] font-mono tracking-widest text-slate-500 font-semibold select-none">
+          <span>DETECT</span>
+          <span className="text-slate-700">|</span>
+          <span>COORDINATE</span>
+          <span className="text-slate-700">|</span>
+          <span>RESOLVE</span>
+          <span className="text-slate-700">|</span>
+          <span className="text-slate-400">STAY AHEAD</span>
+        </div>
       </div>
 
       {/* Earth + orbit, anchored toward the bottom so it reads as a planetary horizon */}
@@ -374,6 +453,20 @@ export default function LoginAnimation() {
               transform: 'translateZ(0)',
             }}
           />
+          {/* Cloud altitude shadow on terrain & ocean (matching sun angle from top-left) */}
+          <div
+            ref={cloudShadowRef}
+            className="absolute inset-0 opacity-25 pointer-events-none mix-blend-multiply"
+            style={{
+              backgroundImage: CLOUDS_IMG_URL,
+              backgroundRepeat: 'repeat-x',
+              backgroundSize: '800px 400px',
+              backgroundPosition: '0 4%',
+              transform: 'translate(2.5px, 3.5px)',
+              filter: 'brightness(0) blur(2px)',
+              willChange: 'background-position',
+            }}
+          />
           {/* NASA Photographic Satellite Cloud Systems */}
           <div
             ref={cloudsRef}
@@ -387,6 +480,32 @@ export default function LoginAnimation() {
               transform: 'translateZ(0)',
             }}
           />
+          {/* Dynamic rotating network routes — locked to cities as the Earth spins */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none mix-blend-screen overflow-visible">
+            {NETWORK_ROUTES.map(route => (
+              <g key={route.id}>
+                <path
+                  ref={el => {
+                    routePathsRef.current.set(route.id, el);
+                  }}
+                  fill="none"
+                  stroke={route.color}
+                  strokeWidth="1.6"
+                  strokeDasharray="4 4"
+                  opacity="0"
+                />
+                <circle
+                  ref={el => {
+                    routePacketsRef.current.set(route.id, el);
+                  }}
+                  r="2.5"
+                  fill={route.color}
+                  opacity="0"
+                  style={{ filter: `drop-shadow(0 0 4px ${route.color})` }}
+                />
+              </g>
+            ))}
+          </svg>
           {/* Volumetric shading — deep night terminator shadow */}
           <div
             className="absolute inset-0"
@@ -506,7 +625,7 @@ export default function LoginAnimation() {
           </span>
         </h2>
         <p className="text-xs lg:text-sm text-slate-400 mt-2 max-w-sm leading-relaxed">
-          Incidents detected, acknowledged, and resolved — around the world, around the clock.
+          Calm, coordinated incident response for modern engineering teams.
         </p>
 
         <div className="flex items-center justify-between pt-4 mt-5 border-t border-slate-800/60 text-[10px] font-mono tracking-wider text-slate-400">
