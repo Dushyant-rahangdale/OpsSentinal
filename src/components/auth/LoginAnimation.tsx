@@ -81,52 +81,8 @@ const CONTINENTS_SVG = `
 
 const CONTINENTS_BG = `url("data:image/svg+xml,${encodeURIComponent(CONTINENTS_SVG)}")`;
 
-// Primary realistic atmospheric weather/cyclone cloud deck
-const CLOUDS_SVG = `
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
-  <defs>
-    <filter id='cloudBlur'>
-      <feGaussianBlur stdDeviation='3.5' />
-    </filter>
-  </defs>
-  <g fill='rgba(255,255,255,0.72)' filter='url(#cloudBlur)'>
-    <!-- Equatorial cloud band (ITCZ) -->
-    <ellipse cx='120' cy='190' rx='90' ry='12' />
-    <ellipse cx='280' cy='195' rx='110' ry='14' />
-    <ellipse cx='460' cy='188' rx='95' ry='10' />
-    <ellipse cx='640' cy='192' rx='120' ry='15' />
-
-    <!-- Northern mid-latitude cyclone storm swirls -->
-    <path d='M80,120 C140,105 220,135 290,110 C340,90 380,130 460,115 C540,100 620,130 700,108 C750,95 780,120 800,112' stroke='rgba(255,255,255,0.6)' stroke-width='22' fill='none' stroke-linecap='round' />
-    <ellipse cx='220' cy='115' rx='60' ry='18' transform='rotate(-8 220 115)' />
-    <ellipse cx='580' cy='110' rx='75' ry='22' transform='rotate(10 580 110)' />
-
-    <!-- Southern storm belt -->
-    <path d='M0,290 C100,280 200,305 320,295 C440,285 560,310 680,290 C740,280 780,300 800,292' stroke='rgba(255,255,255,0.52)' stroke-width='18' fill='none' stroke-linecap='round' />
-    <ellipse cx='380' cy='295' rx='80' ry='16' />
-    <ellipse cx='720' cy='300' rx='90' ry='18' />
-  </g>
-</svg>`.trim();
-
-const CLOUDS_BG = `url("data:image/svg+xml,${encodeURIComponent(CLOUDS_SVG)}")`;
-
-// High-altitude cirrus cloud filaments for multi-speed orbital parallax
-const CIRRUS_SVG = `
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'>
-  <defs>
-    <filter id='cirrusBlur'>
-      <feGaussianBlur stdDeviation='2' />
-    </filter>
-  </defs>
-  <g stroke='rgba(255,255,255,0.45)' stroke-linecap='round' filter='url(#cirrusBlur)'>
-    <!-- Cirrus streaks -->
-    <path d='M40,90 Q120,70 200,85 T360,80 T520,75 T680,90 T790,80' stroke-width='7' fill='none' />
-    <path d='M10,140 Q90,155 180,145 T340,150 T500,135 T660,148 T790,140' stroke-width='5' fill='none' />
-    <path d='M60,240 Q160,225 260,240 T460,230 T640,245 T780,235' stroke-width='6' fill='none' />
-  </g>
-</svg>`.trim();
-
-const CIRRUS_BG = `url("data:image/svg+xml,${encodeURIComponent(CIRRUS_SVG)}")`;
+// Photographic satellite cloud texture from NASA Blue Marble
+const CLOUDS_IMG_URL = "url('/earth-clouds.jpg')";
 
 // Incident markers on the globe
 const INCIDENT_MARKERS = [
@@ -265,26 +221,15 @@ export default function LoginAnimation() {
               animation: 'rotate-globe 55s linear infinite',
             }}
           />
-          {/* Primary atmospheric cloud deck */}
+          {/* NASA Photographic Satellite Cloud Systems — true meteorological swirls and cyclone vortexes */}
           <div
-            className="absolute inset-0 opacity-45 mix-blend-screen"
+            className="absolute inset-0 opacity-55 mix-blend-screen pointer-events-none"
             style={{
-              backgroundImage: CLOUDS_BG,
+              backgroundImage: CLOUDS_IMG_URL,
               backgroundRepeat: 'repeat-x',
               backgroundSize: '800px 400px',
               backgroundPosition: '0 4%',
               animation: 'rotate-clouds 68s linear infinite',
-            }}
-          />
-          {/* High-altitude cirrus filaments — multi-speed parallax */}
-          <div
-            className="absolute inset-0 opacity-35 mix-blend-screen"
-            style={{
-              backgroundImage: CIRRUS_BG,
-              backgroundRepeat: 'repeat-x',
-              backgroundSize: '800px 400px',
-              backgroundPosition: '0 4%',
-              animation: 'rotate-cirrus 84s linear infinite',
             }}
           />
           {/* Volumetric shading — deep night terminator shadow */}
