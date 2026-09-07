@@ -207,7 +207,7 @@ describe('CreateIncidentModal', () => {
   it('switches description between Write and Preview modes', async () => {
     render(<CreateIncidentModal />);
 
-    await screen.findByText('Declare Incident');
+    await screen.findByRole('button', { name: /^write$/i });
 
     const writeTab = screen.getByRole('button', { name: /^write$/i });
     const previewTab = screen.getByRole('button', { name: /^preview$/i });

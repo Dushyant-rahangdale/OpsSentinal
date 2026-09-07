@@ -24,8 +24,9 @@ services:
       - opsknight-network
 
   opsknight-app:
-    # Pin OPSKNIGHT_IMAGE to an immutable release tag/digest for production.
-    image: ${OPSKNIGHT_IMAGE:-ghcr.io/opsknight-labs/opsknight:latest}
+    # Main-branch Compose defaults to the patched, immutable v1.4 hotfix runtime.
+    # Override OPSKNIGHT_IMAGE only with a tested tag or digest.
+    image: ${OPSKNIGHT_IMAGE:-ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix}
     pull_policy: always
     restart: unless-stopped
     ports:

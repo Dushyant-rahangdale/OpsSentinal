@@ -26,6 +26,7 @@ _From alert ingestion and on-call routing through response, customer communicati
 ---
 
 > [!IMPORTANT]
+>
 > ### 🚀 OpsKnight 2.0 is coming soon!
 >
 > We have merged over **220+ PRs** since our last release (`v1.4.0`). While we initially planned a minor `v1.5`, the massive improvements across the board—a completely redesigned modern UI, real-time push streaming, rock-solid availability, and deep engine upgrades—mean our next milestone will be **OpsKnight 2.0**!
@@ -83,14 +84,14 @@ OpsKnight is an open-source, self-hosted alternative to per-seat on-call SaaS (i
 
 Whether you are an SRE team at a startup or a platform team at a larger organization, OpsKnight connects detect → route → respond → communicate → learn on infrastructure you control. Reliability and transparent operational evidence—not raw feature count—are the product contract.
 
-| Feature             | OpsKnight                         | Typical per-seat SaaS        |
-| :------------------ | :-------------------------------- | :--------------------------- |
-| **Hosting**         | Self-hosted                       | Vendor cloud                 |
-| **Software fee**    | $0 (Apache-2.0)                   | Per-user plans               |
-| **Users**           | No seat meter in the product      | Per-seat pricing             |
-| **Status pages**    | One page per install              | Often a separate SKU         |
-| **Voice paging**    | Not included                      | Often included               |
-| **Incident data**   | Your Postgres / VPC               | Vendor cloud                 |
+| Feature           | OpsKnight                    | Typical per-seat SaaS |
+| :---------------- | :--------------------------- | :-------------------- |
+| **Hosting**       | Self-hosted                  | Vendor cloud          |
+| **Software fee**  | $0 (Apache-2.0)              | Per-user plans        |
+| **Users**         | No seat meter in the product | Per-seat pricing      |
+| **Status pages**  | One page per install         | Often a separate SKU  |
+| **Voice paging**  | Not included                 | Often included        |
+| **Incident data** | Your Postgres / VPC          | Vendor cloud          |
 
 ---
 
@@ -219,8 +220,11 @@ printf 'NEXTAUTH_SECRET=%s\n' "$(openssl rand -base64 32)" >> .env
 printf 'ENCRYPTION_KEY=%s\n'  "$(openssl rand -hex 32)"    >> .env
 
 # 4. Start OpsKnight and PostgreSQL
+docker compose pull
 docker compose up -d
 ```
+
+The main-branch Compose file defaults to the patched `ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix` image. You do not need to switch branches or manually configure `latest`.
 
 Open **http://localhost:3000**. The database schema is created on first boot, so
 there is no migration step to run yourself.
@@ -242,7 +246,7 @@ docker run -d --name opsknight -p 3000:3000 \
   -e NEXT_PUBLIC_APP_URL="https://opsknight.example.com" \
   -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
   -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
-  ghcr.io/opsknight-labs/opsknight:latest
+  ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
 ```
 
 PostgreSQL 14+ is required. See the
@@ -256,17 +260,16 @@ and scaling.
 Images are published to the GitHub Container Registry and are **public — no
 authentication needed to pull**.
 
-| Image                                   | Channel                        | Tags                          |
-| :-------------------------------------- | :----------------------------- | :---------------------------- |
-| `ghcr.io/opsknight-labs/opsknight`      | Stable releases                | `1.4.0`, `1.4`, `1`, `latest` |
-| `ghcr.io/opsknight-labs/opsknight-test` | Pre-release, built from `main` | `latest`, `sha-<commit>`      |
+| Image                                   | Channel                        | Tags                                          |
+| :-------------------------------------- | :----------------------------- | :-------------------------------------------- |
+| `ghcr.io/opsknight-labs/opsknight`      | Stable releases                | `1.4.0-hotfix`, `1.4.0`, `1.4`, `1`, `latest` |
+| `ghcr.io/opsknight-labs/opsknight-test` | Pre-release, built from `main` | `latest`, `sha-<commit>`                      |
 
 ```bash
-# Pin a release — recommended for production
-docker pull ghcr.io/opsknight-labs/opsknight:1.4.0
+# Pin the patched v1.4 runtime — recommended for affected v1.4 deployments
+docker pull ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
 
-# Or track the latest stable release
-docker pull ghcr.io/opsknight-labs/opsknight:latest
+# Do not use `latest` for affected v1.4 deployments; the original 1.4.0 image is immutable.
 ```
 
 Pinning an exact version is strongly preferred in production: `latest` moves
