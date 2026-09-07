@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Spinner from '@/components/ui/Spinner';
 import SsoButton from '@/components/auth/SsoButton';
 import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
+import HelloGreeting from '@/components/auth/HelloGreeting';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { purgeBrowserAuthCaches } from '@/lib/auth-cache-purge';
@@ -144,22 +145,25 @@ export default function LoginClient({
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2.5 mb-4">
             <Image
-              src="/logo.png"
+              src="/logo-mark.png"
               alt="OpsKnight"
               width={32}
               height={32}
-              className="h-8 w-8 object-contain"
+              className="h-8 w-8 2xl:h-10 2xl:w-10 object-contain"
               priority
               unoptimized
             />
-            <span className="font-extrabold text-2xl tracking-tight text-slate-950 dark:text-white">
-              OpsKnight
+            {/* Two-weight lockup: "Knight" is the distinctive half of the
+                name, so it carries the weight and "Ops" sits back. */}
+            <span className="text-2xl 2xl:text-3xl tracking-tight text-slate-950 dark:text-white">
+              <span className="font-medium">Ops</span>
+              <span className="font-extrabold">Knight</span>
             </span>
           </div>
-          <h2 className="text-3xl font-serif text-slate-950 dark:text-white mb-1.5 font-normal tracking-tight">
-            {isSuccess ? 'You have the watch.' : 'Welcome back'}
+          <h2 className="text-3xl 2xl:text-4xl font-serif text-slate-950 dark:text-white mb-1.5 font-normal tracking-tight">
+            {isSuccess ? 'You have the watch.' : <HelloGreeting />}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs 2xl:text-sm text-slate-500 dark:text-slate-400">
             {isSuccess ? 'Handing over now…' : 'Sign in and take the watch.'}
           </p>
         </div>
@@ -214,7 +218,7 @@ export default function LoginClient({
                   if (error) setError('');
                 }}
                 onBlur={() => setEmailTouched(true)}
-                className="auth-input login-input w-full pl-12 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
+                className="auth-input login-input w-full pl-12 pr-4 py-2.5 2xl:py-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm 2xl:text-base focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
                 placeholder="you@company.com"
                 disabled={isSubmitting || isSuccess}
               />
@@ -251,7 +255,7 @@ export default function LoginClient({
                 onKeyDown={e => {
                   setCapsLockOn(e.getModifierState('CapsLock'));
                 }}
-                className="auth-input login-input w-full pl-12 pr-10 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
+                className="auth-input login-input w-full pl-12 pr-10 py-2.5 2xl:py-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm 2xl:text-base focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
                 placeholder="Enter your password"
                 disabled={isSubmitting || isSuccess}
               />
@@ -304,7 +308,7 @@ export default function LoginClient({
             type="submit"
             disabled={isSubmitting || isSSOLoading || isSuccess}
             className={cn(
-              'w-full py-3 px-4 rounded-lg text-white font-bold text-sm shadow-sm transition-all duration-200 flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+              'w-full py-3 2xl:py-4 px-4 rounded-lg text-white font-bold text-sm 2xl:text-base shadow-sm transition-all duration-200 flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
               isSuccess
                 ? 'bg-emerald-600 shadow-emerald-600/20'
                 : 'bg-[#111827] dark:bg-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100 hover:ring-2 hover:ring-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-500/30 active:bg-black dark:active:bg-slate-200 shadow-slate-950/10'

@@ -34,7 +34,7 @@ export function AuthLayout({ children, showAnimation = true, isSuccess = false }
         {/* Right Side: Clean Auth Container with Dark Mode Support */}
         <section
           className={cn(
-            'flex flex-col justify-between flex-1 w-full bg-background text-foreground overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 transition-colors duration-200',
+            'flex flex-col justify-between flex-1 w-full bg-background text-foreground overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 2xl:px-24 transition-colors duration-200',
             showAnimation ? 'lg:w-1/2' : 'w-full'
           )}
         >
@@ -43,15 +43,16 @@ export function AuthLayout({ children, showAnimation = true, isSuccess = false }
             <div className="w-full flex items-center justify-between py-2">
               <div className="flex lg:hidden items-center gap-2">
                 <Image
-                  src="/logo.png"
+                  src="/logo-mark.png"
                   alt="OpsKnight"
                   width={28}
                   height={28}
                   className="h-7 w-7 object-contain"
                   unoptimized
                 />
-                <span className="font-extrabold text-lg tracking-tight text-slate-950 dark:text-white">
-                  OpsKnight
+                <span className="text-lg tracking-tight text-slate-950 dark:text-white">
+                  <span className="font-medium">Ops</span>
+                  <span className="font-extrabold">Knight</span>
                 </span>
               </div>
             </div>
@@ -61,7 +62,7 @@ export function AuthLayout({ children, showAnimation = true, isSuccess = false }
           <div className="w-full flex items-center justify-center my-auto">{children}</div>
 
           {/* Bottom security badge */}
-          <div className="text-center text-[11px] text-slate-500 dark:text-slate-400 font-medium py-3 flex items-center justify-center gap-1.5">
+          <div className="text-center text-[11px] 2xl:text-xs text-slate-500 dark:text-slate-400 font-medium py-3 flex items-center justify-center gap-1.5">
             <svg
               className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500"
               fill="none"
@@ -91,7 +92,12 @@ interface AuthCardProps {
 
 export function AuthCard({ children, className }: AuthCardProps) {
   return (
-    <div className={cn('w-full max-w-[360px] sm:max-w-[400px] mx-auto py-4', className)}>
+    <div
+      className={cn(
+        'w-full max-w-[360px] sm:max-w-[400px] 2xl:max-w-[460px] min-[2000px]:max-w-[520px] mx-auto py-4',
+        className
+      )}
+    >
       {children}
     </div>
   );

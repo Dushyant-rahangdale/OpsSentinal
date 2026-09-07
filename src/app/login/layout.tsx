@@ -8,11 +8,10 @@ export const metadata = {
 };
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <link rel="preload" as="image" href="/earth-continents.svg" type="image/svg+xml" />
-      <link rel="preload" as="image" href="/earth-clouds.webp" type="image/webp" />
-      {children}
-    </>
-  );
+  // The globe textures (~167KB) are deliberately NOT preloaded. They are
+  // decoration; the form is the job of this page. Preloading them put them in
+  // direct competition with the fonts and JS needed to render and hydrate the
+  // sign-in form, delaying interactivity so the scenery could arrive sooner.
+  // As CSS background images they still load promptly, just at normal priority.
+  return <>{children}</>;
 }

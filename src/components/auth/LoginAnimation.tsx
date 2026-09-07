@@ -27,7 +27,11 @@ function generateStars(count: number) {
   });
 }
 
-const STARS = generateStars(110);
+// Both variants mount on every page load (each is CSS-hidden at the other's
+// breakpoint), so the banner keeps a much smaller field — it is only ~164px
+// tall and a full 110-star set there is pure DOM weight nobody sees.
+const STARS_PANEL = generateStars(110);
+const STARS_BANNER = generateStars(36);
 
 // Pre-rendered geographically accurate continents + NASA satellite clouds,
 // served as static cached assets. City lights are a separate layer so they can
@@ -520,7 +524,7 @@ export default function LoginAnimation({
     <div className="relative h-full w-full overflow-hidden bg-[#04060d] select-none">
       {/* Starfield */}
       <div className="absolute inset-0" aria-hidden="true">
-        {STARS.map(s => (
+        {(isBanner ? STARS_BANNER : STARS_PANEL).map(s => (
           <span
             key={s.id}
             className="absolute rounded-full bg-white"
@@ -566,14 +570,14 @@ export default function LoginAnimation({
           brand, so keep the strip pure imagery. */}
       <div
         className={cn(
-          'relative z-20 flex items-center justify-between p-8 lg:p-10 pb-0',
+          'relative z-20 flex items-center justify-between p-8 lg:p-10 2xl:p-14 pb-0',
           isBanner && 'hidden'
         )}
       >
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
             <Image
-              src="/logo.png"
+              src="/logo-mark.png"
               alt="OpsKnight"
               width={28}
               height={28}
@@ -582,7 +586,11 @@ export default function LoginAnimation({
               unoptimized
             />
           </div>
-          <span className="font-extrabold text-lg tracking-tight text-white">OpsKnight</span>
+          {/* Two-weight lockup — "Knight" carries the mark */}
+          <span className="text-lg 2xl:text-xl tracking-tight text-white">
+            <span className="font-medium">Ops</span>
+            <span className="font-extrabold">Knight</span>
+          </span>
         </div>
 
         {/* A quiet aside rather than a strip of abstract verbs — the globe
@@ -600,7 +608,7 @@ export default function LoginAnimation({
         aria-hidden="true"
         style={{
           bottom: isBanner ? '-150%' : '-46%',
-          width: isBanner ? 'min(1400px, 190vw)' : 'clamp(520px, 62vw, 860px)',
+          width: isBanner ? 'min(1400px, 190vw)' : 'clamp(520px, 62vw, 1900px)',
           aspectRatio: '1 / 1',
           transform: 'translateX(-50%)',
         }}
@@ -875,22 +883,22 @@ export default function LoginAnimation({
       {/* Bottom tagline */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-20 p-8 lg:p-12 pt-24 bg-gradient-to-t from-[#04060d] via-[#04060d]/85 to-transparent',
+          'absolute inset-x-0 bottom-0 z-20 p-8 lg:p-12 2xl:p-16 pt-24 bg-gradient-to-t from-[#04060d] via-[#04060d]/85 to-transparent',
           isBanner && 'hidden'
         )}
       >
         <div className="w-7 h-[2px] bg-red-600 mb-3" />
-        <h2 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.2]">
+        <h2 className="text-3xl lg:text-4xl 2xl:text-5xl min-[2000px]:text-6xl font-extrabold text-white tracking-tight leading-[1.2]">
           You are not{' '}
-          <span className="text-red-500 italic font-serif text-[38px] lg:text-[46px] font-normal">
+          <span className="text-red-500 italic font-serif text-[38px] lg:text-[46px] 2xl:text-[58px] min-[2000px]:text-[70px] font-normal">
             the only one awake.
           </span>
         </h2>
-        <p className="text-xs lg:text-sm text-slate-400 mt-2 max-w-sm leading-relaxed">
+        <p className="text-xs lg:text-sm 2xl:text-base text-slate-400 mt-2 max-w-sm 2xl:max-w-md leading-relaxed">
           Nothing waits for morning. Nothing gets lost.
         </p>
 
-        <div className="flex items-center justify-between pt-4 mt-5 border-t border-slate-800/60 text-[10px] font-mono tracking-wider text-slate-400">
+        <div className="flex items-center justify-between pt-4 mt-5 2xl:mt-7 border-t border-slate-800/60 text-[10px] 2xl:text-[11px] font-mono tracking-wider text-slate-400">
           <div>Open source &nbsp;•&nbsp; Self-hosted</div>
           <div>EVERY PAGE HAS A NAME ON IT</div>
         </div>
