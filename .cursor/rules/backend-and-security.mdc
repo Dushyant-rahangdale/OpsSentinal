@@ -1,0 +1,12 @@
+---
+description: Backend, Server Actions, RBAC capabilities, and database invariants
+globs: src/app/**/actions.ts,src/lib/**/*,prisma/**/*
+alwaysApply: false
+---
+
+# Backend & Security Invariants
+- Verify RBAC capabilities on every Server Action mutating data via `getUserPermissions()` from `@/lib/rbac`.
+- Validate all incoming payloads with Zod schemas (`z.object({...})`).
+- Wrap multi-entity updates in `prisma.$transaction([...])`.
+- Check organization/status-page ownership to preserve multi-tenant boundary isolation.
+- Sanitize HTML with `escapeHtml()` and URLs with `sanitizeUrl()`.
