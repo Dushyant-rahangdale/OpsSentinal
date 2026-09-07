@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import StatusPageSubscribe from './StatusPageSubscribe';
 import type { StatusPageSnapshot } from '@/lib/status-pages/snapshot';
 import { computeStatusPageTheme } from '@/lib/status-page-theme';
@@ -10,6 +11,11 @@ type PageView = {
   organizationName?: string | null;
   branding?: unknown;
   showSubscribe?: boolean;
+  showServicesByRegion?: boolean;
+  showRegionHeatmap?: boolean;
+  showPostIncidentReview?: boolean;
+  showChangelog?: boolean;
+  enableUptimeExports?: boolean;
   footerText?: string | null;
   contactEmail?: string | null;
   contactUrl?: string | null;
@@ -17,12 +23,93 @@ type PageView = {
   isDefault?: boolean;
 };
 
+type SnapshotService = StatusPageSnapshot['services'][number];
+
 const labels = {
   operational: 'All Systems Operational',
   degraded: 'Degraded Performance',
   maintenance: 'Scheduled Maintenance',
   outage: 'Major Outage',
 } as const;
+
+const severityRank: Record<string, number> = {
+  OPERATIONAL: 0,
+  MAINTENANCE: 1,
+  DEGRADED: 2,
+  PARTIAL_OUTAGE: 2,
+  MAJOR_OUTAGE: 3,
+};
+
+function getRegions(region?: string | null) {
+  if (!region) return [];
+  return region
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(Boolean);
+}
+
+function regionGroupKey(service: SnapshotService) {
+  const regions = getRegions(service.region);
+  if (regions.length === 0) return 'Global';
+  if (regions.length === 1) return regions[0];
+  return 'Multi-region';
+}
+
+function projectRegions(services: SnapshotService[]) {
+  const groups = new Map<string, SnapshotService[]>();
+  const summaries = new Map<
+    string,
+    { total: number; impacted: number; maintenance: number; severity: number }
+  >();
+
+  for (const service of services) {
+    const groupKey = regionGroupKey(service);
+    groups.set(groupKey, [...(groups.get(groupKey) || []), service]);
+
+    const regions = getRegions(service.region);
+    if (regions.length === 0) continue;
+    const status = service.status || 'OPERATIONAL';
+    const impacted = status !== 'OPERATIONAL' && status !== 'MAINTENANCE';
+    const isMaintenance = status === 'MAINTENANCE';
+    const severity = Math.max(severityRank[status] ?? 0, isMaintenance ? 1 : 0);
+
+    for (const region of regions) {
+      const summary = summaries.get(region) || {
+        total: 0,
+        impacted: 0,
+        maintenance: 0,
+        severity: 0,
+      };
+      summary.total += 1;
+      if (impacted) summary.impacted += 1;
+      if (isMaintenance) summary.maintenance += 1;
+      summary.severity = Math.max(summary.severity, severity);
+      summaries.set(region, summary);
+    }
+  }
+
+  const groupPriority = (region: string) => {
+    if (region === 'Multi-region') return 1;
+    if (region === 'Global') return 2;
+    return 0;
+  };
+
+  return {
+    groups: Array.from(groups.entries())
+      .sort((a, b) => groupPriority(a[0]) - groupPriority(b[0]) || a[0].localeCompare(b[0]))
+      .map(([region, groupedServices]) => ({ region, services: groupedServices })),
+    summaries: Array.from(summaries.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([region, summary]) => ({ region, ...summary })),
+  };
+}
+
+function regionHealthLabel(severity: number) {
+  if (severity >= 3) return 'Outage';
+  if (severity >= 2) return 'Degraded';
+  if (severity >= 1) return 'Maintenance';
+  return 'Operational';
+}
 
 export default function StatusPageSnapshotView({
   page,
@@ -42,12 +129,64 @@ export default function StatusPageSnapshotView({
     backgroundColor:
       typeof branding.backgroundColor === 'string' ? branding.backgroundColor : undefined,
     textColor: typeof branding.textColor === 'string' ? branding.textColor : undefined,
+    fontFamily: typeof branding.fontFamily === 'string' ? branding.fontFamily : undefined,
   });
   const refreshInterval =
     typeof branding.refreshInterval === 'number' ? branding.refreshInterval : 60;
   const customCss = toSafeStyleTagContent(branding.customCss);
+  const layout =
+    branding.layout === 'wide' || branding.layout === 'compact' ? branding.layout : 'default';
+  const maxWidth = layout === 'wide' ? 1600 : layout === 'compact' ? 900 : 1280;
+  const showHeader = branding.showHeader !== false;
+  const showFooter = branding.showFooter !== false;
+  const showChangelog = page.showChangelog !== false;
+  const statusPagePath =
+    page.slug && !page.isDefault ? `/status/${encodeURIComponent(page.slug)}` : '/status';
   const apiPath =
     page.slug && !page.isDefault ? `/api/status/${encodeURIComponent(page.slug)}` : '/api/status';
+  const showUptimeExports =
+    page.enableUptimeExports === true && Object.keys(snapshot.uptime).length > 0;
+  const canUseRegions = snapshot.services.some(service => getRegions(service.region).length > 0);
+  const regionProjection =
+    (page.showServicesByRegion === true || page.showRegionHeatmap === true) && canUseRegions
+      ? projectRegions(snapshot.services)
+      : { groups: [], summaries: [] };
+  const groupServices = page.showServicesByRegion === true && canUseRegions;
+  const showRegionHeatmap = page.showRegionHeatmap === true && regionProjection.summaries.length > 0;
+  const announcements = snapshot.announcements.filter(item => item.type !== 'UPDATE');
+  const changelog = showChangelog
+    ? snapshot.announcements.filter(item => item.type === 'UPDATE')
+    : [];
+
+  const renderService = (service: SnapshotService) => (
+    <article
+      key={service.id}
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '1rem 0',
+        borderBottom: '1px solid currentColor',
+      }}
+    >
+      <div>
+        <strong>{service.name}</strong>
+        {service.description && <p>{service.description}</p>}
+        {service.region && <small>{service.region}</small>}
+        {service.slaTier && <small> · SLA tier {service.slaTier}</small>}
+        {service.team && <small> · Owned by {service.team.name}</small>}
+      </div>
+      <div style={{ textAlign: 'right' }}>
+        <span>{service.status.replaceAll('_', ' ')}</span>
+        {typeof snapshot.uptime[service.id] === 'number' && (
+          <div>
+            <small>{snapshot.uptime[service.id].toFixed(3)}% uptime</small>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+
   return (
     <main
       className="status-page-container"
@@ -55,40 +194,44 @@ export default function StatusPageSnapshotView({
         minHeight: '100vh',
         background: theme.backgroundColor,
         color: theme.textColor,
+        fontFamily: theme.fontFamily,
         padding: 'clamp(1rem, 4vw, 3rem)',
+        ...(theme.cssVariables as CSSProperties),
       }}
     >
       {customCss && <style dangerouslySetInnerHTML={{ __html: customCss }} />}
       {branding.autoRefresh !== false && (
         <StatusPageAutoRefresh enabled intervalSeconds={Math.max(30, refreshInterval)} />
       )}
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <header style={{ marginBottom: '2rem' }}>
-          <p style={{ opacity: 0.7 }}>{page.organizationName || 'Service status'}</p>
-          <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', margin: 0 }}>{page.name}</h1>
-          <div
-            role="status"
-            style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              border: `1px solid ${theme.primaryColor}`,
-              borderRadius: 12,
-            }}
-          >
-            <strong>{labels[snapshot.status]}</strong>
-            <span style={{ marginLeft: 12, opacity: 0.7 }}>
-              Updated {new Date(snapshot.generatedAt).toLocaleString()}
-            </span>
-          </div>
-          {stale && (
-            <p role="note">Showing the last verified update while fresh data is being rebuilt.</p>
-          )}
-        </header>
+      <div style={{ maxWidth, margin: '0 auto', padding: layout === 'compact' ? '0.5rem' : 0 }}>
+        {showHeader && (
+          <header style={{ marginBottom: '2rem' }}>
+            <p style={{ opacity: 0.7 }}>{page.organizationName || 'Service status'}</p>
+            <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', margin: 0 }}>{page.name}</h1>
+            <div
+              role="status"
+              style={{
+                marginTop: '1.5rem',
+                padding: '1rem',
+                border: `1px solid ${theme.primaryColor}`,
+                borderRadius: 12,
+              }}
+            >
+              <strong>{labels[snapshot.status]}</strong>
+              <span style={{ marginLeft: 12, opacity: 0.7 }}>
+                Updated {new Date(snapshot.generatedAt).toLocaleString()}
+              </span>
+            </div>
+            {stale && (
+              <p role="note">Showing the last verified update while fresh data is being rebuilt.</p>
+            )}
+          </header>
+        )}
 
-        {snapshot.announcements.length > 0 && (
+        {announcements.length > 0 && (
           <section aria-labelledby="announcements-heading">
             <h2 id="announcements-heading">Announcements</h2>
-            {snapshot.announcements.map(item => (
+            {announcements.map(item => (
               <article
                 key={item.id}
                 style={{ padding: '1rem 0', borderBottom: '1px solid currentColor' }}
@@ -100,39 +243,67 @@ export default function StatusPageSnapshotView({
           </section>
         )}
 
+        {changelog.length > 0 && (
+          <section aria-labelledby="changelog-heading" style={{ marginTop: '2rem' }}>
+            <h2 id="changelog-heading">Changelog</h2>
+            {changelog.map(item => (
+              <article
+                key={item.id}
+                style={{ padding: '1rem 0', borderBottom: '1px solid currentColor' }}
+              >
+                <strong>{item.title}</strong>
+                <p>{item.message}</p>
+                <small>{new Date(item.startDate).toLocaleString()}</small>
+              </article>
+            ))}
+          </section>
+        )}
+
+        {showRegionHeatmap && (
+          <section aria-labelledby="region-health-heading" style={{ marginTop: '2rem' }}>
+            <h2 id="region-health-heading">Region health</h2>
+            <div
+              style={{
+                display: 'grid',
+                gap: '1rem',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              }}
+            >
+              {regionProjection.summaries.map(region => (
+                <article
+                  key={region.region}
+                  style={{
+                    padding: '1rem',
+                    border: '1px solid var(--status-panel-border, currentColor)',
+                    borderRadius: 12,
+                    background: 'var(--status-panel-bg, transparent)',
+                  }}
+                >
+                  <strong>{region.region}</strong>
+                  <div>{regionHealthLabel(region.severity)}</div>
+                  <small>
+                    {region.impacted} impacted · {region.maintenance} maintenance · {region.total}{' '}
+                    services
+                  </small>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section aria-labelledby="services-heading" style={{ marginTop: '2rem' }}>
           <h2 id="services-heading">Services</h2>
           {snapshot.services.length === 0 ? (
             <p>No services are published on this page.</p>
-          ) : (
-            snapshot.services.map(service => (
-              <article
-                key={service.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 16,
-                  padding: '1rem 0',
-                  borderBottom: '1px solid currentColor',
-                }}
-              >
-                <div>
-                  <strong>{service.name}</strong>
-                  {service.description && <p>{service.description}</p>}
-                  {service.region && <small>{service.region}</small>}
-                  {service.slaTier && <small> · SLA tier {service.slaTier}</small>}
-                  {service.team && <small> · Owned by {service.team.name}</small>}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span>{service.status.replaceAll('_', ' ')}</span>
-                  {typeof snapshot.uptime[service.id] === 'number' && (
-                    <div>
-                      <small>{snapshot.uptime[service.id].toFixed(3)}% uptime</small>
-                    </div>
-                  )}
-                </div>
-              </article>
+          ) : groupServices ? (
+            regionProjection.groups.map(group => (
+              <section key={group.region} aria-label={`${group.region} services`}>
+                <h3>{group.region}</h3>
+                {group.services.map(renderService)}
+              </section>
             ))
+          ) : (
+            snapshot.services.map(renderService)
           )}
         </section>
 
@@ -141,34 +312,49 @@ export default function StatusPageSnapshotView({
           {snapshot.incidents.length === 0 ? (
             <p>No public incidents in the last {snapshot.historyDays} days.</p>
           ) : (
-            snapshot.incidents.map((incident, index) => (
-              <article
-                key={typeof incident.id === 'string' ? incident.id : index}
-                style={{ padding: '1rem 0', borderBottom: '1px solid currentColor' }}
-              >
-                <strong>
-                  {typeof incident.title === 'string' ? incident.title : 'Status update'}
-                </strong>
-                {typeof incident.description === 'string' && <p>{incident.description}</p>}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  {typeof incident.status === 'string' && <small>{incident.status}</small>}
-                  {typeof incident.urgency === 'string' && (
-                    <small>{incident.urgency} urgency</small>
-                  )}
-                  {typeof incident.createdAt === 'string' && (
-                    <small>Started {new Date(incident.createdAt).toLocaleString()}</small>
-                  )}
-                  {typeof incident.resolvedAt === 'string' && (
-                    <small>Resolved {new Date(incident.resolvedAt).toLocaleString()}</small>
-                  )}
-                  {typeof (incident.service as { name?: unknown } | undefined)?.name ===
-                    'string' && (
-                    <small>Affected service: {(incident.service as { name: string }).name}</small>
-                  )}
-                  {typeof incident.id === 'string' && <small>Incident {incident.id}</small>}
-                </div>
-              </article>
-            ))
+            snapshot.incidents.map((incident, index) => {
+              const incidentId = typeof incident.id === 'string' ? incident.id : null;
+              const showPostIncidentReview =
+                page.showPostIncidentReview !== false &&
+                incident.postIncidentReview === true &&
+                incidentId !== null;
+              return (
+                <article
+                  key={incidentId || index}
+                  style={{ padding: '1rem 0', borderBottom: '1px solid currentColor' }}
+                >
+                  <strong>
+                    {typeof incident.title === 'string' ? incident.title : 'Status update'}
+                  </strong>
+                  {typeof incident.description === 'string' && <p>{incident.description}</p>}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {typeof incident.status === 'string' && <small>{incident.status}</small>}
+                    {typeof incident.urgency === 'string' && (
+                      <small>{incident.urgency} urgency</small>
+                    )}
+                    {typeof incident.createdAt === 'string' && (
+                      <small>Started {new Date(incident.createdAt).toLocaleString()}</small>
+                    )}
+                    {typeof incident.resolvedAt === 'string' && (
+                      <small>Resolved {new Date(incident.resolvedAt).toLocaleString()}</small>
+                    )}
+                    {typeof (incident.service as { name?: unknown } | undefined)?.name ===
+                      'string' && (
+                      <small>Affected service: {(incident.service as { name: string }).name}</small>
+                    )}
+                    {incidentId && <small>Incident {incidentId}</small>}
+                    {showPostIncidentReview && (
+                      <a
+                        href={`${statusPagePath}/postmortems/${encodeURIComponent(incidentId)}`}
+                        style={{ color: 'var(--status-primary, currentColor)' }}
+                      >
+                        Post-incident review
+                      </a>
+                    )}
+                  </div>
+                </article>
+              );
+            })
           )}
         </section>
 
@@ -177,15 +363,24 @@ export default function StatusPageSnapshotView({
             <StatusPageSubscribe statusPageId={page.id} />
           </section>
         )}
-        <footer style={{ marginTop: '3rem', opacity: 0.7 }}>
-          <p>{page.footerText || 'Powered by OpsKnight'}</p>
-          <nav aria-label="Status resources" style={{ display: 'flex', gap: 12 }}>
-            {branding.showApiLink !== false && <a href={apiPath}>JSON API</a>}
-            {branding.showRssLink !== false && <a href={`${apiPath}/rss`}>RSS</a>}
-            {page.contactEmail && <a href={`mailto:${page.contactEmail}`}>Contact</a>}
-            {page.contactUrl && <a href={page.contactUrl}>Support</a>}
-          </nav>
-        </footer>
+
+        {showFooter && (
+          <footer style={{ marginTop: '3rem', opacity: 0.7 }}>
+            <p>{page.footerText || 'Powered by OpsKnight'}</p>
+            <nav aria-label="Status resources" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              {branding.showApiLink !== false && <a href={apiPath}>JSON API</a>}
+              {branding.showRssLink !== false && <a href={`${apiPath}/rss`}>RSS</a>}
+              {showUptimeExports && (
+                <>
+                  <a href={`${apiPath}/uptime-export?format=csv`}>Uptime CSV</a>
+                  <a href={`${apiPath}/uptime-export?format=pdf`}>Uptime PDF</a>
+                </>
+              )}
+              {page.contactEmail && <a href={`mailto:${page.contactEmail}`}>Contact</a>}
+              {page.contactUrl && <a href={page.contactUrl}>Support</a>}
+            </nav>
+          </footer>
+        )}
       </div>
     </main>
   );

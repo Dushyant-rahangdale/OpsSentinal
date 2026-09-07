@@ -81,4 +81,93 @@ describe('StatusPageSnapshotView publication parity', () => {
     expect(screen.queryByText(/Affected service/)).not.toBeInTheDocument();
     expect(screen.queryByText(/SLA tier/)).not.toBeInTheDocument();
   });
+
+  it('honors region, changelog, post-incident review, and export settings', () => {
+    render(
+      <StatusPageSnapshotView
+        page={{
+          id: 'page-1',
+          name: 'Acme status',
+          showSubscribe: false,
+          showServicesByRegion: true,
+          showRegionHeatmap: true,
+          showPostIncidentReview: true,
+          showChangelog: true,
+          enableUptimeExports: true,
+        }}
+        snapshot={{
+          ...snapshot,
+          incidents: [
+            {
+              ...snapshot.incidents[0],
+              status: 'RESOLVED',
+              postIncidentReview: true,
+            },
+          ],
+          announcements: [
+            {
+              id: 'update-1',
+              title: 'New edge region',
+              message: 'Traffic is now served closer to customers.',
+              type: 'UPDATE',
+              startDate: '2026-09-07T08:00:00.000Z',
+              endDate: null,
+            },
+          ],
+        }}
+        stale={false}
+      />
+    );
+
+    expect(screen.getByRole('region', { name: 'eu-west-1 services' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Region health' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Changelog' })).toBeInTheDocument();
+    expect(screen.getByText('New edge region')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Post-incident review' })).toHaveAttribute(
+      'href',
+      '/status/postmortems/incident-1'
+    );
+    expect(screen.getByRole('link', { name: 'Uptime CSV' })).toHaveAttribute(
+      'href',
+      '/api/status/uptime-export?format=csv'
+    );
+    expect(screen.getByRole('link', { name: 'Uptime PDF' })).toHaveAttribute(
+      'href',
+      '/api/status/uptime-export?format=pdf'
+    );
+  });
+
+  it('honors header, footer, and changelog suppression from current page settings', () => {
+    render(
+      <StatusPageSnapshotView
+        page={{
+          id: 'page-1',
+          name: 'Hidden chrome status',
+          showSubscribe: false,
+          showChangelog: false,
+          branding: { showHeader: false, showFooter: false },
+        }}
+        snapshot={{
+          ...snapshot,
+          announcements: [
+            {
+              id: 'update-1',
+              title: 'Hidden update',
+              message: 'Should not render.',
+              type: 'UPDATE',
+              startDate: '2026-09-07T08:00:00.000Z',
+              endDate: null,
+            },
+          ],
+        }}
+        stale={false}
+      />
+    );
+
+    expect(screen.queryByText('Hidden chrome status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Changelog' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Hidden update')).not.toBeInTheDocument();
+    expect(screen.queryByText('Powered by OpsKnight')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Status resources' })).not.toBeInTheDocument();
+  });
 });

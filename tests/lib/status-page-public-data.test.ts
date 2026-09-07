@@ -77,4 +77,34 @@ describe('status page public-data policy', () => {
       )
     ).toEqual({ status: 'OPEN', title: 'Database latency', service: 'Payments' });
   });
+
+  it('publishes only a boolean post-incident-review capability marker', () => {
+    const incident = {
+      id: 'inc-1',
+      title: 'Database latency',
+      status: 'RESOLVED',
+      createdAt: new Date('2026-08-30T10:00:00.000Z'),
+      resolvedAt: new Date('2026-08-30T11:00:00.000Z'),
+      postmortem: { status: 'PUBLISHED', isPublic: true },
+    };
+
+    expect(
+      serializePublicStatusIncident(incident, {
+        ...privateSettings,
+        showPostIncidentReview: true,
+      })
+    ).toMatchObject({ postIncidentReview: true });
+    expect(
+      serializePublicStatusIncident(incident, {
+        ...privateSettings,
+        showPostIncidentReview: false,
+      })
+    ).not.toHaveProperty('postIncidentReview');
+    expect(
+      serializePublicStatusIncident(
+        { ...incident, postmortem: { status: 'DRAFT', isPublic: true } },
+        { ...privateSettings, showPostIncidentReview: true }
+      )
+    ).not.toHaveProperty('postIncidentReview');
+  });
 });

@@ -44,6 +44,16 @@ export type StatusPageSnapshot = {
   historyDays: number;
 };
 
+function parseStatusPageSnapshot(
+  pageId: string,
+  payload: Prisma.JsonValue | null | undefined
+): StatusPageSnapshot | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const record = payload as Prisma.JsonObject;
+  if (record.schemaVersion !== 1 || record.pageId !== pageId) return null;
+  return payload as unknown as StatusPageSnapshot;
+}
+
 /** All public data is explicitly projected; no Prisma records are spread into the payload. */
 export async function buildStatusPageSnapshot(
   pageId: string,
@@ -72,6 +82,7 @@ export async function buildStatusPageSnapshot(
     },
   });
   if (!page?.enabled) return null;
+
   const now = new Date();
   const limits = statusPagePublicationLimits(page);
   const visibility = publicStatusVisibility(page);
@@ -106,20 +117,26 @@ export async function buildStatusPageSnapshot(
                 createdAt: true,
                 resolvedAt: true,
                 service: { select: { name: true, region: true } },
+                postmortem: { select: { status: true, isPublic: true } },
               },
             })
           : [],
         visibility.showUptime ? calculateMultiServiceUptime(ids, window.start, now, 'PUBLIC') : {},
       ])
     : [[], [], {}];
+
+  const impactByService = new Map<string, { active: number; critical: boolean }>();
+  for (const group of groups) {
+    const current = impactByService.get(group.serviceId) || { active: 0, critical: false };
+    current.active += group._count._all;
+    if (group.urgency === 'HIGH') current.critical = true;
+    impactByService.set(group.serviceId, current);
+  }
+
   const maintenance = visibleMaintenanceServiceIds(page.announcements, ids, now);
   const services = page.services.map(mapping => {
-    const impacts = groups.filter(group => group.serviceId === mapping.serviceId);
-    const state = impacts.some(group => group.urgency === 'HIGH')
-      ? 'MAJOR_OUTAGE'
-      : impacts.length
-        ? 'DEGRADED'
-        : 'OPERATIONAL';
+    const impact = impactByService.get(mapping.serviceId);
+    const state = impact?.critical ? 'MAJOR_OUTAGE' : impact?.active ? 'DEGRADED' : 'OPERATIONAL';
     return {
       id: mapping.serviceId,
       name: mapping.displayName || mapping.service.name,
@@ -130,14 +147,16 @@ export async function buildStatusPageSnapshot(
       status: projectServiceStatus(mapping.serviceId, state, maintenance),
     };
   });
+  const impactStates = Array.from(impactByService.values());
+
   return {
     schemaVersion: 1,
     pageId,
     revision,
     generatedAt: now.toISOString(),
     status: projectOverallStatus(
-      groups.some(group => group.urgency === 'HIGH'),
-      groups.length > 0,
+      impactStates.some(impact => impact.critical),
+      impactStates.some(impact => impact.active > 0),
       maintenance
     ),
     services: visibility.showServices ? services : [],
@@ -227,13 +246,13 @@ export async function readStatusPageSnapshot(pageId: string): Promise<StatusPage
   const rows = await prisma.$queryRaw<Array<{ payload: Prisma.JsonValue }>>`
     SELECT "payload" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}
   `;
-  const payload = rows[0]?.payload;
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
-  if (payload.schemaVersion !== 1 || payload.pageId !== pageId) return null;
-  return payload as unknown as StatusPageSnapshot;
+  return parseStatusPageSnapshot(pageId, rows[0]?.payload);
 }
 
-/** Serve the last sanitized projection while a rebuild is pending or temporarily failing. */
+/**
+ * Return only a revision-current sanitized projection. Dirty payloads remain in
+ * storage for recovery/diagnostics but are never returned to a public renderer.
+ */
 export async function getStatusPageSnapshot(pageId: string): Promise<{
   snapshot: StatusPageSnapshot | null;
   stale: boolean;
@@ -243,18 +262,20 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
   >`SELECT "revision", "publishedRevision", "payload" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
   const row = state[0];
   if (!row) return { snapshot: null, stale: true };
-  const current = await readStatusPageSnapshot(pageId);
+
+  const current = parseStatusPageSnapshot(pageId, row.payload);
   if (row.revision === row.publishedRevision && current) return { snapshot: current, stale: false };
+
   try {
     const published = await rebuildStatusPageSnapshot(pageId);
     if (!published) return { snapshot: null, stale: true };
     const [verified] = await prisma.$queryRaw<
       Array<{ revision: bigint; publishedRevision: bigint; payload: Prisma.JsonValue }>
     >`SELECT "revision", "publishedRevision", "payload" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-    if (verified?.revision !== verified?.publishedRevision) {
+    if (!verified || verified.revision !== verified.publishedRevision) {
       return { snapshot: null, stale: true };
     }
-    const rebuilt = await readStatusPageSnapshot(pageId);
+    const rebuilt = parseStatusPageSnapshot(pageId, verified.payload);
     if (rebuilt) return { snapshot: rebuilt, stale: false };
   } catch {
     // A dirty projection may contain fields that have since been made private.
