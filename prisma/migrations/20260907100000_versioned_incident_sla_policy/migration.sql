@@ -70,7 +70,7 @@ FOR EACH ROW EXECUTE FUNCTION opsknight_immutable_incident_sla_policy();
 -- Old explicit writers retain honest NULL provenance and are counted; target-less writers
 -- get the same persisted policy resolution as the application, with accurate provenance.
 CREATE OR REPLACE FUNCTION opsknight_capture_incident_sla_target() RETURNS TRIGGER AS $$
-DECLARE p "IncidentSlaPolicy"%ROWTYPE; r "IncidentSlaPolicyRule"%ROWTYPE; normalized_priority TEXT;
+DECLARE p "IncidentSlaPolicy"%ROWTYPE; r "IncidentSlaPolicyRule"%ROWTYPE; normalized_priority TEXT; ack_minutes INTEGER; resolve_minutes INTEGER;
 BEGIN
   IF NEW."slaPolicyId" IS NULL THEN
     INSERT INTO "IncidentSlaLegacyCapture" ("day","count","lastSeenAt") VALUES (CURRENT_DATE,1,CURRENT_TIMESTAMP)
