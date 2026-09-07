@@ -504,6 +504,7 @@ describe('Status Page Validation Schemas', () => {
   describe('StatusAnnouncementPatchSchema', () => {
     it('should validate valid patch', () => {
       const validData = {
+        statusPageId: 'page-123',
         id: 'announcement-123',
         title: 'Updated Title',
         message: 'Updated message',
@@ -514,8 +515,9 @@ describe('Status Page Validation Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should validate minimal patch with just id', () => {
+    it('should validate a minimal page-scoped patch', () => {
       const minimalData = {
+        statusPageId: 'page-123',
         id: 'announcement-123',
       };
 
@@ -525,6 +527,7 @@ describe('Status Page Validation Schemas', () => {
 
     it('should reject empty id', () => {
       const invalidData = {
+        statusPageId: 'page-123',
         id: '',
         title: 'Title',
       };

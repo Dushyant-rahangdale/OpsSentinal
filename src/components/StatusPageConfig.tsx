@@ -17,7 +17,11 @@ import StatusPageWebhooksSettings from '@/components/status-page/StatusPageWebho
 import StatusPageSubscribers from '@/components/status-page/StatusPageSubscribers';
 import StatusPageEmailConfig from '@/components/status-page/StatusPageEmailConfig';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { STATUS_PAGE_FONTS, STATUS_PAGE_COLOR_PRESETS, isDarkHex } from '@/lib/status-page-theme';
+import {
+  STATUS_PAGE_FONTS,
+  STATUS_PAGE_COLOR_PRESETS,
+  computeStatusPageTheme,
+} from '@/lib/status-page-theme';
 
 type StatusPageConfigProps = {
   statusPage: {
@@ -50,7 +54,7 @@ type StatusPageConfigProps = {
     emailProvider?: string | null;
     branding?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     requireAuth?: boolean;
-    privacyMode?: string;
+    privacyMode?: string | null;
     showIncidentDetails?: boolean;
     showIncidentTitles?: boolean;
     showIncidentDescriptions?: boolean;
@@ -937,6 +941,13 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     uptimeExcellentThreshold: formData.uptimeExcellentThreshold,
     uptimeGoodThreshold: formData.uptimeGoodThreshold,
   };
+  const effectiveColorTheme = computeStatusPageTheme({
+    primaryColor: formData.primaryColor,
+    backgroundColor: formData.backgroundColor,
+    textColor: formData.textColor,
+  });
+  const textContrastAdjusted =
+    effectiveColorTheme.textColor.toLowerCase() !== formData.textColor.toLowerCase();
   const previewMaxWidth =
     formData.layout === 'wide' ? '1600px' : formData.layout === 'compact' ? '900px' : '1280px';
 
@@ -974,7 +985,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
             id: statusPage.id,
             name: formData.name,
             slug: formData.slug || null,
-            isDefault: formData.isDefault,
             organizationName: formData.organizationName || null,
             subdomain: formData.subdomain || null,
             customDomain: formData.customDomain || null,
@@ -1058,7 +1068,22 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
       setError(payload?.error || 'Unable to delete status page.');
       return;
     }
-    router.push('/settings/status-page');
+    router.push('/settings/status-pages');
+    router.refresh();
+  };
+
+  const handleMakeDefault = async () => {
+    setError(null);
+    const response = await fetch(
+      `/api/settings/status-pages/${encodeURIComponent(statusPage.id)}/make-default`,
+      { method: 'POST' }
+    );
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      setError(payload?.error || 'Unable to change the default status page.');
+      return;
+    }
+    setFormData(prev => ({ ...prev, isDefault: true }));
     router.refresh();
   };
 
@@ -1174,7 +1199,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         const response = await fetch('/api/settings/status-page/announcements', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, statusPageId: statusPage.id }),
         });
 
         if (!response.ok) {
@@ -1260,7 +1285,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         const response = await fetch('/api/settings/status-page/api-tokens', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, statusPageId: statusPage.id }),
         });
 
         if (!response.ok) {
@@ -1603,19 +1628,19 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             helperText="Optional for the default page; required for a dedicated /status/your-slug URL."
                           />
 
-                          <Switch
-                            checked={formData.isDefault}
-                            disabled={statusPage.isDefault}
-                            onChange={checked =>
-                              setFormData(prev => ({ ...prev, isDefault: checked }))
-                            }
-                            label="Default Status Page"
-                            helperText={
-                              statusPage.isDefault
-                                ? 'Make another page the default before changing or deleting this page.'
-                                : 'Serve this page from the backward-compatible /status and /api/status routes.'
-                            }
-                          />
+                          <div className="rounded-md border bg-gray-50 p-4">
+                            <div className="font-medium text-gray-900">Default routing</div>
+                            <p className="mt-1 text-sm text-gray-600">
+                              {statusPage.isDefault
+                                ? 'This page serves /status and the legacy /api/status endpoint. It does not provide settings to other pages.'
+                                : 'This page is independent. Make it the default only to route legacy /status requests here.'}
+                            </p>
+                            {!statusPage.isDefault && (
+                              <Button type="button" variant="secondary" onClick={handleMakeDefault}>
+                                Make default
+                              </Button>
+                            )}
+                          </div>
 
                           <FormField
                             type="input"
@@ -2078,8 +2103,20 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             marginBottom: 'var(--spacing-4)',
                           }}
                         >
-                          Color Scheme
+                          Color theme
                         </h2>
+
+                        <p
+                          style={{
+                            margin: '-0.5rem 0 var(--spacing-4)',
+                            color: 'var(--text-muted)',
+                            fontSize: 'var(--font-size-sm)',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          Start with an accessible preset, then adjust individual brand colors if
+                          needed. The preview uses the same color engine as the public page.
+                        </p>
 
                         {/* Quick Presets */}
                         <div style={{ marginBottom: 'var(--spacing-5)' }}>
@@ -2091,7 +2128,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                               fontWeight: '600',
                             }}
                           >
-                            Curated Theme Palettes
+                            Theme presets
                           </label>
                           <div
                             style={{
@@ -2173,55 +2210,15 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                           </div>
                         </div>
 
-                        {/* Quick Contrast Actions */}
-                        <div
+                        <h3
                           style={{
-                            display: 'flex',
-                            gap: 'var(--spacing-2)',
-                            marginBottom: 'var(--spacing-5)',
-                            flexWrap: 'wrap',
+                            margin: '0 0 var(--spacing-3)',
+                            fontSize: 'var(--font-size-sm)',
+                            fontWeight: '600',
                           }}
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData({
-                                ...formData,
-                                backgroundColor: '#ffffff',
-                                textColor: '#111827',
-                              })
-                            }
-                            className="status-page-button"
-                          >
-                            Light theme defaults
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData({
-                                ...formData,
-                                backgroundColor: '#0f172a',
-                                textColor: '#f8fafc',
-                              })
-                            }
-                            className="status-page-button"
-                          >
-                            Dark theme defaults
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const isDark = isDarkHex(formData.backgroundColor);
-                              setFormData({
-                                ...formData,
-                                textColor: isDark ? '#f8fafc' : '#111827',
-                              });
-                            }}
-                            className="status-page-button"
-                          >
-                            Auto-pair text contrast
-                          </button>
-                        </div>
+                          Custom colors
+                        </h3>
 
                         <div
                           style={{
@@ -2344,6 +2341,24 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                               />
                             </div>
                           </div>
+                        </div>
+
+                        <div
+                          role="status"
+                          style={{
+                            marginTop: 'var(--spacing-4)',
+                            padding: 'var(--spacing-3)',
+                            border: '1px solid #dbeafe',
+                            borderRadius: 'var(--radius-md)',
+                            background: '#eff6ff',
+                            color: '#1e3a8a',
+                            fontSize: 'var(--font-size-xs)',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {textContrastAdjusted
+                            ? `Readable contrast applied: public text will render as ${effectiveColorTheme.textColor}.`
+                            : 'Contrast check passed. These colors will render unchanged on the public page.'}
                         </div>
                       </div>
                     </Card>

@@ -105,4 +105,143 @@ describe('IncidentsListTable realtime projection', () => {
     expect(screen.queryByText('Other service')).toBeNull();
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
+
+  it('preserves chronological ordering and places newer incidents ahead of older ones', () => {
+    const olderSeptember: IncidentListItem = {
+      ...existing,
+      id: 'incident-sep-1',
+      title: 'September 1 Alert',
+      createdAt: new Date('2026-09-01T10:00:00Z'),
+    };
+    const { rerender, container } = render(
+      <IncidentsListTable
+        incidents={[olderSeptember]}
+        users={[]}
+        canManageIncidents={false}
+        readOnly
+        realtimeFilter={{ serviceId: 'service-a', sort: 'newest' }}
+      />
+    );
+
+    // Incoming newer incident from September 7
+    mocks.realtime.recentIncidents = [
+      {
+        ...existing,
+        id: 'incident-sep-7',
+        title: 'September 7 Alert',
+        createdAt: new Date('2026-09-07T12:00:00Z'),
+        service: { id: 'service-a', name: 'Service A' },
+      },
+    ];
+
+    rerender(
+      <IncidentsListTable
+        incidents={[olderSeptember]}
+        users={[]}
+        canManageIncidents={false}
+        readOnly
+        realtimeFilter={{ serviceId: 'service-a', sort: 'newest' }}
+      />
+    );
+
+    expect(screen.getByText('September 7 Alert')).toBeInTheDocument();
+    expect(screen.getByText('September 1 Alert')).toBeInTheDocument();
+
+    // Verify September 7 comes BEFORE September 1 in the DOM
+    const textContent = container.textContent || '';
+    const idxSep7 = textContent.indexOf('September 7 Alert');
+    const idxSep1 = textContent.indexOf('September 1 Alert');
+    expect(idxSep7).toBeLessThan(idxSep1);
+  });
+
+  it('does not prepend historical February/August incidents ahead of newer September incidents', () => {
+    const septemberAlert: IncidentListItem = {
+      ...existing,
+      id: 'incident-sep',
+      title: 'September Incident',
+      createdAt: new Date('2026-09-05T10:00:00Z'),
+    };
+    const { rerender, container } = render(
+      <IncidentsListTable
+        incidents={[septemberAlert]}
+        users={[]}
+        canManageIncidents={false}
+        readOnly
+        realtimeFilter={{ serviceId: 'service-a', sort: 'newest' }}
+      />
+    );
+
+    // Incoming historical February incident that had its updatedAt bumped
+    mocks.realtime.recentIncidents = [
+      {
+        ...existing,
+        id: 'incident-feb',
+        title: 'February Incident',
+        createdAt: new Date('2026-02-10T08:00:00Z'),
+        updatedAt: new Date('2026-09-07T12:00:00Z'),
+        service: { id: 'service-a', name: 'Service A' },
+      },
+    ];
+
+    rerender(
+      <IncidentsListTable
+        incidents={[septemberAlert]}
+        users={[]}
+        canManageIncidents={false}
+        readOnly
+        realtimeFilter={{ serviceId: 'service-a', sort: 'newest' }}
+      />
+    );
+
+    // Both may be displayed if within maxItems, but September MUST be before February
+    const textContent = container.textContent || '';
+    const idxSep = textContent.indexOf('September Incident');
+    const idxFeb = textContent.indexOf('February Incident');
+    expect(idxSep).toBeLessThan(idxFeb);
+  });
+
+  it('bounds the list to max items and discards older historical incidents when list is full', () => {
+    // Fill a list to its capacity (15 items for dashboard)
+    const items: IncidentListItem[] = Array.from({ length: 15 }, (_, i) => ({
+      ...existing,
+      id: `incident-sep-${i}`,
+      title: `September Incident #${i + 1}`,
+      createdAt: new Date(`2026-09-${String(i + 1).padStart(2, '0')}T10:00:00Z`),
+    }));
+
+    const { rerender } = render(
+      <IncidentsListTable
+        incidents={items}
+        users={[]}
+        canManageIncidents={false}
+        readOnly
+        realtimeFilter={{ serviceId: 'service-a', sort: 'newest' }}
+      />
+    );
+
+    // Incoming February incident with recent updatedAt
+    mocks.realtime.recentIncidents = [
+      {
+        ...existing,
+        id: 'incident-feb-stale',
+        title: 'Stale February Incident',
+        createdAt: new Date('2026-02-01T10:00:00Z'),
+        updatedAt: new Date('2026-09-07T13:00:00Z'),
+        service: { id: 'service-a', name: 'Service A' },
+      },
+    ];
+
+    rerender(
+      <IncidentsListTable
+        incidents={items}
+        users={[]}
+        canManageIncidents={false}
+        readOnly
+        realtimeFilter={{ serviceId: 'service-a', sort: 'newest' }}
+      />
+    );
+
+    // Stale February incident is trimmed off because the list is bounded to 15 items
+    expect(screen.queryByText('Stale February Incident')).toBeNull();
+  });
 });

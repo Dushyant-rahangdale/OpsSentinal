@@ -28,6 +28,18 @@ function normalizeAffectedServiceIds(value?: string[] | null) {
   return ids.length > 0 ? ids : null;
 }
 
+async function affectedServicesBelongToPage(
+  statusPageId: string,
+  serviceIds: string[] | null,
+  tx: Pick<typeof prisma, 'statusPageService'> = prisma
+) {
+  if (!serviceIds?.length) return true;
+  const count = await tx.statusPageService.count({
+    where: { statusPageId, serviceId: { in: serviceIds }, showOnPage: true },
+  });
+  return count === serviceIds.length;
+}
+
 export async function POST(req: NextRequest) {
   try {
     await assertAdmin();
@@ -58,6 +70,10 @@ export async function POST(req: NextRequest) {
       affectedServiceIds,
     } = parsed.data;
     const normalizedAffectedServiceIds = normalizeAffectedServiceIds(affectedServiceIds);
+
+    if (!(await affectedServicesBelongToPage(statusPageId, normalizedAffectedServiceIds))) {
+      return jsonError('Affected services must belong to this status page.', 400);
+    }
 
     const announcement = await prisma.$transaction(async tx => {
       const created = await tx.statusPageAnnouncement.create({
@@ -120,14 +136,29 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.success) {
       return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
     }
-    const { id, title, message, type, startDate, endDate, isActive, affectedServiceIds } =
-      parsed.data;
+    const {
+      statusPageId,
+      id,
+      title,
+      message,
+      type,
+      startDate,
+      endDate,
+      isActive,
+      affectedServiceIds,
+    } = parsed.data;
     const normalizedAffectedServiceIds = normalizeAffectedServiceIds(affectedServiceIds);
-    const existing = await prisma.statusPageAnnouncement.findUnique({
-      where: { id },
+    const existing = await prisma.statusPageAnnouncement.findFirst({
+      where: { id, statusPageId },
       select: { startDate: true, endDate: true },
     });
     if (!existing) return jsonError('Announcement not found.', 404);
+    if (
+      affectedServiceIds !== undefined &&
+      !(await affectedServicesBelongToPage(statusPageId, normalizedAffectedServiceIds))
+    ) {
+      return jsonError('Affected services must belong to this status page.', 400);
+    }
     const effectiveStart = startDate ? parseDate(startDate, 'startDate') : existing.startDate;
     const effectiveEnd =
       endDate === undefined ? existing.endDate : endDate ? parseDate(endDate, 'endDate') : null;
@@ -183,9 +214,10 @@ export async function DELETE(req: NextRequest) {
     if (!parsed.success) {
       return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
     }
-    const { id } = parsed.data;
+    const { id, statusPageId } = parsed.data;
 
-    await prisma.statusPageAnnouncement.delete({ where: { id } });
+    const deleted = await prisma.statusPageAnnouncement.deleteMany({ where: { id, statusPageId } });
+    if (deleted.count === 0) return jsonError('Announcement not found.', 404);
 
     logger.info('api.status_page.announcement.deleted', { announcementId: id });
     return jsonOk({ success: true }, 200);

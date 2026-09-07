@@ -38,6 +38,8 @@ vi.mock('@/lib/toast', () => ({
   },
 }));
 
+const hoursAgo = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
 describe('IncidentAlertContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,7 +56,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P1',
         urgency: 'HIGH',
-        createdAt: '2026-09-06T10:00:00Z',
+        createdAt: hoursAgo(1),
       },
       {
         id: 'inc-p2',
@@ -62,7 +64,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P2',
         urgency: 'MEDIUM',
-        createdAt: '2026-09-06T09:00:00Z',
+        createdAt: hoursAgo(2),
       },
       {
         id: 'inc-p3',
@@ -70,7 +72,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P3',
         urgency: 'LOW',
-        createdAt: '2026-09-06T08:00:00Z',
+        createdAt: hoursAgo(3),
       },
       {
         id: 'inc-resolved',
@@ -78,7 +80,7 @@ describe('IncidentAlertContext', () => {
         status: 'RESOLVED',
         priority: 'P1',
         urgency: 'HIGH',
-        createdAt: '2026-09-06T07:00:00Z',
+        createdAt: hoursAgo(4),
       },
     ];
 
@@ -102,7 +104,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P1',
         urgency: 'HIGH',
-        createdAt: '2026-09-06T10:00:00Z',
+        createdAt: hoursAgo(1),
       },
       {
         id: 'inc-2',
@@ -110,7 +112,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P2',
         urgency: 'MEDIUM',
-        createdAt: '2026-09-06T09:30:00Z',
+        createdAt: hoursAgo(2),
       },
     ];
 
@@ -144,7 +146,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P1',
         urgency: 'HIGH',
-        createdAt: '2026-09-06T10:00:00Z',
+        createdAt: hoursAgo(1),
       },
     ];
 
@@ -176,7 +178,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P1',
         urgency: 'HIGH',
-        createdAt: '2026-09-06T10:00:00Z',
+        createdAt: hoursAgo(1),
       },
     ];
 
@@ -201,7 +203,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P1',
         urgency: 'HIGH',
-        createdAt: '2026-09-06T10:00:00Z',
+        createdAt: hoursAgo(1),
       },
     ];
 
@@ -454,7 +456,9 @@ describe('IncidentAlertContext', () => {
     // Should immediately be dismissed without flashing
     expect(result.current.isBannerVisible).toBe(false);
     expect(result.current.isDismissed).toBe(true);
-    expect(sessionStorage.getItem(DISMISSED_STORAGE_KEY)).toBe(String(shownTimestamp + AUTO_DISMISS_TIMEOUT_MS));
+    expect(sessionStorage.getItem(DISMISSED_STORAGE_KEY)).toBe(
+      String(shownTimestamp + AUTO_DISMISS_TIMEOUT_MS)
+    );
     expect(sessionStorage.getItem(SHOWN_STORAGE_KEY)).toBeNull();
   });
 
@@ -466,7 +470,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: 'P2',
         urgency: 'MEDIUM',
-        createdAt: '2026-09-06T10:00:00Z',
+        createdAt: hoursAgo(1),
       },
       {
         id: 'inc-high-no-p1',
@@ -474,7 +478,7 @@ describe('IncidentAlertContext', () => {
         status: 'OPEN',
         priority: null, // P1 not declared!
         urgency: 'HIGH',
-        createdAt: '2026-09-06T09:00:00Z',
+        createdAt: hoursAgo(2),
       },
     ];
 

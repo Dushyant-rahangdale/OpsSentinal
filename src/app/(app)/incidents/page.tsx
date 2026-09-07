@@ -280,6 +280,7 @@ export default async function IncidentsPage({
               search: currentSearch,
               createdAfter: validCreatedAfter?.toISOString(),
               createdBefore: validCreatedBefore?.toISOString(),
+              sort: currentSort,
             }}
           />
         </RealtimeProvider>

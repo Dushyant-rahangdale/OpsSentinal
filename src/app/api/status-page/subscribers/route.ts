@@ -53,7 +53,8 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
     const where: Prisma.StatusPageSubscriptionWhereInput = {};
 
-    if (statusPageId) where.statusPageId = statusPageId;
+    if (!statusPageId) return jsonError('Status page ID is required', 400);
+    where.statusPageId = statusPageId;
     if (verifiedFilter === 'true') where.verified = true;
     else if (verifiedFilter === 'false') where.verified = false;
     if (searchEmail) {
@@ -99,20 +100,19 @@ export async function DELETE(req: NextRequest) {
     await assertAdmin();
 
     const subscriptionId = req.nextUrl.searchParams.get('id');
-    if (!subscriptionId) {
+    const statusPageId = req.nextUrl.searchParams.get('statusPageId');
+    if (!subscriptionId || !statusPageId) {
       return jsonError(
         new AppError({
           code: 'VALIDATION_FAILED',
           userMessage: 'Subscription ID is required',
-          fields: [
-            { field: 'id', code: 'required', message: 'Subscription ID is required' },
-          ],
+          fields: [{ field: 'id', code: 'required', message: 'Subscription ID is required' }],
         })
       );
     }
 
-    const subscription = await prisma.statusPageSubscription.findUnique({
-      where: { id: subscriptionId },
+    const subscription = await prisma.statusPageSubscription.findFirst({
+      where: { id: subscriptionId, statusPageId },
     });
     if (!subscription) {
       return jsonError(new AppError(SUBSCRIPTION_NOT_FOUND));

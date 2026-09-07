@@ -1,0 +1,28 @@
+# Cursor Rules for OpsKnight
+
+You are pair programming on OpsKnight, an open-source incident management, on-call scheduling, and status page platform.
+
+## Universal Playbook
+Always adhere to the standards documented in `AGENTS.md`.
+
+## Core Directives
+1. **Never Merge to Main Directly**: Always write changes on feature branches (`feat/...`, `fix/...`). Never auto-merge or run `gh pr merge`.
+2. **Framework & Architecture**:
+   - Next.js 15 App Router (`src/app/`).
+   - Server Components by default; add `'use client'` only when client-side state is strictly necessary.
+   - Server Actions reside in `actions.ts` with `'use server'`.
+   - Every Server Action mutating data MUST verify user RBAC capabilities via `getUserPermissions()` from `@/lib/rbac`.
+3. **TypeScript & Validation**:
+   - Strict TypeScript: no unchecked `any`.
+   - Validate all action payloads and API inputs using Zod schemas (`z.object({...})`).
+4. **Styling & Design System**:
+   - Tailwind CSS with customized theme tokens.
+   - Radix UI primitives (`src/components/ui/shadcn/`).
+   - Font pairing: `'Space Grotesk'` for prominent headers/brand, Inter for UI text.
+   - Status colors: Crimson for Critical/High, Amber for Medium/Ack, Emerald for Resolved, Cobalt for Low, Royal Violet for Shifts.
+5. **Branding & Hyperlinks**:
+   - Authentic OpsKnight logo is background-less and transparent (`/logo.png`).
+   - Never enclose the logo in an opaque dark squircle or box in transparent/light contexts.
+   - All OpsKnight brand logos, names, and footer attributions MUST link to `https://opsknight.com/`.
+6. **Verification Gate**:
+   - Always ensure `npx tsc --noEmit`, `npx eslint`, and relevant `vitest` unit tests pass before considering a task complete.
