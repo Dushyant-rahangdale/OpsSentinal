@@ -11,7 +11,6 @@ import { cleanupUserTokens } from '@/lib/user-tokens';
 import { cleanupExpiredRateLimits } from '@/lib/rate-limit';
 import { checkSLABreaches } from './sla-breach-monitor';
 import crypto from 'crypto';
-import { activeIncidentStatuses } from './incident-status';
 
 /**
  * Production-Grade Cron Scheduler
@@ -196,7 +195,7 @@ async function getNextScheduledTime(): Promise<Date> {
     const [
       nextIncident,
       nextJob,
-      nextSlaBreach,
+      _nextSlaBreach,
       nextSnooze,
       nextNotificationRetry,
       nextCentralNotification,
@@ -214,25 +213,7 @@ async function getNextScheduledTime(): Promise<Date> {
         orderBy: { scheduledAt: 'asc' },
         select: { scheduledAt: true },
       }),
-      prisma.incident.findFirst({
-        where: {
-          status: { in: activeIncidentStatuses() },
-          service: { serviceNotifyOnSlaBreach: true },
-        },
-        orderBy: { createdAt: 'asc' },
-        select: {
-          createdAt: true,
-          acknowledgedAt: true,
-          priority: true,
-          service: {
-            select: {
-              targetAckMinutes: true,
-              targetResolveMinutes: true,
-              serviceNotifyOnSlaBreach: true,
-            },
-          },
-        },
-      }),
+      Promise.resolve(null),
       prisma.incident.findFirst({
         where: {
           status: 'SNOOZED',
@@ -253,24 +234,8 @@ async function getNextScheduledTime(): Promise<Date> {
       nextCentralNotification?.getTime() ?? null,
     ];
 
-    // Add SLA breach check time (proportional warning before ack/resolve target)
-    if (nextSlaBreach && nextSlaBreach.service?.serviceNotifyOnSlaBreach) {
-      const createdAt = new Date(nextSlaBreach.createdAt).getTime();
-      const { getPrioritySLATarget } = await import('./sla-priority');
-      const targets = getPrioritySLATarget(nextSlaBreach.priority, nextSlaBreach.service);
-
-      if (!nextSlaBreach.acknowledgedAt) {
-        const targetAckMs = targets.ack * 60 * 1000;
-        const ackWarningMs = Math.min(5 * 60 * 1000, targetAckMs * 0.25);
-        const ackCheckTime = createdAt + targetAckMs - ackWarningMs;
-        times.push(ackCheckTime > Date.now() ? ackCheckTime : null);
-      }
-
-      const targetResolveMs = targets.resolve * 60 * 1000;
-      const resolveWarningMs = Math.min(15 * 60 * 1000, targetResolveMs * 0.25);
-      const resolveCheckTime = createdAt + targetResolveMs - resolveWarningMs;
-      times.push(resolveCheckTime > Date.now() ? resolveCheckTime : null);
-    }
+    // SLA transitions are evaluated by the canonical breach monitor on bounded cadence.
+    // Never derive a deadline from current service or priority configuration here.
 
     const validTimes = times.filter((v): v is number => typeof v === 'number');
 

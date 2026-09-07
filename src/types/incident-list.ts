@@ -1,6 +1,7 @@
 import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
+import type { IncidentSlaProjectionInput } from '@/lib/incident-sla/types';
 
-export interface IncidentListItem {
+export interface IncidentListItem extends IncidentSlaProjectionInput {
   id: string;
   title: string;
   status: IncidentStatus;
@@ -11,15 +12,13 @@ export interface IncidentListItem {
   urgency: IncidentUrgency;
   createdAt: Date;
   updatedAt?: Date | null;
-  acknowledgedAt?: Date | null;
-  resolvedAt?: Date | null;
+  acknowledgedAt: Date | null;
+  resolvedAt: Date | null;
   assigneeId: string | null;
   teamId: string | null;
   service: {
     id: string;
     name: string;
-    targetAckMinutes?: number | null;
-    targetResolveMinutes?: number | null;
   };
   team: {
     id: string;

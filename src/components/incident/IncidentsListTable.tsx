@@ -38,6 +38,7 @@ import AssigneeSection from './AssigneeSection';
 import ResolveIncidentModal, { type ResolvingIncidentData } from './ResolveIncidentModal';
 import SLABreachWarningBadge from './SLABreachWarningBadge';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useIncidentSlaState } from '@/hooks/useIncidentSlaState';
 import { Badge } from '@/components/ui/shadcn/badge';
 import EmptyState from '@/components/ui/EmptyState';
 import {
@@ -157,15 +158,20 @@ function parseRealtimeIncident(raw: Record<string, unknown>): IncidentListItem {
     resolvedAt: raw.resolvedAt ? new Date(raw.resolvedAt as string | number | Date) : null,
     assigneeId: typeof raw.assigneeId === 'string' ? raw.assigneeId : null,
     teamId: typeof raw.teamId === 'string' ? raw.teamId : null,
+    slaAckTargetMs: typeof raw.slaAckTargetMs === 'number' ? raw.slaAckTargetMs : null,
+    slaResolveTargetMs: typeof raw.slaResolveTargetMs === 'number' ? raw.slaResolveTargetMs : null,
+    slaTargetSource: typeof raw.slaTargetSource === 'string' ? raw.slaTargetSource : null,
+    slaTargetCapturedAt: raw.slaTargetCapturedAt
+      ? new Date(raw.slaTargetCapturedAt as string)
+      : null,
+    slaPausedMs: typeof raw.slaPausedMs === 'number' ? raw.slaPausedMs : 0,
+    slaPauseStartedAt: raw.slaPauseStartedAt ? new Date(raw.slaPauseStartedAt as string) : null,
+    slaAckElapsedMs: typeof raw.slaAckElapsedMs === 'number' ? raw.slaAckElapsedMs : null,
+    slaResolveElapsedMs:
+      typeof raw.slaResolveElapsedMs === 'number' ? raw.slaResolveElapsedMs : null,
     service: {
       id: typeof rawService?.id === 'string' ? rawService.id : 'unknown',
       name: typeof rawService?.name === 'string' ? rawService.name : 'Unknown Service',
-      targetAckMinutes:
-        typeof rawService?.targetAckMinutes === 'number' ? rawService.targetAckMinutes : null,
-      targetResolveMinutes:
-        typeof rawService?.targetResolveMinutes === 'number'
-          ? rawService.targetResolveMinutes
-          : null,
     },
     team: rawTeam
       ? {
@@ -319,6 +325,11 @@ function matchesRealtimeFilter(
     if (!searchable.includes(needle)) return false;
   }
   return true;
+}
+
+function IncidentListSlaBadge({ incident }: { incident: IncidentListItem }) {
+  const state = useIncidentSlaState(incident);
+  return <SLABreachWarningBadge state={state} />;
 }
 
 export default function IncidentsListTable({
@@ -1278,7 +1289,7 @@ export default function IncidentsListTable({
                           )}
                           <StatusBadge status={incidentStatus} size="sm" showDot />
                           <PriorityBadge priority={incident.priority} size="sm" />
-                          <SLABreachWarningBadge incident={incident} service={incident.service} />
+                          <IncidentListSlaBadge incident={incident} />
                           {urgencyChip}
                           {incident.escalationStatus && (
                             <EscalationStatusBadge

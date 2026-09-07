@@ -60,6 +60,7 @@ import ServiceNotificationSettings from '@/components/service/ServiceNotificatio
 import JiraServiceMappingSettings from '@/components/service/JiraServiceMappingSettings';
 import ChatOpsWarRoomSettings from '@/components/service/ChatOpsWarRoomSettings';
 import ServiceVisibilitySettings from '@/components/service/ServiceVisibilitySettings';
+import IncidentSlaPolicySettings from '@/components/incident-sla/IncidentSlaPolicySettings';
 import { Label } from '@/components/ui/shadcn/label';
 import { Input } from '@/components/ui/shadcn/input';
 import { Textarea } from '@/components/ui/shadcn/textarea';
@@ -186,6 +187,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
     globalSlackIntegration,
     jiraConfig,
     chatOpsConfig,
+    incidentSlaPolicy,
   ] = await Promise.all([
     prisma.service.findFirst({
       where: { AND: [serviceReadWhere(actor), { id }] },
@@ -262,6 +264,13 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
       ? prisma.chatOpsConfig.findUnique({
           where: { id: 'default' },
           select: { enabled: true },
+        })
+      : Promise.resolve(null),
+    canManageService
+      ? prisma.incidentSlaPolicy.findFirst({
+          where: { scopeKey: `service:${id}` },
+          orderBy: { version: 'desc' },
+          include: { rules: true },
         })
       : Promise.resolve(null),
   ]);
@@ -818,6 +827,12 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           />
 
           {/* Slack & ChatOps Integration Settings */}
+          <IncidentSlaPolicySettings
+            scopeKey={`service:${id}`}
+            policy={incidentSlaPolicy}
+            canManage={canManageService}
+          />
+
           <ServiceNotificationSettings
             key={id}
             serviceId={id}

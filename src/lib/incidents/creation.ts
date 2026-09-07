@@ -8,6 +8,7 @@ import { IncidentCreateSchema } from '@/lib/validation';
 import { enqueueIncidentCreationSideEffects } from '@/lib/event-outbox';
 import { initializeEscalationExecution } from '@/lib/escalation/repository';
 import { applyIncidentLifecycleCommand } from '@/lib/incidents/lifecycle';
+import { resolveNewIncidentSlaContract } from '@/lib/incident-sla/contract';
 
 export const INCIDENT_CREATION_OUTCOMES = ['CREATED', 'MERGED', 'REOPENED'] as const;
 export type IncidentCreationOutcome = (typeof INCIDENT_CREATION_OUTCOMES)[number];
@@ -319,6 +320,11 @@ export async function applyIncidentCreation(
   }
 
   const { assigneeName, teamName } = await validateAssignmentReferences(tx, input);
+  const slaContract = await resolveNewIncidentSlaContract(tx, {
+    serviceId: input.serviceId,
+    priority: input.priority,
+    now,
+  });
 
   const incident = await tx.incident.create({
     data: {
@@ -331,6 +337,13 @@ export async function applyIncidentCreation(
       priority: input.priority ?? null,
       dedupKey: input.dedupKey ?? null,
       assigneeId: input.assigneeId ?? null,
+      slaAckTargetMs: slaContract.ackTargetMs,
+      slaResolveTargetMs: slaContract.resolveTargetMs,
+      slaTargetSource: slaContract.source,
+      slaTargetCapturedAt: slaContract.capturedAt,
+      slaPolicyId: slaContract.policyId,
+      slaPolicyVersion: slaContract.policyVersion,
+      slaPolicyRule: slaContract.policyRule,
       teamId: input.assigneeId ? null : (input.teamId ?? null),
       events: {
         create: {

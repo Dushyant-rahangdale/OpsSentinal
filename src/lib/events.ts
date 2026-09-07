@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import { runReadCommittedTransaction } from './db-utils';
 import { enqueueEventSideEffects, enqueueLifecycleSideEffects } from './event-outbox';
 import { applyIncidentLifecycleCommand } from './incidents/lifecycle';
+import { resolveNewIncidentSlaContract } from './incident-sla/contract';
 
 export type EventSeverity = 'critical' | 'error' | 'warning' | 'info';
 
@@ -337,6 +338,10 @@ export async function processEvent(
           : null;
 
         const resolutionAt = new Date();
+        const resolvedSla = await resolveNewIncidentSlaContract(tx, {
+          serviceId,
+          now: resolutionAt,
+        });
         const resolvedIncident = await tx.incident.create({
           data: {
             title: sanitizedTitle,
@@ -347,6 +352,13 @@ export async function processEvent(
             dedupKey: dedup_key,
             serviceId,
             visibility: service.defaultIncidentVisibility ?? 'PUBLIC',
+            slaAckTargetMs: resolvedSla.ackTargetMs,
+            slaResolveTargetMs: resolvedSla.resolveTargetMs,
+            slaTargetSource: resolvedSla.source,
+            slaTargetCapturedAt: resolvedSla.capturedAt,
+            slaPolicyId: resolvedSla.policyId,
+            slaPolicyVersion: resolvedSla.policyVersion,
+            slaPolicyRule: resolvedSla.policyRule,
             escalationStatus: 'COMPLETED',
           },
         });
@@ -395,6 +407,11 @@ export async function processEvent(
       // Initial OPEN/SUPPRESSED state is creation policy, not a transition of an
       // existing incident, so it intentionally remains in the ingestion path.
       const incidentCreatedAt = new Date();
+      const newSla = await resolveNewIncidentSlaContract(tx, {
+        serviceId,
+        priority: null,
+        now: incidentCreatedAt,
+      });
       const newIncident = await tx.incident.create({
         data: {
           title: sanitizedTitle,
@@ -404,6 +421,13 @@ export async function processEvent(
           dedupKey: dedup_key,
           serviceId,
           visibility: service.defaultIncidentVisibility ?? 'PUBLIC',
+          slaAckTargetMs: newSla.ackTargetMs,
+          slaResolveTargetMs: newSla.resolveTargetMs,
+          slaTargetSource: newSla.source,
+          slaTargetCapturedAt: newSla.capturedAt,
+          slaPolicyId: newSla.policyId,
+          slaPolicyVersion: newSla.policyVersion,
+          slaPolicyRule: newSla.policyRule,
           createdAt: incidentCreatedAt,
           ...(isFlapping
             ? {

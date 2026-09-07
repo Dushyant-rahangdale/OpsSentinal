@@ -1,242 +1,84 @@
 'use client';
 
-import { memo, useMemo, useState, useEffect } from 'react';
-import { calculateMTTA, calculateMTTR, checkAckSLA, checkResolveSLA } from '@/lib/sla';
+import type { IncidentSlaState } from '@/lib/incident-sla/state';
 import { formatTimeMinutesMs } from '@/lib/time-format';
-import {
-  getPrioritySLATarget,
-  checkPriorityAckSLA,
-  checkPriorityResolveSLA,
-} from '@/lib/sla-priority';
-import { Incident, Service } from '@prisma/client';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { CheckCircle2, XCircle, Timer, TrendingUp, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Timer, Pause } from 'lucide-react';
 
-type SLAIndicatorProps = {
-  incident: Incident;
-  service: Service;
-  showDetails?: boolean;
-};
+type SLAIndicatorProps = { sla: IncidentSlaState | null; showDetails?: boolean };
+type Phase = Extract<IncidentSlaState, { valid: true }>['ack'];
 
-function SLAIndicator({ incident, service, showDetails = false }: SLAIndicatorProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const {
-    mtta,
-    mttr,
-    ackSlaMet,
-    resolveSlaMet,
-    ackTimeRemaining,
-    resolveTimeRemaining,
-    targetAckMinutes,
-    targetResolveMinutes,
-    ackProgress,
-    resolveProgress,
-  } = useMemo(() => {
-    if (!mounted) {
-      return {
-        mtta: null,
-        mttr: null,
-        ackSlaMet: null,
-        resolveSlaMet: null,
-        ackTimeRemaining: null,
-        resolveTimeRemaining: null,
-        targetAckMinutes: 0,
-        targetResolveMinutes: 0,
-        ackProgress: 0,
-        resolveProgress: 0,
-      };
-    }
-
-    const mtta = calculateMTTA(incident);
-    const mttr = calculateMTTR(incident);
-
-    const priorityTarget = getPrioritySLATarget(incident.priority, service);
-    const ackSlaMet = incident.acknowledgedAt
-      ? incident.priority
-        ? checkPriorityAckSLA(incident, service)
-        : checkAckSLA(incident, service)
-      : null;
-    const resolveSlaMet = incident.resolvedAt
-      ? incident.priority
-        ? checkPriorityResolveSLA(incident, service)
-        : checkResolveSLA(incident, service)
-      : null;
-
-    const targetAckMinutes = priorityTarget.ack;
-    const targetResolveMinutes = priorityTarget.resolve;
-
-    const now = new Date();
-    const timeSinceCreation = (now.getTime() - incident.createdAt.getTime()) / (1000 * 60);
-    const ackTimeRemaining =
-      incident.status === 'OPEN' && !incident.acknowledgedAt
-        ? targetAckMinutes - timeSinceCreation
-        : null;
-    const resolveTimeRemaining =
-      incident.status !== 'RESOLVED' && !incident.resolvedAt
-        ? targetResolveMinutes - timeSinceCreation
-        : null;
-
-    // Calculate progress percentages
-    const ackProgress = incident.acknowledgedAt
-      ? 100
-      : Math.min(100, Math.max(0, (timeSinceCreation / targetAckMinutes) * 100));
-    const resolveProgress = incident.resolvedAt
-      ? 100
-      : Math.min(100, Math.max(0, (timeSinceCreation / targetResolveMinutes) * 100));
-
-    return {
-      mtta,
-      mttr,
-      ackSlaMet,
-      resolveSlaMet,
-      ackTimeRemaining,
-      resolveTimeRemaining,
-      targetAckMinutes,
-      targetResolveMinutes,
-      ackProgress,
-      resolveProgress,
-    };
-  }, [incident, service, mounted]);
-
-  if (!mounted) return null;
-
-  // Compact mode for inline usage
-  if (!showDetails) {
-    return (
-      <div className="flex gap-2 flex-wrap">
-        {incident.acknowledgedAt && (
-          <Badge variant={ackSlaMet ? 'success' : 'danger'} size="xs" className="gap-1">
-            {ackSlaMet ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            Ack {ackSlaMet ? 'Met' : 'Breached'}
-          </Badge>
-        )}
-        {incident.resolvedAt && (
-          <Badge variant={resolveSlaMet ? 'success' : 'danger'} size="xs" className="gap-1">
-            {resolveSlaMet ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-            Resolve {resolveSlaMet ? 'Met' : 'Breached'}
-          </Badge>
-        )}
-        {!incident.acknowledgedAt && !incident.resolvedAt && (
-          <Badge
-            variant={ackTimeRemaining && ackTimeRemaining > 0 ? 'warning' : 'danger'}
-            size="xs"
-            className="gap-1"
-          >
-            <Timer className="h-3 w-3" />
-            {ackTimeRemaining && ackTimeRemaining > 0
-              ? `${Math.round(ackTimeRemaining)}m left`
-              : 'Breached'}
-          </Badge>
-        )}
-      </div>
-    );
+function phaseLabel(phase: Phase): string {
+  switch (phase.status) {
+    case 'MET':
+      return 'Met';
+    case 'BREACHED':
+      return 'Breached';
+    case 'NOT_APPLICABLE':
+      return 'Not applicable';
+    default:
+      return `${formatTimeMinutesMs(phase.remainingMs)} left`;
   }
+}
 
-  // Detailed mode
+/** Presentation only; decisions and measurements belong to the shared projector. */
+export default function SLAIndicator({ sla, showDetails = false }: SLAIndicatorProps) {
+  if (!sla) return <span className="text-xs text-muted-foreground">Loading SLA…</span>;
+  if (!sla.valid)
+    return (
+      <Badge variant="danger" size="xs" title={sla.reason}>
+        SLA unavailable — invalid contract
+      </Badge>
+    );
+  const phases = [
+    { name: showDetails ? 'Acknowledgement' : 'Ack', phase: sla.ack },
+    { name: showDetails ? 'Resolution' : 'Resolve', phase: sla.resolve },
+  ];
   return (
-    <div className="space-y-4">
-      {/* Acknowledgement SLA */}
-      <div className="p-4 bg-muted/50 rounded-lg border">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Acknowledgement</span>
-          </div>
-          {incident.acknowledgedAt ? (
-            <Badge variant={ackSlaMet ? 'success' : 'danger'} size="sm" className="gap-1">
-              {ackSlaMet ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-              {ackSlaMet ? 'Met' : 'Breached'}
-            </Badge>
-          ) : (
-            <Badge
-              variant={ackTimeRemaining && ackTimeRemaining > 0 ? 'warning' : 'danger'}
-              size="sm"
-              className="gap-1"
-            >
-              <Timer className="h-3 w-3" />
-              {ackTimeRemaining && ackTimeRemaining > 0
-                ? `${Math.round(ackTimeRemaining)}m left`
-                : 'Breached'}
-            </Badge>
-          )}
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+    <div className={showDetails ? 'space-y-4' : 'flex gap-2 flex-wrap'}>
+      {sla.clock.paused && (
+        <Badge variant="warning" size="xs" className="gap-1">
+          <Pause className="h-3 w-3" /> SLA paused
+        </Badge>
+      )}
+      {phases.map(({ name, phase }) => {
+        const breached = phase.status === 'BREACHED';
+        const met = phase.status === 'MET';
+        const Icon = met ? CheckCircle2 : breached ? AlertCircle : Timer;
+        const measurement = `Time: ${formatTimeMinutesMs(phase.elapsedMs)} / Target: ${formatTimeMinutesMs(phase.targetMs)}`;
+        return (
           <div
-            className={`h-full transition-all ${ackProgress >= 100 ? (incident.acknowledgedAt && ackSlaMet ? 'bg-green-500' : 'bg-red-500') : 'bg-primary'}`}
-            style={{ width: `${Math.round(Math.min(100, ackProgress))}%` }}
-          />
-        </div>
-        {mtta !== null && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <TrendingUp className="h-3 w-3" />
-            <span>
-              Time: {formatTimeMinutesMs(mtta)} / Target: {targetAckMinutes}m
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Resolution SLA */}
-      <div className="p-4 bg-muted/50 rounded-lg border">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Resolution</span>
-          </div>
-          {incident.resolvedAt ? (
-            <Badge variant={resolveSlaMet ? 'success' : 'danger'} size="sm" className="gap-1">
-              {resolveSlaMet ? (
-                <CheckCircle2 className="h-3 w-3" />
-              ) : (
-                <XCircle className="h-3 w-3" />
-              )}
-              {resolveSlaMet ? 'Met' : 'Breached'}
-            </Badge>
-          ) : (
+            key={name}
+            className={showDetails ? 'p-4 bg-muted/50 rounded-lg border' : 'space-y-1'}
+          >
             <Badge
-              variant={resolveTimeRemaining && resolveTimeRemaining > 0 ? 'warning' : 'danger'}
-              size="sm"
+              variant={met ? 'success' : breached ? 'danger' : 'outline'}
+              size="xs"
               className="gap-1"
+              title={measurement}
             >
-              <Timer className="h-3 w-3" />
-              {resolveTimeRemaining && resolveTimeRemaining > 0
-                ? `${Math.round(resolveTimeRemaining)}m left`
-                : 'Breached'}
+              <Icon className="h-3 w-3" />
+              {name} {phaseLabel(phase)}
             </Badge>
-          )}
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all ${resolveProgress >= 100 ? (incident.resolvedAt && resolveSlaMet ? 'bg-green-500' : 'bg-red-500') : 'bg-primary'}`}
-            style={{ width: `${Math.round(Math.min(100, resolveProgress))}%` }}
-          />
-        </div>
-        {mttr !== null && (
-          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <TrendingUp className="h-3 w-3" />
-            <span>
-              Time: {formatTimeMinutesMs(mttr)} / Target: {targetResolveMinutes}m
-            </span>
+            {showDetails && (
+              <div
+                className="h-2 mt-3 bg-muted rounded-full overflow-hidden"
+                role="progressbar"
+                aria-label={`${name} SLA progress`}
+                aria-valuenow={Math.round(phase.progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  className={`h-full transition-all ${met ? 'bg-emerald-500' : breached ? 'bg-rose-500' : 'bg-primary'}`}
+                  style={{ width: `${phase.progress * 100}%` }}
+                />
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground mt-2">{measurement}</div>
           </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }
-
-export default memo(SLAIndicator, (prevProps, nextProps) => {
-  return (
-    prevProps.incident.id === nextProps.incident.id &&
-    prevProps.incident.status === nextProps.incident.status &&
-    prevProps.incident.acknowledgedAt?.getTime() === nextProps.incident.acknowledgedAt?.getTime() &&
-    prevProps.incident.resolvedAt?.getTime() === nextProps.incident.resolvedAt?.getTime() &&
-    prevProps.incident.priority === nextProps.incident.priority &&
-    prevProps.service.id === nextProps.service.id &&
-    prevProps.showDetails === nextProps.showDetails
-  );
-});
