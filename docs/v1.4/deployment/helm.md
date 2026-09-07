@@ -6,9 +6,9 @@ description: Deploy the OpsKnight Helm chart with safe database, networking, sec
 
 # Helm deployment
 
-The chart is shipped at `helm/opsknight`. The chart version and default application image version track the OpsKnight application release; production deployments should still pin a tested immutable image tag or digest explicitly.
+The chart is shipped at `helm/opsknight`. The chart version remains `1.4.0`, while its default application image now points to the patched v1.4 hotfix runtime. Production deployments should still pin a tested immutable image tag or digest explicitly.
 
-The `1.4.0` stable image includes the fail-closed migration entrypoint and is published for amd64 and arm64. The continuously updated test image from `main` remains amd64-only.
+The `1.4.0-hotfix` image preserves the v1.4 runtime contract and includes the advisory-lock fix for Prisma/PostgreSQL. It is intended to replace the original `1.4.0` image for affected v1.4 deployments.
 
 The chart creates the application Deployment, Service, ConfigMap, Secret, optional Ingress, optional HPA, PodDisruptionBudget, optional NetworkPolicy, and optionally a single PostgreSQL StatefulSet.
 
@@ -29,7 +29,7 @@ Example using managed PostgreSQL:
 ```yaml
 image:
   repository: ghcr.io/opsknight-labs/opsknight
-  tag: '1.4.0' # pin the release you tested
+  tag: '1.4.0-hotfix' # patched v1.4 runtime
   # digest: 'sha256:...' # optional; takes precedence over tag
 
 config:
@@ -69,17 +69,11 @@ If `secrets.existingSecret` is empty, the chart renders those values into its ow
 
 ## Database URL behavior
 
-When the chart manages its Secret, `database.url` has highest priority. Use it when you need:
-
-- managed PostgreSQL;
-- `sslmode=require` / `verify-full` or other query parameters;
-- PgBouncer;
-- credentials containing reserved URI characters;
-- provider-specific connection options.
+When the chart manages its Secret, `database.url` has highest priority. Use it when you need managed PostgreSQL, TLS options, PgBouncer, credentials containing reserved URI characters, or provider-specific connection options.
 
 If `database.url` is empty and no existing Secret is selected, the chart constructs a URI from the `postgresql.*` values and URI-encodes username/password components.
 
-With `postgresql.enabled: true`, the chart deploys `postgres:15-alpine` and uses that image's `postgres` uid/gid (`70`). The PostgreSQL security contexts are values-driven so a different image can override them intentionally. Storage comes from the StatefulSet volume claim template. The governing Service remains a normal ClusterIP to preserve upgrade compatibility with existing installations; changing an allocated Service to headless is an immutable operation.
+With `postgresql.enabled: true`, the chart deploys `postgres:15-alpine` and uses that image's `postgres` uid/gid (`70`). The PostgreSQL security contexts are values-driven so a different image can override them intentionally. Storage comes from the StatefulSet volume claim template.
 
 The bundled PostgreSQL topology is one instance; it is not HA and does not provide backups automatically.
 
@@ -89,11 +83,9 @@ Always render before install/upgrade:
 
 ```bash
 helm lint helm/opsknight --values values.production.yaml
-
 helm template opsknight helm/opsknight \
   --namespace opsknight \
   --values values.production.yaml > /tmp/opsknight-rendered.yaml
-
 kubectl apply --dry-run=server -f /tmp/opsknight-rendered.yaml
 ```
 
@@ -109,30 +101,11 @@ helm upgrade --install opsknight helm/opsknight \
   --wait --timeout 10m
 ```
 
-## NetworkPolicy
-
-NetworkPolicy is disabled by default because ingress-controller namespaces and external database destinations are cluster-specific.
-
-When enabled, the default ingress namespace selector uses the standard namespace label:
-
-```yaml
-networkPolicy:
-  enabled: true
-  ingressNamespaceLabels:
-    kubernetes.io/metadata.name: ingress-nginx
-```
-
-Change those labels to match your ingress controller.
-
-For bundled PostgreSQL, application DB egress is restricted to the PostgreSQL pod and the PostgreSQL pod cannot initiate outbound connections. When `postgresql.enabled: false`, TCP egress on `database.port` is permitted to external destinations so managed DB connectivity is not accidentally blocked. Keep that value aligned with the port in `DATABASE_URL`, and tighten destinations through your platform policy/CIDR controls when the target is known.
-
-DNS permits UDP and TCP 53; HTTPS egress is required by common OIDC, webhook, notification, and integration flows.
-
 ## Startup and migrations
 
-The `1.4.0` image and later run `prisma migrate deploy` before starting the server. They retry migration failures and may run the packaged recovery helper between attempts. If migrations still fail, the container exits non-zero.
+The patched v1.4 image runs `prisma migrate deploy` before starting the server, retries migration failures, and exits non-zero if recovery cannot complete. A startup probe gives migrations and cold starts approximately five minutes before liveness checks can restart the container.
 
-A startup probe gives migrations and cold starts up to approximately five minutes before liveness checks can restart the container. After startup:
+After startup:
 
 - `/api/health` is used for liveness;
 - `/api/health?mode=readiness` is used for readiness.
@@ -141,9 +114,7 @@ The chart currently performs migrations in the application startup path rather t
 
 ## Scaling
 
-The chart defaults to two fixed replicas (`replicaCount: 2`) so a basic install does not depend on metrics-server. HPA is disabled by default. Enable `autoscaling.enabled` only when the cluster exposes the required resource metrics (or adapt the chart for your autoscaler); its configured range is two to ten replicas.
-
-Connection limits are per application process. Size PostgreSQL capacity for the aggregate number of replicas, and validate scheduled/background work under the chosen topology.
+The chart defaults to two fixed replicas (`replicaCount: 2`) so a basic install does not depend on metrics-server. HPA is disabled by default. Connection limits are per application process, so size PostgreSQL capacity for the aggregate number of replicas.
 
 The application ServiceAccount token is not mounted by default because OpsKnight does not require Kubernetes API access. Set `serviceAccount.automount: true` only for a deliberate extension that needs it.
 
@@ -153,8 +124,8 @@ Before upgrading:
 
 1. record the current image/chart and configuration;
 2. back up PostgreSQL and verify the matching encryption key is recoverable;
-3. render/diff the new release;
-4. upgrade with an immutable tested image;
+3. render/diff the new deployment;
+4. upgrade to `1.4.0-hotfix` or its tested digest;
 5. watch startup/migration logs and rollout state;
 6. verify authentication, database writes, a controlled incident, and notification/integration delivery.
 
@@ -162,11 +133,11 @@ Before upgrading:
 helm upgrade opsknight helm/opsknight \
   --namespace opsknight \
   --values values.production.yaml \
-  --set-string image.digest='sha256:<tested-manifest-digest>' \
+  --set-string image.tag='1.4.0-hotfix' \
   --wait --timeout 10m
 ```
 
-`image.digest` renders `repository@sha256:...` and takes precedence over `image.tag`. For a normal immutable version tag, leave `image.digest` empty and set `image.tag` instead.
+`image.digest` renders `repository@sha256:...` and takes precedence over `image.tag`.
 
 `helm rollback` changes Kubernetes resources; it does not reverse Prisma migrations. Confirm old-image/schema compatibility before rolling the application back, or restore the verified pre-upgrade database when a data rollback is required.
 
