@@ -7,6 +7,15 @@ on:
     branches: [release/v1.4]
     paths:
       - '.github/workflows/v1.4-hotfix-image.yml'
+      - 'src/**'
+      - 'prisma/**'
+      - 'Dockerfile'
+      - 'docker-entrypoint.sh'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docker-compose.yml'
+      - 'k8s/**'
+      - 'helm/**'
   workflow_dispatch:
 
 permissions:
@@ -24,7 +33,7 @@ jobs:
       - name: Checkout v1.4 maintenance branch
         uses: actions/checkout@v7
         with:
-          ref: release/v1.4
+          ref: ${{ github.sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -61,7 +70,7 @@ jobs:
       - name: Checkout v1.4 maintenance branch
         uses: actions/checkout@v7
         with:
-          ref: release/v1.4
+          ref: ${{ github.sha }}
 
       - name: Prepare isolated Compose environment
         shell: bash
