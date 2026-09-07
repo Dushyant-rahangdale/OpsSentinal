@@ -50,7 +50,7 @@ type StatusPageConfigProps = {
     emailProvider?: string | null;
     branding?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     requireAuth?: boolean;
-    privacyMode?: string;
+    privacyMode?: string | null;
     showIncidentDetails?: boolean;
     showIncidentTitles?: boolean;
     showIncidentDescriptions?: boolean;
@@ -974,7 +974,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
             id: statusPage.id,
             name: formData.name,
             slug: formData.slug || null,
-            isDefault: formData.isDefault,
             organizationName: formData.organizationName || null,
             subdomain: formData.subdomain || null,
             customDomain: formData.customDomain || null,
@@ -1058,7 +1057,22 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
       setError(payload?.error || 'Unable to delete status page.');
       return;
     }
-    router.push('/settings/status-page');
+    router.push('/settings/status-pages');
+    router.refresh();
+  };
+
+  const handleMakeDefault = async () => {
+    setError(null);
+    const response = await fetch(
+      `/api/settings/status-pages/${encodeURIComponent(statusPage.id)}/make-default`,
+      { method: 'POST' }
+    );
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      setError(payload?.error || 'Unable to change the default status page.');
+      return;
+    }
+    setFormData(prev => ({ ...prev, isDefault: true }));
     router.refresh();
   };
 
@@ -1174,7 +1188,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         const response = await fetch('/api/settings/status-page/announcements', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, statusPageId: statusPage.id }),
         });
 
         if (!response.ok) {
@@ -1260,7 +1274,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
         const response = await fetch('/api/settings/status-page/api-tokens', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, statusPageId: statusPage.id }),
         });
 
         if (!response.ok) {
@@ -1603,19 +1617,19 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             helperText="Optional for the default page; required for a dedicated /status/your-slug URL."
                           />
 
-                          <Switch
-                            checked={formData.isDefault}
-                            disabled={statusPage.isDefault}
-                            onChange={checked =>
-                              setFormData(prev => ({ ...prev, isDefault: checked }))
-                            }
-                            label="Default Status Page"
-                            helperText={
-                              statusPage.isDefault
-                                ? 'Make another page the default before changing or deleting this page.'
-                                : 'Serve this page from the backward-compatible /status and /api/status routes.'
-                            }
-                          />
+                          <div className="rounded-md border bg-gray-50 p-4">
+                            <div className="font-medium text-gray-900">Default routing</div>
+                            <p className="mt-1 text-sm text-gray-600">
+                              {statusPage.isDefault
+                                ? 'This page serves /status and the legacy /api/status endpoint. It does not provide settings to other pages.'
+                                : 'This page is independent. Make it the default only to route legacy /status requests here.'}
+                            </p>
+                            {!statusPage.isDefault && (
+                              <Button type="button" variant="secondary" onClick={handleMakeDefault}>
+                                Make default
+                              </Button>
+                            )}
+                          </div>
 
                           <FormField
                             type="input"

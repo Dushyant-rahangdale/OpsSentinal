@@ -119,6 +119,7 @@ describeIfRealDB('Status Page Webhooks Integration', () => {
         method: 'PATCH',
         body: JSON.stringify({
           id: webhook.id,
+          statusPageId: sp.id,
           url: 'https://new.com',
           enabled: false,
         }),
@@ -136,12 +137,13 @@ describeIfRealDB('Status Page Webhooks Integration', () => {
       const sp = await createTestStatusPage();
       const webhook = await createTestStatusPageWebhook(sp.id, 'https://delete-me.com');
 
-      const req = new Request(`http://localhost/api/status-page/webhooks?id=${webhook.id}`, {
-        method: 'DELETE',
-      });
+      const req = new Request(
+        `http://localhost/api/status-page/webhooks?id=${webhook.id}&statusPageId=${sp.id}`,
+        { method: 'DELETE' }
+      );
       // Also mock nextUrl as some routes might use it
       (req as any).nextUrl = {
-        searchParams: new URLSearchParams({ id: webhook.id }),
+        searchParams: new URLSearchParams({ id: webhook.id, statusPageId: sp.id }),
       };
 
       const res = await DELETE(req as any);

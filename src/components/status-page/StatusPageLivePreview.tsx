@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
@@ -8,6 +9,7 @@ import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnounce
 import { logger } from '@/lib/logger';
 import { toSafeStyleTagContent } from '@/lib/status-page-content';
 import { computeStatusPageTheme } from '@/lib/status-page-theme';
+import { STATUS_PAGE_PREVIEW_BASE_CSS } from '@/lib/status-page-preview-css';
 
 export interface StatusPagePreviewService {
   id: string;
@@ -143,6 +145,7 @@ export default function StatusPageLivePreview({
   const [scale, setScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
   const containerRef = useRef<HTMLDivElement>(null);
+  const [previewRoot, setPreviewRoot] = useState<ShadowRoot | null>(null);
   const [frameHeight, setFrameHeight] = useState('100%');
 
   // Calculate overall status based on services
@@ -294,6 +297,10 @@ export default function StatusPageLivePreview({
   const scaledFrameHeightStyle = Number.isFinite(frameHeightNumber)
     ? `${Math.round(frameHeightNumber * scale)}px`
     : 'auto';
+
+  const bindPreviewRoot = useCallback((host: HTMLDivElement | null) => {
+    if (host) setPreviewRoot(host.shadowRoot || host.attachShadow({ mode: 'open' }));
+  }, []);
 
   const renderStatusPageContent = (contentMaxWidthValue: string) => (
     <>
@@ -589,14 +596,6 @@ export default function StatusPageLivePreview({
 
   return (
     <>
-      {/* Custom CSS */}
-      {previewData.branding?.customCss && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html: toSafeStyleTagContent(previewData.branding.customCss),
-          }}
-        />
-      )}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* Device & Zoom Controls */}
         <div
@@ -905,6 +904,7 @@ export default function StatusPageLivePreview({
               </>
             )}
             <div
+              ref={bindPreviewRoot}
               className="status-page-container"
               style={{
                 width: `${targetWidth}px`,
@@ -920,11 +920,24 @@ export default function StatusPageLivePreview({
                 fontFamily: computedTheme.fontFamily,
                 ...(computedTheme.cssVariables as React.CSSProperties),
               }}
-            >
-              <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-                {renderStatusPageContent(contentMaxWidth)}
-              </div>
-            </div>
+            />
+            {previewRoot &&
+              createPortal(
+                <>
+                  <style data-status-page-preview-baseline>{STATUS_PAGE_PREVIEW_BASE_CSS}</style>
+                  {previewData.branding?.customCss && (
+                    <style
+                      dangerouslySetInnerHTML={{
+                        __html: toSafeStyleTagContent(previewData.branding.customCss),
+                      }}
+                    />
+                  )}
+                  <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+                    {renderStatusPageContent(contentMaxWidth)}
+                  </div>
+                </>,
+                previewRoot
+              )}
           </div>
         </div>
       </div>

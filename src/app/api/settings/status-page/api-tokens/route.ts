@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
     logger.info('api.status_page.api_token.created', { apiTokenId: apiToken.id });
     return jsonOk({ token, apiToken }, 200);
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.api_token.create_error', {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -69,7 +68,9 @@ export async function DELETE(req: NextRequest) {
       return jsonError('Invalid request body.', 400, { issues: parsed.error.issues });
     }
 
-    const { id } = parsed.data;
+    const { id, statusPageId } = parsed.data;
+    const existing = await prisma.statusPageApiToken.findFirst({ where: { id, statusPageId } });
+    if (!existing) return jsonError('API token not found.', 404);
     const apiToken = await prisma.statusPageApiToken.update({
       where: { id },
       data: { revokedAt: new Date() },
@@ -78,7 +79,6 @@ export async function DELETE(req: NextRequest) {
     logger.info('api.status_page.api_token.revoked', { apiTokenId: apiToken.id });
     return jsonOk({ apiToken }, 200);
   } catch (error: any) {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     logger.error('api.status_page.api_token.revoke_error', {
       error: error instanceof Error ? error.message : String(error),
     });

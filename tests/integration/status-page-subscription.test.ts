@@ -184,7 +184,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
 
       const req = {
         nextUrl: {
-          searchParams: new URLSearchParams({ id: sub.id }),
+          searchParams: new URLSearchParams({ id: sub.id, statusPageId: sp.id }),
         },
       };
 

@@ -26,7 +26,7 @@ export default function SettingsNav({ isAdmin = false }: Props) {
       disabled: !isAdmin,
     },
     {
-      href: '/settings/status-page',
+      href: '/settings/status-pages',
       label: 'Status Page',
       description: 'Public status page configuration (Admin only)',
       adminOnly: true,

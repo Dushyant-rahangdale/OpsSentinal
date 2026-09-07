@@ -234,18 +234,18 @@ describe('Status Page Settings Save Flow', () => {
                 ? organizationName.trim()
                 : null
               : undefined,
-          subdomain: subdomain && subdomain.trim() ? subdomain.trim() : null,
-          customDomain: customDomain && customDomain.trim() ? customDomain.trim() : null,
-          enabled: enabled !== false,
-          showServices: showServices !== false,
-          showIncidents: showIncidents !== false,
-          showMetrics: showMetrics !== false,
-          showSubscribe: showSubscribe !== false,
+          subdomain: subdomain !== undefined ? subdomain?.trim() || null : undefined,
+          customDomain: customDomain !== undefined ? customDomain?.trim() || null : undefined,
+          enabled,
+          showServices,
+          showIncidents,
+          showMetrics,
+          showSubscribe,
           uptimeExcellentThreshold: uptimeExcellentThreshold ?? undefined,
           uptimeGoodThreshold: uptimeGoodThreshold ?? undefined,
-          footerText: footerText && footerText.trim() ? footerText.trim() : null,
-          contactEmail: contactEmail && contactEmail.trim() ? contactEmail.trim() : null,
-          contactUrl: contactUrl && contactUrl.trim() ? contactUrl.trim() : null,
+          footerText: footerText !== undefined ? footerText?.trim() || null : undefined,
+          contactEmail: contactEmail !== undefined ? contactEmail?.trim() || null : undefined,
+          contactUrl: contactUrl !== undefined ? contactUrl?.trim() || null : undefined,
         };
       };
 
@@ -270,23 +270,23 @@ describe('Status Page Settings Save Flow', () => {
     });
 
     it('should handle explicit false for boolean fields', () => {
-      const buildBooleanField = (value: boolean | undefined) => value !== false;
+      const buildBooleanField = (value: boolean | undefined) => value;
 
       expect(buildBooleanField(false)).toBe(false);
       expect(buildBooleanField(true)).toBe(true);
-      expect(buildBooleanField(undefined)).toBe(true);
+      expect(buildBooleanField(undefined)).toBeUndefined();
     });
 
     it('should handle empty strings correctly', () => {
       const normalizeStringField = (value: string | null | undefined) =>
-        value && value.trim() ? value.trim() : null;
+        value !== undefined ? value?.trim() || null : undefined;
 
       expect(normalizeStringField('')).toBe(null);
       expect(normalizeStringField('  ')).toBe(null);
       expect(normalizeStringField('test')).toBe('test');
       expect(normalizeStringField('  test  ')).toBe('test');
       expect(normalizeStringField(null)).toBe(null);
-      expect(normalizeStringField(undefined)).toBe(null);
+      expect(normalizeStringField(undefined)).toBeUndefined();
     });
 
     it('should handle uptime threshold coercion', () => {
