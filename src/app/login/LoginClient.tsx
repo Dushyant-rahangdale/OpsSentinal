@@ -142,10 +142,10 @@ export default function LoginClient({
     <AuthLayout isSuccess={isSuccess}>
       <AuthCard isSuccess={isSuccess}>
         {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2.5 mb-4">
+        <div className="text-center mb-7">
+          <div className="flex items-center justify-center gap-2.5 mb-3.5">
             <Image
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="OpsKnight"
               width={32}
               height={32}
@@ -153,18 +153,17 @@ export default function LoginClient({
               priority
               unoptimized
             />
-            {/* Two-weight lockup: "Knight" is the distinctive half of the
-                name, so it carries the weight and "Ops" sits back. */}
-            <span className="text-2xl 2xl:text-3xl tracking-tight text-slate-950 dark:text-white">
-              <span className="font-medium">Ops</span>
-              <span className="font-extrabold">Knight</span>
+            <span className="text-2xl 2xl:text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
+              OpsKnight
             </span>
           </div>
-          <h2 className="text-3xl 2xl:text-4xl font-serif text-slate-950 dark:text-white mb-1.5 font-normal tracking-tight">
-            {isSuccess ? 'You have the watch.' : <HelloGreeting />}
+          <h2 className="text-3xl 2xl:text-4xl font-bold text-slate-950 dark:text-white mb-2 tracking-tight min-h-[1.25em] flex items-center justify-center">
+            {isSuccess ? 'Station online.' : <HelloGreeting />}
           </h2>
-          <p className="text-xs 2xl:text-sm text-slate-500 dark:text-slate-400">
-            {isSuccess ? 'Handing over now…' : 'Sign in and take the watch.'}
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-normal transition-colors duration-300">
+            {isSuccess
+              ? 'Pledge acknowledged. The bridge is yours.'
+              : 'The watch never ends. Take your post.'}
           </p>
         </div>
 
@@ -197,16 +196,16 @@ export default function LoginClient({
           <div>
             <label
               className={cn(
-                'block text-xs font-semibold mb-1.5 transition-colors',
+                'block text-xs font-medium mb-1.5 transition-colors',
                 emailTouched && email && !isEmailValid
                   ? 'text-red-600 dark:text-red-400'
-                  : 'text-slate-800 dark:text-slate-200'
+                  : 'text-slate-700 dark:text-slate-300'
               )}
             >
               Work email
             </label>
-            <div className="relative flex items-center">
-              <div className="absolute left-4 text-slate-400 dark:text-slate-500 pointer-events-none">
+            <div className="group relative flex items-center">
+              <div className="absolute left-4 z-10 text-slate-400 dark:text-slate-500 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-200 transition-colors pointer-events-none">
                 <Mail className="h-4 w-4" />
               </div>
               <input
@@ -218,12 +217,12 @@ export default function LoginClient({
                   if (error) setError('');
                 }}
                 onBlur={() => setEmailTouched(true)}
-                className="auth-input login-input w-full pl-12 pr-4 py-2.5 2xl:py-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm 2xl:text-base focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
+                className="auth-input w-full h-11 2xl:h-12 pl-12 pr-4 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm 2xl:text-base shadow-xs hover:border-slate-400 dark:hover:border-slate-600 focus:outline-none focus:border-slate-900 dark:focus:border-slate-100 focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/15 transition-all"
                 placeholder="you@company.com"
                 disabled={isSubmitting || isSuccess}
               />
               {emailTouched && email && !isEmailValid && (
-                <div className="absolute right-3 text-red-500">
+                <div className="absolute right-3 z-10 text-red-500">
                   <AlertCircle className="w-4 h-4" />
                 </div>
               )}
@@ -237,11 +236,11 @@ export default function LoginClient({
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               Password
             </label>
-            <div className="relative flex items-center">
-              <div className="absolute left-4 text-slate-400 dark:text-slate-500 pointer-events-none">
+            <div className="group relative flex items-center">
+              <div className="absolute left-4 z-10 text-slate-400 dark:text-slate-500 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-200 transition-colors pointer-events-none">
                 <Lock className="h-4 w-4" />
               </div>
               <input
@@ -255,24 +254,24 @@ export default function LoginClient({
                 onKeyDown={e => {
                   setCapsLockOn(e.getModifierState('CapsLock'));
                 }}
-                className="auth-input login-input w-full pl-12 pr-10 py-2.5 2xl:py-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm 2xl:text-base focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
+                className="auth-input w-full h-11 2xl:h-12 pl-12 pr-11 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm 2xl:text-base shadow-xs hover:border-slate-400 dark:hover:border-slate-600 focus:outline-none focus:border-slate-900 dark:focus:border-slate-100 focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/15 transition-all"
                 placeholder="Enter your password"
                 disabled={isSubmitting || isSuccess}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="absolute right-3 z-10 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 aria-label="Toggle password visibility"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
 
-            <div className="flex items-center justify-between mt-1.5">
+            <div className="flex items-center justify-between pt-1">
               <label
                 htmlFor="remember-me"
-                className="flex items-center gap-2 cursor-pointer select-none"
+                className="flex items-center gap-2 cursor-pointer select-none group"
               >
                 <input
                   id="remember-me"
@@ -280,16 +279,16 @@ export default function LoginClient({
                   checked={rememberMe}
                   onChange={e => setRememberMe(e.target.checked)}
                   disabled={isSubmitting || isSuccess}
-                  className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-700 bg-transparent text-red-600 focus:ring-red-500/20"
+                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-900/20 dark:focus:ring-white/20 dark:bg-slate-900 cursor-pointer transition-colors"
                 />
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                <span className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors font-medium">
                   Remember me
                 </span>
               </label>
 
               <Link
                 href="/forgot-password"
-                className="text-xs font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors"
+                className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
               >
                 Forgot password?
               </Link>
@@ -308,10 +307,10 @@ export default function LoginClient({
             type="submit"
             disabled={isSubmitting || isSSOLoading || isSuccess}
             className={cn(
-              'w-full py-3 2xl:py-4 px-4 rounded-lg text-white font-bold text-sm 2xl:text-base shadow-sm transition-all duration-200 flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+              'group relative w-full h-11 2xl:h-12 px-4 rounded-lg font-semibold text-sm 2xl:text-base text-white transition-all duration-150 flex items-center justify-center gap-2 mt-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.995]',
               isSuccess
-                ? 'bg-emerald-600 shadow-emerald-600/20'
-                : 'bg-[#111827] dark:bg-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100 hover:ring-2 hover:ring-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-500/30 active:bg-black dark:active:bg-slate-200 shadow-slate-950/10'
+                ? 'bg-emerald-600 shadow-emerald-600/20 shadow-md'
+                : 'bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 border border-slate-900 dark:border-white shadow-sm shadow-slate-950/15 hover:shadow'
             )}
           >
             {isSuccess ? (
@@ -327,11 +326,16 @@ export default function LoginClient({
             ) : (
               <>
                 <span>Sign in</span>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     d="M14 5l7 7m0 0l-7 7m7-7H3"
                   />
                 </svg>
@@ -346,7 +350,7 @@ export default function LoginClient({
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200 dark:border-slate-800" />
                 </div>
-                <span className="relative px-3 text-xs text-muted-foreground bg-background">
+                <span className="relative px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-background">
                   or
                 </span>
               </div>
@@ -364,14 +368,16 @@ export default function LoginClient({
           )}
 
           {/* Setup Guide Link */}
-          <div className="text-center text-xs text-slate-500 dark:text-slate-400 font-medium pt-3">
+          <div className="text-center text-xs text-slate-500 dark:text-slate-400 font-medium pt-3.5">
             Setting up OpsKnight?{' '}
-            <Link
-              href="/help"
-              className="text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:underline font-semibold ml-1 inline-flex items-center gap-1 transition-colors"
+            <a
+              href="https://opsknight.com/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold inline-flex items-center gap-0.5 hover:underline transition-colors ml-0.5"
             >
               Installation guide →
-            </Link>
+            </a>
           </div>
         </form>
       </AuthCard>

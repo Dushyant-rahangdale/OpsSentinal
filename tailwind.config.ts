@@ -38,11 +38,11 @@ const config: Config = {
         mono: ['SF Mono', 'Fira Code', 'Monaco', 'Cascadia Code', 'monospace'],
         serif: [
           'var(--font-serif)',
-          'Newsreader',
+          'Instrument Serif',
+          'Playfair Display',
           'ui-serif',
           'Georgia',
           'Cambria',
-          'Times New Roman',
           'serif',
         ],
       },

@@ -61,8 +61,15 @@ export default function HelloGreeting({ className }: { className?: string }) {
         aria-hidden="true"
         lang={greeting.lang}
         dir={greeting.rtl ? 'rtl' : 'ltr'}
-        className={cn('inline-block transition-opacity ease-out', className)}
-        style={{ opacity: shown ? 1 : 0, transitionDuration: `${FADE_MS}ms` }}
+        className={cn(
+          'inline-flex items-center justify-center transition-all ease-out select-none',
+          className
+        )}
+        style={{
+          opacity: shown ? 1 : 0,
+          transform: shown ? 'translateY(0) scale(1)' : 'translateY(3px) scale(0.98)',
+          transitionDuration: `${FADE_MS}ms`,
+        }}
       >
         {greeting.text}
       </span>

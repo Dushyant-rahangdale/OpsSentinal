@@ -48,7 +48,7 @@ const TILE_W = 800;
 const TILE_H = 400;
 const CONTINENT_PERIOD_S = 55; // seconds for one full revolution of the map
 const CLOUD_PERIOD_S = 68; // weather drifts slower than the surface (parallax)
-const BG_POS_Y_PCT = 0.04; // matches backgroundPosition '0 4%' on the layers
+const BG_POS_Y_PCT = 0; // matches backgroundPosition '0 0%' on the layers
 const SPOTLIGHT_MS = 7000; // how long each incident ticket stays on screen
 
 // Each incident walks the product's real lifecycle on a loop. The phase is
@@ -63,7 +63,7 @@ const RESOLVED_UNTIL_S = 30; // 30 -> 36 is idle, then a new incident arrives
 // Shared geometry for the scrolling texture strips: one tile wider than the
 // globe and starting a tile to the left, so a composited translate of up to
 // TILE_W always keeps the disc covered. Vertical placement (and therefore the
-// '0 4%' background-position) is unchanged from a plain inset-0 layer because
+// '0 0%' background-position) is unchanged from a plain inset-0 layer because
 // the height still matches the globe box.
 const STRIP_GEOMETRY: React.CSSProperties = {
   top: 0,
@@ -72,7 +72,7 @@ const STRIP_GEOMETRY: React.CSSProperties = {
   width: `calc(100% + ${TILE_W}px)`,
   backgroundRepeat: 'repeat-x',
   backgroundSize: '800px 400px',
-  backgroundPosition: '0 4%',
+  backgroundPosition: '0 0%',
   willChange: 'transform',
 };
 
@@ -582,7 +582,7 @@ export default function LoginAnimation({
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
             <Image
-              src="/logo-mark.png"
+              src="/logo.png"
               alt="OpsKnight"
               width={28}
               height={28}
@@ -591,11 +591,7 @@ export default function LoginAnimation({
               unoptimized
             />
           </div>
-          {/* Two-weight lockup — "Knight" carries the mark */}
-          <span className="text-lg 2xl:text-xl tracking-tight text-white">
-            <span className="font-medium">Ops</span>
-            <span className="font-extrabold">Knight</span>
-          </span>
+          <span className="text-lg 2xl:text-xl font-bold tracking-tight text-white">OpsKnight</span>
         </div>
 
         {/* A quiet aside rather than a strip of abstract verbs — the globe
@@ -707,7 +703,7 @@ export default function LoginAnimation({
               transform stays free for scrolling. */}
           <div
             ref={cloudShadowRef}
-            className="absolute opacity-25 pointer-events-none mix-blend-multiply"
+            className="absolute opacity-30 pointer-events-none mix-blend-multiply"
             style={{
               ...STRIP_GEOMETRY,
               left: `calc(${-TILE_W}px + 2.5px)`,
@@ -719,7 +715,7 @@ export default function LoginAnimation({
           {/* NASA Photographic Satellite Cloud Systems */}
           <div
             ref={cloudsRef}
-            className="absolute opacity-55 mix-blend-screen pointer-events-none"
+            className="absolute opacity-85 mix-blend-screen pointer-events-none"
             style={{ ...STRIP_GEOMETRY, backgroundImage: CLOUDS_IMG_URL }}
           />
           {/* Dynamic rotating network routes — locked to cities as the Earth spins */}
@@ -770,6 +766,14 @@ export default function LoginAnimation({
             style={{
               background:
                 'radial-gradient(circle at 35% 30%, transparent 62%, rgba(56,189,248,0.15) 86%, rgba(186,230,253,0.38) 97%, transparent 100%)',
+            }}
+          />
+          {/* Arctic polar atmospheric limb */}
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 70% 30% at 50% 0%, rgba(224,242,254,0.35) 0%, rgba(56,189,248,0.15) 50%, transparent 80%)',
             }}
           />
           {/* Terminator rim light */}

@@ -43,16 +43,15 @@ export function AuthLayout({ children, showAnimation = true, isSuccess = false }
             <div className="w-full flex items-center justify-between py-2">
               <div className="flex lg:hidden items-center gap-2">
                 <Image
-                  src="/logo-mark.png"
+                  src="/logo.png"
                   alt="OpsKnight"
                   width={28}
                   height={28}
                   className="h-7 w-7 object-contain"
                   unoptimized
                 />
-                <span className="text-lg tracking-tight text-slate-950 dark:text-white">
-                  <span className="font-medium">Ops</span>
-                  <span className="font-extrabold">Knight</span>
+                <span className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+                  OpsKnight
                 </span>
               </div>
             </div>

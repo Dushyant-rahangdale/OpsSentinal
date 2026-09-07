@@ -1,6 +1,7 @@
 'use client';
 
 import Spinner from '@/components/ui/Spinner';
+import { cn } from '@/lib/utils';
 
 export type ProviderType = 'google' | 'okta' | 'azure' | 'auth0' | 'custom' | null | undefined;
 
@@ -18,7 +19,8 @@ const providerConfig: Record<
   { classes: string; icon: React.ReactNode; defaultLabel: string }
 > = {
   google: {
-    classes: 'bg-background hover:bg-muted text-foreground border-border shadow-xs',
+    classes:
+      'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs hover:shadow-sm',
     defaultLabel: 'Google',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -72,7 +74,8 @@ const providerConfig: Record<
     ),
   },
   custom: {
-    classes: 'bg-background hover:bg-muted text-foreground border-border shadow-xs',
+    classes:
+      'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs hover:shadow-sm',
     defaultLabel: 'SSO',
     icon: (
       <svg
@@ -112,14 +115,13 @@ export default function SsoButton({
       onClick={onClick}
       disabled={loading || disabled}
       aria-label={`Sign in with ${label}`}
-      className={`
-        relative w-full flex items-center justify-center gap-2.5 px-4 py-2.5 
-        rounded-xl text-sm font-semibold border
-        transition-all duration-200 transform
-        active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed
-        shadow-2xs hover:shadow-xs
-        ${config.classes}
-      `}
+      className={cn(
+        'group relative w-full h-11 2xl:h-12 flex items-center justify-center gap-2.5 px-4',
+        'rounded-lg text-sm font-medium border select-none cursor-pointer',
+        'transition-all duration-150 transform',
+        'active:scale-[0.995] disabled:opacity-50 disabled:cursor-not-allowed',
+        config.classes
+      )}
     >
       {loading ? (
         <>

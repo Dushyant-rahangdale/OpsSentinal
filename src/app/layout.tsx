@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Manrope, Newsreader } from 'next/font/google'; // [NEW]
+import { Manrope, Playfair_Display } from 'next/font/google';
 import '@/styles/index.css';
 import { Providers } from './providers';
 import VersionCheck from '@/components/VersionCheck';
@@ -12,11 +12,11 @@ const manrope = Manrope({
   display: 'swap',
 });
 
-const newsreader = Newsreader({
+const playfair = Playfair_Display({
   variable: '--font-serif',
   subsets: ['latin'],
   style: ['normal', 'italic'],
-  weight: ['400', '500', '600'],
+  weight: ['400', '600', '700'],
   display: 'swap',
 });
 
@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="darkreader-lock" />
       </head>
       <body
-        className={`${manrope.variable} ${newsreader.variable} antialiased`}
+        className={`${manrope.variable} ${playfair.variable} antialiased`}
         suppressHydrationWarning
       >
         <Providers>
