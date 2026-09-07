@@ -165,26 +165,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const hasField = (field: keyof typeof parsed.data) =>
+      Object.prototype.hasOwnProperty.call(parsed.data, field);
+    const nullableText = (value: string | null | undefined) => value?.trim() || null;
+
     const updateData: Prisma.StatusPageUpdateInput = {
-      slug: slug !== undefined ? slug || null : undefined,
-      organizationName:
-        organizationName !== undefined
-          ? organizationName && organizationName.trim()
-            ? organizationName.trim()
-            : null
-          : undefined,
-      subdomain: subdomain && subdomain.trim() ? subdomain.trim() : null,
-      customDomain: customDomain && customDomain.trim() ? customDomain.trim() : null,
-      enabled: enabled !== false,
-      showServices: showServices !== false,
-      showIncidents: showIncidents !== false,
-      showMetrics: showMetrics !== false,
-      showSubscribe: showSubscribe !== false,
+      slug: hasField('slug') ? slug || null : undefined,
+      organizationName: hasField('organizationName') ? nullableText(organizationName) : undefined,
+      subdomain: hasField('subdomain') ? nullableText(subdomain) : undefined,
+      customDomain: hasField('customDomain') ? nullableText(customDomain) : undefined,
+      enabled: hasField('enabled') ? enabled : undefined,
+      showServices: hasField('showServices') ? showServices : undefined,
+      showIncidents: hasField('showIncidents') ? showIncidents : undefined,
+      showMetrics: hasField('showMetrics') ? showMetrics : undefined,
+      showSubscribe: hasField('showSubscribe') ? showSubscribe : undefined,
       uptimeExcellentThreshold: uptimeExcellentThreshold ?? undefined,
       uptimeGoodThreshold: uptimeGoodThreshold ?? undefined,
-      footerText: footerText && footerText.trim() ? footerText.trim() : null,
-      contactEmail: contactEmail && contactEmail.trim() ? contactEmail.trim() : null,
-      contactUrl: contactUrl && contactUrl.trim() ? contactUrl.trim() : null,
+      footerText: hasField('footerText') ? nullableText(footerText) : undefined,
+      contactEmail: hasField('contactEmail') ? nullableText(contactEmail) : undefined,
+      contactUrl: hasField('contactUrl') ? nullableText(contactUrl) : undefined,
     };
 
     if (name !== undefined && name !== null && name.trim().length > 0) {
