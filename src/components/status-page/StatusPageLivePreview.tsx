@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
@@ -144,7 +144,6 @@ export default function StatusPageLivePreview({
   const [scale, setScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
   const containerRef = useRef<HTMLDivElement>(null);
-  const shadowHostRef = useRef<HTMLDivElement>(null);
   const [previewRoot, setPreviewRoot] = useState<ShadowRoot | null>(null);
   const [frameHeight, setFrameHeight] = useState('100%');
 
@@ -298,10 +297,8 @@ export default function StatusPageLivePreview({
     ? `${Math.round(frameHeightNumber * scale)}px`
     : 'auto';
 
-  useEffect(() => {
-    const host = shadowHostRef.current;
-    if (!host) return;
-    setPreviewRoot(host.shadowRoot || host.attachShadow({ mode: 'open' }));
+  const bindPreviewRoot = useCallback((host: HTMLDivElement | null) => {
+    if (host) setPreviewRoot(host.shadowRoot || host.attachShadow({ mode: 'open' }));
   }, []);
 
   const renderStatusPageContent = (contentMaxWidthValue: string) => (
@@ -906,7 +903,7 @@ export default function StatusPageLivePreview({
               </>
             )}
             <div
-              ref={shadowHostRef}
+              ref={bindPreviewRoot}
               className="status-page-container"
               style={{
                 width: `${targetWidth}px`,

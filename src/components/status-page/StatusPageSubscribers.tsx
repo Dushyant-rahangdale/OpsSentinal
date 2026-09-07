@@ -40,6 +40,8 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
   const [filter, setFilter] = useState<'all' | 'verified' | 'unverified'>('all');
   const [searchEmail, setSearchEmail] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [unsubscribeCandidate, setUnsubscribeCandidate] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const limit = 10;
 
   const fetchSubscribers = useCallback(
@@ -80,16 +82,17 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
 
   useEffect(() => {
     const controller = new AbortController();
-    setData(null);
     void fetchSubscribers(controller.signal);
     return () => controller.abort();
   }, [fetchSubscribers]);
 
   const handleUnsubscribe = async (subscriptionId: string) => {
-    // eslint-disable-next-line no-alert
-    if (!confirm('Are you sure you want to remove this subscriber?')) {
+    if (unsubscribeCandidate !== subscriptionId) {
+      setUnsubscribeCandidate(subscriptionId);
       return;
     }
+
+    setActionError(null);
 
     try {
       const response = await fetch(
@@ -100,11 +103,11 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
       );
 
       if (response.ok) {
-        fetchSubscribers();
+        setUnsubscribeCandidate(null);
+        void fetchSubscribers();
       } else {
-        const result = await response.json();
-        // eslint-disable-next-line no-alert
-        alert(`Failed to unsubscribe: ${result.error}`);
+        const result = (await response.json()) as { error?: string };
+        setActionError(result.error || 'Failed to unsubscribe.');
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -112,8 +115,7 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
       } else {
         logger.error('Error unsubscribing', { error: String(error) });
       }
-      // eslint-disable-next-line no-alert
-      alert('Failed to remove subscriber');
+      setActionError('Failed to remove subscriber.');
     }
   };
 
@@ -349,6 +351,11 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
           </div>
         )}
       </div>
+      {actionError && (
+        <p role="alert" className="mb-4 text-sm text-red-700">
+          {actionError}
+        </p>
+      )}
 
       <div className="subscribers-filters">
         <div className="search-box">
@@ -456,7 +463,9 @@ export default function StatusPageSubscribers({ statusPageId }: { statusPageId: 
                         onClick={() => handleUnsubscribe(subscriber.id)}
                       >
                         <Trash2 size={14} />
-                        Unsubscribe
+                        {unsubscribeCandidate === subscriber.id
+                          ? 'Confirm unsubscribe'
+                          : 'Unsubscribe'}
                       </button>
                     )}
                   </td>

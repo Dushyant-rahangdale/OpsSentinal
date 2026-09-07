@@ -9,6 +9,11 @@ interface EmailProviderConfigProps {
   currentProvider?: string | null;
 }
 
+interface EmailProviderSummary {
+  provider: string;
+  enabled: boolean;
+}
+
 export default function StatusPageEmailConfig({
   statusPageId,
   currentProvider,
@@ -17,18 +22,17 @@ export default function StatusPageEmailConfig({
   const [saving, setSaving] = useState(false);
   const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     // Fetch available email providers
     fetch('/api/settings/email-providers')
       .then(res => res.json())
-      .then(data => {
+      .then((data: { providers?: EmailProviderSummary[] }) => {
         const emailProviders =
           data.providers
-            ?.filter(
-              (p: any) => ['resend', 'sendgrid', 'smtp', 'ses'].includes(p.provider) && p.enabled
-            ) // eslint-disable-line @typescript-eslint/no-explicit-any
-            .map((p: any) => p.provider) || []; // eslint-disable-line @typescript-eslint/no-explicit-any
+            ?.filter(p => ['resend', 'sendgrid', 'smtp', 'ses'].includes(p.provider) && p.enabled)
+            .map(p => p.provider) || [];
         setAvailableProviders(emailProviders);
       })
       .catch(err => {
@@ -43,6 +47,7 @@ export default function StatusPageEmailConfig({
 
   const handleSave = async () => {
     setSaving(true);
+    setNotice(null);
     try {
       const response = await fetch('/api/settings/status-page', {
         method: 'POST',
@@ -54,12 +59,10 @@ export default function StatusPageEmailConfig({
       });
 
       if (response.ok) {
-        // eslint-disable-next-line no-alert
-        alert('Settings saved successfully');
+        setNotice({ kind: 'success', message: 'Email provider saved.' });
       } else {
-        const result = await response.json();
-        // eslint-disable-next-line no-alert
-        alert('Failed to save settings: ' + result.error);
+        const result = (await response.json()) as { error?: string };
+        setNotice({ kind: 'error', message: result.error || 'Failed to save email provider.' });
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -67,8 +70,7 @@ export default function StatusPageEmailConfig({
       } else {
         logger.error('Error saving email provider', { error: String(error) });
       }
-      // eslint-disable-next-line no-alert
-      alert('An error occurred while saving settings');
+      setNotice({ kind: 'error', message: 'An error occurred while saving email settings.' });
     } finally {
       setSaving(false);
     }
@@ -287,6 +289,15 @@ export default function StatusPageEmailConfig({
           <button className="save-button" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Email Provider'}
           </button>
+          {notice && (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{ marginTop: 12, color: notice.kind === 'success' ? '#047857' : '#b91c1c' }}
+            >
+              {notice.message}
+            </p>
+          )}
         </>
       )}
     </div>

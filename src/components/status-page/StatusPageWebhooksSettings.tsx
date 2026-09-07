@@ -39,6 +39,7 @@ export default function StatusPageWebhooksSettings({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     url: '',
     events: [] as string[],
@@ -67,8 +68,6 @@ export default function StatusPageWebhooksSettings({
 
   useEffect(() => {
     const controller = new AbortController();
-    setWebhooks([]);
-    setIsLoading(true);
     void loadWebhooks(controller.signal);
     return () => controller.abort();
   }, [loadWebhooks]);
@@ -105,8 +104,10 @@ export default function StatusPageWebhooksSettings({
   };
 
   const handleDelete = (id: string) => {
-    // eslint-disable-next-line no-alert
-    if (!confirm('Are you sure you want to delete this webhook?')) return;
+    if (deleteCandidate !== id) {
+      setDeleteCandidate(id);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -121,6 +122,7 @@ export default function StatusPageWebhooksSettings({
           throw await errorFromResponse(response, 'Failed to delete webhook');
         }
 
+        setDeleteCandidate(null);
         await loadWebhooks();
       } catch (err) {
         setError(displayError(err, 'Failed to delete webhook'));
@@ -363,7 +365,7 @@ export default function StatusPageWebhooksSettings({
                           onClick={() => handleDelete(webhook.id)}
                           isLoading={isPending}
                         >
-                          Delete
+                          {deleteCandidate === webhook.id ? 'Confirm delete' : 'Delete'}
                         </Button>
                       </div>
                     </div>
