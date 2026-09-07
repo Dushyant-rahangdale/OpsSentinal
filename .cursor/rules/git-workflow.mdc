@@ -1,0 +1,11 @@
+---
+description: Git workflow and Pull Request rules for OpsKnight
+globs: *
+alwaysApply: true
+---
+
+# Git Workflow Rules
+- NEVER merge directly to `main` or `master`.
+- NEVER execute `git merge`, `gh pr merge`, or enable direct auto-merges.
+- Always create a feature branch (`feat/...`, `fix/...`).
+- Push branch, open PR, provide PR link to user, and wait for user approval.

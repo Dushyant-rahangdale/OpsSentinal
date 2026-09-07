@@ -76,10 +76,8 @@ tsc_*.txt
 vitest_*.txt
 ci_*.txt
 
-# Claude AI & Next.js agent files
+# Claude AI internal directory
 .claude/
-AGENTS.md
-CLAUDE.md
 
 # pre-push build artifacts
 .next-pre-push/
