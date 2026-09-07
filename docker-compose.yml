@@ -24,9 +24,9 @@ services:
       - opsknight-network
 
   opsknight-app:
-    # This maintenance Compose file is tied to the v1.4 runtime contract.
+    # This maintenance Compose file is tied to the patched v1.4 runtime contract.
     # Override OPSKNIGHT_IMAGE only with a tested v1.4-compatible tag/digest.
-    image: ${OPSKNIGHT_IMAGE:-ghcr.io/opsknight-labs/opsknight:1.4.0}
+    image: ${OPSKNIGHT_IMAGE:-ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix}
     restart: unless-stopped
     ports:
       - '${APP_PORT:-3000}:3000'
