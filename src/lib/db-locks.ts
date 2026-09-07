@@ -51,6 +51,10 @@ export const LOCK_KEYS = {
  * if you forget to commit, the lock is still released by the engine
  * tearing down the session.
  *
+ * Prisma cannot deserialize Postgres' `void` return type from a direct
+ * `SELECT pg_advisory_xact_lock(...)`. Keep the lock call in a subquery
+ * and return a supported scalar instead.
+ *
  * Safe to call when the underlying database is not Postgres (e.g.
  * in unit tests against a mocked client): we catch the resulting
  * error, log it, and let the caller proceed without the lock. This
@@ -63,12 +67,15 @@ export async function acquireAdvisoryLock(
   key: bigint
 ): Promise<void> {
   try {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${key}::bigint)`;
+    await tx.$queryRaw`
+      SELECT TRUE AS "acquired"
+      FROM (SELECT pg_advisory_xact_lock(${key}::bigint)) AS lock_result
+    `;
   } catch (err) {
-    logger.warn(
-      '[DbLocks] pg_advisory_xact_lock failed (likely non-Postgres test env); proceeding without lock',
-      { key: key.toString(), error: err instanceof Error ? err.message : String(err) }
-    );
+    logger.warn('[DbLocks] pg_advisory_xact_lock failed; proceeding without lock', {
+      key: key.toString(),
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

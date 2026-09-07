@@ -24,16 +24,16 @@ services:
       - opsknight-network
 
   opsknight-app:
-    # Pin OPSKNIGHT_IMAGE to an immutable release tag/digest for production.
-    image: ${OPSKNIGHT_IMAGE:-ghcr.io/opsknight-labs/opsknight:latest}
-    pull_policy: always
+    # This maintenance Compose file is tied to the v1.4 runtime contract.
+    # Override OPSKNIGHT_IMAGE only with a tested v1.4-compatible tag/digest.
+    image: ${OPSKNIGHT_IMAGE:-ghcr.io/opsknight-labs/opsknight:1.4.0}
     restart: unless-stopped
     ports:
       - '${APP_PORT:-3000}:3000'
     environment:
       NODE_ENV: production
       # Set OPSKNIGHT_DATABASE_URL for managed PostgreSQL, TLS/PgBouncer options,
-      # or URI-encoded credentials. The fallback targets the bundled database.
+      # URI-encoded credentials, or a bundled-database password containing URI-reserved characters.
       DATABASE_URL: ${OPSKNIGHT_DATABASE_URL:-postgresql://${POSTGRES_USER:-opsknight}:${POSTGRES_PASSWORD:-opsknight_secure_password_change_me}@opsknight-db:5432/${POSTGRES_DB:-opsknight_db}?sslmode=prefer&connection_limit=40&pool_timeout=30}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
@@ -54,7 +54,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      # v1.4 runs fail-closed migrations before starting the HTTP server.
+      # Allow slow upgrades/recovery attempts to complete before health failures count.
+      start_period: 5m
     networks:
       - opsknight-network
 
