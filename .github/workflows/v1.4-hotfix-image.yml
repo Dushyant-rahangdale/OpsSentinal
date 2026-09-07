@@ -1,11 +1,21 @@
 name: v1.4 Hotfix Image
 
 on:
+  # The one-time path trigger lets this workflow publish from the v1.4
+  # maintenance branch without creating a GitHub Release or retagging v1.4.0.
+  push:
+    branches: [release/v1.4]
+    paths:
+      - '.github/workflows/v1.4-hotfix-image.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+
+concurrency:
+  group: v1.4-hotfix-image
+  cancel-in-progress: false
 
 jobs:
   build-and-push:
