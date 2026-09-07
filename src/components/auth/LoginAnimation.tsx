@@ -585,15 +585,10 @@ export default function LoginAnimation({
           <span className="font-extrabold text-lg tracking-tight text-white">OpsKnight</span>
         </div>
 
-        {/* Operational Doctrine Tracker (from reference mock) */}
-        <div className="hidden xl:flex items-center gap-2 text-[10px] font-mono tracking-widest text-slate-500 font-semibold select-none">
-          <span>DETECT</span>
-          <span className="text-slate-700">|</span>
-          <span>COORDINATE</span>
-          <span className="text-slate-700">|</span>
-          <span>RESOLVE</span>
-          <span className="text-slate-700">|</span>
-          <span className="text-slate-400">STAY AHEAD</span>
+        {/* A quiet aside rather than a strip of abstract verbs — the globe
+            already shows detection, ownership and resolution happening. */}
+        <div className="hidden xl:block text-[10px] font-mono tracking-widest text-slate-600 font-semibold select-none">
+          IT IS 3AM SOMEWHERE
         </div>
       </div>
 
@@ -892,12 +887,12 @@ export default function LoginAnimation({
           </span>
         </h2>
         <p className="text-xs lg:text-sm text-slate-400 mt-2 max-w-sm leading-relaxed">
-          Calm, coordinated incident response for modern engineering teams.
+          Nothing waits for morning. Nothing gets lost.
         </p>
 
         <div className="flex items-center justify-between pt-4 mt-5 border-t border-slate-800/60 text-[10px] font-mono tracking-wider text-slate-400">
           <div>Open source &nbsp;•&nbsp; Self-hosted</div>
-          <div>SYSTEMS STAY STRONGER TOGETHER</div>
+          <div>EVERY PAGE HAS A NAME ON IT</div>
         </div>
       </div>
     </div>

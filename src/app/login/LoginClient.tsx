@@ -157,10 +157,10 @@ export default function LoginClient({
             </span>
           </div>
           <h2 className="text-3xl font-serif text-slate-950 dark:text-white mb-1.5 font-normal tracking-tight">
-            {isSuccess ? 'Access Granted' : 'Welcome back'}
+            {isSuccess ? 'You have the watch.' : 'Welcome back'}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {isSuccess ? 'Redirecting to secure console...' : 'Sign in to your OpsKnight instance.'}
+            {isSuccess ? 'Handing over now…' : 'Sign in and take the watch.'}
           </p>
         </div>
 
@@ -174,7 +174,7 @@ export default function LoginClient({
             <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
             <div className="flex-1">
               <p className="font-semibold text-red-800 dark:text-red-200 mb-0.5">
-                Authentication Error
+                Couldn&apos;t sign you in
               </p>
               <p className="text-red-600 dark:text-red-400">{error}</p>
             </div>
