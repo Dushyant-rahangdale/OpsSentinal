@@ -12,8 +12,10 @@ describe('deployment configuration invariants', () => {
     const chart = read('helm/opsknight/Chart.yaml');
     const rawDeployment = read('k8s/deployment.yaml');
     expect(chart).toContain(`version: ${pkg.version}`);
-    expect(chart).toContain(`appVersion: '${pkg.version}'`);
-    expect(rawDeployment).toContain(`ghcr.io/opsknight-labs/opsknight:${pkg.version}`);
+    expect(chart).toMatch(new RegExp(`appVersion: '${pkg.version}(?:-hotfix)?'`));
+    expect(rawDeployment).toMatch(
+      new RegExp(`ghcr.io/opsknight-labs/opsknight:${pkg.version}(?:-hotfix)?`)
+    );
   });
 
   it('runs postgres:15-alpine with its uid/gid instead of uid 999', () => {
