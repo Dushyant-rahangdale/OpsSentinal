@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { assertCanModifyService, getUserPermissions } from '@/lib/rbac';
 import { revalidatePath } from 'next/cache';
 import { incidentSlaPolicyInputSchema } from './policy-validation';
+import { emitAuditEvent } from '@/lib/audit';
 
 /** Deliberately uncached: creation reads the current immutable version transactionally. */
 export async function getIncidentSlaPolicy(scopeKey: string) {
@@ -51,20 +52,21 @@ export async function saveIncidentSlaPolicy(rawInput: unknown) {
       },
       include: { rules: true },
     });
-    await tx.auditLog.create({
-      data: {
+    await emitAuditEvent(
+      {
         action: 'incident_sla.policy.version_created',
-        entityType: serviceId ? 'SERVICE' : 'SYSTEM_CONFIG',
-        entityId: serviceId ?? 'workspace',
-        actorId: permissions.id,
-        details: {
+        source: 'UI',
+        target: { type: serviceId ? 'SERVICE' : 'SYSTEM_CONFIG', id: serviceId ?? 'workspace' },
+        actor: { type: 'USER', id: permissions.id },
+        metadata: {
           policyId: policy.id,
           previousVersion: input.expectedVersion,
           ...input,
           futureIncidentsOnly: true,
         },
       },
-    });
+      tx
+    );
     return policy;
   });
   // No policy cache to invalidate. Refresh every settings/read route that presents configuration.

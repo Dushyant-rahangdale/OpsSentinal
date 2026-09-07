@@ -320,11 +320,13 @@ export async function applyIncidentCreation(
   }
 
   const { assigneeName, teamName } = await validateAssignmentReferences(tx, input);
-  const slaContract = await resolveNewIncidentSlaContract(tx, {
-    serviceId: input.serviceId,
-    priority: input.priority,
-    now,
-  });
+  const slaContract = tx.incidentSlaPolicy
+    ? await resolveNewIncidentSlaContract(tx, {
+        serviceId: input.serviceId,
+        priority: input.priority,
+        now,
+      })
+    : null;
 
   const incident = await tx.incident.create({
     data: {
@@ -337,13 +339,13 @@ export async function applyIncidentCreation(
       priority: input.priority ?? null,
       dedupKey: input.dedupKey ?? null,
       assigneeId: input.assigneeId ?? null,
-      slaAckTargetMs: slaContract.ackTargetMs,
-      slaResolveTargetMs: slaContract.resolveTargetMs,
-      slaTargetSource: slaContract.source,
-      slaTargetCapturedAt: slaContract.capturedAt,
-      slaPolicyId: slaContract.policyId,
-      slaPolicyVersion: slaContract.policyVersion,
-      slaPolicyRule: slaContract.policyRule,
+      slaAckTargetMs: slaContract?.ackTargetMs,
+      slaResolveTargetMs: slaContract?.resolveTargetMs,
+      slaTargetSource: slaContract?.source,
+      slaTargetCapturedAt: slaContract?.capturedAt,
+      slaPolicyId: slaContract?.policyId,
+      slaPolicyVersion: slaContract?.policyVersion,
+      slaPolicyRule: slaContract?.policyRule,
       teamId: input.assigneeId ? null : (input.teamId ?? null),
       events: {
         create: {
