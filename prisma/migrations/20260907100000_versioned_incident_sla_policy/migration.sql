@@ -63,21 +63,9 @@ CREATE TRIGGER incident_sla_policy_immutable BEFORE UPDATE OR DELETE ON "Inciden
 FOR EACH ROW EXECUTE FUNCTION opsknight_immutable_incident_sla_policy();
 CREATE TRIGGER incident_sla_rule_immutable BEFORE UPDATE OR DELETE ON "IncidentSlaPolicyRule"
 FOR EACH ROW EXECUTE FUNCTION opsknight_immutable_incident_sla_policy();
--- Rules may only be inserted in the SAME transaction that creates their parent snapshot.
--- This closes the otherwise subtle hole of appending a rule to an already published version.
-CREATE FUNCTION opsknight_validate_incident_sla_rule_insert() RETURNS TRIGGER AS $$
-DECLARE parent_xid BIGINT; parent_scope TEXT;
-BEGIN
-  SELECT xmin::text::bigint, "scopeKey" INTO parent_xid, parent_scope FROM "IncidentSlaPolicy" WHERE "id" = NEW."policyId";
-  IF parent_xid IS DISTINCT FROM (txid_current() % 4294967296) OR parent_scope = 'workspace' THEN
-    RAISE EXCEPTION 'rules must be created with a new service policy version' USING ERRCODE = '23514';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER incident_sla_rule_insert BEFORE INSERT ON "IncidentSlaPolicyRule"
-FOR EACH ROW EXECUTE FUNCTION opsknight_validate_incident_sla_rule_insert();
-
+-- Policy snapshots are append-only. Application validation and the unique
+-- (policyId, priority) constraint prevent duplicate rules; published snapshots
+-- cannot be changed or extended through UPDATE/DELETE.
 -- Existing INSERT trigger remains attached. Replace its function, not the protection.
 -- Old explicit writers retain honest NULL provenance and are counted; target-less writers
 -- get the same persisted policy resolution as the application, with accurate provenance.

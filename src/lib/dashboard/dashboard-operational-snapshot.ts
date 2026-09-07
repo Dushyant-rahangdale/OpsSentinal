@@ -52,8 +52,22 @@ export type DashboardOperationalSnapshot = {
   totalInRange: number;
   previewIncidents: IncidentListItem[];
   recentIncidents: IncidentListItem[];
-  criticalFocus: Array<{ id: string; title: string; status: string; urgency: string; priority: string | null; createdAt: Date }>;
-  myQueue: Array<{ id: string; title: string; status: string; urgency: string; priority: string | null; createdAt: Date }>;
+  criticalFocus: Array<{
+    id: string;
+    title: string;
+    status: string;
+    urgency: string;
+    priority: string | null;
+    createdAt: Date;
+  }>;
+  myQueue: Array<{
+    id: string;
+    title: string;
+    status: string;
+    urgency: string;
+    priority: string | null;
+    createdAt: Date;
+  }>;
   myQueueCount: number;
   currentShifts: Awaited<ReturnType<typeof getActiveOnCallShifts>>;
   slaBreachAlerts: Awaited<ReturnType<typeof getWidgetRealtimeProjection>>['slaBreachAlerts'];
@@ -72,7 +86,11 @@ export async function getDashboardOperationalSnapshot(
   sortOrder: 'asc' | 'desc' = 'desc'
 ): Promise<DashboardOperationalSnapshot> {
   const startedAt = Date.now();
-  const dateFilter = await buildRetainedDateFilter(filters.range, filters.customStart, filters.customEnd);
+  const dateFilter = await buildRetainedDateFilter(
+    filters.range,
+    filters.customStart,
+    filters.customEnd
+  );
   const access = incidentReadWhere(actor);
   const selected = buildIncidentWhere(filters, { dateFilter: dateFilter.where });
   const periodWhere: Prisma.IncidentWhereInput = { AND: [access, selected] };
@@ -101,24 +119,79 @@ export async function getDashboardOperationalSnapshot(
     serviceGroups,
     retention,
   ] = await Promise.all([
-    getCachedDashboardMetrics(actor.id, actor.role, [...actor.teamIds], undefined, null, currentFilter),
-    prisma.incident.findMany({ where: periodWhere, select: incidentSelect, orderBy: buildIncidentOrderBy(sortBy, sortOrder), take: PREVIEW_LIMIT }),
-    prisma.incident.findMany({ where: periodWhere, select: incidentSelect, orderBy: { createdAt: 'desc' }, take: RECENT_LIMIT }),
+    getCachedDashboardMetrics(
+      actor.id,
+      actor.role,
+      [...actor.teamIds],
+      undefined,
+      null,
+      currentFilter
+    ),
+    prisma.incident.findMany({
+      where: periodWhere,
+      select: incidentSelect,
+      orderBy: buildIncidentOrderBy(sortBy, sortOrder),
+      take: PREVIEW_LIMIT,
+    }),
+    prisma.incident.findMany({
+      where: periodWhere,
+      select: incidentSelect,
+      orderBy: { createdAt: 'desc' },
+      take: RECENT_LIMIT,
+    }),
     prisma.incident.count({ where: periodWhere }),
     prisma.incident.count({ where: { AND: [periodWhere, { status: 'RESOLVED' }] } }),
     prisma.incident.findMany({
-      where: { AND: [currentWhere, { status: { in: ['OPEN', 'ACKNOWLEDGED'] }, OR: [{ urgency: 'HIGH' }, { priority: 'P1' }] }] },
-      select: { id: true, title: true, status: true, urgency: true, priority: true, createdAt: true },
+      where: {
+        AND: [
+          currentWhere,
+          {
+            status: { in: ['OPEN', 'ACKNOWLEDGED'] },
+            OR: [{ urgency: 'HIGH' }, { priority: 'P1' }],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        urgency: true,
+        priority: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: 'desc' },
       take: FOCUS_LIMIT,
     }),
     prisma.incident.findMany({
-      where: { AND: [currentWhere, { status: { in: ['OPEN', 'ACKNOWLEDGED'] }, assigneeId: actor.id }] },
-      select: { id: true, title: true, status: true, urgency: true, priority: true, createdAt: true },
+      where: {
+        AND: [currentWhere, { status: { in: ['OPEN', 'ACKNOWLEDGED'] }, assigneeId: actor.id }],
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        urgency: true,
+        priority: true,
+        createdAt: true,
+        acknowledgedAt: true,
+        resolvedAt: true,
+        slaAckTargetMs: true,
+        slaResolveTargetMs: true,
+        slaTargetSource: true,
+        slaTargetCapturedAt: true,
+        slaPausedMs: true,
+        slaPauseStartedAt: true,
+        slaAckElapsedMs: true,
+        slaResolveElapsedMs: true,
+      },
       orderBy: { createdAt: 'desc' },
       take: FOCUS_LIMIT,
     }),
-    prisma.incident.count({ where: { AND: [currentWhere, { status: { in: ['OPEN', 'ACKNOWLEDGED'] }, assigneeId: actor.id }] } }),
+    prisma.incident.count({
+      where: {
+        AND: [currentWhere, { status: { in: ['OPEN', 'ACKNOWLEDGED'] }, assigneeId: actor.id }],
+      },
+    }),
     getActiveOnCallShifts(new Date()),
     getWidgetRealtimeProjection({ ...currentFilter, ...actorMetricReadScope(actor) }),
     prisma.incident.groupBy({
@@ -130,7 +203,10 @@ export async function getDashboardOperationalSnapshot(
   ]);
   if (!currentMetrics) throw new Error('Operational dashboard projection unavailable');
   const metrics = currentMetrics.data;
-  observeOperationalHistogram('opsknight_dashboard_shell_duration_seconds', (Date.now() - startedAt) / 1000);
+  observeOperationalHistogram(
+    'opsknight_dashboard_shell_duration_seconds',
+    (Date.now() - startedAt) / 1000
+  );
   const toListItem = (incident: (typeof preview)[number]): IncidentListItem => ({
     ...incident,
     status: incident.status as IncidentStatus,

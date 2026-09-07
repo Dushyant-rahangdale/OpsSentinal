@@ -41,15 +41,21 @@ function validationReason(input: IncidentSlaProjectionInput, now: Date): string 
   if (!isDate(input.slaTargetCapturedAt)) return 'Missing or invalid target capture date';
   if (!isDate(now)) return 'Invalid evaluation date';
   if (!isDate(input.createdAt)) return 'Invalid incident creation date';
-  for (const key of ['acknowledgedAt', 'resolvedAt', 'slaPauseStartedAt'] as const) {
-    const value = input[key];
-    if (value !== null && (!isDate(value) || value < input.createdAt)) {
-      return `Invalid ${key}`;
-    }
+  const dateValues: Array<[string, Date | null]> = [
+    ['acknowledgedAt', input.acknowledgedAt],
+    ['resolvedAt', input.resolvedAt],
+    ['slaPauseStartedAt', input.slaPauseStartedAt],
+  ];
+  for (const [key, value] of dateValues) {
+    if (value !== null && (!isDate(value) || value < input.createdAt)) return `Invalid ${key}`;
   }
   if (!isDuration(input.slaPausedMs)) return 'Invalid materialized pause duration';
-  for (const key of ['slaAckElapsedMs', 'slaResolveElapsedMs'] as const) {
-    if (input[key] !== null && !isDuration(input[key])) return `Invalid ${key}`;
+  const elapsedValues: Array<[string, bigint | number | null]> = [
+    ['slaAckElapsedMs', input.slaAckElapsedMs],
+    ['slaResolveElapsedMs', input.slaResolveElapsedMs],
+  ];
+  for (const [key, value] of elapsedValues) {
+    if (value !== null && !isDuration(value)) return `Invalid ${key}`;
   }
   if (!['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED'].includes(input.status)) {
     return 'Invalid incident status';

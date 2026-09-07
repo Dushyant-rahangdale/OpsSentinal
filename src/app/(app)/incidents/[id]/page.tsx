@@ -391,7 +391,6 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       {incident.status === 'RESOLVED' && (
         <IncidentResolutionSummary
           incident={incident}
-          service={incident.service}
           resolutionNote={resolutionNote}
           postmortemStatus={postmortem?.status ?? null}
           canManage={canManageIncident}

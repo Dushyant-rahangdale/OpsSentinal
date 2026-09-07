@@ -63,7 +63,15 @@ export default function IncidentSlaPolicySettings({
   );
   const [pending, startTransition] = useTransition();
   const updateRule = (p: string, field: 'enabled' | 'ack' | 'resolve', value: boolean | string) =>
-    setRules(current => ({ ...current, [p]: { ...current[p], [field]: value } }));
+    setRules(current => {
+      const existing = current[p];
+      if (!existing) return current;
+      const next = { ...existing };
+      if (field === 'enabled') next.enabled = Boolean(value);
+      if (field === 'ack') next.ack = String(value);
+      if (field === 'resolve') next.resolve = String(value);
+      return { ...current, [p]: next };
+    });
   const submit = () => {
     startTransition(async () => {
       try {
@@ -75,13 +83,18 @@ export default function IncidentSlaPolicySettings({
           baseResolveTargetMs: inherit ? null : Number(resolve) * 60000,
           rules: inherit
             ? []
-            : priorities
-                .filter(p => rules[p].enabled)
-                .map(p => ({
-                  priority: p,
-                  ackTargetMs: Number(rules[p].ack) * 60000,
-                  resolveTargetMs: Number(rules[p].resolve) * 60000,
-                })),
+            : priorities.flatMap(p => {
+                const rule = rules[p];
+                return rule?.enabled
+                  ? [
+                      {
+                        priority: p,
+                        ackTargetMs: Number(rule.ack) * 60000,
+                        resolveTargetMs: Number(rule.resolve) * 60000,
+                      },
+                    ]
+                  : [];
+              }),
         });
         notify.success('Incident response SLA policy saved for future incidents.');
       } catch (error) {
@@ -163,7 +176,7 @@ export default function IncidentSlaPolicySettings({
                   <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
                     <input
                       type="checkbox"
-                      checked={rules[p].enabled}
+                      checked={rules[p]?.enabled ?? false}
                       disabled={!canManage || pending}
                       onChange={e => updateRule(p, 'enabled', e.target.checked)}
                     />
@@ -174,8 +187,8 @@ export default function IncidentSlaPolicySettings({
                     <Input
                       type="number"
                       min="1"
-                      value={rules[p].ack}
-                      disabled={!canManage || pending || !rules[p].enabled}
+                      value={rules[p]?.ack ?? ''}
+                      disabled={!canManage || pending || !rules[p]?.enabled}
                       onChange={e => updateRule(p, 'ack', e.target.value)}
                     />
                   </div>
@@ -184,8 +197,8 @@ export default function IncidentSlaPolicySettings({
                     <Input
                       type="number"
                       min="1"
-                      value={rules[p].resolve}
-                      disabled={!canManage || pending || !rules[p].enabled}
+                      value={rules[p]?.resolve ?? ''}
+                      disabled={!canManage || pending || !rules[p]?.enabled}
                       onChange={e => updateRule(p, 'resolve', e.target.value)}
                     />
                   </div>
