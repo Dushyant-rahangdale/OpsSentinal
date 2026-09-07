@@ -65,6 +65,7 @@ describe('status-page administration isolation contract', () => {
   it('executes custom CSS only inside an isolated preview root', () => {
     const preview = fs.readFileSync('src/components/status-page/StatusPageLivePreview.tsx', 'utf8');
     expect(preview).toContain("attachShadow({ mode: 'open' })");
+    expect(preview).toContain('STATUS_PAGE_PREVIEW_BASE_CSS');
     expect(preview).toContain('createPortal(');
     expect(preview.indexOf('dangerouslySetInnerHTML')).toBeGreaterThan(
       preview.indexOf('createPortal(')

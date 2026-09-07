@@ -142,6 +142,22 @@ describe('StatusPageLivePreview Component', () => {
     expect(statusContainer.style.getPropertyValue('--status-text')).toBe('#f8fafc');
   });
 
+  it('injects the public component baseline before customer CSS in the shadow root', () => {
+    const customData: StatusPagePreviewData = {
+      ...mockPreviewData,
+      branding: { ...mockPreviewData.branding, customCss: '.status-page-button { color: red; }' },
+    };
+
+    const { container } = render(<StatusPageLivePreview previewData={customData} />);
+    const host = container.querySelector('.status-page-container');
+    const styles = Array.from(host?.shadowRoot?.querySelectorAll('style') ?? []);
+
+    expect(styles).toHaveLength(2);
+    expect(styles[0].hasAttribute('data-status-page-preview-baseline')).toBe(true);
+    expect(styles[0].textContent).toContain('.status-page-button[data-variant="primary"]');
+    expect(styles[1].textContent).toContain('.status-page-button { color: red; }');
+  });
+
   it('safely adapts contrast when user sets dark background with default text', () => {
     const darkData: StatusPagePreviewData = {
       ...mockPreviewData,

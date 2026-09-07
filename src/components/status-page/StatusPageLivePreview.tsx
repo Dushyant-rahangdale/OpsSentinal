@@ -9,6 +9,7 @@ import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnounce
 import { logger } from '@/lib/logger';
 import { toSafeStyleTagContent } from '@/lib/status-page-content';
 import { computeStatusPageTheme } from '@/lib/status-page-theme';
+import { STATUS_PAGE_PREVIEW_BASE_CSS } from '@/lib/status-page-preview-css';
 
 export interface StatusPagePreviewService {
   id: string;
@@ -923,6 +924,7 @@ export default function StatusPageLivePreview({
             {previewRoot &&
               createPortal(
                 <>
+                  <style data-status-page-preview-baseline>{STATUS_PAGE_PREVIEW_BASE_CSS}</style>
                   {previewData.branding?.customCss && (
                     <style
                       dangerouslySetInnerHTML={{
