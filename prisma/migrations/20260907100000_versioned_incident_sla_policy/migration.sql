@@ -90,10 +90,25 @@ BEGIN
       IF p."id" IS NULL OR p."inheritWorkspace" THEN
         SELECT * INTO p FROM "IncidentSlaPolicy" WHERE "scopeKey" = 'workspace' ORDER BY "version" DESC LIMIT 1;
       END IF;
-      IF p."id" IS NULL THEN RAISE EXCEPTION 'workspace incident SLA policy is missing'; END IF;
-      NEW."slaAckTargetMs" := p."baseAckTargetMs"; NEW."slaResolveTargetMs" := p."baseResolveTargetMs";
-      NEW."slaTargetSource" := CASE WHEN p."scopeKey" = 'workspace' THEN 'WORKSPACE_DEFAULT' ELSE 'SERVICE_DEFAULT' END;
-      NEW."slaPolicyRule" := 'BASE';
+      IF p."id" IS NULL THEN
+        SELECT NULLIF("targetAckMinutes", 0), NULLIF("targetResolveMinutes", 0)
+          INTO ack_minutes, resolve_minutes FROM "Service" WHERE "id" = NEW."serviceId";
+        IF normalized_priority = 'P1' THEN ack_minutes := 5; resolve_minutes := 60;
+        ELSIF normalized_priority = 'P2' THEN ack_minutes := 15; resolve_minutes := 240;
+        ELSIF normalized_priority = 'P3' THEN ack_minutes := 30; resolve_minutes := 480;
+        ELSIF normalized_priority = 'P4' THEN ack_minutes := 60; resolve_minutes := 1440;
+        ELSIF normalized_priority = 'P5' THEN ack_minutes := 120; resolve_minutes := 2880;
+        END IF;
+        NEW."slaAckTargetMs" := COALESCE(ack_minutes, 15) * 60000;
+        NEW."slaResolveTargetMs" := COALESCE(resolve_minutes, 120) * 60000;
+        NEW."slaTargetSource" := 'LEGACY_TRIGGER_FALLBACK';
+        NEW."slaPolicyId" := NULL; NEW."slaPolicyVersion" := NULL; NEW."slaPolicyRule" := NULL;
+      ELSE
+        NEW."slaAckTargetMs" := p."baseAckTargetMs"; NEW."slaResolveTargetMs" := p."baseResolveTargetMs";
+        NEW."slaTargetSource" := CASE WHEN p."scopeKey" = 'workspace' THEN 'WORKSPACE_DEFAULT' ELSE 'SERVICE_DEFAULT' END;
+        NEW."slaPolicyRule" := 'BASE';
+        NEW."slaPolicyId" := p."id"; NEW."slaPolicyVersion" := p."version";
+      END IF;
     END IF;
     NEW."slaPolicyId" := p."id"; NEW."slaPolicyVersion" := p."version";
     NEW."slaTargetCapturedAt" := COALESCE(NEW."slaTargetCapturedAt",CURRENT_TIMESTAMP);
