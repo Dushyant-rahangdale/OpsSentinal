@@ -4,6 +4,10 @@ import { logger } from '@/lib/logger';
 import { getNextAuthSecret } from '@/lib/secret-manager';
 import { SESSION_TOKEN_COOKIE_NAME, useSecureCookies } from '@/lib/auth-cookies';
 import { statusDomainRequestHeaders } from '@/lib/status-pages/internal-request';
+import {
+  PRIVATE_STATUS_CACHE_CONTROL,
+  PUBLIC_STATUS_CACHE_CONTROL,
+} from '@/lib/status-pages/cache-policy';
 
 const PUBLIC_PATH_PREFIXES = [
   '/login',
@@ -288,9 +292,7 @@ export default async function middleware(req: NextRequest) {
         rewriteResponse.headers.set('x-request-id', requestId);
         rewriteResponse.headers.set(
           'Cache-Control',
-          matchedPage.requireAuth
-            ? 'private, no-store'
-            : 'public, s-maxage=15, stale-while-revalidate=600, stale-if-error=86400'
+          matchedPage.requireAuth ? PRIVATE_STATUS_CACHE_CONTROL : PUBLIC_STATUS_CACHE_CONTROL
         );
         if (matchedPage.requireAuth) rewriteResponse.headers.set('Vary', 'Cookie');
         return rewriteResponse;
@@ -425,8 +427,8 @@ export default async function middleware(req: NextRequest) {
     response.headers.set(
       'Cache-Control',
       !page || page.requireAuth || isActionPath
-        ? 'private, no-store'
-        : 'public, s-maxage=15, stale-while-revalidate=600, stale-if-error=86400'
+        ? PRIVATE_STATUS_CACHE_CONTROL
+        : PUBLIC_STATUS_CACHE_CONTROL
     );
     if (!page || page.requireAuth || isActionPath) response.headers.set('Vary', 'Cookie');
   }

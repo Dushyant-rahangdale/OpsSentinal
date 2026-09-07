@@ -21,6 +21,10 @@ import {
 import { observeOperationalHistogram } from '@/lib/metrics/operational/registry';
 import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
 import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import {
+  PRIVATE_STATUS_CACHE_CONTROL,
+  PUBLIC_STATUS_CACHE_CONTROL,
+} from '@/lib/status-pages/cache-policy';
 
 /**
  * Status Page API
@@ -143,8 +147,8 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       const headers: Record<string, string> = {
         'Cache-Control':
           statusPage.requireAuth || statusPage.statusApiRequireToken
-            ? 'private, no-store'
-            : 'public, s-maxage=15, stale-while-revalidate=600, stale-if-error=86400',
+            ? PRIVATE_STATUS_CACHE_CONTROL
+            : PUBLIC_STATUS_CACHE_CONTROL,
         ...(projected.stale ? { Warning: '110 - "Response is stale"' } : {}),
       };
       const etag = `"${createHash('sha256').update(JSON.stringify(responseData)).digest('base64url')}"`;
@@ -168,8 +172,8 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
         {
           'Cache-Control':
             statusPage.requireAuth || statusPage.statusApiRequireToken
-              ? 'private, no-store'
-              : 'public, s-maxage=15, stale-while-revalidate=600, stale-if-error=86400',
+              ? PRIVATE_STATUS_CACHE_CONTROL
+              : PUBLIC_STATUS_CACHE_CONTROL,
         }
       );
     }
@@ -319,8 +323,8 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
     const headers: Record<string, string> = {
       'Cache-Control':
         statusPage.requireAuth || statusPage.statusApiRequireToken
-          ? 'private, no-store'
-          : 'public, s-maxage=15, stale-while-revalidate=120',
+          ? PRIVATE_STATUS_CACHE_CONTROL
+          : PUBLIC_STATUS_CACHE_CONTROL,
       Expires: '0',
     };
     const snapshotUpdatedAt = [

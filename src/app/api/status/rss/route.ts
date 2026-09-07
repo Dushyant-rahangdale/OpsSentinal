@@ -11,6 +11,10 @@ import { getReportingWindowForDays } from '@/lib/retention-policy';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
 import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
 import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import {
+  PRIVATE_STATUS_CACHE_CONTROL,
+  PUBLIC_STATUS_CACHE_CONTROL,
+} from '@/lib/status-pages/cache-policy';
 
 export function opaqueRssIncidentGuid(
   baseUrl: string,
@@ -99,8 +103,8 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
             'Content-Type': 'application/rss+xml; charset=utf-8',
             'Cache-Control':
               statusPage.requireAuth || statusPage.statusApiRequireToken
-                ? 'private, no-store'
-                : 'public, s-maxage=30, stale-while-revalidate=600, stale-if-error=86400',
+                ? PRIVATE_STATUS_CACHE_CONTROL
+                : PUBLIC_STATUS_CACHE_CONTROL,
             ...(projected.stale ? { Warning: '110 - "Response is stale"' } : {}),
           },
         }
@@ -192,8 +196,8 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
         'Content-Type': 'application/rss+xml; charset=utf-8',
         'Cache-Control':
           statusPage.requireAuth || statusPage.statusApiRequireToken
-            ? 'private, no-store'
-            : 'public, s-maxage=30, stale-while-revalidate=300',
+            ? PRIVATE_STATUS_CACHE_CONTROL
+            : PUBLIC_STATUS_CACHE_CONTROL,
       },
     });
   } catch (error: unknown) {

@@ -120,6 +120,8 @@ export default function StatusPageSnapshotView({
                   <strong>{service.name}</strong>
                   {service.description && <p>{service.description}</p>}
                   {service.region && <small>{service.region}</small>}
+                  {service.slaTier && <small> · SLA tier {service.slaTier}</small>}
+                  {service.team && <small> · Owned by {service.team.name}</small>}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span>{service.status.replaceAll('_', ' ')}</span>
@@ -148,7 +150,23 @@ export default function StatusPageSnapshotView({
                   {typeof incident.title === 'string' ? incident.title : 'Status update'}
                 </strong>
                 {typeof incident.description === 'string' && <p>{incident.description}</p>}
-                {typeof incident.status === 'string' && <small>{incident.status}</small>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  {typeof incident.status === 'string' && <small>{incident.status}</small>}
+                  {typeof incident.urgency === 'string' && (
+                    <small>{incident.urgency} urgency</small>
+                  )}
+                  {typeof incident.createdAt === 'string' && (
+                    <small>Started {new Date(incident.createdAt).toLocaleString()}</small>
+                  )}
+                  {typeof incident.resolvedAt === 'string' && (
+                    <small>Resolved {new Date(incident.resolvedAt).toLocaleString()}</small>
+                  )}
+                  {typeof (incident.service as { name?: unknown } | undefined)?.name ===
+                    'string' && (
+                    <small>Affected service: {(incident.service as { name: string }).name}</small>
+                  )}
+                  {typeof incident.id === 'string' && <small>Incident {incident.id}</small>}
+                </div>
               </article>
             ))
           )}

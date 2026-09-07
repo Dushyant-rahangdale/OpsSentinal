@@ -27,6 +27,8 @@ export type StatusPageSnapshot = {
     name: string;
     description?: string | null;
     region?: string | null;
+    slaTier?: string | null;
+    team?: { id: string; name: string } | null;
     status: string;
   }>;
   incidents: Array<Record<string, unknown>>;
@@ -53,7 +55,18 @@ export async function buildStatusPageSnapshot(
       services: {
         where: { showOnPage: true },
         orderBy: { order: 'asc' },
-        include: { service: { select: { id: true, name: true, description: true, region: true } } },
+        include: {
+          service: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              region: true,
+              slaTier: true,
+              team: { select: { id: true, name: true } },
+            },
+          },
+        },
       },
       announcements: { where: { isActive: true }, orderBy: { startDate: 'desc' }, take: 200 },
     },
@@ -112,6 +125,8 @@ export async function buildStatusPageSnapshot(
       name: mapping.displayName || mapping.service.name,
       ...(page.showServiceDescriptions ? { description: mapping.service.description } : {}),
       ...(page.showServiceRegions ? { region: mapping.service.region } : {}),
+      ...(visibility.showServiceSlaTier ? { slaTier: mapping.service.slaTier } : {}),
+      ...(visibility.showTeam ? { team: mapping.service.team } : {}),
       status: projectServiceStatus(mapping.serviceId, state, maintenance),
     };
   });
@@ -231,11 +246,19 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
   const current = await readStatusPageSnapshot(pageId);
   if (row.revision === row.publishedRevision && current) return { snapshot: current, stale: false };
   try {
-    await rebuildStatusPageSnapshot(pageId);
+    const published = await rebuildStatusPageSnapshot(pageId);
+    if (!published) return { snapshot: null, stale: true };
+    const [verified] = await prisma.$queryRaw<
+      Array<{ revision: bigint; publishedRevision: bigint; payload: Prisma.JsonValue }>
+    >`SELECT "revision", "publishedRevision", "payload" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
+    if (verified?.revision !== verified?.publishedRevision) {
+      return { snapshot: null, stale: true };
+    }
     const rebuilt = await readStatusPageSnapshot(pageId);
     if (rebuilt) return { snapshot: rebuilt, stale: false };
   } catch {
-    // The last valid payload is intentionally retained for stale-if-error serving.
+    // A dirty projection may contain fields that have since been made private.
+    // Retain it for diagnosis, but never return it to a public renderer.
   }
-  return { snapshot: current, stale: true };
+  return { snapshot: null, stale: true };
 }

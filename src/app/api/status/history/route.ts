@@ -10,6 +10,10 @@ import {
   publicStatusVisibility,
   serializePublicStatusIncident,
 } from '@/lib/status-page-public-data';
+import {
+  PRIVATE_STATUS_CACHE_CONTROL,
+  PUBLIC_STATUS_CACHE_CONTROL,
+} from '@/lib/status-pages/cache-policy';
 
 /**
  * Get Status Page Historical Data
@@ -133,13 +137,13 @@ export async function getStatusHistoryResponse(req: NextRequest, slug?: string) 
       200
     );
     if (statusPage.requireAuth || statusPage.statusApiRequireToken) {
-      response.headers.set('Cache-Control', 'private, no-store');
+      response.headers.set('Cache-Control', PRIVATE_STATUS_CACHE_CONTROL);
       response.headers.set('Vary', 'Cookie, Authorization');
     } else {
-      response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+      response.headers.set('Cache-Control', PUBLIC_STATUS_CACHE_CONTROL);
     }
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('api.status.history.error', {
       error: error instanceof Error ? error.message : String(error),
     });

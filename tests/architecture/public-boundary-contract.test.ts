@@ -38,6 +38,22 @@ describe('public boundary contract', () => {
     expect(html).toContain('visibility.showUptime');
   });
 
+  it('requires edge revalidation for every cacheable public status response', () => {
+    const sources = [
+      readFileSync('src/middleware.ts', 'utf8'),
+      readFileSync('src/app/api/status/route.ts', 'utf8'),
+      readFileSync('src/app/api/status/history/route.ts', 'utf8'),
+      readFileSync('src/app/api/status/rss/route.ts', 'utf8'),
+    ];
+    for (const source of sources) {
+      expect(source).toContain('PUBLIC_STATUS_CACHE_CONTROL');
+      expect(source).toContain('PRIVATE_STATUS_CACHE_CONTROL');
+    }
+    expect(readFileSync('src/lib/status-pages/cache-policy.ts', 'utf8')).not.toContain(
+      'stale-if-error'
+    );
+  });
+
   it('revalidates every long-lived stream against the shared authorization scope', () => {
     const streams = [
       readFileSync('src/app/api/events/stream/route.ts', 'utf8'),

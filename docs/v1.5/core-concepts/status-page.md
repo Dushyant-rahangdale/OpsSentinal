@@ -20,7 +20,13 @@ Public publication is fail-closed. An incident must be public, its service must 
 
 Incident and announcement delivery uses durable background work and centralized idempotent notification intents. Subscriber enumeration uses keyset pagination, avoiding an unbounded recipient list in application memory. Terminal job failures remain visible in queue health.
 
-HTML, JSON, and RSS consume a sanitized status-page snapshot. Source mutations mark the snapshot dirty in the same database transaction; a leased projector rebuilds it, and readers may serve the last valid version while rebuilding. Public responses use short shared-cache lifetimes, `stale-while-revalidate`, and `stale-if-error`. Authenticated, token-protected, verification, and unsubscribe responses remain `private, no-store`. Logo responses are stored outside page configuration and served as immutable content-addressed assets. Use an external CDN or reverse proxy for outage traffic.
+HTML, JSON, and RSS consume a sanitized status-page snapshot. Source mutations mark the snapshot dirty in the same database transaction and a leased projector rebuilds it. A dirty snapshot is never returned to a public renderer: lock contention, projection failure, or a lost revision race falls back to a current fail-closed database projection. This prevents an older public representation from surviving service removal or a `PUBLIC` to `PRIVATE` incident change.
+
+Public responses require successful cache revalidation before every reuse (`s-maxage=0`, `must-revalidate`); authenticated, token-protected, verification, and unsubscribe responses remain `private, no-store`. This deliberately prioritizes immediate disclosure revocation over serving an unverified stale edge object. Logo responses are stored outside page configuration and served as immutable content-addressed assets.
+
+The database-backed read plane does not by itself provide database-outage serving. Deployments that require status delivery during a complete database/origin outage must publish the sanitized projection to an independently operated status origin or CDN and must couple privacy changes to purge/revocation there. Do not enable stale edge serving without that revocation integration.
+
+Custom-domain routing metadata is signed and retained only as a warm-process availability aid. It is never treated as authorization: the selected page still checks current access policy before rendering. The #382 release topology does not contain an independent KV/cache, so cold-isolate database-outage routing remains part of the external serving-store requirement rather than an unsafe in-process promise.
 
 Before a large rollout, certify cross-page isolation, private incidents, disabled mappings, maintenance parity, worker retry, database failover, invalid-token floods, conditional requests, and expected peak public traffic against the production topology.
 

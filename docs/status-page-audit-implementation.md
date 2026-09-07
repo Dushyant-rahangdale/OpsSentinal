@@ -7,7 +7,7 @@ and notification delivery. Completion requires all items below, with verificatio
 - [x] Phase 1: sanitized canonical snapshot and bounded projection.
 - [x] Phase 2: durable invalidation, rebuild ownership, and reconciliation.
 - [x] Phase 3: HTML, JSON, and RSS consume the same projection.
-- [x] Phase 4: public caching, stale responses, and protected-page revocation.
+- [x] Phase 4: revocation-safe public revalidation and protected-page `no-store` policy.
 - [x] Phase 5: authenticated domain routing with a last-valid stale fallback.
 - [x] Phase 6: section-owned editor mutation contracts.
 - [x] Phase 7: atomic optimistic concurrency for configuration mutations.
@@ -16,5 +16,8 @@ and notification delivery. Completion requires all items below, with verificatio
 - [x] Phase 10: guided draft creation, publication state, accurate subscriber/service counts.
 - [x] Documentation and configuration-effectiveness, isolation, and database-backed projection verification.
 
-Do not describe unchecked items as complete. A database-backed snapshot alone does not provide
-database-outage survival; deployment of a separate serving store is part of that contract.
+The in-application read plane fails closed when PostgreSQL is unavailable. A database-backed
+snapshot alone does not provide database-outage survival; deployment of an independently operated
+serving store is part of that contract. Its rollout must atomically publish or revoke access policy
+before allowing stale delivery. OpsKnight intentionally does not advertise stale edge serving until
+that deployment contract exists.
