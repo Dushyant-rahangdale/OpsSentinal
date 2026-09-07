@@ -36,10 +36,10 @@ NEXT_PUBLIC_APP_URL=https://ops.example.com
 NEXTAUTH_SECRET=REPLACE_WITH_BASE64_OUTPUT
 ENCRYPTION_KEY=REPLACE_WITH_64_HEX_CHARACTERS
 APP_PORT=3000
-OPSKNIGHT_IMAGE=ghcr.io/opsknight-labs/opsknight:1.4.0
+OPSKNIGHT_IMAGE=ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
 ```
 
-Pin `OPSKNIGHT_IMAGE` to the immutable version or digest you tested. The default remains `latest` for convenience and should not be the production release policy. The `1.4.0` stable image includes fail-closed migrations and is published for amd64 and arm64; the test image built from `main` remains amd64-only.
+Pin `OPSKNIGHT_IMAGE` to the immutable version or digest you tested. The v1.4 hotfix image includes the Prisma/PostgreSQL advisory-lock fix, fail-closed migrations, and AMD64/ARM64 support. Do not use `latest` for affected v1.4 deployments.
 
 The checked-in fallbacks are development values, not production secrets. Keep `ENCRYPTION_KEY` stable and backed up with the database; losing it means re-entering encrypted provider/integration credentials.
 

@@ -246,7 +246,7 @@ docker run -d --name opsknight -p 3000:3000 \
   -e NEXT_PUBLIC_APP_URL="https://opsknight.example.com" \
   -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
   -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
-  ghcr.io/opsknight-labs/opsknight:latest
+  ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
 ```
 
 PostgreSQL 14+ is required. See the
@@ -260,17 +260,16 @@ and scaling.
 Images are published to the GitHub Container Registry and are **public — no
 authentication needed to pull**.
 
-| Image                                   | Channel                        | Tags                          |
-| :-------------------------------------- | :----------------------------- | :---------------------------- |
-| `ghcr.io/opsknight-labs/opsknight`      | Stable releases                | `1.4.0`, `1.4`, `1`, `latest` |
-| `ghcr.io/opsknight-labs/opsknight-test` | Pre-release, built from `main` | `latest`, `sha-<commit>`      |
+| Image                                   | Channel                        | Tags                                          |
+| :-------------------------------------- | :----------------------------- | :-------------------------------------------- |
+| `ghcr.io/opsknight-labs/opsknight`      | Stable releases                | `1.4.0-hotfix`, `1.4.0`, `1.4`, `1`, `latest` |
+| `ghcr.io/opsknight-labs/opsknight-test` | Pre-release, built from `main` | `latest`, `sha-<commit>`                      |
 
 ```bash
-# Pin a release — recommended for production
-docker pull ghcr.io/opsknight-labs/opsknight:1.4.0
+# Pin the patched v1.4 runtime — recommended for affected v1.4 deployments
+docker pull ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
 
-# Or track the latest stable release
-docker pull ghcr.io/opsknight-labs/opsknight:latest
+# Do not use `latest` for affected v1.4 deployments; the original 1.4.0 image is immutable.
 ```
 
 Pinning an exact version is strongly preferred in production: `latest` moves
