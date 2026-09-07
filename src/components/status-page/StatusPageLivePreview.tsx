@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
 import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
@@ -143,6 +144,8 @@ export default function StatusPageLivePreview({
   const [scale, setScale] = useState(1);
   const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
   const containerRef = useRef<HTMLDivElement>(null);
+  const shadowHostRef = useRef<HTMLDivElement>(null);
+  const [previewRoot, setPreviewRoot] = useState<ShadowRoot | null>(null);
   const [frameHeight, setFrameHeight] = useState('100%');
 
   // Calculate overall status based on services
@@ -294,6 +297,12 @@ export default function StatusPageLivePreview({
   const scaledFrameHeightStyle = Number.isFinite(frameHeightNumber)
     ? `${Math.round(frameHeightNumber * scale)}px`
     : 'auto';
+
+  useEffect(() => {
+    const host = shadowHostRef.current;
+    if (!host) return;
+    setPreviewRoot(host.shadowRoot || host.attachShadow({ mode: 'open' }));
+  }, []);
 
   const renderStatusPageContent = (contentMaxWidthValue: string) => (
     <>
@@ -589,14 +598,6 @@ export default function StatusPageLivePreview({
 
   return (
     <>
-      {/* Custom CSS */}
-      {previewData.branding?.customCss && (
-        <style
-          dangerouslySetInnerHTML={{
-            __html: toSafeStyleTagContent(previewData.branding.customCss),
-          }}
-        />
-      )}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* Device & Zoom Controls */}
         <div
@@ -905,6 +906,7 @@ export default function StatusPageLivePreview({
               </>
             )}
             <div
+              ref={shadowHostRef}
               className="status-page-container"
               style={{
                 width: `${targetWidth}px`,
@@ -920,11 +922,23 @@ export default function StatusPageLivePreview({
                 fontFamily: computedTheme.fontFamily,
                 ...(computedTheme.cssVariables as React.CSSProperties),
               }}
-            >
-              <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-                {renderStatusPageContent(contentMaxWidth)}
-              </div>
-            </div>
+            />
+            {previewRoot &&
+              createPortal(
+                <>
+                  {previewData.branding?.customCss && (
+                    <style
+                      dangerouslySetInnerHTML={{
+                        __html: toSafeStyleTagContent(previewData.branding.customCss),
+                      }}
+                    />
+                  )}
+                  <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+                    {renderStatusPageContent(contentMaxWidth)}
+                  </div>
+                </>,
+                previewRoot
+              )}
           </div>
         </div>
       </div>

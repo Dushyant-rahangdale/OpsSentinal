@@ -110,12 +110,36 @@ export const StatusPageBrandingSchema = z
     logoUrl: statusPageAssetUrl.optional(),
     logo: statusPageAssetUrl.optional(),
     faviconUrl: statusPageAssetUrl.optional(),
-    primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    primary: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    backgroundColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    background: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    textColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-    text: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    primaryColor: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    primary: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    backgroundColor: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    background: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    textColor: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    text: z
+      .string()
+      .trim()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
     fontFamily: z.string().trim().max(100).optional(),
     customCss: z.string().max(200_000).optional(),
     layout: z.enum(['default', 'compact', 'wide']).optional(),
@@ -142,7 +166,6 @@ export const StatusPageSettingsSchema = z
       .refine(isStatusPageSlug, 'Use lowercase letters, numbers, and single hyphens only.')
       .optional()
       .nullable(),
-    isDefault: z.boolean().optional(),
     organizationName: z.string().trim().max(200).optional().nullable(),
     subdomain: statusPageHostname.optional().nullable(),
     customDomain: statusPageHostname.optional().nullable(),
@@ -238,6 +261,7 @@ export const StatusApiTokenCreateSchema = z.object({
 });
 
 export const StatusApiTokenRevokeSchema = z.object({
+  statusPageId: z.string().min(1),
   id: z.string().min(1),
 });
 
@@ -264,6 +288,7 @@ export const StatusAnnouncementCreateSchema = z
   });
 
 export const StatusAnnouncementPatchSchema = z.object({
+  statusPageId: z.string().min(1),
   id: z.string().min(1),
   title: z.string().trim().min(1).max(200).optional(),
   message: z.string().trim().min(1).max(5000).optional(),
@@ -275,6 +300,7 @@ export const StatusAnnouncementPatchSchema = z.object({
 });
 
 export const StatusAnnouncementDeleteSchema = z.object({
+  statusPageId: z.string().min(1),
   id: z.string().min(1),
 });
 

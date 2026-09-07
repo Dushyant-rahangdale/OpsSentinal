@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
       id,
       name,
       slug,
-      isDefault,
       organizationName,
       subdomain,
       customDomain,
@@ -131,30 +130,20 @@ export async function POST(req: NextRequest) {
       statusApiRateLimitWindowSec,
     } = parsed.data;
 
-    let statusPage = id
-      ? await prisma.statusPage.findUnique({ where: { id } })
-      : await prisma.statusPage.findFirst({
-          orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
-        });
-
-    if (id && !statusPage) {
-      return jsonError('Status page not found.', 404);
+    if (!id) {
+      return jsonError(
+        new AppError({
+          code: 'VALIDATION_FAILED',
+          userMessage: 'Status page ID is required for every administrative update.',
+          fields: [{ field: 'id', code: 'required', message: 'Status page ID is required.' }],
+        })
+      );
     }
 
+    const statusPage = await prisma.statusPage.findUnique({ where: { id } });
+
     if (!statusPage) {
-      statusPage = await prisma.statusPage.create({
-        data: {
-          name: name?.trim() || 'Status Page',
-          slug: slug || null,
-          isDefault: true,
-          organizationName: organizationName || null,
-          enabled: enabled !== false,
-          showServices: showServices !== false,
-          showIncidents: showIncidents !== false,
-          showMetrics: showMetrics !== false,
-          showSubscribe: showSubscribe !== false,
-        },
-      });
+      return jsonError('Status page not found.', 404);
     }
 
     const effectiveExcellent = uptimeExcellentThreshold ?? statusPage.uptimeExcellentThreshold;
@@ -178,7 +167,6 @@ export async function POST(req: NextRequest) {
 
     const updateData: Prisma.StatusPageUpdateInput = {
       slug: slug !== undefined ? slug || null : undefined,
-      isDefault: isDefault ?? undefined,
       organizationName:
         organizationName !== undefined
           ? organizationName && organizationName.trim()
@@ -289,12 +277,6 @@ export async function POST(req: NextRequest) {
       updateData.statusApiRateLimitWindowSec = statusApiRateLimitWindowSec;
 
     await prisma.$transaction(async tx => {
-      if (isDefault === true) {
-        await tx.statusPage.updateMany({
-          where: { isDefault: true, id: { not: statusPage.id } },
-          data: { isDefault: false },
-        });
-      }
       await tx.statusPage.update({ where: { id: statusPage.id }, data: updateData });
 
       // Omitted means leave mappings unchanged; an explicit empty array removes all mappings.

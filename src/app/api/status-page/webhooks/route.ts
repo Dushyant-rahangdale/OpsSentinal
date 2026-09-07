@@ -130,13 +130,20 @@ export async function PATCH(req: NextRequest) {
     }
     const payload = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
     const id = typeof payload.id === 'string' ? payload.id : null;
+    const statusPageId = typeof payload.statusPageId === 'string' ? payload.statusPageId : null;
 
-    if (!id) {
+    if (!id || !statusPageId) {
       return jsonError(
         new AppError({
           code: 'VALIDATION_FAILED',
           userMessage: LEGACY_REQUIRED_MESSAGE,
-          fields: [{ field: 'id', code: 'required', message: 'id is required' }],
+          fields: [
+            {
+              field: !id ? 'id' : 'statusPageId',
+              code: 'required',
+              message: 'Page and webhook IDs are required',
+            },
+          ],
         })
       );
     }
@@ -184,7 +191,9 @@ export async function PATCH(req: NextRequest) {
           new AppError({
             code: 'VALIDATION_FAILED',
             userMessage: 'enabled must be a boolean',
-            fields: [{ field: 'enabled', code: 'invalid_type', message: 'enabled must be a boolean' }],
+            fields: [
+              { field: 'enabled', code: 'invalid_type', message: 'enabled must be a boolean' },
+            ],
           })
         );
       }
@@ -197,6 +206,8 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const existing = await prisma.statusPageWebhook.findFirst({ where: { id, statusPageId } });
+    if (!existing) return jsonError(new AppError(WEBHOOK_NOT_FOUND), 404);
     const webhook = await prisma.statusPageWebhook.update({ where: { id }, data: updateData });
 
     logger.info('api.status_page.webhook.updated', { webhookId: id });
@@ -217,18 +228,26 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const id = new URL(req.url).searchParams.get('id');
+    const statusPageId = new URL(req.url).searchParams.get('statusPageId');
 
-    if (!id) {
+    if (!id || !statusPageId) {
       return jsonError(
         new AppError({
           code: 'VALIDATION_FAILED',
           userMessage: LEGACY_REQUIRED_MESSAGE,
-          fields: [{ field: 'id', code: 'required', message: 'id is required' }],
+          fields: [
+            {
+              field: !id ? 'id' : 'statusPageId',
+              code: 'required',
+              message: 'Page and webhook IDs are required',
+            },
+          ],
         })
       );
     }
 
-    await prisma.statusPageWebhook.delete({ where: { id } });
+    const deleted = await prisma.statusPageWebhook.deleteMany({ where: { id, statusPageId } });
+    if (deleted.count === 0) return jsonError(new AppError(WEBHOOK_NOT_FOUND), 404);
 
     logger.info('api.status_page.webhook.deleted', { webhookId: id });
     return jsonOk({ success: true }, 200);

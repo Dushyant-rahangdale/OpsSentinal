@@ -26,7 +26,7 @@ export function StatusPageManager() {
       };
       const page = payload.data?.page;
       if (!response.ok || !page) throw new Error(payload.error || 'Unable to create page.');
-      router.push(`/settings/status-page?page=${encodeURIComponent(page.id)}`);
+      router.push(`/settings/status-pages/${encodeURIComponent(page.id)}`);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to create page.');

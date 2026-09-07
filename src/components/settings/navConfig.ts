@@ -84,7 +84,7 @@ export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
         id: 'status-page',
         label: 'Public Status Page',
         description: 'Customize public status page appearance, custom domains, and announcements',
-        href: '/settings/status-page',
+        href: '/settings/status-pages',
         icon: 'globe',
         requiresAdmin: true,
         badge: 'Admin',
