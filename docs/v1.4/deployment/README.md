@@ -67,7 +67,9 @@ See the [Configuration reference](../getting-started/configuration) for advanced
 
 Stable images are published only at `ghcr.io/opsknight-labs/opsknight`; main-branch validation images use `ghcr.io/opsknight-labs/opsknight-test`. Do not substitute the test channel in production.
 
-Source changes do not modify an image that was already published. The `1.4.0` stable image includes the fail-closed migration entrypoint and is built for amd64 and arm64, while the continuously updated test image from `main` is amd64-only to keep feedback fast. Inspect the selected image manifest and release notes rather than inferring capabilities from the checked-in deployment YAML.
+For the v1.4 maintenance line, `ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix` supersedes the original `1.4.0` image for affected deployments. It keeps the v1.4 runtime contract while fixing the Prisma/PostgreSQL advisory-lock `void` deserialization issue. Pin `1.4.0-hotfix` or, preferably, its tested manifest digest.
+
+Source changes do not modify an image that was already published. Inspect the selected image manifest and deployment notes rather than inferring capabilities from checked-in YAML alone.
 
 ## Release workflow
 
@@ -81,7 +83,7 @@ Use the same gates for every deployment method:
 6. Verify readiness, login, a database write, an inbound test event, and intended notification providers.
 7. Observe for a defined soak period before deleting the prior recovery point.
 
-Images built from this repository revision run `prisma migrate deploy` before starting the server. The entrypoint retries/recovery-attempts migration failures, but if the schema still cannot be migrated the container exits non-zero. Verify the release notes before assuming an older image has this behavior.
+Images built from this repository revision run `prisma migrate deploy` before starting the server. The entrypoint retries/recovery-attempts migration failures, but if the schema still cannot be migrated the container exits non-zero.
 
 Kubernetes deployments include a startup probe budget so legitimate migration/cold-start time is not mistaken for a liveness failure.
 
