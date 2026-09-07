@@ -15,10 +15,10 @@ export type IncidentSlaClientInput = Partial<
   >
 > & {
   createdAt: Date | string;
-  acknowledgedAt: Date | string | null;
-  resolvedAt: Date | string | null;
-  slaPauseStartedAt: Date | string | null;
-  slaTargetCapturedAt: Date | string | null;
+  acknowledgedAt?: Date | string | null;
+  resolvedAt?: Date | string | null;
+  slaPauseStartedAt?: Date | string | null;
+  slaTargetCapturedAt?: Date | string | null;
   slaPausedMs?: bigint | number;
 };
 
@@ -32,10 +32,10 @@ export function normalizeIncidentSlaInput(
     ...input,
     status: input.status ?? 'OPEN',
     createdAt: asDate(input.createdAt),
-    acknowledgedAt: nullableDate(input.acknowledgedAt),
-    resolvedAt: nullableDate(input.resolvedAt),
-    slaPauseStartedAt: nullableDate(input.slaPauseStartedAt),
-    slaTargetCapturedAt: nullableDate(input.slaTargetCapturedAt),
+    acknowledgedAt: nullableDate(input.acknowledgedAt ?? null),
+    resolvedAt: nullableDate(input.resolvedAt ?? null),
+    slaPauseStartedAt: nullableDate(input.slaPauseStartedAt ?? null),
+    slaTargetCapturedAt: nullableDate(input.slaTargetCapturedAt ?? null),
     slaPausedMs: input.slaPausedMs ?? 0,
     slaAckTargetMs: input.slaAckTargetMs ?? null,
     slaResolveTargetMs: input.slaResolveTargetMs ?? null,
