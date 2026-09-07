@@ -46,16 +46,75 @@ const CLOUD_PERIOD_S = 68; // weather drifts slower than the surface (parallax)
 const BG_POS_Y_PCT = 0.04; // matches backgroundPosition '0 4%' on the layers
 const SPOTLIGHT_MS = 7000; // how long each incident ticket stays on screen
 
+// Each incident walks the product's real lifecycle on a loop. The phase is
+// computed in JS and is the single source of truth for the marker colour, the
+// ping, the SLA ring, the pipeline strip and the clock — so the ticket can
+// never disagree with the dot it's attached to.
+const LIFECYCLE_S = 36;
+const TRIGGERED_UNTIL_S = 9;
+const ACKNOWLEDGED_UNTIL_S = 22;
+const RESOLVED_UNTIL_S = 30; // 30 -> 36 is idle, then a new incident arrives
+
+// SLA ring drawn around each marker (r=8 in a 22x22 box).
+const SLA_RING_RADIUS = 8;
+const SLA_RING_CIRCUMFERENCE = 2 * Math.PI * SLA_RING_RADIUS;
+
+type Phase = 'triggered' | 'acknowledged' | 'resolved' | 'idle';
+
+const IDLE_COLOR = '#475569';
+
+const PHASE_COLOR = new Map<Phase, string>([
+  ['triggered', '#ef4444'],
+  ['acknowledged', '#f59e0b'],
+  ['resolved', '#10b981'],
+  ['idle', IDLE_COLOR],
+]);
+
+const PHASE_RANK = new Map<Phase, number>([
+  ['triggered', 0],
+  ['acknowledged', 1],
+  ['resolved', 2],
+  ['idle', 2],
+]);
+
 type IncidentMarker = {
   /** Column/row in the 800x400 equirectangular map. */
   u: number;
   v: number;
   id: string;
   service: string;
-  status: string;
-  color: string;
-  pulseDelay: string;
+  /** Who picks it up — ownership is what separates this from a threat map. */
+  responder: string;
+  /** Stagger into the shared lifecycle so the globe shows a mix of states. */
+  phaseOffsetS: number;
 };
+
+function phaseAt(localS: number): { phase: Phase; phaseProgress: number } {
+  if (localS < TRIGGERED_UNTIL_S) {
+    return { phase: 'triggered', phaseProgress: localS / TRIGGERED_UNTIL_S };
+  }
+  if (localS < ACKNOWLEDGED_UNTIL_S) {
+    return {
+      phase: 'acknowledged',
+      phaseProgress: (localS - TRIGGERED_UNTIL_S) / (ACKNOWLEDGED_UNTIL_S - TRIGGERED_UNTIL_S),
+    };
+  }
+  if (localS < RESOLVED_UNTIL_S) {
+    return {
+      phase: 'resolved',
+      phaseProgress: (localS - ACKNOWLEDGED_UNTIL_S) / (RESOLVED_UNTIL_S - ACKNOWLEDGED_UNTIL_S),
+    };
+  }
+  return {
+    phase: 'idle',
+    phaseProgress: (localS - RESOLVED_UNTIL_S) / (LIFECYCLE_S - RESOLVED_UNTIL_S),
+  };
+}
+
+function formatClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
 
 // Anchored to real city coordinates lifted from the map asset's own annotated
 // light positions, so a marker always sits on land — never open ocean.
@@ -65,45 +124,40 @@ const INCIDENT_MARKERS: IncidentMarker[] = [
     v: 140,
     id: 'INC-2481',
     service: 'Payments API',
-    status: 'Acknowledged',
-    color: '#f59e0b',
-    pulseDelay: '0s',
+    responder: 'A. Fernandes',
+    phaseOffsetS: 0,
   }, // New York
   {
     u: 406,
     v: 116,
     id: 'INC-3390',
     service: 'Auth Gateway',
-    status: 'Resolved',
-    color: '#10b981',
-    pulseDelay: '-3.5s',
+    responder: 'M. Okafor',
+    phaseOffsetS: 7.2,
   }, // London
   {
     u: 680,
     v: 126,
     id: 'INC-5127',
     service: 'Checkout Service',
-    status: 'Triggered',
-    color: '#ef4444',
-    pulseDelay: '-7s',
+    responder: 'K. Tanaka',
+    phaseOffsetS: 14.4,
   }, // Tokyo
   {
     u: 562,
     v: 158,
     id: 'INC-6642',
     service: 'Notification Queue',
-    status: 'Acknowledged',
-    color: '#f59e0b',
-    pulseDelay: '-10.5s',
+    responder: 'P. Sharma',
+    phaseOffsetS: 21.6,
   }, // Mumbai
   {
     u: 288,
     v: 258,
     id: 'INC-7215',
     service: 'Search Cluster',
-    status: 'Resolved',
-    color: '#10b981',
-    pulseDelay: '-14s',
+    responder: 'L. Moreira',
+    phaseOffsetS: 28.8,
   }, // São Paulo
 ];
 
@@ -131,16 +185,42 @@ export default function LoginAnimation() {
   const routePacketsRef = useRef(new Map<string, SVGCircleElement | null>());
   // Keyed by incident id rather than array index — the rAF loop only ever
   // looks nodes up by id, so there is no positional coupling to maintain.
-  const nodesRef = useRef(
-    new Map<string, { marker: HTMLDivElement | null; label: HTMLDivElement | null }>()
-  );
+  // Child elements are resolved once at registration (via data-role) and
+  // cached, so the loop never queries the DOM.
+  type MarkerNode = {
+    wrapper: HTMLDivElement;
+    label: HTMLElement | null;
+    ping: HTMLElement | null;
+    dot: HTMLElement | null;
+    ring: SVGCircleElement | null;
+    clock: HTMLElement | null;
+    responder: HTMLElement | null;
+    stages: HTMLElement[];
+    lastPhase: Phase | null;
+    lastClock: string;
+    lastResponder: string;
+  };
 
-  const registerNode = (id: string, key: 'marker' | 'label', el: HTMLDivElement | null): void => {
-    const existing = nodesRef.current.get(id) ?? { marker: null, label: null };
-    nodesRef.current.set(
-      id,
-      key === 'marker' ? { ...existing, marker: el } : { ...existing, label: el }
-    );
+  const nodesRef = useRef(new Map<string, MarkerNode>());
+
+  const registerMarker = (id: string, el: HTMLDivElement | null): void => {
+    if (!el) {
+      nodesRef.current.delete(id);
+      return;
+    }
+    nodesRef.current.set(id, {
+      wrapper: el,
+      label: el.querySelector<HTMLElement>('[data-role="label"]'),
+      ping: el.querySelector<HTMLElement>('[data-role="ping"]'),
+      dot: el.querySelector<HTMLElement>('[data-role="dot"]'),
+      ring: el.querySelector<SVGCircleElement>('[data-role="ring"]'),
+      clock: el.querySelector<HTMLElement>('[data-role="clock"]'),
+      responder: el.querySelector<HTMLElement>('[data-role="responder"]'),
+      stages: Array.from(el.querySelectorAll<HTMLElement>('[data-stage]')),
+      lastPhase: null,
+      lastClock: '',
+      lastResponder: '',
+    });
   };
 
   useEffect(() => {
@@ -164,7 +244,10 @@ export default function LoginAnimation() {
 
     const frame = (now: number) => {
       if (!startTs) startTs = now;
-      const elapsed = prefersReducedMotion ? 0 : (now - startTs) / 1000;
+      // Under reduced motion we render a single frozen frame. Use a non-zero
+      // pseudo-time so the globe still shows a believable mix of lifecycle
+      // states rather than every incident sitting at 00:00 "triggered".
+      const elapsed = prefersReducedMotion ? 12 : (now - startTs) / 1000;
 
       // One clock → every layer and every marker derive from this.
       const surfaceOffset = (elapsed / CONTINENT_PERIOD_S) * TILE_W;
@@ -184,7 +267,7 @@ export default function LoginAnimation() {
       // background-position-y percentages resolve against (box height - image height)
       const yOffset = (boxW - TILE_H) * BG_POS_Y_PCT;
 
-      const placements = new Map<string, { bx: number; by: number; alpha: number }>();
+      const placements = new Map<string, { bx: number; by: number; alpha: number; phase: Phase }>();
 
       for (const m of INCIDENT_MARKERS) {
         const bx = (((m.u + surfaceOffset) % TILE_W) + TILE_W) % TILE_W;
@@ -196,20 +279,98 @@ export default function LoginAnimation() {
           // the limb as they rotate out of view rather than popping off.
           alpha = Math.max(0, Math.min(1, (radius - dist) / (radius * 0.14)));
         }
-        placements.set(m.id, { bx, by, alpha });
+
+        // Where this incident is in its lifecycle right now.
+        const localS = (elapsed + m.phaseOffsetS) % LIFECYCLE_S;
+        const { phase, phaseProgress } = phaseAt(localS);
+        const colour = PHASE_COLOR.get(phase) ?? IDLE_COLOR;
+
+        placements.set(m.id, { bx, by, alpha, phase });
 
         const node = nodesRef.current.get(m.id);
-        if (node?.marker) {
-          node.marker.style.opacity = String(alpha);
-          node.marker.style.transform = `translate3d(${bx}px, ${by}px, 0)`;
+        if (!node) continue;
+
+        node.wrapper.style.opacity = String(alpha);
+        node.wrapper.style.transform = `translate3d(${bx}px, ${by}px, 0)`;
+
+        if (node.dot) {
+          node.dot.style.backgroundColor = colour;
+          node.dot.style.boxShadow = phase === 'idle' ? 'none' : `0 0 8px 1px ${colour}b3`;
+        }
+
+        // One-shot "arrived" ping over the first slice of the triggered phase.
+        if (node.ping) {
+          const pingT = phase === 'triggered' ? Math.min(1, phaseProgress / 0.22) : 1;
+          const showPing = phase === 'triggered' && pingT < 1;
+          node.ping.style.opacity = showPing ? String(0.7 * (1 - pingT)) : '0';
+          node.ping.style.transform = `scale(${0.5 + pingT * 1.9})`;
+        }
+
+        // SLA ring: burns down while a clock is actually running against this
+        // incident (awaiting ack, then awaiting resolve). Hidden once resolved.
+        if (node.ring) {
+          const running = phase === 'triggered' || phase === 'acknowledged';
+          node.ring.style.opacity = running ? '0.9' : '0';
+          if (running) {
+            node.ring.style.stroke = colour;
+            node.ring.style.strokeDashoffset = String(SLA_RING_CIRCUMFERENCE * phaseProgress);
+          }
+        }
+
+        // Elapsed since this incident triggered — honest real-time seconds.
+        if (node.clock) {
+          const shown = formatClock(Math.min(localS, RESOLVED_UNTIL_S));
+          if (shown !== node.lastClock) {
+            node.clock.textContent = shown;
+            node.lastClock = shown;
+          }
+          node.clock.style.color = colour;
+        }
+
+        // Ownership line — the beat that makes this incident response rather
+        // than a threat map: paged -> picked up by a person -> resolved.
+        if (node.responder) {
+          const line =
+            phase === 'triggered'
+              ? 'Paging on-call…'
+              : phase === 'acknowledged'
+                ? `${m.responder} acknowledged`
+                : phase === 'resolved'
+                  ? `${m.responder} resolved`
+                  : 'Monitoring — all clear';
+          if (line !== node.lastResponder) {
+            node.responder.textContent = line;
+            node.lastResponder = line;
+          }
+        }
+
+        // Pipeline: three tiny dots. Steps already passed stay filled, the
+        // current step takes the phase colour, upcoming steps stay dim — the
+        // whole lifecycle in ~20px of width instead of a row of words.
+        if (node.lastPhase !== phase) {
+          const rank = PHASE_RANK.get(phase) ?? 0;
+          for (const stageEl of node.stages) {
+            const stageRank = Number(stageEl.dataset.rank ?? '0');
+            const isActive = stageRank === rank && phase !== 'idle';
+            stageEl.style.backgroundColor = isActive
+              ? colour
+              : stageRank < rank
+                ? '#94a3b8'
+                : '#334155';
+            stageEl.style.transform = isActive ? 'scale(1.5)' : 'scale(1)';
+          }
+          node.lastPhase = phase;
         }
       }
 
-      // Spotlight: exactly one incident ticket visible at a time, and only on a
-      // marker sitting comfortably inside the disc (never out at the limb).
+      // Spotlight: exactly one incident ticket visible at a time, on a marker
+      // sitting comfortably inside the disc (never out at the limb) and not
+      // dormant — a dormant marker has no story to tell.
       const isWellPlaced = (id: string) => {
         const p = placements.get(id);
-        return !!p && p.alpha >= 1 && p.bx > boxW * 0.18 && p.bx < boxW * 0.82;
+        return (
+          !!p && p.alpha >= 1 && p.bx > boxW * 0.18 && p.bx < boxW * 0.82 && p.phase !== 'idle'
+        );
       };
 
       if (now >= nextSpotlightAt) {
@@ -538,73 +699,102 @@ export default function LoginAnimation() {
                 'inset 8px -8px 42px rgba(0,0,0,0.7), inset -5px 5px 34px rgba(186,230,253,0.35)',
             }}
           />
-          {/* Radar sweep — a slow rotating scan beam, reinforcing "under watch" */}
-          <div
-            className="absolute inset-0 rounded-full opacity-60 mix-blend-screen animate-[spin_16s_linear_infinite]"
-            style={{
-              background:
-                'conic-gradient(from 0deg, transparent 0deg, rgba(56,189,248,0.4) 5deg, transparent 30deg, transparent 360deg)',
-            }}
-          />
-
           {/* Incident markers — pinned to map coordinates, so they ride the
               surface as it rotates and dissolve at the limb. */}
           {INCIDENT_MARKERS.map(m => (
             <div
               key={m.id}
-              ref={el => registerNode(m.id, 'marker', el)}
+              ref={el => registerMarker(m.id, el)}
               className="absolute top-0 left-0 opacity-0"
               style={{ willChange: 'transform, opacity' }}
             >
-              {/* expanding "detected" ping */}
+              {/* "just arrived" ping, fired at the start of the triggered phase */}
               <span
-                className="absolute rounded-full bg-red-500"
-                style={{
-                  left: -9,
-                  top: -9,
-                  width: 18,
-                  height: 18,
-                  animation: 'incident-ring 9s ease-out infinite',
-                  animationDelay: m.pulseDelay,
-                }}
+                data-role="ping"
+                className="absolute rounded-full bg-red-500 opacity-0"
+                style={{ left: -9, top: -9, width: 18, height: 18 }}
               />
-              {/* the marker dot, cycling OPEN -> ACKNOWLEDGED -> RESOLVED */}
+
+              {/* SLA ring — depletes while a clock is running on this incident */}
+              <svg
+                className="absolute pointer-events-none"
+                width="22"
+                height="22"
+                style={{ left: -11, top: -11, transform: 'rotate(-90deg)' }}
+                aria-hidden="true"
+              >
+                <circle
+                  data-role="ring"
+                  cx="11"
+                  cy="11"
+                  r={SLA_RING_RADIUS}
+                  fill="none"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeDasharray={SLA_RING_CIRCUMFERENCE}
+                  strokeDashoffset={0}
+                  className="opacity-0"
+                />
+              </svg>
+
+              {/* the marker dot — colour is driven by the lifecycle phase */}
               <span
+                data-role="dot"
                 className="absolute rounded-full"
-                style={{
-                  left: -3,
-                  top: -3,
-                  width: 6,
-                  height: 6,
-                  animation: 'incident-pulse 9s ease-in-out infinite',
-                  animationDelay: m.pulseDelay,
-                }}
+                style={{ left: -3, top: -3, width: 6, height: 6, backgroundColor: '#475569' }}
               />
 
               {/* Ticket callout — tracks its marker; only one is shown at a time */}
               <div
-                ref={el => registerNode(m.id, 'label', el)}
-                className="absolute whitespace-nowrap rounded-md border border-white/10 bg-[#0a0e18]/95 px-2.5 py-1.5 shadow-lg opacity-0"
+                data-role="label"
+                className="absolute whitespace-nowrap rounded border border-white/10 bg-[#0a0e18]/95 px-2 py-1 shadow-lg opacity-0"
                 style={{
                   left: 0,
-                  bottom: 14,
+                  bottom: 16,
                   transform: 'translateX(-50%)',
                   transition: 'opacity 600ms ease',
                 }}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-mono font-semibold text-white leading-none">
+                    {m.id}
+                  </span>
+                  {/* lifecycle as three dots: passed / current / upcoming */}
+                  <span className="flex items-center gap-[3px]">
+                    <span
+                      data-stage
+                      data-rank="0"
+                      className="block h-[3px] w-[3px] rounded-full transition-transform"
+                      style={{ backgroundColor: '#334155' }}
+                    />
+                    <span
+                      data-stage
+                      data-rank="1"
+                      className="block h-[3px] w-[3px] rounded-full transition-transform"
+                      style={{ backgroundColor: '#334155' }}
+                    />
+                    <span
+                      data-stage
+                      data-rank="2"
+                      className="block h-[3px] w-[3px] rounded-full transition-transform"
+                      style={{ backgroundColor: '#334155' }}
+                    />
+                  </span>
                   <span
-                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: m.color }}
-                  />
-                  <span className="text-[10px] font-mono font-semibold text-white">{m.id}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3 mt-0.5">
-                  <span className="text-[9px] text-slate-400">{m.service}</span>
-                  <span className="text-[9px] font-semibold" style={{ color: m.color }}>
-                    {m.status}
+                    data-role="clock"
+                    className="text-[9px] font-mono tabular-nums font-semibold leading-none ml-auto"
+                  >
+                    00:00
                   </span>
                 </div>
+                <div className="text-[8px] leading-none mt-1 text-slate-500">
+                  {m.service}
+                  <span className="mx-1 text-slate-700">·</span>
+                  <span data-role="responder" className="text-slate-400">
+                    Paging on-call…
+                  </span>
+                </div>
+
                 <div
                   className="absolute left-1/2 top-full -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent"
                   style={{ borderTopColor: '#0a0e18' }}

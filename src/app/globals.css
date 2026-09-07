@@ -404,44 +404,10 @@ textarea:focus-visible {
   }
 }
 
-/* Login page — incident lifecycle markers on the globe (OPEN -> ACKNOWLEDGED -> RESOLVED -> idle) */
-@keyframes incident-pulse {
-  0%,
-  20% {
-    background-color: #ef4444;
-    box-shadow: 0 0 8px 1px rgba(239, 68, 68, 0.7);
-  }
-  24%,
-  50% {
-    background-color: #f59e0b;
-    box-shadow: 0 0 6px 1px rgba(245, 158, 11, 0.6);
-  }
-  54%,
-  78% {
-    background-color: #10b981;
-    box-shadow: 0 0 6px 1px rgba(16, 185, 129, 0.6);
-  }
-  85%,
-  100% {
-    background-color: #475569;
-    box-shadow: none;
-  }
-}
-
-@keyframes incident-ring {
-  0% {
-    transform: scale(0.5);
-    opacity: 0.7;
-  }
-  18% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-}
+/* Login page — the incident lifecycle (colour, arrival ping, SLA ring, clock,
+   pipeline stage and responder line) is computed in LoginAnimation.tsx from
+   the same clock that rotates the globe, so a ticket can never disagree with
+   the marker it points at. */
 
 /* Login page — occasional shooting star streaking across the starfield */
 @keyframes shooting-star {
