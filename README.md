@@ -40,6 +40,19 @@ _From alert ingestion and on-call routing through response, customer communicati
 >
 > _v1.2 added Slack ChatOps incident war rooms —
 > [setup guide](https://opsknight.com/docs/v1.4/integrations/communication/slack-chatops)._
+>
+> ### ⚠️ v1.4.0 hotfix image
+>
+> A Prisma/PostgreSQL advisory-lock compatibility issue was fixed without mutating
+> the original `1.4.0` image. Affected v1.4 deployments should use:
+>
+> ```bash
+> docker pull ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
+> ```
+>
+> See [`HOTFIX-v1.4.0.md`](HOTFIX-v1.4.0.md) for Compose, Kubernetes, Helm,
+> upgrade, verification, and rollback instructions. Do not use `latest` for an
+> affected v1.4 installation.
 
 ---
 
