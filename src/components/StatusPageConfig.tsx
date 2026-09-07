@@ -17,7 +17,11 @@ import StatusPageWebhooksSettings from '@/components/status-page/StatusPageWebho
 import StatusPageSubscribers from '@/components/status-page/StatusPageSubscribers';
 import StatusPageEmailConfig from '@/components/status-page/StatusPageEmailConfig';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { STATUS_PAGE_FONTS, STATUS_PAGE_COLOR_PRESETS, isDarkHex } from '@/lib/status-page-theme';
+import {
+  STATUS_PAGE_FONTS,
+  STATUS_PAGE_COLOR_PRESETS,
+  computeStatusPageTheme,
+} from '@/lib/status-page-theme';
 
 type StatusPageConfigProps = {
   statusPage: {
@@ -937,6 +941,13 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     uptimeExcellentThreshold: formData.uptimeExcellentThreshold,
     uptimeGoodThreshold: formData.uptimeGoodThreshold,
   };
+  const effectiveColorTheme = computeStatusPageTheme({
+    primaryColor: formData.primaryColor,
+    backgroundColor: formData.backgroundColor,
+    textColor: formData.textColor,
+  });
+  const textContrastAdjusted =
+    effectiveColorTheme.textColor.toLowerCase() !== formData.textColor.toLowerCase();
   const previewMaxWidth =
     formData.layout === 'wide' ? '1600px' : formData.layout === 'compact' ? '900px' : '1280px';
 
@@ -2092,8 +2103,20 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             marginBottom: 'var(--spacing-4)',
                           }}
                         >
-                          Color Scheme
+                          Color theme
                         </h2>
+
+                        <p
+                          style={{
+                            margin: '-0.5rem 0 var(--spacing-4)',
+                            color: 'var(--text-muted)',
+                            fontSize: 'var(--font-size-sm)',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          Start with an accessible preset, then adjust individual brand colors if
+                          needed. The preview uses the same color engine as the public page.
+                        </p>
 
                         {/* Quick Presets */}
                         <div style={{ marginBottom: 'var(--spacing-5)' }}>
@@ -2105,7 +2128,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                               fontWeight: '600',
                             }}
                           >
-                            Curated Theme Palettes
+                            Theme presets
                           </label>
                           <div
                             style={{
@@ -2187,55 +2210,15 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                           </div>
                         </div>
 
-                        {/* Quick Contrast Actions */}
-                        <div
+                        <h3
                           style={{
-                            display: 'flex',
-                            gap: 'var(--spacing-2)',
-                            marginBottom: 'var(--spacing-5)',
-                            flexWrap: 'wrap',
+                            margin: '0 0 var(--spacing-3)',
+                            fontSize: 'var(--font-size-sm)',
+                            fontWeight: '600',
                           }}
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData({
-                                ...formData,
-                                backgroundColor: '#ffffff',
-                                textColor: '#111827',
-                              })
-                            }
-                            className="status-page-button"
-                          >
-                            Light theme defaults
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData({
-                                ...formData,
-                                backgroundColor: '#0f172a',
-                                textColor: '#f8fafc',
-                              })
-                            }
-                            className="status-page-button"
-                          >
-                            Dark theme defaults
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const isDark = isDarkHex(formData.backgroundColor);
-                              setFormData({
-                                ...formData,
-                                textColor: isDark ? '#f8fafc' : '#111827',
-                              });
-                            }}
-                            className="status-page-button"
-                          >
-                            Auto-pair text contrast
-                          </button>
-                        </div>
+                          Custom colors
+                        </h3>
 
                         <div
                           style={{
@@ -2358,6 +2341,24 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                               />
                             </div>
                           </div>
+                        </div>
+
+                        <div
+                          role="status"
+                          style={{
+                            marginTop: 'var(--spacing-4)',
+                            padding: 'var(--spacing-3)',
+                            border: '1px solid #dbeafe',
+                            borderRadius: 'var(--radius-md)',
+                            background: '#eff6ff',
+                            color: '#1e3a8a',
+                            fontSize: 'var(--font-size-xs)',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {textContrastAdjusted
+                            ? `Readable contrast applied: public text will render as ${effectiveColorTheme.textColor}.`
+                            : 'Contrast check passed. These colors will render unchanged on the public page.'}
                         </div>
                       </div>
                     </Card>
