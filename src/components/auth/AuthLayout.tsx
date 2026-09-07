@@ -8,43 +8,54 @@ import { cn } from '@/lib/utils';
 interface AuthLayoutProps {
   children: React.ReactNode;
   showAnimation?: boolean;
+  /** Passed through on successful auth so the globe settles to "all resolved". */
+  isSuccess?: boolean;
 }
 
-export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) {
+export function AuthLayout({ children, showAnimation = true, isSuccess = false }: AuthLayoutProps) {
   return (
     <div className="relative min-h-[100dvh] lg:h-[100dvh] w-full overflow-hidden bg-[#06080b] font-sans selection:bg-red-500/20">
-      <div className="flex min-h-[100dvh] lg:h-full w-full">
-        {/* Left Side: Earth Globe + Sentinel Animation Showcase */}
+      <div className="flex flex-col lg:flex-row min-h-[100dvh] lg:h-full w-full">
+        {/* Left Side: Earth Globe + Sentinel Animation Showcase (desktop) */}
         {showAnimation && (
           <section className="hidden lg:flex lg:w-1/2 h-full relative overflow-hidden border-r border-[#1a202c]">
-            <LoginAnimation />
+            <LoginAnimation resolved={isSuccess} />
           </section>
+        )}
+
+        {/* Small screens get a compact planetary strip instead of nothing —
+            the full showcase assumes a tall panel it will never have here. */}
+        {showAnimation && (
+          <div className="lg:hidden relative w-full h-[164px] shrink-0 overflow-hidden border-b border-[#1a202c]">
+            <LoginAnimation variant="banner" resolved={isSuccess} />
+          </div>
         )}
 
         {/* Right Side: Clean Auth Container with Dark Mode Support */}
         <section
           className={cn(
-            'flex flex-col justify-between w-full bg-background text-foreground overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 transition-colors duration-200',
+            'flex flex-col justify-between flex-1 w-full bg-background text-foreground overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 transition-colors duration-200',
             showAnimation ? 'lg:w-1/2' : 'w-full'
           )}
         >
-          {/* Top spacer / align */}
-          <div className="w-full flex items-center justify-between py-2">
-            {/* If on mobile, show brand badge */}
-            <div className="flex lg:hidden items-center gap-2">
-              <Image
-                src="/logo.png"
-                alt="OpsKnight"
-                width={28}
-                height={28}
-                className="h-7 w-7 object-contain"
-                unoptimized
-              />
-              <span className="font-extrabold text-lg tracking-tight text-slate-950 dark:text-white">
-                OpsKnight
-              </span>
+          {/* Brand badge — only needed when there's no banner above to carry it */}
+          {!showAnimation && (
+            <div className="w-full flex items-center justify-between py-2">
+              <div className="flex lg:hidden items-center gap-2">
+                <Image
+                  src="/logo.png"
+                  alt="OpsKnight"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 object-contain"
+                  unoptimized
+                />
+                <span className="font-extrabold text-lg tracking-tight text-slate-950 dark:text-white">
+                  OpsKnight
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Centered Auth Card */}
           <div className="w-full flex items-center justify-center my-auto">{children}</div>

@@ -138,7 +138,7 @@ export default function LoginClient({
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout isSuccess={isSuccess}>
       <AuthCard isSuccess={isSuccess}>
         {/* Brand Header */}
         <div className="text-center mb-8">

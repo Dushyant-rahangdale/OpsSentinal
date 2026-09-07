@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 // Deterministic pseudo-random star field — seeded so the server-rendered and
 // hydrated client markup match exactly (no Math.random() during render).
@@ -54,6 +55,22 @@ const LIFECYCLE_S = 36;
 const TRIGGERED_UNTIL_S = 9;
 const ACKNOWLEDGED_UNTIL_S = 22;
 const RESOLVED_UNTIL_S = 30; // 30 -> 36 is idle, then a new incident arrives
+
+// Shared geometry for the scrolling texture strips: one tile wider than the
+// globe and starting a tile to the left, so a composited translate of up to
+// TILE_W always keeps the disc covered. Vertical placement (and therefore the
+// '0 4%' background-position) is unchanged from a plain inset-0 layer because
+// the height still matches the globe box.
+const STRIP_GEOMETRY: React.CSSProperties = {
+  top: 0,
+  height: '100%',
+  left: `${-TILE_W}px`,
+  width: `calc(100% + ${TILE_W}px)`,
+  backgroundRepeat: 'repeat-x',
+  backgroundSize: '800px 400px',
+  backgroundPosition: '0 4%',
+  willChange: 'transform',
+};
 
 // SLA ring drawn around each marker (r=8 in a 22x22 box).
 const SLA_RING_RADIUS = 8;
@@ -175,8 +192,32 @@ const NETWORK_ROUTES: NetworkRoute[] = [
   { id: 'route-ny-sp', fromId: 'INC-2481', toId: 'INC-7215', color: '#f59e0b' }, // New York -> São Paulo
 ];
 
-export default function LoginAnimation() {
+type LoginAnimationProps = {
+  /**
+   * 'panel' is the full-height desktop showcase. 'banner' is the short,
+   * wide strip used above the form on small screens, where there is no room
+   * for the tagline or the incident tickets.
+   */
+  variant?: 'panel' | 'banner';
+  /**
+   * Set once the user authenticates: every incident settles to resolved and
+   * the routes turn green — the product's promise, in half a second.
+   */
+  resolved?: boolean;
+};
+
+export default function LoginAnimation({
+  variant = 'panel',
+  resolved = false,
+}: LoginAnimationProps) {
+  const isBanner = variant === 'banner';
   const globeRef = useRef<HTMLDivElement | null>(null);
+  // Mirrored into a ref so the rAF loop always sees the latest value without
+  // having to tear down and re-create the loop.
+  const resolvedRef = useRef(resolved);
+  useEffect(() => {
+    resolvedRef.current = resolved;
+  }, [resolved]);
   const continentsRef = useRef<HTMLDivElement | null>(null);
   const lightsRef = useRef<HTMLDivElement | null>(null);
   const cloudsRef = useRef<HTMLDivElement | null>(null);
@@ -237,12 +278,28 @@ export default function LoginAnimation() {
     });
     resizeObserver.observe(globe);
 
+    // Each texture strip is one tile wider than the globe and starts shifted a
+    // full tile to the left, so translating right by up to TILE_W always keeps
+    // the disc covered. Transforms are composited, so this costs no repaint —
+    // unlike writing background-position every frame across four large layers.
+    const scrollStrip = (el: HTMLDivElement | null, offset: number) => {
+      if (!el) return;
+      el.style.transform = `translate3d(${offset % TILE_W}px, 0, 0)`;
+    };
+
     let rafId = 0;
     let startTs = 0;
     let spotlightId: string | null = null;
     let nextSpotlightAt = 0;
 
     const frame = (now: number) => {
+      // Hidden (e.g. the desktop panel while on a phone) — nothing to lay out,
+      // and dividing by a zero-width box would produce NaN positions.
+      if (boxW <= 0) {
+        if (!prefersReducedMotion) rafId = requestAnimationFrame(frame);
+        return;
+      }
+
       if (!startTs) startTs = now;
       // Under reduced motion we render a single frozen frame. Use a non-zero
       // pseudo-time so the globe still shows a believable mix of lifecycle
@@ -253,13 +310,11 @@ export default function LoginAnimation() {
       const surfaceOffset = (elapsed / CONTINENT_PERIOD_S) * TILE_W;
       const cloudOffset = (elapsed / CLOUD_PERIOD_S) * TILE_W;
 
-      if (continentsRef.current)
-        continentsRef.current.style.backgroundPositionX = `${surfaceOffset}px`;
+      scrollStrip(continentsRef.current, surfaceOffset);
       // Lights share the surface offset exactly — they must stay on their cities.
-      if (lightsRef.current) lightsRef.current.style.backgroundPositionX = `${surfaceOffset}px`;
-      if (cloudsRef.current) cloudsRef.current.style.backgroundPositionX = `${cloudOffset}px`;
-      if (cloudShadowRef.current)
-        cloudShadowRef.current.style.backgroundPositionX = `${cloudOffset}px`;
+      scrollStrip(lightsRef.current, surfaceOffset);
+      scrollStrip(cloudsRef.current, cloudOffset);
+      scrollStrip(cloudShadowRef.current, cloudOffset);
 
       const radius = boxW / 2;
       const centreX = boxW / 2;
@@ -280,9 +335,14 @@ export default function LoginAnimation() {
           alpha = Math.max(0, Math.min(1, (radius - dist) / (radius * 0.14)));
         }
 
-        // Where this incident is in its lifecycle right now.
+        // Where this incident is in its lifecycle right now. Once the user is
+        // authenticated we settle every incident to resolved — "you're in,
+        // everything is handled".
         const localS = (elapsed + m.phaseOffsetS) % LIFECYCLE_S;
-        const { phase, phaseProgress } = phaseAt(localS);
+        const natural = phaseAt(localS);
+        const allClear = resolvedRef.current;
+        const phase: Phase = allClear ? 'resolved' : natural.phase;
+        const phaseProgress = allClear ? 1 : natural.phaseProgress;
         const colour = PHASE_COLOR.get(phase) ?? IDLE_COLOR;
 
         placements.set(m.id, { bx, by, alpha, phase });
@@ -423,7 +483,12 @@ export default function LoginAnimation() {
             'd',
             `M ${p1.bx.toFixed(1)},${p1.by.toFixed(1)} Q ${cpx.toFixed(1)},${cpy.toFixed(1)} ${p2.bx.toFixed(1)},${p2.by.toFixed(1)}`
           );
-          pathEl.style.opacity = String(routeAlpha * 0.75);
+          // On successful sign-in every route reads "all clear".
+          const allClear = resolvedRef.current;
+          const routeColour = allClear ? '#10b981' : route.color;
+          pathEl.style.stroke = routeColour;
+          packetEl.style.fill = routeColour;
+          pathEl.style.opacity = String(routeAlpha * (allClear ? 1 : 0.75));
 
           // Animated pulse packet bead traveling along the curve
           const speed = 0.0007;
@@ -497,8 +562,14 @@ export default function LoginAnimation() {
       {/* Soft depth vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(59,70,130,0.22),transparent_60%)]" />
 
-      {/* Top brand header */}
-      <div className="relative z-20 flex items-center justify-between p-8 lg:p-10 pb-0">
+      {/* Top brand header — in banner mode the form below already shows the
+          brand, so keep the strip pure imagery. */}
+      <div
+        className={cn(
+          'relative z-20 flex items-center justify-between p-8 lg:p-10 pb-0',
+          isBanner && 'hidden'
+        )}
+      >
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-xl bg-red-950/50 border border-red-500/30 flex items-center justify-center p-1 shadow-[0_0_12px_rgba(220,38,38,0.25)]">
             <Image
@@ -526,12 +597,15 @@ export default function LoginAnimation() {
         </div>
       </div>
 
-      {/* Earth + orbit, anchored toward the bottom so it reads as a planetary horizon */}
+      {/* Earth + orbit, anchored toward the bottom so it reads as a planetary
+          horizon. Hidden from assistive tech: the incident tickets are
+          illustrative sample data, not real content to announce. */}
       <div
         className="absolute left-1/2 z-10 pointer-events-none"
+        aria-hidden="true"
         style={{
-          bottom: '-46%',
-          width: 'clamp(520px, 62vw, 860px)',
+          bottom: isBanner ? '-150%' : '-46%',
+          width: isBanner ? 'min(1400px, 190vw)' : 'clamp(520px, 62vw, 860px)',
           aspectRatio: '1 / 1',
           transform: 'translateX(-50%)',
         }}
@@ -582,64 +656,57 @@ export default function LoginAnimation() {
                 'radial-gradient(circle at 35% 30%, #175472 0%, #0c334b 35%, #071e30 65%, #030c16 100%)',
             }}
           />
-          {/* Rotating continents strip — offset driven by the shared clock */}
+          {/* Rotating continents strip. Each texture layer is one tile wider
+              than the globe and starts a tile to the left, so it can be
+              scrolled with a composited transform instead of repainting
+              background-position every frame. */}
           <div
             ref={continentsRef}
-            className="absolute inset-0 opacity-90 pointer-events-none"
-            style={{
-              backgroundImage: CONTINENTS_IMG_URL,
-              backgroundRepeat: 'repeat-x',
-              backgroundSize: '800px 400px',
-              backgroundPosition: '0 4%',
-              willChange: 'background-position',
-              transform: 'translateZ(0)',
-            }}
+            className="absolute opacity-90 pointer-events-none"
+            style={{ ...STRIP_GEOMETRY, backgroundImage: CONTINENTS_IMG_URL }}
           />
-          {/* City lights — same offset as the land so they stay on their cities,
-              masked to reveal only on the night side of the terminator. */}
+          {/* City lights — same offset as the land so they stay on their cities.
+              The night-side mask lives on a wrapper that matches the globe box,
+              because its percentages would otherwise resolve against the much
+              wider scrolling strip. */}
           <div
-            ref={lightsRef}
-            className="absolute inset-0 pointer-events-none mix-blend-screen"
+            className="absolute inset-0 overflow-hidden pointer-events-none mix-blend-screen"
             style={{
-              backgroundImage: CITY_LIGHTS_IMG_URL,
-              backgroundRepeat: 'repeat-x',
-              backgroundSize: '800px 400px',
-              backgroundPosition: '0 4%',
               WebkitMaskImage:
                 'radial-gradient(circle at 32% 28%, transparent 42%, rgba(0,0,0,0.5) 64%, #000 84%)',
               maskImage:
                 'radial-gradient(circle at 32% 28%, transparent 42%, rgba(0,0,0,0.5) 64%, #000 84%)',
-              filter: 'drop-shadow(0 0 2px rgba(255,190,120,0.85))',
-              willChange: 'background-position',
-              transform: 'translateZ(0)',
             }}
-          />
-          {/* Cloud altitude shadow on terrain & ocean (matching sun angle from top-left) */}
+          >
+            <div
+              ref={lightsRef}
+              className="absolute"
+              style={{
+                ...STRIP_GEOMETRY,
+                backgroundImage: CITY_LIGHTS_IMG_URL,
+                filter: 'drop-shadow(0 0 2px rgba(255,190,120,0.85))',
+              }}
+            />
+          </div>
+          {/* Cloud altitude shadow on terrain & ocean (sun angle from top-left).
+              The 2.5/3.5px offset is baked into the strip's position so the
+              transform stays free for scrolling. */}
           <div
             ref={cloudShadowRef}
-            className="absolute inset-0 opacity-25 pointer-events-none mix-blend-multiply"
+            className="absolute opacity-25 pointer-events-none mix-blend-multiply"
             style={{
+              ...STRIP_GEOMETRY,
+              left: `calc(${-TILE_W}px + 2.5px)`,
+              top: '3.5px',
               backgroundImage: CLOUDS_IMG_URL,
-              backgroundRepeat: 'repeat-x',
-              backgroundSize: '800px 400px',
-              backgroundPosition: '0 4%',
-              transform: 'translate(2.5px, 3.5px)',
               filter: 'brightness(0) blur(2px)',
-              willChange: 'background-position',
             }}
           />
           {/* NASA Photographic Satellite Cloud Systems */}
           <div
             ref={cloudsRef}
-            className="absolute inset-0 opacity-55 mix-blend-screen pointer-events-none"
-            style={{
-              backgroundImage: CLOUDS_IMG_URL,
-              backgroundRepeat: 'repeat-x',
-              backgroundSize: '800px 400px',
-              backgroundPosition: '0 4%',
-              willChange: 'background-position',
-              transform: 'translateZ(0)',
-            }}
+            className="absolute opacity-55 mix-blend-screen pointer-events-none"
+            style={{ ...STRIP_GEOMETRY, backgroundImage: CLOUDS_IMG_URL }}
           />
           {/* Dynamic rotating network routes — locked to cities as the Earth spins */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none mix-blend-screen overflow-visible">
@@ -744,10 +811,15 @@ export default function LoginAnimation() {
                 style={{ left: -3, top: -3, width: 6, height: 6, backgroundColor: '#475569' }}
               />
 
-              {/* Ticket callout — tracks its marker; only one is shown at a time */}
+              {/* Ticket callout — tracks its marker; only one is shown at a
+                  time. Omitted in banner mode: the strip is too short to give
+                  a ticket room without covering the planet. */}
               <div
                 data-role="label"
-                className="absolute whitespace-nowrap rounded border border-white/10 bg-[#0a0e18]/95 px-2 py-1 shadow-lg opacity-0"
+                className={cn(
+                  'absolute whitespace-nowrap rounded border border-white/10 bg-[#0a0e18]/95 px-2 py-1 shadow-lg opacity-0',
+                  isBanner && 'hidden'
+                )}
                 style={{
                   left: 0,
                   bottom: 16,
@@ -806,12 +878,17 @@ export default function LoginAnimation() {
       </div>
 
       {/* Bottom tagline */}
-      <div className="absolute inset-x-0 bottom-0 z-20 p-8 lg:p-12 pt-24 bg-gradient-to-t from-[#04060d] via-[#04060d]/85 to-transparent">
+      <div
+        className={cn(
+          'absolute inset-x-0 bottom-0 z-20 p-8 lg:p-12 pt-24 bg-gradient-to-t from-[#04060d] via-[#04060d]/85 to-transparent',
+          isBanner && 'hidden'
+        )}
+      >
         <div className="w-7 h-[2px] bg-red-600 mb-3" />
         <h2 className="text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-[1.2]">
-          On watch when you{' '}
+          You are not{' '}
           <span className="text-red-500 italic font-serif text-[38px] lg:text-[46px] font-normal">
-            need it most.
+            the only one awake.
           </span>
         </h2>
         <p className="text-xs lg:text-sm text-slate-400 mt-2 max-w-sm leading-relaxed">
