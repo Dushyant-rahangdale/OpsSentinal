@@ -17,7 +17,7 @@ export interface IncidentListItem {
   slaResolveTargetMs?: number | null;
   slaTargetSource?: string | null;
   slaTargetCapturedAt?: Date | null;
-  slaPausedMs?: bigint | number;
+  slaPausedMs: bigint | number;
   slaPauseStartedAt?: Date | null;
   slaAckElapsedMs?: bigint | number | null;
   slaResolveElapsedMs?: bigint | number | null;

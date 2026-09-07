@@ -8,15 +8,18 @@ import {
 } from '@/lib/incident-sla/state';
 
 /** Accept both RSC Dates and dates serialized by JSON list endpoints. */
-export type IncidentSlaClientInput = Omit<
-  IncidentSlaProjectionInput,
-  'createdAt' | 'acknowledgedAt' | 'resolvedAt' | 'slaPauseStartedAt' | 'slaTargetCapturedAt'
+export type IncidentSlaClientInput = Partial<
+  Omit<
+    IncidentSlaProjectionInput,
+    'createdAt' | 'acknowledgedAt' | 'resolvedAt' | 'slaPauseStartedAt' | 'slaTargetCapturedAt'
+  >
 > & {
   createdAt: Date | string;
   acknowledgedAt: Date | string | null;
   resolvedAt: Date | string | null;
   slaPauseStartedAt: Date | string | null;
   slaTargetCapturedAt: Date | string | null;
+  slaPausedMs?: bigint | number;
 };
 
 const asDate = (value: Date | string) => (value instanceof Date ? value : new Date(value));
@@ -27,11 +30,18 @@ export function normalizeIncidentSlaInput(
 ): IncidentSlaProjectionInput {
   return {
     ...input,
+    status: input.status ?? 'OPEN',
     createdAt: asDate(input.createdAt),
     acknowledgedAt: nullableDate(input.acknowledgedAt),
     resolvedAt: nullableDate(input.resolvedAt),
     slaPauseStartedAt: nullableDate(input.slaPauseStartedAt),
     slaTargetCapturedAt: nullableDate(input.slaTargetCapturedAt),
+    slaPausedMs: input.slaPausedMs ?? 0,
+    slaAckTargetMs: input.slaAckTargetMs ?? null,
+    slaResolveTargetMs: input.slaResolveTargetMs ?? null,
+    slaTargetSource: input.slaTargetSource ?? null,
+    slaAckElapsedMs: input.slaAckElapsedMs ?? null,
+    slaResolveElapsedMs: input.slaResolveElapsedMs ?? null,
   };
 }
 
