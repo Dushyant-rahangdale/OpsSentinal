@@ -6,6 +6,7 @@ import { assertAdmin } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 import { SettingsPageHeader } from '@/components/settings/layout/SettingsPageHeader';
 import { StatusPageManager } from '@/components/status-page/StatusPageManager';
+import { getStatusPagePublicUrl } from '@/lib/status-page-url';
 
 export default async function StatusPagesControlCenter() {
   const session = await getServerSession(await getAuthOptions());
@@ -27,7 +28,12 @@ export default async function StatusPagesControlCenter() {
       customDomain: true,
       subdomain: true,
       updatedAt: true,
-      _count: { select: { services: true, subscriptions: true } },
+      _count: {
+        select: {
+          services: { where: { showOnPage: true } },
+          subscriptions: { where: { verified: true, unsubscribedAt: null } },
+        },
+      },
     },
     orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
   });
@@ -54,9 +60,7 @@ export default async function StatusPagesControlCenter() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {pages.map(page => {
-            const publicHref = page.customDomain
-              ? `https://${page.customDomain}`
-              : `/status${page.slug ? `/${page.slug}` : ''}`;
+            const publicHref = getStatusPagePublicUrl(page);
             return (
               <article key={page.id} className="rounded-lg border bg-white p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
@@ -78,8 +82,8 @@ export default async function StatusPagesControlCenter() {
                       {page.customDomain || page.subdomain || publicHref}
                     </p>
                     <p className="mt-3 text-sm text-gray-600">
-                      {page._count.services} services · {page._count.subscriptions} subscribers ·{' '}
-                      {page.privacyMode || 'PUBLIC'}
+                      {page._count.services} visible services · {page._count.subscriptions} active
+                      subscribers · {page.privacyMode || 'PUBLIC'}
                     </p>
                   </div>
                 </div>

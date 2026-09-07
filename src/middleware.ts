@@ -3,6 +3,11 @@ import { getToken } from 'next-auth/jwt';
 import { logger } from '@/lib/logger';
 import { getNextAuthSecret } from '@/lib/secret-manager';
 import { SESSION_TOKEN_COOKIE_NAME, useSecureCookies } from '@/lib/auth-cookies';
+import { statusDomainRequestHeaders } from '@/lib/status-pages/internal-request';
+import {
+  PRIVATE_STATUS_CACHE_CONTROL,
+  PUBLIC_STATUS_CACHE_CONTROL,
+} from '@/lib/status-pages/cache-policy';
 
 const PUBLIC_PATH_PREFIXES = [
   '/login',
@@ -126,6 +131,7 @@ type StatusDomainConfig = {
     isDefault?: boolean;
     subdomain?: string | null;
     customDomain?: string | null;
+    requireAuth?: boolean;
   }>;
   appHost?: string | null;
 };
@@ -159,9 +165,11 @@ async function fetchStatusDomainConfig(): Promise<StatusDomainConfig | null> {
     try {
       const response = await fetch(`${INTERNAL_API_BASE}/api/status-page/domains`, {
         cache: 'no-store',
-        headers: { 'x-internal-request': 'status-domain-check' },
+        headers: await statusDomainRequestHeaders(),
+        signal: AbortSignal.timeout(2000),
       });
-      const value = response.ok ? ((await response.json()) as StatusDomainConfig) : null;
+      if (!response.ok) throw new Error('Status domain configuration unavailable');
+      const value = (await response.json()) as StatusDomainConfig;
       cachedStatusDomain = {
         value,
         expiresAt: Date.now() + STATUS_DOMAIN_CACHE_TTL * 1000,
@@ -171,10 +179,10 @@ async function fetchStatusDomainConfig(): Promise<StatusDomainConfig | null> {
       // Negative-cache failures for a short window too, so a flapping
       // backend doesn't get hammered by every page hit.
       cachedStatusDomain = {
-        value: null,
+        value: cachedStatusDomain?.value ?? null,
         expiresAt: Date.now() + Math.min(STATUS_DOMAIN_CACHE_TTL, 10) * 1000,
       };
-      return null;
+      return cachedStatusDomain.value;
     } finally {
       inflightStatusDomainFetch = null;
     }
@@ -251,7 +259,6 @@ export default async function middleware(req: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/setup') ||
-    pathname.startsWith('/status') ||
     pathname.startsWith('/logs') ||
     isPublicPath(pathname) ||
     /\.(jpg|jpeg|png|webp|avif|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
@@ -283,6 +290,11 @@ export default async function middleware(req: NextRequest) {
           rewriteResponse.headers.set(key, value);
         });
         rewriteResponse.headers.set('x-request-id', requestId);
+        rewriteResponse.headers.set(
+          'Cache-Control',
+          matchedPage.requireAuth ? PRIVATE_STATUS_CACHE_CONTROL : PUBLIC_STATUS_CACHE_CONTROL
+        );
+        if (matchedPage.requireAuth) rewriteResponse.headers.set('Vary', 'Cookie');
         return rewriteResponse;
       }
     }
@@ -403,8 +415,22 @@ export default async function middleware(req: NextRequest) {
   // headers are safe for public pages too and prevent configuration changes from
   // leaving stale status data at an intermediary.
   if (pathname === '/status' || pathname.startsWith('/status/')) {
-    response.headers.set('Cache-Control', 'private, no-store');
-    response.headers.set('Vary', 'Cookie');
+    const isActionPath =
+      pathname.includes('/verify/') ||
+      pathname.includes('/unsubscribe/') ||
+      pathname.includes('/postmortems/');
+    const slug = pathname.split('/')[2] || null;
+    const statusConfig = isActionPath ? null : await fetchStatusDomainConfig();
+    const page = statusConfig?.pages?.find(candidate =>
+      slug ? candidate.slug === slug : candidate.isDefault
+    );
+    response.headers.set(
+      'Cache-Control',
+      !page || page.requireAuth || isActionPath
+        ? PRIVATE_STATUS_CACHE_CONTROL
+        : PUBLIC_STATUS_CACHE_CONTROL
+    );
+    if (!page || page.requireAuth || isActionPath) response.headers.set('Vary', 'Cookie');
   }
 
   // Check authentication status

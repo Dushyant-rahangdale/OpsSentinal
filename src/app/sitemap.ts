@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import prisma from '@/lib/prisma';
 import { getAppUrl } from '@/lib/app-config';
 import { logger } from '@/lib/logger';
+import { getStatusPagePublicUrl } from '@/lib/status-page-url';
 
 // Generate sitemap dynamically at runtime
 export const dynamic = 'force-dynamic';
@@ -20,13 +21,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Add status page if enabled
   try {
-    const statusPage = await prisma.statusPage.findFirst({
-      where: { enabled: true },
+    const statusPages = await prisma.statusPage.findMany({
+      where: { enabled: true, requireAuth: false, privacyMode: 'PUBLIC' },
+      select: { slug: true, isDefault: true, customDomain: true, subdomain: true, updatedAt: true },
     });
 
-    if (statusPage) {
+    for (const statusPage of statusPages) {
       routes.push({
-        url: `${baseUrl}/status`,
+        url: getStatusPagePublicUrl(statusPage, baseUrl),
         lastModified: statusPage.updatedAt,
         changeFrequency: 'hourly',
         priority: 0.8,

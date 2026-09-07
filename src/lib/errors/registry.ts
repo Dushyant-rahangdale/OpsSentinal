@@ -24,7 +24,8 @@ export const ERROR_REGISTRY = {
   INTERNAL_ERROR: {
     status: 500,
     category: 'internal',
-    userMessage: 'An unexpected error occurred. Please try again. If the problem persists, contact support.',
+    userMessage:
+      'An unexpected error occurred. Please try again. If the problem persists, contact support.',
     action: 'Try again. If the problem continues, contact support.',
     retryable: true,
     exposure: 'internal',
@@ -261,6 +262,14 @@ export const ERROR_REGISTRY = {
     action: 'Refresh the incident and try again.',
     retryable: true,
     exposure: 'public',
+  },
+  STATUS_PAGE_STALE: {
+    status: 409,
+    category: 'conflict',
+    userMessage: 'This status page was updated by another administrator.',
+    action: 'Reload the page and apply your changes again.',
+    retryable: true,
+    exposure: 'authenticated',
   },
   INCIDENT_INVALID_TRANSITION: {
     status: 409,

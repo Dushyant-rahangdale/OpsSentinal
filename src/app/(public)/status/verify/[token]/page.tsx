@@ -1,10 +1,37 @@
 import prisma from '@/lib/prisma';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
 import { statusPageSlugMatches } from '@/lib/status-page-resolver';
+import { hashSubscriptionToken } from '@/lib/status-pages/subscription-tokens';
 
 export const dynamic = 'force-dynamic';
+
+export async function confirmStatusSubscription(form: FormData) {
+  'use server';
+  const input = z
+    .object({ token: z.string().min(1).max(256), slug: z.string().max(80) })
+    .parse({ token: form.get('token'), slug: form.get('slug') || '' });
+  const subscription = await prisma.statusPageSubscription.findFirst({
+    where: { verificationToken: hashSubscriptionToken(input.token), unsubscribedAt: null },
+    include: { statusPage: true },
+  });
+  if (
+    !subscription ||
+    !statusPageSlugMatches(subscription.statusPage.slug, input.slug || undefined)
+  )
+    redirect('/status');
+  await prisma.statusPageSubscription.updateMany({
+    where: {
+      id: subscription.id,
+      verificationToken: hashSubscriptionToken(input.token),
+      unsubscribedAt: null,
+    },
+    data: { verified: true, verificationToken: null },
+  });
+  redirect(getStatusPagePublicUrl(subscription.statusPage));
+}
 
 export default async function VerifySubscriptionPage({
   params,
@@ -21,7 +48,7 @@ export async function renderVerifySubscriptionPage(token: string, expectedSlug?:
 
   try {
     const sub = await prisma.statusPageSubscription.findFirst({
-      where: { verificationToken: token },
+      where: { verificationToken: hashSubscriptionToken(token), unsubscribedAt: null },
       include: {
         statusPage: true,
       },
@@ -33,14 +60,7 @@ export async function renderVerifySubscriptionPage(token: string, expectedSlug?:
       status = 'already_verified';
       subscription = sub;
     } else {
-      // Verify
-      await prisma.statusPageSubscription.update({
-        where: { id: sub.id },
-        data: {
-          verified: true,
-          verificationToken: null,
-        },
-      });
+      // GET only displays confirmation; email scanners cannot verify a subscription.
       status = 'success';
       subscription = sub;
     }
@@ -133,12 +153,22 @@ export async function renderVerifySubscriptionPage(token: string, expectedSlug?:
         >
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Email Verified Successfully
+            Confirm Email Subscription
           </h1>
           <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-            Your email address has been verified. You will now receive email notifications about
-            incidents and status changes for {subscription.statusPage.name}.
+            Confirm that you want to receive email notifications about incidents and status changes
+            for {subscription.statusPage.name}.
           </p>
+          <form action={confirmStatusSubscription}>
+            <input type="hidden" name="token" value={token} />
+            <input type="hidden" name="slug" value={expectedSlug || ''} />
+            <button
+              type="submit"
+              className="rounded bg-blue-600 px-4 py-2 font-semibold text-white"
+            >
+              Confirm subscription
+            </button>
+          </form>
           <a
             href={getStatusPagePublicUrl(subscription.statusPage)}
             style={{

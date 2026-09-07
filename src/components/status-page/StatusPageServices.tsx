@@ -5,6 +5,7 @@ import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
 
 interface Service {
   id: string;
+  description?: string | null;
   name: string;
   status: string;
   region?: string | null;
@@ -325,15 +326,10 @@ export default function StatusPageServices({
       .map(entry => entry.trim())
       .filter(Boolean);
   };
-  // If statusPageServices is empty, show all services
-  // Otherwise, only show configured services
+  // Publication requires an explicit, visible page mapping.
   const visibleServices = useMemo(() => {
     if (statusPageServices.length === 0) {
-      // No services configured, show all services
-      return services.map(service => ({
-        ...service,
-        displayName: service.name,
-      }));
+      return [];
     } else {
       // Show only configured services
       return statusPageServices
@@ -495,6 +491,11 @@ export default function StatusPageServices({
             >
               {service.displayName}
             </div>
+            {privacy.showServiceDescriptions && service.description && (
+              <p className="mb-2 text-sm" style={{ color: 'var(--status-text-muted, #475569)' }}>
+                {service.description}
+              </p>
+            )}
             {(showServiceOwners && privacy.showTeamInformation && service.team?.name) ||
             (showServiceSlaTier && service.slaTier) ? (
               <div

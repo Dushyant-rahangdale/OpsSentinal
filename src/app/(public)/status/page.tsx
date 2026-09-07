@@ -24,6 +24,9 @@ import {
 } from '@/lib/status-page-projection';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
 import type { Prisma } from '@prisma/client';
+import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
+import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import StatusPageSnapshotView from '@/components/status-page/StatusPageSnapshotView';
 
 type PublicStatusPageMapping = Prisma.StatusPageServiceGetPayload<{ include: { service: true } }>;
 
@@ -153,6 +156,17 @@ export async function renderPublicStatusPage(slug?: string) {
     );
   }
 
+  const projected = await getStatusPageSnapshot(statusPage.id);
+  if (projected.snapshot) {
+    return (
+      <StatusPageSnapshotView
+        page={statusPage}
+        snapshot={projected.snapshot}
+        stale={projected.stale}
+      />
+    );
+  }
+
   return renderStatusPage(statusPage);
 }
 
@@ -162,6 +176,7 @@ async function renderStatusPage(statusPage: any) {
   const statusApiPath =
     statusPage.slug && !statusPage.isDefault ? `/api/status/${statusPage.slug}` : '/api/status';
   const visibility = publicStatusVisibility(statusPage);
+  const publicationLimits = statusPagePublicationLimits(statusPage);
   // Active maintenance must never be displaced by newer informational
   // announcements because it directly affects calculated service health.
   statusPage.announcements.sort(
@@ -252,7 +267,7 @@ async function renderStatusPage(statusPage: any) {
   const incidentServiceIds = serviceIds.length > 0 ? serviceIds : services.map(s => s.id);
   const now = new Date();
   const [ninetyDayWindow, thirtyDayWindow] = await Promise.all([
-    getReportingWindowForDays(90, 'incident', now),
+    getReportingWindowForDays(publicationLimits.historyDays, 'incident', now),
     getReportingWindowForDays(30, 'incident', now),
   ]);
   const recentIncidents = visibility.showIncidents
@@ -277,7 +292,7 @@ async function renderStatusPage(statusPage: any) {
           },
         },
         orderBy: { createdAt: 'desc' },
-        take: 50,
+        take: publicationLimits.maxIncidents,
       })
     : [];
 
@@ -493,7 +508,7 @@ async function renderStatusPage(statusPage: any) {
       if (regions.length === 0) return;
       const status = service.status || 'OPERATIONAL';
       const impacted = status !== 'OPERATIONAL' && status !== 'MAINTENANCE';
-      const isMaintenance = activeMaintenanceServiceIds.has(service.id) && status === 'OPERATIONAL';
+      const isMaintenance = status === 'MAINTENANCE';
       const severity = Math.max(
         severityRank[status] ?? 0,
         isMaintenance ? severityRank.MAINTENANCE : 0
@@ -541,7 +556,7 @@ async function renderStatusPage(statusPage: any) {
     '@type': 'Service',
     name: statusPage.name,
     description: branding.metaDescription || `Status page for ${statusPage.name}`,
-    url: `${baseUrl}/status`,
+    url: getStatusPagePublicUrl(statusPage, baseUrl),
     serviceStatus:
       overallStatus === 'operational'
         ? 'https://schema.org/ServiceAvailable'
@@ -707,7 +722,7 @@ async function renderStatusPage(statusPage: any) {
                     <div
                       style={{ fontSize: '0.8125rem', color: 'var(--status-text-muted, #6b7280)' }}
                     >
-                      Last 90 days: {recentIncidents.length}
+                      Last {publicationLimits.historyDays} days: {recentIncidents.length}
                     </div>
                   )}
                 </div>

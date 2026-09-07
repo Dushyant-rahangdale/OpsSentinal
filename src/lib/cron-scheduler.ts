@@ -371,12 +371,15 @@ async function runOnce() {
     const reconciliation = await reconcileEscalations();
     const { reconcileIntegrationControlPlane } = await import('./integrations/reconciliation');
     const integrationReconciliation = await reconcileIntegrationControlPlane();
+    const { reconcileStatusPageSnapshots } = await import('./status-pages/snapshot');
+    const statusPageReconciliation = await reconcileStatusPageSnapshots();
 
     logger.info('[Cron] Critical tasks processed', {
       escalations: { processed: escalationResult.processed, total: escalationResult.total },
       jobs: { processed: jobResult.processed, failed: jobResult.failed, total: jobResult.total },
       escalationRecovery: reconciliation,
       integrationRecovery: integrationReconciliation,
+      statusPageReconciliation,
     });
 
     // Group 2: Secondary tasks (can run in parallel)

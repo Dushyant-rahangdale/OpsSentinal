@@ -9,6 +9,7 @@ import { StatusPageSettingsSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
 import { assertStatusPageNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
+import { externalizeStatusPageLogo } from '@/lib/status-pages/assets';
 
 function statusPageUniqueError(fields: string[]) {
   if (fields.includes('subdomain')) {
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
 
     const {
       id,
+      expectedUpdatedAt,
       name,
       slug,
       organizationName,
@@ -275,8 +277,21 @@ export async function POST(req: NextRequest) {
     if (statusApiRateLimitWindowSec !== undefined)
       updateData.statusApiRateLimitWindowSec = statusApiRateLimitWindowSec;
 
-    await prisma.$transaction(async tx => {
-      await tx.statusPage.update({ where: { id: statusPage.id }, data: updateData });
+    const updated = await prisma.$transaction(async tx => {
+      if (branding && typeof branding === 'object') {
+        updateData.branding = (await externalizeStatusPageLogo(
+          tx,
+          statusPage.id,
+          branding
+        )) as Prisma.InputJsonValue;
+      }
+      const saved = await tx.statusPage.update({
+        where: {
+          id: statusPage.id,
+          updatedAt: expectedUpdatedAt ? new Date(expectedUpdatedAt) : statusPage.updatedAt,
+        },
+        data: updateData,
+      });
 
       // Omitted means leave mappings unchanged; an explicit empty array removes all mappings.
       if (serviceIds !== undefined) {
@@ -296,14 +311,18 @@ export async function POST(req: NextRequest) {
           });
         }
       }
+      return saved;
     });
 
     revalidatePath('/status');
     revalidatePath('/');
 
     logger.info('api.status_page.updated', { statusPageId: statusPage.id });
-    return jsonOk({ success: true }, 200);
+    return jsonOk({ success: true, updatedAt: updated.updatedAt.toISOString() }, 200);
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      return jsonError(new AppError({ code: 'STATUS_PAGE_STALE', cause: error }));
+    }
     const prismaError = prismaToAppError(error, { unique: statusPageUniqueError });
     if (prismaError) return jsonError(prismaError);
     if (isAppError(error)) return jsonError(error);

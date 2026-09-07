@@ -20,7 +20,13 @@ Public publication is fail-closed. An incident must be public, its service must 
 
 Incident and announcement delivery uses durable background work and centralized idempotent notification intents. Subscriber enumeration uses keyset pagination, avoiding an unbounded recipient list in application memory. Terminal job failures remain visible in queue health.
 
-Public JSON uses short shared-cache lifetimes, stale-while-revalidate, and ETags. Authenticated or token-protected responses remain `private, no-store`. Logo responses are size/type bounded and content-addressed with ETags. Use an external CDN or reverse proxy for outage traffic.
+HTML, JSON, and RSS consume a sanitized status-page snapshot. Source mutations mark the snapshot dirty in the same database transaction and a leased projector rebuilds it. A dirty snapshot is never returned to a public renderer: lock contention, projection failure, or a lost revision race falls back to a current fail-closed database projection. This prevents an older public representation from surviving service removal or a `PUBLIC` to `PRIVATE` incident change.
+
+Public responses require successful cache revalidation before every reuse (`s-maxage=0`, `must-revalidate`); authenticated, token-protected, verification, and unsubscribe responses remain `private, no-store`. This deliberately prioritizes immediate disclosure revocation over serving an unverified stale edge object. Logo responses are stored outside page configuration and served as immutable content-addressed assets.
+
+The database-backed read plane does not by itself provide database-outage serving. Deployments that require status delivery during a complete database/origin outage must publish the sanitized projection to an independently operated status origin or CDN and must couple privacy changes to purge/revocation there. Do not enable stale edge serving without that revocation integration.
+
+Custom-domain routing metadata is signed and retained only as a warm-process availability aid. It is never treated as authorization: the selected page still checks current access policy before rendering. The #382 release topology does not contain an independent KV/cache, so cold-isolate database-outage routing remains part of the external serving-store requirement rather than an unsafe in-process promise.
 
 Before a large rollout, certify cross-page isolation, private incidents, disabled mappings, maintenance parity, worker retry, database failover, invalid-token floods, conditional requests, and expected peak public traffic against the production topology.
 
@@ -79,7 +85,7 @@ Use a preset as a starting point, then review every field. Editing an individual
 | **Private**    | Minimal disclosure and authentication-oriented use.                    |
 | **Custom**     | Explicit per-field choices.                                            |
 
-Controls cover incident titles/descriptions/timestamps/urgency/assignees/affected services, service descriptions/regions/owners/SLA tier/team data, custom fields, uptime, recent history, maximum incident count, history days, allowed custom fields, and data-retention hiding.
+Controls cover incident titles, descriptions, timestamps, urgency, affected services, service descriptions, regions, owners, SLA tier and team data, uptime, recent history, maximum incident count, history days, and data-retention hiding. Assignee and custom-field controls are intentionally absent until those fields have a complete fail-closed public projection.
 
 ### Require authentication
 
@@ -111,7 +117,7 @@ The public page shows a limited number of current/recent announcements. Keep the
 
 ## Email subscriptions
 
-When subscriptions are enabled, a reader submits an email address and receives a verification link. Only verified, non-unsubscribed records should be treated as active recipients. Readers can unsubscribe through their unique link.
+When subscriptions are enabled, a reader submits an email address and receives a verification link. Opening the link presents a confirmation action, preventing email scanners from verifying it automatically. Verification and unsubscribe tokens are stored as hashes. Only verified, non-unsubscribed records are active recipients. Public subscription responses do not reveal whether an address was previously subscribed.
 
 ### Configure delivery
 
@@ -212,7 +218,7 @@ The public page can auto-refresh at the configured interval. Readers may still h
 
 ### The page says it is disabled
 
-Enable it in settings and save. If no configuration exists, `/status` attempts to create a default page; a migration error means the database schema is not current. Use the deployment's supported migration process rather than an ad-hoc production schema push.
+Enable it in settings and save. Public requests never create configuration. If no page exists, create a disabled draft under **Settings → Status Pages**, configure it, and publish it. A migration error means the database schema is not current; use the deployment's supported migration process.
 
 ### A service or incident is missing
 

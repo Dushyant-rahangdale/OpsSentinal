@@ -9,6 +9,12 @@ import { publicStatusVisibility } from '@/lib/status-page-public-data';
 import { createHash } from 'node:crypto';
 import { getReportingWindowForDays } from '@/lib/retention-policy';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
+import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
+import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import {
+  PRIVATE_STATUS_CACHE_CONTROL,
+  PUBLIC_STATUS_CACHE_CONTROL,
+} from '@/lib/status-pages/cache-policy';
 
 export function opaqueRssIncidentGuid(
   baseUrl: string,
@@ -73,6 +79,38 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
 
     const visibility = publicStatusVisibility(statusPage);
 
+    const projected = await getStatusPageSnapshot(statusPage.id);
+    if (projected.snapshot) {
+      const snapshot = projected.snapshot;
+      const pageUrl = getStatusPagePublicUrl(statusPage, getBaseUrl());
+      const items = snapshot.incidents
+        .map(incident => {
+          const title = typeof incident.title === 'string' ? incident.title : 'Status update';
+          const status = typeof incident.status === 'string' ? incident.status : 'OPEN';
+          const createdAt = typeof incident.createdAt === 'string' ? incident.createdAt : null;
+          const id =
+            typeof incident.id === 'string'
+              ? incident.id
+              : createHash('sha256').update(JSON.stringify(incident)).digest('hex');
+          const guid = opaqueRssIncidentGuid(pageUrl, statusPage.id, id);
+          return `<item><title>${escapeXml(title)} - ${escapeXml(status)}</title><link>${guid}</link><guid isPermaLink="false">${guid}</guid>${createdAt ? `<pubDate>${new Date(createdAt).toUTCString()}</pubDate>` : ''}<description>${escapeXml(typeof incident.description === 'string' ? incident.description : title)}</description></item>`;
+        })
+        .join('');
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${escapeXml(statusPage.name)} - Status Updates</title><link>${pageUrl}</link><description>Current status and incidents</description>${items}</channel></rss>`,
+        {
+          headers: {
+            'Content-Type': 'application/rss+xml; charset=utf-8',
+            'Cache-Control':
+              statusPage.requireAuth || statusPage.statusApiRequireToken
+                ? PRIVATE_STATUS_CACHE_CONTROL
+                : PUBLIC_STATUS_CACHE_CONTROL,
+            ...(projected.stale ? { Warning: '110 - "Response is stale"' } : {}),
+          },
+        }
+      );
+    }
+
     const serviceIds = statusPage.services.map(sp => sp.serviceId);
 
     const baseUrl = getBaseUrl();
@@ -81,7 +119,8 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
       ? `${baseUrl}/api/status/${encodeURIComponent(slug)}/rss`
       : `${baseUrl}/api/status/rss`;
 
-    const window = await getReportingWindowForDays(30, 'incident');
+    const limits = statusPagePublicationLimits(statusPage);
+    const window = await getReportingWindowForDays(limits.historyDays, 'incident');
     const incidents =
       visibility.showIncidents && serviceIds.length > 0
         ? await prisma.incident.findMany({
@@ -91,7 +130,7 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
               createdAt: { gte: window.start, lte: window.end },
             },
             orderBy: { createdAt: 'desc' },
-            take: 50,
+            take: limits.maxIncidents,
             select: {
               id: true,
               title: true,
@@ -157,8 +196,8 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
         'Content-Type': 'application/rss+xml; charset=utf-8',
         'Cache-Control':
           statusPage.requireAuth || statusPage.statusApiRequireToken
-            ? 'private, no-store'
-            : 'public, s-maxage=30, stale-while-revalidate=300',
+            ? PRIVATE_STATUS_CACHE_CONTROL
+            : PUBLIC_STATUS_CACHE_CONTROL,
       },
     });
   } catch (error: unknown) {

@@ -34,7 +34,6 @@ const DIRECT_RESPONSE_ALLOWLIST = new Set([
   'src/app/api/slack/oauth/route.ts',
   'src/app/api/status-page/domains/route.ts',
   'src/app/api/status-page/logo/[id]/route.ts',
-  'src/app/api/status/create-default/route.ts',
   'src/app/api/status/history/route.ts',
   'src/app/api/status/route.ts',
   'src/app/api/system/vapid-public-key/route.ts',

@@ -36,6 +36,23 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
   }
 
   try {
+    const assetId = new URL(_req.url).searchParams.get('asset');
+    if (assetId) {
+      const assets = await prisma.$queryRaw<Array<{ data: Buffer; contentType: string }>>`
+        SELECT "data", "contentType" FROM "StatusPageAsset"
+        WHERE "id" = ${assetId} AND "statusPageId" = ${statusPageId}
+      `;
+      const asset = assets[0];
+      if (!asset) return new NextResponse(null, { status: 404 });
+      return new NextResponse(new Uint8Array(asset.data), {
+        headers: {
+          'Content-Type': asset.contentType,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'X-Content-Type-Options': 'nosniff',
+          'Content-Security-Policy': "default-src 'none'",
+        },
+      });
+    }
     const statusPage = await prisma.statusPage.findUnique({
       where: { id: statusPageId },
       select: { branding: true },

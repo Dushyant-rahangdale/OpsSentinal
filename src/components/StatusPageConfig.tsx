@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { statusPageSectionPatch } from '@/lib/status-pages/settings-sections';
 import { Card, Button, FormField, Switch, Checkbox } from '@/components/ui';
 import StatusPageLivePreview from '@/components/status-page/StatusPageLivePreview';
 import { useRouter } from 'next/navigation';
@@ -54,6 +55,7 @@ type StatusPageConfigProps = {
     emailProvider?: string | null;
     branding?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
     requireAuth?: boolean;
+    updatedAt?: Date | string;
     privacyMode?: string | null;
     showIncidentDetails?: boolean;
     showIncidentTitles?: boolean;
@@ -687,6 +689,9 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
   const templateFetchRef = useRef<Set<string>>(new Set());
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const [revision, setRevision] = useState(() =>
+    statusPage.updatedAt ? new Date(statusPage.updatedAt).toISOString() : undefined
+  );
 
   // Parse branding JSON
   const branding =
@@ -700,7 +705,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     subdomain: statusPage.subdomain || '',
     customDomain: statusPage.customDomain || '',
     enabled: statusPage.enabled,
-    requireAuth: statusPage.requireAuth ?? false,
     showServices: statusPage.showServices,
     showIncidents: statusPage.showIncidents,
     showMetrics: statusPage.showMetrics,
@@ -871,8 +875,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
       selectedServices.has(service.id) &&
       Boolean(service.region && service.region.trim().length > 0)
   );
-  const previewServiceIds =
-    selectedServiceIds.length > 0 ? selectedServiceIds : allServices.map(service => service.id);
+  const previewServiceIds = selectedServiceIds;
   const previewServices = allServices
     .filter(service => previewServiceIds.includes(service.id))
     .map(service => ({
@@ -978,70 +981,78 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
           showApiLink: formData.showApiLink,
         };
 
-        const response = await fetch('/api/settings/status-page', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: statusPage.id,
-            name: formData.name,
-            slug: formData.slug || null,
-            organizationName: formData.organizationName || null,
-            subdomain: formData.subdomain || null,
-            customDomain: formData.customDomain || null,
-            enabled: formData.enabled,
-            showServices: formData.showServices,
-            showIncidents: formData.showIncidents,
-            showMetrics: formData.showMetrics,
-            showSubscribe: formData.showSubscribe,
-            showServicesByRegion: formData.showServicesByRegion,
-            uptimeExcellentThreshold: formData.uptimeExcellentThreshold,
-            uptimeGoodThreshold: formData.uptimeGoodThreshold,
-            footerText: formData.footerText || null,
-            contactEmail: formData.contactEmail || null,
-            contactUrl: formData.contactUrl || null,
-            branding: brandingData,
-            serviceIds: Array.from(selectedServices),
-            serviceConfigs: serviceConfigs,
-            // Privacy settings
-            privacyMode: privacySettings.privacyMode,
-            showIncidentDetails: privacySettings.showIncidentDetails,
-            showIncidentTitles: privacySettings.showIncidentTitles,
-            showIncidentDescriptions: privacySettings.showIncidentDescriptions,
-            showAffectedServices: privacySettings.showAffectedServices,
-            showIncidentTimestamps: privacySettings.showIncidentTimestamps,
-            showServiceMetrics: privacySettings.showServiceMetrics,
-            showServiceDescriptions: privacySettings.showServiceDescriptions,
-            showServiceRegions: privacySettings.showServiceRegions,
-            showTeamInformation: privacySettings.showTeamInformation,
-            showCustomFields: privacySettings.showCustomFields,
-            showIncidentAssignees: privacySettings.showIncidentAssignees,
-            showIncidentUrgency: privacySettings.showIncidentUrgency,
-            showUptimeHistory: privacySettings.showUptimeHistory,
-            showRecentIncidents: privacySettings.showRecentIncidents,
-            maxIncidentsToShow: privacySettings.maxIncidentsToShow,
-            incidentHistoryDays: privacySettings.incidentHistoryDays,
-            allowedCustomFields: privacySettings.allowedCustomFields,
-            dataRetentionDays: privacySettings.dataRetentionDays,
-            requireAuth: privacySettings.requireAuth,
-            authProvider: privacySettings.authProvider,
-            showServiceOwners: formData.showServiceOwners,
-            showServiceSlaTier: formData.showServiceSlaTier,
-            showChangelog: formData.showChangelog,
-            showRegionHeatmap: formData.showRegionHeatmap,
-            showPostIncidentReview: formData.showPostIncidentReview,
-            enableUptimeExports: formData.enableUptimeExports,
-            statusApiRequireToken: formData.statusApiRequireToken,
-            statusApiRateLimitEnabled: formData.statusApiRateLimitEnabled,
-            statusApiRateLimitMax: formData.statusApiRateLimitMax,
-            statusApiRateLimitWindowSec: formData.statusApiRateLimitWindowSec,
-          }),
-        });
+        const response = await fetch(
+          `/api/settings/status-pages/${encodeURIComponent(statusPage.id)}/${activeSection}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(
+              statusPageSectionPatch(activeSection, {
+                id: statusPage.id,
+                expectedUpdatedAt: revision,
+                name: formData.name,
+                slug: formData.slug || null,
+                organizationName: formData.organizationName || null,
+                subdomain: formData.subdomain || null,
+                customDomain: formData.customDomain || null,
+                enabled: formData.enabled,
+                showServices: formData.showServices,
+                showIncidents: formData.showIncidents,
+                showMetrics: formData.showMetrics,
+                showSubscribe: formData.showSubscribe,
+                showServicesByRegion: formData.showServicesByRegion,
+                uptimeExcellentThreshold: formData.uptimeExcellentThreshold,
+                uptimeGoodThreshold: formData.uptimeGoodThreshold,
+                footerText: formData.footerText || null,
+                contactEmail: formData.contactEmail || null,
+                contactUrl: formData.contactUrl || null,
+                branding: brandingData,
+                serviceIds: Array.from(selectedServices),
+                serviceConfigs: serviceConfigs,
+                // Privacy settings
+                privacyMode: privacySettings.privacyMode,
+                showIncidentDetails: privacySettings.showIncidentDetails,
+                showIncidentTitles: privacySettings.showIncidentTitles,
+                showIncidentDescriptions: privacySettings.showIncidentDescriptions,
+                showAffectedServices: privacySettings.showAffectedServices,
+                showIncidentTimestamps: privacySettings.showIncidentTimestamps,
+                showServiceMetrics: privacySettings.showServiceMetrics,
+                showServiceDescriptions: privacySettings.showServiceDescriptions,
+                showServiceRegions: privacySettings.showServiceRegions,
+                showTeamInformation: privacySettings.showTeamInformation,
+                showCustomFields: privacySettings.showCustomFields,
+                showIncidentAssignees: privacySettings.showIncidentAssignees,
+                showIncidentUrgency: privacySettings.showIncidentUrgency,
+                showUptimeHistory: privacySettings.showUptimeHistory,
+                showRecentIncidents: privacySettings.showRecentIncidents,
+                maxIncidentsToShow: privacySettings.maxIncidentsToShow,
+                incidentHistoryDays: privacySettings.incidentHistoryDays,
+                allowedCustomFields: privacySettings.allowedCustomFields,
+                dataRetentionDays: privacySettings.dataRetentionDays,
+                requireAuth: privacySettings.requireAuth,
+                authProvider: privacySettings.authProvider,
+                showServiceOwners: formData.showServiceOwners,
+                showServiceSlaTier: formData.showServiceSlaTier,
+                showChangelog: formData.showChangelog,
+                showRegionHeatmap: formData.showRegionHeatmap,
+                showPostIncidentReview: formData.showPostIncidentReview,
+                enableUptimeExports: formData.enableUptimeExports,
+                statusApiRequireToken: formData.statusApiRequireToken,
+                statusApiRateLimitEnabled: formData.statusApiRateLimitEnabled,
+                statusApiRateLimitMax: formData.statusApiRateLimitMax,
+                statusApiRateLimitWindowSec: formData.statusApiRateLimitWindowSec,
+              })
+            ),
+          }
+        );
 
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.error || 'Failed to save status page settings');
         }
 
+        const saved = await response.json();
+        if (typeof saved.data?.updatedAt === 'string') setRevision(saved.data.updatedAt);
         setSuccessMessage('Settings saved successfully!');
         // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -1680,9 +1691,9 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
                           {formData.enabled && (
                             <Switch
-                              checked={!formData.requireAuth}
+                              checked={!privacySettings.requireAuth}
                               onChange={checked =>
-                                setFormData(prev => ({ ...prev, requireAuth: !checked }))
+                                setPrivacySettings(prev => ({ ...prev, requireAuth: !checked }))
                               }
                               label="Public Access"
                               helperText="When enabled, anyone can view the status page without logging in. When disabled, users must log in to view the status page."
@@ -4429,32 +4440,34 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                 )}
               </div>
             </div>
-            {/* Sticky Save Bar */}
-            <div
-              className="status-page-config-sticky-bar"
-              style={{
-                display: 'flex',
-                gap: 'var(--spacing-3)',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                padding: 'var(--spacing-4) var(--spacing-6)',
-                borderTop: '1px solid #e5e7eb',
-                background: 'linear-gradient(to right, #ffffff, #fafafa)',
-                boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
-              }}
-            >
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => router.refresh()}
-                disabled={isPending}
+            {/* Sections with independent controls persist through their own APIs. */}
+            {!['announcements', 'integrations', 'subscribers'].includes(activeSection) && (
+              <div
+                className="status-page-config-sticky-bar"
+                style={{
+                  display: 'flex',
+                  gap: 'var(--spacing-3)',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  padding: 'var(--spacing-4) var(--spacing-6)',
+                  borderTop: '1px solid #e5e7eb',
+                  background: 'linear-gradient(to right, #ffffff, #fafafa)',
+                  boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+                }}
               >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" isLoading={isPending}>
-                💾 Save Settings
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => router.refresh()}
+                  disabled={isPending}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" isLoading={isPending}>
+                  💾 Save Settings
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Preview Panel */}

@@ -8,6 +8,7 @@ export function StatusPageManager() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
 
   async function createPage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,6 +49,11 @@ export function StatusPageManager() {
   }
   return (
     <form onSubmit={createPage} className="flex flex-wrap items-end gap-2 rounded-md border p-3">
+      <p className="w-full text-sm text-gray-600">
+        {step === 0
+          ? 'Name this communication page and choose its URL.'
+          : 'Your page will be created as a draft. Choose its audience, map services, and review branding before enabling it.'}
+      </p>
       <label className="text-sm">
         Name
         <input name="name" required maxLength={200} className="ml-2 rounded border px-2 py-1" />
@@ -63,11 +69,18 @@ export function StatusPageManager() {
         />
       </label>
       <button
-        type="submit"
+        type={step === 0 ? 'button' : 'submit'}
+        onClick={
+          step === 0
+            ? event => {
+                if (event.currentTarget.form?.reportValidity()) setStep(1);
+              }
+            : undefined
+        }
         disabled={pending}
         className="rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {pending ? 'Creating…' : 'Create'}
+        {pending ? 'Creating…' : step === 0 ? 'Review draft' : 'Create draft'}
       </button>
       <button
         type="button"

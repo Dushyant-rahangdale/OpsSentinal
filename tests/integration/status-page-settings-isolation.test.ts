@@ -185,4 +185,34 @@ describeIfRealDB('status-page settings isolation', () => {
       })
     ).toEqual({ footerText: null, contactEmail: null, customDomain: 'status.example.com' });
   });
+
+  it('rejects a stale editor revision without overwriting a newer save', async () => {
+    const page = await createTestStatusPage({ name: 'Original name' });
+    const staleRevision = page.updatedAt.toISOString();
+    await testPrisma.statusPage.update({
+      where: { id: page.id },
+      data: { name: 'Newer name', updatedAt: new Date(page.updatedAt.getTime() + 1_000) },
+    });
+
+    const response = await POST(
+      new Request('http://localhost/api/settings/status-page', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          id: page.id,
+          name: 'Stale overwrite',
+          expectedUpdatedAt: staleRevision,
+        }),
+      }) as never
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: 'STATUS_PAGE_STALE' });
+    expect(
+      await testPrisma.statusPage.findUniqueOrThrow({
+        where: { id: page.id },
+        select: { name: true },
+      })
+    ).toEqual({ name: 'Newer name' });
+  });
 });

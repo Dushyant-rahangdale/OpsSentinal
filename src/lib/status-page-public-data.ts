@@ -15,6 +15,7 @@ export type StatusPagePublicSettings = {
   showIncidentUrgency: boolean;
   showUptimeHistory: boolean;
   showRecentIncidents: boolean;
+  showPostIncidentReview?: boolean;
 };
 
 export function publicStatusVisibility(settings: StatusPagePublicSettings) {
@@ -35,6 +36,7 @@ export function publicStatusVisibility(settings: StatusPagePublicSettings) {
     showAffectedService: settings.showAffectedServices,
     showIncidentTimestamp: settings.showIncidentTimestamps,
     showIncidentUrgency: settings.showIncidentUrgency,
+    showPostIncidentReview: settings.showPostIncidentReview === true,
   };
 }
 
@@ -47,6 +49,7 @@ type PublicIncidentInput = {
   createdAt: string | Date;
   resolvedAt: string | Date | null;
   service?: { name?: string; region?: string | null } | null;
+  postmortem?: { status?: string; isPublic?: boolean | null } | null;
 };
 
 function serializeDate(value: string | Date | null): string | null {
@@ -77,6 +80,14 @@ export function serializePublicStatusIncident(
       ...(incident.service.name ? { name: incident.service.name } : {}),
       ...(visibility.showServiceRegion ? { region: incident.service.region ?? null } : {}),
     };
+  }
+  if (
+    visibility.showPostIncidentReview &&
+    incident.status === 'RESOLVED' &&
+    incident.postmortem?.status === 'PUBLISHED' &&
+    incident.postmortem.isPublic !== false
+  ) {
+    result.postIncidentReview = true;
   }
 
   return result;

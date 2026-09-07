@@ -157,6 +157,7 @@ export const StatusPageBrandingSchema = z
 export const StatusPageSettingsSchema = z
   .object({
     id: z.string().min(1).optional(),
+    expectedUpdatedAt: z.string().datetime().optional(),
     name: z.string().trim().min(1).max(200).optional(),
     slug: z
       .string()
