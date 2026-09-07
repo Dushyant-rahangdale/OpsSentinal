@@ -684,6 +684,7 @@ export default async function Dashboard({
                 search,
                 createdAfter: operational.effectiveStart.toISOString(),
                 createdBefore: operational.effectiveEnd.toISOString(),
+                sort: 'newest',
               }}
             />
           </div>

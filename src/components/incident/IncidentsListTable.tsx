@@ -88,6 +88,7 @@ type IncidentsListTableProps = {
     search?: string;
     createdAfter?: string;
     createdBefore?: string;
+    sort?: string;
   };
 };
 
@@ -149,6 +150,7 @@ function parseRealtimeIncident(raw: Record<string, unknown>): IncidentListItem {
     priority: typeof raw.priority === 'string' ? raw.priority : null,
     urgency: (raw.urgency as IncidentListItem['urgency']) || 'HIGH',
     createdAt: raw.createdAt ? new Date(raw.createdAt as string | number | Date) : new Date(),
+    updatedAt: raw.updatedAt ? new Date(raw.updatedAt as string | number | Date) : undefined,
     acknowledgedAt: raw.acknowledgedAt
       ? new Date(raw.acknowledgedAt as string | number | Date)
       : null,
@@ -180,6 +182,65 @@ function parseRealtimeIncident(raw: Record<string, unknown>): IncidentListItem {
         }
       : null,
   };
+}
+
+const STATUS_SORT_WEIGHT: Record<string, number> = {
+  OPEN: 1,
+  ACKNOWLEDGED: 2,
+  SNOOZED: 3,
+  SUPPRESSED: 4,
+  RESOLVED: 5,
+};
+
+const PRIORITY_SORT_WEIGHT: Record<string, number> = {
+  P1: 1,
+  P2: 2,
+  P3: 3,
+  P4: 4,
+  P5: 5,
+};
+
+function sortIncidents(items: IncidentListItem[], sort: string = 'newest'): IncidentListItem[] {
+  return [...items].sort((a, b) => {
+    if (sort === 'oldest') {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    }
+    if (sort === 'updated') {
+      const timeA = a.updatedAt
+        ? new Date(a.updatedAt).getTime()
+        : a.createdAt
+          ? new Date(a.createdAt).getTime()
+          : 0;
+      const timeB = b.updatedAt
+        ? new Date(b.updatedAt).getTime()
+        : b.createdAt
+          ? new Date(b.createdAt).getTime()
+          : 0;
+      return timeB - timeA;
+    }
+    if (sort === 'status') {
+      const sA = STATUS_SORT_WEIGHT[a.status] ?? 99;
+      const sB = STATUS_SORT_WEIGHT[b.status] ?? 99;
+      if (sA !== sB) return sA - sB;
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    }
+    if (sort === 'priority') {
+      const pA = a.priority ? (PRIORITY_SORT_WEIGHT[a.priority] ?? 99) : 999;
+      const pB = b.priority ? (PRIORITY_SORT_WEIGHT[b.priority] ?? 99) : 999;
+      if (pA !== pB) return pA - pB;
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    }
+    // Default: 'newest' (createdAt desc)
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
 }
 
 function matchesRealtimeFilter(
@@ -330,20 +391,25 @@ export default function IncidentsListTable({
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const lastGTimeRef = useRef<number>(0);
 
+  const mountedAtRef = useRef<number>(Date.now());
+  const isPageOne = !pagination || pagination.currentPage === 1;
+  const maxItems = pagination?.itemsPerPage ?? Math.max(incidents.length, 15);
+  const activeSort = realtimeFilter.sort || 'newest';
+
   useEffect(() => {
     if (!recentIncidents || recentIncidents.length === 0) return;
 
     const newIncomingItems: IncidentListItem[] = [];
     const updatedItems: Record<string, unknown>[] = [];
-    const newIds: string[] = [];
+    const candidateNewIds: string[] = [];
 
     for (const item of recentIncidents) {
       const id = typeof item.id === 'string' ? item.id : null;
       if (!id) continue;
 
       if (!displayedIncidentIdsRef.current.has(id)) {
-        if (matchesRealtimeFilter(item, realtimeFilter)) {
-          newIds.push(id);
+        if (isPageOne && matchesRealtimeFilter(item, realtimeFilter)) {
+          candidateNewIds.push(id);
           newIncomingItems.push(parseRealtimeIncident(item));
         }
       } else {
@@ -351,51 +417,72 @@ export default function IncidentsListTable({
       }
     }
 
-    // 1. Optimistic prepend for brand-new incoming incidents (Zero Latency)
-    if (newIncomingItems.length > 0) {
-      setDisplayedIncidents(prev => {
-        const incomingIdSet = new Set(newIncomingItems.map(item => item.id));
-        return [...newIncomingItems, ...prev.filter(item => !incomingIdSet.has(item.id))];
+    if (newIncomingItems.length === 0 && updatedItems.length === 0) return;
+
+    let newlyRetainedIds: string[] = [];
+
+    setDisplayedIncidents(prev => {
+      const updatedMap = new Map(updatedItems.map(u => [String(u.id), u]));
+
+      // 1. In-place updates for currently displayed items
+      let nextList = prev
+        .map(item => {
+          const update = updatedMap.get(item.id);
+          if (!update) return item;
+          if (!matchesRealtimeFilter(update, realtimeFilter)) {
+            return null;
+          }
+          return parseRealtimeIncident(update);
+        })
+        .filter((item): item is IncidentListItem => item !== null);
+
+      // 2. Incorporate candidate new items (only on page 1)
+      if (newIncomingItems.length > 0) {
+        const currentIds = new Set(nextList.map(item => item.id));
+        const trulyNew = newIncomingItems.filter(item => !currentIds.has(item.id));
+        nextList = [...nextList, ...trulyNew];
+      }
+
+      // 3. Maintain strict chronological / configured sort order
+      nextList = sortIncidents(nextList, activeSort);
+
+      // 4. Bounded window: keep top maxItems
+      if (nextList.length > maxItems) {
+        nextList = nextList.slice(0, maxItems);
+      }
+
+      // 5. Track which candidate new IDs are actually visible in the retained slice
+      const retainedIdSet = new Set(nextList.map(item => item.id));
+      newlyRetainedIds = candidateNewIds.filter(id => {
+        if (!retainedIdSet.has(id)) return false;
+        // Only pulse emerald if the item was created recently (session or within 60s)
+        const found = nextList.find(item => item.id === id);
+        if (!found) return false;
+        const createdMs = found.createdAt ? new Date(found.createdAt).getTime() : 0;
+        return createdMs >= mountedAtRef.current - 60_000;
       });
 
-      // Highlight prepended rows with animated emerald pulse
+      return nextList;
+    });
+
+    if (newlyRetainedIds.length > 0) {
       setHighlightedIncidentIds(prev => {
         const next = new Set(prev);
-        newIds.forEach(id => next.add(id));
+        newlyRetainedIds.forEach(id => next.add(id));
         return next;
       });
 
-      // Clear pulse highlight after 4.5 seconds
       const timer = setTimeout(() => {
         setHighlightedIncidentIds(prev => {
           const next = new Set(prev);
-          newIds.forEach(id => next.delete(id));
+          newlyRetainedIds.forEach(id => next.delete(id));
           return next;
         });
       }, 4500);
 
       return () => clearTimeout(timer);
     }
-
-    // 2. Optimistic update for existing incidents with status / urgency changes
-    if (updatedItems.length > 0) {
-      setDisplayedIncidents(prev => {
-        let hasChanges = false;
-        const updatedMap = new Map(updatedItems.map(u => [String(u.id), u]));
-        const next = prev.map(item => {
-          const update = updatedMap.get(item.id);
-          if (!update) return item;
-          if (!matchesRealtimeFilter(update, realtimeFilter)) {
-            hasChanges = true;
-            return null;
-          }
-          hasChanges = true;
-          return parseRealtimeIncident(update);
-        });
-        return hasChanges ? next.filter((item): item is IncidentListItem => item !== null) : prev;
-      });
-    }
-  }, [recentIncidents, realtimeFilter]);
+  }, [recentIncidents, realtimeFilter, isPageOne, maxItems, activeSort]);
 
   useEffect(() => {
     if (focusedIndex !== null) {
