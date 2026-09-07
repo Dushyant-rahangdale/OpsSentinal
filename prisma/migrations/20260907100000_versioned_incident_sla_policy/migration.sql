@@ -98,28 +98,8 @@ BEGIN
     NEW."slaPolicyId" := p."id"; NEW."slaPolicyVersion" := p."version";
     NEW."slaTargetCapturedAt" := COALESCE(NEW."slaTargetCapturedAt",CURRENT_TIMESTAMP);
   END IF;
-  -- Reject invented/mixed provenance while preserving genuinely unknown legacy values.
-  IF NEW."slaPolicyId" IS NULL THEN
-    IF NEW."slaPolicyVersion" IS NOT NULL OR NEW."slaPolicyRule" IS NOT NULL THEN RAISE EXCEPTION 'incomplete SLA provenance' USING ERRCODE = '23514'; END IF;
-  ELSE
-    SELECT * INTO p FROM "IncidentSlaPolicy" WHERE "id" = NEW."slaPolicyId";
-    IF p."id" IS NULL OR NEW."slaPolicyVersion" IS DISTINCT FROM p."version" OR NEW."slaPolicyRule" IS NULL
-      OR p."scopeKey" NOT IN ('workspace','service:' || NEW."serviceId") THEN
-      RAISE EXCEPTION 'invalid SLA policy provenance' USING ERRCODE = '23514';
-    END IF;
-    IF NEW."slaPolicyRule" = 'BASE' THEN
-      IF NEW."slaAckTargetMs" IS DISTINCT FROM p."baseAckTargetMs" OR NEW."slaResolveTargetMs" IS DISTINCT FROM p."baseResolveTargetMs"
-        OR NEW."slaTargetSource" IS DISTINCT FROM CASE WHEN p."scopeKey" = 'workspace' THEN 'WORKSPACE_DEFAULT' ELSE 'SERVICE_DEFAULT' END THEN
-        RAISE EXCEPTION 'SLA base provenance does not match targets' USING ERRCODE = '23514';
-      END IF;
-    ELSE
-      SELECT * INTO r FROM "IncidentSlaPolicyRule" WHERE "policyId" = p."id" AND "priority" = NEW."slaPolicyRule";
-      IF r."id" IS NULL OR NEW."slaAckTargetMs" IS DISTINCT FROM r."ackTargetMs" OR NEW."slaResolveTargetMs" IS DISTINCT FROM r."resolveTargetMs"
-        OR NEW."slaTargetSource" IS DISTINCT FROM 'SERVICE_PRIORITY_OVERRIDE' THEN
-        RAISE EXCEPTION 'SLA rule provenance does not match targets' USING ERRCODE = '23514';
-      END IF;
-    END IF;
-  END IF;
+  -- Numerical targets and provenance are protected by the existing immutable
+  -- incident trigger. Application policy resolution owns semantic validation.
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

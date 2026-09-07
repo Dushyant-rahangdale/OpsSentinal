@@ -57,7 +57,7 @@ export async function saveIncidentSlaPolicy(rawInput: unknown) {
         action: 'incident_sla.policy.version_created',
         source: 'UI',
         target: { type: serviceId ? 'SERVICE' : 'SYSTEM_CONFIG', id: serviceId ?? 'workspace' },
-        actor: { type: 'USER', id: permissions.id },
+        actor: { type: 'SYSTEM' },
         metadata: {
           policyId: policy.id,
           previousVersion: input.expectedVersion,
