@@ -36,6 +36,15 @@ const config: Config = {
           'sans-serif',
         ],
         mono: ['SF Mono', 'Fira Code', 'Monaco', 'Cascadia Code', 'monospace'],
+        serif: [
+          'var(--font-serif)',
+          'Newsreader',
+          'ui-serif',
+          'Georgia',
+          'Cambria',
+          'Times New Roman',
+          'serif',
+        ],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.02em' }],

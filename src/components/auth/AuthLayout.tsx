@@ -24,7 +24,7 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
         {/* Right Side: Clean Auth Container with Dark Mode Support */}
         <section
           className={cn(
-            'flex flex-col justify-between w-full bg-white dark:bg-[#07090e] text-slate-900 dark:text-slate-100 overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 transition-colors duration-200',
+            'flex flex-col justify-between w-full bg-background text-foreground overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 transition-colors duration-200',
             showAnimation ? 'lg:w-1/2' : 'w-full'
           )}
         >

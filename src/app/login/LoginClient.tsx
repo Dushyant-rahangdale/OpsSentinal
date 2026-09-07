@@ -202,7 +202,7 @@ export default function LoginClient({
               Work email
             </label>
             <div className="relative flex items-center">
-              <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none">
+              <div className="absolute left-4 text-slate-400 dark:text-slate-500 pointer-events-none">
                 <Mail className="h-4 w-4" />
               </div>
               <input
@@ -214,7 +214,7 @@ export default function LoginClient({
                   if (error) setError('');
                 }}
                 onBlur={() => setEmailTouched(true)}
-                className="w-full pl-11 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
+                className="auth-input login-input w-full pl-12 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
                 placeholder="you@company.com"
                 disabled={isSubmitting || isSuccess}
               />
@@ -237,7 +237,7 @@ export default function LoginClient({
               Password
             </label>
             <div className="relative flex items-center">
-              <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none">
+              <div className="absolute left-4 text-slate-400 dark:text-slate-500 pointer-events-none">
                 <Lock className="h-4 w-4" />
               </div>
               <input
@@ -251,7 +251,7 @@ export default function LoginClient({
                 onKeyDown={e => {
                   setCapsLockOn(e.getModifierState('CapsLock'));
                 }}
-                className="w-full pl-11 pr-10 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
+                className="auth-input login-input w-full pl-12 pr-10 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 dark:focus:border-red-500 transition-all shadow-xs"
                 placeholder="Enter your password"
                 disabled={isSubmitting || isSuccess}
               />
@@ -304,10 +304,10 @@ export default function LoginClient({
             type="submit"
             disabled={isSubmitting || isSSOLoading || isSuccess}
             className={cn(
-              'w-full py-3 px-4 rounded-lg text-white font-bold text-sm shadow-md transition-all duration-200 flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+              'w-full py-3 px-4 rounded-lg text-white font-bold text-sm shadow-sm transition-all duration-200 flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
               isSuccess
                 ? 'bg-emerald-600 shadow-emerald-600/20'
-                : 'bg-[#c5222f] hover:bg-[#b01e29] active:bg-[#991923] shadow-red-700/20'
+                : 'bg-[#111827] dark:bg-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100 hover:ring-2 hover:ring-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-500/30 active:bg-black dark:active:bg-slate-200 shadow-slate-950/10'
             )}
           >
             {isSuccess ? (
@@ -342,7 +342,7 @@ export default function LoginClient({
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200 dark:border-slate-800" />
                 </div>
-                <span className="relative px-3 text-xs text-slate-400 dark:text-slate-500 bg-white dark:bg-[#07090e]">
+                <span className="relative px-3 text-xs text-muted-foreground bg-background">
                   or
                 </span>
               </div>
@@ -355,21 +355,18 @@ export default function LoginClient({
                   loading={isSSOLoading}
                   disabled={isSubmitting || isSuccess}
                 />
-                <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-2 font-medium">
-                  Supports OIDC SSO
-                </p>
               </div>
             </>
           )}
 
           {/* Setup Guide Link */}
           <div className="text-center text-xs text-slate-500 dark:text-slate-400 font-medium pt-3">
-            New here?{' '}
+            Setting up OpsKnight?{' '}
             <Link
               href="/help"
-              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline font-bold ml-1"
+              className="text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:underline font-semibold ml-1 inline-flex items-center gap-1 transition-colors"
             >
-              View setup guide →
+              Installation guide →
             </Link>
           </div>
         </form>
