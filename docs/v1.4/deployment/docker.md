@@ -21,27 +21,28 @@ The repository Compose file runs the published OpsKnight image and PostgreSQL 15
 git clone https://github.com/opsknight-labs/OpsKnight.git
 cd OpsKnight
 cp env.example .env
-openssl rand -base64 32
-openssl rand -hex 32
+openssl rand -base64 32  # NEXTAUTH_SECRET
+openssl rand -hex 32     # ENCRYPTION_KEY
+openssl rand -hex 32     # POSTGRES_PASSWORD (URI-safe)
 ```
 
 Set at least:
 
 ```dotenv
 POSTGRES_USER=opsknight
-POSTGRES_PASSWORD=REPLACE_WITH_A_LONG_DATABASE_PASSWORD
+POSTGRES_PASSWORD=REPLACE_WITH_64_HEX_OUTPUT
 POSTGRES_DB=opsknight_db
 NEXTAUTH_URL=https://ops.example.com
 NEXT_PUBLIC_APP_URL=https://ops.example.com
 NEXTAUTH_SECRET=REPLACE_WITH_BASE64_OUTPUT
 ENCRYPTION_KEY=REPLACE_WITH_64_HEX_CHARACTERS
 APP_PORT=3000
-OPSKNIGHT_IMAGE=ghcr.io/opsknight-labs/opsknight:1.4.0
+OPSKNIGHT_IMAGE=ghcr.io/opsknight-labs/opsknight:1.4.0-hotfix
 ```
 
-Pin `OPSKNIGHT_IMAGE` to the immutable version or digest you tested. The default remains `latest` for convenience and should not be the production release policy. The `1.4.0` stable image includes fail-closed migrations and is published for amd64 and arm64; the test image built from `main` remains amd64-only.
+For the v1.4 maintenance line, use `1.4.0-hotfix` (or its tested digest). It contains the advisory-lock fix for Prisma/PostgreSQL while preserving the v1.4 runtime contract. Do not fall back to the original `1.4.0` image for affected deployments.
 
-The checked-in fallbacks are development values, not production secrets. Keep `ENCRYPTION_KEY` stable and backed up with the database; losing it means re-entering encrypted provider/integration credentials.
+The checked-in fallbacks are development values, not production secrets. Keep `ENCRYPTION_KEY` stable and backed up with the database; losing it means re-entering encrypted provider/integration credentials. The bundled Compose URL interpolates `POSTGRES_PASSWORD`, so a hex-generated password avoids URI-reserved characters.
 
 ## Database connection behavior
 
@@ -75,7 +76,7 @@ curl --fail 'http://localhost:3000/api/health?mode=readiness'
 
 Open the configured origin and complete `/setup`, then create a test service/incident to verify a database write.
 
-`opsknight-app` waits for the bundled database health check in the default topology. The `1.4.0` image and later run `prisma migrate deploy`, retry failures, and use the packaged recovery helper between attempts when available. If migrations still fail, the container exits non-zero rather than starting against an unknown schema.
+`opsknight-app` waits for the bundled database health check in the default topology. The patched v1.4 image runs `prisma migrate deploy`, retries failures, and uses the packaged recovery helper between attempts when available. If migrations still fail, the container exits non-zero rather than starting against an unknown schema. Compose gives this migration-first startup a five-minute health-check grace period.
 
 ## TLS and proxying
 
@@ -128,7 +129,7 @@ Confirm authentication, users, services, integrations, and a controlled incident
 1. Read release/migration notes.
 2. Take and verify a database backup.
 3. Record the current `OPSKNIGHT_IMAGE` reference/digest and configuration.
-4. Change `OPSKNIGHT_IMAGE` to the tested release.
+4. Change `OPSKNIGHT_IMAGE` to the tested v1.4 hotfix image/digest.
 5. Pull/recreate the app and watch migration logs.
 6. Verify readiness, login, database writes, incident handling, and notification/integration delivery.
 
@@ -154,13 +155,14 @@ docker compose down
 
 ## Troubleshooting
 
-| Symptom                                 | Check                                                                                 |
-| --------------------------------------- | ------------------------------------------------------------------------------------- |
-| Database unhealthy                      | PostgreSQL logs, credentials, volume ownership/capacity, host disk.                   |
-| App restarts before serving             | Migration/startup logs and database connectivity; failed migrations now stop startup. |
-| Login redirects loop                    | Exact `NEXTAUTH_URL` and proxy forwarded host/scheme.                                 |
-| Notification links point to localhost   | `NEXT_PUBLIC_APP_URL` and any System Settings app URL override.                       |
-| Managed DB cannot connect               | `OPSKNIGHT_DATABASE_URL`, URI encoding, TLS parameters, firewall/routing.             |
-| Provider credentials fail after restore | Database backup and the original `ENCRYPTION_KEY` must belong together.               |
+| Symptom                                 | Check                                                                                  |
+| --------------------------------------- | -------------------------------------------------------------------------------------- |
+| Database unhealthy                      | PostgreSQL logs, credentials, volume ownership/capacity, host disk.                    |
+| App restarts before serving             | Migration/startup logs and database connectivity; failed migrations stop startup.      |
+| Login redirects loop                    | Exact `NEXTAUTH_URL` and proxy forwarded host/scheme.                                  |
+| Notification links point to localhost   | `NEXT_PUBLIC_APP_URL` and any System Settings app URL override.                        |
+| Managed DB cannot connect               | `OPSKNIGHT_DATABASE_URL`, URI encoding, TLS parameters, firewall/routing.              |
+| Advisory lock warning mentions `void`   | Confirm the running image is `1.4.0-hotfix`, not the original `1.4.0` image.           |
+| Provider credentials fail after restore | Database backup and the original `ENCRYPTION_KEY` must belong together.                |
 
 See [Troubleshooting](../troubleshooting) and [Configuration reference](../getting-started/configuration).
