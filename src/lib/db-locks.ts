@@ -50,25 +50,32 @@ export const LOCK_KEYS = {
  * commits or rolls back. There is no `release` function on purpose —
  * if you forget to commit, the lock is still released by the engine
  * tearing down the session.
- *
- * Safe to call when the underlying database is not Postgres (e.g.
- * in unit tests against a mocked client): we catch the resulting
- * error, log it, and let the caller proceed without the lock. This
- * keeps the helper from breaking environments where it isn't
- * available; production correctness depends on the production
- * Postgres deploy actually applying the lock.
  */
 export async function acquireAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: bigint
 ): Promise<void> {
   try {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${key}::bigint)`;
+    // PostgreSQL's pg_advisory_xact_lock() returns the `void` pseudo-type.
+    // Prisma cannot deserialize that value from $queryRaw, even though the
+    // lock itself was successfully acquired. Execute the lock in a subquery
+    // and expose only a normal boolean column to Prisma.
+    const rows = await tx.$queryRaw<Array<{ acquired: boolean }>>`
+      SELECT TRUE AS "acquired"
+      FROM (SELECT pg_advisory_xact_lock(${key}::bigint)) AS lock_result
+    `;
+
+    if (rows[0]?.acquired !== true) {
+      throw new Error(`PostgreSQL advisory lock ${key.toString()} was not acquired`);
+    }
   } catch (err) {
-    logger.warn(
-      '[DbLocks] pg_advisory_xact_lock failed (likely non-Postgres test env); proceeding without lock',
-      { key: key.toString(), error: err instanceof Error ? err.message : String(err) }
-    );
+    // Fail closed: if the lock statement genuinely fails, the surrounding
+    // transaction must roll back instead of continuing without serialization.
+    logger.error('[DbLocks] pg_advisory_xact_lock failed; rolling back transaction', {
+      key: key.toString(),
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
   }
 }
 
@@ -88,10 +95,12 @@ export async function tryAdvisoryLock(
     `;
     return rows[0]?.pg_try_advisory_xact_lock === true;
   } catch (err) {
-    logger.warn(
-      '[DbLocks] pg_try_advisory_xact_lock failed; treating as not-acquired',
-      { key: key.toString(), error: err instanceof Error ? err.message : String(err) }
-    );
-    return false;
+    // A real statement failure is not ordinary contention. Propagate it so
+    // the transaction can roll back and the actual database error is visible.
+    logger.error('[DbLocks] pg_try_advisory_xact_lock failed; rolling back transaction', {
+      key: key.toString(),
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
   }
 }
