@@ -76,6 +76,11 @@ const STRIP_GEOMETRY: React.CSSProperties = {
   willChange: 'transform',
 };
 
+// Globe diameter for the desktop showcase panel. Used for both the width and
+// the vertical offset so the two can never fall out of step (see the comment
+// at the usage site).
+const PANEL_GLOBE_WIDTH = 'clamp(520px, 62vw, 1900px)';
+
 // SLA ring drawn around each marker (r=8 in a 22x22 box).
 const SLA_RING_RADIUS = 8;
 const SLA_RING_CIRCUMFERENCE = 2 * Math.PI * SLA_RING_RADIUS;
@@ -607,8 +612,14 @@ export default function LoginAnimation({
         className="absolute left-1/2 z-10 pointer-events-none"
         aria-hidden="true"
         style={{
-          bottom: isBanner ? '-150%' : '-46%',
-          width: isBanner ? 'min(1400px, 190vw)' : 'clamp(520px, 62vw, 1900px)',
+          // A percentage `bottom` resolves against the PANEL height, while the
+          // globe is sized from viewport width — so on a tall display the two
+          // drift apart and the globe grows from 53% of the frame to 64%,
+          // reading as half a planet rather than a horizon. Deriving the offset
+          // from the same expression that sizes the globe keeps the visible arc
+          // at a constant ~53% of the panel height on every screen.
+          bottom: isBanner ? '-150%' : `calc(53vh - ${PANEL_GLOBE_WIDTH})`,
+          width: isBanner ? 'min(1400px, 190vw)' : PANEL_GLOBE_WIDTH,
           aspectRatio: '1 / 1',
           transform: 'translateX(-50%)',
         }}
