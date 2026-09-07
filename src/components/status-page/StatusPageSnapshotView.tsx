@@ -25,20 +25,34 @@ type PageView = {
 
 type SnapshotService = StatusPageSnapshot['services'][number];
 
-const labels = {
-  operational: 'All Systems Operational',
-  degraded: 'Degraded Performance',
-  maintenance: 'Scheduled Maintenance',
-  outage: 'Major Outage',
-} as const;
+function statusLabel(status: StatusPageSnapshot['status']) {
+  switch (status) {
+    case 'degraded':
+      return 'Degraded Performance';
+    case 'maintenance':
+      return 'Scheduled Maintenance';
+    case 'outage':
+      return 'Major Outage';
+    case 'operational':
+    default:
+      return 'All Systems Operational';
+  }
+}
 
-const severityRank: Record<string, number> = {
-  OPERATIONAL: 0,
-  MAINTENANCE: 1,
-  DEGRADED: 2,
-  PARTIAL_OUTAGE: 2,
-  MAJOR_OUTAGE: 3,
-};
+function serviceSeverity(status: string) {
+  switch (status) {
+    case 'MAJOR_OUTAGE':
+      return 3;
+    case 'DEGRADED':
+    case 'PARTIAL_OUTAGE':
+      return 2;
+    case 'MAINTENANCE':
+      return 1;
+    case 'OPERATIONAL':
+    default:
+      return 0;
+  }
+}
 
 function getRegions(region?: string | null) {
   if (!region) return [];
@@ -71,7 +85,7 @@ function projectRegions(services: SnapshotService[]) {
     const status = service.status || 'OPERATIONAL';
     const impacted = status !== 'OPERATIONAL' && status !== 'MAINTENANCE';
     const isMaintenance = status === 'MAINTENANCE';
-    const severity = Math.max(severityRank[status] ?? 0, isMaintenance ? 1 : 0);
+    const severity = serviceSeverity(status);
 
     for (const region of regions) {
       const summary = summaries.get(region) || {
@@ -144,8 +158,8 @@ export default function StatusPageSnapshotView({
     page.slug && !page.isDefault ? `/status/${encodeURIComponent(page.slug)}` : '/status';
   const apiPath =
     page.slug && !page.isDefault ? `/api/status/${encodeURIComponent(page.slug)}` : '/api/status';
-  const showUptimeExports =
-    page.enableUptimeExports === true && Object.keys(snapshot.uptime).length > 0;
+  const uptimeByService = new Map(Object.entries(snapshot.uptime));
+  const showUptimeExports = page.enableUptimeExports === true && uptimeByService.size > 0;
   const canUseRegions = snapshot.services.some(service => getRegions(service.region).length > 0);
   const regionProjection =
     (page.showServicesByRegion === true || page.showRegionHeatmap === true) && canUseRegions
@@ -158,34 +172,37 @@ export default function StatusPageSnapshotView({
     ? snapshot.announcements.filter(item => item.type === 'UPDATE')
     : [];
 
-  const renderService = (service: SnapshotService) => (
-    <article
-      key={service.id}
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: 16,
-        padding: '1rem 0',
-        borderBottom: '1px solid currentColor',
-      }}
-    >
-      <div>
-        <strong>{service.name}</strong>
-        {service.description && <p>{service.description}</p>}
-        {service.region && <small>{service.region}</small>}
-        {service.slaTier && <small> · SLA tier {service.slaTier}</small>}
-        {service.team && <small> · Owned by {service.team.name}</small>}
-      </div>
-      <div style={{ textAlign: 'right' }}>
-        <span>{service.status.replaceAll('_', ' ')}</span>
-        {typeof snapshot.uptime[service.id] === 'number' && (
-          <div>
-            <small>{snapshot.uptime[service.id].toFixed(3)}% uptime</small>
-          </div>
-        )}
-      </div>
-    </article>
-  );
+  const renderService = (service: SnapshotService) => {
+    const uptime = uptimeByService.get(service.id);
+    return (
+      <article
+        key={service.id}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 16,
+          padding: '1rem 0',
+          borderBottom: '1px solid currentColor',
+        }}
+      >
+        <div>
+          <strong>{service.name}</strong>
+          {service.description && <p>{service.description}</p>}
+          {service.region && <small>{service.region}</small>}
+          {service.slaTier && <small> · SLA tier {service.slaTier}</small>}
+          {service.team && <small> · Owned by {service.team.name}</small>}
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <span>{service.status.replaceAll('_', ' ')}</span>
+          {typeof uptime === 'number' && (
+            <div>
+              <small>{uptime.toFixed(3)}% uptime</small>
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  };
 
   return (
     <main
@@ -217,7 +234,7 @@ export default function StatusPageSnapshotView({
                 borderRadius: 12,
               }}
             >
-              <strong>{labels[snapshot.status]}</strong>
+              <strong>{statusLabel(snapshot.status)}</strong>
               <span style={{ marginLeft: 12, opacity: 0.7 }}>
                 Updated {new Date(snapshot.generatedAt).toLocaleString()}
               </span>
