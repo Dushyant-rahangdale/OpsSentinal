@@ -16,89 +16,62 @@ import { logger } from './logger';
  */
 
 export const LOCK_KEYS = {
-  /**
-   * Held by both `IncidentMetricRollup` writers and cleaners.
-   *
-   * Without this, the cleanup job could delete an old rollup row at
-   * the exact instant the rollup-generator is upserting it back
-   * (e.g., a backfill running concurrently with the daily cleanup
-   * job). Both routines acquire this lock, so they serialize.
-   */
+  /** Held by both `IncidentMetricRollup` writers and cleaners. */
   ROLLUP_WRITE: BigInt(9141001),
-
-  /**
-   * Held by the drift-detection job. Prevents two scheduled drift
-   * checks from running simultaneously and double-recording
-   * divergence samples.
-   */
+  /** Held by the drift-detection job. */
   DRIFT_DETECTION: BigInt(9141002),
+  /** Serializes all mutations that can remove the final ACTIVE administrator. */
+  USER_ADMIN_INVARIANT: BigInt(9141003),
+  /** Serializes manual or scheduled data retention cleanups across cluster nodes. */
+  DATA_CLEANUP: BigInt(9141004),
 } as const;
 
 /**
- * Acquire a transaction-scoped advisory lock inside a Prisma
- * transaction client. Blocks until acquired.
- *
- * Usage:
- *   ```ts
- *   await prisma.$transaction(async tx => {
- *     await acquireAdvisoryLock(tx, LOCK_KEYS.ROLLUP_WRITE);
- *     // ... critical section ...
- *   });
- *   ```
- *
- * The lock is released automatically when the surrounding transaction
- * commits or rolls back. There is no `release` function on purpose —
- * if you forget to commit, the lock is still released by the engine
- * tearing down the session.
- *
- * Prisma cannot deserialize Postgres' `void` return type from a direct
- * `SELECT pg_advisory_xact_lock(...)`. Keep the lock call in a subquery
- * and return a supported scalar instead.
- *
- * Safe to call when the underlying database is not Postgres (e.g.
- * in unit tests against a mocked client): we catch the resulting
- * error, log it, and let the caller proceed without the lock. This
- * keeps the helper from breaking environments where it isn't
- * available; production correctness depends on the production
- * Postgres deploy actually applying the lock.
+ * Acquire a transaction-scoped advisory lock inside a Prisma transaction client.
+ * Blocks until acquired and is released when the surrounding transaction ends.
  */
 export async function acquireAdvisoryLock(
   tx: Prisma.TransactionClient,
   key: bigint
 ): Promise<void> {
   try {
-    await tx.$queryRaw`
+    // PostgreSQL's pg_advisory_xact_lock() returns the `void` pseudo-type.
+    // Prisma cannot deserialize that value from $queryRaw, even though the
+    // lock itself was successfully acquired. Execute the lock in a subquery
+    // and expose only a normal boolean column to Prisma.
+    const rows = await tx.$queryRaw<Array<{ acquired: boolean }>>`
       SELECT TRUE AS "acquired"
       FROM (SELECT pg_advisory_xact_lock(${key}::bigint)) AS lock_result
     `;
+
+    if (rows[0]?.acquired !== true) {
+      throw new Error(`PostgreSQL advisory lock ${key.toString()} was not acquired`);
+    }
   } catch (err) {
-    logger.warn('[DbLocks] pg_advisory_xact_lock failed; proceeding without lock', {
+    // Fail closed: a real statement failure must roll back the transaction.
+    logger.error('[DbLocks] pg_advisory_xact_lock failed; rolling back transaction', {
       key: key.toString(),
       error: err instanceof Error ? err.message : String(err),
     });
+    throw err;
   }
 }
 
 /**
  * Try to acquire a transaction-scoped advisory lock without blocking.
- * Returns true if the lock was acquired, false if another transaction
- * holds it. Use for opportunistic jobs (e.g., drift detection) where
- * skipping a run is preferable to waiting.
+ * Returns false for ordinary contention; propagates actual query failures.
  */
-export async function tryAdvisoryLock(
-  tx: Prisma.TransactionClient,
-  key: bigint
-): Promise<boolean> {
+export async function tryAdvisoryLock(tx: Prisma.TransactionClient, key: bigint): Promise<boolean> {
   try {
     const rows = await tx.$queryRaw<Array<{ pg_try_advisory_xact_lock: boolean }>>`
       SELECT pg_try_advisory_xact_lock(${key}::bigint)
     `;
     return rows[0]?.pg_try_advisory_xact_lock === true;
   } catch (err) {
-    logger.warn(
-      '[DbLocks] pg_try_advisory_xact_lock failed; treating as not-acquired',
-      { key: key.toString(), error: err instanceof Error ? err.message : String(err) }
-    );
-    return false;
+    logger.error('[DbLocks] pg_try_advisory_xact_lock failed; rolling back transaction', {
+      key: key.toString(),
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
   }
 }
