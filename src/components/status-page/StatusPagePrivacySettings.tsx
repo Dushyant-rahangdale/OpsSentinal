@@ -104,7 +104,6 @@ const PRIVACY_PRESETS = {
 export default function StatusPagePrivacySettings({
   settings,
   onChange,
-  customFields = [],
 }: StatusPagePrivacySettingsProps) {
   const [expandedPreset, setExpandedPreset] = useState<keyof typeof PRIVACY_PRESETS | null>(null);
 
@@ -316,12 +315,6 @@ export default function StatusPagePrivacySettings({
               label="Show Incident Urgency"
               helperText="Display urgency level (High/Medium/Low) for incidents"
             />
-            <Switch
-              checked={settings.showIncidentAssignees}
-              onChange={checked => updateSetting('showIncidentAssignees', checked)}
-              label="Show Incident Assignees"
-              helperText="Display who is assigned to handle incidents"
-            />
           </div>
         </div>
       </Card>
@@ -418,52 +411,6 @@ export default function StatusPagePrivacySettings({
               }
               helperText="Auto-hide incidents older than this many days. Leave empty for no limit."
             />
-            {customFields.length > 0 && (
-              <div>
-                <Switch
-                  checked={settings.showCustomFields}
-                  onChange={checked => updateSetting('showCustomFields', checked)}
-                  label="Show Custom Fields"
-                  helperText="Display custom fields on incidents"
-                />
-                {settings.showCustomFields && (
-                  <div
-                    style={{
-                      marginTop: 'var(--spacing-3)',
-                      padding: 'var(--spacing-3)',
-                      background: '#f9fafb',
-                      borderRadius: 'var(--radius-md)',
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 'var(--font-size-sm)',
-                        color: 'var(--text-muted)',
-                        marginBottom: 'var(--spacing-2)',
-                      }}
-                    >
-                      Available custom fields:
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-2)' }}>
-                      {customFields.map(field => (
-                        <span
-                          key={field.id}
-                          style={{
-                            padding: 'var(--spacing-1) var(--spacing-2)',
-                            background: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: 'var(--radius-sm)',
-                            fontSize: 'var(--font-size-xs)',
-                          }}
-                        >
-                          {field.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </Card>

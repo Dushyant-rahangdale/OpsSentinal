@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
-import { jsonError, jsonOk } from '@/lib/api-response';
+import { jsonError } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/client-ip';
 import { resolveStatusPage } from '@/lib/status-page-resolver';
+import { subscribeStatusPageRequest } from '@/lib/status-pages/subscriptions';
 
 /**
  * Subscribe to Status Page Updates (Public API)
@@ -44,20 +45,16 @@ export async function subscribeToStatusPage(req: NextRequest, slug?: string) {
 
     // Redirect to status page subscribe endpoint
     // This endpoint exists for API compatibility
-    const response = await fetch(
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/status-page/subscribe`,
-      {
+    return subscribeStatusPageRequest(
+      new NextRequest(req.url, {
         method: 'POST',
         // The canonical endpoint also rate-limits by client address. Forward
         // the normalized address so this compatibility route does not collapse
         // every request into one server-side rate-limit bucket.
-        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
+        headers: req.headers,
         body: JSON.stringify({ statusPageId, email }),
-      }
+      })
     );
-
-    const data = await response.json();
-    return jsonOk(data, response.status);
   } catch (error: unknown) {
     logger.error('api.status.subscribe.error', {
       error: error instanceof Error ? error.message : String(error),

@@ -25,6 +25,10 @@ vi.mock('@/lib/prisma', () => ({
   default: mockPrisma,
 }));
 
+vi.mock('@/lib/status-pages/snapshot', () => ({
+  getStatusPageSnapshot: vi.fn().mockResolvedValue({ snapshot: null, stale: true }),
+}));
+
 vi.mock('@/lib/sla-server', () => ({
   calculateSLAMetrics: vi.fn().mockResolvedValue({
     dynamicStatus: 'OPERATIONAL',

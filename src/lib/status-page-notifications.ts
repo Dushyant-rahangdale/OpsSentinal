@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { issueUnsubscribeToken } from '@/lib/status-pages/subscription-tokens';
 import { getStatusPageEmailConfig } from '@/lib/notification-providers';
 import { enqueueCentralNotification } from '@/lib/notification-control-plane';
 import { logger } from '@/lib/logger';
@@ -167,7 +168,7 @@ export async function notifyStatusPageSubscribers(
                   subject,
                   html: html.replaceAll(
                     '{{unsubscribe_url}}',
-                    `${statusPageUrl}/unsubscribe/${sub.token}`
+                    `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
                   ),
                   providerScope: {
                     statusPageId: page.id,
@@ -560,7 +561,7 @@ export async function notifyStatusPageSubscribersAnnouncement(
                 subject,
                 html: html.replaceAll(
                   '{{unsubscribe_url}}',
-                  `${statusPageUrl}/unsubscribe/${sub.token}`
+                  `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
                 ),
                 providerScope: { statusPageId: page.id },
               },

@@ -320,6 +320,30 @@ export const OPERATIONAL_METRICS = [
     scope: 'counter',
     estimatedMaxSeries: 12,
   },
+  {
+    name: 'opsknight_status_page_snapshot_dirty',
+    help: 'Status-page snapshots whose source revision has not been published',
+    kind: 'gauge',
+    labels: [],
+    scope: 'cluster_snapshot',
+    estimatedMaxSeries: 1,
+  },
+  {
+    name: 'opsknight_status_page_snapshot_oldest_age_seconds',
+    help: 'Age of the oldest generated status-page snapshot',
+    kind: 'gauge',
+    labels: [],
+    scope: 'cluster_snapshot',
+    estimatedMaxSeries: 1,
+  },
+  {
+    name: 'opsknight_status_page_snapshot_rebuild_total',
+    help: 'Status-page snapshot reconciliation outcomes',
+    kind: 'counter',
+    labels: ['outcome'],
+    scope: 'counter',
+    estimatedMaxSeries: 2,
+  },
 ] as const satisfies readonly MetricDefinition[];
 
 type RegisteredMetricName = (typeof OPERATIONAL_METRICS)[number]['name'];

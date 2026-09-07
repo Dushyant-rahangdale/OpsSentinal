@@ -102,6 +102,5 @@ export function getStatusPageVerificationUrl(
   token: string,
   appBaseUrl: string = getBaseUrl()
 ): string {
-  const baseUrl = getStatusPagePublicBaseUrl(config, appBaseUrl);
-  return `${baseUrl}/status/verify/${token}`;
+  return `${getStatusPagePublicUrl(config, appBaseUrl)}/verify/${encodeURIComponent(token)}`;
 }

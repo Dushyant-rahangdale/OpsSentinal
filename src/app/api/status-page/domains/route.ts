@@ -1,8 +1,12 @@
 import prisma from '@/lib/prisma';
 import { getAppUrl } from '@/lib/app-config';
 import { NextResponse } from 'next/server';
+import { verifyStatusDomainRequest } from '@/lib/status-pages/internal-request';
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!(await verifyStatusDomainRequest(request.headers))) {
+    return new NextResponse(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  }
   try {
     const statusPages = await prisma.statusPage.findMany({
       where: { enabled: true },
@@ -13,6 +17,7 @@ export async function GET() {
         enabled: true,
         subdomain: true,
         customDomain: true,
+        requireAuth: true,
       },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
     });
@@ -34,10 +39,6 @@ export async function GET() {
     response.headers.set('Cache-Control', 'no-store');
     return response;
   } catch {
-    return NextResponse.json({
-      enabled: false,
-      pages: [],
-      appHost: null,
-    });
+    return NextResponse.json({ error: 'Routing configuration unavailable' }, { status: 503 });
   }
 }

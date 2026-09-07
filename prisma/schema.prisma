@@ -1355,9 +1355,33 @@ model StatusPage {
   apiTokens     StatusPageApiToken[]
   subscriptions StatusPageSubscription[]
   webhooks      StatusPageWebhook[]
+  snapshot      StatusPageSnapshot?
+  assets        StatusPageAsset[]
 
   @@index([enabled])
   @@index([isDefault, enabled])
+}
+
+// Derived, sanitized publication data. A revision fences concurrent rebuilds.
+model StatusPageSnapshot {
+  statusPageId String @id
+  revision BigInt @default(0)
+  publishedRevision BigInt @default(-1)
+  generatedAt DateTime?
+  payload Json?
+  lastError String?
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+}
+
+// Logos are kept out of the frequently read configuration JSON.
+model StatusPageAsset {
+  id String @id
+  statusPageId String
+  contentType String
+  data Bytes
+  createdAt DateTime @default(now())
+  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  @@index([statusPageId])
 }
 
 // Services shown on status page
@@ -1429,10 +1453,19 @@ model StatusPageSubscription {
   preferences       Json? // Notification preferences (all incidents, major only, etc.)
 
   statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  deliveryTokens StatusPageSubscriptionToken[]
 
   @@unique([statusPageId, email])
   @@index([statusPageId, verified])
   @@index([token])
+}
+
+model StatusPageSubscriptionToken {
+  tokenHash String @id
+  subscriptionId String
+  createdAt DateTime @default(now())
+  subscription StatusPageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  @@index([subscriptionId])
 }
 
 // Status Page Webhooks (External integrations)

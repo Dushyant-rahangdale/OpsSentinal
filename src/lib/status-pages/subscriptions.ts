@@ -1,0 +1,246 @@
+import { NextRequest } from 'next/server';
+import prisma from '@/lib/prisma';
+import { jsonError, jsonOk } from '@/lib/api-response';
+import { AppError, isAppError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
+import { randomBytes } from 'crypto';
+import { getVerificationEmailTemplate } from '@/lib/status-page-email-templates';
+import { getBaseUrl } from '@/lib/env-validation';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { getClientIp } from '@/lib/client-ip';
+import { z } from 'zod';
+import { getServerSession } from 'next-auth';
+import { getAuthOptions } from '@/lib/auth';
+import { hashSubscriptionToken } from './subscription-tokens';
+import {
+  getStatusPageLogoUrl,
+  getStatusPagePublicUrl,
+  getStatusPageVerificationUrl,
+} from '@/lib/status-page-url';
+
+function rateLimitError(retryAfter: number) {
+  return jsonError(new AppError({ code: 'RATE_LIMIT_EXCEEDED' }), undefined, { retryAfter });
+}
+
+/**
+ * Subscribe to Status Page Updates
+ * POST /api/status-page/subscribe
+ */
+export async function subscribeStatusPageRequest(req: NextRequest) {
+  try {
+    const ip = getClientIp(req.headers);
+    const ipRate = await checkRateLimit(`api:status-page:subscribe:ip:${ip}`, 10, 60_000);
+    if (!ipRate.allowed) {
+      return rateLimitError(Math.max(1, Math.ceil((ipRate.resetAt - Date.now()) / 1000)));
+    }
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch (error) {
+      return jsonError(new AppError({ code: 'INVALID_JSON', cause: error }));
+    }
+    const parsed = z
+      .object({
+        statusPageId: z.string().min(1).max(200),
+        email: z.string().trim().email().max(254),
+      })
+      .strict()
+      .safeParse(body);
+    if (!parsed.success)
+      return jsonError('A valid status page and email address are required.', 400);
+    const { statusPageId, email } = parsed.data;
+
+    if (!statusPageId || !email || !email.includes('@')) {
+      return jsonError(
+        new AppError({
+          code: 'VALIDATION_FAILED',
+          userMessage: 'Valid statusPageId and email are required',
+          fields: [
+            ...(!statusPageId
+              ? [{ field: 'statusPageId', code: 'required', message: 'statusPageId is required' }]
+              : []),
+            ...(!email || !email.includes('@')
+              ? [{ field: 'email', code: 'invalid', message: 'A valid email is required' }]
+              : []),
+          ],
+        })
+      );
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    const emailKey = `${statusPageId}:${normalizedEmail}`;
+    const emailRate = await checkRateLimit(
+      `api:status-page:subscribe:email:${emailKey}`,
+      3,
+      60_000
+    );
+    if (!emailRate.allowed) {
+      return rateLimitError(Math.max(1, Math.ceil((emailRate.resetAt - Date.now()) / 1000)));
+    }
+
+    const statusPage = await prisma.statusPage.findFirst({
+      where: { id: statusPageId, enabled: true },
+    });
+
+    if (!statusPage) {
+      return jsonError(
+        new AppError({
+          code: 'RESOURCE_NOT_FOUND',
+          userMessage: 'Status page not found or disabled',
+        })
+      );
+    }
+    if (!statusPage.showSubscribe) return jsonError('Subscriptions are disabled.', 404);
+    if (statusPage.requireAuth && !(await getServerSession(await getAuthOptions()))) {
+      return jsonError('Authentication required', 401);
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const verificationToken = randomBytes(32).toString('hex');
+
+    const existing = await prisma.statusPageSubscription.findUnique({
+      where: {
+        statusPageId_email: { statusPageId, email: normalizedEmail },
+      },
+    });
+
+    if (existing) {
+      if (existing.unsubscribedAt) {
+        await prisma.statusPageSubscription.update({
+          where: { id: existing.id },
+          data: {
+            unsubscribedAt: null,
+            token: hashSubscriptionToken(token),
+            verificationToken: hashSubscriptionToken(verificationToken),
+            verified: false,
+          },
+        });
+      } else if (existing.verified) {
+        return subscriptionAccepted();
+      } else if (Date.now() - existing.subscribedAt.getTime() < 60_000) {
+        return subscriptionAccepted();
+      } else {
+        await prisma.statusPageSubscription.update({
+          where: { id: existing.id },
+          data: {
+            token: hashSubscriptionToken(token),
+            verificationToken: hashSubscriptionToken(verificationToken),
+          },
+        });
+      }
+    } else {
+      await prisma.statusPageSubscription.create({
+        data: {
+          statusPageId,
+          email: normalizedEmail,
+          token: hashSubscriptionToken(token),
+          verificationToken: hashSubscriptionToken(verificationToken),
+          verified: false,
+        },
+      });
+    }
+
+    const subscription = await prisma.statusPageSubscription.findUniqueOrThrow({
+      where: { statusPageId_email: { statusPageId, email: normalizedEmail } },
+      select: { id: true },
+    });
+
+    try {
+      const { getStatusPageEmailConfig } = await import('@/lib/notification-providers');
+      const emailConfig = await getStatusPageEmailConfig(statusPageId);
+
+      if (!emailConfig.enabled || !emailConfig.provider) {
+        logger.warn('api.status_page.subscription.no_email_provider', { statusPageId });
+      } else {
+        const appBaseUrl = getBaseUrl();
+        const statusPageUrl = getStatusPagePublicUrl(statusPage, appBaseUrl);
+        const verificationUrl = getStatusPageVerificationUrl(
+          statusPage,
+          verificationToken,
+          appBaseUrl
+        );
+
+        const branding =
+          statusPage.branding &&
+          typeof statusPage.branding === 'object' &&
+          !Array.isArray(statusPage.branding)
+            ? (statusPage.branding as Record<string, unknown>)
+            : {};
+        const rawLogoUrl = typeof branding.logoUrl === 'string' ? branding.logoUrl : undefined;
+        const logoUrl =
+          rawLogoUrl && rawLogoUrl.startsWith('data:image/')
+            ? getStatusPageLogoUrl(statusPage, statusPage.id, appBaseUrl)
+            : rawLogoUrl;
+
+        const emailTemplate = getVerificationEmailTemplate({
+          statusPageName: statusPage.name,
+          organizationName: statusPage.organizationName || undefined,
+          statusPageUrl,
+          verificationUrl,
+          logoUrl,
+        });
+
+        const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
+        const delivery = await enqueueCentralNotification({
+          category: 'STATUS_PAGE',
+          channel: 'EMAIL',
+          recipientType: 'SUBSCRIBER',
+          recipientId: subscription.id,
+          recipientAddress: normalizedEmail,
+          templateKey: 'status-page-verification',
+          sourceType: 'STATUS_PAGE_SUBSCRIPTION',
+          sourceId: subscription.id,
+          eventKey: hashSubscriptionToken(verificationToken),
+          displayMessage: `Verify subscription to ${statusPage.name}`,
+          priority: 2,
+          payload: {
+            kind: 'EMAIL',
+            to: normalizedEmail,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html,
+            text: emailTemplate.text,
+            providerScope: { statusPageId },
+          },
+        });
+
+        logger.info('api.status_page.subscription.verification_email_enqueued', {
+          statusPageId,
+          email: normalizedEmail,
+          provider: emailConfig.provider,
+          notificationId: delivery.id,
+          delivered: delivery.delivered === true,
+        });
+      }
+    } catch (emailError) {
+      // Subscription creation remains successful when delivery fails. The email
+      // can be retried later; do not roll back the subscription contract.
+      logger.error('api.status_page.subscription.verification_email_failed', {
+        statusPageId,
+        email: normalizedEmail,
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+      });
+    }
+
+    logger.info('api.status_page.subscription.created', {
+      statusPageId,
+      email: normalizedEmail,
+    });
+
+    return subscriptionAccepted();
+  } catch (error) {
+    if (isAppError(error)) return jsonError(error);
+    logger.error('api.status_page.subscription.error', { error });
+    return jsonError('Failed to create subscription', 500);
+  }
+}
+
+function subscriptionAccepted() {
+  return jsonOk(
+    {
+      success: true,
+      message: 'If this email can receive status updates, we have sent the next step.',
+    },
+    200
+  );
+}

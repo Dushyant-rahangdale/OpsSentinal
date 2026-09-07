@@ -4,6 +4,7 @@ import { GET, DELETE } from '@/app/api/status-page/subscribers/route';
 import VerifyPage from '@/app/(public)/status/verify/[token]/page';
 import UnsubscribePage from '@/app/(public)/status/unsubscribe/[token]/page';
 import { notifyStatusPageSubscribers } from '@/lib/status-page-notifications';
+import { hashSubscriptionToken } from '@/lib/status-pages/subscription-tokens';
 import {
   testPrisma,
   resetDatabase,
@@ -98,11 +99,11 @@ describeIfRealDB('Status Page Subscription Integration', () => {
   });
 
   describe('Verification Flow', () => {
-    it('should verify subscription with valid token', async () => {
+    it('does not verify a subscription when an email scanner opens its link', async () => {
       const sp = await createTestStatusPage();
       const sub = await createTestStatusPageSubscription(sp.id, 'user@example.com', {
         verified: false,
-        verificationToken: 'valid-token',
+        verificationToken: hashSubscriptionToken('valid-token'),
       });
 
       // Call the Server Component function directly
@@ -111,8 +112,8 @@ describeIfRealDB('Status Page Subscription Integration', () => {
       const updatedSub = await testPrisma.statusPageSubscription.findUnique({
         where: { id: sub.id },
       });
-      expect(updatedSub?.verified).toBe(true);
-      expect(updatedSub?.verificationToken).toBeNull();
+      expect(updatedSub?.verified).toBe(false);
+      expect(updatedSub?.verificationToken).toBe(hashSubscriptionToken('valid-token'));
     });
   });
 
@@ -120,7 +121,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
     it('should require confirmation without mutating on GET', async () => {
       const sp = await createTestStatusPage();
       const sub = await createTestStatusPageSubscription(sp.id, 'user@example.com', {
-        token: 'unsubscribe-token',
+        token: hashSubscriptionToken('unsubscribe-token'),
       });
 
       await UnsubscribePage({ params: Promise.resolve({ token: 'unsubscribe-token' }) });
@@ -134,7 +135,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
     it('shows success after a confirmed unsubscribe', async () => {
       const sp = await createTestStatusPage();
       await createTestStatusPageSubscription(sp.id, 'user@example.com', {
-        token: 'unsubscribe-token',
+        token: hashSubscriptionToken('unsubscribe-token'),
         unsubscribedAt: new Date(),
       });
 

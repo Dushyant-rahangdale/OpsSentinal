@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger';
 import { redirect } from 'next/navigation';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
 import { statusPageSlugMatches } from '@/lib/status-page-resolver';
+import { findUnsubscribeSubscription } from '@/lib/status-pages/subscription-tokens';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,16 +13,13 @@ async function confirmUnsubscribe(formData: FormData) {
   const token = String(formData.get('token') || '');
   const expectedSlug = String(formData.get('expectedSlug') || '');
   if (token) {
-    const subscription = await prisma.statusPageSubscription.findUnique({
-      where: { token },
-      select: { statusPage: { select: { slug: true, isDefault: true } } },
-    });
+    const subscription = await findUnsubscribeSubscription(token);
     if (
       subscription &&
       statusPageSlugMatches(subscription.statusPage.slug, expectedSlug || undefined)
     ) {
       await prisma.statusPageSubscription.updateMany({
-        where: { token, unsubscribedAt: null },
+        where: { id: subscription.id, unsubscribedAt: null },
         data: { unsubscribedAt: new Date() },
       });
       const prefix =
@@ -55,12 +53,7 @@ export async function renderUnsubscribePage(
   let subscription = null;
 
   try {
-    const sub = await prisma.statusPageSubscription.findUnique({
-      where: { token },
-      include: {
-        statusPage: true,
-      },
-    });
+    const sub = await findUnsubscribeSubscription(token);
 
     if (!sub || !statusPageSlugMatches(sub.statusPage.slug, expectedSlug)) {
       status = 'invalid';

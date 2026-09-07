@@ -146,4 +146,21 @@ describe('StatusPageConfig Component', () => {
     const successMsg = await screen.findByText(/Settings saved successfully/i);
     expect(successMsg).toBeDefined();
   });
+
+  it('saves authentication when Public Access is disabled', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    global.fetch = fetchMock;
+    render(<StatusPageConfig statusPage={mockStatusPage} allServices={mockAllServices} />);
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Public Access' }));
+    fireEvent.click(screen.getByText(/Save Settings/));
+    await screen.findByText(/Settings saved successfully/i);
+
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PATCH');
+    expect(request).toBeDefined();
+    expect(JSON.parse(request![1].body).requireAuth).toBe(true);
+  });
 });

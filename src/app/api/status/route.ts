@@ -19,6 +19,8 @@ import {
   visibleMaintenanceServiceIds,
 } from '@/lib/status-page-projection';
 import { observeOperationalHistogram } from '@/lib/metrics/operational/registry';
+import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
+import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
 
 /**
  * Status Page API
@@ -38,6 +40,9 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       select: {
         id: true,
         updatedAt: true,
+        maxIncidentsToShow: true,
+        incidentHistoryDays: true,
+        dataRetentionDays: true,
         enabled: true,
         requireAuth: true,
         statusApiRequireToken: true,
@@ -114,8 +119,40 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
     }
 
     const visibility = publicStatusVisibility(statusPage);
+    const publicationLimits = statusPagePublicationLimits(statusPage);
 
     const serviceIds = statusPage.services.filter(sp => sp.showOnPage).map(sp => sp.serviceId);
+
+    const projected = await getStatusPageSnapshot(statusPage.id);
+    if (projected.snapshot) {
+      const snapshot = projected.snapshot;
+      const responseData = {
+        status: snapshot.status,
+        services: snapshot.services,
+        incidents: snapshot.incidents,
+        metrics: {
+          uptime: Object.entries(snapshot.uptime).map(([serviceId, uptime]) => ({
+            serviceId,
+            uptime: Number(uptime.toFixed(3)),
+          })),
+        },
+        retention: { historyDays: snapshot.historyDays },
+        updatedAt: snapshot.generatedAt,
+        projection: { revision: snapshot.revision, stale: projected.stale },
+      };
+      const headers: Record<string, string> = {
+        'Cache-Control':
+          statusPage.requireAuth || statusPage.statusApiRequireToken
+            ? 'private, no-store'
+            : 'public, s-maxage=15, stale-while-revalidate=600, stale-if-error=86400',
+        ...(projected.stale ? { Warning: '110 - "Response is stale"' } : {}),
+      };
+      const etag = `"${createHash('sha256').update(JSON.stringify(responseData)).digest('base64url')}"`;
+      if (req.headers.get('if-none-match') === etag) {
+        return new NextResponse(null, { status: 304, headers: { ...headers, ETag: etag } });
+      }
+      return jsonOk(responseData, 200, { ...headers, ETag: etag });
+    }
 
     if (serviceIds.length === 0) {
       return jsonOk(
@@ -127,7 +164,13 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
           retention: null,
           updatedAt: new Date().toISOString(),
         },
-        200
+        200,
+        {
+          'Cache-Control':
+            statusPage.requireAuth || statusPage.statusApiRequireToken
+              ? 'private, no-store'
+              : 'public, s-maxage=15, stale-while-revalidate=600, stale-if-error=86400',
+        }
       );
     }
 
@@ -164,6 +207,11 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
     // across request bursts while still refreshing time-derived uptime once a minute.
     const projectionNow = statusProjectionClock();
     const uptimeWindow = await getReportingWindowForDays(30, 'incident', projectionNow);
+    const incidentWindow = await getReportingWindowForDays(
+      publicationLimits.historyDays,
+      'incident',
+      projectionNow
+    );
     const [activeGroups, recentIncidents] = await Promise.all([
       prisma.incident.groupBy({
         by: ['serviceId', 'urgency'],
@@ -179,10 +227,10 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
             where: {
               serviceId: { in: serviceIds },
               visibility: 'PUBLIC',
-              createdAt: { gte: uptimeWindow.start, lte: uptimeWindow.end },
+              createdAt: { gte: incidentWindow.start, lte: incidentWindow.end },
             },
             orderBy: { createdAt: 'desc' },
-            take: 20,
+            take: publicationLimits.maxIncidents,
             select: {
               id: true,
               title: true,
