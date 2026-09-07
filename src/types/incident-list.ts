@@ -10,6 +10,7 @@ export interface IncidentListItem {
   priority: string | null;
   urgency: IncidentUrgency;
   createdAt: Date;
+  updatedAt?: Date | null;
   acknowledgedAt?: Date | null;
   resolvedAt?: Date | null;
   assigneeId: string | null;
