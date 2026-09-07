@@ -161,9 +161,7 @@ export default function LoginClient({
             {isSuccess ? 'Station online.' : <HelloGreeting />}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-normal transition-colors duration-300">
-            {isSuccess
-              ? 'Pledge acknowledged. The bridge is yours.'
-              : 'The watch never ends. Take your post.'}
+            {isSuccess ? 'Pledge acknowledged. The bridge is yours.' : 'Sign in to take the watch.'}
           </p>
         </div>
 
@@ -202,7 +200,7 @@ export default function LoginClient({
                   : 'text-slate-700 dark:text-slate-300'
               )}
             >
-              Work email
+              Email
             </label>
             <div className="group relative flex items-center">
               <div className="absolute left-4 z-10 text-slate-400 dark:text-slate-500 group-focus-within:text-slate-800 dark:group-focus-within:text-slate-200 transition-colors pointer-events-none">

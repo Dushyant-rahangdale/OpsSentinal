@@ -593,12 +593,6 @@ export default function LoginAnimation({
           </div>
           <span className="text-lg 2xl:text-xl font-bold tracking-tight text-white">OpsKnight</span>
         </div>
-
-        {/* A quiet aside rather than a strip of abstract verbs — the globe
-            already shows detection, ownership and resolution happening. */}
-        <div className="hidden xl:block text-[10px] font-mono tracking-widest text-slate-600 font-semibold select-none">
-          IT IS 3AM SOMEWHERE
-        </div>
       </div>
 
       {/* Earth + orbit, anchored toward the bottom so it reads as a planetary
@@ -846,7 +840,7 @@ export default function LoginAnimation({
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-mono font-semibold text-white leading-none">
+                  <span className="text-[11px] font-semibold tracking-tight text-white leading-none">
                     {m.id}
                   </span>
                   {/* lifecycle as three dots: passed / current / upcoming */}
@@ -872,12 +866,12 @@ export default function LoginAnimation({
                   </span>
                   <span
                     data-role="clock"
-                    className="text-[9px] font-mono tabular-nums font-semibold leading-none ml-auto"
+                    className="text-[11px] tabular-nums font-semibold leading-none ml-auto"
                   >
                     00:00
                   </span>
                 </div>
-                <div className="text-[8px] leading-none mt-1 text-slate-500">
+                <div className="text-[10px] leading-tight mt-1.5 text-slate-500">
                   {m.service}
                   <span className="mx-1 text-slate-700">·</span>
                   <span data-role="responder" className="text-slate-400">
@@ -910,12 +904,12 @@ export default function LoginAnimation({
           </span>
         </h2>
         <p className="text-xs lg:text-sm 2xl:text-base text-slate-400 mt-2 max-w-sm 2xl:max-w-md leading-relaxed">
-          Nothing waits for morning. Nothing gets lost.
+          Alerts reach the right responder in seconds.
         </p>
 
-        <div className="flex items-center justify-between pt-4 mt-5 2xl:mt-7 border-t border-slate-800/60 text-[10px] 2xl:text-[11px] font-mono tracking-wider text-slate-400">
+        <div className="flex items-center justify-between pt-4 mt-5 2xl:mt-7 border-t border-slate-800/60 text-[10px] 2xl:text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
           <div>Open source &nbsp;•&nbsp; Self-hosted</div>
-          <div>EVERY PAGE HAS A NAME ON IT</div>
+          <div>EVERY ALERT HAS AN OWNER</div>
         </div>
       </div>
     </div>
