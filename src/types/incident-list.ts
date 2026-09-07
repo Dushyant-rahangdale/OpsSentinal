@@ -1,5 +1,4 @@
 import type { IncidentStatus, IncidentUrgency } from '@prisma/client';
-import type { IncidentSlaProjectionInput } from '@/lib/incident-sla/types';
 
 export interface IncidentListItem {
   id: string;

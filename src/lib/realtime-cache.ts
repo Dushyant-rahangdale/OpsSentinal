@@ -267,7 +267,7 @@ export async function getCachedRecentIncidents(
       teamIds,
     });
 
-    return prisma.incident.findMany({
+    const incidents = await prisma.incident.findMany({
       where: whereClause,
       select: {
         id: true,
@@ -307,6 +307,13 @@ export async function getCachedRecentIncidents(
       take: 50,
       orderBy: { updatedAt: 'desc' },
     });
+    return incidents.map(incident => ({
+      ...incident,
+      slaPausedMs: Number(incident.slaPausedMs),
+      slaAckElapsedMs: incident.slaAckElapsedMs === null ? null : Number(incident.slaAckElapsedMs),
+      slaResolveElapsedMs:
+        incident.slaResolveElapsedMs === null ? null : Number(incident.slaResolveElapsedMs),
+    }));
   };
 
   if (lastHash) {

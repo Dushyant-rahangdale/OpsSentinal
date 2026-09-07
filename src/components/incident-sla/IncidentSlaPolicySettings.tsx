@@ -161,50 +161,52 @@ export default function IncidentSlaPolicySettings({
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold">
-                Priority overrides{' '}
-                <span className="font-normal text-muted-foreground">
-                  (optional; unselected priorities use base targets)
-                </span>
-              </p>
-              {priorities.map(p => (
-                <div
-                  key={p}
-                  className="grid grid-cols-[auto_1fr_1fr] items-end gap-2 rounded-md border p-2"
-                >
-                  <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
-                    <input
-                      type="checkbox"
-                      checked={rules[p]?.enabled ?? false}
-                      disabled={!canManage || pending}
-                      onChange={e => updateRule(p, 'enabled', e.target.checked)}
-                    />
-                    {p}
-                  </label>
-                  <div>
-                    <Label className="text-[10px]">Ack minutes</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={rules[p]?.ack ?? ''}
-                      disabled={!canManage || pending || !rules[p]?.enabled}
-                      onChange={e => updateRule(p, 'ack', e.target.value)}
-                    />
+            {scopeKey.startsWith('service:') && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold">
+                  Priority overrides{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (optional; unselected priorities use base targets)
+                  </span>
+                </p>
+                {priorities.map(p => (
+                  <div
+                    key={p}
+                    className="grid grid-cols-[auto_1fr_1fr] items-end gap-2 rounded-md border p-2"
+                  >
+                    <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={rules[p]?.enabled ?? false}
+                        disabled={!canManage || pending}
+                        onChange={e => updateRule(p, 'enabled', e.target.checked)}
+                      />
+                      {p}
+                    </label>
+                    <div>
+                      <Label className="text-[10px]">Ack minutes</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={rules[p]?.ack ?? ''}
+                        disabled={!canManage || pending || !rules[p]?.enabled}
+                        onChange={e => updateRule(p, 'ack', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px]">Resolve minutes</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={rules[p]?.resolve ?? ''}
+                        disabled={!canManage || pending || !rules[p]?.enabled}
+                        onChange={e => updateRule(p, 'resolve', e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-[10px]">Resolve minutes</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={rules[p]?.resolve ?? ''}
-                      disabled={!canManage || pending || !rules[p]?.enabled}
-                      onChange={e => updateRule(p, 'resolve', e.target.value)}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
         {canManage && (
