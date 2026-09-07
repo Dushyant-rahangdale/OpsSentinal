@@ -69,7 +69,9 @@ function isPublicPath(pathname: string) {
 
   // Public static assets in /public folder (images, etc)
   // Only allow specific extensions to avoid leaking pages as static files
-  return /\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
+  return /\.(jpg|jpeg|png|webp|avif|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(
+    pathname
+  );
 }
 
 function isStatusDomainPath(pathname: string) {
@@ -252,7 +254,7 @@ export default async function middleware(req: NextRequest) {
     pathname.startsWith('/status') ||
     pathname.startsWith('/logs') ||
     isPublicPath(pathname) ||
-    /\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
+    /\.(jpg|jpeg|png|webp|avif|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
 
   if (!skipDomainCheck) {
     const statusConfig = await fetchStatusDomainConfig();
@@ -308,7 +310,9 @@ export default async function middleware(req: NextRequest) {
     !pathname.startsWith('/status') &&
     !pathname.startsWith('/_next') &&
     !pathname.startsWith('/favicon') &&
-    !/\.(jpg|jpeg|png|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
+    !/\.(jpg|jpeg|png|webp|avif|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(
+      pathname
+    );
 
   if (shouldRedirectToMobile) {
     const mobileUrl = req.nextUrl.clone();

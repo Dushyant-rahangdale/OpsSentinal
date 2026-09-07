@@ -1,6 +1,7 @@
 'use client';
 
 import Spinner from '@/components/ui/Spinner';
+import { cn } from '@/lib/utils';
 
 export type ProviderType = 'google' | 'okta' | 'azure' | 'auth0' | 'custom' | null | undefined;
 
@@ -18,7 +19,8 @@ const providerConfig: Record<
   { classes: string; icon: React.ReactNode; defaultLabel: string }
 > = {
   google: {
-    classes: 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200',
+    classes:
+      'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs hover:shadow-sm',
     defaultLabel: 'Google',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -72,12 +74,13 @@ const providerConfig: Record<
     ),
   },
   custom: {
-    classes: 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md',
+    classes:
+      'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs hover:shadow-sm',
     defaultLabel: 'SSO',
     icon: (
       <svg
-        width="20"
-        height="20"
+        width="18"
+        height="18"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -85,7 +88,7 @@ const providerConfig: Record<
         aria-hidden="true"
       >
         <path
-          d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5Z"
+          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -112,14 +115,13 @@ export default function SsoButton({
       onClick={onClick}
       disabled={loading || disabled}
       aria-label={`Sign in with ${label}`}
-      className={`
-        relative w-full flex items-center justify-center gap-3 px-5 py-3.5 
-        rounded-xl text-[0.95rem] font-semibold border
-        transition-all duration-200 transform
-        active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed
-        shadow-sm hover:shadow-md
-        ${config.classes}
-      `}
+      className={cn(
+        'group relative w-full h-11 2xl:h-12 flex items-center justify-center gap-2.5 px-4',
+        'rounded-lg text-sm font-medium border select-none cursor-pointer',
+        'transition-all duration-150 transform',
+        'active:scale-[0.995] disabled:opacity-50 disabled:cursor-not-allowed',
+        config.classes
+      )}
     >
       {loading ? (
         <>

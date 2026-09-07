@@ -381,6 +381,54 @@ textarea:focus-visible {
   animation: shake 0.5s ease-in-out;
 }
 
+/* Login page — the globe's surface/cloud/city-light rotation is driven from a
+   single requestAnimationFrame clock in LoginAnimation.tsx (not CSS), so that
+   incident markers stay locked to the landmass instead of drifting. */
+
+@keyframes rotate-cirrus {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: 800px;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Login page — the incident lifecycle (colour, arrival ping, SLA ring, clock,
+   pipeline stage and responder line) is computed in LoginAnimation.tsx from
+   the same clock that rotates the globe, so a ticket can never disagree with
+   the marker it points at. */
+
+/* Login page — occasional shooting star streaking across the starfield */
+@keyframes shooting-star {
+  0%,
+  92% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  93% {
+    opacity: 1;
+  }
+  99% {
+    transform: translate(-220px, 130px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-220px, 130px);
+    opacity: 0;
+  }
+}
+
 /* Pulse glow animation for Sentinel Eye */
 @keyframes pulse-glow {
 

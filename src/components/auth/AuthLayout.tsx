@@ -1,72 +1,83 @@
 'use client';
 
 import React from 'react';
-import LoginAnimation from '@/components/auth/LoginAnimation'; // Ensure this path is correct
-import Link from 'next/link';
-import { cn } from '@/lib/utils'; // Assuming utils location
+import Image from 'next/image';
+import LoginAnimation from '@/components/auth/LoginAnimation';
+import { cn } from '@/lib/utils';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
   showAnimation?: boolean;
+  /** Passed through on successful auth so the globe settles to "all resolved". */
+  isSuccess?: boolean;
 }
 
-export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) {
+export function AuthLayout({ children, showAnimation = true, isSuccess = false }: AuthLayoutProps) {
   return (
-    <div className="relative min-h-[100dvh] lg:h-[100dvh] w-full overflow-hidden bg-background text-primary-foreground font-sans selection:bg-primary/20">
-      {/* Background Layers - Shared visuals */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-primary/90" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:64px_64px] opacity-20" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_50%,rgba(255,255,255,0.1),transparent_25%),radial-gradient(circle_at_85%_30%,rgba(255,255,255,0.05),transparent_25%)] mix-blend-overlay" />
+    <div className="relative min-h-[100dvh] lg:h-[100dvh] w-full overflow-hidden bg-[#06080b] font-sans selection:bg-red-500/20">
+      <div className="flex flex-col lg:flex-row min-h-[100dvh] lg:h-full w-full">
+        {/* Left Side: Earth Globe + Sentinel Animation Showcase (desktop) */}
+        {showAnimation && (
+          <section className="hidden lg:flex lg:w-1/2 h-full relative overflow-hidden border-r border-[#1a202c]">
+            <LoginAnimation resolved={isSuccess} />
+          </section>
+        )}
 
-      {/* Main Container */}
-      <div className="relative mx-auto flex min-h-[100dvh] lg:h-full w-full max-w-[1920px] flex-col px-6 py-6 sm:px-12 lg:px-16 xl:px-24 overflow-hidden">
-        {/* Header - Enhanced Branding */}
-        <header className="flex items-center justify-between gap-4 py-1 mb-2 border-b border-white/5">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-950/30 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)] backdrop-blur-sm group transition-all duration-500 hover:border-emerald-500/60 hover:shadow-[0_0_25px_rgba(16,185,129,0.4)]"
-            >
-              <img
-                src="/logo.svg"
-                alt="OpsKnight"
-                className="h-7 w-7 opacity-90 group-hover:opacity-100 transition-opacity"
-              />
-            </Link>
-            <div>
-              <h1
-                className="text-2xl font-extrabold tracking-tight text-white drop-shadow-md"
-                style={{ letterSpacing: '-0.02em' }}
-              >
-                OpsKnight
-              </h1>
+        {/* Small screens get a compact planetary strip instead of nothing —
+            the full showcase assumes a tall panel it will never have here. */}
+        {showAnimation && (
+          <div className="lg:hidden relative w-full h-[164px] shrink-0 overflow-hidden border-b border-[#1a202c]">
+            <LoginAnimation variant="banner" resolved={isSuccess} />
+          </div>
+        )}
+
+        {/* Right Side: Clean Auth Container with Dark Mode Support */}
+        <section
+          className={cn(
+            'flex flex-col justify-between flex-1 w-full bg-background text-foreground overflow-y-auto px-6 py-8 sm:px-12 lg:px-16 2xl:px-24 transition-colors duration-200',
+            showAnimation ? 'lg:w-1/2' : 'w-full'
+          )}
+        >
+          {/* Brand badge — only needed when there's no banner above to carry it */}
+          {!showAnimation && (
+            <div className="w-full flex items-center justify-between py-2">
+              <div className="flex lg:hidden items-center gap-2">
+                <Image
+                  src="/logo.png"
+                  alt="OpsKnight"
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 object-contain"
+                  unoptimized
+                />
+                <span className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+                  OpsKnight
+                </span>
+              </div>
             </div>
+          )}
+
+          {/* Centered Auth Card */}
+          <div className="w-full flex items-center justify-center my-auto">{children}</div>
+
+          {/* Bottom security badge */}
+          <div className="text-center text-[11px] 2xl:text-xs text-slate-500 dark:text-slate-400 font-medium py-3 flex items-center justify-center gap-1.5">
+            <svg
+              className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <span>Your instance. Your data. Your rules.</span>
           </div>
-
-          <div className="flex items-center gap-3 text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-950/20 px-4 py-2 rounded-full border border-emerald-500/10 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            System Operational
-          </div>
-        </header>
-
-        {/* Content Body */}
-        <main className="grid flex-1 items-center gap-12 lg:grid-cols-2 lg:gap-24 xl:gap-32 pb-20">
-          {/* Left Side: Animated Hero */}
-          <section className="hidden lg:flex h-full w-full items-center justify-center min-h-[500px] relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/50 to-transparent blur-3xl -z-10 opacity-30" />
-            {showAnimation && <LoginAnimation />}
-          </section>
-
-          {/* Right Side: Auth Card Container */}
-          <section className="flex justify-center w-full lg:justify-end">
-            <div className="relative w-full max-w-[480px]">{children}</div>
-          </section>
-        </main>
-
-        {/* Footer Ticker could go here if extracted, but sticking to basic layout first */}
+        </section>
       </div>
     </div>
   );
@@ -75,31 +86,18 @@ export function AuthLayout({ children, showAnimation = true }: AuthLayoutProps) 
 interface AuthCardProps {
   children: React.ReactNode;
   isSuccess?: boolean;
-  className?: string; // Allow overrides
+  className?: string;
 }
 
-export function AuthCard({ children, isSuccess = false, className }: AuthCardProps) {
+export function AuthCard({ children, className }: AuthCardProps) {
   return (
-    <>
-      {/* Card Backlight Effect */}
-      <div
-        className={cn(
-          'absolute -inset-[2px] rounded-[20px] bg-gradient-to-b from-white/10 to-transparent blur-xl opacity-30 transition-all duration-1000',
-          isSuccess && 'from-emerald-500 opacity-50 blur-2xl'
-        )}
-      />
-
-      <div
-        className={cn(
-          'relative overflow-hidden rounded-2xl border bg-[#0a0a0a]/80 p-8 shadow-2xl backdrop-blur-xl transition-all duration-500',
-          isSuccess
-            ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.2)]'
-            : 'border-white/10',
-          className
-        )}
-      >
-        {children}
-      </div>
-    </>
+    <div
+      className={cn(
+        'w-full max-w-[360px] sm:max-w-[400px] 2xl:max-w-[460px] min-[2000px]:max-w-[520px] mx-auto py-4',
+        className
+      )}
+    >
+      {children}
+    </div>
   );
 }
