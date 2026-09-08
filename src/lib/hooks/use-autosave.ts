@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
 interface UseAutosaveOptions<T> {
   data: T;
@@ -66,10 +66,14 @@ export function useAutosave<T>({
       clearTimeout(timeoutRef.current);
     }
 
-    // Set new timeout
+    // Surface the unsaved state when the debounced save begins. Keeping both
+    // updates in the same callback avoids an effect-driven render cascade and
+    // prevents a re-render from cancelling the pending save.
     if (enabled) {
       timeoutRef.current = setTimeout(() => {
-        save();
+        setStatus('dirty');
+        setError(null);
+        void save();
       }, delay);
     }
 

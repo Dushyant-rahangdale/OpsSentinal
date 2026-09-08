@@ -23,6 +23,7 @@ import {
   isWriteApiScope,
 } from '@/lib/authorization';
 import { getCurrentUser } from '@/lib/rbac';
+import { isValidTimeZone } from '@/lib/timezone';
 
 type ActionState = {
   error?: string | null;
@@ -184,7 +185,11 @@ export async function updatePreferences(
 ): Promise<ActionState> {
   try {
     const user = await getCurrentUser();
-    const timeZone = (formData.get('timeZone') as string | null)?.trim() ?? 'UTC';
+    const timeZone = (formData.get('timeZone') as string | null)?.trim() || 'UTC';
+
+    if (!isValidTimeZone(timeZone)) {
+      return { error: 'Select a valid timezone.' };
+    }
 
     await prisma.user.update({
       where: { id: user.id },
@@ -194,8 +199,13 @@ export async function updatePreferences(
     });
 
     revalidatePath('/settings/profile');
+    revalidatePath('/', 'layout');
+    revalidatePath('/incidents');
+    revalidatePath('/analytics');
+    revalidatePath('/schedules');
     return { success: true };
   } catch (error) {
+    logger.error('Error updating preferences', { component: 'settings-actions', error });
     return { error: error instanceof Error ? error.message : 'Unable to update preferences.' };
   }
 }
