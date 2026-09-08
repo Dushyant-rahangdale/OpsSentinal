@@ -6,6 +6,8 @@ import { logAudit } from '@/lib/audit';
 import { assertAdmin } from '@/lib/rbac';
 import { revalidatePath } from 'next/cache';
 
+const ALLOWED_BRIDGE_TEMPLATE_VARIABLES = new Set(['incidentId']);
+
 const ChatOpsConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -17,7 +19,23 @@ const ChatOpsConfigSchema = z
     customBridgeUrlTemplate: z.string().trim().max(2048),
   })
   .superRefine((value, ctx) => {
-    if (!value.customBridgeUrlTemplate || value.defaultVideoBridge === 'NONE') return;
+    if (!value.customBridgeUrlTemplate) return;
+
+    const placeholders = Array.from(value.customBridgeUrlTemplate.matchAll(/\{([^{}]+)\}/g)).map(
+      match => match[1]
+    );
+    const unsupportedPlaceholder = placeholders.find(
+      placeholder => !ALLOWED_BRIDGE_TEMPLATE_VARIABLES.has(placeholder)
+    );
+    if (unsupportedPlaceholder) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['customBridgeUrlTemplate'],
+        message: `Unsupported bridge URL template variable: {${unsupportedPlaceholder}}.`,
+      });
+      return;
+    }
+
     const probe = value.customBridgeUrlTemplate.replaceAll('{incidentId}', 'incident-id');
     try {
       const url = new URL(probe);
