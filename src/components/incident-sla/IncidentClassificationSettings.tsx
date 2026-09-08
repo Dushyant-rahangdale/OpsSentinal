@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/shadcn/select';
 import { notify } from '@/lib/toast';
 import { saveWorkspaceClassificationPolicyAction } from '@/app/(app)/settings/incident-sla/actions';
-import { INCIDENT_PRIORITIES, INCIDENT_PRIORITY_DEFINITIONS } from '@/lib/incidents/priority';
+import { INCIDENT_PRIORITIES, getIncidentPriorityDefinition } from '@/lib/incidents/priority';
 
 type Severity = 'critical' | 'error' | 'warning' | 'info';
 type Priority = (typeof INCIDENT_PRIORITIES)[number];
@@ -27,12 +27,18 @@ type Urgency = 'HIGH' | 'MEDIUM' | 'LOW';
 type Rule = { matchValue: Severity; priority: Priority; urgency: Urgency };
 
 const severities: Severity[] = ['critical', 'error', 'warning', 'info'];
-const defaults: Record<Severity, Omit<Rule, 'matchValue'>> = {
-  critical: { priority: 'P1', urgency: 'HIGH' },
-  error: { priority: 'P2', urgency: 'MEDIUM' },
-  warning: { priority: 'P3', urgency: 'MEDIUM' },
-  info: { priority: 'P5', urgency: 'LOW' },
-};
+function defaultRule(severity: Severity): Omit<Rule, 'matchValue'> {
+  switch (severity) {
+    case 'critical':
+      return { priority: 'P1', urgency: 'HIGH' };
+    case 'error':
+      return { priority: 'P2', urgency: 'MEDIUM' };
+    case 'warning':
+      return { priority: 'P3', urgency: 'MEDIUM' };
+    case 'info':
+      return { priority: 'P5', urgency: 'LOW' };
+  }
+}
 
 export default function IncidentClassificationSettings({
   policy,
@@ -43,7 +49,7 @@ export default function IncidentClassificationSettings({
   const [rules, setRules] = useState<Rule[]>(() =>
     severities.map(matchValue => ({
       matchValue,
-      ...(policy?.rules.find(rule => rule.matchValue === matchValue) ?? defaults[matchValue]),
+      ...(policy?.rules.find(rule => rule.matchValue === matchValue) ?? defaultRule(matchValue)),
     }))
   );
   const [pending, startTransition] = useTransition();
@@ -100,7 +106,7 @@ export default function IncidentClassificationSettings({
               <SelectContent>
                 {INCIDENT_PRIORITIES.map(priority => (
                   <SelectItem key={priority} value={priority}>
-                    {priority} {INCIDENT_PRIORITY_DEFINITIONS[priority].label}
+                    {priority} {getIncidentPriorityDefinition(priority).label}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -29,6 +29,21 @@ export const INCIDENT_URGENCY_DEFINITIONS: Record<
   LOW: { label: 'Low', description: 'Non-disruptive, quiet-hours-aware notification behavior.' },
 };
 
+export function getIncidentPriorityDefinition(priority: IncidentPriority) {
+  switch (priority) {
+    case 'P1':
+      return INCIDENT_PRIORITY_DEFINITIONS.P1;
+    case 'P2':
+      return INCIDENT_PRIORITY_DEFINITIONS.P2;
+    case 'P3':
+      return INCIDENT_PRIORITY_DEFINITIONS.P3;
+    case 'P4':
+      return INCIDENT_PRIORITY_DEFINITIONS.P4;
+    case 'P5':
+      return INCIDENT_PRIORITY_DEFINITIONS.P5;
+  }
+}
+
 export function normalizeIncidentPriority(
   value: string | null | undefined
 ): IncidentPriority | null {
