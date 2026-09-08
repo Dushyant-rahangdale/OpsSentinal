@@ -44,6 +44,10 @@ import PriorityBadge from '@/components/incident/PriorityBadge';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
 import {
+  INCIDENT_PRIORITY_DEFINITIONS,
+  INCIDENT_URGENCY_DEFINITIONS,
+} from '@/lib/incidents/priority';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -183,7 +187,7 @@ const URGENCY_OPTIONS = [
     value: 'LOW' as const,
     label: 'Low',
     sublabel: 'Non-Urgent',
-    desc: 'Queued for standard triage review without active paging alerts',
+    desc: INCIDENT_URGENCY_DEFINITIONS.LOW.description,
     icon: Info,
     selectedClass:
       'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/30 shadow-2xs dark:text-emerald-300',
@@ -197,40 +201,40 @@ const URGENCY_OPTIONS = [
 const PRIORITY_OPTIONS = [
   {
     value: 'P1',
-    label: 'Crisis',
-    description: 'Critical service outage affecting all customers',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P1.label,
+    description: INCIDENT_PRIORITY_DEFINITIONS.P1.description,
     selectedClass:
       'bg-rose-500/15 text-rose-700 border-rose-500/40 ring-1 ring-rose-500/30 shadow-2xs dark:text-rose-300',
     dotClass: 'bg-rose-500',
   },
   {
     value: 'P2',
-    label: 'High',
-    description: 'Major functionality degraded with significant impact',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P2.label,
+    description: INCIDENT_PRIORITY_DEFINITIONS.P2.description,
     selectedClass:
       'bg-orange-500/15 text-orange-700 border-orange-500/40 ring-1 ring-orange-500/30 shadow-2xs dark:text-orange-300',
     dotClass: 'bg-orange-500',
   },
   {
     value: 'P3',
-    label: 'Medium',
-    description: 'Partial degradation or non-critical feature impaired',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P3.label,
+    description: INCIDENT_PRIORITY_DEFINITIONS.P3.description,
     selectedClass:
       'bg-amber-500/15 text-amber-700 border-amber-500/40 ring-1 ring-amber-500/30 shadow-2xs dark:text-amber-300',
     dotClass: 'bg-amber-500',
   },
   {
     value: 'P4',
-    label: 'Low',
-    description: 'Minor issue with reasonable workaround available',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P4.label,
+    description: INCIDENT_PRIORITY_DEFINITIONS.P4.description,
     selectedClass:
       'bg-sky-500/15 text-sky-700 border-sky-500/40 ring-1 ring-sky-500/30 shadow-2xs dark:text-sky-300',
     dotClass: 'bg-sky-500',
   },
   {
     value: 'P5',
-    label: 'Info',
-    description: 'Planned maintenance or informational operational notice',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P5.label,
+    description: INCIDENT_PRIORITY_DEFINITIONS.P5.description,
     selectedClass:
       'bg-slate-500/15 text-slate-700 border-slate-500/40 ring-1 ring-slate-500/30 shadow-2xs dark:text-slate-300',
     dotClass: 'bg-slate-400',

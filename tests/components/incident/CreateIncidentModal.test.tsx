@@ -167,7 +167,7 @@ describe('CreateIncidentModal', () => {
     await screen.findByText('Declare Incident');
 
     // Click Low Urgency button by title
-    const lowUrgencyBtn = screen.getByTitle(/Queued for standard triage review/i);
+    const lowUrgencyBtn = screen.getByTitle(/Non-disruptive, quiet-hours-aware/i);
     fireEvent.click(lowUrgencyBtn);
     expect(lowUrgencyBtn.getAttribute('aria-pressed')).toBe('true');
 

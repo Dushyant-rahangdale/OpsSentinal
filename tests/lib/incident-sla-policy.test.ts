@@ -144,6 +144,24 @@ describe('new incident policy resolution', () => {
       ).toMatchObject({ ackTargetMs: 900000, policyId: 'w1', source: 'WORKSPACE_DEFAULT' });
     }
   });
+  it('resolves workspace priority between service priority and service base', async () => {
+    const workspaceWithP2 = {
+      ...workspace,
+      rules: [{ priority: 'P2', ackTargetMs: 2000, resolveTargetMs: 4000 }],
+    };
+    expect(
+      await resolveNewIncidentSlaContract(transaction([service, workspaceWithP2]), {
+        serviceId: 's1',
+        priority: 'P2',
+        now,
+      })
+    ).toMatchObject({
+      ackTargetMs: 2000,
+      resolveTargetMs: 4000,
+      source: 'WORKSPACE_PRIORITY_OVERRIDE',
+      policyId: 'w1',
+    });
+  });
   it('keeps override precedence when service base inherits', async () => {
     expect(
       await resolveNewIncidentSlaContract(

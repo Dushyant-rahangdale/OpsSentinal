@@ -54,7 +54,7 @@ describe('StatusPageSnapshotView publication parity', () => {
     );
 
     expect(screen.getByText('Payment processing')).toBeInTheDocument();
-    expect(screen.getByText(/SLA tier TIER_1/)).toBeInTheDocument();
+    expect(screen.getByText(/Service tier TIER_1/)).toBeInTheDocument();
     expect(screen.getByText(/Owned by Payments team/)).toBeInTheDocument();
     expect(screen.getByText('Elevated errors')).toBeInTheDocument();
     expect(screen.getByText('Card payments are delayed.')).toBeInTheDocument();

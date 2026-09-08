@@ -122,6 +122,7 @@ export function projectIncidentSlaState(
     policyId: input.slaPolicyId ?? null,
     policyVersion: input.slaPolicyVersion ?? null,
     policyRule: input.slaPolicyRule ?? null,
+    priorityAtCapture: input.slaPriorityAtCapture ?? null,
   };
 
   function projectPhase(phase: IncidentSlaPhase): IncidentSlaPhaseState {
@@ -147,13 +148,17 @@ export function projectIncidentSlaState(
             pauseStartedAt: input.slaPauseStartedAt,
           });
     const remainingMs = targetMs - elapsedMs;
-    const status = resolvedWithoutAck
-      ? 'BREACHED'
-      : elapsedMs > targetMs
+    const sourceRecoveredBeforeAck =
+      resolvedWithoutAck && input.resolutionKind === 'SOURCE_RECOVERY' && elapsedMs <= targetMs;
+    const status = sourceRecoveredBeforeAck
+      ? 'NOT_REQUIRED'
+      : resolvedWithoutAck
         ? 'BREACHED'
-        : completedAt !== null
-          ? 'MET'
-          : 'PENDING';
+        : elapsedMs > targetMs
+          ? 'BREACHED'
+          : completedAt !== null
+            ? 'MET'
+            : 'PENDING';
     const actionable = !resolvedWithoutAck && completedAt === null && !clock.paused;
     const windowMs = getIncidentSlaWarningWindowMs(phase, targetMs, policy);
     // With no open pause, the deadline is creation + closed pauses + target.
@@ -162,6 +167,10 @@ export function projectIncidentSlaState(
     const warningAt = actionable ? new Date(targetAtMs - windowMs) : null;
     const breachAt = actionable ? new Date(targetAtMs + 1) : null;
     return {
+      applicability: sourceRecoveredBeforeAck ? 'NOT_REQUIRED' : 'REQUIRED',
+      reason: sourceRecoveredBeforeAck
+        ? 'Source recovered before the acknowledgement deadline'
+        : null,
       targetMs,
       elapsedMs,
       remainingMs,

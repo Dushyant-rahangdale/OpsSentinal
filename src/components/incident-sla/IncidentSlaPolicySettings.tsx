@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { notify } from '@/lib/toast';
 import { saveIncidentSlaPolicyAction } from '@/app/(app)/settings/incident-sla/actions';
+import { INCIDENT_PRIORITY_DEFINITIONS } from '@/lib/incidents/priority';
 
 type Rule = {
   priority: string;
@@ -85,19 +86,18 @@ export default function IncidentSlaPolicySettings({
           inheritWorkspace: inherit,
           baseAckTargetMs: inherit ? null : Number(ack) * 60000,
           baseResolveTargetMs: inherit ? null : Number(resolve) * 60000,
-          rules: scopeKey.startsWith('service:')
-            ? rules.flatMap(rule => {
-                return rule.enabled
-                  ? [
-                      {
-                        priority: rule.priority,
-                        ackTargetMs: Number(rule.ack) * 60000,
-                        resolveTargetMs: Number(rule.resolve) * 60000,
-                      },
-                    ]
-                  : [];
-              })
-            : [],
+          rules: rules.flatMap(rule => {
+            return rule.enabled
+              ? [
+                  {
+                    priority: rule.priority,
+                    ackTargetMs: Number(rule.ack) * 60000,
+                    resolveTargetMs: Number(rule.resolve) * 60000,
+                    label: `${rule.priority} ${INCIDENT_PRIORITY_DEFINITIONS[rule.priority].label}`,
+                  },
+                ]
+              : [];
+          }),
         });
         notify.success('Incident response SLA policy saved for future incidents.');
       } catch (error) {
@@ -201,7 +201,7 @@ export default function IncidentSlaPolicySettings({
               </div>
             </div>
           )}
-          {isService && (
+          {(isService || scopeKey === 'workspace') && (
             <div className="space-y-2">
               <p className="text-xs font-semibold">
                 Priority overrides{' '}
@@ -221,7 +221,7 @@ export default function IncidentSlaPolicySettings({
                       disabled={!canManage || pending}
                       onChange={e => updateRule(rule.priority, 'enabled', e.target.checked)}
                     />
-                    {rule.priority}
+                    {rule.priority} {INCIDENT_PRIORITY_DEFINITIONS[rule.priority].label}
                   </label>
                   <div>
                     <Label className="text-[10px]">Ack minutes</Label>

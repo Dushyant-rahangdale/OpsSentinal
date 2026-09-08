@@ -118,6 +118,14 @@ enum IncidentUrgency {
   HIGH
 }
 
+enum IncidentResolutionKind {
+  MANUAL
+  SOURCE_RECOVERY
+  AUTOMATION
+  AUTO_TIMEOUT
+  UNKNOWN
+}
+
 enum IncidentVisibility {
   PUBLIC
   PRIVATE
@@ -595,49 +603,57 @@ model Alert {
 }
 
 model Incident {
-  id                        String                    @id @default(cuid())
-  title                     String
-  description               String?
-  status                    IncidentStatus            @default(OPEN)
-  urgency                   IncidentUrgency           @default(HIGH)
-  visibility                IncidentVisibility        @default(PUBLIC)
-  priority                  String? // P1, P2.. P5
-  dedupKey                  String? // Key for deduplication
-  serviceId                 String
-  assigneeId                String?
-  teamId                    String? // Team assignment; DB check constraint keeps it exclusive with assigneeId
-  currentEscalationStep     Int? // Current step index (0-based)
-  nextEscalationAt          DateTime? // When to execute next escalation step
-  escalationStatus          String? // ESCALATING, COMPLETED, PAUSED
-  escalationProcessingAt    DateTime? // When escalation processing was claimed
-  escalationGeneration      Int                       @default(0) // Stable logical run identity; increments on restart/loop
-  acknowledgedAt            DateTime? // When incident was acknowledged (for SLA tracking)
-  resolvedAt                DateTime? // When incident was resolved (for SLA tracking)
-  snoozedUntil              DateTime? // When to auto-unsnooze (for time-based snoozing)
-  snoozeReason              String? // Reason for snoozing
-  slaPausedMs               BigInt                    @default(0) // Materialized closed SLA pause duration
-  slaPauseStartedAt         DateTime? // Current open SLA pause, if any
-  slaAckElapsedMs           BigInt? // Effective SLA time captured at the first ACK transition
-  slaResolveElapsedMs       BigInt? // Effective SLA time captured at the final resolve transition
-  slaAckTargetMs            Int? // Immutable effective ACK target captured when the incident is created
-  slaResolveTargetMs        Int? // Immutable effective resolve target captured when the incident is created
-  slaTargetSource           String? // Provenance for the frozen target (priority/service/default/backfill)
-  slaTargetCapturedAt       DateTime? // When the immutable target contract was captured
-  slaPolicyId               String? // NULL for historical/legacy writers; never infer provenance
-  slaPolicyVersion          Int?
-  slaPolicyRule             String? // BASE or P1-P5; immutable together with targets
-  slaPolicy                 IncidentSlaPolicy?        @relation(fields: [slaPolicyId], references: [id], onDelete: Restrict)
+  id                           String                        @id @default(cuid())
+  title                        String
+  description                  String?
+  status                       IncidentStatus                @default(OPEN)
+  urgency                      IncidentUrgency               @default(HIGH)
+  visibility                   IncidentVisibility            @default(PUBLIC)
+  priority                     String? // P1, P2.. P5
+  dedupKey                     String? // Key for deduplication
+  serviceId                    String
+  assigneeId                   String?
+  teamId                       String? // Team assignment; DB check constraint keeps it exclusive with assigneeId
+  currentEscalationStep        Int? // Current step index (0-based)
+  nextEscalationAt             DateTime? // When to execute next escalation step
+  escalationStatus             String? // ESCALATING, COMPLETED, PAUSED
+  escalationProcessingAt       DateTime? // When escalation processing was claimed
+  escalationGeneration         Int                           @default(0) // Stable logical run identity; increments on restart/loop
+  acknowledgedAt               DateTime? // When incident was acknowledged (for SLA tracking)
+  resolvedAt                   DateTime? // When incident was resolved (for SLA tracking)
+  resolutionKind               IncidentResolutionKind?
+  snoozedUntil                 DateTime? // When to auto-unsnooze (for time-based snoozing)
+  snoozeReason                 String? // Reason for snoozing
+  slaPausedMs                  BigInt                        @default(0) // Materialized closed SLA pause duration
+  slaPauseStartedAt            DateTime? // Current open SLA pause, if any
+  slaAckElapsedMs              BigInt? // Effective SLA time captured at the first ACK transition
+  slaResolveElapsedMs          BigInt? // Effective SLA time captured at the final resolve transition
+  slaAckTargetMs               Int? // Immutable effective ACK target captured when the incident is created
+  slaResolveTargetMs           Int? // Immutable effective resolve target captured when the incident is created
+  slaTargetSource              String? // Provenance for the frozen target (priority/service/default/backfill)
+  slaTargetCapturedAt          DateTime? // When the immutable target contract was captured
+  slaPolicyId                  String? // NULL for historical/legacy writers; never infer provenance
+  slaPolicyVersion             Int?
+  slaPolicyRule                String? // BASE or P1-P5; immutable together with targets
+  slaPriorityAtCapture         String? // Frozen priority used to select this SLA contract
+  classificationPrioritySource String?
+  classificationUrgencySource  String?
+  classificationPolicyId       String?
+  classificationPolicyVersion  Int?
+  classificationRule           String?
+  slaPolicy                    IncidentSlaPolicy?            @relation(fields: [slaPolicyId], references: [id], onDelete: Restrict)
+  classificationPolicy         IncidentClassificationPolicy? @relation(fields: [classificationPolicyId], references: [id], onDelete: Restrict)
   // ChatOps War-Room fields
-  slackWorkspaceId          String? // Immutable workspace that owns this war-room instance
-  slackChannelId            String? // Slack channel ID of dedicated war-room (e.g. "C0123456789")
-  slackChannelName          String? // Channel name (e.g. "inc-104-payments-api")
-  warRoomUrl                String? // Video bridge URL (Jitsi/Zoom/Meet)
-  warRoomArchivedAt         DateTime? // Set when the Slack channel is archived; the channel id is kept for history
-  warRoomProvisioningStatus WarRoomProvisioningStatus @default(NONE)
-  warRoomProvisioningToken  String?
-  warRoomProvisioningAt     DateTime?
-  createdAt                 DateTime                  @default(now())
-  updatedAt                 DateTime                  @updatedAt
+  slackWorkspaceId             String? // Immutable workspace that owns this war-room instance
+  slackChannelId               String? // Slack channel ID of dedicated war-room (e.g. "C0123456789")
+  slackChannelName             String? // Channel name (e.g. "inc-104-payments-api")
+  warRoomUrl                   String? // Video bridge URL (Jitsi/Zoom/Meet)
+  warRoomArchivedAt            DateTime? // Set when the Slack channel is archived; the channel id is kept for history
+  warRoomProvisioningStatus    WarRoomProvisioningStatus     @default(NONE)
+  warRoomProvisioningToken     String?
+  warRoomProvisioningAt        DateTime?
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
 
   service                 Service                  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   assignee                User?                    @relation(fields: [assigneeId], references: [id])
@@ -725,6 +741,36 @@ model IncidentSlaPolicyRule {
   policy          IncidentSlaPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
 
   @@unique([policyId, priority])
+}
+
+/// Append-only incident classification policy versions. Provider adapters normalize input;
+/// this policy owns OpsKnight priority and urgency semantics.
+model IncidentClassificationPolicy {
+  id                        String                             @id @default(cuid())
+  scopeKey                  String
+  version                   Int
+  inheritWorkspace          Boolean
+  derivePriorityFromUrgency Boolean                            @default(false)
+  createdAt                 DateTime                           @default(now())
+  createdById               String?
+  sealedAt                  DateTime?
+  rules                     IncidentClassificationPolicyRule[]
+  incidents                 Incident[]
+
+  @@unique([scopeKey, version])
+}
+
+model IncidentClassificationPolicyRule {
+  id         String                       @id @default(cuid())
+  policyId   String
+  matchType  String
+  matchValue String
+  priority   String?
+  urgency    IncidentUrgency?
+  label      String?
+  policy     IncidentClassificationPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+
+  @@unique([policyId, matchType, matchValue])
 }
 
 /// Durable daily rollout counters, including legacy writers that already pass explicit targets.
@@ -1408,23 +1454,24 @@ model StatusPage {
 
 // Derived, sanitized publication data. A revision fences concurrent rebuilds.
 model StatusPageSnapshot {
-  statusPageId String @id
-  revision BigInt @default(0)
-  publishedRevision BigInt @default(-1)
-  generatedAt DateTime?
-  payload Json?
-  lastError String?
-  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  statusPageId      String     @id
+  revision          BigInt     @default(0)
+  publishedRevision BigInt     @default(-1)
+  generatedAt       DateTime?
+  payload           Json?
+  lastError         String?
+  statusPage        StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
 }
 
 // Logos are kept out of the frequently read configuration JSON.
 model StatusPageAsset {
-  id String @id
+  id           String     @id
   statusPageId String
-  contentType String
-  data Bytes
-  createdAt DateTime @default(now())
-  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  contentType  String
+  data         Bytes
+  createdAt    DateTime   @default(now())
+  statusPage   StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
   @@index([statusPageId])
 }
 
@@ -1496,7 +1543,7 @@ model StatusPageSubscription {
   verificationToken String?
   preferences       Json? // Notification preferences (all incidents, major only, etc.)
 
-  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  statusPage     StatusPage                    @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
   deliveryTokens StatusPageSubscriptionToken[]
 
   @@unique([statusPageId, email])
@@ -1505,10 +1552,11 @@ model StatusPageSubscription {
 }
 
 model StatusPageSubscriptionToken {
-  tokenHash String @id
+  tokenHash      String                 @id
   subscriptionId String
-  createdAt DateTime @default(now())
-  subscription StatusPageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  createdAt      DateTime               @default(now())
+  subscription   StatusPageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
   @@index([subscriptionId])
 }
 
@@ -1651,10 +1699,14 @@ model IncidentMetricRollup {
   mttrCount Int    @default(0) // Count for averaging
 
   // SLA Compliance
-  ackSlaMet          Int @default(0)
-  ackSlaBreached     Int @default(0)
-  resolveSlaMet      Int @default(0)
-  resolveSlaBreached Int @default(0)
+  ackSlaMet                      Int @default(0)
+  ackSlaBreached                 Int @default(0)
+  ackSlaNotRequired              Int @default(0)
+  autoResolvedBeforeAck          Int @default(0)
+  manualResolvedWithoutAck       Int @default(0)
+  sourceRecoveryAfterAckDeadline Int @default(0)
+  resolveSlaMet                  Int @default(0)
+  resolveSlaBreached             Int @default(0)
 
   // Event Counts
   escalationCount           Int @default(0)
@@ -1699,15 +1751,19 @@ model IncidentMetricRollupByPriority {
   rollupId String
   priority String // 'P1' | 'P2' | 'P3' | 'P4' | 'P5'
 
-  incidents          Int    @default(0)
-  mttaSum            BigInt @default(0)
-  mttaCount          Int    @default(0)
-  mttrSum            BigInt @default(0)
-  mttrCount          Int    @default(0)
-  ackSlaMet          Int    @default(0)
-  ackSlaBreached     Int    @default(0)
-  resolveSlaMet      Int    @default(0)
-  resolveSlaBreached Int    @default(0)
+  incidents                      Int    @default(0)
+  mttaSum                        BigInt @default(0)
+  mttaCount                      Int    @default(0)
+  mttrSum                        BigInt @default(0)
+  mttrCount                      Int    @default(0)
+  ackSlaMet                      Int    @default(0)
+  ackSlaBreached                 Int    @default(0)
+  ackSlaNotRequired              Int    @default(0)
+  autoResolvedBeforeAck          Int    @default(0)
+  manualResolvedWithoutAck       Int    @default(0)
+  sourceRecoveryAfterAckDeadline Int    @default(0)
+  resolveSlaMet                  Int    @default(0)
+  resolveSlaBreached             Int    @default(0)
 
   rollup IncidentMetricRollup @relation(fields: [rollupId], references: [id], onDelete: Cascade)
 

@@ -13,6 +13,54 @@ async function seedRequiredReferenceData() {
       inheritWorkspace: false,
       baseAckTargetMs: 15 * 60_000,
       baseResolveTargetMs: 120 * 60_000,
+    },
+  });
+  await prisma.incidentSlaPolicyRule.createMany({
+    data: [
+      {
+        policyId: 'test-incident-sla-workspace-v1',
+        priority: 'P1',
+        ackTargetMs: 5 * 60_000,
+        resolveTargetMs: 60 * 60_000,
+      },
+      {
+        policyId: 'test-incident-sla-workspace-v1',
+        priority: 'P2',
+        ackTargetMs: 15 * 60_000,
+        resolveTargetMs: 240 * 60_000,
+      },
+      {
+        policyId: 'test-incident-sla-workspace-v1',
+        priority: 'P3',
+        ackTargetMs: 30 * 60_000,
+        resolveTargetMs: 480 * 60_000,
+      },
+      {
+        policyId: 'test-incident-sla-workspace-v1',
+        priority: 'P4',
+        ackTargetMs: 60 * 60_000,
+        resolveTargetMs: 1440 * 60_000,
+      },
+      {
+        policyId: 'test-incident-sla-workspace-v1',
+        priority: 'P5',
+        ackTargetMs: 120 * 60_000,
+        resolveTargetMs: 2880 * 60_000,
+      },
+    ],
+  });
+  await prisma.incidentSlaPolicy.update({
+    where: { id: 'test-incident-sla-workspace-v1' },
+    data: { sealedAt: new Date(0) },
+  });
+  await prisma.incidentClassificationPolicy.upsert({
+    where: { scopeKey_version: { scopeKey: 'workspace', version: 1 } },
+    update: {},
+    create: {
+      id: 'test-incident-classification-workspace-v1',
+      scopeKey: 'workspace',
+      version: 1,
+      inheritWorkspace: false,
       sealedAt: new Date(0),
     },
   });

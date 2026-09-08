@@ -3,7 +3,11 @@ import type { Prisma } from '@prisma/client';
 export type NewIncidentSlaContract = {
   ackTargetMs: number;
   resolveTargetMs: number;
-  source: 'SERVICE_PRIORITY_OVERRIDE' | 'SERVICE_DEFAULT' | 'WORKSPACE_DEFAULT';
+  source:
+    | 'SERVICE_PRIORITY_OVERRIDE'
+    | 'WORKSPACE_PRIORITY_OVERRIDE'
+    | 'SERVICE_DEFAULT'
+    | 'WORKSPACE_DEFAULT';
   policyId: string;
   policyVersion: number;
   policyRule: string;
@@ -33,8 +37,21 @@ export async function resolveNewIncidentSlaContract(
     ?.trim()
     .toUpperCase()
     .match(/^P?([1-5])$/);
-  const rule = match && service?.rules.find(candidate => candidate.priority === `P${match[1]}`);
-  const policy = rule ? service : service && !service.inheritWorkspace ? service : workspace;
+  const priority = match ? `P${match[1]}` : null;
+  const serviceRule = priority
+    ? service?.rules.find(candidate => candidate.priority === priority)
+    : undefined;
+  const workspaceRule = priority
+    ? workspace?.rules.find(candidate => candidate.priority === priority)
+    : undefined;
+  const rule = serviceRule ?? workspaceRule;
+  const policy = serviceRule
+    ? service
+    : workspaceRule
+      ? workspace
+      : service && !service.inheritWorkspace
+        ? service
+        : workspace;
   if (!policy)
     throw new Error('Incident SLA policy is not configured. Apply the versioned SLA migration.');
   const ackTargetMs = rule ? rule.ackTargetMs : policy.baseAckTargetMs;
@@ -44,11 +61,13 @@ export async function resolveNewIncidentSlaContract(
   return {
     ackTargetMs,
     resolveTargetMs,
-    source: rule
+    source: serviceRule
       ? 'SERVICE_PRIORITY_OVERRIDE'
-      : policy.scopeKey === 'workspace'
-        ? 'WORKSPACE_DEFAULT'
-        : 'SERVICE_DEFAULT',
+      : workspaceRule
+        ? 'WORKSPACE_PRIORITY_OVERRIDE'
+        : policy.scopeKey === 'workspace'
+          ? 'WORKSPACE_DEFAULT'
+          : 'SERVICE_DEFAULT',
     policyId: policy.id,
     policyVersion: policy.version,
     policyRule: rule ? rule.priority : 'BASE',

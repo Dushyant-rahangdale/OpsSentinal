@@ -14,6 +14,8 @@ function phaseLabel(phase: Phase): string {
       return 'Met';
     case 'BREACHED':
       return 'Breached';
+    case 'NOT_REQUIRED':
+      return 'Not required';
     default:
       return `${formatTimeMinutesMs(phase.remainingMs)} left`;
   }
@@ -77,6 +79,12 @@ export default function SLAIndicator({ sla, showDetails = false }: SLAIndicatorP
           </div>
         );
       })}
+      {showDetails && (
+        <p className="text-xs text-muted-foreground">
+          Contract: {sla.contract.priorityAtCapture ?? 'Fallback'} · policy v
+          {sla.contract.policyVersion ?? 'legacy'} · {sla.contract.policyRule ?? 'base'}
+        </p>
+      )}
     </div>
   );
 }

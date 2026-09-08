@@ -1,6 +1,11 @@
 import 'server-only';
 
-import type { IncidentEventType, IncidentStatus, Prisma } from '@prisma/client';
+import type {
+  IncidentEventType,
+  IncidentResolutionKind,
+  IncidentStatus,
+  Prisma,
+} from '@prisma/client';
 import { runSerializableTransaction } from '@/lib/db-utils';
 import { AppError } from '@/lib/errors';
 import { enqueueLifecycleSideEffects } from '@/lib/event-outbox';
@@ -40,6 +45,7 @@ export interface IncidentLifecycleInput {
   actor?: IncidentLifecycleActor;
   expectedStatus?: IncidentStatus;
   resolutionNote?: string;
+  resolutionKind?: IncidentResolutionKind;
   snoozedUntil?: Date | null;
   snoozeReason?: string | null;
   eventMessage?: string;
@@ -295,6 +301,13 @@ function resolutionEventType(input: IncidentLifecycleInput): IncidentEventType {
   return input.source === 'EVENT' ? 'AUTO_RESOLVED' : 'MANUAL_RESOLVED';
 }
 
+function resolutionKind(input: IncidentLifecycleInput): IncidentResolutionKind {
+  if (input.resolutionKind) return input.resolutionKind;
+  if (input.source === 'EVENT') return 'SOURCE_RECOVERY';
+  if (input.source === 'SYSTEM') return 'AUTOMATION';
+  return 'MANUAL';
+}
+
 function eventForCommand(
   input: IncidentLifecycleInput,
   resolutionNote?: string
@@ -415,6 +428,7 @@ function updateDataForCommand(
           })
         );
       }
+      data.resolutionKind = resolutionKind(input);
       data.escalationStatus = 'COMPLETED';
       data.nextEscalationAt = null;
       data.snoozedUntil = null;
@@ -427,6 +441,7 @@ function updateDataForCommand(
       data.resolvedAt = null;
       data.slaAckElapsedMs = null;
       data.slaResolveElapsedMs = null;
+      data.resolutionKind = null;
       data.currentEscalationStep = 0;
       data.escalationStatus = 'ESCALATING';
       data.nextEscalationAt = atDelay(now, delayMinutes);

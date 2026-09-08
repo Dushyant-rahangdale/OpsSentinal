@@ -29,8 +29,8 @@ export const incidentSlaPolicyInputSchema = z
   .strict()
   .superRefine((input, ctx) => {
     const issue = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
-    if (input.scopeKey === 'workspace' && (input.inheritWorkspace || input.rules.length)) {
-      issue('Workspace requires base targets and cannot inherit or define service priority rules.');
+    if (input.scopeKey === 'workspace' && input.inheritWorkspace) {
+      issue('Workspace policy cannot inherit from another scope.');
     }
     if (input.inheritWorkspace) {
       if (input.baseAckTargetMs !== null || input.baseResolveTargetMs !== null)
