@@ -39,6 +39,14 @@ function parseExpectedUpdatedAt(value: string | null | undefined): Date | null {
   return parsed;
 }
 
+async function getCommittedUpdatedAt(id: string): Promise<string> {
+  const committed = await prisma.notificationProvider.findUniqueOrThrow({
+    where: { id },
+    select: { updatedAt: true },
+  });
+  return committed.updatedAt.toISOString();
+}
+
 /**
  * Atomic notification-provider mutation contract.
  *
@@ -137,13 +145,116 @@ export async function updateNotificationProvider(
     return id;
   });
 
-  const committed = await prisma.notificationProvider.findUniqueOrThrow({
-    where: { id: providerRecordId },
-    select: { updatedAt: true },
-  });
-
+  const updatedAt = await getCommittedUpdatedAt(providerRecordId);
   revalidatePath('/settings/system');
   revalidatePath('/settings/notifications');
 
-  return { success: true, updatedAt: committed.updatedAt.toISOString() };
+  return { success: true, updatedAt };
+}
+
+export async function generateVapidKeys(options?: {
+  subject?: string;
+  rotate?: boolean;
+  keepPrevious?: boolean;
+  expectedUpdatedAt?: string | null;
+}): Promise<{
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+  updatedAt: string;
+}> {
+  await assertAdmin();
+
+  const user = await getCurrentUser();
+  const existing = await prisma.notificationProvider.findUnique({
+    where: { provider: 'web-push' },
+  });
+  const expectedRevision = parseExpectedUpdatedAt(options?.expectedUpdatedAt);
+  if (existing && !expectedRevision) {
+    throw new Error('Settings revision is required. Reload the page and try again.');
+  }
+  if (!existing && expectedRevision) {
+    throw new SettingsChangedError();
+  }
+
+  const existingConfig = existing?.config
+    ? await decryptProviderConfig('web-push', existing.config as Record<string, unknown>)
+    : {};
+  const previousKeys = Array.isArray(existingConfig.vapidKeyHistory)
+    ? (existingConfig.vapidKeyHistory as Array<{ publicKey: string; privateKey: string }>)
+    : [];
+
+  const { generateVAPIDKeys } = await import('web-push');
+  const { publicKey, privateKey } = generateVAPIDKeys();
+  const subject = options?.subject?.trim() || 'mailto:admin@example.com';
+  const shouldRotate = !!options?.rotate;
+  const keepPrevious = options?.keepPrevious !== false;
+  const nextHistory =
+    shouldRotate && keepPrevious && existingConfig.vapidPublicKey
+      ? [
+          {
+            publicKey: String(existingConfig.vapidPublicKey),
+            privateKey: String(existingConfig.vapidPrivateKey || ''),
+          },
+          ...previousKeys,
+        ]
+      : previousKeys;
+
+  const nextConfig = {
+    ...existingConfig,
+    vapidPublicKey: publicKey,
+    vapidPrivateKey: privateKey,
+    vapidSubject: subject,
+    vapidKeyHistory: nextHistory
+      .filter(entry => entry.publicKey && entry.privateKey)
+      .filter(
+        (entry, index, all) => all.findIndex(item => item.publicKey === entry.publicKey) === index
+      )
+      .slice(0, 3),
+  };
+  const encryptedNextConfig = await encryptProviderConfig('web-push', nextConfig);
+
+  const providerRecordId = await prisma.$transaction(async tx => {
+    let id: string;
+    if (existing) {
+      const updateResult = await tx.notificationProvider.updateMany({
+        where: { id: existing.id, updatedAt: expectedRevision! },
+        data: {
+          config: encryptedNextConfig as Prisma.InputJsonValue,
+          updatedBy: user.id,
+        },
+      });
+      if (updateResult.count !== 1) throw new SettingsChangedError();
+      id = existing.id;
+    } else {
+      const created = await tx.notificationProvider.create({
+        data: {
+          provider: 'web-push',
+          enabled: false,
+          config: encryptedNextConfig as Prisma.InputJsonValue,
+          updatedBy: user.id,
+        },
+        select: { id: true },
+      });
+      id = created.id;
+    }
+
+    await logAudit(
+      {
+        action: 'vapid_keys.rotated',
+        entityType: 'SYSTEM_CONFIG',
+        entityId: id,
+        actorId: user.id,
+        details: { subject, rotated: shouldRotate },
+      },
+      tx
+    );
+    return id;
+  });
+
+  const updatedAt = await getCommittedUpdatedAt(providerRecordId);
+  revalidatePath('/settings/notifications');
+  revalidatePath('/settings/system');
+
+  return { publicKey, privateKey, subject, updatedAt };
 }
