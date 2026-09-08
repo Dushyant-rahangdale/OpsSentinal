@@ -112,12 +112,18 @@ export async function GET(req: NextRequest) {
               createdAt: true,
               acknowledgedAt: true,
               resolvedAt: true,
+              slaAckTargetMs: true,
+              slaResolveTargetMs: true,
+              slaTargetSource: true,
+              slaTargetCapturedAt: true,
+              slaPausedMs: true,
+              slaPauseStartedAt: true,
+              slaAckElapsedMs: true,
+              slaResolveElapsedMs: true,
               serviceId: true,
               service: {
                 select: {
                   name: true,
-                  targetAckMinutes: true,
-                  targetResolveMinutes: true,
                 },
               },
             },
@@ -128,11 +134,20 @@ export async function GET(req: NextRequest) {
 
           if (batch.length === 0 || req.signal.aborted || isCancelled) break;
 
+          // Normalize Prisma BigInt fields at the API boundary.
+          const incidents = batch.map(incident => ({
+            ...incident,
+            slaPausedMs: Number(incident.slaPausedMs),
+            slaAckElapsedMs:
+              incident.slaAckElapsedMs === null ? null : Number(incident.slaAckElapsedMs),
+            slaResolveElapsedMs:
+              incident.slaResolveElapsedMs === null ? null : Number(incident.slaResolveElapsedMs),
+          }));
           // Send batch
           const data = JSON.stringify({
             type: 'batch',
             batchNumber,
-            incidents: batch,
+            incidents,
             remaining: Math.max(0, totalCount - skip - batch.length),
           });
           controller.enqueue(encoder.encode(`data: ${data}\n\n`));

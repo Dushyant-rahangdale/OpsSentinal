@@ -40,7 +40,8 @@ describe('dashboard query isolation contract', () => {
   it('does not poll historical analytics and keeps operational SLA reads materialized', () => {
     expect(analyticsProvider).not.toContain('setInterval');
     expect(widgetProvider).not.toContain('slaPauses:');
-    expect(widgetProvider).toContain('effectiveMaterializedElapsedMs');
+    expect(widgetProvider).toContain('projectIncidentSlaState');
+    expect(widgetProvider).not.toContain('resolveSlaTarget');
   });
 
   it('keeps dashboard reconciliation filtered and realtime reads centrally authorized', () => {

@@ -623,6 +623,10 @@ model Incident {
   slaResolveTargetMs        Int? // Immutable effective resolve target captured when the incident is created
   slaTargetSource           String? // Provenance for the frozen target (priority/service/default/backfill)
   slaTargetCapturedAt       DateTime? // When the immutable target contract was captured
+  slaPolicyId               String? // NULL for historical/legacy writers; never infer provenance
+  slaPolicyVersion          Int?
+  slaPolicyRule             String? // BASE or P1-P5; immutable together with targets
+  slaPolicy                 IncidentSlaPolicy?        @relation(fields: [slaPolicyId], references: [id], onDelete: Restrict)
   // ChatOps War-Room fields
   slackWorkspaceId          String? // Immutable workspace that owns this war-room instance
   slackChannelId            String? // Slack channel ID of dedicated war-room (e.g. "C0123456789")
@@ -691,6 +695,46 @@ model Incident {
 model RealtimeChange {
   id        BigInt   @id @default(autoincrement())
   changedAt DateTime @default(now())
+}
+
+/// Append-only version snapshots. Non-null scopeKey avoids nullable workspace uniqueness.
+/// No service FK: policy history survives service deletion. Targets capped at 24 days for Int safety.
+model IncidentSlaPolicy {
+  id                  String                  @id @default(cuid())
+  scopeKey            String
+  version             Int
+  inheritWorkspace    Boolean
+  baseAckTargetMs     Int?
+  baseResolveTargetMs Int?
+  createdAt           DateTime                @default(now())
+  createdById         String?
+  sealedAt            DateTime?
+  rules               IncidentSlaPolicyRule[]
+  incidents           Incident[]
+
+  @@unique([scopeKey, version])
+}
+
+model IncidentSlaPolicyRule {
+  id              String            @id @default(cuid())
+  policyId        String
+  priority        String
+  ackTargetMs     Int
+  resolveTargetMs Int
+  label           String?
+  policy          IncidentSlaPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+
+  @@unique([policyId, priority])
+}
+
+/// Durable daily rollout counters, including legacy writers that already pass explicit targets.
+model IncidentSlaLegacyCapture {
+  day             DateTime @id @db.Date
+  count           BigInt   @default(0)
+  lastSeenAt      DateTime @default(now())
+  lastIncidentId  String?
+  lastServiceId   String?
+  lastCaptureKind String?
 }
 
 model IncidentSlaPause {

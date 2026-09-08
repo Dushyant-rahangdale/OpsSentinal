@@ -200,6 +200,22 @@ export const OPERATIONAL_METRICS = [
     estimatedMaxSeries: 1,
   },
   {
+    name: 'opsknight_incident_sla_legacy_captures',
+    help: 'Durable cumulative count of incidents captured by the transitional database SLA fallback',
+    kind: 'gauge',
+    labels: [],
+    scope: 'cluster_snapshot',
+    estimatedMaxSeries: 1,
+  },
+  {
+    name: 'opsknight_incident_sla_legacy_capture_last_seen_age_seconds',
+    help: 'Age of the newest transitional database SLA fallback capture',
+    kind: 'gauge',
+    labels: [],
+    scope: 'cluster_snapshot',
+    estimatedMaxSeries: 1,
+  },
+  {
     name: 'opsknight_metrics_collection_errors',
     help: 'Collectors that failed in the latest scrape snapshot',
     kind: 'gauge',

@@ -11,6 +11,7 @@ import EscalationStatusBadge from './EscalationStatusBadge';
 import { Incident, Service } from '@prisma/client';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
+import { useIncidentSlaState } from '@/hooks/useIncidentSlaState';
 
 type IncidentCardProps = {
   incident: Incident & {
@@ -31,6 +32,7 @@ function IncidentCard({
   const router = useRouter();
   const { userTimeZone } = useTimezone();
   const incidentStatus = incident.status as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const sla = useIncidentSlaState(incident);
 
   const handleServiceClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
@@ -87,7 +89,7 @@ function IncidentCard({
                   size="sm"
                 />
               )}
-              <SLABreachWarningBadge incident={incident} service={incident.service} />
+              <SLABreachWarningBadge state={sla} />
             </div>
             <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
               {incident.title}
@@ -115,7 +117,7 @@ function IncidentCard({
               borderTop: '1px solid var(--border)',
             }}
           >
-            <SLAIndicator incident={incident} service={incident.service} showDetails={false} />
+            <SLAIndicator sla={sla} showDetails={false} />
           </div>
         )}
       </Link>
@@ -171,7 +173,7 @@ function IncidentCard({
                 nextEscalationAt={incident.nextEscalationAt}
               />
             )}
-            <SLABreachWarningBadge incident={incident} service={incident.service} />
+            <SLABreachWarningBadge state={sla} />
           </div>
           <h3
             style={{
@@ -265,7 +267,7 @@ function IncidentCard({
             borderTop: '1px solid var(--border)',
           }}
         >
-          <SLAIndicator incident={incident} service={incident.service} showDetails={false} />
+          <SLAIndicator sla={sla} showDetails={false} />
         </div>
       )}
     </Link>

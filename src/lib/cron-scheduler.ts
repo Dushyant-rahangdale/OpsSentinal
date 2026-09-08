@@ -11,7 +11,7 @@ import { cleanupUserTokens } from '@/lib/user-tokens';
 import { cleanupExpiredRateLimits } from '@/lib/rate-limit';
 import { checkSLABreaches } from './sla-breach-monitor';
 import crypto from 'crypto';
-import { activeIncidentStatuses } from './incident-status';
+import { getNextIncidentSlaTransitionAt } from './incident-sla/next-transition';
 
 /**
  * Production-Grade Cron Scheduler
@@ -196,7 +196,7 @@ async function getNextScheduledTime(): Promise<Date> {
     const [
       nextIncident,
       nextJob,
-      nextSlaBreach,
+      nextSlaTransition,
       nextSnooze,
       nextNotificationRetry,
       nextCentralNotification,
@@ -214,25 +214,7 @@ async function getNextScheduledTime(): Promise<Date> {
         orderBy: { scheduledAt: 'asc' },
         select: { scheduledAt: true },
       }),
-      prisma.incident.findFirst({
-        where: {
-          status: { in: activeIncidentStatuses() },
-          service: { serviceNotifyOnSlaBreach: true },
-        },
-        orderBy: { createdAt: 'asc' },
-        select: {
-          createdAt: true,
-          acknowledgedAt: true,
-          priority: true,
-          service: {
-            select: {
-              targetAckMinutes: true,
-              targetResolveMinutes: true,
-              serviceNotifyOnSlaBreach: true,
-            },
-          },
-        },
-      }),
+      getNextIncidentSlaTransitionAt(),
       prisma.incident.findFirst({
         where: {
           status: 'SNOOZED',
@@ -248,29 +230,11 @@ async function getNextScheduledTime(): Promise<Date> {
     const times: (number | null)[] = [
       nextIncident?.nextEscalationAt ? new Date(nextIncident.nextEscalationAt).getTime() : null,
       nextJob?.scheduledAt ? new Date(nextJob.scheduledAt).getTime() : null,
+      nextSlaTransition?.getTime() ?? null,
       nextSnooze?.snoozedUntil ? new Date(nextSnooze.snoozedUntil).getTime() : null,
       nextNotificationRetry?.getTime() ?? null,
       nextCentralNotification?.getTime() ?? null,
     ];
-
-    // Add SLA breach check time (proportional warning before ack/resolve target)
-    if (nextSlaBreach && nextSlaBreach.service?.serviceNotifyOnSlaBreach) {
-      const createdAt = new Date(nextSlaBreach.createdAt).getTime();
-      const { getPrioritySLATarget } = await import('./sla-priority');
-      const targets = getPrioritySLATarget(nextSlaBreach.priority, nextSlaBreach.service);
-
-      if (!nextSlaBreach.acknowledgedAt) {
-        const targetAckMs = targets.ack * 60 * 1000;
-        const ackWarningMs = Math.min(5 * 60 * 1000, targetAckMs * 0.25);
-        const ackCheckTime = createdAt + targetAckMs - ackWarningMs;
-        times.push(ackCheckTime > Date.now() ? ackCheckTime : null);
-      }
-
-      const targetResolveMs = targets.resolve * 60 * 1000;
-      const resolveWarningMs = Math.min(15 * 60 * 1000, targetResolveMs * 0.25);
-      const resolveCheckTime = createdAt + targetResolveMs - resolveWarningMs;
-      times.push(resolveCheckTime > Date.now() ? resolveCheckTime : null);
-    }
 
     const validTimes = times.filter((v): v is number => typeof v === 'number');
 

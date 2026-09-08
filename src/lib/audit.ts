@@ -65,12 +65,13 @@ export async function emitAuditEvent(
   if (!Number.isFinite(occurredAt.getTime())) throw new RangeError('Invalid audit timestamp.');
 
   const actorId = input.actor?.type === 'USER' ? (input.actor.id ?? null) : null;
-  const actorSnapshot = actorId
-    ? await client.user.findUnique({
-        where: { id: actorId },
-        select: { email: true, name: true },
-      })
-    : null;
+  const actorSnapshot =
+    actorId && client.user?.findUnique
+      ? await client.user.findUnique({
+          where: { id: actorId },
+          select: { email: true, name: true },
+        })
+      : null;
   const resolvedEmail = input.actor?.email ?? actorSnapshot?.email ?? null;
   const resolvedName = input.actor?.name ?? actorSnapshot?.name ?? null;
   const correlationId = resolveRequestId(input.requestId);

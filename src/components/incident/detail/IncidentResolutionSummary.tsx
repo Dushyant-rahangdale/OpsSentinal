@@ -1,10 +1,11 @@
-import type { Incident, Service } from '@prisma/client';
+import type { Incident } from '@prisma/client';
 import Link from 'next/link';
 import NoteCard from '../NoteCard';
 import SLAIndicator from '../SLAIndicator';
 import { Button } from '@/components/ui/shadcn/button';
 import { CheckCircle2, FileText, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
 
 type ResolutionNote = {
   content: string;
@@ -19,7 +20,6 @@ type ResolutionNote = {
 
 type IncidentResolutionSummaryProps = {
   incident: Incident;
-  service: Service;
   resolutionNote: ResolutionNote | null;
   postmortemStatus?: string | null;
   canManage?: boolean;
@@ -27,13 +27,13 @@ type IncidentResolutionSummaryProps = {
 
 export default function IncidentResolutionSummary({
   incident,
-  service,
   resolutionNote,
   postmortemStatus,
   canManage = false,
 }: IncidentResolutionSummaryProps) {
   const isPostmortemPublished = postmortemStatus === 'PUBLISHED';
   const hasPostmortem = Boolean(postmortemStatus);
+  const sla = projectIncidentSlaState(incident, { now: new Date() });
 
   return (
     <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 dark:bg-emerald-950/20 dark:border-emerald-900/50 p-4 sm:p-5 space-y-4">
@@ -104,7 +104,7 @@ export default function IncidentResolutionSummary({
       )}
 
       <div className="pt-2 border-t border-emerald-100 dark:border-emerald-900/40">
-        <SLAIndicator incident={incident} service={service} showDetails />
+        <SLAIndicator sla={sla} showDetails />
       </div>
     </div>
   );

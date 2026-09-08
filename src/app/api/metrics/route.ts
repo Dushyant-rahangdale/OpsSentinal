@@ -21,6 +21,7 @@ type MetricsSnapshot = {
   rollupUpdatedAt: Date | null | undefined;
   integrationControlPlane: Array<{ kind: string; status: string; count: number }> | null;
   providerCooldowns: Array<{ provider: string; count: number }> | null;
+  slaLegacyCapture: { count: number; lastSeenAt: Date | null } | null;
   collectedAt: number;
 };
 
@@ -86,6 +87,7 @@ async function collectMetricsCached(): Promise<MetricsSnapshot> {
       rollup,
       controlPlane,
       cooldowns,
+      slaLegacyCapture,
     ] = await Promise.allSettled([
       collectWithTimeout('jobs', DB_COLLECTOR_TIMEOUT_MS, () =>
         prisma.backgroundJob.groupBy({ by: ['status'], _count: { id: true } })
@@ -157,6 +159,14 @@ async function collectMetricsCached(): Promise<MetricsSnapshot> {
           FROM "ProviderAdmission" WHERE "blockedUntil" > NOW() GROUP BY 1
         `
       ),
+      collectWithTimeout(
+        'incident-sla-legacy-capture',
+        DB_COLLECTOR_TIMEOUT_MS,
+        () => prisma.$queryRaw<Array<{ count: bigint; lastSeenAt: Date | null }>>`
+          SELECT COALESCE(SUM("count"), 0)::bigint AS count, MAX("lastSeenAt") AS "lastSeenAt"
+          FROM "IncidentSlaLegacyCapture"
+        `
+      ),
     ]);
     const value: MetricsSnapshot = {
       jobStats:
@@ -183,6 +193,13 @@ async function collectMetricsCached(): Promise<MetricsSnapshot> {
         cooldowns.status === 'fulfilled'
           ? cooldowns.value.map(row => ({ ...row, count: Number(row.count) }))
           : null,
+      slaLegacyCapture:
+        slaLegacyCapture.status === 'fulfilled' && slaLegacyCapture.value[0]
+          ? {
+              count: Number(slaLegacyCapture.value[0].count),
+              lastSeenAt: slaLegacyCapture.value[0].lastSeenAt,
+            }
+          : null,
       collectedAt: Date.now(),
     };
     const degraded =
@@ -194,7 +211,8 @@ async function collectMetricsCached(): Promise<MetricsSnapshot> {
       value.escalationBacklog === null ||
       value.rollupUpdatedAt === undefined ||
       value.integrationControlPlane === null ||
-      value.providerCooldowns === null;
+      value.providerCooldowns === null ||
+      value.slaLegacyCapture === null;
     // A JS timeout cannot cancel every Prisma operation. Back off degraded
     // collectors so repeated scrapes cannot create an unbounded query storm.
     metricsCache = { value, expiresAt: Date.now() + (degraded ? 60_000 : 10_000) };
@@ -277,6 +295,15 @@ async function getMetrics(req: Request) {
   if (snapshot.rollupUpdatedAt) {
     metrics.set('opsknight_rollup_freshness_age_seconds', ageSeconds(snapshot.rollupUpdatedAt));
   }
+  if (snapshot.slaLegacyCapture) {
+    metrics.set('opsknight_incident_sla_legacy_captures', snapshot.slaLegacyCapture.count);
+    if (snapshot.slaLegacyCapture.lastSeenAt) {
+      metrics.set(
+        'opsknight_incident_sla_legacy_capture_last_seen_age_seconds',
+        ageSeconds(snapshot.slaLegacyCapture.lastSeenAt)
+      );
+    }
+  }
   for (const row of snapshot.integrationControlPlane ?? []) {
     const name =
       row.kind === 'external'
@@ -299,7 +326,8 @@ async function getMetrics(req: Request) {
     Number(snapshot.escalationBacklog === null) +
     Number(snapshot.rollupUpdatedAt === undefined) +
     Number(snapshot.integrationControlPlane === null) +
-    Number(snapshot.providerCooldowns === null);
+    Number(snapshot.providerCooldowns === null) +
+    Number(snapshot.slaLegacyCapture === null);
   metrics.set('opsknight_metrics_collection_errors', collectionErrors);
   metrics.set('opsknight_metrics_cache_hits_total', metricsCacheHits);
   metrics.set('opsknight_metrics_cache_misses_total', metricsCacheMisses);

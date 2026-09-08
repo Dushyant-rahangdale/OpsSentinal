@@ -71,6 +71,17 @@ export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
     description: 'Incident custom metadata, public status page branding, and access tokens',
     items: [
       {
+        id: 'incident-sla',
+        label: 'Incident Response SLA',
+        description:
+          'Set workspace acknowledgement, resolution, and priority override targets for future incidents',
+        href: '/settings/incident-sla',
+        icon: 'activity',
+        requiresAdmin: true,
+        badge: 'Admin',
+        keywords: ['sla', 'incident', 'acknowledgement', 'resolution', 'priority'],
+      },
+      {
         id: 'custom-fields',
         label: 'Custom Fields',
         description: 'Define custom incident metadata, dropdown attributes, and validation rules',
