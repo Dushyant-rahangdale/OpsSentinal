@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -23,9 +24,14 @@ import {
   Lock,
   Eye,
   EyeOff,
+  RefreshCw,
 } from 'lucide-react';
 import RoleMappingEditor, { type RoleMappingRule } from '@/components/settings/RoleMappingEditor';
-import { saveOidcConfig, validateOidcConnectionAction } from '@/app/(app)/settings/system/actions';
+import {
+  saveOidcConfig,
+  validateOidcConnectionAction,
+} from '@/app/(app)/settings/security/actions';
+import type { SettingsActionState } from '@/lib/settings-result';
 
 type ProfileMapping = {
   department?: string;
@@ -45,6 +51,7 @@ type OidcConfig = {
   providerType?: string | null;
   providerLabel?: string | null;
   profileMapping?: ProfileMapping | null;
+  updatedAt: string;
 };
 
 type Props = {
@@ -52,11 +59,6 @@ type Props = {
   callbackUrl: string;
   hasEncryptionKey: boolean;
   configError?: string;
-};
-
-type State = {
-  error?: string | null;
-  success?: boolean;
 };
 
 type Preset = {
@@ -149,9 +151,11 @@ export default function SsoSettingsForm({
   hasEncryptionKey,
   configError,
 }: Props) {
-  const [state, formAction] = useActionState<State, FormData>(saveOidcConfig, {
+  const router = useRouter();
+  const [state, formAction] = useActionState<SettingsActionState, FormData>(saveOidcConfig, {
     error: null,
     success: false,
+    updatedAt: initialConfig?.updatedAt ?? null,
   });
   const initialIssuer = initialConfig?.issuer ?? '';
   const initialClientId = initialConfig?.clientId ?? '';
@@ -245,9 +249,12 @@ export default function SsoSettingsForm({
 
   useEffect(() => {
     if (state?.success) {
+      setClientSecretValue('');
+      setShowSecret(false);
       setLastSaved(new Date().toLocaleString());
+      router.refresh();
     }
-  }, [state?.success]);
+  }, [state?.success, router]);
 
   const validateFields = () => {
     const errors: ValidationErrors = {};
@@ -281,7 +288,7 @@ export default function SsoSettingsForm({
     <form
       action={formAction}
       onSubmit={event => {
-        if (!validateFields()) {
+        if (state?.code === 'SETTINGS_CHANGED' || !validateFields()) {
           event.preventDefault();
         }
       }}
@@ -306,7 +313,6 @@ export default function SsoSettingsForm({
       }}
       className="space-y-6"
     >
-      {/* ── System Alerts ── */}
       {!hasEncryptionKey && (
         <Alert className="bg-amber-500/10 border-amber-500/30">
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -325,9 +331,6 @@ export default function SsoSettingsForm({
         </Alert>
       )}
 
-      {/* ════════════════════════════════════════════════
-          CARD 1: SSO ACTIVATION & REDIRECT URI
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
           <div className="flex items-start sm:items-center gap-3.5 min-w-0">
@@ -363,7 +366,6 @@ export default function SsoSettingsForm({
           </div>
         </div>
 
-        {/* Redirect URI Box */}
         <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -397,9 +399,6 @@ export default function SsoSettingsForm({
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════
-          CARD 2: IDENTITY PROVIDER CREDENTIALS
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-5">
         <div className="flex items-start sm:items-center gap-3.5 pb-4 border-b">
           <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
@@ -414,7 +413,6 @@ export default function SsoSettingsForm({
           </div>
         </div>
 
-        {/* Provider Templates */}
         <div className="space-y-2">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Provider Template
@@ -441,7 +439,6 @@ export default function SsoSettingsForm({
           <p className="text-xs text-muted-foreground">{selectedPresetNote}</p>
         </div>
 
-        {/* Issuer URL */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="issuer-url" className="text-sm font-semibold">
@@ -486,7 +483,6 @@ export default function SsoSettingsForm({
             </p>
           )}
 
-          {/* Live Test Feedback */}
           {testStatus !== 'idle' && (
             <div
               className={`rounded-lg border p-3 text-xs flex items-center gap-2 ${
@@ -510,9 +506,7 @@ export default function SsoSettingsForm({
           )}
         </div>
 
-        {/* Client ID & Client Secret in a 2-Column Responsive Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Client ID */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="client-id" className="text-sm font-semibold">
@@ -549,7 +543,6 @@ export default function SsoSettingsForm({
             )}
           </div>
 
-          {/* Client Secret */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="client-secret" className="text-sm font-semibold">
@@ -608,7 +601,6 @@ export default function SsoSettingsForm({
           </div>
         </div>
 
-        {/* Sign-in Button Label */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="provider-label" className="text-sm font-semibold">
@@ -628,9 +620,6 @@ export default function SsoSettingsForm({
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════
-          CARD 3: USER PROVISIONING & RESTRICTIONS
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-5">
         <div className="flex items-start sm:items-center gap-3.5 pb-4 border-b">
           <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
@@ -646,7 +635,6 @@ export default function SsoSettingsForm({
           </div>
         </div>
 
-        {/* JIT Switch Tile */}
         <div className="rounded-xl border bg-muted/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-0.5">
             <Label htmlFor="auto-provision" className="text-sm font-semibold cursor-pointer">
@@ -666,7 +654,6 @@ export default function SsoSettingsForm({
           />
         </div>
 
-        {/* Allowed Domains */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="allowed-domains" className="text-sm font-semibold">
@@ -689,9 +676,6 @@ export default function SsoSettingsForm({
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════
-          CARD 4: ADVANCED MAPPING & CLAIMS
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
         <div className="flex items-start sm:items-center gap-3.5 pb-4 border-b">
           <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
@@ -705,7 +689,6 @@ export default function SsoSettingsForm({
           </div>
         </div>
 
-        {/* Custom Scopes */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="custom-scopes" className="text-sm font-semibold">
@@ -753,7 +736,6 @@ export default function SsoSettingsForm({
           </div>
         </div>
 
-        {/* Role Mapping Rule Builder (via rewritten RoleMappingEditor) */}
         <div className="space-y-3 pt-2">
           <div>
             <h4 className="text-sm font-semibold text-foreground">Claim-to-Role Mapping Rules</h4>
@@ -769,7 +751,6 @@ export default function SsoSettingsForm({
           />
         </div>
 
-        {/* Profile Attribute Mapping Grid */}
         <div className="space-y-3 pt-4 border-t">
           <div>
             <h4 className="text-sm font-semibold text-foreground">User Profile Attribute Claims</h4>
@@ -828,9 +809,6 @@ export default function SsoSettingsForm({
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════
-          CARD 5: PRE-ACTIVATION ADVISORY & SAVE BAR
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border bg-amber-500/5 border-amber-500/25 p-4 flex items-start gap-3">
         <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
         <div className="space-y-0.5 text-xs">
@@ -844,15 +822,29 @@ export default function SsoSettingsForm({
         </div>
       </div>
 
-      {/* State alerts */}
-      {state?.error && (
+      {state?.code === 'SETTINGS_CHANGED' && (
+        <Alert className="bg-amber-500/10 border-amber-500/30" role="alert">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-800 dark:text-amber-200">
+            <span>
+              <strong>Settings changed elsewhere.</strong> Your unsaved SSO edits, including any
+              candidate secret, are still present. Reload latest before saving again.
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="gap-1.5 shrink-0">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reload latest
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {state?.error && state.code !== 'SETTINGS_CHANGED' && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       )}
       {state?.success && (
-        <Alert className="bg-emerald-500/10 border-emerald-500/30">
+        <Alert className="bg-emerald-500/10 border-emerald-500/30" role="status">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           <AlertDescription className="text-emerald-700 dark:text-emerald-300 font-medium">
             SSO configuration saved successfully.
@@ -860,11 +852,10 @@ export default function SsoSettingsForm({
         </Alert>
       )}
 
-      {/* ── Bottom Save Action Bar ── */}
       <div className="sticky bottom-4 z-10 rounded-xl border bg-card/95 backdrop-blur-md p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
         <div className="text-xs text-muted-foreground">
           {lastSaved ? (
-            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium" role="status" aria-live="polite">
               <CheckCircle2 className="h-4 w-4" />
               Configuration saved at {lastSaved}
             </span>
@@ -883,7 +874,7 @@ export default function SsoSettingsForm({
               Discard Changes
             </Button>
           )}
-          <SubmitButton disabled={isSaveDisabled} />
+          <SubmitButton disabled={isSaveDisabled || state?.code === 'SETTINGS_CHANGED'} />
         </div>
       </div>
     </form>

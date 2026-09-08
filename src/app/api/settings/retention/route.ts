@@ -1,5 +1,5 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest } from 'next/server';
-import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import {
   clearRetentionPolicyCache,
@@ -13,16 +13,39 @@ import { AppError, isAppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/audit';
 import { z } from 'zod';
+import { jsonSettingsChanged } from '@/lib/settings-api-response';
+import {
+  SettingsChangedMutationError,
+  isSettingsChangedError,
+  parseSettingsRevision,
+} from '@/lib/settings-result';
 
-const RetentionUpdateSchema = z
-  .object({
-    incidentRetentionDays: z.number().int().min(30).max(3650).optional(),
-    alertRetentionDays: z.number().int().min(7).max(3650).optional(),
-    logRetentionDays: z.number().int().min(1).max(3650).optional(),
-    metricsRetentionDays: z.number().int().min(30).max(3650).optional(),
-    realTimeWindowDays: z.number().int().min(7).max(365).optional(),
-  })
-  .refine(data => Object.keys(data).length > 0, { message: 'No valid fields provided' });
+const RETENTION_FIELD_NAMES = [
+  'incidentRetentionDays',
+  'alertRetentionDays',
+  'logRetentionDays',
+  'metricsRetentionDays',
+  'realTimeWindowDays',
+] as const;
+
+const RetentionFieldsSchema = z.object({
+  incidentRetentionDays: z.number().int().min(30).max(3650).optional(),
+  alertRetentionDays: z.number().int().min(7).max(3650).optional(),
+  logRetentionDays: z.number().int().min(1).max(3650).optional(),
+  metricsRetentionDays: z.number().int().min(30).max(3650).optional(),
+  realTimeWindowDays: z.number().int().min(7).max(365).optional(),
+});
+
+const RetentionPolicyPatchSchema = RetentionFieldsSchema.refine(
+  data => RETENTION_FIELD_NAMES.some(field => data[field] !== undefined),
+  { message: 'No valid fields provided' }
+);
+
+const RetentionUpdateSchema = RetentionFieldsSchema.extend({
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+}).refine(data => RETENTION_FIELD_NAMES.some(field => data[field] !== undefined), {
+  message: 'No valid fields provided',
+});
 
 function retentionValidationError(error: z.ZodError) {
   return new AppError({
@@ -66,11 +89,19 @@ function retentionAuditSnapshot(policy: RetentionPolicy): Prisma.InputJsonObject
 export async function GET() {
   try {
     await assertAdmin();
-    const [policy, stats] = await Promise.all([getRetentionPolicy(), getStorageStats()]);
+    const [policy, stats, settings] = await Promise.all([
+      getRetentionPolicy(),
+      getStorageStats(),
+      prisma.systemSettings.findUnique({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      }),
+    ]);
 
     return jsonOk({
       policy,
       stats,
+      updatedAt: settings?.updatedAt?.toISOString() ?? null,
       presets: [
         { name: 'Minimal (90 days)', incidentRetentionDays: 90, alertRetentionDays: 30, logRetentionDays: 14, metricsRetentionDays: 90, realTimeWindowDays: 30 },
         { name: 'Standard (1 year)', incidentRetentionDays: 365, alertRetentionDays: 180, logRetentionDays: 365, metricsRetentionDays: 365, realTimeWindowDays: 60 },
@@ -102,31 +133,48 @@ export async function PUT(request: NextRequest) {
       return jsonError(retentionValidationError(parsed.error), undefined, { issues: parsed.error.issues });
     }
 
-    const updates: Partial<RetentionPolicy> = parsed.data;
-    const current = await getRetentionPolicy();
+    const { expectedUpdatedAt = null, ...parsedUpdates } = parsed.data;
+    const updates: Partial<RetentionPolicy> = parsedUpdates;
+    const [current, existing] = await Promise.all([
+      getRetentionPolicy(),
+      prisma.systemSettings.findUnique({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      }),
+    ]);
+    const expectedRevision = parseSettingsRevision(expectedUpdatedAt);
+    if (existing && !expectedRevision) return jsonSettingsChanged();
+    if (!existing && expectedRevision) return jsonSettingsChanged();
+
     const effective: RetentionPolicy = { ...current, ...updates };
     validateEffectivePolicy(effective);
 
-    await prisma.$transaction(async tx => {
-      await tx.systemSettings.upsert({
-        where: { id: 'default' },
-        create: {
-          id: 'default',
-          incidentRetentionDays: effective.incidentRetentionDays,
-          alertRetentionDays: effective.alertRetentionDays,
-          logRetentionDays: effective.logRetentionDays,
-          metricsRetentionDays: effective.metricsRetentionDays,
-          realTimeWindowDays: effective.realTimeWindowDays,
-          businessHoursTimeZone: effective.businessHoursTimeZone,
-        },
-        update: {
-          incidentRetentionDays: effective.incidentRetentionDays,
-          alertRetentionDays: effective.alertRetentionDays,
-          logRetentionDays: effective.logRetentionDays,
-          metricsRetentionDays: effective.metricsRetentionDays,
-          realTimeWindowDays: effective.realTimeWindowDays,
-        },
-      });
+    const updatedAt = await prisma.$transaction(async tx => {
+      if (existing) {
+        const updated = await tx.systemSettings.updateMany({
+          where: { id: 'default', updatedAt: expectedRevision! },
+          data: {
+            incidentRetentionDays: effective.incidentRetentionDays,
+            alertRetentionDays: effective.alertRetentionDays,
+            logRetentionDays: effective.logRetentionDays,
+            metricsRetentionDays: effective.metricsRetentionDays,
+            realTimeWindowDays: effective.realTimeWindowDays,
+          },
+        });
+        if (updated.count !== 1) throw new SettingsChangedMutationError();
+      } else {
+        await tx.systemSettings.create({
+          data: {
+            id: 'default',
+            incidentRetentionDays: effective.incidentRetentionDays,
+            alertRetentionDays: effective.alertRetentionDays,
+            logRetentionDays: effective.logRetentionDays,
+            metricsRetentionDays: effective.metricsRetentionDays,
+            realTimeWindowDays: effective.realTimeWindowDays,
+            businessHoursTimeZone: effective.businessHoursTimeZone,
+          },
+        });
+      }
 
       await logAudit(
         {
@@ -140,12 +188,24 @@ export async function PUT(request: NextRequest) {
         },
         tx
       );
+
+      const saved = await tx.systemSettings.findUniqueOrThrow({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      });
+      return saved.updatedAt.toISOString();
     });
 
     clearRetentionPolicyCache();
     logger.info('[API] Retention policy updated', { userId: admin.id, updates });
-    return jsonOk({ success: true, policy: effective });
+    return jsonOk({ success: true, policy: effective, updatedAt });
   } catch (error) {
+    if (
+      isSettingsChangedError(error) ||
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+    ) {
+      return jsonSettingsChanged();
+    }
     if (isAppError(error)) return jsonError(error);
     logger.error('[API] Failed to update retention settings', { error });
     return jsonError('Failed to update settings', 500);
@@ -167,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     let policyOverride: Partial<RetentionPolicy> | undefined;
     if (payload.policy && typeof payload.policy === 'object') {
-      const parsed = RetentionUpdateSchema.safeParse(payload.policy);
+      const parsed = RetentionPolicyPatchSchema.safeParse(payload.policy);
       if (!parsed.success) {
         return jsonError(retentionValidationError(parsed.error), undefined, { issues: parsed.error.issues });
       }

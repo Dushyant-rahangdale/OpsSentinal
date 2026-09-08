@@ -33,12 +33,12 @@ function normalizeAppUrl(value?: string | null): string | null {
  * Get the application base URL
  * Priority:
  * 1. Database configuration (SystemSettings.appUrl)
- * 2. Environment variable (NEXT_PUBLIC_APP_URL)
- * 3. Fallback to localhost (development only)
+ * 2. NEXT_PUBLIC_APP_URL environment variable
+ * 3. NEXTAUTH_URL environment variable
+ * 4. Localhost fallback
  */
 export async function getAppUrl(): Promise<string> {
     try {
-        // Try to get from database first
         const settings = await prisma.systemSettings.findUnique({
             where: { id: 'default' },
             select: { appUrl: true }
@@ -53,13 +53,11 @@ export async function getAppUrl(): Promise<string> {
             logger.warn('Invalid app URL found in database configuration', { appUrl: settings.appUrl });
         }
     } catch (error) {
-        // If database query fails, log and continue to fallback
         logger.warn('Failed to fetch app URL from database', {
             error: error instanceof Error ? error.message : 'Unknown error'
         });
     }
 
-    // Fallback to environment variable
     const normalizedFromEnv = normalizeAppUrl(process.env.NEXT_PUBLIC_APP_URL);
     if (normalizedFromEnv) {
         return normalizedFromEnv;
@@ -70,7 +68,6 @@ export async function getAppUrl(): Promise<string> {
         return normalizedFromAuth;
     }
 
-    // Final fallback for development
     const fallback = 'http://localhost:3000';
 
     if (process.env.NODE_ENV === 'production') {
@@ -81,8 +78,8 @@ export async function getAppUrl(): Promise<string> {
 }
 
 /**
- * Get the application base URL synchronously (for client-side)
- * Only use this on the server side or when you can't use async
+ * Get the application base URL synchronously when database lookup is unavailable.
+ * Priority: NEXT_PUBLIC_APP_URL → NEXTAUTH_URL → localhost.
  */
 export function getAppUrlSync(): string {
     const normalizedFromEnv = normalizeAppUrl(process.env.NEXT_PUBLIC_APP_URL);

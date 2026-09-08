@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { saveJiraConfig } from '@/app/(app)/settings/integrations/jira/actions';
+import type { SettingsActionState } from '@/lib/settings-result';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -26,6 +27,7 @@ import {
   ShieldCheck,
   Sparkles,
   XCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 type JiraConfigView = {
@@ -74,7 +76,11 @@ export default function JiraIntegrationPage({
   isAdmin: boolean;
   appUrl?: string;
 }) {
-  const [state, formAction] = useActionState(saveJiraConfig, { error: null, success: false });
+  const [state, formAction] = useActionState<SettingsActionState, FormData>(saveJiraConfig, {
+    error: null,
+    success: false,
+    updatedAt: config?.updatedAt ? new Date(config.updatedAt).toISOString() : null,
+  });
   const [baseUrl, setBaseUrl] = useState(config?.baseUrl ?? '');
   const [userEmail, setUserEmail] = useState(config?.userEmail ?? '');
   const [apiToken, setApiToken] = useState(config ? '********' : '');
@@ -164,7 +170,22 @@ export default function JiraIntegrationPage({
 
   return (
     <form action={formAction} className="space-y-6">
-      {state?.error && (
+      {state?.code === 'SETTINGS_CHANGED' && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-100 flex items-start justify-between gap-4">
+          <div className="flex gap-2 min-w-0">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold">Settings changed elsewhere</p>
+              <p>{state.error}</p>
+              <p className="text-xs mt-1 opacity-80">Your unsaved Jira edits are preserved until you choose to reload.</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="shrink-0 gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" />Reload latest
+          </Button>
+        </div>
+      )}
+      {state?.error && state.code !== 'SETTINGS_CHANGED' && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex gap-2">
           <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
           <div><p className="font-semibold">Configuration Error</p><p>{state.error}</p></div>

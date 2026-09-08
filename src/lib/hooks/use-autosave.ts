@@ -50,9 +50,6 @@ export function useAutosave<T>({
   const mountedRef = useRef(true);
   const operationGenerationRef = useRef(0);
 
-  // Keep the values consumed by async queue work synchronized on every render.
-  // The scheduling effect intentionally depends on the serialized snapshot rather
-  // than object identity, so equivalent object instances do not restart debounce.
   latestDataRef.current = data;
   latestSnapshotRef.current = currentSnapshot;
   onSaveRef.current = onSave;
@@ -152,6 +149,11 @@ export function useAutosave<T>({
       }
       return;
     }
+
+    // A newer edit invalidates a previous "Saved" indication immediately. The
+    // subsequent debounce may not have started its request yet, but the UI must
+    // never claim the new value is already persisted.
+    setStatus(current => (current === 'saved' ? 'idle' : current));
 
     debounceRef.current = setTimeout(() => {
       void drainQueue();

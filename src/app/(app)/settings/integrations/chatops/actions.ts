@@ -1,10 +1,18 @@
 'use server';
 
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { assertAdmin } from '@/lib/rbac';
 import { revalidatePath } from 'next/cache';
+import {
+  SettingsChangedMutationError,
+  isSettingsChangedError,
+  parseSettingsRevision,
+  settingsChangedState,
+  type SettingsActionState,
+} from '@/lib/settings-result';
 
 const ALLOWED_BRIDGE_TEMPLATE_VARIABLES = new Set(['incidentId']);
 
@@ -49,21 +57,20 @@ const ChatOpsConfigSchema = z
     }
   });
 
-type ChatOpsConfigState = {
-  success?: boolean;
-  error?: string | null;
-};
-
 export async function saveChatOpsConfig(
-  _prevState: ChatOpsConfigState | undefined,
+  prevState: SettingsActionState | undefined,
   formData: FormData
-): Promise<ChatOpsConfigState> {
+): Promise<SettingsActionState> {
+  const expectedUpdatedAt = prevState?.updatedAt ?? null;
   let actor;
   try {
     actor = await assertAdmin();
   } catch (error) {
     return {
+      success: false,
+      code: 'FORBIDDEN',
       error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.',
+      updatedAt: expectedUpdatedAt,
     };
   }
 
@@ -87,25 +94,39 @@ export async function saveChatOpsConfig(
     });
 
     if (!parsed.success) {
-      return { error: parsed.error.issues[0]?.message || 'Invalid ChatOps configuration.' };
+      return {
+        success: false,
+        code: 'VALIDATION_ERROR',
+        error: parsed.error.issues[0]?.message || 'Invalid ChatOps configuration.',
+        updatedAt: expectedUpdatedAt,
+      };
     }
 
     const next = parsed.data;
     const existing = await prisma.chatOpsConfig.findUnique({ where: { id: 'default' } });
+    const expectedRevision = parseSettingsRevision(expectedUpdatedAt);
+    if (existing && !expectedRevision) return settingsChangedState(expectedUpdatedAt);
+    if (!existing && expectedRevision) return settingsChangedState(expectedUpdatedAt);
 
-    await prisma.$transaction(async tx => {
-      await tx.chatOpsConfig.upsert({
-        where: { id: 'default' },
-        create: {
-          id: 'default',
-          ...next,
-          customBridgeUrlTemplate: next.customBridgeUrlTemplate || null,
-        },
-        update: {
-          ...next,
-          customBridgeUrlTemplate: next.customBridgeUrlTemplate || null,
-        },
-      });
+    const updatedAt = await prisma.$transaction(async tx => {
+      if (existing) {
+        const updated = await tx.chatOpsConfig.updateMany({
+          where: { id: existing.id, updatedAt: expectedRevision! },
+          data: {
+            ...next,
+            customBridgeUrlTemplate: next.customBridgeUrlTemplate || null,
+          },
+        });
+        if (updated.count !== 1) throw new SettingsChangedMutationError();
+      } else {
+        await tx.chatOpsConfig.create({
+          data: {
+            id: 'default',
+            ...next,
+            customBridgeUrlTemplate: next.customBridgeUrlTemplate || null,
+          },
+        });
+      }
 
       await logAudit(
         {
@@ -136,15 +157,30 @@ export async function saveChatOpsConfig(
         },
         tx
       );
+
+      const saved = await tx.chatOpsConfig.findUniqueOrThrow({
+        where: { id: existing?.id ?? 'default' },
+        select: { updatedAt: true },
+      });
+      return saved.updatedAt.toISOString();
     });
 
     revalidatePath('/settings');
     revalidatePath('/settings/integrations/chatops');
 
-    return { success: true, error: null };
+    return { success: true, error: null, updatedAt };
   } catch (error) {
+    if (
+      isSettingsChangedError(error) ||
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+    ) {
+      return settingsChangedState(expectedUpdatedAt);
+    }
     return {
+      success: false,
+      code: 'INTERNAL_ERROR',
       error: error instanceof Error ? error.message : 'Failed to save ChatOps configuration.',
+      updatedAt: expectedUpdatedAt,
     };
   }
 }

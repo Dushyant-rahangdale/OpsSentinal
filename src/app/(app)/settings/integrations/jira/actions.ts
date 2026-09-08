@@ -1,5 +1,6 @@
 'use server';
 
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { encrypt } from '@/lib/encryption';
@@ -7,11 +8,13 @@ import { logAudit } from '@/lib/audit';
 import { assertAdmin } from '@/lib/rbac';
 import { normalizeJiraBaseUrl } from '@/lib/jira-validation';
 import { revalidatePath } from 'next/cache';
-
-type JiraConfigState = {
-  success?: boolean;
-  error?: string | null;
-};
+import {
+  SettingsChangedMutationError,
+  isSettingsChangedError,
+  parseSettingsRevision,
+  settingsChangedState,
+  type SettingsActionState,
+} from '@/lib/settings-result';
 
 const JiraConfigSchema = z.object({
   baseUrl: z.string().trim().min(1, 'Jira site URL is required.'),
@@ -22,15 +25,19 @@ const JiraConfigSchema = z.object({
 });
 
 export async function saveJiraConfig(
-  _prevState: JiraConfigState | undefined,
+  prevState: SettingsActionState | undefined,
   formData: FormData
-): Promise<JiraConfigState> {
+): Promise<SettingsActionState> {
+  const expectedUpdatedAt = prevState?.updatedAt ?? null;
   let actor;
   try {
     actor = await assertAdmin();
   } catch (error) {
     return {
+      success: false,
+      code: 'FORBIDDEN',
       error: error instanceof Error ? error.message : 'Unauthorized. Admin access required.',
+      updatedAt: expectedUpdatedAt,
     };
   }
 
@@ -44,7 +51,12 @@ export async function saveJiraConfig(
     });
 
     if (!parsed.success) {
-      return { error: parsed.error.issues[0]?.message || 'Invalid Jira configuration.' };
+      return {
+        success: false,
+        code: 'VALIDATION_ERROR',
+        error: parsed.error.issues[0]?.message || 'Invalid Jira configuration.',
+        updatedAt: expectedUpdatedAt,
+      };
     }
 
     const baseUrl = normalizeJiraBaseUrl(parsed.data.baseUrl);
@@ -52,8 +64,17 @@ export async function saveJiraConfig(
     const { apiToken, webhookSecret, enabled } = parsed.data;
 
     const existing = await prisma.jiraConfig.findUnique({ where: { id: 'default' } });
+    const expectedRevision = parseSettingsRevision(expectedUpdatedAt);
+    if (existing && !expectedRevision) return settingsChangedState(expectedUpdatedAt);
+    if (!existing && expectedRevision) return settingsChangedState(expectedUpdatedAt);
+
     if (!existing && !apiToken) {
-      return { error: 'Jira API token is required for new configuration.' };
+      return {
+        success: false,
+        code: 'VALIDATION_ERROR',
+        error: 'Jira API token is required for new configuration.',
+        updatedAt: expectedUpdatedAt,
+      };
     }
 
     const apiTokenEncrypted =
@@ -64,32 +85,43 @@ export async function saveJiraConfig(
         : existing?.webhookSecretEncrypted;
 
     if (!apiTokenEncrypted) {
-      return { error: 'Jira API token is required.' };
+      return {
+        success: false,
+        code: 'VALIDATION_ERROR',
+        error: 'Jira API token is required.',
+        updatedAt: expectedUpdatedAt,
+      };
     }
 
-    await prisma.$transaction(async tx => {
-      await tx.jiraConfig.upsert({
-        where: { id: 'default' },
-        create: {
-          id: 'default',
-          baseUrl,
-          userEmail,
-          apiTokenEncrypted,
-          enabled,
-          defaultProjectKey: null,
-          webhookSecretEncrypted,
-          updatedBy: actor.id,
-        },
-        update: {
-          baseUrl,
-          userEmail,
-          apiTokenEncrypted,
-          enabled,
-          defaultProjectKey: null,
-          webhookSecretEncrypted,
-          updatedBy: actor.id,
-        },
-      });
+    const updatedAt = await prisma.$transaction(async tx => {
+      if (existing) {
+        const updated = await tx.jiraConfig.updateMany({
+          where: { id: existing.id, updatedAt: expectedRevision! },
+          data: {
+            baseUrl,
+            userEmail,
+            apiTokenEncrypted,
+            enabled,
+            defaultProjectKey: null,
+            webhookSecretEncrypted,
+            updatedBy: actor.id,
+          },
+        });
+        if (updated.count !== 1) throw new SettingsChangedMutationError();
+      } else {
+        await tx.jiraConfig.create({
+          data: {
+            id: 'default',
+            baseUrl,
+            userEmail,
+            apiTokenEncrypted,
+            enabled,
+            defaultProjectKey: null,
+            webhookSecretEncrypted,
+            updatedBy: actor.id,
+          },
+        });
+      }
 
       await logAudit(
         {
@@ -115,13 +147,30 @@ export async function saveJiraConfig(
         },
         tx
       );
+
+      const saved = await tx.jiraConfig.findUniqueOrThrow({
+        where: { id: existing?.id ?? 'default' },
+        select: { updatedAt: true },
+      });
+      return saved.updatedAt.toISOString();
     });
 
     revalidatePath('/settings');
     revalidatePath('/settings/integrations/jira');
 
-    return { success: true, error: null };
+    return { success: true, error: null, updatedAt };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Failed to save Jira configuration.' };
+    if (
+      isSettingsChangedError(error) ||
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+    ) {
+      return settingsChangedState(expectedUpdatedAt);
+    }
+    return {
+      success: false,
+      code: 'INTERNAL_ERROR',
+      error: error instanceof Error ? error.message : 'Failed to save Jira configuration.',
+      updatedAt: expectedUpdatedAt,
+    };
   }
 }

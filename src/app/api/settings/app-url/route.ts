@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
@@ -6,8 +7,17 @@ import { logAudit } from '@/lib/audit';
 import { revalidatePath } from 'next/cache';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { AppError, isAppError } from '@/lib/errors';
+import { jsonSettingsChanged } from '@/lib/settings-api-response';
+import {
+  SettingsChangedMutationError,
+  isSettingsChangedError,
+  parseSettingsRevision,
+} from '@/lib/settings-result';
 
-const AppUrlSchema = z.object({ appUrl: z.string().trim().max(2048) });
+const AppUrlSchema = z.object({
+  appUrl: z.string().trim().max(2048),
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+});
 
 function validateAppUrl(value: string): string | null {
   if (!value) return null;
@@ -32,7 +42,6 @@ function validateAppUrl(value: string): string | null {
   }
 }
 
-// GET /api/settings/app-url
 export async function GET() {
   try {
     await assertAdmin();
@@ -55,7 +64,6 @@ export async function GET() {
   }
 }
 
-// POST /api/settings/app-url
 export async function POST(request: NextRequest) {
   try {
     const actor = await assertAdmin();
@@ -83,17 +91,28 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = validateAppUrl(parsed.data.appUrl);
+    const expectedUpdatedAt = parsed.data.expectedUpdatedAt ?? null;
+    const expectedRevision = parseSettingsRevision(expectedUpdatedAt);
     const existing = await prisma.systemSettings.findUnique({
       where: { id: 'default' },
-      select: { appUrl: true },
+      select: { appUrl: true, updatedAt: true },
     });
 
-    await prisma.$transaction(async tx => {
-      await tx.systemSettings.upsert({
-        where: { id: 'default' },
-        create: { id: 'default', appUrl },
-        update: { appUrl },
-      });
+    if (existing && !expectedRevision) return jsonSettingsChanged();
+    if (!existing && expectedRevision) return jsonSettingsChanged();
+
+    const updatedAt = await prisma.$transaction(async tx => {
+      if (existing) {
+        const updated = await tx.systemSettings.updateMany({
+          where: { id: 'default', updatedAt: expectedRevision! },
+          data: { appUrl },
+        });
+        if (updated.count !== 1) throw new SettingsChangedMutationError();
+      } else {
+        await tx.systemSettings.create({
+          data: { id: 'default', appUrl },
+        });
+      }
 
       await logAudit(
         {
@@ -107,11 +126,23 @@ export async function POST(request: NextRequest) {
         },
         tx
       );
+
+      const saved = await tx.systemSettings.findUniqueOrThrow({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      });
+      return saved.updatedAt.toISOString();
     });
 
     revalidatePath('/settings/system');
-    return jsonOk({ success: true, appUrl });
+    return jsonOk({ success: true, appUrl, updatedAt });
   } catch (error) {
+    if (
+      isSettingsChangedError(error) ||
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+    ) {
+      return jsonSettingsChanged();
+    }
     if (isAppError(error)) return jsonError(error);
     return jsonError('Failed to update app URL', 500);
   }
