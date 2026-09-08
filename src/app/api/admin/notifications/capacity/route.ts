@@ -1,26 +1,43 @@
 import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
+import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
-import { getCurrentUser } from '@/lib/rbac';
+import { getUserPermissions } from '@/lib/rbac';
 import { invalidateNotificationCapacityControl } from '@/lib/notification-capacity-control';
 
+const capacityUpdateSchema = z
+  .object({
+    bulkPaused: z.boolean(),
+  })
+  .strict();
+
 export async function PATCH(request: NextRequest) {
-  const user = await getCurrentUser().catch(() => null);
-  if (!user) return jsonError('Authentication required', 401);
-  if (user.role !== 'ADMIN') return jsonError('Admin access required', 403);
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body.bulkPaused !== 'boolean')
+  const permissions = await getUserPermissions();
+  if (!permissions.authenticated) return jsonError('Authentication required', 401);
+  if (!permissions.capabilities.includes('admin.manage')) {
+    return jsonError('Admin access required', 403);
+  }
+
+  let input: unknown;
+  try {
+    input = await request.json();
+  } catch {
     return jsonError('Invalid capacity update', 400);
+  }
+  const parsed = capacityUpdateSchema.safeParse(input);
+  if (!parsed.success) return jsonError('Invalid capacity update', 400);
+
+  const { bulkPaused } = parsed.data;
   await prisma.systemConfig.upsert({
     where: { key: 'notification_capacity_control' },
     create: {
       key: 'notification_capacity_control',
-      value: { bulkPaused: body.bulkPaused },
-      updatedBy: user.id,
+      value: { bulkPaused },
+      updatedBy: permissions.id,
     },
-    update: { value: { bulkPaused: body.bulkPaused } as Prisma.InputJsonValue, updatedBy: user.id },
+    update: { value: { bulkPaused } as Prisma.InputJsonValue, updatedBy: permissions.id },
   });
   invalidateNotificationCapacityControl();
-  return jsonOk({ bulkPaused: body.bulkPaused });
+  return jsonOk({ bulkPaused });
 }
