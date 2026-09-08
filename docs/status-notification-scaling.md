@@ -16,23 +16,23 @@ Provider throughput is controlled with `NOTIFICATION_<CHANNEL>_RATE_PER_SECOND`,
 `NOTIFICATION_DEPLOYMENT_RATE_CEILING`, and `NOTIFICATION_QUOTA_BLOCK_SIZE`. Start with the Safe
 preset (25/s, 10 in flight, 50% bulk), move to Balanced (100/s, 50 in flight, 75% bulk), and use
 High Throughput (500+/s) only after provider approval and load testing. The deployment ceiling is a
-hard safety bound. Adaptive backpressure should remain enabled.
+hard safety bound. Adaptive backpressure should remain enabled. Bulk concurrency is bounded below
+the provider maximum so critical/transactional delivery retains reserved in-flight capacity.
 
 The operations page shows effective capacity, leases, campaigns, and bulk pause state. Pausing bulk
 delivery leaves critical and transactional workers running. Provider credentials remain in the
 encrypted provider store.
 
 Public HTML, JSON, and RSS serve published snapshots only. Set
-`STATUS_PAGE_SERVING_STORE_URL` and `STATUS_PAGE_SERVING_STORE_TOKEN` for an external store.
-Privacy changes revoke the manifest before committing. Snapshot objects are immutable and the
-manifest is the only mutable serving object.
+`STATUS_PAGE_SERVING_STORE_URL` and `STATUS_PAGE_SERVING_STORE_TOKEN` for an external store and
+opt in with `STATUS_PAGE_EXTERNAL_SERVING_STORE=true`. Privacy changes revoke the manifest before
+committing. Snapshot objects are immutable and the manifest is the only mutable serving object.
 
-Temporary rollout flags are `NOTIFICATION_TRAFFIC_CLASSES_V2`,
-`NOTIFICATION_PROVIDER_CAPACITY_V2`, `STATUS_PAGE_ASYNC_FANOUT`,
-`NOTIFICATION_FANOUT_CAMPAIGNS`, `STATUS_PAGE_SNAPSHOT_ONLY`, and
-`STATUS_PAGE_EXTERNAL_SERVING_STORE`. Roll forward by deploying additive schema first, then
-workers, then web processes. Roll back worker behavior with flags; keep snapshot-only public
-serving fail-closed.
+The external serving store is the only runtime-gated scaling feature. The traffic-class, durable
+fanout, provider-capacity, and snapshot-only contracts are schema/application invariants and are
+rolled back by deploying the previous compatible application/worker version, not by unsupported
+runtime flags. Roll forward by applying additive schema first, then workers, then web processes.
+Keep snapshot-only public serving fail-closed during rollback.
 
 Run combined load validation with:
 
