@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AutosaveForm } from '@/components/settings/forms/AutosaveForm';
 import { SettingsRow } from '@/components/settings/layout/SettingsRow';
 import TimeZoneSelect from '@/components/TimeZoneSelect';
@@ -10,6 +10,7 @@ import { updatePreferences } from '@/app/(app)/settings/actions';
 import { useRouter } from 'next/navigation';
 import { Controller } from 'react-hook-form';
 import { notify as toast } from '@/lib/toast';
+import { isValidTimeZone } from '@/lib/timezone';
 
 type Props = {
   timeZone: string;
@@ -56,26 +57,35 @@ export default function PreferencesForm({ timeZone }: Props) {
     timeZone,
   };
 
-  const handleSave = async (data: PreferencesFormData) => {
-    const formData = new FormData();
-    formData.append('timeZone', data.timeZone);
+  const handleSave = useCallback(
+    async (data: PreferencesFormData) => {
+      if (!isValidTimeZone(data.timeZone)) {
+        const error = 'Select a valid timezone.';
+        toast.error(error);
+        return { success: false, error };
+      }
 
-    const result = await updatePreferences({ error: null, success: false }, formData);
+      const formData = new FormData();
+      formData.append('timeZone', data.timeZone);
 
-    if (result.success) {
-      toast.success('Timezone updated');
-      setTimeout(() => {
-        router.refresh();
-      }, 500);
-    } else {
-      toast.error(result.error || 'Failed to update timezone');
-    }
+      const result = await updatePreferences({ error: null, success: false }, formData);
 
-    return {
-      success: result.success ?? false,
-      error: result.error ?? undefined,
-    };
-  };
+      if (result.success) {
+        toast.success('Timezone updated');
+        setTimeout(() => {
+          router.refresh();
+        }, 500);
+      } else {
+        toast.error(result.error || 'Failed to update timezone');
+      }
+
+      return {
+        success: result.success ?? false,
+        error: result.error ?? undefined,
+      };
+    },
+    [router]
+  );
 
   return (
     <AutosaveForm

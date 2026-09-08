@@ -82,8 +82,9 @@ export default function ProfileForm({
 
       const formData = new FormData();
       formData.append('name', data.name.trim());
-      if (data.department) formData.append('department', data.department.trim());
-      if (data.jobTitle) formData.append('jobTitle', data.jobTitle.trim());
+      // Always submit optional fields so clearing a value persists as NULL.
+      formData.append('department', data.department?.trim() ?? '');
+      formData.append('jobTitle', data.jobTitle?.trim() ?? '');
 
       const result = await updateProfile({ error: null, success: false }, formData);
 
@@ -148,7 +149,7 @@ export default function ProfileForm({
 
       startTransition(async () => {
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('avatar', file);
 
         const result = await updateProfile({ error: null, success: false }, formData);
 
