@@ -188,6 +188,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
     jiraConfig,
     chatOpsConfig,
     incidentSlaPolicy,
+    workspaceIncidentSlaPolicy,
   ] = await Promise.all([
     prisma.service.findFirst({
       where: { AND: [serviceReadWhere(actor), { id }] },
@@ -268,6 +269,11 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
       : Promise.resolve(null),
     prisma.incidentSlaPolicy.findFirst({
       where: { scopeKey: `service:${id}`, sealedAt: { not: null } },
+      orderBy: { version: 'desc' },
+      include: { rules: true },
+    }),
+    prisma.incidentSlaPolicy.findFirst({
+      where: { scopeKey: 'workspace', sealedAt: { not: null } },
       orderBy: { version: 'desc' },
       include: { rules: true },
     }),
@@ -828,6 +834,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           <IncidentSlaPolicySettings
             scopeKey={`service:${id}`}
             policy={incidentSlaPolicy}
+            workspacePolicy={workspaceIncidentSlaPolicy}
             canManage={canManageService}
           />
 

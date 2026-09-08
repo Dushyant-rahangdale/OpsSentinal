@@ -157,6 +157,37 @@ describe('incident SLA policy database invariants', () => {
         },
       })
     ).rejects.toThrow();
+    await expect(
+      testPrisma.incidentSlaPolicy.create({
+        data: {
+          scopeKey: 'service:',
+          version: 1,
+          inheritWorkspace: false,
+          baseAckTargetMs: 60_000,
+          baseResolveTargetMs: 120_000,
+        },
+      })
+    ).rejects.toThrow();
+  });
+
+  it('records actionable diagnostics for a legacy writer', async () => {
+    const service = await createTestService('Legacy SLA writer');
+    const incident = await testPrisma.incident.create({
+      data: {
+        title: 'Legacy explicit contract',
+        serviceId: service.id,
+        slaAckTargetMs: 60_000,
+        slaResolveTargetMs: 120_000,
+      },
+    });
+    const diagnostic = await testPrisma.incidentSlaLegacyCapture.findFirstOrThrow();
+
+    expect(diagnostic).toMatchObject({
+      count: BigInt(1),
+      lastIncidentId: incident.id,
+      lastServiceId: service.id,
+      lastCaptureKind: 'EXPLICIT_NO_PROVENANCE',
+    });
   });
 
   it('uses the application resolver without incrementing the legacy fallback counter', async () => {

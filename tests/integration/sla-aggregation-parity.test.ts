@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { calculateSLAMetrics } from '@/lib/sla-server';
+import { calculateSLAMetrics, checkIncidentSLA } from '@/lib/sla-server';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
+import { generateDailyRollup, queryRollupMetrics } from '@/lib/metric-rollup';
 import { clearRetentionPolicyCache } from '@/lib/retention-policy';
 import { resetDatabase, testPrisma } from '../helpers/test-db';
 
@@ -74,5 +76,44 @@ describeIfRealDB('SLA aggregation threshold parity', { timeout: 60_000 }, () => 
     expect(belowThreshold.mttd).toBeCloseTo(20, 8);
     expect(aboveThreshold.mttd).toBeCloseTo(belowThreshold.mttd ?? 0, 8);
     expect(aboveThreshold.ackRate).toBe(belowThreshold.ackRate);
+  });
+
+  it('keeps resolved-without-ACK compliance identical across projector, live, compatibility, and rollup engines', async () => {
+    const service = await testPrisma.service.create({
+      data: { name: `SLA semantic parity ${crypto.randomUUID()}` },
+    });
+    const createdAt = new Date();
+    createdAt.setUTCDate(createdAt.getUTCDate() - 1);
+    createdAt.setUTCHours(12, 0, 0, 0);
+    const resolvedAt = new Date(createdAt.getTime() + 60_000);
+    const incident = await testPrisma.incident.create({
+      data: {
+        title: 'Resolved without acknowledgement',
+        serviceId: service.id,
+        status: 'RESOLVED',
+        createdAt,
+        resolvedAt,
+      },
+    });
+    const stored = await testPrisma.incident.findUniqueOrThrow({ where: { id: incident.id } });
+    const projected = projectIncidentSlaState(stored, { now: resolvedAt });
+    const live = await calculateSLAMetrics({
+      serviceId: service.id,
+      startDate: new Date(createdAt.getTime() - 1),
+      endDate: new Date(resolvedAt.getTime() + 1),
+      userTimeZone: 'UTC',
+      _forceLive: true,
+    });
+    const compatible = await checkIncidentSLA(incident.id);
+
+    await generateDailyRollup(createdAt, service.id);
+    const historical = await queryRollupMetrics(createdAt, createdAt, {
+      serviceId: service.id,
+    });
+
+    expect(projected.valid && projected.ack.status).toBe('BREACHED');
+    expect(live.ackCompliance).toBe(0);
+    expect(compatible.ackSLA.breached).toBe(true);
+    expect(historical.ackCompliance).toBe(0);
   });
 });

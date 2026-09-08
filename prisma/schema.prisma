@@ -729,9 +729,12 @@ model IncidentSlaPolicyRule {
 
 /// Durable daily rollout counters, including legacy writers that already pass explicit targets.
 model IncidentSlaLegacyCapture {
-  day        DateTime @id @db.Date
-  count      BigInt   @default(0)
-  lastSeenAt DateTime @default(now())
+  day             DateTime @id @db.Date
+  count           BigInt   @default(0)
+  lastSeenAt      DateTime @default(now())
+  lastIncidentId  String?
+  lastServiceId   String?
+  lastCaptureKind String?
 }
 
 model IncidentSlaPause {

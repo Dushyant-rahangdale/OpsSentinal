@@ -37,13 +37,16 @@ const minutes = (ms: number | null | undefined) =>
 export default function IncidentSlaPolicySettings({
   scopeKey,
   policy,
+  workspacePolicy = null,
   canManage,
 }: {
   scopeKey: string;
   policy: Policy;
+  workspacePolicy?: Policy;
   canManage: boolean;
 }) {
-  const [inherit, setInherit] = useState(Boolean(policy?.inheritWorkspace));
+  const isService = scopeKey.startsWith('service:');
+  const [inherit, setInherit] = useState(isService && (policy?.inheritWorkspace ?? true));
   const [ack, setAck] = useState(minutes(policy?.baseAckTargetMs));
   const [resolve, setResolve] = useState(minutes(policy?.baseResolveTargetMs));
   const [rules, setRules] = useState<EditableRule[]>(() =>
@@ -58,6 +61,8 @@ export default function IncidentSlaPolicySettings({
     })
   );
   const [pending, startTransition] = useTransition();
+  const effectiveBase = inherit ? workspacePolicy : policy;
+  const effectiveSource = inherit ? 'Workspace defaults' : 'Service policy';
   const updateRule = (
     priority: Priority,
     field: 'enabled' | 'ack' | 'resolve',
@@ -117,7 +122,41 @@ export default function IncidentSlaPolicySettings({
         </div>
       </CardHeader>
       <CardContent className="space-y-5 p-5">
-        {scopeKey.startsWith('service:') && (
+        {isService && (
+          <div className="grid gap-3 rounded-md border bg-muted/20 p-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Effective source
+              </p>
+              <p className="text-xs font-medium">
+                {effectiveBase
+                  ? `${effectiveSource} · v${effectiveBase.version}`
+                  : 'Not configured'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Effective acknowledgement
+              </p>
+              <p className="text-xs font-medium">
+                {effectiveBase?.baseAckTargetMs == null
+                  ? 'Unavailable'
+                  : `${minutes(effectiveBase.baseAckTargetMs)} minutes`}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Effective resolution
+              </p>
+              <p className="text-xs font-medium">
+                {effectiveBase?.baseResolveTargetMs == null
+                  ? 'Unavailable'
+                  : `${minutes(effectiveBase.baseResolveTargetMs)} minutes`}
+              </p>
+            </div>
+          </div>
+        )}
+        {isService && (
           <label className="flex items-center gap-2 text-xs">
             <input
               type="checkbox"
@@ -162,7 +201,7 @@ export default function IncidentSlaPolicySettings({
               </div>
             </div>
           )}
-          {scopeKey.startsWith('service:') && (
+          {isService && (
             <div className="space-y-2">
               <p className="text-xs font-semibold">
                 Priority overrides{' '}

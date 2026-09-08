@@ -5,8 +5,7 @@ import { getActiveOnCallShifts } from '@/lib/oncall-shifts';
 import type { Prisma } from '@prisma/client';
 import { compileIncidentMetricFilter } from '@/lib/metrics/domain/filter';
 import { activeIncidentStatusesForFilter } from '@/lib/incident-status';
-import { resolveSlaTarget } from '@/lib/metrics/domain/sla-target';
-import { effectiveMaterializedElapsedMs } from '@/lib/metrics/domain/sla-clock';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
 
 /**
  * Centralized Widget Data Provider
@@ -90,8 +89,8 @@ export type WidgetRealtimeProjection = Pick<
 const OVERLOAD_THRESHOLD = 5;
 
 // SLA breach alert windows (in milliseconds)
-const ACK_BREACH_ALERT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RESOLVE_BREACH_ALERT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+const DASHBOARD_ACK_ATTENTION_WINDOW_MS = 15 * 60 * 1000;
+const DASHBOARD_RESOLVE_ATTENTION_WINDOW_MS = 30 * 60 * 1000;
 
 /**
  * Lightweight realtime projection. Historical SLA rates and trends belong to
@@ -113,36 +112,24 @@ export async function getWidgetRealtimeProjection(
       urgency: true,
       createdAt: true,
       acknowledgedAt: true,
+      resolvedAt: true,
       serviceId: true,
       assigneeId: true,
-      priority: true,
       slaAckTargetMs: true,
       slaResolveTargetMs: true,
+      slaTargetSource: true,
+      slaTargetCapturedAt: true,
       slaPausedMs: true,
       slaPauseStartedAt: true,
+      slaAckElapsedMs: true,
+      slaResolveElapsedMs: true,
       service: {
-        select: { name: true, targetAckMinutes: true, targetResolveMinutes: true },
+        select: { name: true },
       },
     },
   });
   const activeIncidents: ActiveIncidentData[] = incidents.map(incident => {
-    const target = resolveSlaTarget({
-      incidentTargets: {
-        ackTargetMs: incident.slaAckTargetMs,
-        resolveTargetMs: incident.slaResolveTargetMs,
-      },
-      priority: incident.priority,
-      serviceTargets: {
-        ackMinutes: incident.service.targetAckMinutes,
-        resolveMinutes: incident.service.targetResolveMinutes,
-      },
-    });
-    const elapsed = effectiveMaterializedElapsedMs({
-      startedAt: incident.createdAt,
-      evaluationAt: now,
-      pausedMs: incident.slaPausedMs,
-      pauseStartedAt: incident.slaPauseStartedAt,
-    });
+    const sla = projectIncidentSlaState(incident, { now });
     return {
       id: incident.id,
       title: incident.title,
@@ -150,15 +137,13 @@ export async function getWidgetRealtimeProjection(
       urgency: incident.urgency,
       createdAt: incident.createdAt,
       acknowledgedAt: incident.acknowledgedAt,
-      resolvedAt: null,
+      resolvedAt: incident.resolvedAt,
       serviceId: incident.serviceId,
       serviceName: incident.service.name,
       assigneeId: incident.assigneeId,
       assigneeName: null,
-      slaAckDeadline: incident.acknowledgedAt
-        ? null
-        : new Date(now.getTime() + Math.max(0, target.ackTargetMs - elapsed)),
-      slaResolveDeadline: new Date(now.getTime() + Math.max(0, target.resolveTargetMs - elapsed)),
+      slaAckDeadline: sla.valid ? sla.ack.breachAt : null,
+      slaResolveDeadline: sla.valid ? sla.resolve.breachAt : null,
     };
   });
   const slaBreachAlerts = activeIncidents.filter(incident => {
@@ -169,8 +154,8 @@ export async function getWidgetRealtimeProjection(
       ? incident.slaResolveDeadline.getTime() - now.getTime()
       : Number.POSITIVE_INFINITY;
     return (
-      ackRemaining <= ACK_BREACH_ALERT_WINDOW_MS ||
-      resolveRemaining <= RESOLVE_BREACH_ALERT_WINDOW_MS
+      ackRemaining <= DASHBOARD_ACK_ATTENTION_WINDOW_MS ||
+      resolveRemaining <= DASHBOARD_RESOLVE_ATTENTION_WINDOW_MS
     );
   });
   return { activeIncidents, slaBreachAlerts, lastUpdated: now };
@@ -281,7 +266,7 @@ export async function getWidgetData(
     // Check ACK breach alert (imminent or already breached)
     if (inc.slaAckDeadline && inc.status === 'OPEN' && !inc.acknowledgedAt) {
       const timeToAckBreach = inc.slaAckDeadline.getTime() - nowMs;
-      if (timeToAckBreach <= ACK_BREACH_ALERT_WINDOW_MS) {
+      if (timeToAckBreach <= DASHBOARD_ACK_ATTENTION_WINDOW_MS) {
         return true;
       }
     }
@@ -289,7 +274,7 @@ export async function getWidgetData(
     // Check Resolve breach alert (imminent or already breached)
     if (inc.slaResolveDeadline && !inc.resolvedAt) {
       const timeToResolveBreach = inc.slaResolveDeadline.getTime() - nowMs;
-      if (timeToResolveBreach <= RESOLVE_BREACH_ALERT_WINDOW_MS) {
+      if (timeToResolveBreach <= DASHBOARD_RESOLVE_ATTENTION_WINDOW_MS) {
         return true;
       }
     }

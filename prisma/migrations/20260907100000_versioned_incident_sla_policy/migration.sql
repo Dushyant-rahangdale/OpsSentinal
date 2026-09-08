@@ -11,7 +11,7 @@ CREATE TABLE "IncidentSlaPolicy" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" TEXT,
   "sealedAt" TIMESTAMP(3),
-  CONSTRAINT incident_sla_policy_scope CHECK ("scopeKey" = 'workspace' OR "scopeKey" LIKE 'service:%'),
+  CONSTRAINT incident_sla_policy_scope CHECK ("scopeKey" = 'workspace' OR "scopeKey" ~ '^service:.+$'),
   CONSTRAINT incident_sla_policy_base CHECK (
     ("inheritWorkspace" AND "scopeKey" <> 'workspace' AND "baseAckTargetMs" IS NULL AND "baseResolveTargetMs" IS NULL)
     OR (NOT "inheritWorkspace" AND "baseAckTargetMs" IS NOT NULL AND "baseResolveTargetMs" IS NOT NULL
@@ -32,7 +32,10 @@ CREATE UNIQUE INDEX "IncidentSlaPolicyRule_policyId_priority_key" ON "IncidentSl
 CREATE TABLE "IncidentSlaLegacyCapture" (
   "day" DATE NOT NULL PRIMARY KEY,
   "count" BIGINT NOT NULL DEFAULT 0,
-  "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "lastIncidentId" TEXT,
+  "lastServiceId" TEXT,
+  "lastCaptureKind" TEXT
 );
 ALTER TABLE "Incident" ADD COLUMN "slaPolicyId" TEXT,
   ADD COLUMN "slaPolicyVersion" INTEGER,
@@ -45,11 +48,13 @@ DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM "Service"
-    WHERE COALESCE(NULLIF("targetAckMinutes",0),15) > COALESCE(NULLIF("targetResolveMinutes",0),120)
+    WHERE "targetAckMinutes" < 0
+      OR "targetResolveMinutes" < 0
+      OR COALESCE(NULLIF("targetAckMinutes",0),15) > COALESCE(NULLIF("targetResolveMinutes",0),120)
       OR COALESCE(NULLIF("targetAckMinutes",0),15) > 34560
       OR COALESCE(NULLIF("targetResolveMinutes",0),120) > 34560
   ) THEN
-    RAISE EXCEPTION 'Invalid legacy service SLA targets: ACK must not exceed resolution and both must be at most 24 days';
+    RAISE EXCEPTION 'Invalid legacy service SLA targets: values must be non-negative, ACK must not exceed resolution, and both must be at most 24 days';
   END IF;
 END;
 $$;
@@ -115,15 +120,13 @@ FOR EACH ROW EXECUTE FUNCTION opsknight_reject_rule_for_sealed_sla_policy();
 -- Old explicit writers retain honest NULL provenance and are counted; target-less writers
 -- get the same persisted policy resolution as the application, with accurate provenance.
 CREATE OR REPLACE FUNCTION opsknight_capture_incident_sla_target() RETURNS TRIGGER AS $$
-DECLARE p "IncidentSlaPolicy"%ROWTYPE; r "IncidentSlaPolicyRule"%ROWTYPE; normalized_priority TEXT; ack_minutes INTEGER; resolve_minutes INTEGER;
+DECLARE p "IncidentSlaPolicy"%ROWTYPE; r "IncidentSlaPolicyRule"%ROWTYPE; normalized_priority TEXT; ack_minutes INTEGER; resolve_minutes INTEGER; legacy_capture BOOLEAN; capture_kind TEXT;
 BEGIN
-  IF NEW."slaPolicyId" IS NULL THEN
-    INSERT INTO "IncidentSlaLegacyCapture" ("day","count","lastSeenAt") VALUES (CURRENT_DATE,1,CURRENT_TIMESTAMP)
-    ON CONFLICT ("day") DO UPDATE SET "count" = "IncidentSlaLegacyCapture"."count" + 1, "lastSeenAt" = CURRENT_TIMESTAMP;
-  END IF;
+  legacy_capture := NEW."slaPolicyId" IS NULL;
   IF NEW."slaAckTargetMs" IS NOT NULL AND NEW."slaAckTargetMs" > 0 AND NEW."slaResolveTargetMs" IS NOT NULL AND NEW."slaResolveTargetMs" > 0 THEN
     NEW."slaTargetSource" := COALESCE(NULLIF(NEW."slaTargetSource",''),'EXPLICIT');
     NEW."slaTargetCapturedAt" := COALESCE(NEW."slaTargetCapturedAt",CURRENT_TIMESTAMP);
+    capture_kind := 'EXPLICIT_NO_PROVENANCE';
   ELSE
     SELECT * INTO p FROM "IncidentSlaPolicy" WHERE "scopeKey" = 'service:' || NEW."serviceId" AND "sealedAt" IS NOT NULL ORDER BY "version" DESC LIMIT 1;
     normalized_priority := CONCAT('P',REGEXP_REPLACE(BTRIM(UPPER(COALESCE(NEW."priority",''))),'^P',''));
@@ -160,6 +163,21 @@ BEGIN
     END IF;
     NEW."slaPolicyId" := p."id"; NEW."slaPolicyVersion" := p."version";
     NEW."slaTargetCapturedAt" := COALESCE(NEW."slaTargetCapturedAt",CURRENT_TIMESTAMP);
+    capture_kind := CASE
+      WHEN NEW."slaPolicyId" IS NOT NULL THEN 'POLICY_TRIGGER_CAPTURE'
+      WHEN NEW."slaTargetSource" = 'PRIORITY' THEN 'LEGACY_PRIORITY_FALLBACK'
+      ELSE 'LEGACY_SERVICE_FALLBACK'
+    END;
+  END IF;
+  IF legacy_capture THEN
+    INSERT INTO "IncidentSlaLegacyCapture" ("day","count","lastSeenAt","lastIncidentId","lastServiceId","lastCaptureKind")
+    VALUES (CURRENT_DATE,1,CURRENT_TIMESTAMP,NEW."id",NEW."serviceId",capture_kind)
+    ON CONFLICT ("day") DO UPDATE SET
+      "count" = "IncidentSlaLegacyCapture"."count" + 1,
+      "lastSeenAt" = CURRENT_TIMESTAMP,
+      "lastIncidentId" = EXCLUDED."lastIncidentId",
+      "lastServiceId" = EXCLUDED."lastServiceId",
+      "lastCaptureKind" = EXCLUDED."lastCaptureKind";
   END IF;
   -- Numerical targets and provenance are protected by the existing immutable
   -- incident trigger. Application policy resolution owns semantic validation.
