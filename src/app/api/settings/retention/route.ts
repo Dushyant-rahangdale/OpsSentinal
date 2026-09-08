@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
+import prisma from '@/lib/prisma';
 import {
+  clearRetentionPolicyCache,
   getRetentionPolicy,
-  updateRetentionPolicy,
   type RetentionPolicy,
 } from '@/lib/retention-policy';
 import { getStorageStats, performDataCleanup, CleanupConflictError } from '@/lib/data-cleanup';
@@ -20,19 +21,7 @@ const RetentionUpdateSchema = z
     metricsRetentionDays: z.number().int().min(30).max(3650).optional(),
     realTimeWindowDays: z.number().int().min(7).max(365).optional(),
   })
-  .refine(data => Object.keys(data).length > 0, { message: 'No valid fields provided' })
-  .refine(
-    data => {
-      if (data.realTimeWindowDays !== undefined && data.metricsRetentionDays !== undefined) {
-        return data.realTimeWindowDays <= data.metricsRetentionDays;
-      }
-      return true;
-    },
-    {
-      message: 'Real-time window cannot exceed metrics retention period',
-      path: ['realTimeWindowDays'],
-    }
-  );
+  .refine(data => Object.keys(data).length > 0, { message: 'No valid fields provided' });
 
 function retentionValidationError(error: z.ZodError) {
   return new AppError({
@@ -46,60 +35,36 @@ function retentionValidationError(error: z.ZodError) {
   });
 }
 
-/**
- * GET /api/settings/retention
- * Fetch current retention policy and storage statistics
- */
+function validateEffectivePolicy(policy: RetentionPolicy) {
+  if (policy.realTimeWindowDays > policy.metricsRetentionDays) {
+    throw new AppError({
+      code: 'VALIDATION_FAILED',
+      userMessage: 'Real-time window cannot exceed metrics retention period',
+      fields: [
+        {
+          field: 'realTimeWindowDays',
+          code: 'cross_field_constraint',
+          message: 'Real-time window cannot exceed metrics retention period',
+        },
+      ],
+    });
+  }
+}
+
 export async function GET() {
   try {
     await assertAdmin();
-
     const [policy, stats] = await Promise.all([getRetentionPolicy(), getStorageStats()]);
 
     return jsonOk({
       policy,
       stats,
       presets: [
-        {
-          name: 'Minimal (90 days)',
-          incidentRetentionDays: 90,
-          alertRetentionDays: 30,
-          logRetentionDays: 14,
-          metricsRetentionDays: 90,
-          realTimeWindowDays: 30,
-        },
-        {
-          name: 'Standard (1 year)',
-          incidentRetentionDays: 365,
-          alertRetentionDays: 180,
-          logRetentionDays: 365,
-          metricsRetentionDays: 365,
-          realTimeWindowDays: 60,
-        },
-        {
-          name: 'Extended (2 years)',
-          incidentRetentionDays: 730,
-          alertRetentionDays: 365,
-          logRetentionDays: 730,
-          metricsRetentionDays: 730,
-          realTimeWindowDays: 90,
-        },
-        {
-          name: 'Enterprise (5 years)',
-          incidentRetentionDays: 1825,
-          alertRetentionDays: 730,
-          logRetentionDays: 1825,
-          metricsRetentionDays: 1825,
-          realTimeWindowDays: 90,
-        },
-        {
-          name: 'Compliance (7 years)',
-          incidentRetentionDays: 2555,
-          alertRetentionDays: 1825,
-          logRetentionDays: 2555,
-          metricsRetentionDays: 2555,
-          realTimeWindowDays: 90,
-        },
+        { name: 'Minimal (90 days)', incidentRetentionDays: 90, alertRetentionDays: 30, logRetentionDays: 14, metricsRetentionDays: 90, realTimeWindowDays: 30 },
+        { name: 'Standard (1 year)', incidentRetentionDays: 365, alertRetentionDays: 180, logRetentionDays: 365, metricsRetentionDays: 365, realTimeWindowDays: 60 },
+        { name: 'Extended (2 years)', incidentRetentionDays: 730, alertRetentionDays: 365, logRetentionDays: 730, metricsRetentionDays: 730, realTimeWindowDays: 90 },
+        { name: 'Enterprise (5 years)', incidentRetentionDays: 1825, alertRetentionDays: 730, logRetentionDays: 1825, metricsRetentionDays: 1825, realTimeWindowDays: 90 },
+        { name: 'Compliance (7 years)', incidentRetentionDays: 2555, alertRetentionDays: 1825, logRetentionDays: 2555, metricsRetentionDays: 2555, realTimeWindowDays: 90 },
       ],
     });
   } catch (error) {
@@ -109,10 +74,6 @@ export async function GET() {
   }
 }
 
-/**
- * PUT /api/settings/retention
- * Update retention policy settings
- */
 export async function PUT(request: NextRequest) {
   try {
     const admin = await assertAdmin();
@@ -126,24 +87,52 @@ export async function PUT(request: NextRequest) {
 
     const parsed = RetentionUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return jsonError(retentionValidationError(parsed.error), undefined, {
-        issues: parsed.error.issues,
-      });
+      return jsonError(retentionValidationError(parsed.error), undefined, { issues: parsed.error.issues });
     }
 
     const updates: Partial<RetentionPolicy> = parsed.data;
-    const updatedPolicy = await updateRetentionPolicy(updates);
+    const current = await getRetentionPolicy();
+    const effective: RetentionPolicy = { ...current, ...updates };
+    validateEffectivePolicy(effective);
 
-    await logAudit({
-      action: 'retention.policy.updated',
-      entityType: 'USER',
-      entityId: admin.id,
-      actorId: admin.id,
-      details: updates,
+    await prisma.$transaction(async tx => {
+      await tx.systemSettings.upsert({
+        where: { id: 'default' },
+        create: {
+          id: 'default',
+          incidentRetentionDays: effective.incidentRetentionDays,
+          alertRetentionDays: effective.alertRetentionDays,
+          logRetentionDays: effective.logRetentionDays,
+          metricsRetentionDays: effective.metricsRetentionDays,
+          realTimeWindowDays: effective.realTimeWindowDays,
+          businessHoursTimeZone: effective.businessHoursTimeZone,
+        },
+        update: {
+          incidentRetentionDays: effective.incidentRetentionDays,
+          alertRetentionDays: effective.alertRetentionDays,
+          logRetentionDays: effective.logRetentionDays,
+          metricsRetentionDays: effective.metricsRetentionDays,
+          realTimeWindowDays: effective.realTimeWindowDays,
+        },
+      });
+
+      await logAudit(
+        {
+          action: 'retention.policy.updated',
+          entityType: 'USER',
+          entityId: admin.id,
+          actorId: admin.id,
+          oldValue: current,
+          newValue: effective,
+          details: { changedFields: Object.keys(updates) },
+        },
+        tx
+      );
     });
 
+    clearRetentionPolicyCache();
     logger.info('[API] Retention policy updated', { userId: admin.id, updates });
-    return jsonOk({ success: true, policy: updatedPolicy });
+    return jsonOk({ success: true, policy: effective });
   } catch (error) {
     if (isAppError(error)) return jsonError(error);
     logger.error('[API] Failed to update retention settings', { error });
@@ -151,10 +140,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/settings/retention
- * Trigger data cleanup (dry run or actual)
- */
 export async function POST(request: NextRequest) {
   try {
     const admin = await assertAdmin();
@@ -172,10 +157,11 @@ export async function POST(request: NextRequest) {
     if (payload.policy && typeof payload.policy === 'object') {
       const parsed = RetentionUpdateSchema.safeParse(payload.policy);
       if (!parsed.success) {
-        return jsonError(retentionValidationError(parsed.error), undefined, {
-          issues: parsed.error.issues,
-        });
+        return jsonError(retentionValidationError(parsed.error), undefined, { issues: parsed.error.issues });
       }
+      const current = await getRetentionPolicy();
+      const effective = { ...current, ...parsed.data };
+      validateEffectivePolicy(effective);
       policyOverride = parsed.data;
     }
 
@@ -191,18 +177,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    logger.info('[API] Data cleanup executed', {
-      userId: admin.id,
-      dryRun,
-      result,
-      policyOverride,
-    });
+    logger.info('[API] Data cleanup executed', { userId: admin.id, dryRun, result, policyOverride });
     return jsonOk({ success: true, dryRun, result });
   } catch (error) {
     if (isAppError(error)) return jsonError(error);
-    if (error instanceof CleanupConflictError) {
-      return jsonError(error.message, error.status);
-    }
+    if (error instanceof CleanupConflictError) return jsonError(error.message, error.status);
     logger.error('[API] Data cleanup failed', { error });
     return jsonError('Failed to execute cleanup', 500);
   }
