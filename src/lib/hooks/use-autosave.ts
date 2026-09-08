@@ -34,6 +34,7 @@ export function useAutosave<T>({
   delay = 500,
   enabled = true,
 }: UseAutosaveOptions<T>) {
+  const currentSnapshot = serializeSnapshot(data);
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
@@ -41,8 +42,8 @@ export function useAutosave<T>({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDataRef = useRef<T>(data);
-  const latestSnapshotRef = useRef(serializeSnapshot(data));
-  const committedSnapshotRef = useRef(latestSnapshotRef.current);
+  const latestSnapshotRef = useRef(currentSnapshot);
+  const committedSnapshotRef = useRef(currentSnapshot);
   const onSaveRef = useRef(onSave);
   const enabledRef = useRef(enabled);
   const inFlightRef = useRef(false);
@@ -107,7 +108,6 @@ export function useAutosave<T>({
           return;
         }
 
-        // Only a successful persistence operation may advance the committed snapshot.
         committedSnapshotRef.current = snapshotKey;
       }
 
@@ -135,7 +135,7 @@ export function useAutosave<T>({
 
   useEffect(() => {
     latestDataRef.current = data;
-    latestSnapshotRef.current = serializeSnapshot(data);
+    latestSnapshotRef.current = currentSnapshot;
 
     const isDirty = committedSnapshotRef.current !== latestSnapshotRef.current;
     setHasPendingChanges(isDirty);
@@ -156,7 +156,7 @@ export function useAutosave<T>({
     }, delay);
 
     return clearDebounce;
-  }, [data, delay, enabled, drainQueue, clearDebounce, clearIdleTimer, status]);
+  }, [currentSnapshot, data, delay, enabled, drainQueue, clearDebounce, clearIdleTimer, status]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -175,9 +175,6 @@ export function useAutosave<T>({
       clearIdleTimer();
       window.removeEventListener('beforeunload', handleBeforeUnload);
 
-      // React navigation can unmount a settings form before the debounce expires.
-      // Start the queued save while the action callback is still reachable. If a save
-      // is already in flight its loop will observe the latest snapshot before exiting.
       if (
         enabledRef.current &&
         committedSnapshotRef.current !== latestSnapshotRef.current &&
@@ -194,11 +191,13 @@ export function useAutosave<T>({
     void drainQueue();
   }, [clearDebounce, clearIdleTimer, drainQueue]);
 
+  const hasUncommittedSnapshot = committedSnapshotRef.current !== currentSnapshot;
+
   return {
     status,
     error,
     retry,
-    hasPendingChanges,
+    hasPendingChanges: hasPendingChanges || hasUncommittedSnapshot,
     isSaving: status === 'saving',
     isSaved: status === 'saved',
     hasError: status === 'error',
