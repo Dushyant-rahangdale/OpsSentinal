@@ -127,15 +127,14 @@ export function projectIncidentSlaState(
   function projectPhase(phase: IncidentSlaPhase): IncidentSlaPhaseState {
     const targetMs = phase === 'ack' ? contract.ackTargetMs : contract.resolveTargetMs;
     const completedAt = phase === 'ack' ? input.acknowledgedAt : input.resolvedAt;
-    const notApplicable =
+    const resolvedWithoutAck =
       phase === 'ack' && input.status === 'RESOLVED' && input.acknowledgedAt === null;
     const capturedElapsedMs = phase === 'ack' ? input.slaAckElapsedMs : input.slaResolveElapsedMs;
-    const evaluationAt = completedAt ?? now;
+    const evaluationAt = completedAt ?? (resolvedWithoutAck ? input.resolvedAt! : now);
     // Captures protect completed ACK from later pauses. Legacy rows use the existing
     // materialized clock; this API does not invent pause history it was not given.
-    const elapsedMs = notApplicable
-      ? 0
-      : completedAt !== null && capturedElapsedMs !== null
+    const elapsedMs =
+      completedAt !== null && capturedElapsedMs !== null
         ? capturedOrEffectiveElapsedMs({
             capturedElapsedMs,
             startedAt: input.createdAt,
@@ -148,14 +147,14 @@ export function projectIncidentSlaState(
             pauseStartedAt: input.slaPauseStartedAt,
           });
     const remainingMs = targetMs - elapsedMs;
-    const status = notApplicable
-      ? 'NOT_APPLICABLE'
+    const status = resolvedWithoutAck
+      ? 'BREACHED'
       : elapsedMs > targetMs
         ? 'BREACHED'
         : completedAt !== null
           ? 'MET'
           : 'PENDING';
-    const actionable = !notApplicable && completedAt === null && !clock.paused;
+    const actionable = !resolvedWithoutAck && completedAt === null && !clock.paused;
     const windowMs = getIncidentSlaWarningWindowMs(phase, targetMs, policy);
     // With no open pause, the deadline is creation + closed pauses + target.
     // The first noncompliant Date is one millisecond after that deadline.
@@ -175,7 +174,7 @@ export function projectIncidentSlaState(
           : remainingMs <= windowMs
             ? 'APPROACHING'
             : 'NONE',
-      completedAt: notApplicable ? null : completedAt,
+      completedAt,
       warningAt: warningAt !== null && isDate(warningAt) ? warningAt : null,
       breachAt: breachAt !== null && isDate(breachAt) ? breachAt : null,
     };

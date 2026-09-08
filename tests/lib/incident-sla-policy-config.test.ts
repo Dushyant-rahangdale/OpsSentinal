@@ -63,7 +63,13 @@ describe('versioned SLA configuration commands', () => {
     );
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ action: 'incident_sla.policy.version_created' }),
+        data: expect.objectContaining({
+          action: 'incident_sla.policy.version_created',
+          actorId: 'admin',
+          details: expect.objectContaining({
+            actor: expect.objectContaining({ type: 'USER', id: 'admin' }),
+          }),
+        }),
       })
     );
     expect(mocks.revalidate).toHaveBeenCalledWith('/settings/incident-sla');

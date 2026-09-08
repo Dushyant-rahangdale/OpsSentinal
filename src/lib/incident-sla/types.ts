@@ -49,7 +49,7 @@ export interface IncidentSlaClock {
   paused: boolean;
 }
 
-export type IncidentSlaPhaseStatus = 'PENDING' | 'MET' | 'BREACHED' | 'NOT_APPLICABLE';
+export type IncidentSlaPhaseStatus = 'PENDING' | 'MET' | 'BREACHED';
 export type IncidentSlaWarning = 'NONE' | 'APPROACHING' | 'BREACHED';
 export type IncidentSlaPhase = 'ack' | 'resolve';
 

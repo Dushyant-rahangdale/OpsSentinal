@@ -80,9 +80,8 @@ export default function IncidentSlaPolicySettings({
           inheritWorkspace: inherit,
           baseAckTargetMs: inherit ? null : Number(ack) * 60000,
           baseResolveTargetMs: inherit ? null : Number(resolve) * 60000,
-          rules: inherit
-            ? []
-            : rules.flatMap(rule => {
+          rules: scopeKey.startsWith('service:')
+            ? rules.flatMap(rule => {
                 return rule.enabled
                   ? [
                       {
@@ -92,7 +91,8 @@ export default function IncidentSlaPolicySettings({
                       },
                     ]
                   : [];
-              }),
+              })
+            : [],
         });
         notify.success('Incident response SLA policy saved for future incidents.');
       } catch (error) {
@@ -126,11 +126,13 @@ export default function IncidentSlaPolicySettings({
               onChange={e => setInherit(e.target.checked)}
             />{' '}
             Inherit workspace defaults{' '}
-            <span className="text-muted-foreground">(priority overrides are disabled)</span>
+            <span className="text-muted-foreground">
+              (base targets inherit; optional priority overrides remain available)
+            </span>
           </label>
         )}
-        {!inherit && (
-          <>
+        <>
+          {!inherit && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor={`${scopeKey}-ack`} className="text-xs">
@@ -159,54 +161,54 @@ export default function IncidentSlaPolicySettings({
                 />
               </div>
             </div>
-            {scopeKey.startsWith('service:') && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold">
-                  Priority overrides{' '}
-                  <span className="font-normal text-muted-foreground">
-                    (optional; unselected priorities use base targets)
-                  </span>
-                </p>
-                {rules.map(rule => (
-                  <div
-                    key={rule.priority}
-                    className="grid grid-cols-[auto_1fr_1fr] items-end gap-2 rounded-md border p-2"
-                  >
-                    <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
-                      <input
-                        type="checkbox"
-                        checked={rule.enabled}
-                        disabled={!canManage || pending}
-                        onChange={e => updateRule(rule.priority, 'enabled', e.target.checked)}
-                      />
-                      {rule.priority}
-                    </label>
-                    <div>
-                      <Label className="text-[10px]">Ack minutes</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={rule.ack}
-                        disabled={!canManage || pending || !rule.enabled}
-                        onChange={e => updateRule(rule.priority, 'ack', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[10px]">Resolve minutes</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={rule.resolve}
-                        disabled={!canManage || pending || !rule.enabled}
-                        onChange={e => updateRule(rule.priority, 'resolve', e.target.value)}
-                      />
-                    </div>
+          )}
+          {scopeKey.startsWith('service:') && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold">
+                Priority overrides{' '}
+                <span className="font-normal text-muted-foreground">
+                  (optional; unselected priorities use base targets)
+                </span>
+              </p>
+              {rules.map(rule => (
+                <div
+                  key={rule.priority}
+                  className="grid grid-cols-[auto_1fr_1fr] items-end gap-2 rounded-md border p-2"
+                >
+                  <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={rule.enabled}
+                      disabled={!canManage || pending}
+                      onChange={e => updateRule(rule.priority, 'enabled', e.target.checked)}
+                    />
+                    {rule.priority}
+                  </label>
+                  <div>
+                    <Label className="text-[10px]">Ack minutes</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={rule.ack}
+                      disabled={!canManage || pending || !rule.enabled}
+                      onChange={e => updateRule(rule.priority, 'ack', e.target.value)}
+                    />
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  <div>
+                    <Label className="text-[10px]">Resolve minutes</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={rule.resolve}
+                      disabled={!canManage || pending || !rule.enabled}
+                      onChange={e => updateRule(rule.priority, 'resolve', e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
         {canManage && (
           <div className="flex justify-end">
             <Button type="button" size="sm" disabled={pending} onClick={submit}>

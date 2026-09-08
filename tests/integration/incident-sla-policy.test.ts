@@ -104,6 +104,61 @@ describe('incident SLA policy database invariants', () => {
     ).rejects.toThrow();
   });
 
+  it('allows draft construction and exactly one pure sealing transition', async () => {
+    const service = await createTestService('Draft SLA service');
+    const draft = await testPrisma.incidentSlaPolicy.create({
+      data: {
+        scopeKey: `service:${service.id}`,
+        version: 1,
+        inheritWorkspace: false,
+        baseAckTargetMs: 60_000,
+        baseResolveTargetMs: 120_000,
+      },
+    });
+    const rule = await testPrisma.incidentSlaPolicyRule.create({
+      data: {
+        policyId: draft.id,
+        priority: 'P1',
+        ackTargetMs: 30_000,
+        resolveTargetMs: 90_000,
+      },
+    });
+    const sealed = await testPrisma.incidentSlaPolicy.update({
+      where: { id: draft.id },
+      data: { sealedAt: new Date() },
+    });
+    expect(sealed.sealedAt).not.toBeNull();
+    await expect(
+      testPrisma.incidentSlaPolicy.update({
+        where: { id: draft.id },
+        data: { sealedAt: new Date(Date.now() + 1_000) },
+      })
+    ).rejects.toThrow();
+    await expect(
+      testPrisma.incidentSlaPolicyRule.update({
+        where: { id: rule.id },
+        data: { label: 'changed' },
+      })
+    ).rejects.toThrow();
+    await expect(
+      testPrisma.incidentSlaPolicyRule.delete({ where: { id: rule.id } })
+    ).rejects.toThrow();
+  });
+
+  it('rejects corrupt target ordering at the database boundary', async () => {
+    await expect(
+      testPrisma.incidentSlaPolicy.create({
+        data: {
+          scopeKey: 'service:corrupt',
+          version: 1,
+          inheritWorkspace: false,
+          baseAckTargetMs: 120_000,
+          baseResolveTargetMs: 60_000,
+        },
+      })
+    ).rejects.toThrow();
+  });
+
   it('uses the application resolver without incrementing the legacy fallback counter', async () => {
     const service = await createTestService('Application SLA service');
     const result = await testPrisma.$transaction(tx =>

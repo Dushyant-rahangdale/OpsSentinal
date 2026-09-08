@@ -266,13 +266,11 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           select: { enabled: true },
         })
       : Promise.resolve(null),
-    canManageService
-      ? prisma.incidentSlaPolicy.findFirst({
-          where: { scopeKey: `service:${id}`, sealedAt: { not: null } },
-          orderBy: { version: 'desc' },
-          include: { rules: true },
-        })
-      : Promise.resolve(null),
+    prisma.incidentSlaPolicy.findFirst({
+      where: { scopeKey: `service:${id}`, sealedAt: { not: null } },
+      orderBy: { version: 'desc' },
+      include: { rules: true },
+    }),
   ]);
 
   if (!serviceRaw) {

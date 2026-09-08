@@ -14,8 +14,6 @@ function phaseLabel(phase: Phase): string {
       return 'Met';
     case 'BREACHED':
       return 'Breached';
-    case 'NOT_APPLICABLE':
-      return 'Not applicable';
     default:
       return `${formatTimeMinutesMs(phase.remainingMs)} left`;
   }

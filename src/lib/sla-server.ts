@@ -2684,7 +2684,11 @@ export async function checkIncidentSLA(incidentId: string): Promise<IncidentSLAR
     ackTimeRemaining: number | null = null;
   if (incident.acknowledgedAt) {
     ackBreached = elapsedAt(incident.acknowledgedAt) > target.ackTargetMs;
-  } else if (incident.status !== 'RESOLVED') {
+  } else if (incident.status === 'RESOLVED') {
+    // A resolution is not an acknowledgement. Keep this compatibility API in
+    // lockstep with the canonical incident SLA projector.
+    ackBreached = true;
+  } else {
     ackBreached = elapsedMs > target.ackTargetMs;
     ackTimeRemaining = Math.max(0, (target.ackTargetMs - elapsedMs) / 60_000);
   }

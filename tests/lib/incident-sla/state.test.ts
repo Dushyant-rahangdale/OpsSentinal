@@ -110,7 +110,7 @@ describe('projectIncidentSlaState', () => {
     }
   );
 
-  it('does not fabricate an ACK or apply an orphan capture when resolved without ACK', () => {
+  it('classifies resolution without acknowledgement as an ACK breach', () => {
     const result = state(
       {
         status: 'RESOLVED',
@@ -120,10 +120,10 @@ describe('projectIncidentSlaState', () => {
       at(80 * minute)
     );
     expect(result.ack).toMatchObject({
-      status: 'NOT_APPLICABLE',
-      elapsedMs: 0,
-      remainingMs: 10 * minute,
-      progress: 0,
+      status: 'BREACHED',
+      elapsedMs: 70 * minute,
+      remainingMs: -60 * minute,
+      progress: 1,
       warning: 'NONE',
       completedAt: null,
       warningAt: null,

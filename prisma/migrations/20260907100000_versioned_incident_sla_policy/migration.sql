@@ -15,7 +15,8 @@ CREATE TABLE "IncidentSlaPolicy" (
   CONSTRAINT incident_sla_policy_base CHECK (
     ("inheritWorkspace" AND "scopeKey" <> 'workspace' AND "baseAckTargetMs" IS NULL AND "baseResolveTargetMs" IS NULL)
     OR (NOT "inheritWorkspace" AND "baseAckTargetMs" IS NOT NULL AND "baseResolveTargetMs" IS NOT NULL
-      AND "baseAckTargetMs" > 0 AND "baseResolveTargetMs" > 0)
+      AND "baseAckTargetMs" > 0 AND "baseAckTargetMs" <= 2073600000
+      AND "baseResolveTargetMs" >= "baseAckTargetMs" AND "baseResolveTargetMs" <= 2073600000)
   )
 );
 CREATE UNIQUE INDEX "IncidentSlaPolicy_scopeKey_version_key" ON "IncidentSlaPolicy" ("scopeKey", "version");
@@ -40,6 +41,18 @@ ALTER TABLE "Incident" ADD CONSTRAINT "Incident_slaPolicyId_fkey"
   FOREIGN KEY ("slaPolicyId") REFERENCES "IncidentSlaPolicy"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- Configuration defaults exist as data, never as new-incident runtime constants.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM "Service"
+    WHERE COALESCE(NULLIF("targetAckMinutes",0),15) > COALESCE(NULLIF("targetResolveMinutes",0),120)
+      OR COALESCE(NULLIF("targetAckMinutes",0),15) > 34560
+      OR COALESCE(NULLIF("targetResolveMinutes",0),120) > 34560
+  ) THEN
+    RAISE EXCEPTION 'Invalid legacy service SLA targets: ACK must not exceed resolution and both must be at most 24 days';
+  END IF;
+END;
+$$;
 INSERT INTO "IncidentSlaPolicy" ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
 VALUES ('incident-sla-workspace-v1','workspace',1,false,900000,7200000);
 INSERT INTO "IncidentSlaPolicy" ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
@@ -85,10 +98,15 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+CREATE FUNCTION opsknight_reject_incident_sla_rule_mutation() RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'incident SLA policy rules are append-only' USING ERRCODE = '23514';
+END;
+$$ LANGUAGE plpgsql;
 CREATE TRIGGER incident_sla_policy_immutable BEFORE UPDATE OR DELETE ON "IncidentSlaPolicy"
 FOR EACH ROW EXECUTE FUNCTION opsknight_immutable_incident_sla_policy();
 CREATE TRIGGER incident_sla_rule_immutable BEFORE UPDATE OR DELETE ON "IncidentSlaPolicyRule"
-FOR EACH ROW EXECUTE FUNCTION opsknight_immutable_incident_sla_policy();
+FOR EACH ROW EXECUTE FUNCTION opsknight_reject_incident_sla_rule_mutation();
 CREATE TRIGGER incident_sla_rule_sealed_insert BEFORE INSERT ON "IncidentSlaPolicyRule"
 FOR EACH ROW EXECUTE FUNCTION opsknight_reject_rule_for_sealed_sla_policy();
 -- Rules may be inserted only while a policy is an unpublished draft. The application

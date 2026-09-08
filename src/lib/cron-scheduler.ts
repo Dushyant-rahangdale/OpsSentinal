@@ -11,6 +11,7 @@ import { cleanupUserTokens } from '@/lib/user-tokens';
 import { cleanupExpiredRateLimits } from '@/lib/rate-limit';
 import { checkSLABreaches } from './sla-breach-monitor';
 import crypto from 'crypto';
+import { getNextIncidentSlaTransitionAt } from './incident-sla/next-transition';
 
 /**
  * Production-Grade Cron Scheduler
@@ -195,7 +196,7 @@ async function getNextScheduledTime(): Promise<Date> {
     const [
       nextIncident,
       nextJob,
-      _nextSlaBreach,
+      nextSlaTransition,
       nextSnooze,
       nextNotificationRetry,
       nextCentralNotification,
@@ -213,7 +214,7 @@ async function getNextScheduledTime(): Promise<Date> {
         orderBy: { scheduledAt: 'asc' },
         select: { scheduledAt: true },
       }),
-      Promise.resolve(null),
+      getNextIncidentSlaTransitionAt(),
       prisma.incident.findFirst({
         where: {
           status: 'SNOOZED',
@@ -229,13 +230,11 @@ async function getNextScheduledTime(): Promise<Date> {
     const times: (number | null)[] = [
       nextIncident?.nextEscalationAt ? new Date(nextIncident.nextEscalationAt).getTime() : null,
       nextJob?.scheduledAt ? new Date(nextJob.scheduledAt).getTime() : null,
+      nextSlaTransition?.getTime() ?? null,
       nextSnooze?.snoozedUntil ? new Date(nextSnooze.snoozedUntil).getTime() : null,
       nextNotificationRetry?.getTime() ?? null,
       nextCentralNotification?.getTime() ?? null,
     ];
-
-    // SLA transitions are evaluated by the canonical breach monitor on bounded cadence.
-    // Never derive a deadline from current service or priority configuration here.
 
     const validTimes = times.filter((v): v is number => typeof v === 'number');
 

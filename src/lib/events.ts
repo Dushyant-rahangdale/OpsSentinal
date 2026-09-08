@@ -347,6 +347,7 @@ export async function processEvent(
             title: sanitizedTitle,
             description: truncatedDescription,
             status: 'RESOLVED',
+            createdAt: resolutionAt,
             resolvedAt: resolutionAt,
             urgency,
             dedupKey: dedup_key,
