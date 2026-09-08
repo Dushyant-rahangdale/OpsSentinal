@@ -235,22 +235,24 @@ export default function SystemNotificationSettings({ providers }: SystemNotifica
   const whatsappConfig = twilioProvider?.config as Record<string, unknown> | undefined;
   const whatsappEnabled = !!(whatsappConfig?.whatsappEnabled && whatsappConfig?.whatsappNumber);
 
-  // Create a virtual WhatsApp provider entry
-  const whatsappProvider: ProviderRecord | undefined = whatsappConfig?.whatsappNumber
-    ? {
-        id: twilioProvider?.id || '',
-        provider: 'whatsapp',
-        enabled: whatsappEnabled,
-        config: {
-          whatsappNumber: whatsappConfig.whatsappNumber,
-          whatsappEnabled: whatsappConfig.whatsappEnabled,
-          whatsappContentSid: whatsappConfig.whatsappContentSid,
-          whatsappAccountSid: whatsappConfig.whatsappAccountSid,
-          whatsappAuthToken: whatsappConfig.whatsappAuthToken,
-        },
-        updatedAt: twilioProvider?.updatedAt || new Date(),
-      }
-    : undefined;
+  // WhatsApp shares the Twilio persistence record, including its serialized
+  // updatedAt revision used for optimistic concurrency.
+  const whatsappProvider: ProviderRecord | undefined =
+    twilioProvider && whatsappConfig?.whatsappNumber
+      ? {
+          id: twilioProvider.id,
+          provider: 'whatsapp',
+          enabled: whatsappEnabled,
+          config: {
+            whatsappNumber: whatsappConfig.whatsappNumber,
+            whatsappEnabled: whatsappConfig.whatsappEnabled,
+            whatsappContentSid: whatsappConfig.whatsappContentSid,
+            whatsappAccountSid: whatsappConfig.whatsappAccountSid,
+            whatsappAuthToken: whatsappConfig.whatsappAuthToken,
+          },
+          updatedAt: twilioProvider.updatedAt,
+        }
+      : undefined;
 
   const categories = [
     {
