@@ -50,6 +50,11 @@ type PublicIncidentInput = {
   resolvedAt: string | Date | null;
   service?: { name?: string; region?: string | null } | null;
   postmortem?: { status?: string; isPublic?: boolean | null } | null;
+  events?: Array<{
+    id: string;
+    message: string;
+    createdAt: string | Date;
+  }>;
 };
 
 function serializeDate(value: string | Date | null): string | null {
@@ -80,6 +85,13 @@ export function serializePublicStatusIncident(
       ...(incident.service.name ? { name: incident.service.name } : {}),
       ...(visibility.showServiceRegion ? { region: incident.service.region ?? null } : {}),
     };
+  }
+  if (visibility.showIncidentId && incident.events?.length) {
+    result.events = incident.events.map(event => ({
+      id: event.id,
+      message: event.message,
+      ...(visibility.showIncidentTimestamp ? { createdAt: serializeDate(event.createdAt) } : {}),
+    }));
   }
   if (
     visibility.showPostIncidentReview &&
