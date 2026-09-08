@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { HelpCircle } from 'lucide-react';
+import { Info } from 'lucide-react';
 import Tooltip from '@/components/ui/Tooltip';
 
 interface SettingsRowProps {
@@ -44,7 +44,10 @@ export function SettingsRow({
           </label>
           {tooltip && (
             <Tooltip content={tooltip} position="top">
-              <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+              <Info
+                aria-label={`${label} information`}
+                className="h-4 w-4 text-muted-foreground cursor-help"
+              />
             </Tooltip>
           )}
         </div>
