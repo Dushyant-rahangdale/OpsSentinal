@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import {
   clearRetentionPolicyCache,
@@ -49,6 +50,17 @@ function validateEffectivePolicy(policy: RetentionPolicy) {
       ],
     });
   }
+}
+
+function retentionAuditSnapshot(policy: RetentionPolicy): Prisma.InputJsonObject {
+  return {
+    incidentRetentionDays: policy.incidentRetentionDays,
+    alertRetentionDays: policy.alertRetentionDays,
+    logRetentionDays: policy.logRetentionDays,
+    metricsRetentionDays: policy.metricsRetentionDays,
+    realTimeWindowDays: policy.realTimeWindowDays,
+    businessHoursTimeZone: policy.businessHoursTimeZone,
+  };
 }
 
 export async function GET() {
@@ -122,8 +134,8 @@ export async function PUT(request: NextRequest) {
           entityType: 'USER',
           entityId: admin.id,
           actorId: admin.id,
-          oldValue: current,
-          newValue: effective,
+          oldValue: retentionAuditSnapshot(current),
+          newValue: retentionAuditSnapshot(effective),
           details: { changedFields: Object.keys(updates) },
         },
         tx
