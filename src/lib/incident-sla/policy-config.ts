@@ -8,7 +8,7 @@ import { emitAuditEvent } from '@/lib/audit';
 /** Deliberately uncached: creation reads the current immutable version transactionally. */
 export async function getIncidentSlaPolicy(scopeKey: string) {
   return prisma.incidentSlaPolicy.findFirst({
-    where: { scopeKey },
+    where: { scopeKey, sealedAt: { not: null } },
     orderBy: { version: 'desc' },
     include: { rules: true },
   });
@@ -35,7 +35,7 @@ export async function saveIncidentSlaPolicy(rawInput: unknown) {
       if (!exists) throw new Error('Service not found');
     }
     const previous = await tx.incidentSlaPolicy.findFirst({
-      where: { scopeKey: input.scopeKey },
+      where: { scopeKey: input.scopeKey, sealedAt: { not: null } },
       orderBy: { version: 'desc' },
     });
     if ((previous?.version ?? 0) !== input.expectedVersion)
@@ -50,6 +50,11 @@ export async function saveIncidentSlaPolicy(rawInput: unknown) {
         createdById: permissions.id,
         rules: { create: input.rules },
       },
+      include: { rules: true },
+    });
+    const sealedPolicy = await tx.incidentSlaPolicy.update({
+      where: { id: policy.id },
+      data: { sealedAt: new Date() },
       include: { rules: true },
     });
     await emitAuditEvent(
@@ -67,7 +72,7 @@ export async function saveIncidentSlaPolicy(rawInput: unknown) {
       },
       tx
     );
-    return policy;
+    return sealedPolicy;
   });
   // No policy cache to invalidate. Refresh every settings/read route that presents configuration.
   for (const path of [

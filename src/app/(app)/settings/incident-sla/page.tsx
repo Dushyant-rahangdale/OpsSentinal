@@ -10,7 +10,7 @@ export default async function IncidentSlaSettingsPage() {
   if (!permissions.authenticated || !permissions.capabilities.includes('admin.manage'))
     redirect('/settings');
   const policy = await prisma.incidentSlaPolicy.findFirst({
-    where: { scopeKey: 'workspace' },
+    where: { scopeKey: 'workspace', sealedAt: { not: null } },
     orderBy: { version: 'desc' },
     include: { rules: true },
   });

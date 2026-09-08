@@ -2,6 +2,22 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+async function seedRequiredReferenceData() {
+  await prisma.incidentSlaPolicy.upsert({
+    where: { scopeKey_version: { scopeKey: 'workspace', version: 1 } },
+    update: {},
+    create: {
+      id: 'test-incident-sla-workspace-v1',
+      scopeKey: 'workspace',
+      version: 1,
+      inheritWorkspace: false,
+      baseAckTargetMs: 15 * 60_000,
+      baseResolveTargetMs: 120 * 60_000,
+      sealedAt: new Date(0),
+    },
+  });
+}
+
 export async function resetDatabase() {
   try {
     const tablenames = await prisma.$queryRaw<
@@ -23,10 +39,11 @@ export async function resetDatabase() {
         console.log('Deadlock detected during reset, retrying...');
         await new Promise(resolve => setTimeout(resolve, 100));
         await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${tables} CASCADE;`);
-        return;
+      } else {
+        throw error;
       }
-      throw error;
     }
+    await seedRequiredReferenceData();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Error resetting database:', message);

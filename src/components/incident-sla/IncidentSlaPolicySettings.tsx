@@ -29,6 +29,8 @@ type Policy = {
   rules: Rule[];
 } | null;
 const priorities = ['P1', 'P2', 'P3', 'P4', 'P5'] as const;
+type Priority = (typeof priorities)[number];
+type EditableRule = { priority: Priority; enabled: boolean; ack: string; resolve: string };
 const minutes = (ms: number | null | undefined) =>
   ms == null ? '' : String(Math.round(ms / 60000));
 
@@ -44,34 +46,31 @@ export default function IncidentSlaPolicySettings({
   const [inherit, setInherit] = useState(Boolean(policy?.inheritWorkspace));
   const [ack, setAck] = useState(minutes(policy?.baseAckTargetMs));
   const [resolve, setResolve] = useState(minutes(policy?.baseResolveTargetMs));
-  const [rules, setRules] = useState<
-    Record<string, { enabled: boolean; ack: string; resolve: string }>
-  >(() =>
-    Object.fromEntries(
-      priorities.map(p => {
-        const r = policy?.rules.find(x => x.priority === p);
-        return [
-          p,
-          {
-            enabled: Boolean(r),
-            ack: minutes(r?.ackTargetMs),
-            resolve: minutes(r?.resolveTargetMs),
-          },
-        ];
-      })
-    )
+  const [rules, setRules] = useState<EditableRule[]>(() =>
+    priorities.map(priority => {
+      const rule = policy?.rules.find(candidate => candidate.priority === priority);
+      return {
+        priority,
+        enabled: Boolean(rule),
+        ack: minutes(rule?.ackTargetMs),
+        resolve: minutes(rule?.resolveTargetMs),
+      };
+    })
   );
   const [pending, startTransition] = useTransition();
-  const updateRule = (p: string, field: 'enabled' | 'ack' | 'resolve', value: boolean | string) =>
-    setRules(current => {
-      const existing = current[p];
-      if (!existing) return current;
-      const next = { ...existing };
-      if (field === 'enabled') next.enabled = Boolean(value);
-      if (field === 'ack') next.ack = String(value);
-      if (field === 'resolve') next.resolve = String(value);
-      return { ...current, [p]: next };
-    });
+  const updateRule = (
+    priority: Priority,
+    field: 'enabled' | 'ack' | 'resolve',
+    value: boolean | string
+  ) =>
+    setRules(current =>
+      current.map(rule => {
+        if (rule.priority !== priority) return rule;
+        if (field === 'enabled') return { ...rule, enabled: Boolean(value) };
+        if (field === 'ack') return { ...rule, ack: String(value) };
+        return { ...rule, resolve: String(value) };
+      })
+    );
   const submit = () => {
     startTransition(async () => {
       try {
@@ -83,12 +82,11 @@ export default function IncidentSlaPolicySettings({
           baseResolveTargetMs: inherit ? null : Number(resolve) * 60000,
           rules: inherit
             ? []
-            : priorities.flatMap(p => {
-                const rule = rules[p];
-                return rule?.enabled
+            : rules.flatMap(rule => {
+                return rule.enabled
                   ? [
                       {
-                        priority: p,
+                        priority: rule.priority,
                         ackTargetMs: Number(rule.ack) * 60000,
                         resolveTargetMs: Number(rule.resolve) * 60000,
                       },
@@ -169,28 +167,28 @@ export default function IncidentSlaPolicySettings({
                     (optional; unselected priorities use base targets)
                   </span>
                 </p>
-                {priorities.map(p => (
+                {rules.map(rule => (
                   <div
-                    key={p}
+                    key={rule.priority}
                     className="grid grid-cols-[auto_1fr_1fr] items-end gap-2 rounded-md border p-2"
                   >
                     <label className="flex items-center gap-1.5 pb-2 text-xs font-semibold">
                       <input
                         type="checkbox"
-                        checked={rules[p]?.enabled ?? false}
+                        checked={rule.enabled}
                         disabled={!canManage || pending}
-                        onChange={e => updateRule(p, 'enabled', e.target.checked)}
+                        onChange={e => updateRule(rule.priority, 'enabled', e.target.checked)}
                       />
-                      {p}
+                      {rule.priority}
                     </label>
                     <div>
                       <Label className="text-[10px]">Ack minutes</Label>
                       <Input
                         type="number"
                         min="1"
-                        value={rules[p]?.ack ?? ''}
-                        disabled={!canManage || pending || !rules[p]?.enabled}
-                        onChange={e => updateRule(p, 'ack', e.target.value)}
+                        value={rule.ack}
+                        disabled={!canManage || pending || !rule.enabled}
+                        onChange={e => updateRule(rule.priority, 'ack', e.target.value)}
                       />
                     </div>
                     <div>
@@ -198,9 +196,9 @@ export default function IncidentSlaPolicySettings({
                       <Input
                         type="number"
                         min="1"
-                        value={rules[p]?.resolve ?? ''}
-                        disabled={!canManage || pending || !rules[p]?.enabled}
-                        onChange={e => updateRule(p, 'resolve', e.target.value)}
+                        value={rule.resolve}
+                        disabled={!canManage || pending || !rule.enabled}
+                        onChange={e => updateRule(rule.priority, 'resolve', e.target.value)}
                       />
                     </div>
                   </div>

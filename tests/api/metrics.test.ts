@@ -107,4 +107,32 @@ describe('API Route - Prometheus Metrics (/api/metrics)', () => {
     expect(text).toContain('opsknight_active_incidents 0');
     expect(text).toContain('opsknight_active_users 1');
   });
+
+  it('exports durable legacy SLA fallback usage without high-cardinality labels', async () => {
+    process.env.PROMETHEUS_SCRAPE_TOKEN = 'secret-scrape-token-123';
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ count: BigInt(7), lastSeenAt: new Date(Date.now() - 5_000) }]);
+    vi.mocked(prisma.backgroundJob.groupBy).mockResolvedValue([]);
+    vi.mocked(prisma.incident.count).mockResolvedValue(0);
+    vi.mocked(prisma.user.count).mockResolvedValue(1);
+
+    const response = await GET(
+      new Request('http://localhost:3000/api/metrics', {
+        headers: { authorization: 'Bearer secret-scrape-token-123' },
+      })
+    );
+    const text = await response.text();
+
+    expect(text).toContain('opsknight_incident_sla_legacy_captures 7');
+    const lastSeenLine = text
+      .split('\n')
+      .find(line =>
+        line.startsWith('opsknight_incident_sla_legacy_capture_last_seen_age_seconds ')
+      );
+    expect(Number(lastSeenLine?.split(' ').at(1))).toBeGreaterThanOrEqual(5);
+    expect(Number(lastSeenLine?.split(' ').at(1))).toBeLessThan(10);
+  });
 });

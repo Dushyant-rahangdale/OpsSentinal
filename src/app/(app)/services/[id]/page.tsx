@@ -268,7 +268,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
       : Promise.resolve(null),
     canManageService
       ? prisma.incidentSlaPolicy.findFirst({
-          where: { scopeKey: `service:${id}` },
+          where: { scopeKey: `service:${id}`, sealedAt: { not: null } },
           orderBy: { version: 'desc' },
           include: { rules: true },
         })

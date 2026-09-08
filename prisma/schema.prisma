@@ -708,6 +708,7 @@ model IncidentSlaPolicy {
   baseResolveTargetMs Int?
   createdAt           DateTime                @default(now())
   createdById         String?
+  sealedAt            DateTime?
   rules               IncidentSlaPolicyRule[]
   incidents           Incident[]
 

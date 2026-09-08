@@ -19,7 +19,10 @@ export async function resolveNewIncidentSlaContract(
   input: { serviceId: string; priority?: string | null; now: Date }
 ): Promise<NewIncidentSlaContract> {
   const policies = await tx.incidentSlaPolicy.findMany({
-    where: { scopeKey: { in: [`service:${input.serviceId}`, 'workspace'] } },
+    where: {
+      scopeKey: { in: [`service:${input.serviceId}`, 'workspace'] },
+      sealedAt: { not: null },
+    },
     orderBy: { version: 'desc' },
     distinct: ['scopeKey'],
     include: { rules: true },

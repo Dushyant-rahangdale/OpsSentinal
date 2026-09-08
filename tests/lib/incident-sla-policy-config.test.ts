@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   lock: vi.fn(),
   find: vi.fn(),
   create: vi.fn(),
+  update: vi.fn(),
   audit: vi.fn(),
   service: vi.fn(),
   revalidate: vi.fn(),
@@ -35,10 +36,11 @@ beforeEach(() => {
   mocks.find.mockResolvedValue({ version: 1 });
   mocks.service.mockResolvedValue({ id: 's1' });
   mocks.create.mockResolvedValue({ id: 'v2', version: 2 });
+  mocks.update.mockResolvedValue({ id: 'v2', version: 2, sealedAt: new Date() });
   mocks.transaction.mockImplementation(async callback =>
     callback({
       $queryRaw: mocks.lock,
-      incidentSlaPolicy: { findFirst: mocks.find, create: mocks.create },
+      incidentSlaPolicy: { findFirst: mocks.find, create: mocks.create, update: mocks.update },
       auditLog: { create: mocks.audit },
       service: { findUnique: mocks.service },
     })
@@ -55,6 +57,9 @@ describe('versioned SLA configuration commands', () => {
       expect.objectContaining({
         data: expect.objectContaining({ version: 2, scopeKey: 'workspace', createdById: 'admin' }),
       })
+    );
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'v2' }, data: { sealedAt: expect.any(Date) } })
     );
     expect(mocks.audit).toHaveBeenCalledWith(
       expect.objectContaining({
