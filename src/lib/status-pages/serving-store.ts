@@ -5,6 +5,7 @@ import {
   addOperationalMetric,
   observeOperationalHistogram,
 } from '@/lib/metrics/operational/registry';
+import { scalingFeatureEnabled } from '@/lib/scaling-feature-flags';
 
 export interface StatusServingManifest {
   pageId: string;
@@ -15,6 +16,8 @@ export interface StatusServingManifest {
 }
 
 export interface StatusPageServingStore {
+  publishRoute(routeKey: string, pageId: string): Promise<void>;
+  resolveRoute(routeKey: string): Promise<string | null>;
   publishManifest(manifest: StatusServingManifest): Promise<void>;
   publishSnapshot(pageId: string, revision: string, snapshot: Prisma.JsonValue): Promise<void>;
   readManifest(pageId: string): Promise<StatusServingManifest | null>;
@@ -39,6 +42,14 @@ async function observed<T>(operation: string, task: () => Promise<T>): Promise<T
 }
 
 class PostgreSqlStatusPageServingStore implements StatusPageServingStore {
+  async publishRoute(): Promise<void> {}
+  async resolveRoute(routeKey: string): Promise<string | null> {
+    const page = await prisma.statusPage.findFirst({
+      where: routeKey === 'default' ? { isDefault: true } : { slug: routeKey },
+      select: { id: true },
+    });
+    return page?.id ?? null;
+  }
   async publishManifest(): Promise<void> {}
   async publishSnapshot(): Promise<void> {}
 
@@ -93,6 +104,26 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
         ...init?.headers,
       },
       cache: 'no-store',
+    });
+  }
+
+  async publishRoute(routeKey: string, pageId: string): Promise<void> {
+    await observed('publish_route', async () => {
+      const response = await this.request(`status-pages/routes/${encodeURIComponent(routeKey)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ pageId }),
+      });
+      if (!response.ok) throw new Error(`Serving store route publish failed (${response.status})`);
+    });
+  }
+
+  async resolveRoute(routeKey: string): Promise<string | null> {
+    return observed('resolve_route', async () => {
+      const response = await this.request(`status-pages/routes/${encodeURIComponent(routeKey)}`);
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`Serving store route lookup failed (${response.status})`);
+      const payload = (await response.json()) as { pageId?: unknown };
+      return typeof payload.pageId === 'string' ? payload.pageId : null;
     });
   }
 
@@ -154,7 +185,7 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
 export function getStatusPageServingStore(): StatusPageServingStore {
   const baseUrl = process.env.STATUS_PAGE_SERVING_STORE_URL?.trim();
   const token = process.env.STATUS_PAGE_SERVING_STORE_TOKEN?.trim();
-  return baseUrl && token
+  return scalingFeatureEnabled('STATUS_PAGE_EXTERNAL_SERVING_STORE') && baseUrl && token
     ? new HttpStatusPageServingStore(baseUrl, token)
     : new PostgreSqlStatusPageServingStore();
 }

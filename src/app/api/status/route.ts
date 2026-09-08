@@ -1,4 +1,3 @@
-import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
@@ -7,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 import { createHash } from 'node:crypto';
 import { observeOperationalHistogram } from '@/lib/metrics/operational/registry';
-import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import { getStatusPageSnapshotByRoute } from '@/lib/status-pages/snapshot';
 import {
   PRIVATE_STATUS_CACHE_CONTROL,
   PUBLIC_STATUS_CACHE_CONTROL,
@@ -26,65 +25,18 @@ export async function GET(req: NextRequest) {
 export async function getStatusResponse(req: NextRequest, slug?: string) {
   const projectionStartedAt = performance.now();
   try {
-    const statusPage = await prisma.statusPage.findFirst({
-      where: slug ? { enabled: true, slug } : { enabled: true, isDefault: true },
-      select: {
-        id: true,
-        updatedAt: true,
-        maxIncidentsToShow: true,
-        incidentHistoryDays: true,
-        dataRetentionDays: true,
-        enabled: true,
-        requireAuth: true,
-        statusApiRequireToken: true,
-        statusApiRateLimitEnabled: true,
-        statusApiRateLimitMax: true,
-        statusApiRateLimitWindowSec: true,
-        showServices: true,
-        showIncidents: true,
-        showMetrics: true,
-        showIncidentDetails: true,
-        showIncidentTitles: true,
-        showIncidentDescriptions: true,
-        showAffectedServices: true,
-        showIncidentTimestamps: true,
-        showServiceMetrics: true,
-        showServiceRegions: true,
-        showServiceOwners: true,
-        showServiceSlaTier: true,
-        showTeamInformation: true,
-        showIncidentUrgency: true,
-        showUptimeHistory: true,
-        showRecentIncidents: true,
-        services: {
-          select: {
-            serviceId: true,
-            showOnPage: true,
-            order: true,
-          },
-          orderBy: { order: 'asc' },
-        },
-        announcements: {
-          where: {
-            isActive: true,
-            type: 'MAINTENANCE',
-            startDate: { lte: new Date() },
-            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-          },
-          select: { affectedServiceIds: true, updatedAt: true },
-        },
-      },
-    });
+    const projected = await getStatusPageSnapshotByRoute(slug || 'default');
+    const statusPage = projected.snapshot?.page;
 
     if (!statusPage) {
       return jsonError('Status page not found or disabled', 404);
     }
 
     const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
-      requireToken: statusPage.statusApiRequireToken,
-      rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
-      rateLimitMax: statusPage.statusApiRateLimitMax,
-      rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+      requireToken: statusPage.statusApiRequireToken === true,
+      rateLimitEnabled: statusPage.statusApiRateLimitEnabled === true,
+      rateLimitMax: statusPage.statusApiRateLimitMax ?? 120,
+      rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec ?? 60,
     });
     if (!authResult.allowed) {
       if (authResult.status === 429) {
@@ -109,7 +61,6 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       }
     }
 
-    const projected = await getStatusPageSnapshot(statusPage.id);
     if (projected.snapshot) {
       const snapshot = projected.snapshot;
       const responseData = {
@@ -145,9 +96,6 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       'Cache-Control': 'public, max-age=5, stale-if-error=30',
     });
 
-    // Retained temporarily for compatibility while snapshot-only serving settles.
-    // This guard also keeps the legacy fallback type-safe although it is unreachable.
-    if (!statusPage) return jsonError('Status page not found or disabled', 404);
   } catch (error: unknown) {
     logger.error('api.status.error', {
       error: error instanceof Error ? error.message : String(error),

@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { NOTIFICATION_PRIORITY, statusNotificationPriority } from '@/lib/notification-priority';
 import { issueUnsubscribeTokensBatch } from '@/lib/status-pages/subscription-tokens';
 import { getStatusPageEmailConfig } from '@/lib/notification-providers';
-import { enqueueCentralNotification } from '@/lib/notification-control-plane';
+import { createCentralNotificationIntentsBatch } from '@/lib/notification-control-plane';
 import { logger } from '@/lib/logger';
 import { getBaseUrl } from '@/lib/env-validation';
 import { getStatusPageLogoUrl, getStatusPagePublicUrl } from '@/lib/status-page-url';
@@ -135,7 +135,6 @@ export async function notifyStatusPageSubscribers(
         }
       );
 
-      const BATCH_SIZE = 25;
       const PAGE_SIZE = 500;
       const policy = statusNotificationPriority(eventType);
       const fanout = await beginNotificationFanout({
@@ -178,55 +177,44 @@ export async function notifyStatusPageSubscribers(
         let pageSent = 0;
         let pageFailed = 0;
 
-        for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
-          const batch = subscriptions.slice(i, i + BATCH_SIZE);
-          const results = await Promise.allSettled(
-            batch.map(async sub => {
-              const intent = await enqueueCentralNotification(
-                {
-                  category: 'STATUS_PAGE',
-                  channel: 'EMAIL',
-                  recipientType: 'SUBSCRIBER',
-                  recipientId: sub.id,
-                  recipientAddress: sub.email,
+        try {
+          const result = await createCentralNotificationIntentsBatch(
+            subscriptions.map(sub => ({
+              category: 'STATUS_PAGE',
+              channel: 'EMAIL',
+              recipientType: 'SUBSCRIBER',
+              recipientId: sub.id,
+              recipientAddress: sub.email,
+              incidentId,
+              templateKey: `status-page-incident-${eventType}`,
+              sourceType: 'STATUS_PAGE_INCIDENT',
+              sourceId: `${page.id}:${incidentId}`,
+              eventKey: effectiveDeliveryKey,
+              displayMessage: subject,
+              ...policy,
+              contentId: fanout.contentId,
+              fanoutId: fanout.id,
+              payload: {
+                kind: 'EMAIL',
+                providerKey: emailConfig.provider || undefined,
+                to: sub.email,
+                subject,
+                contentId: fanout.contentId,
+                unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
+                providerScope: {
+                  statusPageId: page.id,
+                  subscriptionId: sub.id,
                   incidentId,
-                  templateKey: `status-page-incident-${eventType}`,
-                  sourceType: 'STATUS_PAGE_INCIDENT',
-                  sourceId: `${page.id}:${incidentId}`,
-                  eventKey: effectiveDeliveryKey,
-                  displayMessage: subject,
-                  ...policy,
-                  contentId: fanout.contentId,
-                  fanoutId: fanout.id,
-                  payload: {
-                    kind: 'EMAIL',
-                    providerKey: emailConfig.provider || undefined,
-                    to: sub.email,
-                    subject,
-                    contentId: fanout.contentId,
-                    unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
-                    providerScope: {
-                      statusPageId: page.id,
-                      subscriptionId: sub.id,
-                      incidentId,
-                      eventType,
-                      expectedStatus: incident.status,
-                      escalationGeneration: incident.escalationGeneration,
-                    },
-                  },
+                  eventType,
+                  expectedStatus: incident.status,
+                  escalationGeneration: incident.escalationGeneration,
                 },
-                { dispatchImmediately: false }
-              );
-              return { success: true, skipped: !intent.created };
-            })
+              },
+            }))
           );
-
-          pageSent += results.filter(
-            r => r.status === 'fulfilled' && r.value.success && !r.value.skipped
-          ).length;
-          pageFailed += results.filter(
-            r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
-          ).length;
+          pageSent = result.created;
+        } catch {
+          pageFailed = subscriptions.length;
         }
         sent += pageSent;
         failed += pageFailed;
@@ -596,7 +584,6 @@ export async function notifyStatusPageSubscribersAnnouncement(
 
     html = EmailContainer(announcementHeader + body + footer);
 
-    const BATCH_SIZE = 25;
     const PAGE_SIZE = 500;
     const trafficClass = 'BULK' as const;
     const fanout = await beginNotificationFanout({
@@ -639,51 +626,40 @@ export async function notifyStatusPageSubscribersAnnouncement(
       let pageSent = 0;
       let pageFailed = 0;
 
-      for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
-        const batch = subscriptions.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map(async sub => {
-            const intent = await enqueueCentralNotification(
-              {
-                category: 'STATUS_PAGE',
-                channel: 'EMAIL',
-                recipientType: 'SUBSCRIBER',
-                recipientId: sub.id,
-                recipientAddress: sub.email,
-                templateKey: 'status-page-announcement',
-                sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
-                sourceId: announcement.id,
-                eventKey: announcement.updatedAt.toISOString(),
-                displayMessage: subject,
-                trafficClass,
-                priority:
-                  announcement.type === 'INCIDENT'
-                    ? NOTIFICATION_PRIORITY.STATUS_INCIDENT_ANNOUNCEMENT
-                    : NOTIFICATION_PRIORITY.STATUS_ANNOUNCEMENT,
-                contentId: fanout.contentId,
-                fanoutId: fanout.id,
-                payload: {
-                  kind: 'EMAIL',
-                  providerKey: emailConfig.provider || undefined,
-                  to: sub.email,
-                  subject,
-                  contentId: fanout.contentId,
-                  unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
-                  providerScope: { statusPageId: page.id, subscriptionId: sub.id },
-                },
-              },
-              { dispatchImmediately: false }
-            );
-            return { success: true, skipped: !intent.created };
-          })
+      try {
+        const result = await createCentralNotificationIntentsBatch(
+          subscriptions.map(sub => ({
+            category: 'STATUS_PAGE',
+            channel: 'EMAIL',
+            recipientType: 'SUBSCRIBER',
+            recipientId: sub.id,
+            recipientAddress: sub.email,
+            templateKey: 'status-page-announcement',
+            sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
+            sourceId: announcement.id,
+            eventKey: announcement.updatedAt.toISOString(),
+            displayMessage: subject,
+            trafficClass,
+            priority:
+              announcement.type === 'INCIDENT'
+                ? NOTIFICATION_PRIORITY.STATUS_INCIDENT_ANNOUNCEMENT
+                : NOTIFICATION_PRIORITY.STATUS_ANNOUNCEMENT,
+            contentId: fanout.contentId,
+            fanoutId: fanout.id,
+            payload: {
+              kind: 'EMAIL',
+              providerKey: emailConfig.provider || undefined,
+              to: sub.email,
+              subject,
+              contentId: fanout.contentId,
+              unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
+              providerScope: { statusPageId: page.id, subscriptionId: sub.id },
+            },
+          }))
         );
-
-        pageSent += results.filter(
-          r => r.status === 'fulfilled' && r.value.success && !r.value.skipped
-        ).length;
-        pageFailed += results.filter(
-          r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
-        ).length;
+        pageSent = result.created;
+      } catch {
+        pageFailed = subscriptions.length;
       }
       sent += pageSent;
       failed += pageFailed;

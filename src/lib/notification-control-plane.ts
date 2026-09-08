@@ -407,6 +407,71 @@ export async function createCentralNotificationIntent(
   }
 }
 
+/** Materialize a fanout page with one INSERT statement and stable-key deduplication. */
+export async function createCentralNotificationIntentsBatch(
+  inputs: CentralNotificationInput[]
+): Promise<{ created: number; skipped: number }> {
+  const now = new Date();
+  const rows: Prisma.NotificationCreateManyInput[] = await Promise.all(
+    inputs.map(async input => {
+      assertValidInput(input);
+      const recipientHash = recipientDigest(input.channel, input.recipientAddress);
+      const deliveryKey = stableDigest(
+        input.category,
+        input.channel,
+        recipientHash,
+        input.templateKey,
+        input.sourceType,
+        input.sourceId,
+        input.eventKey
+      );
+      const serializedPayload = JSON.stringify(input.payload);
+      if (Buffer.byteLength(serializedPayload, 'utf8') > MAX_ENCRYPTED_PAYLOAD_BYTES) {
+        throw new Error('Notification payload exceeds the durable delivery limit');
+      }
+      const scheduledAt = input.scheduledAt ?? now;
+      const policy = defaultNotificationPolicy(input.category, input.templateKey);
+      const trafficClass = input.trafficClass ?? policy.trafficClass;
+      return {
+        id: intentId(deliveryKey),
+        incidentId: input.incidentId,
+        userId: input.userId,
+        channel: input.channel,
+        status: 'PENDING',
+        message: input.displayMessage.slice(0, 2_000),
+        eventType: input.templateKey,
+        category: input.category,
+        recipientType: input.recipientType,
+        recipientId: input.recipientId || recipientHash,
+        recipientDisplay: maskedNotificationRecipient(input.channel, input.recipientAddress),
+        recipientHash,
+        templateKey: input.templateKey,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        deliveryKey,
+        payloadEncrypted: await encrypt(serializedPayload),
+        contentId: input.contentId,
+        fanoutId: input.fanoutId,
+        priority: Math.min(
+          Math.max(input.priority ?? policy.priority, notificationAgingFloor(trafficClass)),
+          9
+        ),
+        trafficClass,
+        scheduledAt,
+        nextAttemptAt: scheduledAt,
+        maxAttempts: Math.min(
+          Math.max(input.maxAttempts ?? NOTIFICATION_RETRY_POLICY.maxAttempts, 1),
+          20
+        ),
+        expiresAt: input.expiresAt,
+      };
+    })
+  );
+  if (rows.length === 0) return { created: 0, skipped: 0 };
+  const result = await prisma.notification.createMany({ data: rows, skipDuplicates: true });
+  return { created: result.count, skipped: rows.length - result.count };
+}
+
 /**
  * Resolves the provider each channel would currently deliver through.
  *
@@ -1249,6 +1314,22 @@ async function finishAttempt(input: {
   }
 }
 
+async function recordFanoutTerminal(
+  fanoutId: string | null,
+  outcome: 'completed' | 'failed' | 'skipped'
+) {
+  if (!fanoutId) return;
+  await prisma.notificationFanout.updateMany({
+    where: { id: fanoutId },
+    data:
+      outcome === 'completed'
+        ? { completedTargets: { increment: 1 } }
+        : outcome === 'skipped'
+          ? { skippedTargets: { increment: 1 } }
+          : { failedTargets: { increment: 1 } },
+  });
+}
+
 export async function deliverCentralNotification(
   notificationId: string,
   options: { claimToken?: string; claimedAt?: Date } = {}
@@ -1273,6 +1354,7 @@ export async function deliverCentralNotification(
       recipientId: true,
       templateKey: true,
       claimToken: true,
+      fanoutId: true,
     },
   });
   if (!candidate || !candidate.payloadEncrypted) {
@@ -1546,6 +1628,7 @@ export async function deliverCentralNotification(
         });
       }
       if (committed.count === 0) return { success: false, claimed: false };
+      await recordFanoutTerminal(candidate.fanoutId, result.skipped ? 'skipped' : 'completed');
       return { success: true, claimed: true };
     }
 
@@ -1581,7 +1664,7 @@ export async function deliverCentralNotification(
     }
     const permanent = isPermanentProviderError(errorMessage);
     const exhausted = deliveryAttempt >= candidate.maxAttempts;
-    await prisma.notification.updateMany({
+    const failedUpdate = await prisma.notification.updateMany({
       where: { id: candidate.id, status: 'PENDING', lastAttemptAt: now },
       data: {
         status: 'FAILED',
@@ -1606,6 +1689,9 @@ export async function deliverCentralNotification(
       errorMessage,
       errorCode: result.errorCode,
     });
+    if (failedUpdate.count > 0 && (permanent || exhausted)) {
+      await recordFanoutTerminal(candidate.fanoutId, 'failed');
+    }
     return { success: false, claimed: true, error: errorMessage };
   } catch (error) {
     const circuitOpen = error instanceof CircuitBreakerError;

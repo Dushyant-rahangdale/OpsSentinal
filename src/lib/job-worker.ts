@@ -138,6 +138,13 @@ async function runOnce(): Promise<void> {
     }
 
     if (workerLane === 'bulk') {
+      const { isBulkNotificationDeliveryPaused } = await import('./notification-capacity-control');
+      if (await isBulkNotificationDeliveryPaused()) {
+        lastSuccessAt = new Date();
+        lastError = null;
+        scheduleNextRun(withIdleJitter(workerConfig.idlePollMs));
+        return;
+      }
       const { processCentralNotificationQueue } = await import('./notification-control-plane');
       const notifications = await processCentralNotificationQueue({
         trafficClasses: ['PUBLIC_INCIDENT', 'BULK'],
@@ -156,8 +163,7 @@ async function runOnce(): Promise<void> {
       );
       lastSuccessAt = new Date();
       lastError = null;
-      const busy =
-        notifications.processed + incidentFanout.total + announcementFanout.total > 0;
+      const busy = notifications.processed + incidentFanout.total + announcementFanout.total > 0;
       scheduleNextRun(busy ? workerConfig.busyPollMs : withIdleJitter(workerConfig.idlePollMs));
       return;
     }

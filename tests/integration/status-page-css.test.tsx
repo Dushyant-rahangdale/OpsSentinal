@@ -28,6 +28,7 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/status-pages/snapshot', () => ({
   getStatusPageSnapshot: mockGetStatusPageSnapshot,
+  getStatusPageSnapshotByRoute: mockGetStatusPageSnapshot,
 }));
 
 vi.mock('@/lib/sla-server', () => ({
@@ -66,6 +67,26 @@ describe('PublicStatusPage Custom CSS', () => {
         pageId: 'sp-1',
         revision: '1',
         generatedAt: '2026-09-08T00:00:00.000Z',
+        page: {
+          id: 'sp-1',
+          name: 'Status Page',
+          organizationName: null,
+          branding: {},
+          showSubscribe: false,
+          showServicesByRegion: false,
+          showRegionHeatmap: false,
+          showPostIncidentReview: false,
+          showChangelog: false,
+          enableUptimeExports: false,
+          footerText: null,
+          contactEmail: null,
+          contactUrl: null,
+          slug: null,
+          customDomain: null,
+          subdomain: null,
+          isDefault: true,
+          requireAuth: false,
+        },
         status: 'operational',
         services: [],
         incidents: [],
@@ -96,6 +117,14 @@ describe('PublicStatusPage Custom CSS', () => {
     });
     mockPrisma.service.findMany.mockResolvedValue([]);
     mockPrisma.incident.findMany.mockResolvedValue([]);
+    const projection = await mockGetStatusPageSnapshot();
+    mockGetStatusPageSnapshot.mockResolvedValue({
+      ...projection,
+      snapshot: {
+        ...projection.snapshot,
+        page: { ...projection.snapshot.page, branding: { customCss } },
+      },
+    });
 
     // We need to await the component since it's an async server component
     // In actual Next.js this is handled by the framework, but for testing we await it directly
@@ -130,6 +159,14 @@ describe('PublicStatusPage Custom CSS', () => {
     });
     mockPrisma.service.findMany.mockResolvedValue([]);
     mockPrisma.incident.findMany.mockResolvedValue([]);
+    const projection = await mockGetStatusPageSnapshot();
+    mockGetStatusPageSnapshot.mockResolvedValue({
+      ...projection,
+      snapshot: {
+        ...projection.snapshot,
+        page: { ...projection.snapshot.page, branding: { customCss: '' } },
+      },
+    });
 
     const component = await PublicStatusPage();
     render(component);

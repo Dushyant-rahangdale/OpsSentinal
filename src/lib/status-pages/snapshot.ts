@@ -27,6 +27,31 @@ export type StatusPageSnapshot = {
   pageId: string;
   revision: string;
   generatedAt: string;
+  page?: {
+    id: string;
+    name: string;
+    organizationName: string | null;
+    branding: Prisma.JsonValue | null;
+    showSubscribe: boolean;
+    showServicesByRegion: boolean;
+    showRegionHeatmap: boolean;
+    showPostIncidentReview: boolean;
+    showChangelog: boolean;
+    enableUptimeExports: boolean;
+    footerText: string | null;
+    contactEmail: string | null;
+    contactUrl: string | null;
+    slug: string | null;
+    customDomain: string | null;
+    subdomain: string | null;
+    isDefault: boolean;
+    requireAuth: boolean;
+    enabled?: boolean;
+    statusApiRequireToken?: boolean;
+    statusApiRateLimitEnabled?: boolean;
+    statusApiRateLimitMax?: number;
+    statusApiRateLimitWindowSec?: number;
+  };
   status: 'operational' | 'degraded' | 'maintenance' | 'outage';
   services: Array<{
     id: string;
@@ -189,6 +214,31 @@ export async function buildStatusPageSnapshot(
     pageId,
     revision,
     generatedAt: now.toISOString(),
+    page: {
+      id: page.id,
+      name: page.name,
+      organizationName: page.organizationName,
+      branding: page.branding,
+      showSubscribe: page.showSubscribe,
+      showServicesByRegion: page.showServicesByRegion,
+      showRegionHeatmap: page.showRegionHeatmap,
+      showPostIncidentReview: page.showPostIncidentReview,
+      showChangelog: page.showChangelog,
+      enableUptimeExports: page.enableUptimeExports,
+      footerText: page.footerText,
+      contactEmail: page.contactEmail,
+      contactUrl: page.contactUrl,
+      slug: page.slug,
+      customDomain: page.customDomain,
+      subdomain: page.subdomain,
+      isDefault: page.isDefault,
+      requireAuth: page.requireAuth,
+      enabled: page.enabled,
+      statusApiRequireToken: page.statusApiRequireToken,
+      statusApiRateLimitEnabled: page.statusApiRateLimitEnabled,
+      statusApiRateLimitMax: page.statusApiRateLimitMax,
+      statusApiRateLimitWindowSec: page.statusApiRateLimitWindowSec,
+    },
     status: projectOverallStatus(
       impactStates.some(impact => impact.critical),
       impactStates.some(impact => impact.active > 0),
@@ -272,6 +322,8 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
     revoked: false,
     snapshotKey: `${result.revision}.json`,
   });
+  await store.publishRoute(result.snapshot.page?.slug || 'default', pageId);
+  if (result.snapshot.page?.isDefault) await store.publishRoute('default', pageId);
   return true;
 }
 
@@ -337,4 +389,10 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
   const payload = await store.readSnapshot(pageId, manifest.revision);
   const current = parseStatusPageSnapshot(pageId, payload);
   return current ? { snapshot: current, stale: false } : { snapshot: null, stale: true };
+}
+
+export async function getStatusPageSnapshotByRoute(routeKey: string) {
+  const store = getStatusPageServingStore();
+  const pageId = await store.resolveRoute(routeKey || 'default');
+  return pageId ? getStatusPageSnapshot(pageId) : { snapshot: null, stale: true };
 }

@@ -6,6 +6,9 @@ import { Activity, BellRing, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
+import NotificationCapacityOverview from '@/components/settings/NotificationCapacityOverview';
+import { getProviderCapacity } from '@/lib/provider-capacity';
+import prisma from '@/lib/prisma';
 
 export default async function NotificationOperationsPage() {
   let user: Awaited<ReturnType<typeof getCurrentUser>>;
@@ -18,6 +21,27 @@ export default async function NotificationOperationsPage() {
   if (user.role !== 'ADMIN' && user.role !== 'AUDITOR') {
     redirect('/settings');
   }
+  const channels = ['EMAIL', 'SMS', 'WHATSAPP', 'PUSH', 'SLACK', 'WEBHOOK'] as const;
+  const [leases, campaigns, control] = await Promise.all([
+    prisma.providerWorkerLease.count({ where: { expiresAt: { gt: new Date() } } }),
+    prisma.notificationFanout.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      select: {
+        id: true,
+        sourceType: true,
+        status: true,
+        materializedTargets: true,
+        completedTargets: true,
+        failedTargets: true,
+      },
+    }),
+    prisma.systemConfig.findUnique({ where: { key: 'notification_capacity_control' } }),
+  ]);
+  const controlValue =
+    control?.value && typeof control.value === 'object' && !Array.isArray(control.value)
+      ? (control.value as Record<string, unknown>)
+      : {};
 
   return (
     <div className="space-y-6">
@@ -82,6 +106,13 @@ export default async function NotificationOperationsPage() {
         }
       />
 
+      <NotificationCapacityOverview
+        capacities={channels.map(channel => ({ channel, ...getProviderCapacity(channel) }))}
+        workerCount={leases}
+        campaigns={campaigns}
+        initialPaused={controlValue.bulkPaused === true}
+        canManage={user.role === 'ADMIN'}
+      />
       <NotificationOperations canRetry={user.role === 'ADMIN'} />
     </div>
   );

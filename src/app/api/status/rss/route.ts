@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
 import { getBaseUrl } from '@/lib/env-validation';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
@@ -7,7 +6,7 @@ import { getAuthOptions } from '@/lib/auth';
 import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 import { createHash } from 'node:crypto';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
-import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import { getStatusPageSnapshotByRoute } from '@/lib/status-pages/snapshot';
 import {
   PRIVATE_STATUS_CACHE_CONTROL,
   PUBLIC_STATUS_CACHE_CONTROL,
@@ -32,27 +31,18 @@ export async function GET(req: NextRequest) {
 
 export async function getStatusRssResponse(req: NextRequest, slug?: string) {
   try {
-    const statusPage = await prisma.statusPage.findFirst({
-      where: slug ? { enabled: true, slug } : { enabled: true, isDefault: true },
-      include: {
-        services: {
-          include: {
-            service: true,
-          },
-          where: { showOnPage: true },
-        },
-      },
-    });
+    const projected = await getStatusPageSnapshotByRoute(slug || 'default');
+    const statusPage = projected.snapshot?.page;
 
     if (!statusPage) {
       return new NextResponse('Status page not found', { status: 404 });
     }
 
     const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
-      requireToken: statusPage.statusApiRequireToken,
-      rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
-      rateLimitMax: statusPage.statusApiRateLimitMax,
-      rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+      requireToken: statusPage.statusApiRequireToken === true,
+      rateLimitEnabled: statusPage.statusApiRateLimitEnabled === true,
+      rateLimitMax: statusPage.statusApiRateLimitMax ?? 120,
+      rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec ?? 60,
     });
     if (!authResult.allowed) {
       if (authResult.status === 429) {
@@ -74,7 +64,6 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
       }
     }
 
-    const projected = await getStatusPageSnapshot(statusPage.id);
     if (projected.snapshot) {
       const snapshot = projected.snapshot;
       const pageUrl = getStatusPagePublicUrl(statusPage, getBaseUrl());
