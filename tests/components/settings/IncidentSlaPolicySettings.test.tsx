@@ -56,7 +56,8 @@ describe('IncidentSlaPolicySettings', () => {
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0]).toEqual(expect.objectContaining({ expectedVersion: 2 }));
 
-    fireEvent.click(screen.getByRole('button', { name: /save sla policy/i }));
+    const saveAgain = await screen.findByRole('button', { name: /save sla policy/i });
+    fireEvent.click(saveAgain);
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     expect(save.mock.calls[1][0]).toEqual(expect.objectContaining({ expectedVersion: 3 }));
   });

@@ -42,7 +42,8 @@ describe('IncidentClassificationSettings', () => {
       })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /save classification policy/i }));
+    const saveAgain = await screen.findByRole('button', { name: /save classification policy/i });
+    fireEvent.click(saveAgain);
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     expect(save.mock.calls[1][0]).toEqual(expect.objectContaining({ expectedVersion: 2 }));
   });
