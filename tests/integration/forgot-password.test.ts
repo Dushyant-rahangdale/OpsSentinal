@@ -24,6 +24,7 @@ import {
 } from '../helpers/test-db';
 
 let initiatePasswordReset: typeof import('@/lib/password-reset').initiatePasswordReset;
+let processCentralNotificationQueue: typeof import('@/lib/notification-control-plane').processCentralNotificationQueue;
 
 describeIntegration('Forgot Password Integration', () => {
   beforeAll(async () => {
@@ -32,6 +33,7 @@ describeIntegration('Forgot Password Integration', () => {
     vi.unmock('../src/lib/prisma');
     vi.resetModules();
     ({ initiatePasswordReset } = await import('@/lib/password-reset'));
+    ({ processCentralNotificationQueue } = await import('@/lib/notification-control-plane'));
   });
 
   beforeEach(async () => {
@@ -55,6 +57,7 @@ describeIntegration('Forgot Password Integration', () => {
 
     // 2. Initiate Reset
     const result = await initiatePasswordReset('user@example.com', '127.0.0.1');
+    await processCentralNotificationQueue();
 
     // 3. Verify Result
     expect(result.success).toBe(true);
@@ -97,6 +100,7 @@ describeIntegration('Forgot Password Integration', () => {
 
     // 3. Initiate Reset
     const result = await initiatePasswordReset('smsuser@example.com', '127.0.0.1');
+    await processCentralNotificationQueue();
 
     // 4. Verify Result
     expect(result.success).toBe(true);

@@ -44,6 +44,7 @@ vi.mock('@/lib/notification-providers', async importOriginal => {
 
 import { getServerSession } from 'next-auth';
 import { sendEmail } from '@/lib/email';
+import { processCentralNotificationQueue } from '@/lib/notification-control-plane';
 
 describeIfRealDB('Status Page Subscription Integration', () => {
   beforeAll(() => {
@@ -66,6 +67,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
       });
 
       const res = await POST(req as NextRequest);
+      await processCentralNotificationQueue();
       expect(res.status).toBe(200);
 
       const sub = await testPrisma.statusPageSubscription.findFirst({

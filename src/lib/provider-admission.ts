@@ -79,12 +79,12 @@ export async function acquireProviderAdmission(
       )::integer AS granted
       FROM ensured
     )
-    UPDATE "ProviderQuotaWindow" AS window
-    SET "globalUsed" = window."globalUsed" + capacity.granted,
-        "bulkUsed" = window."bulkUsed" + ${bulk ? Prisma.sql`capacity.granted` : Prisma.sql`0`},
+    UPDATE "ProviderQuotaWindow" AS quota_window
+    SET "globalUsed" = quota_window."globalUsed" + capacity.granted,
+        "bulkUsed" = quota_window."bulkUsed" + ${bulk ? Prisma.sql`capacity.granted` : Prisma.sql`0`},
         "updatedAt" = NOW()
     FROM capacity
-    WHERE window."id" = ${id} AND capacity.granted > 0
+    WHERE quota_window."id" = ${id} AND capacity.granted > 0
     RETURNING capacity.granted
   `);
   const granted = Number(rows[0]?.granted ?? 0);
