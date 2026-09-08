@@ -1,30 +1,17 @@
-export type ScalingFeatureFlag =
-  | 'NOTIFICATION_TRAFFIC_CLASSES_V2'
-  | 'NOTIFICATION_PROVIDER_CAPACITY_V2'
-  | 'STATUS_PAGE_ASYNC_FANOUT'
-  | 'NOTIFICATION_FANOUT_CAMPAIGNS'
-  | 'STATUS_PAGE_SNAPSHOT_ONLY'
-  | 'STATUS_PAGE_EXTERNAL_SERVING_STORE';
+export type ScalingFeatureFlag = 'STATUS_PAGE_EXTERNAL_SERVING_STORE';
 
-function defaultFor(flag: ScalingFeatureFlag): boolean {
-  switch (flag) {
-    case 'STATUS_PAGE_EXTERNAL_SERVING_STORE':
-      return false;
-    case 'NOTIFICATION_TRAFFIC_CLASSES_V2':
-    case 'NOTIFICATION_PROVIDER_CAPACITY_V2':
-    case 'STATUS_PAGE_ASYNC_FANOUT':
-    case 'NOTIFICATION_FANOUT_CAMPAIGNS':
-    case 'STATUS_PAGE_SNAPSHOT_ONLY':
-      return true;
-  }
-}
-
+/**
+ * Only capabilities with a real production rollback path are exposed as runtime
+ * flags. The core notification/snapshot safety model is migration-backed and is
+ * rolled back by deploying the previous application version, not by pretending a
+ * boolean can restore the legacy data contract safely.
+ */
 export function scalingFeatureEnabled(
   flag: ScalingFeatureFlag,
   env: NodeJS.ProcessEnv = process.env
-) {
+): boolean {
   const value = Reflect.get(env, flag);
   if (value === 'true') return true;
   if (value === 'false') return false;
-  return defaultFor(flag);
+  return false;
 }
