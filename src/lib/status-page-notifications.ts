@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { NOTIFICATION_PRIORITY, statusNotificationPriority } from '@/lib/notification-priority';
-import { issueUnsubscribeToken } from '@/lib/status-pages/subscription-tokens';
+import { issueUnsubscribeTokensBatch } from '@/lib/status-pages/subscription-tokens';
 import { getStatusPageEmailConfig } from '@/lib/notification-providers';
 import { enqueueCentralNotification } from '@/lib/notification-control-plane';
 import { logger } from '@/lib/logger';
@@ -19,6 +19,11 @@ import {
   escapeHtml,
 } from '@/lib/email-components';
 import { addOperationalMetric } from '@/lib/metrics/operational/registry';
+import {
+  beginNotificationFanout,
+  bulkQueueHasCapacity,
+  recordFanoutPage,
+} from '@/lib/notification-fanout';
 
 export async function notifyStatusPageSubscribers(
   incidentId: string,
@@ -132,11 +137,25 @@ export async function notifyStatusPageSubscribers(
 
       const BATCH_SIZE = 25;
       const PAGE_SIZE = 500;
+      const policy = statusNotificationPriority(eventType);
+      const fanout = await beginNotificationFanout({
+        statusPageId: page.id,
+        sourceType: 'STATUS_PAGE_INCIDENT',
+        sourceId: incidentId,
+        eventKey: effectiveDeliveryKey,
+        trafficClass: policy.trafficClass,
+        providerKey: emailConfig.provider || undefined,
+        subject,
+        html,
+      });
       let sent = 0;
       let failed = 0;
-      let cursor: string | undefined;
+      let cursor: string | undefined = fanout.cursor ?? undefined;
 
       while (true) {
+        if (!(await bulkQueueHasCapacity())) {
+          throw new Error('Bulk notification queue reached its high watermark');
+        }
         const subscriptions = await prisma.statusPageSubscription.findMany({
           where: { statusPageId: page.id, verified: true, unsubscribedAt: null },
           orderBy: { id: 'asc' },
@@ -144,7 +163,20 @@ export async function notifyStatusPageSubscribers(
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           select: { id: true, email: true, token: true },
         });
-        if (subscriptions.length === 0) break;
+        if (subscriptions.length === 0) {
+          await recordFanoutPage(fanout.id, {
+            cursor,
+            materialized: 0,
+            failed: 0,
+            complete: true,
+          });
+          break;
+        }
+        const unsubscribeTokens = await issueUnsubscribeTokensBatch(
+          subscriptions.map(subscription => subscription.id)
+        );
+        let pageSent = 0;
+        let pageFailed = 0;
 
         for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
           const batch = subscriptions.slice(i, i + BATCH_SIZE);
@@ -163,16 +195,16 @@ export async function notifyStatusPageSubscribers(
                   sourceId: `${page.id}:${incidentId}`,
                   eventKey: effectiveDeliveryKey,
                   displayMessage: subject,
-                  ...statusNotificationPriority(eventType),
+                  ...policy,
+                  contentId: fanout.contentId,
+                  fanoutId: fanout.id,
                   payload: {
                     kind: 'EMAIL',
                     providerKey: emailConfig.provider || undefined,
                     to: sub.email,
                     subject,
-                    html: html.replaceAll(
-                      '{{unsubscribe_url}}',
-                      `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
-                    ),
+                    contentId: fanout.contentId,
+                    unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
                     providerScope: {
                       statusPageId: page.id,
                       subscriptionId: sub.id,
@@ -189,14 +221,24 @@ export async function notifyStatusPageSubscribers(
             })
           );
 
-          sent += results.filter(
+          pageSent += results.filter(
             r => r.status === 'fulfilled' && r.value.success && !r.value.skipped
           ).length;
-          failed += results.filter(
+          pageFailed += results.filter(
             r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
           ).length;
         }
+        sent += pageSent;
+        failed += pageFailed;
         cursor = subscriptions.at(-1)?.id;
+        if (cursor) {
+          await recordFanoutPage(fanout.id, {
+            cursor,
+            materialized: pageSent,
+            failed: pageFailed,
+            complete: subscriptions.length < PAGE_SIZE,
+          });
+        }
         if (subscriptions.length < PAGE_SIZE || !cursor) break;
       }
 
@@ -551,11 +593,25 @@ export async function notifyStatusPageSubscribersAnnouncement(
 
     const BATCH_SIZE = 25;
     const PAGE_SIZE = 500;
+    const trafficClass = 'BULK' as const;
+    const fanout = await beginNotificationFanout({
+      statusPageId,
+      sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
+      sourceId: announcement.id,
+      eventKey: announcement.updatedAt.toISOString(),
+      trafficClass,
+      providerKey: emailConfig.provider || undefined,
+      subject,
+      html,
+    });
     let sent = 0;
     let failed = 0;
-    let cursor: string | undefined;
+    let cursor: string | undefined = fanout.cursor ?? undefined;
 
     while (true) {
+      if (!(await bulkQueueHasCapacity())) {
+        throw new Error('Bulk notification queue reached its high watermark');
+      }
       const subscriptions = await prisma.statusPageSubscription.findMany({
         where: { statusPageId, verified: true, unsubscribedAt: null },
         orderBy: { id: 'asc' },
@@ -563,7 +619,20 @@ export async function notifyStatusPageSubscribersAnnouncement(
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
         select: { id: true, email: true, token: true },
       });
-      if (subscriptions.length === 0) break;
+      if (subscriptions.length === 0) {
+        await recordFanoutPage(fanout.id, {
+          cursor,
+          materialized: 0,
+          failed: 0,
+          complete: true,
+        });
+        break;
+      }
+      const unsubscribeTokens = await issueUnsubscribeTokensBatch(
+        subscriptions.map(subscription => subscription.id)
+      );
+      let pageSent = 0;
+      let pageFailed = 0;
 
       for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
         const batch = subscriptions.slice(i, i + BATCH_SIZE);
@@ -581,20 +650,20 @@ export async function notifyStatusPageSubscribersAnnouncement(
                 sourceId: announcement.id,
                 eventKey: announcement.updatedAt.toISOString(),
                 displayMessage: subject,
-                trafficClass: 'BULK',
+                trafficClass,
                 priority:
                   announcement.type === 'INCIDENT'
                     ? NOTIFICATION_PRIORITY.STATUS_INCIDENT_ANNOUNCEMENT
                     : NOTIFICATION_PRIORITY.STATUS_ANNOUNCEMENT,
+                contentId: fanout.contentId,
+                fanoutId: fanout.id,
                 payload: {
                   kind: 'EMAIL',
                   providerKey: emailConfig.provider || undefined,
                   to: sub.email,
                   subject,
-                  html: html.replaceAll(
-                    '{{unsubscribe_url}}',
-                    `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
-                  ),
+                  contentId: fanout.contentId,
+                  unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
                   providerScope: { statusPageId: page.id, subscriptionId: sub.id },
                 },
               },
@@ -604,12 +673,24 @@ export async function notifyStatusPageSubscribersAnnouncement(
           })
         );
 
-        sent += results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-        failed += results.filter(
+        pageSent += results.filter(
+          r => r.status === 'fulfilled' && r.value.success && !r.value.skipped
+        ).length;
+        pageFailed += results.filter(
           r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
         ).length;
       }
+      sent += pageSent;
+      failed += pageFailed;
       cursor = subscriptions.at(-1)?.id;
+      if (cursor) {
+        await recordFanoutPage(fanout.id, {
+          cursor,
+          materialized: pageSent,
+          failed: pageFailed,
+          complete: subscriptions.length < PAGE_SIZE,
+        });
+      }
       if (subscriptions.length < PAGE_SIZE || !cursor) break;
     }
 

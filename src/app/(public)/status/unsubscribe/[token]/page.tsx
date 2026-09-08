@@ -18,10 +18,24 @@ async function confirmUnsubscribe(formData: FormData) {
       subscription &&
       statusPageSlugMatches(subscription.statusPage.slug, expectedSlug || undefined)
     ) {
-      await prisma.statusPageSubscription.updateMany({
-        where: { id: subscription.id, unsubscribedAt: null },
-        data: { unsubscribedAt: new Date() },
-      });
+      await prisma.$transaction([
+        prisma.statusPageSubscription.updateMany({
+          where: { id: subscription.id, unsubscribedAt: null },
+          data: { unsubscribedAt: new Date() },
+        }),
+        prisma.notification.updateMany({
+          where: {
+            recipientType: 'SUBSCRIBER',
+            recipientId: subscription.id,
+            status: { in: ['PENDING', 'FAILED'] },
+          },
+          data: {
+            status: 'SKIPPED',
+            payloadEncrypted: null,
+            errorMsg: 'Subscription was revoked before delivery.',
+          },
+        }),
+      ]);
       const prefix =
         subscription.statusPage.slug && !subscription.statusPage.isDefault
           ? `/status/${subscription.statusPage.slug}`

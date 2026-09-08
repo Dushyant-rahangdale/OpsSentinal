@@ -20,13 +20,14 @@ const mockPrisma = vi.hoisted(() => ({
     findFirst: vi.fn().mockResolvedValue(null),
   },
 }));
+const mockGetStatusPageSnapshot = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/prisma', () => ({
   default: mockPrisma,
 }));
 
 vi.mock('@/lib/status-pages/snapshot', () => ({
-  getStatusPageSnapshot: vi.fn().mockResolvedValue({ snapshot: null, stale: true }),
+  getStatusPageSnapshot: mockGetStatusPageSnapshot,
 }));
 
 vi.mock('@/lib/sla-server', () => ({
@@ -58,6 +59,22 @@ vi.mock('@/components/status-page/StatusPageAnnouncements', () => ({
 describe('PublicStatusPage Custom CSS', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetStatusPageSnapshot.mockResolvedValue({
+      stale: false,
+      snapshot: {
+        schemaVersion: 2,
+        pageId: 'sp-1',
+        revision: '1',
+        generatedAt: '2026-09-08T00:00:00.000Z',
+        status: 'operational',
+        services: [],
+        incidents: [],
+        uptime: {},
+        statusHistory: {},
+        announcements: [],
+        historyDays: 90,
+      },
+    });
   });
 
   it('renders custom css when provided in status page config', async () => {

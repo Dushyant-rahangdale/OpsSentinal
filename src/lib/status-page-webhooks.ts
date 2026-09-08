@@ -281,8 +281,7 @@ export async function triggerStatusPageWebhooks(
       const results = await Promise.allSettled(
         batch.map(async webhook => {
           const stableDeliveryId = statusWebhookDeliveryId(effectiveDeliveryKey, webhook.id);
-          await enqueueCentralNotification(
-            {
+          const intent = await enqueueCentralNotification({
               category: 'STATUS_PAGE',
               channel: 'WEBHOOK',
               recipientType: 'WEBHOOK',
@@ -307,11 +306,9 @@ export async function triggerStatusPageWebhooks(
                 expectedStatus: policy.expectedStatus,
                 escalationGeneration: policy.escalationGeneration,
               },
-            },
-            { dispatchImmediately: false }
-          );
+            });
 
-          return { attempted: true, success: true };
+          return { attempted: true, success: intent.delivered !== false };
         })
       );
 

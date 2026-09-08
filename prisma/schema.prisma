@@ -245,6 +245,41 @@ model ProviderAdmission {
   @@index([state, blockedUntil])
 }
 
+/// Shared provider windows are mutated once per leased token block instead of
+/// once per delivery attempt.
+model ProviderQuotaWindow {
+  id          String   @id
+  providerKey String
+  channel     String
+  windowStart DateTime
+  globalUsed  Int      @default(0)
+  bulkUsed    Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([providerKey, channel, windowStart])
+  @@index([expiresAt])
+}
+
+/// A worker reserves distributed in-flight capacity and uses a local semaphore
+/// until this crash-safe lease expires.
+model ProviderWorkerLease {
+  id            String   @id
+  workerId      String
+  providerKey   String
+  channel       String
+  reservedSlots Int
+  expiresAt     DateTime
+  heartbeatAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([workerId, providerKey, channel])
+  @@index([providerKey, channel, expiresAt])
+  @@index([expiresAt])
+}
+
 model User {
   id                           String     @id @default(cuid())
   name                         String
@@ -1060,11 +1095,15 @@ model Notification {
   sourceId          String?
   deliveryKey       String?                   @unique
   payloadEncrypted  String?
+  contentId         String?
+  fanoutId          String?
   trafficClass      NotificationTrafficClass  @default(TRANSACTIONAL)
   priority          Int                       @default(5)
   scheduledAt       DateTime                  @default(now())
   nextAttemptAt     DateTime                  @default(now())
   lastAttemptAt     DateTime?
+  claimToken        String?
+  claimedBy         String?
   maxAttempts       Int                       @default(3)
   expiresAt         DateTime?
   sentAt            DateTime?
@@ -1078,6 +1117,8 @@ model Notification {
   incident         Incident?                     @relation(fields: [incidentId], references: [id])
   user             User?                         @relation(fields: [userId], references: [id], onDelete: SetNull)
   deliveryAttempts NotificationDeliveryAttempt[]
+  content          NotificationContent?          @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  fanout           NotificationFanout?           @relation(fields: [fanoutId], references: [id], onDelete: SetNull)
 
   @@index([incidentId]) // For querying notifications by incident
   @@index([userId]) // For querying notifications by user
@@ -1088,10 +1129,51 @@ model Notification {
   @@index([incidentId, channel], name: "idx_notification_incident_channel") // For channel fallback detection per incident
   @@index([incidentId, userId, status], name: "idx_notification_incident_user_status") // For per-incident per-user dedup checks
   @@index([status, nextAttemptAt, priority, createdAt], name: "idx_notification_delivery_due")
+  @@index([trafficClass, status, nextAttemptAt, priority, createdAt], name: "idx_notification_traffic_delivery_due")
   @@index([category, createdAt], name: "idx_notification_category_created")
   @@index([recipientHash, createdAt], name: "idx_notification_recipient_created")
   @@index([sourceType, sourceId, createdAt], name: "idx_notification_source_created")
   @@index([createdAt, id], name: "idx_notification_created_cursor")
+  @@index([fanoutId, status])
+}
+
+model NotificationContent {
+  id                String               @id @default(cuid())
+  contentHash       String               @unique
+  subject           String
+  encryptedTemplate String
+  expiresAt         DateTime?
+  createdAt         DateTime             @default(now())
+  notifications     Notification[]
+  fanouts           NotificationFanout[]
+}
+
+model NotificationFanout {
+  id                  String                   @id @default(cuid())
+  statusPageId        String
+  sourceType          String
+  sourceId            String
+  eventKey            String
+  trafficClass        NotificationTrafficClass
+  providerKey         String?
+  contentId           String
+  cursor              String?
+  totalTargets        Int?
+  materializedTargets Int                      @default(0)
+  completedTargets    Int                      @default(0)
+  failedTargets       Int                      @default(0)
+  skippedTargets      Int                      @default(0)
+  status              String                   @default("PENDING")
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  content             NotificationContent      @relation(fields: [contentId], references: [id], onDelete: Restrict)
+  notifications       Notification[]
+
+  @@unique([statusPageId, sourceType, sourceId, eventKey])
+  @@index([status, createdAt])
+  @@index([statusPageId, createdAt])
 }
 
 model NotificationDeliveryAttempt {

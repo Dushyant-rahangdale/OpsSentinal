@@ -80,7 +80,9 @@ export type CentralNotificationPayload =
       kind: 'EMAIL';
       to: string;
       subject: string;
-      html: string;
+      html?: string;
+      contentId?: string;
+      unsubscribeUrl?: string;
       text?: string;
       providerScope?: {
         statusPageId: string;
@@ -170,6 +172,8 @@ export type CentralNotificationInput = {
   scheduledAt?: Date;
   expiresAt?: Date;
   maxAttempts?: number;
+  contentId?: string;
+  fanoutId?: string;
 };
 
 type NotificationStore = Pick<Prisma.TransactionClient, 'notification'>;
@@ -268,7 +272,11 @@ function isCentralNotificationPayload(value: unknown): value is CentralNotificat
         hasText(value.durableMessage)
       );
     case 'EMAIL':
-      return hasText(value.to) && hasText(value.subject) && hasText(value.html);
+      return (
+        hasText(value.to) &&
+        hasText(value.subject) &&
+        (hasText(value.html) || hasText(value.contentId))
+      );
     case 'SMS':
     case 'WHATSAPP':
       return hasText(value.to) && hasText(value.message);
@@ -376,6 +384,8 @@ export async function createCentralNotificationIntent(
         sourceId: input.sourceId,
         deliveryKey,
         payloadEncrypted,
+        contentId: input.contentId,
+        fanoutId: input.fanoutId,
         priority,
         trafficClass,
         scheduledAt,
@@ -501,9 +511,17 @@ function payloadProviderKey(payload: CentralNotificationPayload): string {
   return 'default';
 }
 
-async function providerAdmission(payload: CentralNotificationPayload) {
+async function providerAdmission(
+  payload: CentralNotificationPayload,
+  trafficClass: NotificationTrafficClass
+) {
   const channel = channelForPayload(payload);
-  return acquireProviderAdmission(channel as ProviderAdmissionScope, payloadProviderKey(payload));
+  return acquireProviderAdmission(
+    channel as ProviderAdmissionScope,
+    payloadProviderKey(payload),
+    new Date(),
+    trafficClass
+  );
 }
 
 function providerAdmissionIdentity(payload: CentralNotificationPayload) {
@@ -664,6 +682,21 @@ async function dispatchPayload(
     }
     case 'EMAIL': {
       const { sendEmail } = await import('./email');
+      let html = payload.html;
+      if (!html && payload.contentId) {
+        const content = await prisma.notificationContent.findUnique({
+          where: { id: payload.contentId },
+          select: { encryptedTemplate: true },
+        });
+        if (!content) {
+          return { success: false, statusCode: 410, error: 'Notification content expired' };
+        }
+        html = (await decrypt(content.encryptedTemplate)).replaceAll(
+          '{{unsubscribe_url}}',
+          payload.unsubscribeUrl ?? ''
+        );
+      }
+      if (!html) return { success: false, statusCode: 422, error: 'Email content is missing' };
       const config = payload.providerScope?.statusPageId
         ? await import('./notification-providers').then(module =>
             module.getStatusPageEmailConfig(payload.providerScope!.statusPageId)
@@ -685,7 +718,7 @@ async function dispatchPayload(
           {
             to: payload.to,
             subject: payload.subject,
-            html: payload.html,
+            html,
             text: payload.text,
             idempotencyKey: notificationId,
           },
@@ -1221,15 +1254,17 @@ async function finishAttempt(input: {
 }
 
 export async function deliverCentralNotification(
-  notificationId: string
+  notificationId: string,
+  options: { claimToken?: string; claimedAt?: Date } = {}
 ): Promise<{ success: boolean; claimed: boolean; error?: string }> {
-  const now = new Date();
+  const now = options.claimedAt ?? new Date();
   const candidate = await prisma.notification.findUnique({
     where: { id: notificationId },
     select: {
       id: true,
       status: true,
       category: true,
+      trafficClass: true,
       attempts: true,
       maxAttempts: true,
       nextAttemptAt: true,
@@ -1241,6 +1276,7 @@ export async function deliverCentralNotification(
       sourceId: true,
       recipientId: true,
       templateKey: true,
+      claimToken: true,
     },
   });
   if (!candidate || !candidate.payloadEncrypted) {
@@ -1267,19 +1303,25 @@ export async function deliverCentralNotification(
   ) {
     return { success: false, claimed: false };
   }
-  const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
-  const claim = await prisma.notification.updateMany({
-    where: {
-      id: candidate.id,
-      status: candidate.status,
-      attempts: candidate.attempts,
-      scheduledAt: { lte: now },
-      nextAttemptAt: { lte: now },
-      OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: staleClaimBefore } }],
-    },
-    data: { status: 'PENDING', lastAttemptAt: now, errorMsg: null },
-  });
-  if (claim.count === 0) return { success: false, claimed: false };
+  if (options.claimToken) {
+    if (candidate.claimToken !== options.claimToken || candidate.lastAttemptAt?.getTime() !== now.getTime()) {
+      return { success: false, claimed: false };
+    }
+  } else {
+    const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
+    const claim = await prisma.notification.updateMany({
+      where: {
+        id: candidate.id,
+        status: candidate.status,
+        attempts: candidate.attempts,
+        scheduledAt: { lte: now },
+        nextAttemptAt: { lte: now },
+        OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: staleClaimBefore } }],
+      },
+      data: { status: 'PENDING', lastAttemptAt: now, errorMsg: null },
+    });
+    if (claim.count === 0) return { success: false, claimed: false };
+  }
 
   if (!candidate.payloadEncrypted) {
     await prisma.notification.updateMany({
@@ -1350,7 +1392,7 @@ export async function deliverCentralNotification(
 
   let admission;
   try {
-    admission = await providerAdmission(payload);
+    admission = await providerAdmission(payload, candidate.trafficClass);
   } catch (error) {
     const errorMessage = safeError(error);
     await prisma.notification.updateMany({
@@ -1653,7 +1695,13 @@ export async function deliverCentralNotification(
   }
 }
 
-export async function processCentralNotificationQueue(): Promise<{
+export async function processCentralNotificationQueue(
+  options: {
+    trafficClasses?: readonly NotificationTrafficClass[];
+    batchSize?: number;
+    concurrency?: number;
+  } = {}
+): Promise<{
   processed: number;
   succeeded: number;
   failed: number;
@@ -1661,13 +1709,27 @@ export async function processCentralNotificationQueue(): Promise<{
   const now = new Date();
   await cleanupExpiredNotifications(now);
   const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
-  const candidates = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    SELECT "id"
-    FROM "Notification"
+  const trafficFilter = options.trafficClasses?.length
+    ? Prisma.sql`AND "trafficClass" IN (${Prisma.join(
+        options.trafficClasses.map(value => Prisma.sql`${value}::"NotificationTrafficClass"`)
+      )})`
+    : Prisma.empty;
+  const batchSize = Math.max(1, Math.min(options.batchSize ?? SYSTEM_NOTIFICATION_BATCH_SIZE, 500));
+  const concurrency = Math.max(
+    1,
+    Math.min(options.concurrency ?? SYSTEM_NOTIFICATION_CONCURRENCY, 100)
+  );
+  const claimToken = crypto.randomUUID();
+  const claimedBy = process.env.OPSKNIGHT_WORKER_ID?.slice(0, 128) || 'integrated-worker';
+  const candidates = await prisma.$queryRaw<Array<{ id: string; claimToken: string }>>(Prisma.sql`
+    WITH candidates AS (
+      SELECT "id"
+      FROM "Notification"
     WHERE "payloadEncrypted" IS NOT NULL
       AND "attempts" < "maxAttempts"
       AND "scheduledAt" <= ${now}
       AND "nextAttemptAt" <= ${now}
+      ${trafficFilter}
       AND ("expiresAt" IS NULL OR "expiresAt" > ${now})
       AND (
         "status" = 'FAILED'::"NotificationStatus"
@@ -1686,15 +1748,25 @@ export async function processCentralNotificationQueue(): Promise<{
       END,
       "priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - "createdAt")) / 300)
     ) ASC, "nextAttemptAt" ASC, "createdAt" ASC
-    LIMIT ${SYSTEM_NOTIFICATION_BATCH_SIZE}
+    FOR UPDATE SKIP LOCKED
+    LIMIT ${batchSize}
+    )
+    UPDATE "Notification" AS notification
+    SET "status" = 'PENDING'::"NotificationStatus", "lastAttemptAt" = ${now},
+      "claimToken" = ${claimToken}, "claimedBy" = ${claimedBy}, "errorMsg" = NULL
+    FROM candidates
+    WHERE notification."id" = candidates."id"
+    RETURNING notification."id", notification."claimToken"
   `);
 
   let succeeded = 0;
   let failed = 0;
-  for (let index = 0; index < candidates.length; index += SYSTEM_NOTIFICATION_CONCURRENCY) {
-    const batch = candidates.slice(index, index + SYSTEM_NOTIFICATION_CONCURRENCY);
+  for (let index = 0; index < candidates.length; index += concurrency) {
+    const batch = candidates.slice(index, index + concurrency);
     const results = await Promise.allSettled(
-      batch.map(item => deliverCentralNotification(item.id))
+      batch.map(item =>
+        deliverCentralNotification(item.id, { claimToken: item.claimToken, claimedAt: now })
+      )
     );
     for (const result of results) {
       if (result.status === 'fulfilled' && result.value.claimed && result.value.success)

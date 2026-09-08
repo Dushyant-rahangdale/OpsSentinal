@@ -1,5 +1,7 @@
-import { Prisma } from '@prisma/client';
+import crypto from 'node:crypto';
+import { Prisma, type NotificationTrafficClass } from '@prisma/client';
 import prisma from './prisma';
+import { getProviderCapacity, recordCapacityPressure, usesBulkCapacity } from './provider-capacity';
 
 export type ProviderAdmissionScope = 'EMAIL' | 'SMS' | 'WHATSAPP' | 'PUSH' | 'SLACK' | 'WEBHOOK';
 
@@ -11,39 +13,17 @@ export type ProviderConcurrencyResult =
   | { allowed: true; leaseKey: string }
   | { allowed: false; retryAt: Date; reason: 'MAX_IN_FLIGHT' };
 
-const DEFAULT_LIMITS: Record<
-  ProviderAdmissionScope,
-  { limit: number; windowMs: number; maxInFlight: number }
-> = {
-  EMAIL: { limit: 8, windowMs: 1_000, maxInFlight: 5 },
-  SMS: { limit: 20, windowMs: 1_000, maxInFlight: 10 },
-  WHATSAPP: { limit: 50, windowMs: 1_000, maxInFlight: 10 },
-  PUSH: { limit: 100, windowMs: 1_000, maxInFlight: 20 },
-  SLACK: { limit: 1, windowMs: 1_000, maxInFlight: 2 },
-  WEBHOOK: { limit: 20, windowMs: 1_000, maxInFlight: 10 },
-};
+const PROVIDER_LEASE_MS = 30_000;
+const WORKER_ID = process.env.OPSKNIGHT_WORKER_ID?.trim() || crypto.randomUUID();
+const localQuota = new Map<string, { remaining: number; expiresAt: number }>();
+const localConcurrency = new Map<string, { reserved: number; active: number; expiresAt: number }>();
+const concurrencyClaims = new Map<string, string>();
 
-function providerLimit(scope: ProviderAdmissionScope): {
-  limit: number;
-  windowMs: number;
-  maxInFlight: number;
-} {
-  switch (scope) {
-    case 'EMAIL':
-      return DEFAULT_LIMITS.EMAIL;
-    case 'SMS':
-      return DEFAULT_LIMITS.SMS;
-    case 'WHATSAPP':
-      return DEFAULT_LIMITS.WHATSAPP;
-    case 'PUSH':
-      return DEFAULT_LIMITS.PUSH;
-    case 'SLACK':
-      return DEFAULT_LIMITS.SLACK;
-    case 'WEBHOOK':
-      return DEFAULT_LIMITS.WEBHOOK;
-  }
+export function resetProviderAdmissionForTests() {
+  localQuota.clear();
+  localConcurrency.clear();
+  concurrencyClaims.clear();
 }
-const PROVIDER_LEASE_MS = 10 * 60_000;
 
 function bucketKey(scope: ProviderAdmissionScope, providerKey: string): string {
   return `provider:${scope.toLowerCase()}:${providerKey}`.slice(0, 240);
@@ -58,45 +38,54 @@ function bucketKey(scope: ProviderAdmissionScope, providerKey: string): string {
 export async function acquireProviderAdmission(
   scope: ProviderAdmissionScope,
   providerKey: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  trafficClass?: NotificationTrafficClass
 ): Promise<ProviderAdmissionResult> {
-  const config = providerLimit(scope);
-  const key = bucketKey(scope, providerKey);
-  const intervalMs = config.windowMs / config.limit;
-  const burstToleranceMs = intervalMs * Math.max(0, config.limit - 1);
-  const expiresAt = new Date(now.getTime() + intervalMs);
-  const eligibleAt = new Date(now.getTime() + burstToleranceMs);
-  const admitted = await prisma.$queryRaw<Array<{ expiresAt: Date }>>(Prisma.sql`
-    INSERT INTO "RateLimit" ("key", "count", "expiresAt")
-    VALUES (${key}, 1, ${expiresAt})
-    ON CONFLICT ("key") DO UPDATE SET
-      "count" = "RateLimit"."count" + 1,
-      "expiresAt" = GREATEST("RateLimit"."expiresAt", ${now}) + (${intervalMs} * INTERVAL '1 millisecond')
-    WHERE "RateLimit"."expiresAt" <= ${eligibleAt}
-    RETURNING "expiresAt"
-  `);
-  if (admitted.length > 0) return { allowed: true };
-
-  // A conflicting row that did not satisfy the conditional update represents a
-  // shared budget that is full. Read it after the UPSERT lock has been released
-  // to calculate a precise scheduler wake-up rather than failing the delivery.
-  const existing = await prisma.rateLimit.findUnique({ where: { key } });
-  if (existing) {
-    return {
-      allowed: false,
-      retryAt: new Date(existing.expiresAt.getTime() - burstToleranceMs),
-      reason: 'RATE_LIMITED',
-    };
+  const capacity = getProviderCapacity(scope, providerKey);
+  const bulk = usesBulkCapacity(trafficClass);
+  const cacheKey = `${bucketKey(scope, providerKey)}:${bulk ? 'bulk' : 'global'}`;
+  const cached = localQuota.get(cacheKey);
+  if (cached && cached.expiresAt > now.getTime() && cached.remaining > 0) {
+    cached.remaining -= 1;
+    return { allowed: true };
   }
 
-  // Cleanup can delete an expired row between the conditional UPSERT and the
-  // read. A short deferral lets the worker safely retry instead of reporting a
-  // transient storage race as a provider failure.
-  return {
-    allowed: false,
-    retryAt: new Date(now.getTime() + intervalMs),
-    reason: 'RATE_LIMITED',
-  };
+  const windowStart = new Date(Math.floor(now.getTime() / 1_000) * 1_000);
+  const expiresAt = new Date(windowStart.getTime() + 1_000);
+  const id = `${scope}:${providerKey}:${windowStart.getTime()}`.slice(0, 240);
+  const requested = Math.min(
+    capacity.quotaBlockSize,
+    bulk ? capacity.bulkRatePerSecond : capacity.effectiveRatePerSecond
+  );
+  const rows = await prisma.$queryRaw<Array<{ granted: number }>>(Prisma.sql`
+    WITH ensured AS (
+      INSERT INTO "ProviderQuotaWindow"
+        ("id", "providerKey", "channel", "windowStart", "globalUsed", "bulkUsed", "expiresAt", "updatedAt")
+      VALUES (${id}, ${providerKey}, ${scope}, ${windowStart}, 0, 0, ${expiresAt}, NOW())
+      ON CONFLICT ("id") DO UPDATE SET "expiresAt" = EXCLUDED."expiresAt", "updatedAt" = NOW()
+      RETURNING *
+    ), capacity AS (
+      SELECT LEAST(
+        ${requested},
+        GREATEST(0, ${capacity.effectiveRatePerSecond} - "globalUsed"),
+        ${bulk ? Prisma.sql`GREATEST(0, ${capacity.bulkRatePerSecond} - "bulkUsed")` : Prisma.sql`${requested}`}
+      )::integer AS granted
+      FROM ensured
+    )
+    UPDATE "ProviderQuotaWindow" AS window
+    SET "globalUsed" = window."globalUsed" + capacity.granted,
+        "bulkUsed" = window."bulkUsed" + ${bulk ? Prisma.sql`capacity.granted` : Prisma.sql`0`},
+        "updatedAt" = NOW()
+    FROM capacity
+    WHERE window."id" = ${id} AND capacity.granted > 0
+    RETURNING capacity.granted
+  `);
+  const granted = Number(rows[0]?.granted ?? 0);
+  if (granted > 0) {
+    localQuota.set(cacheKey, { remaining: granted - 1, expiresAt: expiresAt.getTime() });
+    return { allowed: true };
+  }
+  return { allowed: false, retryAt: expiresAt, reason: 'RATE_LIMITED' };
 }
 
 /** Persist a provider-supplied cooldown (for example HTTP Retry-After) across replicas. */
@@ -105,19 +94,23 @@ export async function deferProviderAdmission(
   providerKey: string,
   retryAt: Date
 ): Promise<void> {
-  const config = providerLimit(scope);
+  const config = getProviderCapacity(scope, providerKey);
   const key = bucketKey(scope, providerKey);
-  const intervalMs = config.windowMs / config.limit;
+  const intervalMs = 1_000 / config.effectiveRatePerSecond;
   const cooldownTheoreticalArrival = new Date(
-    retryAt.getTime() + intervalMs * Math.max(0, config.limit - 1)
+    retryAt.getTime() + intervalMs * Math.max(0, config.effectiveRatePerSecond - 1)
   );
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO "RateLimit" ("key", "count", "expiresAt")
-    VALUES (${key}, ${config.limit}, ${cooldownTheoreticalArrival})
+    VALUES (${key}, ${config.effectiveRatePerSecond}, ${cooldownTheoreticalArrival})
     ON CONFLICT ("key") DO UPDATE SET
       "count" = GREATEST("RateLimit"."count", EXCLUDED."count"),
       "expiresAt" = GREATEST("RateLimit"."expiresAt", EXCLUDED."expiresAt")
   `);
+  for (const localKey of localQuota.keys()) {
+    if (localKey.startsWith(`${key}:`)) localQuota.delete(localKey);
+  }
+  recordCapacityPressure(scope, providerKey);
 }
 
 /** Distributed concurrency slots with expiring leases for crashed workers. */
@@ -126,31 +119,61 @@ export async function acquireProviderConcurrency(
   providerKey: string,
   now: Date = new Date()
 ): Promise<ProviderConcurrencyResult> {
-  const config = providerLimit(scope);
-  const prefix = bucketKey(scope, providerKey).replace(/^provider:/, 'provider-inflight:');
-  const expiresAt = new Date(now.getTime() + PROVIDER_LEASE_MS);
-  for (let slot = 0; slot < config.maxInFlight; slot += 1) {
-    const leaseKey = `${prefix}:${slot}`.slice(0, 240);
-    const claimed = await prisma.$queryRaw<Array<{ key: string }>>(Prisma.sql`
-      INSERT INTO "RateLimit" ("key", "count", "expiresAt")
-      VALUES (${leaseKey}, 1, ${expiresAt})
-      ON CONFLICT ("key") DO UPDATE SET
-        "count" = 1,
-        "expiresAt" = EXCLUDED."expiresAt"
-      WHERE "RateLimit"."expiresAt" <= ${now}
-      RETURNING "key"
+  const config = getProviderCapacity(scope, providerKey);
+  const poolKey = `${scope}:${providerKey}`;
+  let local = localConcurrency.get(poolKey);
+  if (!local || local.expiresAt <= now.getTime()) {
+    const id = `${WORKER_ID}:${poolKey}`.slice(0, 240);
+    const requested = Math.min(20, config.maxInFlight);
+    const rows = await prisma.$queryRaw<Array<{ reservedSlots: number }>>(Prisma.sql`
+      WITH lock AS (
+        SELECT pg_advisory_xact_lock(hashtextextended(${`provider-slots:${poolKey}`}, 0))
+      ), available AS (
+        SELECT GREATEST(0, ${config.maxInFlight} - COALESCE(SUM("reservedSlots"), 0))::integer AS slots
+        FROM "ProviderWorkerLease", lock
+        WHERE "providerKey" = ${providerKey} AND "channel" = ${scope}
+          AND "expiresAt" > ${now} AND "workerId" <> ${WORKER_ID}
+      )
+      INSERT INTO "ProviderWorkerLease"
+        ("id", "workerId", "providerKey", "channel", "reservedSlots", "expiresAt", "heartbeatAt", "updatedAt")
+      SELECT ${id}, ${WORKER_ID}, ${providerKey}, ${scope}, LEAST(${requested}, slots),
+        ${new Date(now.getTime() + PROVIDER_LEASE_MS)}, ${now}, NOW()
+      FROM available WHERE slots > 0
+      ON CONFLICT ("id") DO UPDATE SET
+        "reservedSlots" = EXCLUDED."reservedSlots", "expiresAt" = EXCLUDED."expiresAt",
+        "heartbeatAt" = EXCLUDED."heartbeatAt", "updatedAt" = NOW()
+      RETURNING "reservedSlots"
     `);
-    if (claimed.length > 0) return { allowed: true, leaseKey };
+    const reserved = Number(rows[0]?.reservedSlots ?? 0);
+    if (reserved === 0) {
+      return {
+        allowed: false,
+        retryAt: new Date(now.getTime() + 250),
+        reason: 'MAX_IN_FLIGHT',
+      };
+    }
+    local = { reserved, active: 0, expiresAt: now.getTime() + PROVIDER_LEASE_MS };
+    localConcurrency.set(poolKey, local);
   }
-  return {
-    allowed: false,
-    retryAt: new Date(now.getTime() + 1_000),
-    reason: 'MAX_IN_FLIGHT',
-  };
+  if (local.active >= local.reserved) {
+    return {
+      allowed: false,
+      retryAt: new Date(now.getTime() + 25),
+      reason: 'MAX_IN_FLIGHT',
+    };
+  }
+  local.active += 1;
+  const leaseKey = `${poolKey}:${crypto.randomUUID()}`;
+  concurrencyClaims.set(leaseKey, poolKey);
+  return { allowed: true, leaseKey };
 }
 
 export async function releaseProviderConcurrency(leaseKey: string): Promise<void> {
-  await prisma.rateLimit.deleteMany({ where: { key: leaseKey } });
+  const poolKey = concurrencyClaims.get(leaseKey);
+  if (!poolKey) return;
+  concurrencyClaims.delete(leaseKey);
+  const local = localConcurrency.get(poolKey);
+  if (local) local.active = Math.max(0, local.active - 1);
 }
 
 export class ProviderCooldownError extends Error {

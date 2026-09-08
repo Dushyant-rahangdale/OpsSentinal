@@ -5,11 +5,8 @@ import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
-import { publicStatusVisibility } from '@/lib/status-page-public-data';
 import { createHash } from 'node:crypto';
-import { getReportingWindowForDays } from '@/lib/retention-policy';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
-import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
 import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
 import {
   PRIVATE_STATUS_CACHE_CONTROL,
@@ -77,8 +74,6 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
       }
     }
 
-    const visibility = publicStatusVisibility(statusPage);
-
     const projected = await getStatusPageSnapshot(statusPage.id);
     if (projected.snapshot) {
       const snapshot = projected.snapshot;
@@ -111,95 +106,18 @@ export async function getStatusRssResponse(req: NextRequest, slug?: string) {
       );
     }
 
-    const serviceIds = statusPage.services.map(sp => sp.serviceId);
-
-    const baseUrl = getBaseUrl();
-    const pageUrl = getStatusPagePublicUrl(statusPage, baseUrl);
-    const rssUrl = slug
-      ? `${baseUrl}/api/status/${encodeURIComponent(slug)}/rss`
-      : `${baseUrl}/api/status/rss`;
-
-    const limits = statusPagePublicationLimits(statusPage);
-    const window = await getReportingWindowForDays(limits.historyDays, 'incident');
-    const incidents =
-      visibility.showIncidents && serviceIds.length > 0
-        ? await prisma.incident.findMany({
-            where: {
-              serviceId: { in: serviceIds },
-              visibility: 'PUBLIC',
-              createdAt: { gte: window.start, lte: window.end },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: limits.maxIncidents,
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              status: true,
-              createdAt: true,
-              service: { select: { name: true } },
-            },
-          })
-        : [];
-
-    const description = window.isClipped
-      ? 'Current status and incidents (limited by configured retention)'
-      : 'Current status and incidents';
-
-    // Generate RSS XML
-    const rss = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-    <channel>
-        <title>${escapeXml(statusPage.name)} - Status Updates</title>
-        <link>${pageUrl}</link>
-        <description>${escapeXml(description)}</description>
-        <language>en</language>
-        <atom:link href="${rssUrl}" rel="self" type="application/rss+xml" />
-        ${incidents
-          .map(incident => {
-            const status =
-              incident.status === 'RESOLVED'
-                ? 'Resolved'
-                : incident.status === 'ACKNOWLEDGED'
-                  ? 'Acknowledged'
-                  : 'Investigating';
-            const pubDate = visibility.showIncidentTimestamp
-              ? new Date(incident.createdAt).toUTCString()
-              : null;
-            const guid = visibility.showIncidentId
-              ? `${pageUrl}#incident-${incident.id}`
-              : opaqueRssIncidentGuid(pageUrl, statusPage.id, incident.id);
-            const serviceName = visibility.showAffectedService
-              ? incident.service?.name || 'General'
-              : null;
-            const incidentTitle = visibility.showIncidentTitle ? incident.title : 'Status update';
-            const incidentDetails = visibility.showIncidentDescription
-              ? incident.description || incidentTitle
-              : incidentTitle;
-
-            return `
-        <item>
-            <title>${escapeXml(incidentTitle)} - ${status}</title>
-            <link>${guid}</link>
-            <guid isPermaLink="false">${guid}</guid>
-            ${pubDate ? `<pubDate>${pubDate}</pubDate>` : ''}
-            <description>${escapeXml(incidentDetails)}${serviceName ? ` - Service: ${escapeXml(serviceName)}` : ''}</description>
-            ${serviceName ? `<category>${escapeXml(serviceName)}</category>` : ''}
-        </item>`;
-          })
-          .join('')}
-    </channel>
-</rss>`;
-
-    return new NextResponse(rss, {
+    return new NextResponse('Published status information is temporarily unavailable', {
+      status: 503,
       headers: {
-        'Content-Type': 'application/rss+xml; charset=utf-8',
-        'Cache-Control':
-          statusPage.requireAuth || statusPage.statusApiRequireToken
-            ? PRIVATE_STATUS_CACHE_CONTROL
-            : PUBLIC_STATUS_CACHE_CONTROL,
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Retry-After': '30',
+        'Cache-Control': 'public, max-age=5, stale-if-error=30',
       },
     });
+
+    // Retained temporarily for compatibility while snapshot-only serving settles.
+    // This guard also keeps the legacy fallback type-safe although it is unreachable.
+    if (!statusPage) return new NextResponse('Status page not found', { status: 404 });
   } catch (error: unknown) {
     logger.error('api.status.rss_error', {
       error: error instanceof Error ? error.message : String(error),

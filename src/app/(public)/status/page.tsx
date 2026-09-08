@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+/* eslint-disable @typescript-eslint/no-explicit-any, security/detect-object-injection, react/no-unescaped-entities, @next/next/no-img-element */
 import { Metadata } from 'next';
 import { Globe, Mail } from 'lucide-react';
 import { getBaseUrl } from '@/lib/env-validation';
@@ -167,10 +168,22 @@ export async function renderPublicStatusPage(slug?: string) {
     );
   }
 
-  return renderStatusPage(statusPage);
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        padding: '2rem',
+        color: '#374151',
+      }}
+    >
+      <p>Status information is temporarily unavailable.</p>
+    </main>
+  );
 }
 
-async function renderStatusPage(statusPage: any) {
+export async function renderStatusPage(statusPage: any) {
   const statusPagePath =
     statusPage.slug && !statusPage.isDefault ? `/status/${statusPage.slug}` : '/status';
   const statusApiPath =
@@ -194,7 +207,7 @@ async function renderStatusPage(statusPage: any) {
     statusPage.branding &&
     typeof statusPage.branding === 'object' &&
     !Array.isArray(statusPage.branding)
-      ? (statusPage.branding as Record<string, any>) // eslint-disable-line @typescript-eslint/no-explicit-any
+      ? (statusPage.branding as Record<string, any>)
       : {};
 
   const computedTheme = computeStatusPageTheme({
@@ -223,7 +236,7 @@ async function renderStatusPage(statusPage: any) {
   const serviceIds = visibleMappings.map((sp: { serviceId: string }) => sp.serviceId);
 
   // If no services are configured, get all services (or show empty state)
-  let services: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let services: any[] = [];
   if (serviceIds.length > 0) {
     services = await prisma.service.findMany({
       where: { id: { in: serviceIds } },
@@ -614,7 +627,7 @@ async function renderStatusPage(statusPage: any) {
             paddingTop: 'clamp(1.5rem, 4vw, 2rem)',
             paddingBottom: 'clamp(1.5rem, 4vw, 2rem)',
             boxSizing: 'border-box',
-            ['--status-card-shadow' as any]: '0 6px 16px rgba(15, 23, 42, 0.05)', // eslint-disable-line @typescript-eslint/no-explicit-any
+            ['--status-card-shadow' as any]: '0 6px 16px rgba(15, 23, 42, 0.05)',
           }}
         >
           <section style={{ marginBottom: 'clamp(2rem, 6vw, 3rem)' }}>
@@ -883,7 +896,7 @@ async function renderStatusPage(statusPage: any) {
             )}
 
           {statusPage.showChangelog &&
-            announcementsWithServices.some((item: any) => item.type === 'UPDATE') && ( // eslint-disable-line @typescript-eslint/no-explicit-any
+            announcementsWithServices.some((item: any) => item.type === 'UPDATE') && (
               <section style={{ marginBottom: 'clamp(2rem, 6vw, 4rem)' }}>
                 <div style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
                   <h2
@@ -915,63 +928,56 @@ async function renderStatusPage(statusPage: any) {
                   }}
                 >
                   {announcementsWithServices
-                    .filter((item: any) => item.type === 'UPDATE') // eslint-disable-line @typescript-eslint/no-explicit-any
+                    .filter((item: any) => item.type === 'UPDATE')
                     .slice(0, 6)
-                    .map(
-                      (
-                        update: any // eslint-disable-line @typescript-eslint/no-explicit-any
-                      ) => (
+                    .map((update: any) => (
+                      <div
+                        key={update.id}
+                        style={{
+                          padding: 'clamp(1rem, 3vw, 1.25rem)',
+                          background: 'var(--status-panel-bg, #ffffff)',
+                          border: '1px solid var(--status-panel-border, #e5e7eb)',
+                          borderRadius: '0.875rem',
+                          boxShadow: 'var(--status-card-shadow, 0 4px 12px rgba(15, 23, 42, 0.05))',
+                        }}
+                      >
                         <div
-                          key={update.id}
                           style={{
-                            padding: 'clamp(1rem, 3vw, 1.25rem)',
-                            background: 'var(--status-panel-bg, #ffffff)',
-                            border: '1px solid var(--status-panel-border, #e5e7eb)',
-                            borderRadius: '0.875rem',
-                            boxShadow:
-                              'var(--status-card-shadow, 0 4px 12px rgba(15, 23, 42, 0.05))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '1rem',
+                            flexWrap: 'wrap',
+                            marginBottom: '0.5rem',
                           }}
                         >
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '1rem',
-                              flexWrap: 'wrap',
-                              marginBottom: '0.5rem',
-                            }}
-                          >
-                            <div
-                              style={{ fontWeight: '700', color: 'var(--status-text, #111827)' }}
-                            >
-                              {update.title}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: '0.8rem',
-                                color: 'var(--status-text-muted, #6b7280)',
-                              }}
-                            >
-                              {new Date(update.startDate).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </div>
+                          <div style={{ fontWeight: '700', color: 'var(--status-text, #111827)' }}>
+                            {update.title}
                           </div>
                           <div
                             style={{
-                              fontSize: '0.9rem',
-                              color: 'var(--status-text-muted, #4b5563)',
-                              whiteSpace: 'pre-wrap',
+                              fontSize: '0.8rem',
+                              color: 'var(--status-text-muted, #6b7280)',
                             }}
                           >
-                            {update.message}
+                            {new Date(update.startDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
                           </div>
                         </div>
-                      )
-                    )}
+                        <div
+                          style={{
+                            fontSize: '0.9rem',
+                            color: 'var(--status-text-muted, #4b5563)',
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          {update.message}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </section>
             )}

@@ -16,9 +16,15 @@ import { configurePrismaDatasource } from './prisma-datasource';
 const prismaClientSingleton = () => {
   // Log configuration for debugging
   const logLevel: Array<'error' | 'warn'> = ['error', 'warn'];
+  const rolePoolVariable = process.env.OPSKNIGHT_PROCESS_ROLE
+    ? `DATABASE_POOL_SIZE_${process.env.OPSKNIGHT_PROCESS_ROLE.toUpperCase().replaceAll('-', '_')}`
+    : '';
+  // Environment variable names are administrator-controlled configuration.
+  // eslint-disable-next-line security/detect-object-injection
+  const rolePoolSize = rolePoolVariable ? process.env[rolePoolVariable] : undefined;
   const datasourceUrl = configurePrismaDatasource(
     process.env.DATABASE_URL,
-    process.env.DATABASE_POOL_SIZE
+    rolePoolSize ?? process.env.DATABASE_POOL_SIZE
   );
 
   return new PrismaClient({

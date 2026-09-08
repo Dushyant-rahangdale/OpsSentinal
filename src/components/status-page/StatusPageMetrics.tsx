@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable security/detect-object-injection */
 
 import { useMemo, useState, useEffect } from 'react';
 import LoadingWrapper from '@/components/ui/LoadingWrapper';
@@ -25,6 +26,7 @@ interface StatusPageMetricsProps {
   ninetyDaysAgo: Date | string;
   uptimeExcellentThreshold?: number;
   uptimeGoodThreshold?: number;
+  precomputedUptime?: Record<string, number>;
 }
 
 // Helper function to format percentage consistently (SSR-safe)
@@ -116,6 +118,7 @@ export default function StatusPageMetrics({
   ninetyDaysAgo,
   uptimeExcellentThreshold = 99.9,
   uptimeGoodThreshold = 99.0,
+  precomputedUptime,
 }: StatusPageMetricsProps) {
   const [isClient, setIsClient] = useState(false);
 
@@ -133,10 +136,16 @@ export default function StatusPageMetrics({
 
     return services.map(service => ({
       service: service.name,
-      thirtyDays: calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd),
-      ninetyDays: calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd),
+      thirtyDays:
+        precomputedUptime?.[service.id] === undefined
+          ? calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd)
+          : { uptime: precomputedUptime[service.id], downtime: 0, incidents: 0 },
+      ninetyDays:
+        precomputedUptime?.[service.id] === undefined
+          ? calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd)
+          : { uptime: precomputedUptime[service.id], downtime: 0, incidents: 0 },
     }));
-  }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo]);
+  }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo, precomputedUptime]);
 
   if (services.length === 0) return null;
 

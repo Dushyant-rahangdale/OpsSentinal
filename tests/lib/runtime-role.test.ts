@@ -7,6 +7,7 @@ describe('runtime process roles', () => {
     expect(getRuntimeResponsibilities('integrated')).toEqual({
       startScheduler: true,
       startJobWorker: true,
+      workerLane: 'all',
     });
   });
 
@@ -14,15 +15,21 @@ describe('runtime process roles', () => {
     expect(getRuntimeResponsibilities('web')).toEqual({
       startScheduler: false,
       startJobWorker: false,
+      workerLane: null,
     });
     expect(getRuntimeResponsibilities('scheduler')).toEqual({
       startScheduler: true,
       startJobWorker: false,
+      workerLane: null,
     });
     expect(getRuntimeResponsibilities('worker')).toEqual({
       startScheduler: false,
       startJobWorker: true,
+      workerLane: 'all',
     });
+    expect(getRuntimeResponsibilities('critical-worker').workerLane).toBe('critical');
+    expect(getRuntimeResponsibilities('bulk-worker').workerLane).toBe('bulk');
+    expect(getRuntimeResponsibilities('status-projector').workerLane).toBe('projector');
   });
 
   it('normalizes configured role names', () => {
