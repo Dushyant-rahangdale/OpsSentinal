@@ -544,17 +544,17 @@ export default function ProviderCard({
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60 pt-4">
               <div className="flex-1 w-full">
                 {saveStatus === 'success' && (
-                  <Alert className="bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 py-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    <AlertDescription className="text-xs font-medium">
+                  <Alert className="flex items-center gap-2 bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 py-2 [&>svg]:static [&>svg]:shrink-0 [&>svg+div]:translate-y-0 [&>svg~*]:pl-0">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                    <AlertDescription className="text-xs font-medium leading-4">
                       Configuration updated successfully
                     </AlertDescription>
                   </Alert>
                 )}
                 {saveStatus === 'error' && error && (
-                  <Alert variant="destructive" className="py-2">
-                    <XCircle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">{error}</AlertDescription>
+                  <Alert variant="destructive" className="flex items-center gap-2 py-2 [&>svg]:static [&>svg]:shrink-0 [&>svg+div]:translate-y-0 [&>svg~*]:pl-0">
+                    <XCircle className="h-4 w-4 shrink-0" />
+                    <AlertDescription className="text-xs leading-4">{error}</AlertDescription>
                   </Alert>
                 )}
               </div>
