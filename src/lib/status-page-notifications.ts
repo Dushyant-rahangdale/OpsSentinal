@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { NOTIFICATION_PRIORITY, statusNotificationPriority } from '@/lib/notification-priority';
 import { issueUnsubscribeToken } from '@/lib/status-pages/subscription-tokens';
 import { getStatusPageEmailConfig } from '@/lib/notification-providers';
 import { enqueueCentralNotification } from '@/lib/notification-control-plane';
@@ -149,37 +150,41 @@ export async function notifyStatusPageSubscribers(
           const batch = subscriptions.slice(i, i + BATCH_SIZE);
           const results = await Promise.allSettled(
             batch.map(async sub => {
-              const intent = await enqueueCentralNotification({
-                category: 'STATUS_PAGE',
-                channel: 'EMAIL',
-                recipientType: 'SUBSCRIBER',
-                recipientId: sub.id,
-                recipientAddress: sub.email,
-                incidentId,
-                templateKey: `status-page-incident-${eventType}`,
-                sourceType: 'STATUS_PAGE_INCIDENT',
-                sourceId: `${page.id}:${incidentId}`,
-                eventKey: effectiveDeliveryKey,
-                displayMessage: subject,
-                priority: eventType === 'resolved' ? 3 : 1,
-                payload: {
-                  kind: 'EMAIL',
-                  to: sub.email,
-                  subject,
-                  html: html.replaceAll(
-                    '{{unsubscribe_url}}',
-                    `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
-                  ),
-                  providerScope: {
-                    statusPageId: page.id,
-                    subscriptionId: sub.id,
-                    incidentId,
-                    eventType,
-                    expectedStatus: incident.status,
-                    escalationGeneration: incident.escalationGeneration,
+              const intent = await enqueueCentralNotification(
+                {
+                  category: 'STATUS_PAGE',
+                  channel: 'EMAIL',
+                  recipientType: 'SUBSCRIBER',
+                  recipientId: sub.id,
+                  recipientAddress: sub.email,
+                  incidentId,
+                  templateKey: `status-page-incident-${eventType}`,
+                  sourceType: 'STATUS_PAGE_INCIDENT',
+                  sourceId: `${page.id}:${incidentId}`,
+                  eventKey: effectiveDeliveryKey,
+                  displayMessage: subject,
+                  ...statusNotificationPriority(eventType),
+                  payload: {
+                    kind: 'EMAIL',
+                    providerKey: emailConfig.provider || undefined,
+                    to: sub.email,
+                    subject,
+                    html: html.replaceAll(
+                      '{{unsubscribe_url}}',
+                      `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
+                    ),
+                    providerScope: {
+                      statusPageId: page.id,
+                      subscriptionId: sub.id,
+                      incidentId,
+                      eventType,
+                      expectedStatus: incident.status,
+                      escalationGeneration: incident.escalationGeneration,
+                    },
                   },
                 },
-              });
+                { dispatchImmediately: false }
+              );
               return { success: true, skipped: !intent.created };
             })
           );
@@ -195,7 +200,7 @@ export async function notifyStatusPageSubscribers(
         if (subscriptions.length < PAGE_SIZE || !cursor) break;
       }
 
-      logger.info(`Status page notifications sent: ${sent} success, ${failed} failed`);
+      logger.info(`Status page notifications enqueued: ${sent} success, ${failed} failed`);
       totalSent += sent;
       totalFailed += failed;
     }
@@ -219,17 +224,21 @@ export async function notifyStatusPageSubscribers(
 
 function formatSubject(pageName: string, incidentTitle: string, eventType: string): string {
   const prefix = `[${pageName}]`;
-  const statusMap: Record<string, string> = {
-    triggered: 'New Incident',
-    acknowledged: 'Investigating',
-    resolved: 'Resolved',
-    investigating: 'Investigating',
-    identified: 'Identified',
-    monitoring: 'Monitoring',
-    completed: 'Completed',
-  };
-
-  return `${prefix} ${statusMap[eventType] || 'Update'}: ${incidentTitle}`;
+  const label =
+    eventType === 'triggered'
+      ? 'New Incident'
+      : eventType === 'acknowledged' || eventType === 'investigating'
+        ? 'Investigating'
+        : eventType === 'resolved'
+          ? 'Resolved'
+          : eventType === 'identified'
+            ? 'Identified'
+            : eventType === 'monitoring'
+              ? 'Monitoring'
+              : eventType === 'completed'
+                ? 'Completed'
+                : 'Update';
+  return `${prefix} ${label}: ${incidentTitle}`;
 }
 
 function resolveBrandLogoUrl(logoUrl: string | undefined, baseUrl: string): string | undefined {
@@ -270,7 +279,11 @@ function normalizeSupportUrl(value?: string | null): string | undefined {
 
 function formatEmailBody(
   pageName: string,
-  incident: any,
+  incident: {
+    title?: string | null;
+    description?: string | null;
+    service?: { name?: string | null } | null;
+  },
   eventType: string,
   statusPageUrl: string,
   contactUrl?: string | null,
@@ -281,22 +294,20 @@ function formatEmailBody(
     showTimestamp: boolean;
   } = { showAffectedService: true, showDescription: true, showTimestamp: true }
 ): string {
-  const statusMap: Record<
+  const statusInfo = new Map<
     string,
     { label: string; badge: 'success' | 'warning' | 'error' | 'info' }
-  > = {
-    triggered: { label: 'New Incident', badge: 'error' },
-    acknowledged: { label: 'Investigating', badge: 'warning' },
-    resolved: { label: 'Resolved', badge: 'success' },
-    investigating: { label: 'Investigating', badge: 'warning' },
-    identified: { label: 'Identified', badge: 'warning' },
-    monitoring: { label: 'Monitoring', badge: 'info' },
-    completed: { label: 'Maintenance Completed', badge: 'success' },
-    scheduled: { label: 'Maintenance Scheduled', badge: 'info' },
-    inprogress: { label: 'In Progress', badge: 'warning' },
-  };
-
-  const statusInfo = statusMap[eventType] || { label: 'Update', badge: 'info' };
+  >([
+    ['triggered', { label: 'New Incident', badge: 'error' }],
+    ['acknowledged', { label: 'Investigating', badge: 'warning' }],
+    ['resolved', { label: 'Resolved', badge: 'success' }],
+    ['investigating', { label: 'Investigating', badge: 'warning' }],
+    ['identified', { label: 'Identified', badge: 'warning' }],
+    ['monitoring', { label: 'Monitoring', badge: 'info' }],
+    ['completed', { label: 'Maintenance Completed', badge: 'success' }],
+    ['scheduled', { label: 'Maintenance Scheduled', badge: 'info' }],
+    ['inprogress', { label: 'In Progress', badge: 'warning' }],
+  ]).get(eventType) ?? { label: 'Update', badge: 'info' as const };
   const safePageName = escapeHtml(pageName);
   const safeIncidentTitle = escapeHtml(incident.title || 'Incident Update');
   const safeServiceName = escapeHtml(incident.service?.name || 'Service');
@@ -333,8 +344,16 @@ function formatEmailBody(
     },
   };
 
+  const headerGradient =
+    statusInfo.badge === 'success'
+      ? headerGradients.success
+      : statusInfo.badge === 'warning'
+        ? headerGradients.warning
+        : statusInfo.badge === 'error'
+          ? headerGradients.error
+          : headerGradients.info;
   const header = SubscriberEmailHeader(safePageName, safeStatusLabel, safeIncidentTitle, {
-    headerGradient: headerGradients[statusInfo.badge] || headerGradients.info,
+    headerGradient,
     logoUrl,
     brandName: safePageName,
   });
@@ -370,7 +389,14 @@ function formatEmailBody(
         </div>
     `;
 
-  const buttonTheme = buttonThemes[statusInfo.badge] || buttonThemes.info;
+  const buttonTheme =
+    statusInfo.badge === 'success'
+      ? buttonThemes.success
+      : statusInfo.badge === 'warning'
+        ? buttonThemes.warning
+        : statusInfo.badge === 'error'
+          ? buttonThemes.error
+          : buttonThemes.info;
   contentBody += EmailButton('View Status Page', safeStatusPageUrl, {
     buttonBackground: buttonTheme.background,
     buttonShadow: buttonTheme.shadow,
@@ -543,29 +569,37 @@ export async function notifyStatusPageSubscribersAnnouncement(
         const batch = subscriptions.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(
           batch.map(async sub => {
-            const intent = await enqueueCentralNotification({
-              category: 'STATUS_PAGE',
-              channel: 'EMAIL',
-              recipientType: 'SUBSCRIBER',
-              recipientId: sub.id,
-              recipientAddress: sub.email,
-              templateKey: 'status-page-announcement',
-              sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
-              sourceId: announcement.id,
-              eventKey: announcement.updatedAt.toISOString(),
-              displayMessage: subject,
-              priority: announcement.type === 'INCIDENT' ? 1 : 4,
-              payload: {
-                kind: 'EMAIL',
-                to: sub.email,
-                subject,
-                html: html.replaceAll(
-                  '{{unsubscribe_url}}',
-                  `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
-                ),
-                providerScope: { statusPageId: page.id },
+            const intent = await enqueueCentralNotification(
+              {
+                category: 'STATUS_PAGE',
+                channel: 'EMAIL',
+                recipientType: 'SUBSCRIBER',
+                recipientId: sub.id,
+                recipientAddress: sub.email,
+                templateKey: 'status-page-announcement',
+                sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
+                sourceId: announcement.id,
+                eventKey: announcement.updatedAt.toISOString(),
+                displayMessage: subject,
+                trafficClass: 'BULK',
+                priority:
+                  announcement.type === 'INCIDENT'
+                    ? NOTIFICATION_PRIORITY.STATUS_INCIDENT_ANNOUNCEMENT
+                    : NOTIFICATION_PRIORITY.STATUS_ANNOUNCEMENT,
+                payload: {
+                  kind: 'EMAIL',
+                  providerKey: emailConfig.provider || undefined,
+                  to: sub.email,
+                  subject,
+                  html: html.replaceAll(
+                    '{{unsubscribe_url}}',
+                    `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
+                  ),
+                  providerScope: { statusPageId: page.id, subscriptionId: sub.id },
+                },
               },
-            });
+              { dispatchImmediately: false }
+            );
             return { success: true, skipped: !intent.created };
           })
         );
@@ -579,7 +613,7 @@ export async function notifyStatusPageSubscribersAnnouncement(
       if (subscriptions.length < PAGE_SIZE || !cursor) break;
     }
 
-    logger.info(`Status announcement notifications sent: ${sent} success, ${failed} failed`);
+    logger.info(`Status announcement notifications enqueued: ${sent} success, ${failed} failed`);
     addOperationalMetric('opsknight_status_page_fanout_total', sent, {
       event: 'announcement',
       outcome: 'enqueued',

@@ -86,6 +86,13 @@ enum NotificationChannel {
   WHATSAPP
 }
 
+enum NotificationTrafficClass {
+  CRITICAL
+  TRANSACTIONAL
+  PUBLIC_INCIDENT
+  BULK
+}
+
 enum NotificationCategory {
   INCIDENT
   SECURITY
@@ -1053,6 +1060,7 @@ model Notification {
   sourceId          String?
   deliveryKey       String?                   @unique
   payloadEncrypted  String?
+  trafficClass      NotificationTrafficClass  @default(TRANSACTIONAL)
   priority          Int                       @default(5)
   scheduledAt       DateTime                  @default(now())
   nextAttemptAt     DateTime                  @default(now())
@@ -1408,23 +1416,24 @@ model StatusPage {
 
 // Derived, sanitized publication data. A revision fences concurrent rebuilds.
 model StatusPageSnapshot {
-  statusPageId String @id
-  revision BigInt @default(0)
-  publishedRevision BigInt @default(-1)
-  generatedAt DateTime?
-  payload Json?
-  lastError String?
-  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  statusPageId      String     @id
+  revision          BigInt     @default(0)
+  publishedRevision BigInt     @default(-1)
+  generatedAt       DateTime?
+  payload           Json?
+  lastError         String?
+  statusPage        StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
 }
 
 // Logos are kept out of the frequently read configuration JSON.
 model StatusPageAsset {
-  id String @id
+  id           String     @id
   statusPageId String
-  contentType String
-  data Bytes
-  createdAt DateTime @default(now())
-  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  contentType  String
+  data         Bytes
+  createdAt    DateTime   @default(now())
+  statusPage   StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
   @@index([statusPageId])
 }
 
@@ -1496,7 +1505,7 @@ model StatusPageSubscription {
   verificationToken String?
   preferences       Json? // Notification preferences (all incidents, major only, etc.)
 
-  statusPage StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+  statusPage     StatusPage                    @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
   deliveryTokens StatusPageSubscriptionToken[]
 
   @@unique([statusPageId, email])
@@ -1505,10 +1514,11 @@ model StatusPageSubscription {
 }
 
 model StatusPageSubscriptionToken {
-  tokenHash String @id
+  tokenHash      String                 @id
   subscriptionId String
-  createdAt DateTime @default(now())
-  subscription StatusPageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  createdAt      DateTime               @default(now())
+  subscription   StatusPageSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
   @@index([subscriptionId])
 }
 

@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import type { NextRequest } from 'next/server';
+import type { User } from '@prisma/client';
 import { POST } from '@/app/api/status-page/subscribe/route';
 import { GET, DELETE } from '@/app/api/status-page/subscribers/route';
 import VerifyPage from '@/app/(public)/status/verify/[token]/page';
@@ -33,7 +35,7 @@ vi.mock('@/lib/email', () => ({
 }));
 
 vi.mock('@/lib/notification-providers', async importOriginal => {
-  const actual = (await importOriginal()) as any;
+  const actual = await importOriginal<typeof import('@/lib/notification-providers')>();
   return {
     ...actual,
     getStatusPageEmailConfig: vi.fn().mockResolvedValue({ enabled: true, provider: 'resend' }),
@@ -63,7 +65,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
         body: JSON.stringify({ statusPageId: sp.id, email: 'user@example.com' }),
       });
 
-      const res = await POST(req as any);
+      const res = await POST(req as NextRequest);
       expect(res.status).toBe(200);
 
       const sub = await testPrisma.statusPageSubscription.findFirst({
@@ -87,7 +89,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
         body: JSON.stringify({ statusPageId: sp.id, email: 'user@example.com' }),
       });
 
-      const res = await POST(req as any);
+      const res = await POST(req as NextRequest);
       expect(res.status).toBe(200);
 
       const updatedSub = await testPrisma.statusPageSubscription.findUnique({
@@ -151,11 +153,11 @@ describeIfRealDB('Status Page Subscription Integration', () => {
   });
 
   describe('Admin Subscriber Management', () => {
-    let adminUser: any;
+    let adminUser: User;
 
     beforeEach(async () => {
       adminUser = await createTestUser({ email: 'admin@example.com', role: 'ADMIN' });
-      (getServerSession as any).mockResolvedValue({
+      vi.mocked(getServerSession).mockResolvedValue({
         user: { email: adminUser.email, role: 'ADMIN' },
       });
     });
@@ -171,7 +173,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
         },
       };
 
-      const res = await GET(req as any);
+      const res = await GET(req as NextRequest);
       const data = await res.json();
 
       expect(res.status).toBe(200);
@@ -189,7 +191,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
         },
       };
 
-      const res = await DELETE(req as any);
+      const res = await DELETE(req as NextRequest);
       expect(res.status).toBe(200);
 
       const updatedSub = await testPrisma.statusPageSubscription.findUnique({
@@ -200,7 +202,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
   });
 
   describe('Incident Notifications', () => {
-    it('should send email to verified subscribers when incident occurs', async () => {
+    it('queues verified subscriber email without delivering from the producer', async () => {
       const service = await createTestService('Data API');
       const sp = await createTestStatusPage();
       await linkServiceToStatusPage(sp.id, service.id);
@@ -211,11 +213,18 @@ describeIfRealDB('Status Page Subscription Integration', () => {
 
       await notifyStatusPageSubscribers(incident.id, 'triggered');
 
-      expect(sendEmail).toHaveBeenCalledTimes(1);
-      expect(sendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ to: 'verified@example.com' }),
-        expect.anything()
-      );
+      expect(sendEmail).not.toHaveBeenCalled();
+      const intents = await testPrisma.notification.findMany({
+        where: { incidentId: incident.id, category: 'STATUS_PAGE' },
+      });
+      expect(intents).toHaveLength(1);
+      expect(intents[0]).toMatchObject({
+        status: 'PENDING',
+        priority: 4,
+        trafficClass: 'PUBLIC_INCIDENT',
+        attempts: 0,
+      });
+      expect(intents[0].payloadEncrypted).toBeTruthy();
     });
   });
 });

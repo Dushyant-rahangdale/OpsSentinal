@@ -1,5 +1,6 @@
 /** Service notification dispatcher with target-level durable idempotency. */
 import prisma from './prisma';
+import { incidentNotificationPriority } from './notification-priority';
 import { logger } from './logger';
 import { enqueueCentralNotification } from './notification-control-plane';
 import { formatWebhookPayloadByType, generateIncidentWebhookPayload } from './webhooks';
@@ -26,8 +27,7 @@ function serviceDeliveryKey(
         : eventType === 'resolved'
           ? (incident.resolvedAt ?? incident.updatedAt)
           : incident.updatedAt;
-  const generation =
-    eventType === 'triggered' ? `:g${incident.escalationGeneration ?? 0}` : '';
+  const generation = eventType === 'triggered' ? `:g${incident.escalationGeneration ?? 0}` : '';
   return `${incident.id}:${eventType}:${at.toISOString()}${generation}`;
 }
 
@@ -149,7 +149,11 @@ export async function sendServiceNotifications(
             sourceId: `${service.id}:${incidentId}`,
             eventKey: deliveryKey,
             displayMessage: `${eventType}: ${incident.title}`,
-            priority: incident.urgency === 'HIGH' ? 1 : 3,
+            ...incidentNotificationPriority({
+              eventType,
+              priority: incident.priority,
+              urgency: incident.urgency,
+            }),
             payload: {
               kind: 'SLACK_CHANNEL',
               channel: slackChannel,
@@ -184,7 +188,11 @@ export async function sendServiceNotifications(
             sourceId: `${service.id}:${incidentId}`,
             eventKey: deliveryKey,
             displayMessage: `${eventType}: ${incident.title}`,
-            priority: incident.urgency === 'HIGH' ? 1 : 3,
+            ...incidentNotificationPriority({
+              eventType,
+              priority: incident.priority,
+              urgency: incident.urgency,
+            }),
             payload: {
               kind: 'SLACK_WEBHOOK',
               incident: incidentPresentation,
@@ -222,7 +230,11 @@ export async function sendServiceNotifications(
               sourceId: webhook.id,
               eventKey: deliveryKey,
               displayMessage: `${eventType}: ${incident.title}`,
-              priority: incident.urgency === 'HIGH' ? 1 : 3,
+              ...incidentNotificationPriority({
+                eventType,
+                priority: incident.priority,
+                urgency: incident.urgency,
+              }),
               payload: {
                 kind: 'WEBHOOK',
                 url: webhook.url,
@@ -265,7 +277,11 @@ export async function sendServiceNotifications(
           sourceId: `${service.id}:${incidentId}`,
           eventKey: deliveryKey,
           displayMessage: `${eventType}: ${incident.title}`,
-          priority: incident.urgency === 'HIGH' ? 1 : 3,
+          ...incidentNotificationPriority({
+            eventType,
+            priority: incident.priority,
+            urgency: incident.urgency,
+          }),
           payload: {
             kind: 'WEBHOOK',
             url: service.webhookUrl!,

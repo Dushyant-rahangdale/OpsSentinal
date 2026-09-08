@@ -10,6 +10,7 @@ import { retry } from './retry';
 import { CircuitBreakers } from './circuit-breaker';
 import { statusWebhookDeliveryId, statusWebhookDeliveryKey } from './status-page-delivery';
 import { enqueueCentralNotification } from './notification-control-plane';
+import { statusNotificationPriority } from './notification-priority';
 
 export interface WebhookPayload {
   event: string;
@@ -280,32 +281,35 @@ export async function triggerStatusPageWebhooks(
       const results = await Promise.allSettled(
         batch.map(async webhook => {
           const stableDeliveryId = statusWebhookDeliveryId(effectiveDeliveryKey, webhook.id);
-          await enqueueCentralNotification({
-            category: 'STATUS_PAGE',
-            channel: 'WEBHOOK',
-            recipientType: 'WEBHOOK',
-            recipientId: webhook.id,
-            recipientAddress: webhook.url,
-            templateKey: `status-page-webhook-${event}`,
-            sourceType: 'STATUS_PAGE_WEBHOOK',
-            sourceId: webhook.id,
-            eventKey: effectiveDeliveryKey,
-            displayMessage: `Status-page webhook: ${event}`,
-            priority: 3,
-            payload: {
-              kind: 'STATUS_PAGE_WEBHOOK',
-              url: webhook.url,
-              secret: await decryptStoredSecret(webhook.secret),
-              payload,
-              deliveryId: stableDeliveryId,
-              webhookId: webhook.id,
-              statusPageId,
-              incidentId: policy.incidentId,
-              serviceId: policy.serviceId,
-              expectedStatus: policy.expectedStatus,
-              escalationGeneration: policy.escalationGeneration,
+          await enqueueCentralNotification(
+            {
+              category: 'STATUS_PAGE',
+              channel: 'WEBHOOK',
+              recipientType: 'WEBHOOK',
+              recipientId: webhook.id,
+              recipientAddress: webhook.url,
+              templateKey: `status-page-webhook-${event}`,
+              sourceType: 'STATUS_PAGE_WEBHOOK',
+              sourceId: webhook.id,
+              eventKey: effectiveDeliveryKey,
+              displayMessage: `Status-page webhook: ${event}`,
+              ...statusNotificationPriority(event.replace(/^incident\./, '')),
+              payload: {
+                kind: 'STATUS_PAGE_WEBHOOK',
+                url: webhook.url,
+                secret: await decryptStoredSecret(webhook.secret),
+                payload,
+                deliveryId: stableDeliveryId,
+                webhookId: webhook.id,
+                statusPageId,
+                incidentId: policy.incidentId,
+                serviceId: policy.serviceId,
+                expectedStatus: policy.expectedStatus,
+                escalationGeneration: policy.escalationGeneration,
+              },
             },
-          });
+            { dispatchImmediately: false }
+          );
 
           return { attempted: true, success: true };
         })

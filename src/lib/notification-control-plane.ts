@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import {
   Prisma,
   type NotificationCategory,
+  type NotificationTrafficClass,
   type NotificationChannel,
   type NotificationRecipientType,
 } from '@prisma/client';
@@ -24,6 +25,11 @@ import {
 } from './provider-admission';
 import { notificationRetryDelayMs, NOTIFICATION_RETRY_POLICY } from './notification-delivery';
 import { logger } from './logger';
+import {
+  defaultNotificationPolicy,
+  notificationAgingFloor,
+  NOTIFICATION_AGING_FLOOR,
+} from './notification-priority';
 
 const MAX_ENCRYPTED_PAYLOAD_BYTES = 768 * 1024;
 const MAX_ERROR_LENGTH = 1_000;
@@ -160,6 +166,7 @@ export type CentralNotificationInput = {
   displayMessage: string;
   payload: CentralNotificationPayload;
   priority?: number;
+  trafficClass?: NotificationTrafficClass;
   scheduledAt?: Date;
   expiresAt?: Date;
   maxAttempts?: number;
@@ -341,7 +348,12 @@ export async function createCentralNotificationIntent(
     Math.max(input.maxAttempts ?? NOTIFICATION_RETRY_POLICY.maxAttempts, 1),
     20
   );
-  const priority = Math.min(Math.max(input.priority ?? 5, 0), 9);
+  const policy = defaultNotificationPolicy(input.category, input.templateKey);
+  const trafficClass = input.trafficClass ?? policy.trafficClass;
+  const priority = Math.min(
+    Math.max(input.priority ?? policy.priority, notificationAgingFloor(trafficClass)),
+    9
+  );
   const id = intentId(deliveryKey);
 
   try {
@@ -365,6 +377,7 @@ export async function createCentralNotificationIntent(
         deliveryKey,
         payloadEncrypted,
         priority,
+        trafficClass,
         scheduledAt,
         nextAttemptAt: scheduledAt,
         maxAttempts,
@@ -1663,10 +1676,14 @@ export async function processCentralNotificationQueue(): Promise<{
           AND ("lastAttemptAt" IS NULL OR "lastAttemptAt" < ${staleClaimBefore})
         )
       )
-    -- Age one priority level every five minutes. Critical work wins initially,
-    -- while sustained critical traffic cannot starve older normal deliveries.
+    -- Aging cannot promote customer broadcasts into responder precedence.
     ORDER BY GREATEST(
-      0,
+      CASE "trafficClass"
+        WHEN 'CRITICAL' THEN ${NOTIFICATION_AGING_FLOOR.CRITICAL}
+        WHEN 'TRANSACTIONAL' THEN ${NOTIFICATION_AGING_FLOOR.TRANSACTIONAL}
+        WHEN 'PUBLIC_INCIDENT' THEN ${NOTIFICATION_AGING_FLOOR.PUBLIC_INCIDENT}
+        ELSE ${NOTIFICATION_AGING_FLOOR.BULK}
+      END,
       "priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - "createdAt")) / 300)
     ) ASC, "nextAttemptAt" ASC, "createdAt" ASC
     LIMIT ${SYSTEM_NOTIFICATION_BATCH_SIZE}

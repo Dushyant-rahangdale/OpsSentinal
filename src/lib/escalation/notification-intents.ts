@@ -15,6 +15,7 @@
  */
 import { Prisma } from '@prisma/client';
 import prisma from '../prisma';
+import { NOTIFICATION_PRIORITY } from '../notification-priority';
 import { logger } from '../logger';
 import { createInAppNotifications } from '../in-app-notifications';
 import { buildNotificationEnvelope, encodeNotificationEnvelope } from '../notification-payload';
@@ -306,6 +307,8 @@ export async function materializeEscalationNotificationIntents(
           sourceId: plan.incidentId,
           eventKey: plan.eventKey,
           displayMessage: 'Incident notification',
+          trafficClass: 'CRITICAL',
+          priority: NOTIFICATION_PRIORITY.RESPONDER_CRITICAL,
           payload: {
             kind: `INCIDENT_${intent.channel}`,
             userId: intent.userId,
