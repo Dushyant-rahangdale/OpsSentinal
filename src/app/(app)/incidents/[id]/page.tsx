@@ -20,6 +20,7 @@ import IncidentResolutionSummary from '@/components/incident/detail/IncidentReso
 import IncidentPostmortemTabContent from '@/components/incident/detail/IncidentPostmortemTabContent';
 import IncidentDescriptionCard from '@/components/incident/detail/IncidentDescriptionCard';
 import IncidentSLABadges from '@/components/incident/detail/IncidentSLABadges';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
 import IncidentCustomFieldsCard from '@/components/incident/detail/IncidentCustomFieldsCard';
 import IncidentQuickLinksCard from '@/components/incident/detail/IncidentQuickLinksCard';
 import { Badge } from '@/components/ui/shadcn/badge';
@@ -67,6 +68,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   });
 
   if (!incident) notFound();
+  const incidentSla = projectIncidentSlaState(incident, { now: new Date() });
 
   const [users, teams, customFields] = await Promise.all([
     prisma.user.findMany({
@@ -325,7 +327,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               </div>
 
               {/* Live Response Health & SLA Status Pills */}
-              <IncidentSLABadges incident={incident} service={incident.service} />
+              <IncidentSLABadges sla={incidentSla} />
             </div>
           </div>
         </div>
@@ -389,7 +391,6 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       {incident.status === 'RESOLVED' && (
         <IncidentResolutionSummary
           incident={incident}
-          service={incident.service}
           resolutionNote={resolutionNote}
           postmortemStatus={postmortem?.status ?? null}
           canManage={canManageIncident}

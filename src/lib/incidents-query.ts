@@ -1,5 +1,6 @@
 import type { IncidentStatus, IncidentUrgency, Prisma } from '@prisma/client';
 import { activeIncidentStatuses, mutedIncidentStatuses } from './incident-status';
+import { incidentSlaSelect } from './incident-sla/select';
 
 export type IncidentListFilter =
   | 'all'
@@ -158,6 +159,7 @@ export function buildIncidentOrderBy(
 }
 
 export const incidentListSelect = {
+  ...incidentSlaSelect,
   id: true,
   title: true,
   status: true,
@@ -175,8 +177,6 @@ export const incidentListSelect = {
     select: {
       id: true,
       name: true,
-      targetAckMinutes: true,
-      targetResolveMinutes: true,
     },
   },
   team: {

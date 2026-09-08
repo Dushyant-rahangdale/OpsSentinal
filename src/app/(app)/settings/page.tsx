@@ -42,6 +42,7 @@ const itemIcons: Record<string, LucideIcon | React.ComponentType<{ className?: s
   profile: User,
   security: Shield,
   'custom-fields': SlidersHorizontal,
+  'incident-sla': Activity,
   'status-page': Globe,
   'api-keys': KeyRound,
   'audit-logs': Activity,

@@ -3,6 +3,7 @@ import SLAIndicator from '../SLAIndicator';
 import EscalationStatusBadge from '../EscalationStatusBadge';
 import { Activity, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
 
 type IncidentResponseHealthProps = {
   incident: Incident;
@@ -21,6 +22,7 @@ export default function IncidentResponseHealth({
   nextEscalationAt,
   className,
 }: IncidentResponseHealthProps) {
+  const sla = projectIncidentSlaState(incident, { now: new Date() });
   return (
     <div
       className={cn(
@@ -48,7 +50,7 @@ export default function IncidentResponseHealth({
 
       {/* Body */}
       <div className="p-5 md:p-6 space-y-4">
-        <SLAIndicator incident={incident} service={service} showDetails />
+        <SLAIndicator sla={sla} showDetails />
 
         {escalationStatus && escalationStatus !== 'COMPLETED' && (
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80">

@@ -1,129 +1,42 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import SLABreachWarningBadge from '@/components/incident/SLABreachWarningBadge';
-import { Incident, Service } from '@prisma/client';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
 
-// Mock sla-priority to return predictable targets
-vi.mock('@/lib/sla-priority', () => ({
-  getPrioritySLATarget: () => ({ ack: 15, resolve: 120 }),
-}));
+const base = {
+  status: 'OPEN' as const,
+  createdAt: new Date('2025-01-01T00:00:00.000Z'),
+  acknowledgedAt: null,
+  resolvedAt: null,
+  slaAckTargetMs: 15 * 60_000,
+  slaResolveTargetMs: 120 * 60_000,
+  slaTargetSource: 'SERVICE_DEFAULT',
+  slaTargetCapturedAt: new Date('2025-01-01T00:00:00.000Z'),
+  slaPausedMs: 0,
+  slaPauseStartedAt: null,
+  slaAckElapsedMs: null,
+  slaResolveElapsedMs: null,
+};
 
 describe('SLABreachWarningBadge', () => {
-  const mockService = {
-    id: 'svc-1',
-    name: 'Test Service',
-    slug: 'test-service',
-    description: null,
-    targetAckMinutes: 15,
-    targetResolveMinutes: 120,
-    slackWebhookUrl: null,
-    isPrivate: false,
-    updatedAt: new Date(),
-    createdAt: new Date(),
-    region: null,
-    slaTier: null,
-    status: 'ACTIVE',
-    teamId: null,
-    escalationPolicyId: null,
-    maintenanceMode: false,
-    maintenanceMessage: null,
-    maintenanceEndsAt: null,
-    slackChannelId: null,
-    onCallEnabled: true,
-    notifyOnAck: false,
-    notifyOnResolve: false,
-    notifyEventFilter: null,
-    autoCreateWarRoom: true,
-    warRoomVideoBridge: null,
-    warRoomCustomBridgeUrl: null,
-  } as unknown as Service;
-
-  const mockIncidentBase = {
-    id: 'inc-1',
-    title: 'Test Incident',
-    description: null,
-    status: 'OPEN',
-    priority: 'P2',
-    urgency: 'HIGH',
-    serviceId: 'svc-1',
-    teamId: null,
-    assigneeId: null,
-    resolvedAt: null,
-    updatedAt: new Date(),
-    nextEscalationAt: null,
-    escalationStatus: 'IDLE',
-    currentEscalationStep: 0,
-    escalationGeneration: 0,
-    isMuted: false,
-    impact: 'NONE',
-    tags: [],
-    snoozedUntil: null,
-    snoozeReason: null,
-    autoResolvedAt: null,
-    notificationProcessingAt: null,
-    externalId: null,
-    region: null,
-    dedupKey: null,
-    escalationProcessingAt: null,
-    visibility: 'PUBLIC',
-    slackWorkspaceId: null,
-    slackChannelId: null,
-    slackChannelName: null,
-    warRoomUrl: null,
-    warRoomArchivedAt: null,
-    warRoomProvisioningStatus: 'NONE',
-    warRoomProvisioningToken: null,
-    warRoomProvisioningAt: null,
-    slaPausedMs: BigInt(0),
-    slaPauseStartedAt: null,
-    slaAckElapsedMs: null,
-    slaResolveElapsedMs: null,
-    slaAckTargetMs: null,
-    slaResolveTargetMs: null,
-    slaTargetSource: null,
-    slaTargetCapturedAt: null,
-  };
-
-  it('renders correctly with Date objects', () => {
-    // 5 hours old -> Breached ACK (15m)
-    const incident = {
-      ...mockIncidentBase,
-      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      acknowledgedAt: null,
-    } as Incident;
-
-    render(<SLABreachWarningBadge incident={incident} service={mockService} />);
-
+  it('renders an immutable-contract breach', () => {
+    const state = projectIncidentSlaState(base, { now: new Date('2025-01-01T05:00:00.000Z') });
+    render(<SLABreachWarningBadge state={state} />);
     expect(screen.getByText('ACK breached')).toBeDefined();
   });
 
-  it('handles string date props (client-side serialization simulation)', () => {
-    // 5 hours old, passed as ISO STRING
-    const createdAtStr = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
-
-    const incident = {
-      ...mockIncidentBase,
-      createdAt: createdAtStr as unknown as Date,
-      acknowledgedAt: null,
-    } as Incident;
-
-    // This would crash without the fix
-    render(<SLABreachWarningBadge incident={incident} service={mockService} />);
-
-    expect(screen.getByText('ACK breached')).toBeDefined();
-  });
-
-  it('renders warning when approaching breach', () => {
-    // 12 mins old (Target 15m) -> 3 mins remaining -> Warning
-    // Warning threshold default is 5m
-    const incident = {
-      ...mockIncidentBase,
-      createdAt: new Date(Date.now() - 12 * 60 * 1000),
-      acknowledgedAt: null,
-    } as Incident;
-
-    render(<SLABreachWarningBadge incident={incident} service={mockService} />);
-
+  it('renders warning from the canonical projector', () => {
+    const state = projectIncidentSlaState(base, { now: new Date('2025-01-01T00:12:00.000Z') });
+    render(<SLABreachWarningBadge state={state} />);
     expect(screen.getByText('3m to ACK')).toBeDefined();
+  });
+
+  it('does not derive state from mutable service configuration', () => {
+    const state = projectIncidentSlaState(
+      { ...base, slaAckTargetMs: 30 * 60_000 },
+      { now: new Date('2025-01-01T00:20:00.000Z') }
+    );
+    render(<SLABreachWarningBadge state={state} />);
+    expect(screen.queryByText('ACK breached')).toBeNull();
   });
 });

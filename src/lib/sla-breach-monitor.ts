@@ -1,14 +1,14 @@
 import 'server-only';
 import { logger } from './logger';
 import { WebhookIntegration } from '@prisma/client';
-import { getPrioritySLATarget } from './sla-priority';
+import { projectIncidentSlaState } from '@/lib/incident-sla/state';
+import { DEFAULT_SLA_WARNING_POLICY } from '@/lib/incident-sla/warning-policy';
 import { escapeHtml } from './email-components';
 import { activeIncidentStatuses } from './incident-status';
 import { enqueueCentralNotification } from './notification-control-plane';
 import { formatWebhookPayloadByType } from './webhooks';
 import { getBaseUrl } from './env-validation';
 import { configuredSlackWebhookUrl } from './slack';
-import { effectiveElapsedMs } from './metrics/domain/sla-clock';
 
 /**
  * SLA Breach Monitor - Proactive Breach Detection
@@ -20,8 +20,6 @@ import { effectiveElapsedMs } from './metrics/domain/sla-clock';
  */
 
 // Default warning thresholds (ms before breach to trigger warning)
-const DEFAULT_ACK_WARNING_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes before ack breach
-const DEFAULT_RESOLVE_WARNING_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes before resolve breach
 
 export interface BreachWarning {
   incidentId: string;
@@ -69,9 +67,14 @@ export async function checkSLABreaches(
   const now = new Date();
   const warnings: BreachWarning[] = [];
 
-  const ackWarningThreshold = config.ackWarningThresholdMs ?? DEFAULT_ACK_WARNING_THRESHOLD_MS;
-  const resolveWarningThreshold =
-    config.resolveWarningThresholdMs ?? DEFAULT_RESOLVE_WARNING_THRESHOLD_MS;
+  const warningPolicy = {
+    ...DEFAULT_SLA_WARNING_POLICY,
+    ackCeilingMs: config.ackWarningThresholdMs ?? DEFAULT_SLA_WARNING_POLICY.ackCeilingMs,
+    resolveCeilingMs:
+      config.resolveWarningThresholdMs ?? DEFAULT_SLA_WARNING_POLICY.resolveCeilingMs,
+  };
+  const ackWarningThreshold = warningPolicy.ackCeilingMs;
+  const resolveWarningThreshold = warningPolicy.resolveCeilingMs;
 
   // Get all active incidents with their service SLA targets
   const incidents = await prisma.incident.findMany({
@@ -87,13 +90,19 @@ export async function checkSLABreaches(
       status: true,
       createdAt: true,
       acknowledgedAt: true,
-      slaPauses: { select: { startedAt: true, endedAt: true } },
+      resolvedAt: true,
+      slaAckTargetMs: true,
+      slaResolveTargetMs: true,
+      slaTargetSource: true,
+      slaTargetCapturedAt: true,
+      slaPausedMs: true,
+      slaPauseStartedAt: true,
+      slaAckElapsedMs: true,
+      slaResolveElapsedMs: true,
       service: {
         select: {
           id: true,
           name: true,
-          targetAckMinutes: true,
-          targetResolveMinutes: true,
           slackWebhookUrl: true,
           slackChannel: true,
           serviceNotificationChannels: true,
@@ -155,95 +164,39 @@ export async function checkSLABreaches(
   }
 
   for (const incident of incidents) {
-    const elapsedMs = effectiveElapsedMs({
-      startedAt: incident.createdAt,
-      evaluationAt: now,
-      pauses: incident.slaPauses,
-    });
-
-    // Resolve priority SLA targets (e.g. P1 = 5m ack / 60m resolve)
-    const targets = getPrioritySLATarget(incident.priority, incident.service);
-    const ackTargetMinutes = targets.ack;
-    const resolveTargetMinutes = targets.resolve;
-
-    const ackTargetMs = ackTargetMinutes * 60 * 1000;
-    const resolveTargetMs = resolveTargetMinutes * 60 * 1000;
-
-    // Skip if service has disabled SLA notifications
-    if (!incident.service.serviceNotifyOnSlaBreach) {
+    if (!incident.service.serviceNotifyOnSlaBreach) continue;
+    const state = projectIncidentSlaState(incident, { now, warningPolicy });
+    if (!state.valid) {
+      logger.warn('[SLA Breach Monitor] Invalid captured incident SLA contract', {
+        reason: state.reason,
+      });
       continue;
     }
-
-    // Proportional early warning thresholds (e.g. 25% remaining or configured ceiling)
-    const effectiveAckWarning = Math.min(ackWarningThreshold, ackTargetMs * 0.25);
-    const effectiveResolveWarning = Math.min(resolveWarningThreshold, resolveTargetMs * 0.25);
-
-    // Check ack SLA (only if not acknowledged)
-    if (!incident.acknowledgedAt) {
-      const ackRemainingMs = ackTargetMs - elapsedMs;
-
-      // Warning or breach
-      if (ackRemainingMs < effectiveAckWarning) {
-        const isBreached = ackRemainingMs <= 0;
-        const key = isBreached ? 'breached' : 'warning';
-
-        // Check if we already warned/alerted about this recently
-        const alreadyWarned = recentWarningMap.has(`${incident.id}:ack:${key}`);
-
-        if (!alreadyWarned) {
-          recentWarningMap.add(`${incident.id}:ack:${key}`);
-          warnings.push({
-            incidentId: incident.id,
-            title: incident.title,
-            serviceId: incident.service.id,
-            serviceName: incident.service.name,
-            breachType: 'ack',
-            timeRemainingMs: ackRemainingMs,
-            targetMinutes: ackTargetMinutes,
-            urgency: incident.urgency,
-            status: incident.status,
-            assigneeName: incident.assignee?.name,
-            createdAt: incident.createdAt,
-            slackWebhookUrl: incident.service.slackWebhookUrl,
-            slackChannel: incident.service.slackChannel,
-            serviceNotificationChannels: incident.service.serviceNotificationChannels,
-            webhookIntegrations: incident.service.webhookIntegrations,
-          });
-        }
-      }
-    }
-
-    // Check resolve SLA
-    const resolveRemainingMs = resolveTargetMs - elapsedMs;
-
-    // Warning or breach
-    if (resolveRemainingMs < effectiveResolveWarning) {
-      const isBreached = resolveRemainingMs <= 0;
-      const key = isBreached ? 'breached' : 'warning';
-
-      // Check if we already warned/alerted about this recently
-      const alreadyWarned = recentWarningMap.has(`${incident.id}:resolve:${key}`);
-
-      if (!alreadyWarned) {
-        recentWarningMap.add(`${incident.id}:resolve:${key}`);
-        warnings.push({
-          incidentId: incident.id,
-          title: incident.title,
-          serviceId: incident.service.id,
-          serviceName: incident.service.name,
-          breachType: 'resolve',
-          timeRemainingMs: resolveRemainingMs,
-          targetMinutes: resolveTargetMinutes,
-          urgency: incident.urgency,
-          status: incident.status,
-          assigneeName: incident.assignee?.name,
-          createdAt: incident.createdAt,
-          slackWebhookUrl: incident.service.slackWebhookUrl,
-          slackChannel: incident.service.slackChannel,
-          serviceNotificationChannels: incident.service.serviceNotificationChannels,
-          webhookIntegrations: incident.service.webhookIntegrations,
-        });
-      }
+    for (const [breachType, phase] of [
+      ['ack', state.ack],
+      ['resolve', state.resolve],
+    ] as const) {
+      if (phase.warning === 'NONE') continue;
+      const key = phase.warning === 'BREACHED' ? 'breached' : 'warning';
+      if (recentWarningMap.has(`${incident.id}:${breachType}:${key}`)) continue;
+      recentWarningMap.add(`${incident.id}:${breachType}:${key}`);
+      warnings.push({
+        incidentId: incident.id,
+        title: incident.title,
+        serviceId: incident.service.id,
+        serviceName: incident.service.name,
+        breachType,
+        timeRemainingMs: phase.remainingMs,
+        targetMinutes: phase.targetMs / 60000,
+        urgency: incident.urgency,
+        status: incident.status,
+        assigneeName: incident.assignee?.name,
+        createdAt: incident.createdAt,
+        slackWebhookUrl: incident.service.slackWebhookUrl,
+        slackChannel: incident.service.slackChannel,
+        serviceNotificationChannels: incident.service.serviceNotificationChannels,
+        webhookIntegrations: incident.service.webhookIntegrations,
+      });
     }
   }
 

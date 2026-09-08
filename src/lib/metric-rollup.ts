@@ -347,17 +347,11 @@ export async function generateDailyRollup(
               }
             }
           } else if (incident.status === 'RESOLVED' && resolvedTime) {
-            const mtta = elapsedAt(resolvedTime);
-            if (mtta >= 0) {
-              const ackMet = mtta <= target.ackTargetMs;
-              if (ackMet) ackSlaMet++;
-              else ackSlaBreached++;
-
-              if (priorityRecord) {
-                if (ackMet) priorityRecord.ackSlaMet++;
-                else priorityRecord.ackSlaBreached++;
-              }
-            }
+            // Resolution is not acknowledgement. The canonical SLA contract
+            // treats a terminal incident without an ACK as an evaluated miss,
+            // regardless of how quickly it was resolved.
+            ackSlaBreached++;
+            if (priorityRecord) priorityRecord.ackSlaBreached++;
           } else if (incident.status !== 'RESOLVED') {
             const snapshotTime = Math.min(Date.now(), nextDayStart.getTime());
             const elapsed = elapsedAt(new Date(snapshotTime));

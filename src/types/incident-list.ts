@@ -13,13 +13,19 @@ export interface IncidentListItem {
   updatedAt?: Date | null;
   acknowledgedAt?: Date | null;
   resolvedAt?: Date | null;
+  slaAckTargetMs?: number | null;
+  slaResolveTargetMs?: number | null;
+  slaTargetSource?: string | null;
+  slaTargetCapturedAt?: Date | null;
+  slaPausedMs: bigint | number;
+  slaPauseStartedAt?: Date | null;
+  slaAckElapsedMs?: bigint | number | null;
+  slaResolveElapsedMs?: bigint | number | null;
   assigneeId: string | null;
   teamId: string | null;
   service: {
     id: string;
     name: string;
-    targetAckMinutes?: number | null;
-    targetResolveMinutes?: number | null;
   };
   team: {
     id: string;
