@@ -1191,50 +1191,54 @@ async function serviceSlackDeliveryRevoked(
 async function statusSubscriberDeliveryRevoked(
   payload: CentralNotificationPayload
 ): Promise<string | null> {
-  if (
-    payload.kind !== 'EMAIL' ||
-    !payload.providerScope?.subscriptionId ||
-    !payload.providerScope.incidentId
-  )
-    return null;
+  if (payload.kind !== 'EMAIL' || !payload.providerScope?.subscriptionId) return null;
+
+  const scope = payload.providerScope;
+  const subscription = await prisma.statusPageSubscription.findFirst({
+    where: {
+      id: scope.subscriptionId,
+      statusPageId: scope.statusPageId,
+      email: normalizedRecipient('EMAIL', payload.to),
+      verified: true,
+      unsubscribedAt: null,
+      statusPage: { enabled: true },
+    },
+    select: { id: true },
+  });
+  if (!subscription) return 'Status-page subscription or page was revoked';
+
+  // Announcement fanout has no incident scope. The active subscription/page
+  // check above is still required at claim time so an unsubscribe racing with
+  // batch materialization cannot result in a later provider send.
+  if (!scope.incidentId) return null;
+
   const incident = await prisma.incident.findUnique({
-    where: { id: payload.providerScope.incidentId },
+    where: { id: scope.incidentId },
     select: { visibility: true, serviceId: true, status: true, escalationGeneration: true },
   });
   if (!incident || incident.visibility !== 'PUBLIC')
     return 'Status-page incident is no longer public';
+  if (scope.expectedStatus && incident.status !== scope.expectedStatus)
+    return `Status-page lifecycle moved from ${scope.expectedStatus} to ${incident.status}`;
   if (
-    payload.providerScope.expectedStatus &&
-    incident.status !== payload.providerScope.expectedStatus
-  )
-    return `Status-page lifecycle moved from ${payload.providerScope.expectedStatus} to ${incident.status}`;
-  if (
-    payload.providerScope.escalationGeneration != null &&
-    incident.escalationGeneration !== payload.providerScope.escalationGeneration
+    scope.escalationGeneration != null &&
+    incident.escalationGeneration !== scope.escalationGeneration
   )
     return 'Status-page incident generation was superseded';
-  if (payload.providerScope.eventType && isLifecycleEventType(payload.providerScope.eventType)) {
-    const stale = lifecycleStatusRevocation(payload.providerScope.eventType, incident.status);
+  if (scope.eventType && isLifecycleEventType(scope.eventType)) {
+    const stale = lifecycleStatusRevocation(scope.eventType, incident.status);
     if (stale) return stale;
   }
   const page = await prisma.statusPage.findFirst({
     where: {
-      id: payload.providerScope.statusPageId,
+      id: scope.statusPageId,
       enabled: true,
       showIncidents: true,
       services: { some: { serviceId: incident.serviceId, showOnPage: true } },
-      subscriptions: {
-        some: {
-          id: payload.providerScope.subscriptionId,
-          email: normalizedRecipient('EMAIL', payload.to),
-          verified: true,
-          unsubscribedAt: null,
-        },
-      },
     },
     select: { id: true },
   });
-  return page ? null : 'Status-page subscription, target, or visibility was revoked';
+  return page ? null : 'Status-page target or incident visibility was revoked';
 }
 
 async function statusWebhookDeliveryRevoked(
@@ -1505,7 +1509,12 @@ export async function deliverCentralNotification(
   const identity = providerAdmissionIdentity(payload);
   let concurrency;
   try {
-    concurrency = await acquireProviderConcurrency(identity.scope, identity.providerKey, now);
+    concurrency = await acquireProviderConcurrency(
+      identity.scope,
+      identity.providerKey,
+      now,
+      candidate.trafficClass
+    );
   } catch (error) {
     const errorMessage = safeError(error);
     await prisma.notification.updateMany({
@@ -1780,6 +1789,13 @@ export async function deliverCentralNotification(
   }
 }
 
+const ALL_NOTIFICATION_TRAFFIC_CLASSES: readonly NotificationTrafficClass[] = [
+  'CRITICAL',
+  'TRANSACTIONAL',
+  'PUBLIC_INCIDENT',
+  'BULK',
+];
+
 export async function processCentralNotificationQueue(
   options: {
     trafficClasses?: readonly NotificationTrafficClass[];
@@ -1793,12 +1809,22 @@ export async function processCentralNotificationQueue(
 }> {
   const now = new Date();
   await cleanupExpiredNotifications(now);
+  const { isBulkNotificationDeliveryPaused } = await import('./notification-capacity-control');
+  const bulkPaused = await isBulkNotificationDeliveryPaused();
+  const requestedTrafficClasses = options.trafficClasses?.length
+    ? Array.from(new Set(options.trafficClasses))
+    : [...ALL_NOTIFICATION_TRAFFIC_CLASSES];
+  const trafficClasses = bulkPaused
+    ? requestedTrafficClasses.filter(
+        value => value !== 'PUBLIC_INCIDENT' && value !== 'BULK'
+      )
+    : requestedTrafficClasses;
+  if (trafficClasses.length === 0) return { processed: 0, succeeded: 0, failed: 0 };
+
   const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
-  const trafficFilter = options.trafficClasses?.length
-    ? Prisma.sql`AND "trafficClass" IN (${Prisma.join(
-        options.trafficClasses.map(value => Prisma.sql`${value}::"NotificationTrafficClass"`)
-      )})`
-    : Prisma.empty;
+  const trafficFilter = Prisma.sql`AND "trafficClass" IN (${Prisma.join(
+    trafficClasses.map(value => Prisma.sql`${value}::"NotificationTrafficClass"`)
+  )})`;
   const batchSize = Math.max(1, Math.min(options.batchSize ?? SYSTEM_NOTIFICATION_BATCH_SIZE, 500));
   const concurrency = Math.max(
     1,
