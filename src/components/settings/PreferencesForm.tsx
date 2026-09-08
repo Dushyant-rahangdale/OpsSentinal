@@ -8,6 +8,7 @@ import { Clock } from 'lucide-react';
 import { z } from 'zod';
 import { updatePreferences } from '@/app/(app)/settings/actions';
 import { useRouter } from 'next/navigation';
+import { useTimezone } from '@/contexts/TimezoneContext';
 import { Controller } from 'react-hook-form';
 import { notify as toast } from '@/lib/toast';
 
@@ -23,8 +24,13 @@ type PreferencesFormData = z.infer<typeof preferencesSchema>;
 
 export default function PreferencesForm({ timeZone }: Props) {
   const router = useRouter();
+  const { setUserTimeZone } = useTimezone();
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [selectedTimeZone, setSelectedTimeZone] = useState<string>(timeZone);
+
+  useEffect(() => {
+    setSelectedTimeZone(timeZone);
+  }, [timeZone]);
 
   // Live digital clock in selected timezone
   useEffect(() => {
@@ -53,7 +59,7 @@ export default function PreferencesForm({ timeZone }: Props) {
   }, [selectedTimeZone]);
 
   const defaultValues: PreferencesFormData = {
-    timeZone,
+    timeZone: selectedTimeZone,
   };
 
   const handleSave = async (data: PreferencesFormData) => {
@@ -63,6 +69,7 @@ export default function PreferencesForm({ timeZone }: Props) {
     const result = await updatePreferences({ error: null, success: false }, formData);
 
     if (result.success) {
+      setUserTimeZone(data.timeZone);
       toast.success('Timezone updated');
       setTimeout(() => {
         router.refresh();
