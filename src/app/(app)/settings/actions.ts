@@ -37,12 +37,10 @@ export async function updateProfile(
 ): Promise<ActionState> {
   try {
     const user = await getCurrentUser();
-
     const avatarFile = formData.get('avatar') as File | null;
-
     const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-    let avatarUrl = undefined;
+    let avatarUpload: { data: Buffer; mimeType: string; url: string } | null = null;
     if (avatarFile && avatarFile.size > 0) {
       if (!ALLOWED_MIME_TYPES.has(avatarFile.type)) {
         return { error: 'Invalid file type. Please upload a PNG, JPEG, WebP, or GIF image.' };
@@ -54,7 +52,6 @@ export async function updateProfile(
       try {
         const bytes = await avatarFile.arrayBuffer();
         const buffer = Buffer.from(bytes);
-
         const isPng =
           buffer.length >= 4 &&
           buffer[0] === 0x89 &&
@@ -74,22 +71,13 @@ export async function updateProfile(
           return { error: 'Invalid image file signature. Please upload a valid image.' };
         }
 
-        await prisma.userAvatar.upsert({
-          where: { userId: user.id },
-          update: {
-            data: buffer,
-            mimeType: avatarFile.type,
-          },
-          create: {
-            userId: user.id,
-            data: buffer,
-            mimeType: avatarFile.type,
-          },
-        });
-
-        avatarUrl = `/api/users/${user.id}/avatar?t=${Date.now()}`;
+        avatarUpload = {
+          data: buffer,
+          mimeType: avatarFile.type,
+          url: `/api/users/${user.id}/avatar?t=${Date.now()}`,
+        };
       } catch (err) {
-        logger.error('Failed to save avatar to database', { error: err });
+        logger.error('Failed to read avatar upload', { error: err });
         return { error: 'Failed to upload profile photo.' };
       }
     }
@@ -128,23 +116,42 @@ export async function updateProfile(
     };
 
     const currentName = data.name || user.name || 'User';
-
     if (removeAvatar) {
-      await prisma.userAvatar.deleteMany({ where: { userId: user.id } });
       data.avatarUrl = getDefaultAvatar(currentName, user.id);
     } else if (directAvatarUrl && isValidDirectUrl(directAvatarUrl)) {
       data.avatarUrl = directAvatarUrl;
-    } else if (avatarUrl !== undefined) {
-      data.avatarUrl = avatarUrl;
+    } else if (avatarUpload) {
+      data.avatarUrl = avatarUpload.url;
     }
 
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0 && !avatarUpload && !removeAvatar) {
       return { success: true };
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data,
+    await prisma.$transaction(async tx => {
+      if (removeAvatar) {
+        await tx.userAvatar.deleteMany({ where: { userId: user.id } });
+      } else if (avatarUpload) {
+        await tx.userAvatar.upsert({
+          where: { userId: user.id },
+          update: {
+            data: avatarUpload.data,
+            mimeType: avatarUpload.mimeType,
+          },
+          create: {
+            userId: user.id,
+            data: avatarUpload.data,
+            mimeType: avatarUpload.mimeType,
+          },
+        });
+      }
+
+      if (Object.keys(data).length > 0) {
+        await tx.user.update({
+          where: { id: user.id },
+          data,
+        });
+      }
     });
 
     revalidatePath('/settings/profile');
@@ -208,20 +215,24 @@ export async function updateNotificationPreferences(
     const whatsappEnabled =
       formData.get('whatsappNotificationsEnabled') === 'on' ||
       formData.get('whatsappNotificationsEnabled') === 'true';
-    const phoneNumber =
-      (formData.get('phoneNumber') as string | null)?.trim() ||
-      (formData.get('phoneNumberWhatsApp') as string | null)?.trim() ||
-      null;
 
-    if ((smsEnabled || whatsappEnabled) && !phoneNumber) {
+    const hasPhoneField = formData.has('phoneNumber') || formData.has('phoneNumberWhatsApp');
+    const submittedPhone = formData.has('phoneNumber')
+      ? (formData.get('phoneNumber') as string | null)?.trim() || null
+      : formData.has('phoneNumberWhatsApp')
+        ? (formData.get('phoneNumberWhatsApp') as string | null)?.trim() || null
+        : undefined;
+    const effectivePhone = hasPhoneField ? submittedPhone ?? null : user.phoneNumber ?? null;
+
+    if ((smsEnabled || whatsappEnabled) && !effectivePhone) {
       return {
         error: 'A valid phone number is required when SMS or WhatsApp notifications are enabled.',
       };
     }
 
-    if (phoneNumber) {
+    if (effectivePhone) {
       const phoneRegex = /^\+[1-9]\d{1,14}$/;
-      if (!phoneRegex.test(phoneNumber)) {
+      if (!phoneRegex.test(effectivePhone)) {
         return { error: 'Phone number must be in E.164 format (e.g., +1234567890)' };
       }
     }
@@ -271,9 +282,7 @@ export async function updateNotificationPreferences(
         smsNotificationsEnabled: smsEnabled,
         pushNotificationsEnabled: pushEnabled,
         whatsappNotificationsEnabled: whatsappEnabled,
-        // Contact data is independent from channel enablement. Only an explicitly
-        // cleared input removes the stored phone number.
-        phoneNumber,
+        ...(hasPhoneField ? { phoneNumber: submittedPhone ?? null } : {}),
       },
     });
 
@@ -554,7 +563,7 @@ export async function revokeApiKey(formData: FormData) {
   }
 
   await prisma.$transaction(async tx => {
-    await tx.apiKey.updateMany({
+    const result = await tx.apiKey.updateMany({
       where: {
         id: keyId,
         revokedAt: null,
@@ -563,6 +572,8 @@ export async function revokeApiKey(formData: FormData) {
         revokedAt: new Date(),
       },
     });
+
+    if (result.count === 0) return;
 
     await logAudit(
       {
