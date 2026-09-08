@@ -82,6 +82,9 @@ describe('SLABreachWarningBadge', () => {
     slaResolveTargetMs: null,
     slaTargetSource: null,
     slaTargetCapturedAt: null,
+    slaPolicyId: null,
+    slaPolicyVersion: null,
+    slaPolicyRule: null,
   };
 
   it('renders correctly with Date objects', () => {
