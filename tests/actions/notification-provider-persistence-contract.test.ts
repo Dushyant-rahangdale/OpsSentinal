@@ -46,10 +46,7 @@ vi.mock('@/lib/encrypted-provider-config', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
-import {
-  SettingsChangedError,
-  updateNotificationProvider,
-} from '@/app/(app)/settings/system/provider-actions';
+import { updateNotificationProvider } from '@/app/(app)/settings/system/provider-actions';
 
 describe('notification provider persistence contract', () => {
   beforeEach(() => {
@@ -57,7 +54,10 @@ describe('notification provider persistence contract', () => {
     mocks.assertAdmin.mockResolvedValue({ id: 'admin-1' });
     mocks.getCurrentUser.mockResolvedValue({ id: 'admin-1' });
     mocks.decryptProviderConfig.mockResolvedValue({ apiKey: 'stored-secret' });
-    mocks.mergeSensitiveProviderFields.mockReturnValue({ apiKey: 'stored-secret', fromEmail: 'new@example.com' });
+    mocks.mergeSensitiveProviderFields.mockReturnValue({
+      apiKey: 'stored-secret',
+      fromEmail: 'new@example.com',
+    });
     mocks.encryptProviderConfig.mockResolvedValue({ encrypted: true });
     mocks.transaction.mockImplementation(async callback => callback(tx));
     mocks.findUniqueOrThrow.mockResolvedValue({
@@ -123,7 +123,7 @@ describe('notification provider persistence contract', () => {
         { fromEmail: 'stale@example.com' },
         '2026-09-08T12:00:00.000Z'
       )
-    ).rejects.toBeInstanceOf(SettingsChangedError);
+    ).rejects.toThrow('Settings changed elsewhere. Reload before saving.');
 
     expect(mocks.logAudit).not.toHaveBeenCalled();
     expect(mocks.findUniqueOrThrow).not.toHaveBeenCalled();
