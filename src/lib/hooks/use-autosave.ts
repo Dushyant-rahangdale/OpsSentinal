@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -11,6 +11,23 @@ interface UseAutosaveOptions<T> {
   enabled?: boolean;
 }
 
+function serializeSnapshot<T>(value: T): string {
+  return JSON.stringify(value);
+}
+
+/**
+ * Autosave with a serialized latest-write-wins queue.
+ *
+ * Important guarantees:
+ * - only one persistence request is in flight at a time, so an older request cannot
+ *   overwrite a newer request by completing late;
+ * - the committed snapshot advances only after a successful save;
+ * - edits made while a request is in flight are queued and persisted immediately
+ *   after the current request completes;
+ * - retry always persists the latest visible value;
+ * - pending changes are flushed on React unmount where possible and browser unload
+ *   is guarded so a user is not silently allowed to discard an unsaved edit.
+ */
 export function useAutosave<T>({
   data,
   onSave,
@@ -19,76 +36,169 @@ export function useAutosave<T>({
 }: UseAutosaveOptions<T>) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [error, setError] = useState<string | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const previousDataRef = useRef<T>(data);
-  const isFirstRender = useRef(true);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
 
-  const save = useCallback(async () => {
-    if (!enabled) return;
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestDataRef = useRef<T>(data);
+  const latestSnapshotRef = useRef(serializeSnapshot(data));
+  const committedSnapshotRef = useRef(latestSnapshotRef.current);
+  const onSaveRef = useRef(onSave);
+  const enabledRef = useRef(enabled);
+  const inFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+  const operationGenerationRef = useRef(0);
 
-    setStatus('saving');
-    setError(null);
+  onSaveRef.current = onSave;
+  enabledRef.current = enabled;
+
+  const clearDebounce = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+  }, []);
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const drainQueue = useCallback(async () => {
+    if (!enabledRef.current || inFlightRef.current) return;
+
+    inFlightRef.current = true;
+    clearDebounce();
+    clearIdleTimer();
 
     try {
-      const result = await onSave(data);
+      while (
+        enabledRef.current &&
+        committedSnapshotRef.current !== latestSnapshotRef.current
+      ) {
+        const snapshotData = latestDataRef.current;
+        const snapshotKey = latestSnapshotRef.current;
+        const generation = ++operationGenerationRef.current;
 
-      if (result.success) {
-        setStatus('saved');
-        // Reset to idle after 2 seconds
-        setTimeout(() => setStatus('idle'), 2000);
-      } else {
-        setStatus('error');
-        setError(result.error || 'Failed to save');
+        if (mountedRef.current) {
+          setStatus('saving');
+          setError(null);
+          setHasPendingChanges(true);
+        }
+
+        let result: { success: boolean; error?: string };
+        try {
+          result = await onSaveRef.current(snapshotData);
+        } catch (saveError) {
+          result = {
+            success: false,
+            error: saveError instanceof Error ? saveError.message : 'Failed to save',
+          };
+        }
+
+        if (!result.success) {
+          if (mountedRef.current && generation === operationGenerationRef.current) {
+            setStatus('error');
+            setError(result.error || 'Failed to save');
+            setHasPendingChanges(true);
+          }
+          return;
+        }
+
+        // Only a successful persistence operation may advance the committed snapshot.
+        committedSnapshotRef.current = snapshotKey;
       }
-    } catch (err) {
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to save');
+
+      if (
+        mountedRef.current &&
+        committedSnapshotRef.current === latestSnapshotRef.current
+      ) {
+        const generation = operationGenerationRef.current;
+        setHasPendingChanges(false);
+        setStatus('saved');
+        idleTimerRef.current = setTimeout(() => {
+          if (
+            mountedRef.current &&
+            generation === operationGenerationRef.current &&
+            committedSnapshotRef.current === latestSnapshotRef.current
+          ) {
+            setStatus('idle');
+          }
+        }, 2000);
+      }
+    } finally {
+      inFlightRef.current = false;
     }
-  }, [data, onSave, enabled]);
+  }, [clearDebounce, clearIdleTimer]);
 
   useEffect(() => {
-    // Skip first render
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      previousDataRef.current = data;
+    latestDataRef.current = data;
+    latestSnapshotRef.current = serializeSnapshot(data);
+
+    const isDirty = committedSnapshotRef.current !== latestSnapshotRef.current;
+    setHasPendingChanges(isDirty);
+
+    clearDebounce();
+    clearIdleTimer();
+
+    if (!enabled || !isDirty) {
+      if (!isDirty && status === 'error') {
+        setError(null);
+        setStatus('idle');
+      }
       return;
     }
 
-    // Skip if data hasn't changed
-    if (JSON.stringify(data) === JSON.stringify(previousDataRef.current)) {
-      return;
-    }
+    debounceRef.current = setTimeout(() => {
+      void drainQueue();
+    }, delay);
 
-    previousDataRef.current = data;
+    return clearDebounce;
+  }, [data, delay, enabled, drainQueue, clearDebounce, clearIdleTimer, status]);
 
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  useEffect(() => {
+    mountedRef.current = true;
 
-    // Set new timeout
-    if (enabled) {
-      timeoutRef.current = setTimeout(() => {
-        save();
-      }, delay);
-    }
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (committedSnapshotRef.current === latestSnapshotRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
 
-    // Cleanup
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      mountedRef.current = false;
+      clearDebounce();
+      clearIdleTimer();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+
+      // React navigation can unmount a settings form before the debounce expires.
+      // Start the queued save while the action callback is still reachable. If a save
+      // is already in flight its loop will observe the latest snapshot before exiting.
+      if (
+        enabledRef.current &&
+        committedSnapshotRef.current !== latestSnapshotRef.current &&
+        !inFlightRef.current
+      ) {
+        void drainQueue();
       }
     };
-  }, [data, delay, enabled, save]);
+  }, [clearDebounce, clearIdleTimer, drainQueue]);
 
   const retry = useCallback(() => {
-    save();
-  }, [save]);
+    clearDebounce();
+    clearIdleTimer();
+    void drainQueue();
+  }, [clearDebounce, clearIdleTimer, drainQueue]);
 
   return {
     status,
     error,
     retry,
+    hasPendingChanges,
     isSaving: status === 'saving',
     isSaved: status === 'saved',
     hasError: status === 'error',
