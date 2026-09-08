@@ -272,8 +272,17 @@ export default function TopbarNotifications() {
       }
     };
 
-    eventSource.onerror = error => {
-      logger.error('SSE connection error', { component: 'TopbarNotifications', error });
+    eventSource.onerror = () => {
+      // EventSource emits `error` for ordinary network/proxy disconnects and
+      // reconnect attempts; browsers intentionally do not expose a useful
+      // Error object here. Treat this as a recoverable transport state rather
+      // than an application error, and keep the polling fallback alive.
+      logger.warn('SSE notification transport interrupted; using polling fallback', {
+        component: 'TopbarNotifications',
+        readyState: eventSource.readyState,
+        online: typeof navigator === 'undefined' ? undefined : navigator.onLine,
+        visibilityState: typeof document === 'undefined' ? undefined : document.visibilityState,
+      });
       setIsLive(false);
       if (!pollIntervalRef.current) {
         pollIntervalRef.current = setInterval(fetchNotifications, 30000);
