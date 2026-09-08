@@ -18,6 +18,23 @@ export type StatusPageSnapshotPage = {
   isDefault?: boolean;
 };
 
+function snapshotIncidentEvents(value: unknown, generatedAt: string) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry, index) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+    const event = entry as { id?: unknown; message?: unknown; createdAt?: unknown };
+    if (typeof event.message !== 'string') return [];
+    return [
+      {
+        id: typeof event.id === 'string' ? event.id : `public-event-${index}`,
+        message: event.message,
+        createdAt:
+          typeof event.createdAt === 'string' ? new Date(event.createdAt) : new Date(generatedAt),
+      },
+    ];
+  });
+}
+
 export function createStatusPageViewModel(
   page: StatusPageSnapshotPage,
   snapshot: StatusPageSnapshot
@@ -57,7 +74,7 @@ export function createStatusPageViewModel(
           name: typeof service.name === 'string' ? service.name : 'Service',
           region: typeof service.region === 'string' ? service.region : null,
         },
-        events: [],
+        events: snapshotIncidentEvents(incident.events, snapshot.generatedAt),
         postIncidentReview: incident.postIncidentReview === true,
       };
     }),
