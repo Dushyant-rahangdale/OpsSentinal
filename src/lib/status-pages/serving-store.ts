@@ -90,13 +90,25 @@ class PostgreSqlStatusPageServingStore implements StatusPageServingStore {
 }
 
 class HttpStatusPageServingStore implements StatusPageServingStore {
+  private readonly origin: URL;
+
   constructor(
     private readonly baseUrl: string,
     private readonly token: string
-  ) {}
+  ) {
+    const origin = new URL(baseUrl);
+    if (origin.protocol !== 'https:' || origin.username || origin.password) {
+      throw new Error('STATUS_PAGE_SERVING_STORE_URL must be an HTTPS origin without credentials');
+    }
+    this.origin = origin;
+  }
 
   private async request(path: string, init?: RequestInit) {
-    return fetch(`${this.baseUrl.replace(/\/$/, '')}/${path}`, {
+    const url = new URL(path, this.origin.pathname.endsWith('/') ? this.origin : `${this.origin}/`);
+    if (url.origin !== this.origin.origin) throw new Error('Serving store request escaped its origin');
+    const { assertSafeOutboundUrl, safeOutboundFetch } = await import('@/lib/network-security');
+    await assertSafeOutboundUrl(url.toString());
+    return safeOutboundFetch(url.toString(), {
       ...init,
       headers: {
         Authorization: `Bearer ${this.token}`,

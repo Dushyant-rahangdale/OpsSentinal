@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { POST, GET, PATCH, DELETE } from '@/app/api/status-page/webhooks/route';
 import { triggerStatusPageWebhooks, verifyWebhookSignature } from '@/lib/status-page-webhooks';
+import { processCentralNotificationQueue } from '@/lib/notification-control-plane';
 import {
   testPrisma,
   resetDatabase,
@@ -167,6 +168,7 @@ describeIfRealDB('Status Page Webhooks Integration', () => {
 
       const payloadData = { id: 'inc-123', title: 'Critical System Failure' };
       await triggerStatusPageWebhooks(sp.id, 'incident.created', payloadData);
+      await processCentralNotificationQueue({ trafficClasses: ['PUBLIC_INCIDENT'] });
 
       expect(global.fetch).toHaveBeenCalled();
       const [url, options]: any = (global.fetch as any).mock.calls[0];
@@ -198,6 +200,7 @@ describeIfRealDB('Status Page Webhooks Integration', () => {
       });
 
       await triggerStatusPageWebhooks(sp.id, 'incident.created', { foo: 'bar' });
+      await processCentralNotificationQueue({ trafficClasses: ['PUBLIC_INCIDENT'] });
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
       const [url]: any = (global.fetch as any).mock.calls[0];

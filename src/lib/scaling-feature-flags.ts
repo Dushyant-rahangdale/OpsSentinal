@@ -6,14 +6,18 @@ export type ScalingFeatureFlag =
   | 'STATUS_PAGE_SNAPSHOT_ONLY'
   | 'STATUS_PAGE_EXTERNAL_SERVING_STORE';
 
-const SAFE_DEFAULTS: Record<ScalingFeatureFlag, boolean> = {
-  NOTIFICATION_TRAFFIC_CLASSES_V2: true,
-  NOTIFICATION_PROVIDER_CAPACITY_V2: true,
-  STATUS_PAGE_ASYNC_FANOUT: true,
-  NOTIFICATION_FANOUT_CAMPAIGNS: true,
-  STATUS_PAGE_SNAPSHOT_ONLY: true,
-  STATUS_PAGE_EXTERNAL_SERVING_STORE: false,
-};
+function defaultFor(flag: ScalingFeatureFlag): boolean {
+  switch (flag) {
+    case 'STATUS_PAGE_EXTERNAL_SERVING_STORE':
+      return false;
+    case 'NOTIFICATION_TRAFFIC_CLASSES_V2':
+    case 'NOTIFICATION_PROVIDER_CAPACITY_V2':
+    case 'STATUS_PAGE_ASYNC_FANOUT':
+    case 'NOTIFICATION_FANOUT_CAMPAIGNS':
+    case 'STATUS_PAGE_SNAPSHOT_ONLY':
+      return true;
+  }
+}
 
 export function scalingFeatureEnabled(
   flag: ScalingFeatureFlag,
@@ -22,7 +26,5 @@ export function scalingFeatureEnabled(
   const value = Reflect.get(env, flag);
   if (value === 'true') return true;
   if (value === 'false') return false;
-  // `flag` is a closed union and cannot contain request-controlled property names.
-  // eslint-disable-next-line security/detect-object-injection
-  return SAFE_DEFAULTS[flag];
+  return defaultFor(flag);
 }
