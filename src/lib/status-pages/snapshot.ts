@@ -155,6 +155,11 @@ export async function buildStatusPageSnapshot(
                 createdAt: true,
                 resolvedAt: true,
                 service: { select: { name: true, region: true } },
+                events: {
+                  orderBy: { createdAt: 'asc' },
+                  take: 50,
+                  select: { id: true, message: true, createdAt: true },
+                },
                 postmortem: { select: { status: true, isPublic: true } },
               },
             })
@@ -209,6 +214,28 @@ export async function buildStatusPageSnapshot(
   });
   const impactStates = Array.from(impactByService.values());
 
+  const statusHistory = Object.fromEntries(
+    ids.map(serviceId => {
+      const affected = new Map(
+        affectedHistoryDays
+          .filter(day => day.serviceId === serviceId)
+          .map(day => [
+            day.date.toISOString().slice(0, 10),
+            day.outage ? ('outage' as const) : ('degraded' as const),
+          ])
+      );
+      const cursor = new Date(window.start);
+      cursor.setUTCHours(0, 0, 0, 0);
+      const days: StatusHistoryDay[] = [];
+      while (cursor <= now) {
+        const date = cursor.toISOString().slice(0, 10);
+        days.push({ date, status: affected.get(date) ?? 'operational' });
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+      return [serviceId, days.slice(-90)];
+    })
+  ) as Record<string, StatusHistoryDay[]>;
+
   return {
     schemaVersion: 2,
     pageId,
@@ -248,28 +275,7 @@ export async function buildStatusPageSnapshot(
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
     uptime,
     uptime30,
-    statusHistory: ids.reduce<Record<string, StatusHistoryDay[]>>((history, serviceId) => {
-      const affected = new Map(
-        affectedHistoryDays
-          .filter(day => day.serviceId === serviceId)
-          .map(day => [
-            day.date.toISOString().slice(0, 10),
-            day.outage ? ('outage' as const) : ('degraded' as const),
-          ])
-      );
-      const cursor = new Date(window.start);
-      cursor.setUTCHours(0, 0, 0, 0);
-      const days: StatusHistoryDay[] = [];
-      while (cursor <= now) {
-        const date = cursor.toISOString().slice(0, 10);
-        days.push({ date, status: affected.get(date) ?? 'operational' });
-        cursor.setUTCDate(cursor.getUTCDate() + 1);
-      }
-      // Service ids originate from the database and the result is serialized as data only.
-      // eslint-disable-next-line security/detect-object-injection
-      history[serviceId] = days.slice(-90);
-      return history;
-    }, {}),
+    statusHistory,
     announcements: page.announcements
       .filter(item => item.startDate <= now && (!item.endDate || item.endDate > now))
       .map(item => ({
@@ -343,15 +349,19 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
     Math.max(0, health?.oldestAgeSeconds ?? 0)
   );
 
-  const pages = await prisma.$queryRaw<Array<{ statusPageId: string }>>`
-    SELECT "statusPageId" FROM "StatusPageSnapshot"
+  const pages = await prisma.$queryRaw<Array<{ statusPageId: string; dirty: boolean }>>`
+    SELECT "statusPageId", ("publishedRevision" <> "revision") AS "dirty"
+    FROM "StatusPageSnapshot"
     WHERE "publishedRevision" <> "revision" OR "generatedAt" < NOW() - INTERVAL '1 minute'
     ORDER BY "generatedAt" ASC NULLS FIRST LIMIT ${Math.max(1, Math.min(50, limit))}
   `;
   let rebuilt = 0;
   for (const page of pages) {
     try {
-      await getStatusPageServingStore().revoke(page.statusPageId);
+      // A dirty revision may represent disclosure tightening and must fail closed.
+      // Purely time-derived refreshes retain the current healthy manifest until the
+      // replacement snapshot is successfully published.
+      if (page.dirty) await getStatusPageServingStore().revoke(page.statusPageId);
       if (await rebuildStatusPageSnapshot(page.statusPageId)) {
         rebuilt++;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {
