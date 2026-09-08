@@ -66,9 +66,16 @@ export default function ProviderCard({
         )
       : existing?.enabled || false;
   const initialConfig = (existing?.config as Record<string, unknown>) || {};
+  const initialRevision =
+    providerConfig.key === 'whatsapp'
+      ? twilioProvider?.updatedAt || null
+      : existing?.updatedAt || null;
 
   const [enabled, setEnabled] = useState(initialEnabled);
   const [config, setConfig] = useState<Record<string, unknown>>(initialConfig);
+  const [savedEnabled, setSavedEnabled] = useState(initialEnabled);
+  const [savedConfig, setSavedConfig] = useState<Record<string, unknown>>(initialConfig);
+  const [savedRevision, setSavedRevision] = useState<string | null>(initialRevision);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -88,11 +95,11 @@ export default function ProviderCard({
         return value && String(value).trim() !== '';
       });
   const isDirty =
-    enabled !== initialEnabled || JSON.stringify(config) !== JSON.stringify(initialConfig);
+    enabled !== savedEnabled || JSON.stringify(config) !== JSON.stringify(savedConfig);
 
   const resetLocalChanges = () => {
-    setEnabled(initialEnabled);
-    setConfig(initialConfig);
+    setEnabled(savedEnabled);
+    setConfig(savedConfig);
     setError(null);
     setSaveStatus('idle');
     setTestStatus('idle');
@@ -117,17 +124,25 @@ export default function ProviderCard({
         }
       }
 
+      const { updateNotificationProvider } =
+        await import('@/app/(app)/settings/system/provider-actions');
+      let result: { success: true; updatedAt: string };
+
       if (providerConfig.key === 'whatsapp') {
         if (!twilioProvider) {
-          const { updateNotificationProvider } =
-            await import('@/app/(app)/settings/system/actions');
-          await updateNotificationProvider(null, 'twilio', false, {
-            whatsappNumber: (config.whatsappNumber as string) || '',
-            whatsappEnabled: enabled,
-            whatsappContentSid: (config.whatsappContentSid as string) || '',
-            whatsappAccountSid: (config.whatsappAccountSid as string) || '',
-            whatsappAuthToken: (config.whatsappAuthToken as string) || '',
-          });
+          result = await updateNotificationProvider(
+            null,
+            'twilio',
+            false,
+            {
+              whatsappNumber: (config.whatsappNumber as string) || '',
+              whatsappEnabled: enabled,
+              whatsappContentSid: (config.whatsappContentSid as string) || '',
+              whatsappAccountSid: (config.whatsappAccountSid as string) || '',
+              whatsappAuthToken: (config.whatsappAuthToken as string) || '',
+            },
+            savedRevision
+          );
         } else {
           const twilioConfig = twilioProvider.config as Record<string, unknown>;
           const updatedTwilioConfig = {
@@ -149,20 +164,27 @@ export default function ProviderCard({
               '',
           };
 
-          const { updateNotificationProvider } =
-            await import('@/app/(app)/settings/system/actions');
-          await updateNotificationProvider(
+          result = await updateNotificationProvider(
             twilioProvider.id,
             'twilio',
             twilioProvider.enabled,
-            updatedTwilioConfig
+            updatedTwilioConfig,
+            savedRevision
           );
         }
       } else {
-        const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
-        await updateNotificationProvider(existing?.id || null, providerConfig.key, enabled, config);
+        result = await updateNotificationProvider(
+          existing?.id || null,
+          providerConfig.key,
+          enabled,
+          config,
+          savedRevision
+        );
       }
 
+      setSavedEnabled(enabled);
+      setSavedConfig(config);
+      setSavedRevision(result.updatedAt);
       setSaveStatus('success');
       router.refresh();
       setTimeout(() => setSaveStatus('idle'), 2000);
@@ -198,27 +220,36 @@ export default function ProviderCard({
   const legacyKeyCount = Array.isArray(config.vapidKeyHistory) ? config.vapidKeyHistory.length : 0;
 
   const handleGenerateVapid = async () => {
+    if (isDirty) {
+      toast.error('Save changes before generating or rotating VAPID keys.');
+      return;
+    }
+
     setIsGenerating(true);
     setGenerateNotice(null);
     setGenerateError(null);
     setError(null);
 
     try {
-      const { generateVapidKeys } = await import('@/app/(app)/settings/system/actions');
+      const { generateVapidKeys } =
+        await import('@/app/(app)/settings/system/provider-actions');
       const subjectValue = typeof config.vapidSubject === 'string' ? config.vapidSubject : '';
       const result = await generateVapidKeys({
         subject: subjectValue,
         rotate: hasVapidKeys,
         keepPrevious: true,
+        expectedUpdatedAt: savedRevision,
       });
 
-      setConfig(prev => ({
-        ...prev,
+      const nextConfig = {
+        ...config,
         vapidPublicKey: result.publicKey,
         vapidPrivateKey: result.privateKey,
         vapidSubject: result.subject,
-      }));
-
+      };
+      setConfig(nextConfig);
+      setSavedConfig(nextConfig);
+      setSavedRevision(result.updatedAt);
       setGenerateNotice(
         hasVapidKeys
           ? 'Keys rotated. Existing devices continue to work; new devices use the latest key.'
@@ -236,8 +267,8 @@ export default function ProviderCard({
 
   const isConfigured = hasRequiredConfig;
 
-  const credentialAgeDays = existing?.updatedAt
-    ? Math.floor((Date.now() - new Date(existing.updatedAt).getTime()) / (1000 * 60 * 60 * 24))
+  const credentialAgeDays = savedRevision
+    ? Math.floor((Date.now() - new Date(savedRevision).getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   const handleTest = async () => {
@@ -422,7 +453,8 @@ export default function ProviderCard({
                     variant="outline"
                     size="sm"
                     onClick={handleGenerateVapid}
-                    disabled={isGenerating}
+                    disabled={isGenerating || isDirty}
+                    title={isDirty ? 'Save changes before rotating keys' : undefined}
                     className="gap-2 text-xs font-semibold shrink-0"
                   >
                     {isGenerating ? (
@@ -586,7 +618,9 @@ export default function ProviderCard({
               </span>
               <span>
                 Last modified:{' '}
-                {formatDateTime(existing.updatedAt, userTimeZone, { format: 'datetime' })}
+                {formatDateTime(savedRevision || existing.updatedAt, userTimeZone, {
+                  format: 'datetime',
+                })}
               </span>
             </div>
             {credentialAgeDays !== null && credentialAgeDays > 90 && (
