@@ -43,14 +43,13 @@ export function AutosaveForm<T extends FieldValues>({
   const { watch, formState } = form;
   const watchedData = watch();
 
-  const { status, error, isSaving } = useAutosave({
+  const { status, error, retry } = useAutosave({
     data: watchedData,
     onSave,
     delay,
     enabled: enabled && formState.isValid,
   });
 
-  // Show toast on error
   useEffect(() => {
     if (status === 'error' && error) {
       toast.error(error);
@@ -70,13 +69,13 @@ export function AutosaveForm<T extends FieldValues>({
           <SaveIndicator
             status={status}
             error={error}
+            onRetry={retry}
             className={indicatorClasses[saveIndicatorPosition]}
           />
         )}
         <form
           onSubmit={e => {
             e.preventDefault();
-            // Auto-save handles submission, but we prevent default form submission
           }}
           className="space-y-6"
         >
