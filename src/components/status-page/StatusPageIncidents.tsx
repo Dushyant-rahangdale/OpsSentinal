@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useBrowserTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 
@@ -115,10 +115,6 @@ export default function StatusPageIncidents({
       return true;
     });
   }, [incidents, statusFilter, serviceFilter, searchQuery]);
-
-  useEffect(() => {
-    setCurrentPage(1); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [statusFilter, serviceFilter, searchQuery]);
 
   const totalPages = Math.ceil(filteredIncidents.length / INCIDENTS_PER_PAGE);
   const startIndex = (currentPage - 1) * INCIDENTS_PER_PAGE;
@@ -254,7 +250,10 @@ export default function StatusPageIncidents({
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search incidents"
               className="status-page-input"
               style={{
@@ -263,9 +262,12 @@ export default function StatusPageIncidents({
             />
             <select
               value={statusFilter}
-              onChange={e =>
-                setStatusFilter(e.target.value as 'all' | 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED')
-              }
+              onChange={e => {
+                setStatusFilter(
+                  e.target.value as 'all' | 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'
+                );
+                setCurrentPage(1);
+              }}
               className="status-page-select"
               style={{
                 minWidth: '160px',
@@ -278,7 +280,10 @@ export default function StatusPageIncidents({
             </select>
             <select
               value={serviceFilter}
-              onChange={e => setServiceFilter(e.target.value)}
+              onChange={e => {
+                setServiceFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="status-page-select"
               style={{
                 minWidth: '180px',
