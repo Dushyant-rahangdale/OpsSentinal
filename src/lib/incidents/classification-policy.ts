@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
 import { emitAuditEvent } from '@/lib/audit';
@@ -14,7 +15,7 @@ const classificationPolicyInput = z
         z
           .object({
             matchValue: z.enum(['critical', 'error', 'warning', 'info']),
-            priority: z.enum(['P1', 'P2', 'P3', 'P4', 'P5']),
+            priority: z.enum(['P1', 'P2', 'P3', 'P4', 'P5']).nullable(),
             urgency: z.enum(['HIGH', 'MEDIUM', 'LOW']),
           })
           .strict()
@@ -33,7 +34,7 @@ export async function saveWorkspaceClassificationPolicy(rawInput: unknown) {
     throw new Error('Unauthorized. Admin access required.');
   }
 
-  return prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended('incident-classification:workspace', 0))`;
     const previous = await tx.incidentClassificationPolicy.findFirst({
       where: { scopeKey: 'workspace', sealedAt: { not: null } },
@@ -83,4 +84,7 @@ export async function saveWorkspaceClassificationPolicy(rawInput: unknown) {
     );
     return sealed;
   });
+
+  for (const path of ['/settings/incident-sla', '/settings', '/audit']) revalidatePath(path);
+  return result;
 }

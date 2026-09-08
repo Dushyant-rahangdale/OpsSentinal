@@ -13,6 +13,8 @@ ALTER TABLE "Incident"
   ADD COLUMN "classificationPolicyVersion" INTEGER,
   ADD COLUMN "classificationRule" TEXT;
 
+-- Classification is intentionally workspace-scoped in v2. The schema can be
+-- extended later without changing any incident that already captured provenance.
 CREATE TABLE "IncidentClassificationPolicy" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "scopeKey" TEXT NOT NULL,
@@ -22,10 +24,8 @@ CREATE TABLE "IncidentClassificationPolicy" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" TEXT,
   "sealedAt" TIMESTAMP(3),
-  CONSTRAINT incident_classification_scope CHECK
-    ("scopeKey" = 'workspace' OR "scopeKey" ~ '^(service|integration):.+$'),
-  CONSTRAINT incident_classification_inheritance CHECK
-    ("scopeKey" <> 'workspace' OR NOT "inheritWorkspace")
+  CONSTRAINT incident_classification_scope CHECK ("scopeKey" = 'workspace'),
+  CONSTRAINT incident_classification_inheritance CHECK (NOT "inheritWorkspace")
 );
 CREATE UNIQUE INDEX "IncidentClassificationPolicy_scopeKey_version_key"
   ON "IncidentClassificationPolicy" ("scopeKey", "version");
@@ -46,17 +46,18 @@ ALTER TABLE "Incident" ADD CONSTRAINT "Incident_classificationPolicyId_fkey"
   FOREIGN KEY ("classificationPolicyId") REFERENCES "IncidentClassificationPolicy"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Preserve pre-v2 alert semantics as an explicit, auditable workspace policy.
+-- Preserve pre-v2 product behavior exactly: provider severity chooses urgency,
+-- while incident priority remains unassigned unless an administrator explicitly opts in.
 INSERT INTO "IncidentClassificationPolicy"
   ("id","scopeKey","version","inheritWorkspace","derivePriorityFromUrgency")
 VALUES ('incident-classification-workspace-v1','workspace',1,false,false);
 INSERT INTO "IncidentClassificationPolicyRule"
   ("id","policyId","matchType","matchValue","priority","urgency","label")
 VALUES
-  ('incident-classification-workspace-v1-critical','incident-classification-workspace-v1','ALERT_SEVERITY','critical','P1','HIGH','Critical alert'),
-  ('incident-classification-workspace-v1-error','incident-classification-workspace-v1','ALERT_SEVERITY','error','P2','MEDIUM','Error alert'),
-  ('incident-classification-workspace-v1-warning','incident-classification-workspace-v1','ALERT_SEVERITY','warning','P3','MEDIUM','Warning alert'),
-  ('incident-classification-workspace-v1-info','incident-classification-workspace-v1','ALERT_SEVERITY','info','P5','LOW','Informational alert');
+  ('incident-classification-workspace-v1-critical','incident-classification-workspace-v1','ALERT_SEVERITY','critical',NULL,'HIGH','Critical alert'),
+  ('incident-classification-workspace-v1-error','incident-classification-workspace-v1','ALERT_SEVERITY','error',NULL,'MEDIUM','Error alert'),
+  ('incident-classification-workspace-v1-warning','incident-classification-workspace-v1','ALERT_SEVERITY','warning',NULL,'MEDIUM','Warning alert'),
+  ('incident-classification-workspace-v1-info','incident-classification-workspace-v1','ALERT_SEVERITY','info',NULL,'LOW','Informational alert');
 UPDATE "IncidentClassificationPolicy" SET "sealedAt" = CURRENT_TIMESTAMP
 WHERE "id" = 'incident-classification-workspace-v1';
 
@@ -95,19 +96,62 @@ CREATE TRIGGER incident_classification_rule_immutable BEFORE UPDATE OR DELETE ON
 CREATE TRIGGER incident_classification_rule_sealed_insert BEFORE INSERT ON "IncidentClassificationPolicyRule"
   FOR EACH ROW EXECUTE FUNCTION opsknight_reject_rule_for_sealed_classification_policy();
 
--- Workspace P1-P5 rules become the canonical defaults. New service versions retain
--- each service base while removing only the known migration-generated v1 rules.
-INSERT INTO "IncidentSlaPolicy" ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
-VALUES ('incident-sla-workspace-v2','workspace',2,false,900000,7200000);
-INSERT INTO "IncidentSlaPolicyRule" ("id","policyId","priority","ackTargetMs","resolveTargetMs","label") VALUES
-  ('incident-sla-workspace-v2-P1','incident-sla-workspace-v2','P1',300000,3600000,'Workspace P1'),
-  ('incident-sla-workspace-v2-P2','incident-sla-workspace-v2','P2',900000,14400000,'Workspace P2'),
-  ('incident-sla-workspace-v2-P3','incident-sla-workspace-v2','P3',1800000,28800000,'Workspace P3'),
-  ('incident-sla-workspace-v2-P4','incident-sla-workspace-v2','P4',3600000,86400000,'Workspace P4'),
-  ('incident-sla-workspace-v2-P5','incident-sla-workspace-v2','P5',7200000,172800000,'Workspace P5');
-UPDATE "IncidentSlaPolicy" SET "sealedAt" = CURRENT_TIMESTAMP
-WHERE "id" = 'incident-sla-workspace-v2';
+-- Publish workspace P1-P5 defaults without assuming version 2 is free. Existing
+-- workspace base targets and any administrator-authored priority rules are kept;
+-- missing priorities receive the legacy canonical targets so effective behavior
+-- remains stable when generated service rules are removed below.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM "IncidentSlaPolicy"
+    WHERE "scopeKey" = 'workspace' AND "sealedAt" IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'workspace incident SLA policy is missing before response-policy v2 migration';
+  END IF;
+END;
+$$;
 
+WITH latest_workspace AS (
+  SELECT * FROM "IncidentSlaPolicy"
+  WHERE "scopeKey" = 'workspace' AND "sealedAt" IS NOT NULL
+  ORDER BY "version" DESC LIMIT 1
+), destination AS (
+  INSERT INTO "IncidentSlaPolicy"
+    ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
+  SELECT
+    'incident-response-v2-workspace-' || md5(l."id" || ':' || l."version"::text),
+    'workspace', l."version" + 1, false, l."baseAckTargetMs", l."baseResolveTargetMs"
+  FROM latest_workspace l
+  RETURNING "id"
+)
+INSERT INTO "IncidentSlaPolicyRule"
+  ("id","policyId","priority","ackTargetMs","resolveTargetMs","label")
+SELECT
+  d."id" || '-' || defaults.priority,
+  d."id",
+  defaults.priority,
+  COALESCE(existing."ackTargetMs", defaults.ack_ms),
+  COALESCE(existing."resolveTargetMs", defaults.resolve_ms),
+  COALESCE(existing."label", 'Workspace ' || defaults.priority)
+FROM destination d
+CROSS JOIN latest_workspace l
+CROSS JOIN (VALUES
+  ('P1',300000,3600000),
+  ('P2',900000,14400000),
+  ('P3',1800000,28800000),
+  ('P4',3600000,86400000),
+  ('P5',7200000,172800000)
+) defaults(priority,ack_ms,resolve_ms)
+LEFT JOIN "IncidentSlaPolicyRule" existing
+  ON existing."policyId" = l."id" AND existing."priority" = defaults.priority;
+UPDATE "IncidentSlaPolicy" SET "sealedAt" = CURRENT_TIMESTAMP
+WHERE "scopeKey" = 'workspace'
+  AND "sealedAt" IS NULL
+  AND "id" LIKE 'incident-response-v2-workspace-%';
+
+-- New service versions retain each service base and administrator-authored rules,
+-- while removing only the known migration-generated v1 priority rules. Those
+-- priorities now fall through to the canonical workspace rules above.
 WITH latest AS (
   SELECT DISTINCT ON ("scopeKey") * FROM "IncidentSlaPolicy"
   WHERE "scopeKey" LIKE 'service:%' AND "sealedAt" IS NOT NULL
@@ -115,19 +159,19 @@ WITH latest AS (
 )
 INSERT INTO "IncidentSlaPolicy"
   ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
-SELECT 'incident-response-v2-' || md5("scopeKey" || ':' || "version"::text), "scopeKey", "version" + 1,
-       "inheritWorkspace", "baseAckTargetMs", "baseResolveTargetMs"
+SELECT
+  'incident-response-v2-service-' || md5("scopeKey" || ':' || "id" || ':' || "version"::text),
+  "scopeKey", "version" + 1, "inheritWorkspace", "baseAckTargetMs", "baseResolveTargetMs"
 FROM latest;
 
--- Preserve real customer-authored service rules; only the exact legacy seed is replaced
--- by workspace defaults.
 WITH latest AS (
   SELECT DISTINCT ON ("scopeKey") * FROM "IncidentSlaPolicy"
   WHERE "scopeKey" LIKE 'service:%' AND "sealedAt" IS NOT NULL
-    AND "id" NOT LIKE 'incident-response-v2-%'
+    AND "id" NOT LIKE 'incident-response-v2-service-%'
   ORDER BY "scopeKey", "version" DESC
 ), destination AS (
-  SELECT p."id", p."scopeKey" FROM "IncidentSlaPolicy" p WHERE p."id" LIKE 'incident-response-v2-%'
+  SELECT p."id", p."scopeKey" FROM "IncidentSlaPolicy" p
+  WHERE p."id" LIKE 'incident-response-v2-service-%'
 )
 INSERT INTO "IncidentSlaPolicyRule" ("id","policyId","priority","ackTargetMs","resolveTargetMs","label")
 SELECT d."id" || '-' || r."priority", d."id", r."priority", r."ackTargetMs", r."resolveTargetMs", r."label"
@@ -135,7 +179,7 @@ FROM latest l JOIN destination d USING ("scopeKey")
 JOIN "IncidentSlaPolicyRule" r ON r."policyId" = l."id"
 WHERE COALESCE(r."label", '') <> 'Legacy seeded priority rule';
 UPDATE "IncidentSlaPolicy" SET "sealedAt" = CURRENT_TIMESTAMP
-WHERE "id" LIKE 'incident-response-v2-%';
+WHERE "id" LIKE 'incident-response-v2-service-%';
 
 -- Keep rolling-upgrade/legacy writers identical to the application resolver:
 -- service priority -> workspace priority -> explicit service base -> workspace base.

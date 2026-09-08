@@ -82,7 +82,8 @@ export default async function IncidentSlaSettingsPage() {
         <div className="rounded-lg border p-4">
           <strong>Priority · P1–P5</strong>
           <p className="mt-1 text-xs text-muted-foreground">
-            Response obligation and immutable SLA selection.
+            Optional response obligation and immutable SLA selection. Alert severity does not assign
+            it unless you opt in below.
           </p>
         </div>
         <div className="rounded-lg border p-4">
@@ -94,7 +95,7 @@ export default async function IncidentSlaSettingsPage() {
         <div className="rounded-lg border p-4">
           <strong>Alert severity</strong>
           <p className="mt-1 text-xs text-muted-foreground">
-            Provider signal normalized by classification policy.
+            Provider signal normalized by the workspace classification policy.
           </p>
         </div>
       </div>
@@ -107,7 +108,7 @@ export default async function IncidentSlaSettingsPage() {
                 derivePriorityFromUrgency: classificationPolicy.derivePriorityFromUrgency,
                 rules: classificationPolicy.rules.map(rule => ({
                   matchValue: rule.matchValue as 'critical' | 'error' | 'warning' | 'info',
-                  priority: rule.priority as 'P1' | 'P2' | 'P3' | 'P4' | 'P5',
+                  priority: rule.priority as 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | null,
                   urgency: rule.urgency as 'HIGH' | 'MEDIUM' | 'LOW',
                 })),
               }

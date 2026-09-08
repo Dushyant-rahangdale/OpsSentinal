@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { notify } from '@/lib/toast';
 import { saveIncidentSlaPolicyAction } from '@/app/(app)/settings/incident-sla/actions';
-import { INCIDENT_PRIORITY_DEFINITIONS } from '@/lib/incidents/priority';
+import { getIncidentPriorityDefinition } from '@/lib/incidents/priority';
 
 type Rule = {
   priority: string;
@@ -47,6 +47,7 @@ export default function IncidentSlaPolicySettings({
   canManage: boolean;
 }) {
   const isService = scopeKey.startsWith('service:');
+  const [version, setVersion] = useState(policy?.version ?? 0);
   const [inherit, setInherit] = useState(isService && (policy?.inheritWorkspace ?? true));
   const [ack, setAck] = useState(minutes(policy?.baseAckTargetMs));
   const [resolve, setResolve] = useState(minutes(policy?.baseResolveTargetMs));
@@ -80,9 +81,9 @@ export default function IncidentSlaPolicySettings({
   const submit = () => {
     startTransition(async () => {
       try {
-        await saveIncidentSlaPolicyAction({
+        const result = await saveIncidentSlaPolicyAction({
           scopeKey,
-          expectedVersion: policy?.version ?? 0,
+          expectedVersion: version,
           inheritWorkspace: inherit,
           baseAckTargetMs: inherit ? null : Number(ack) * 60000,
           baseResolveTargetMs: inherit ? null : Number(resolve) * 60000,
@@ -93,15 +94,20 @@ export default function IncidentSlaPolicySettings({
                     priority: rule.priority,
                     ackTargetMs: Number(rule.ack) * 60000,
                     resolveTargetMs: Number(rule.resolve) * 60000,
-                    label: `${rule.priority} ${INCIDENT_PRIORITY_DEFINITIONS[rule.priority].label}`,
+                    label: `${rule.priority} ${getIncidentPriorityDefinition(rule.priority).label}`,
                   },
                 ]
               : [];
           }),
         });
+        if (!result.ok) {
+          notify.error(result.message);
+          return;
+        }
+        setVersion(result.version);
         notify.success('Incident response SLA policy saved for future incidents.');
-      } catch (error) {
-        notify.error(error instanceof Error ? error.message : 'Unable to save SLA policy');
+      } catch {
+        notify.error('Unable to save the incident response SLA policy. Try again.');
       }
     });
   };
@@ -117,7 +123,7 @@ export default function IncidentSlaPolicySettings({
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-[10px]">
-            v{policy?.version ?? 0}
+            v{version}
           </Badge>
         </div>
       </CardHeader>
@@ -221,7 +227,7 @@ export default function IncidentSlaPolicySettings({
                       disabled={!canManage || pending}
                       onChange={e => updateRule(rule.priority, 'enabled', e.target.checked)}
                     />
-                    {rule.priority} {INCIDENT_PRIORITY_DEFINITIONS[rule.priority].label}
+                    {rule.priority} {getIncidentPriorityDefinition(rule.priority).label}
                   </label>
                   <div>
                     <Label className="text-[10px]">Ack minutes</Label>

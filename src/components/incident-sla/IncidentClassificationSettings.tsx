@@ -20,24 +20,19 @@ import {
 import { notify } from '@/lib/toast';
 import { saveWorkspaceClassificationPolicyAction } from '@/app/(app)/settings/incident-sla/actions';
 import { INCIDENT_PRIORITIES, getIncidentPriorityDefinition } from '@/lib/incidents/priority';
+import {
+  ALERT_SEVERITIES,
+  defaultAlertClassification,
+  type AlertSeverity,
+} from '@/lib/incidents/classification-contract';
 
-type Severity = 'critical' | 'error' | 'warning' | 'info';
 type Priority = (typeof INCIDENT_PRIORITIES)[number];
 type Urgency = 'HIGH' | 'MEDIUM' | 'LOW';
-type Rule = { matchValue: Severity; priority: Priority; urgency: Urgency };
+type Rule = { matchValue: AlertSeverity; priority: Priority | null; urgency: Urgency };
 
-const severities: Severity[] = ['critical', 'error', 'warning', 'info'];
-function defaultRule(severity: Severity): Omit<Rule, 'matchValue'> {
-  switch (severity) {
-    case 'critical':
-      return { priority: 'P1', urgency: 'HIGH' };
-    case 'error':
-      return { priority: 'P2', urgency: 'MEDIUM' };
-    case 'warning':
-      return { priority: 'P3', urgency: 'MEDIUM' };
-    case 'info':
-      return { priority: 'P5', urgency: 'LOW' };
-  }
+function defaultRule(severity: AlertSeverity): Omit<Rule, 'matchValue'> {
+  const classification = defaultAlertClassification(severity);
+  return { priority: classification.priority, urgency: classification.urgency };
 }
 
 export default function IncidentClassificationSettings({
@@ -45,31 +40,35 @@ export default function IncidentClassificationSettings({
 }: {
   policy: { version: number; derivePriorityFromUrgency: boolean; rules: Rule[] } | null;
 }) {
+  const [version, setVersion] = useState(policy?.version ?? 0);
   const [derive, setDerive] = useState(policy?.derivePriorityFromUrgency ?? false);
   const [rules, setRules] = useState<Rule[]>(() =>
-    severities.map(matchValue => ({
+    ALERT_SEVERITIES.map(matchValue => ({
       matchValue,
       ...(policy?.rules.find(rule => rule.matchValue === matchValue) ?? defaultRule(matchValue)),
     }))
   );
   const [pending, startTransition] = useTransition();
-  const update = (matchValue: Severity, patch: Partial<Rule>) =>
+  const update = (matchValue: AlertSeverity, patch: Partial<Rule>) =>
     setRules(current =>
       current.map(rule => (rule.matchValue === matchValue ? { ...rule, ...patch } : rule))
     );
   const save = () =>
     startTransition(async () => {
       try {
-        await saveWorkspaceClassificationPolicyAction({
-          expectedVersion: policy?.version ?? 0,
+        const result = await saveWorkspaceClassificationPolicyAction({
+          expectedVersion: version,
           derivePriorityFromUrgency: derive,
           rules,
         });
+        if (!result.ok) {
+          notify.error(result.message);
+          return;
+        }
+        setVersion(result.version);
         notify.success('Classification policy saved for future incidents.');
-      } catch (error) {
-        notify.error(
-          error instanceof Error ? error.message : 'Unable to save classification policy'
-        );
+      } catch {
+        notify.error('Unable to save the alert classification policy. Try again.');
       }
     });
 
@@ -80,13 +79,18 @@ export default function IncidentClassificationSettings({
           <div>
             <CardTitle className="text-sm">Alert classification</CardTitle>
             <CardDescription>
-              Map normalized provider severity to response priority and notification urgency.
+              Severity always maps to notification urgency. Assign a response priority only when
+              you want the source signal to choose a P1–P5 SLA contract.
             </CardDescription>
           </div>
-          <Badge variant="outline">v{policy?.version ?? 0}</Badge>
+          <Badge variant="outline">v{version}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-5">
+        <div className="rounded-md border bg-muted/20 p-3 text-xs text-muted-foreground">
+          Default upgrade behavior keeps priority unassigned. Existing severity → urgency behavior
+          is preserved until you explicitly opt into automatic priority assignment.
+        </div>
         <div className="grid grid-cols-[1fr_1fr_1fr] gap-2 text-xs font-semibold text-muted-foreground">
           <span>Incoming severity</span>
           <span>Priority</span>
@@ -96,14 +100,19 @@ export default function IncidentClassificationSettings({
           <div key={rule.matchValue} className="grid grid-cols-[1fr_1fr_1fr] items-center gap-2">
             <span className="capitalize text-sm font-medium">{rule.matchValue}</span>
             <Select
-              value={rule.priority}
+              value={rule.priority ?? 'NONE'}
               disabled={pending}
-              onValueChange={value => update(rule.matchValue, { priority: value as Priority })}
+              onValueChange={value =>
+                update(rule.matchValue, {
+                  priority: value === 'NONE' ? null : (value as Priority),
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="NONE">No automatic priority</SelectItem>
                 {INCIDENT_PRIORITIES.map(priority => (
                   <SelectItem key={priority} value={priority}>
                     {priority} {getIncidentPriorityDefinition(priority).label}
@@ -138,13 +147,11 @@ export default function IncidentClassificationSettings({
             onChange={event => setDerive(event.target.checked)}
           />
           <span>
-            <strong>
-              Derive priority from urgency when no priority or severity mapping exists
-            </strong>
+            <strong>Derive priority from urgency when no severity rule assigns priority</strong>
             <br />
             <span className="text-muted-foreground">
-              HIGH → P1, MEDIUM → P3, LOW → P5. Disabled by default to keep priority and
-              notification urgency independent.
+              HIGH → P1, MEDIUM → P3, LOW → P5. Disabled by default so paging intensity and
+              response obligation remain independent.
             </span>
           </span>
         </label>

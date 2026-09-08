@@ -2,56 +2,134 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Prisma } from '@prisma/client';
 import { resolveIncidentClassification } from '@/lib/incidents/classification';
 
-const tx = (policies: unknown[]) =>
+const tx = (policy: unknown | null) =>
   ({
-    incidentClassificationPolicy: { findMany: vi.fn().mockResolvedValue(policies) },
+    incidentClassificationPolicy: { findFirst: vi.fn().mockResolvedValue(policy) },
   }) as unknown as Prisma.TransactionClient;
 
 describe('incident classification', () => {
-  it('uses integration, service, workspace precedence and records provenance', async () => {
-    const rule = (scopeKey: string, id: string, priority: string) => ({
-      id,
-      scopeKey,
-      version: 2,
-      derivePriorityFromUrgency: false,
-      rules: [{ matchType: 'ALERT_SEVERITY', matchValue: 'critical', priority, urgency: 'HIGH' }],
-    });
+  it('preserves severity-to-urgency behavior without assigning priority by default', async () => {
     const result = await resolveIncidentClassification(
-      tx([
-        rule('workspace', 'w', 'P3'),
-        rule('service:s1', 's', 'P2'),
-        rule('integration:i1', 'i', 'P1'),
-      ]),
+      tx({
+        id: 'workspace-v1',
+        scopeKey: 'workspace',
+        version: 1,
+        derivePriorityFromUrgency: false,
+        rules: [
+          {
+            matchType: 'ALERT_SEVERITY',
+            matchValue: 'critical',
+            priority: null,
+            urgency: 'HIGH',
+          },
+        ],
+      }),
       { serviceId: 's1', integrationId: 'i1', alertSeverity: 'critical' }
     );
+
+    expect(result).toMatchObject({
+      priority: null,
+      urgency: 'HIGH',
+      prioritySource: 'NONE',
+      urgencySource: 'CLASSIFICATION_RULE',
+      policyId: 'workspace-v1',
+      policyVersion: 1,
+      rule: 'ALERT_SEVERITY:critical',
+    });
+  });
+
+  it('allows an administrator to opt into severity-to-priority mapping', async () => {
+    const result = await resolveIncidentClassification(
+      tx({
+        id: 'workspace-v2',
+        scopeKey: 'workspace',
+        version: 2,
+        derivePriorityFromUrgency: false,
+        rules: [
+          {
+            matchType: 'ALERT_SEVERITY',
+            matchValue: 'critical',
+            priority: 'P1',
+            urgency: 'HIGH',
+          },
+        ],
+      }),
+      { serviceId: 's1', alertSeverity: 'critical' }
+    );
+
     expect(result).toMatchObject({
       priority: 'P1',
       urgency: 'HIGH',
-      policyId: 'i',
-      policyVersion: 2,
+      prioritySource: 'CLASSIFICATION_RULE',
+      policyId: 'workspace-v2',
     });
   });
 
   it('keeps explicit priority and urgency authoritative', async () => {
     expect(
-      await resolveIncidentClassification(tx([]), {
-        serviceId: 's1',
-        explicitPriority: 'p4',
-        explicitUrgency: 'LOW',
-        alertSeverity: 'critical',
-      })
+      await resolveIncidentClassification(
+        tx({
+          id: 'workspace-v1',
+          scopeKey: 'workspace',
+          version: 1,
+          derivePriorityFromUrgency: false,
+          rules: [
+            {
+              matchType: 'ALERT_SEVERITY',
+              matchValue: 'critical',
+              priority: 'P1',
+              urgency: 'HIGH',
+            },
+          ],
+        }),
+        {
+          serviceId: 's1',
+          explicitPriority: 'p4',
+          explicitUrgency: 'LOW',
+          alertSeverity: 'critical',
+        }
+      )
     ).toMatchObject({
       priority: 'P4',
       urgency: 'LOW',
       prioritySource: 'EXPLICIT',
       urgencySource: 'EXPLICIT',
+      policyId: null,
+      policyVersion: null,
     });
   });
 
-  it('preserves legacy severity behavior when policy storage is unavailable', async () => {
+  it('derives priority from urgency only when the workspace option is enabled', async () => {
+    await expect(
+      resolveIncidentClassification(
+        tx({
+          id: 'workspace-v3',
+          scopeKey: 'workspace',
+          version: 3,
+          derivePriorityFromUrgency: true,
+          rules: [],
+        }),
+        { serviceId: 's1', explicitUrgency: 'HIGH' }
+      )
+    ).resolves.toMatchObject({
+      priority: 'P1',
+      urgency: 'HIGH',
+      prioritySource: 'URGENCY_FALLBACK',
+      policyId: 'workspace-v3',
+      rule: 'URGENCY_FALLBACK',
+    });
+  });
+
+  it('preserves legacy severity behavior while policy storage is unavailable', async () => {
     const legacyTx = {} as Prisma.TransactionClient;
     await expect(
       resolveIncidentClassification(legacyTx, { serviceId: 's1', alertSeverity: 'warning' })
-    ).resolves.toMatchObject({ priority: 'P3', urgency: 'MEDIUM' });
+    ).resolves.toMatchObject({
+      priority: null,
+      urgency: 'MEDIUM',
+      prioritySource: 'NONE',
+      urgencySource: 'LEGACY_SEVERITY_DEFAULT',
+      policyId: null,
+    });
   });
 });

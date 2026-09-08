@@ -116,4 +116,50 @@ describeIfRealDB('SLA aggregation threshold parity', { timeout: 60_000 }, () => 
     expect(compatible.ackSLA.breached).toBe(true);
     expect(historical.ackCompliance).toBe(0);
   });
+
+  it('keeps timely source recovery out of the ACK denominator across engines at the exact deadline', async () => {
+    const service = await testPrisma.service.create({
+      data: { name: `SLA source-recovery parity ${crypto.randomUUID()}` },
+    });
+    const createdAt = new Date();
+    createdAt.setUTCDate(createdAt.getUTCDate() - 1);
+    createdAt.setUTCHours(13, 0, 0, 0);
+    const ackTargetMs = 10 * 60_000;
+    const resolvedAt = new Date(createdAt.getTime() + ackTargetMs);
+    const incident = await testPrisma.incident.create({
+      data: {
+        title: 'Source recovered at ACK boundary',
+        serviceId: service.id,
+        status: 'RESOLVED',
+        createdAt,
+        resolvedAt,
+        resolutionKind: 'SOURCE_RECOVERY',
+        slaAckTargetMs: ackTargetMs,
+        slaResolveTargetMs: 60 * 60_000,
+        slaTargetSource: 'TEST',
+        slaTargetCapturedAt: createdAt,
+      },
+    });
+    const stored = await testPrisma.incident.findUniqueOrThrow({ where: { id: incident.id } });
+    const projected = projectIncidentSlaState(stored, { now: resolvedAt });
+    const live = await calculateSLAMetrics({
+      serviceId: service.id,
+      startDate: new Date(createdAt.getTime() - 1),
+      endDate: new Date(resolvedAt.getTime() + 1),
+      userTimeZone: 'UTC',
+      _forceLive: true,
+    });
+    const compatible = await checkIncidentSLA(incident.id);
+
+    await generateDailyRollup(createdAt, service.id);
+    const historical = await queryRollupMetrics(createdAt, createdAt, {
+      serviceId: service.id,
+    });
+
+    expect(projected.valid && projected.ack.status).toBe('NOT_REQUIRED');
+    expect(projected.valid && projected.ack.applicability).toBe('NOT_REQUIRED');
+    expect(live.ackCompliance).toBeNull();
+    expect(compatible.ackSLA).toMatchObject({ breached: false, applicability: 'NOT_REQUIRED' });
+    expect(historical.ackCompliance).toBeNull();
+  });
 });

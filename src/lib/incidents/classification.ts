@@ -1,8 +1,13 @@
 import type { IncidentUrgency, Prisma } from '@prisma/client';
 import { normalizeIncidentPriority, type IncidentPriority } from './priority';
+import {
+  defaultAlertClassification,
+  priorityFromUrgency,
+  type AlertSeverity,
+} from './classification-contract';
 
-export const ALERT_SEVERITIES = ['critical', 'error', 'warning', 'info'] as const;
-export type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
+export { ALERT_SEVERITIES } from './classification-contract';
+export type { AlertSeverity } from './classification-contract';
 
 export type IncidentClassification = {
   priority: IncidentPriority | null;
@@ -14,42 +19,13 @@ export type IncidentClassification = {
   rule: string | null;
 };
 
-function legacySeverityDefault(severity: AlertSeverity): {
-  priority: IncidentPriority;
-  urgency: IncidentUrgency;
-} {
-  switch (severity) {
-    case 'critical':
-      return { priority: 'P1', urgency: 'HIGH' };
-    case 'error':
-      return { priority: 'P2', urgency: 'MEDIUM' };
-    case 'warning':
-      return { priority: 'P3', urgency: 'MEDIUM' };
-    case 'info':
-      return { priority: 'P5', urgency: 'LOW' };
-  }
-}
-
-function priorityFromUrgency(urgency: IncidentUrgency): IncidentPriority {
-  switch (urgency) {
-    case 'HIGH':
-      return 'P1';
-    case 'MEDIUM':
-      return 'P3';
-    case 'LOW':
-      return 'P5';
-  }
-}
-
-function scopeOrder(input: { serviceId: string; integrationId?: string | null }): string[] {
-  return [
-    ...(input.integrationId ? [`integration:${input.integrationId}`] : []),
-    `service:${input.serviceId}`,
-    'workspace',
-  ];
-}
-
-/** Classifies only new incidents. Existing incidents retain captured SLA/classification provenance. */
+/**
+ * Classifies only new incidents. Existing incidents retain captured SLA/classification provenance.
+ *
+ * v2 deliberately has one configurable classification authority: the workspace policy. Provider
+ * integrations still supply normalized severity, while trusted creation paths can explicitly set
+ * priority or urgency. This keeps the shipped control surface identical to the runtime contract.
+ */
 export async function resolveIncidentClassification(
   tx: Prisma.TransactionClient,
   input: {
@@ -61,65 +37,65 @@ export async function resolveIncidentClassification(
   }
 ): Promise<IncidentClassification> {
   const explicitPriority = normalizeIncidentPriority(input.explicitPriority);
-  const scopes = scopeOrder(input);
+
   // During a rolling deploy an old database can briefly lack the additive table.
-  // Preserve the pre-v2 mapping until the migration lands; new schemas always use policy data.
-  const policies = tx.incidentClassificationPolicy
-    ? await tx.incidentClassificationPolicy.findMany({
-        where: { scopeKey: { in: scopes }, sealedAt: { not: null } },
+  // Preserve the pre-v2 severity -> urgency behavior until the migration lands.
+  const workspace = tx.incidentClassificationPolicy
+    ? await tx.incidentClassificationPolicy.findFirst({
+        where: { scopeKey: 'workspace', sealedAt: { not: null } },
         orderBy: { version: 'desc' },
-        distinct: ['scopeKey'],
         include: { rules: true },
       })
-    : [];
-  const byScope = new Map(policies.map(policy => [policy.scopeKey, policy]));
+    : null;
+
   const severity = input.alertSeverity ?? null;
-  const matched = severity
-    ? scopes
-        .map(scope => byScope.get(scope))
-        .filter(Boolean)
-        .map(policy => ({
-          policy: policy!,
-          rule: policy!.rules.find(
-            candidate =>
-              candidate.matchType === 'ALERT_SEVERITY' && candidate.matchValue === severity
-          ),
-        }))
-        .find(candidate => candidate.rule)
+  const matchedRule = severity
+    ? workspace?.rules.find(
+        candidate =>
+          candidate.matchType === 'ALERT_SEVERITY' && candidate.matchValue === severity
+      )
     : undefined;
-  const workspace = byScope.get('workspace');
-  const fallback = severity ? legacySeverityDefault(severity) : null;
-  const urgency = input.explicitUrgency ?? matched?.rule?.urgency ?? fallback?.urgency ?? 'MEDIUM';
-  let priority =
-    explicitPriority ??
-    normalizeIncidentPriority(matched?.rule?.priority) ??
-    fallback?.priority ??
-    null;
+  const fallback = severity ? defaultAlertClassification(severity) : null;
+  const rulePriority = normalizeIncidentPriority(matchedRule?.priority);
+  const ruleUrgency = matchedRule?.urgency ?? null;
+
+  const urgency = input.explicitUrgency ?? ruleUrgency ?? fallback?.urgency ?? 'MEDIUM';
+  let priority = explicitPriority ?? rulePriority ?? null;
   let prioritySource = explicitPriority
     ? 'EXPLICIT'
-    : matched?.rule?.priority
+    : rulePriority
       ? 'CLASSIFICATION_RULE'
-      : fallback
-        ? 'LEGACY_SEVERITY_DEFAULT'
-        : 'NONE';
+      : 'NONE';
+  let policyApplied =
+    (input.explicitUrgency == null && ruleUrgency !== null) ||
+    (explicitPriority === null && rulePriority !== null);
+
   if (!priority && workspace?.derivePriorityFromUrgency) {
     priority = priorityFromUrgency(urgency);
     prioritySource = 'URGENCY_FALLBACK';
+    policyApplied = true;
   }
+
+  const urgencySource = input.explicitUrgency
+    ? 'EXPLICIT'
+    : ruleUrgency !== null
+      ? 'CLASSIFICATION_RULE'
+      : severity
+        ? 'LEGACY_SEVERITY_DEFAULT'
+        : 'DEFAULT';
+  const rule = matchedRule
+    ? `ALERT_SEVERITY:${severity}`
+    : prioritySource === 'URGENCY_FALLBACK'
+      ? 'URGENCY_FALLBACK'
+      : null;
 
   return {
     priority,
     urgency,
     prioritySource,
-    urgencySource: input.explicitUrgency
-      ? 'EXPLICIT'
-      : matched
-        ? 'CLASSIFICATION_RULE'
-        : severity
-          ? 'LEGACY_SEVERITY_DEFAULT'
-          : 'DEFAULT',
-    policyId: matched?.policy.id ?? workspace?.id ?? null,
-    policyVersion: matched?.policy.version ?? workspace?.version ?? null,
-    rule: matched?.rule ? `ALERT_SEVERITY:${severity}` : null,
+    urgencySource,
+    policyId: policyApplied ? (workspace?.id ?? null) : null,
+    policyVersion: policyApplied ? (workspace?.version ?? null) : null,
+    rule: policyApplied ? rule : null,
   };
 }
