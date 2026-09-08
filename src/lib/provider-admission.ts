@@ -30,10 +30,8 @@ function bucketKey(scope: ProviderAdmissionScope, providerKey: string): string {
 }
 
 /**
- * Distributed provider admission control using OpsKnight's existing RateLimit table.
- * A conditional UPSERT serializes writers for one provider bucket without holding a
- * serializable read-then-write transaction. This is important during multi-channel
- * fan-out, where competing first writes previously exhausted transaction retries.
+ * Distributed provider admission control. Quota blocks amortize database work while
+ * a persisted cooldown remains authoritative across replicas after provider 429s.
  */
 export async function acquireProviderAdmission(
   scope: ProviderAdmissionScope,
@@ -116,30 +114,40 @@ export async function deferProviderAdmission(
   recordCapacityPressure(scope, providerKey);
 }
 
-/** Distributed concurrency slots with expiring leases for crashed workers. */
+/**
+ * Distributed concurrency blocks with an explicit bulk ceiling. Bulk workers can
+ * lease only the bulk portion of a provider pool, leaving at least one slot for
+ * critical/transactional delivery whenever maxInFlight > 1.
+ */
 export async function acquireProviderConcurrency(
   scope: ProviderAdmissionScope,
   providerKey: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  trafficClass?: NotificationTrafficClass
 ): Promise<ProviderConcurrencyResult> {
   const config = getProviderCapacity(scope, providerKey);
-  const poolKey = `${scope}:${providerKey}`;
+  const bulk = usesBulkCapacity(trafficClass);
+  const lane = bulk ? 'bulk' : 'reserved';
+  const physicalPoolKey = `${scope}:${providerKey}`;
+  const poolKey = `${physicalPoolKey}:${lane}`;
+  const leaseOwner = `${WORKER_ID}:${lane}`.slice(0, 240);
+  const laneCeiling = bulk ? config.bulkMaxInFlight : config.maxInFlight;
   let local = localConcurrency.get(poolKey);
   if (!local || local.expiresAt <= now.getTime()) {
-    const id = `${WORKER_ID}:${poolKey}`.slice(0, 240);
-    const requested = Math.min(20, config.maxInFlight);
+    const id = `${leaseOwner}:${scope}:${providerKey}`.slice(0, 240);
+    const requested = Math.min(20, laneCeiling);
     const rows = await prisma.$queryRaw<Array<{ reservedSlots: number }>>(Prisma.sql`
       WITH lock AS (
-        SELECT pg_advisory_xact_lock(hashtextextended(${`provider-slots:${poolKey}`}, 0))
+        SELECT pg_advisory_xact_lock(hashtextextended(${`provider-slots:${physicalPoolKey}`}, 0))
       ), available AS (
-        SELECT GREATEST(0, ${config.maxInFlight} - COALESCE(SUM("reservedSlots"), 0))::integer AS slots
+        SELECT GREATEST(0, ${laneCeiling} - COALESCE(SUM("reservedSlots"), 0))::integer AS slots
         FROM "ProviderWorkerLease", lock
         WHERE "providerKey" = ${providerKey} AND "channel" = ${scope}
-          AND "expiresAt" > ${now} AND "workerId" <> ${WORKER_ID}
+          AND "expiresAt" > ${now} AND "workerId" <> ${leaseOwner}
       )
       INSERT INTO "ProviderWorkerLease"
         ("id", "workerId", "providerKey", "channel", "reservedSlots", "expiresAt", "heartbeatAt", "updatedAt")
-      SELECT ${id}, ${WORKER_ID}, ${providerKey}, ${scope}, LEAST(${requested}, slots),
+      SELECT ${id}, ${leaseOwner}, ${providerKey}, ${scope}, LEAST(${requested}, slots),
         ${new Date(now.getTime() + PROVIDER_LEASE_MS)}, ${now}, NOW()
       FROM available WHERE slots > 0
       ON CONFLICT ("id") DO UPDATE SET
