@@ -383,6 +383,8 @@ async function runOnce() {
     // Group 3: Maintenance tasks (low priority, run last)
     const tokenCleanup = await cleanupUserTokens();
     const rateLimitCleanup = await cleanupExpiredRateLimits();
+    const { cleanupExpiredNotificationCapacityData } = await import('./notification-fanout');
+    const notificationCapacityCleanup = await cleanupExpiredNotificationCapacityData();
     let jobsCleaned = false;
     if (Date.now() - lastJobCleanup > 24 * 60 * 60 * 1000) {
       await cleanupOldJobs(7);
@@ -392,6 +394,7 @@ async function runOnce() {
     logger.info('[Cron] Maintenance tasks processed', {
       tokenCleanup,
       rateLimitCleanup,
+      notificationCapacityCleanup,
       jobsCleaned,
     });
 

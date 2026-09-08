@@ -47,10 +47,31 @@ describe('provider admission control', () => {
       acquireProviderAdmission('EMAIL', 'default', new Date('2026-08-30T12:00:00.500Z'))
     ).resolves.toEqual({
       allowed: false,
-      retryAt: new Date('2026-08-30T12:00:01.000Z'),
+      retryAt: expiresAt,
       reason: 'RATE_LIMITED',
     });
-    expect(mocks.queryRaw).toHaveBeenCalledTimes(1);
+    expect(mocks.queryRaw).not.toHaveBeenCalled();
+  });
+
+  it('honors a persisted provider retry-after before allocating quota', async () => {
+    const blockedUntil = new Date('2026-08-30T12:01:00.000Z');
+    mocks.findUnique.mockResolvedValue({ expiresAt: blockedUntil });
+
+    await expect(
+      acquireProviderAdmission('EMAIL', 'default', new Date('2026-08-30T12:00:10.000Z'))
+    ).resolves.toEqual({ allowed: false, retryAt: blockedUntil, reason: 'RATE_LIMITED' });
+    expect(mocks.queryRaw).not.toHaveBeenCalled();
+
+    mocks.findUnique.mockResolvedValue({ expiresAt: blockedUntil });
+    await expect(
+      acquireProviderAdmission('EMAIL', 'default', new Date('2026-08-30T12:00:59.000Z'))
+    ).resolves.toEqual({ allowed: false, retryAt: blockedUntil, reason: 'RATE_LIMITED' });
+
+    mocks.findUnique.mockResolvedValue({ expiresAt: blockedUntil });
+    mocks.queryRaw.mockResolvedValue([{ granted: 8 }]);
+    await expect(
+      acquireProviderAdmission('EMAIL', 'default', new Date('2026-08-30T12:01:00.001Z'))
+    ).resolves.toEqual({ allowed: true });
   });
 
   it('persists provider cooldowns monotonically', async () => {

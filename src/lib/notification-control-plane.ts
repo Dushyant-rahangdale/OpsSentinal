@@ -697,15 +697,11 @@ async function dispatchPayload(
         );
       }
       if (!html) return { success: false, statusCode: 422, error: 'Email content is missing' };
-      const config = payload.providerScope?.statusPageId
-        ? await import('./notification-providers').then(module =>
-            module.getStatusPageEmailConfig(payload.providerScope!.statusPageId)
-          )
-        : payload.providerKey
-          ? await import('./notification-providers')
-              .then(module => module.getAllConfiguredEmailProviders())
-              .then(configs => configs.find(item => item.provider === payload.providerKey))
-          : undefined;
+      const config = payload.providerKey
+        ? await import('./notification-providers')
+            .then(module => module.getAllConfiguredEmailProviders())
+            .then(configs => configs.find(item => item.provider === payload.providerKey))
+        : undefined;
       if (payload.providerKey && (!config || config.provider !== payload.providerKey))
         return {
           success: false,
@@ -1304,7 +1300,10 @@ export async function deliverCentralNotification(
     return { success: false, claimed: false };
   }
   if (options.claimToken) {
-    if (candidate.claimToken !== options.claimToken || candidate.lastAttemptAt?.getTime() !== now.getTime()) {
+    if (
+      candidate.claimToken !== options.claimToken ||
+      candidate.lastAttemptAt?.getTime() !== now.getTime()
+    ) {
       return { success: false, claimed: false };
     }
   } else {

@@ -133,6 +133,7 @@ export default function StatusPageSnapshotView({
             thirtyDaysAgo={thirtyDaysAgo}
             ninetyDaysAgo={ninetyDaysAgo}
             precomputedUptime={view.uptime}
+            precomputedUptime30={view.uptime30}
           />
         )}
         <StatusPageIncidents

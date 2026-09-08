@@ -41,6 +41,13 @@ export async function acquireProviderAdmission(
   now: Date = new Date(),
   trafficClass?: NotificationTrafficClass
 ): Promise<ProviderAdmissionResult> {
+  const cooldown = await prisma.rateLimit.findUnique({
+    where: { key: bucketKey(scope, providerKey) },
+    select: { expiresAt: true },
+  });
+  if (cooldown?.expiresAt && cooldown.expiresAt > now) {
+    return { allowed: false, retryAt: cooldown.expiresAt, reason: 'RATE_LIMITED' };
+  }
   const capacity = getProviderCapacity(scope, providerKey);
   const bulk = usesBulkCapacity(trafficClass);
   const cacheKey = `${bucketKey(scope, providerKey)}:${bulk ? 'bulk' : 'global'}`;
@@ -96,13 +103,9 @@ export async function deferProviderAdmission(
 ): Promise<void> {
   const config = getProviderCapacity(scope, providerKey);
   const key = bucketKey(scope, providerKey);
-  const intervalMs = 1_000 / config.effectiveRatePerSecond;
-  const cooldownTheoreticalArrival = new Date(
-    retryAt.getTime() + intervalMs * Math.max(0, config.effectiveRatePerSecond - 1)
-  );
   await prisma.$executeRaw(Prisma.sql`
     INSERT INTO "RateLimit" ("key", "count", "expiresAt")
-    VALUES (${key}, ${config.effectiveRatePerSecond}, ${cooldownTheoreticalArrival})
+    VALUES (${key}, ${config.effectiveRatePerSecond}, ${retryAt})
     ON CONFLICT ("key") DO UPDATE SET
       "count" = GREATEST("RateLimit"."count", EXCLUDED."count"),
       "expiresAt" = GREATEST("RateLimit"."expiresAt", EXCLUDED."expiresAt")

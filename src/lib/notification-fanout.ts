@@ -21,7 +21,10 @@ export function fanoutWatermarks(env: NodeJS.ProcessEnv = process.env) {
 export async function bulkQueueHasCapacity(): Promise<boolean> {
   const { high } = fanoutWatermarks();
   const depth = await prisma.notification.count({
-    where: { trafficClass: 'BULK', status: { in: ['PENDING', 'FAILED'] } },
+    where: {
+      trafficClass: { in: ['PUBLIC_INCIDENT', 'BULK'] },
+      status: { in: ['PENDING', 'FAILED'] },
+    },
   });
   return depth < high;
 }
@@ -98,4 +101,14 @@ export async function recordFanoutPage(
     addOperationalMetric('opsknight_status_fanout_campaign_total', 1, { outcome: 'completed' });
   }
   return fanout;
+}
+
+export async function cleanupExpiredNotificationCapacityData(now = new Date()) {
+  const [quotaWindows, contents] = await prisma.$transaction([
+    prisma.providerQuotaWindow.deleteMany({ where: { expiresAt: { lt: now } } }),
+    prisma.notificationContent.deleteMany({
+      where: { expiresAt: { lt: now }, notifications: { none: {} }, fanouts: { none: {} } },
+    }),
+  ]);
+  return { quotaWindows: quotaWindows.count, contents: contents.count };
 }

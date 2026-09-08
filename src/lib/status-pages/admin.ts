@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { getStatusPageServingStore } from './serving-store';
 
 const STATUS_PAGE_LIFECYCLE_LOCK = 'opsknight:status-pages:lifecycle:v1';
 
@@ -62,6 +63,7 @@ export async function makeDefaultStatusPage(statusPageId: string) {
 }
 
 export async function deleteStatusPage(statusPageId: string, replacementDefaultId?: string) {
+  await getStatusPageServingStore().revoke(statusPageId);
   return prisma.$transaction(async tx => {
     await lockLifecycle(tx);
     const page = await requireStatusPageForAdmin(statusPageId, tx);

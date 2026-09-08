@@ -40,6 +40,7 @@ export type StatusPageSnapshot = {
   }>;
   incidents: Array<Record<string, unknown>>;
   uptime: Record<string, number>;
+  uptime30?: Record<string, number>;
   statusHistory?: Record<string, StatusHistoryDay[]>;
   announcements: Array<{
     id: string;
@@ -97,7 +98,10 @@ export async function buildStatusPageSnapshot(
   const visibility = publicStatusVisibility(page);
   const ids = page.services.map(mapping => mapping.serviceId);
   const window = await getReportingWindowForDays(limits.historyDays, 'incident', now);
-  const [groups, incidents, uptime, affectedHistoryDays] = ids.length
+  const thirtyDayStart = new Date(
+    Math.max(window.start.getTime(), now.getTime() - 30 * 86_400_000)
+  );
+  const [groups, incidents, uptime, uptime30, affectedHistoryDays] = ids.length
     ? await Promise.all([
         prisma.incident.groupBy({
           by: ['serviceId', 'urgency'],
@@ -132,6 +136,9 @@ export async function buildStatusPageSnapshot(
           : [],
         visibility.showUptime ? calculateMultiServiceUptime(ids, window.start, now, 'PUBLIC') : {},
         visibility.showUptime
+          ? calculateMultiServiceUptime(ids, thirtyDayStart, now, 'PUBLIC')
+          : {},
+        visibility.showUptime
           ? prisma.$queryRaw<Array<{ serviceId: string; date: Date; outage: boolean }>>`
               SELECT i."serviceId", d.day AS date,
                 BOOL_OR(i.urgency = 'HIGH') AS outage
@@ -150,7 +157,7 @@ export async function buildStatusPageSnapshot(
             `
           : [],
       ])
-    : [[], [], {}, []];
+    : [[], [], {}, {}, []];
 
   const impactByService = new Map<string, { active: number; critical: boolean }>();
   for (const group of groups) {
@@ -190,6 +197,7 @@ export async function buildStatusPageSnapshot(
     services: visibility.showServices ? services : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
     uptime,
+    uptime30,
     statusHistory: ids.reduce<Record<string, StatusHistoryDay[]>>((history, serviceId) => {
       const affected = new Map(
         affectedHistoryDays
@@ -291,6 +299,7 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
   let rebuilt = 0;
   for (const page of pages) {
     try {
+      await getStatusPageServingStore().revoke(page.statusPageId);
       if (await rebuildStatusPageSnapshot(page.statusPageId)) {
         rebuilt++;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {

@@ -27,6 +27,7 @@ interface StatusPageMetricsProps {
   uptimeExcellentThreshold?: number;
   uptimeGoodThreshold?: number;
   precomputedUptime?: Record<string, number>;
+  precomputedUptime30?: Record<string, number>;
 }
 
 // Helper function to format percentage consistently (SSR-safe)
@@ -119,6 +120,7 @@ export default function StatusPageMetrics({
   uptimeExcellentThreshold = 99.9,
   uptimeGoodThreshold = 99.0,
   precomputedUptime,
+  precomputedUptime30,
 }: StatusPageMetricsProps) {
   const [isClient, setIsClient] = useState(false);
 
@@ -137,15 +139,15 @@ export default function StatusPageMetrics({
     return services.map(service => ({
       service: service.name,
       thirtyDays:
-        precomputedUptime?.[service.id] === undefined
+        precomputedUptime30?.[service.id] === undefined
           ? calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd)
-          : { uptime: precomputedUptime[service.id], downtime: 0, incidents: 0 },
+          : { uptime: precomputedUptime30[service.id], downtime: 0, incidents: 0 },
       ninetyDays:
         precomputedUptime?.[service.id] === undefined
           ? calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd)
           : { uptime: precomputedUptime[service.id], downtime: 0, incidents: 0 },
     }));
-  }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo, precomputedUptime]);
+  }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo, precomputedUptime, precomputedUptime30]);
 
   if (services.length === 0) return null;
 

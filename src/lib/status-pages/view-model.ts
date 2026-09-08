@@ -67,6 +67,7 @@ export function createStatusPageViewModel(
       endDate: item.endDate ? new Date(item.endDate) : null,
     })),
     uptime: snapshot.uptime,
+    uptime30: snapshot.uptime30 ?? snapshot.uptime,
     statusHistory: snapshot.statusHistory ?? {},
   };
 }

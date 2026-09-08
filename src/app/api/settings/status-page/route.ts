@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
 import { assertStatusPageNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 import { externalizeStatusPageLogo } from '@/lib/status-pages/assets';
+import { getStatusPageServingStore } from '@/lib/status-pages/serving-store';
 
 function statusPageUniqueError(fields: string[]) {
   if (fields.includes('subdomain')) {
@@ -277,6 +278,7 @@ export async function POST(req: NextRequest) {
     if (statusApiRateLimitWindowSec !== undefined)
       updateData.statusApiRateLimitWindowSec = statusApiRateLimitWindowSec;
 
+    await getStatusPageServingStore().revoke(statusPage.id);
     const updated = await prisma.$transaction(async tx => {
       if (branding && typeof branding === 'object') {
         updateData.branding = (await externalizeStatusPageLogo(

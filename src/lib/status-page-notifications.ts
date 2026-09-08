@@ -230,6 +230,11 @@ export async function notifyStatusPageSubscribers(
         }
         sent += pageSent;
         failed += pageFailed;
+        if (pageFailed > 0) {
+          throw new Error(
+            `Failed to materialize ${pageFailed} notification intents; retrying page`
+          );
+        }
         cursor = subscriptions.at(-1)?.id;
         if (cursor) {
           await recordFanoutPage(fanout.id, {
@@ -682,6 +687,9 @@ export async function notifyStatusPageSubscribersAnnouncement(
       }
       sent += pageSent;
       failed += pageFailed;
+      if (pageFailed > 0) {
+        throw new Error(`Failed to materialize ${pageFailed} notification intents; retrying page`);
+      }
       cursor = subscriptions.at(-1)?.id;
       if (cursor) {
         await recordFanoutPage(fanout.id, {

@@ -64,14 +64,16 @@ export default async function StatusPageWorkspace({
         backHref="/settings/status-pages"
         backLabel="All status pages"
         actions={
-          <Link
-            href={publicHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"
-          >
-            Open public page
-          </Link>
+          statusPage.enabled && !statusPage.requireAuth ? (
+            <Link
+              href={publicHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"
+            >
+              Open public page
+            </Link>
+          ) : undefined
         }
       />
       <StatusPageConfig
