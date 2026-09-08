@@ -144,9 +144,9 @@ export function useAutosave<T>({
     clearIdleTimer();
 
     if (!enabled || !isDirty) {
-      if (!isDirty && status === 'error') {
+      if (!isDirty) {
         setError(null);
-        setStatus('idle');
+        setStatus(current => (current === 'error' ? 'idle' : current));
       }
       return;
     }
@@ -156,7 +156,7 @@ export function useAutosave<T>({
     }, delay);
 
     return clearDebounce;
-  }, [currentSnapshot, data, delay, enabled, drainQueue, clearDebounce, clearIdleTimer, status]);
+  }, [currentSnapshot, delay, enabled, drainQueue, clearDebounce, clearIdleTimer]);
 
   useEffect(() => {
     mountedRef.current = true;
