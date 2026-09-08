@@ -21,7 +21,7 @@ const SUPPORTED_PROVIDERS = new Set([
   'web-push',
 ]);
 
-export class SettingsChangedError extends Error {
+class SettingsChangedError extends Error {
   readonly code = 'SETTINGS_CHANGED';
 
   constructor() {
