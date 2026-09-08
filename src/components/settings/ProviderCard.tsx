@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import {
@@ -33,6 +34,7 @@ import {
   Save,
   FlaskConical,
   AlertOctagon,
+  RotateCcw,
 } from 'lucide-react';
 import type { ProviderRecord, ProviderConfigSchema, SaveStatus } from '@/types/notification-types';
 import { notify as toast } from '@/lib/toast';
@@ -53,9 +55,9 @@ export default function ProviderCard({
   onToggle,
   twilioProvider,
 }: ProviderCardProps) {
+  const router = useRouter();
   const { userTimeZone } = useTimezone();
 
-  // For WhatsApp, enabled state is stored in the whatsappEnabled field of Twilio config
   const initialEnabled =
     providerConfig.key === 'whatsapp'
       ? !!(
@@ -63,11 +65,10 @@ export default function ProviderCard({
           (existing?.config as Record<string, unknown>)?.whatsappNumber
         )
       : existing?.enabled || false;
+  const initialConfig = (existing?.config as Record<string, unknown>) || {};
 
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [config, setConfig] = useState<Record<string, unknown>>(
-    (existing?.config as Record<string, unknown>) || {}
-  );
+  const [config, setConfig] = useState<Record<string, unknown>>(initialConfig);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -86,15 +87,26 @@ export default function ProviderCard({
         const value = config[f.name];
         return value && String(value).trim() !== '';
       });
+  const isDirty =
+    enabled !== initialEnabled || JSON.stringify(config) !== JSON.stringify(initialConfig);
+
+  const resetLocalChanges = () => {
+    setEnabled(initialEnabled);
+    setConfig(initialConfig);
+    setError(null);
+    setSaveStatus('idle');
+    setTestStatus('idle');
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isDirty) return;
+
     setIsSaving(true);
     setSaveStatus('idle');
     setError(null);
 
     try {
-      // Validate required fields if enabled
       if (enabled) {
         const requiredFields = providerConfig.fields.filter(f => f.required);
         for (const field of requiredFields) {
@@ -105,7 +117,6 @@ export default function ProviderCard({
         }
       }
 
-      // Special handling for WhatsApp - it's stored in Twilio provider config
       if (providerConfig.key === 'whatsapp') {
         if (!twilioProvider) {
           const { updateNotificationProvider } =
@@ -153,10 +164,8 @@ export default function ProviderCard({
       }
 
       setSaveStatus('success');
-      setTimeout(() => {
-        setSaveStatus('idle');
-        window.location.reload();
-      }, 1500);
+      router.refresh();
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save configuration');
       setSaveStatus('error');
@@ -165,63 +174,19 @@ export default function ProviderCard({
     }
   };
 
-  const handleToggleEnabled = async (checked: boolean) => {
-    const newEnabled = checked;
-
-    // Check if provider is configured before enabling
-    if (newEnabled && !hasRequiredConfig) {
+  const handleToggleEnabled = (checked: boolean) => {
+    if (checked && !hasRequiredConfig) {
       toast.error(
         'Please configure this provider first before enabling it. Click "Configure" to add required settings.'
       );
+      if (!isExpanded) onToggle();
       return;
     }
 
-    setEnabled(newEnabled);
-
-    try {
-      if (providerConfig.key === 'whatsapp') {
-        if (!twilioProvider) {
-          const { updateNotificationProvider } =
-            await import('@/app/(app)/settings/system/actions');
-          await updateNotificationProvider(null, 'twilio', false, {
-            whatsappNumber: (config.whatsappNumber as string) || '',
-            whatsappEnabled: newEnabled,
-          });
-        } else {
-          const twilioConfig = twilioProvider.config as Record<string, unknown>;
-          const updatedTwilioConfig = {
-            ...twilioConfig,
-            whatsappNumber:
-              (config.whatsappNumber as string) || (twilioConfig.whatsappNumber as string) || '',
-            whatsappEnabled: newEnabled,
-          };
-
-          const { updateNotificationProvider } =
-            await import('@/app/(app)/settings/system/actions');
-          await updateNotificationProvider(
-            twilioProvider.id,
-            'twilio',
-            twilioProvider.enabled,
-            updatedTwilioConfig
-          );
-        }
-      } else {
-        const { updateNotificationProvider } = await import('@/app/(app)/settings/system/actions');
-        await updateNotificationProvider(
-          existing?.id || null,
-          providerConfig.key,
-          newEnabled,
-          config
-        );
-      }
-
-      setTimeout(() => window.location.reload(), 500);
-    } catch (err) {
-      setEnabled(!newEnabled);
-      toast.error(
-        `Failed to ${newEnabled ? 'enable' : 'disable'} provider: ${err instanceof Error ? err.message : 'Unknown error'}`
-      );
-    }
+    setEnabled(checked);
+    setSaveStatus('idle');
+    setError(null);
+    if (!isExpanded) onToggle();
   };
 
   const isWebPush = providerConfig.key === 'web-push';
@@ -259,6 +224,7 @@ export default function ProviderCard({
           ? 'Keys rotated. Existing devices continue to work; new devices use the latest key.'
           : 'VAPID keys generated and saved.'
       );
+      router.refresh();
     } catch (err) {
       setGenerateError(
         err instanceof Error ? err.message : 'Failed to generate VAPID keys. Please try again.'
@@ -275,6 +241,11 @@ export default function ProviderCard({
     : null;
 
   const handleTest = async () => {
+    if (isDirty) {
+      toast.error('Save changes before testing this provider.');
+      return;
+    }
+
     setIsTesting(true);
     setTestStatus('idle');
     try {
@@ -311,20 +282,28 @@ export default function ProviderCard({
                 <CardTitle className="text-base font-bold text-foreground">
                   {providerConfig.name}
                 </CardTitle>
+                {isDirty && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                  >
+                    Unsaved
+                  </Badge>
+                )}
                 {enabled ? (
                   <Badge
                     variant="outline"
                     className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 inline-flex items-center gap-1.5"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Active & Routing
+                    {isDirty ? 'Will be Active' : 'Active & Routing'}
                   </Badge>
                 ) : isConfigured ? (
                   <Badge
                     variant="outline"
                     className="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border-border/80"
                   >
-                    Configured (Standby)
+                    {isDirty ? 'Will be Disabled' : 'Configured (Standby)'}
                   </Badge>
                 ) : (
                   <Badge
@@ -374,7 +353,8 @@ export default function ProviderCard({
                 size="sm"
                 type="button"
                 onClick={() => void handleTest()}
-                disabled={isTesting}
+                disabled={isTesting || isDirty}
+                title={isDirty ? 'Save changes before testing' : undefined}
                 className={`text-xs font-semibold h-8 gap-1.5 ${
                   testStatus === 'success'
                     ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
@@ -392,13 +372,15 @@ export default function ProviderCard({
                 ) : (
                   <FlaskConical className="h-3.5 w-3.5" />
                 )}
-                {isTesting
-                  ? 'Testing...'
-                  : testStatus === 'success'
-                    ? 'Sent!'
-                    : testStatus === 'error'
-                      ? 'Failed'
-                      : 'Send Test'}
+                {isDirty
+                  ? 'Save first'
+                  : isTesting
+                    ? 'Testing...'
+                    : testStatus === 'success'
+                      ? 'Sent!'
+                      : testStatus === 'error'
+                        ? 'Failed'
+                        : 'Send Test'}
               </Button>
             )}
           </div>
@@ -557,20 +539,38 @@ export default function ProviderCard({
                     <AlertDescription className="text-xs leading-4">{error}</AlertDescription>
                   </Alert>
                 )}
-              </div>
-              <Button
-                type="submit"
-                disabled={isSaving}
-                size="sm"
-                className="w-full sm:w-auto text-xs font-semibold gap-1.5"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
+                {isDirty && saveStatus !== 'error' && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Unsaved changes — save before sending a provider test.
+                  </p>
                 )}
-                {isSaving ? 'Saving...' : 'Save Configuration'}
-              </Button>
+              </div>
+              <div className="flex w-full sm:w-auto gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSaving || !isDirty}
+                  size="sm"
+                  onClick={resetLocalChanges}
+                  className="flex-1 sm:flex-none text-xs font-semibold gap-1.5"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Discard
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving || !isDirty}
+                  size="sm"
+                  className="flex-1 sm:flex-none text-xs font-semibold gap-1.5"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Save Configuration'}
+                </Button>
+              </div>
             </div>
           </form>
         </CardContent>
