@@ -50,6 +50,11 @@ export function useAutosave<T>({
   const mountedRef = useRef(true);
   const operationGenerationRef = useRef(0);
 
+  // Keep the values consumed by async queue work synchronized on every render.
+  // The scheduling effect intentionally depends on the serialized snapshot rather
+  // than object identity, so equivalent object instances do not restart debounce.
+  latestDataRef.current = data;
+  latestSnapshotRef.current = currentSnapshot;
   onSaveRef.current = onSave;
   enabledRef.current = enabled;
 
@@ -134,9 +139,6 @@ export function useAutosave<T>({
   }, [clearDebounce, clearIdleTimer]);
 
   useEffect(() => {
-    latestDataRef.current = data;
-    latestSnapshotRef.current = currentSnapshot;
-
     const isDirty = committedSnapshotRef.current !== latestSnapshotRef.current;
     setHasPendingChanges(isDirty);
 
