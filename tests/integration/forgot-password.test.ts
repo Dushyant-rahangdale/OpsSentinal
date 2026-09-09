@@ -29,6 +29,7 @@ let processCentralNotificationQueue: typeof import('@/lib/notification-control-p
 describeIntegration('Forgot Password Integration', () => {
   beforeAll(async () => {
     if (!runIntegration) return;
+    process.env.ENCRYPTION_KEY = '0123456789abcdef'.repeat(4);
     vi.unmock('@/lib/prisma');
     vi.unmock('../src/lib/prisma');
     vi.resetModules();

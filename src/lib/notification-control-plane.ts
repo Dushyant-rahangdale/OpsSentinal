@@ -1268,7 +1268,7 @@ async function statusWebhookDeliveryRevoked(
       statusPageId: payload.statusPageId,
       url: payload.url,
       enabled: true,
-      events: { array_contains: payload.payload.event },
+      events: { array_contains: [payload.payload.event] },
       statusPage: {
         enabled: true,
         showIncidents: payload.incidentId ? true : undefined,
