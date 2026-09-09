@@ -42,6 +42,8 @@ export interface PublicStatusService {
   slaTier?: string | null;
   uptime?: { days30: PublicUptimeWindow; days90: PublicUptimeWindow };
   history?: PublicStatusHistoryDay[];
+  /** True only after the complete authoritative history window has been read. */
+  historyComplete?: boolean;
 }
 
 export interface PublicRegionStatus {

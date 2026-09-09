@@ -84,6 +84,7 @@ export const publicStatusPageSnapshotSchema = z.object({
     slaTier: z.string().nullable().optional(),
     uptime: z.object({ days30: uptimeWindow, days90: uptimeWindow }).strict().optional(),
     history: z.array(historyDay).optional(),
+    historyComplete: z.boolean().optional(),
   }).strict()),
   regions: z.array(z.object({
     name: z.string(), status, totalServices: z.number().int().nonnegative(),

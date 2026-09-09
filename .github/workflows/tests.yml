@@ -60,6 +60,11 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      - name: Enforce idempotent status platform indexes
+        run: |
+          npm run prisma:indexes:status-platform
+          npm run prisma:indexes:status-platform
+
       - name: DB smoke test (post-migrations)
         run: |
           mkdir -p reports

@@ -24,6 +24,7 @@ import {
   publicStatusForIncidentUrgency,
 } from './status-presentation';
 import { parsePublicStatusPageSnapshot } from './public-contract-schema';
+import { loadHistoryIncidentsByService, type HistoryIncident } from './history-query';
 
 export type StatusPageSnapshot = PublicStatusPageSnapshot;
 
@@ -73,7 +74,7 @@ export async function buildStatusPageSnapshot(
     getReportingWindowForDays(90, 'incident', now),
   ]);
   const earliestRequiredStart = new Date(Math.min(window.start.getTime(), window90.start.getTime()));
-  const [groups, incidents, uptime90, uptime30, historyIncidents, historyMaintenance] = ids.length
+  const [groups, incidents, uptime90, uptime30, historyIncidentsByService, historyMaintenance] = ids.length
     ? await Promise.all([
         prisma.incident.groupBy({
           by: ['serviceId', 'urgency'],
@@ -116,16 +117,9 @@ export async function buildStatusPageSnapshot(
         visibility.showUptime
           ? calculateMultiServiceUptime(ids, window30.start, now, 'PUBLIC')
           : {},
-        visibility.showUptime ? prisma.incident.findMany({
-          where: {
-            serviceId: { in: ids },
-            visibility: 'PUBLIC',
-            status: { notIn: ['SUPPRESSED', 'SNOOZED'] },
-            createdAt: { lt: now },
-            OR: [{ resolvedAt: { gte: earliestRequiredStart } }, { resolvedAt: null }],
-          },
-          select: { serviceId: true, createdAt: true, resolvedAt: true, urgency: true, status: true },
-        }) : [],
+        visibility.showUptime
+          ? loadHistoryIncidentsByService(ids, earliestRequiredStart, now)
+          : new Map<string, HistoryIncident[]>(),
         visibility.showUptime ? prisma.statusPageAnnouncement.findMany({
           where: {
             statusPageId: pageId, type: 'MAINTENANCE', startDate: { lte: now },
@@ -134,7 +128,7 @@ export async function buildStatusPageSnapshot(
           select: { startDate: true, endDate: true, affectedServiceIds: true },
         }) : [],
       ])
-    : [[], [], {}, {}, [], []];
+    : [[], [], {}, {}, new Map<string, HistoryIncident[]>(), []];
 
   const impactByService = new Map<string, { active: number; statuses: PublicStatusPageSnapshot['status'][] }>();
   for (const group of groups) {
@@ -142,15 +136,6 @@ export async function buildStatusPageSnapshot(
     current.active += group._count._all;
     current.statuses.push(publicStatusForIncidentUrgency(group.urgency));
     impactByService.set(group.serviceId, current);
-  }
-
-  // Partition once so each service only scans its own incidents while building
-  // daily history and 30/90-day counts.
-  const historyIncidentsByService = new Map<string, typeof historyIncidents>();
-  for (const incident of historyIncidents) {
-    const serviceIncidents = historyIncidentsByService.get(incident.serviceId) ?? [];
-    serviceIncidents.push(incident);
-    historyIncidentsByService.set(incident.serviceId, serviceIncidents);
   }
 
   const maintenance = visibleMaintenanceServiceIds(page.announcements, ids, now);
@@ -205,6 +190,7 @@ export async function buildStatusPageSnapshot(
           },
         },
         history,
+        historyComplete: true,
       } : {}),
     };
   });

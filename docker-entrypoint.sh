@@ -16,6 +16,16 @@ run_migrations() {
     return 1
 }
 
+install_status_platform_indexes() {
+    if [ -f "scripts/create-status-platform-online-indexes.cjs" ]; then
+        node scripts/create-status-platform-online-indexes.cjs
+        return $?
+    fi
+
+    echo "❌ Status platform index installer not found"
+    return 1
+}
+
 run_auto_recovery() {
     echo "🔧 Attempting migration recovery..."
 
@@ -56,6 +66,13 @@ if [ $MIGRATION_SUCCESS -eq 0 ]; then
     exit 1
 fi
 
+echo "🔄 Enforcing status platform indexes..."
+if ! install_status_platform_indexes; then
+    echo "❌ Status platform index enforcement failed. Refusing to start without required indexes."
+    exit 1
+fi
+
+echo "✅ Status platform indexes are ready."
 echo "✅ Database is ready."
 echo "🚀 Starting application..."
 export NEXT_RUNTIME=nodejs
