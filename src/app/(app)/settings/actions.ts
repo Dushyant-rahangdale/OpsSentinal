@@ -94,7 +94,10 @@ export async function updateProfile(
 
     if (formData.has('name')) {
       const n = (formData.get('name') as string | null)?.trim();
-      if (n && n.length >= 2) data.name = n;
+      if (!n || n.length < 2 || n.length > 120) {
+        return { error: 'Name must be between 2 and 120 characters.' };
+      }
+      data.name = n;
     }
 
     if (formData.has('department')) {
@@ -120,6 +123,8 @@ export async function updateProfile(
       data.avatarUrl = getDefaultAvatar(currentName, user.id);
     } else if (directAvatarUrl && isValidDirectUrl(directAvatarUrl)) {
       data.avatarUrl = directAvatarUrl;
+    } else if (directAvatarUrl) {
+      return { error: 'Invalid avatar URL.' };
     } else if (avatarUpload) {
       data.avatarUrl = avatarUpload.url;
     }
@@ -152,6 +157,28 @@ export async function updateProfile(
           data,
         });
       }
+
+      await logAudit(
+        {
+          action: 'user.profile.updated',
+          entityType: 'USER',
+          entityId: user.id,
+          actorId: user.id,
+          oldValue: {
+            name: user.name,
+            department: user.department,
+            jobTitle: user.jobTitle,
+            avatarUrl: user.avatarUrl,
+          },
+          newValue: {
+            name: data.name ?? user.name,
+            department: data.department ?? user.department,
+            jobTitle: data.jobTitle ?? user.jobTitle,
+            avatarChanged: Boolean(removeAvatar || avatarUpload || directAvatarUrl),
+          },
+        },
+        tx
+      );
     });
 
     revalidatePath('/settings/profile');
@@ -166,7 +193,7 @@ export async function updateProfile(
     return { success: true };
   } catch (error) {
     logger.error('Error updating profile', { component: 'settings-actions', error });
-    return { error: error instanceof Error ? error.message : 'Unable to update profile.' };
+    return { error: 'Unable to update profile. Please try again.' };
   }
 }
 
@@ -182,17 +209,29 @@ export async function updatePreferences(
       return { error: 'Please select a valid IANA timezone.' };
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        timeZone,
-      },
+    await prisma.$transaction(async tx => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { timeZone },
+      });
+      await logAudit(
+        {
+          action: 'user.preferences.updated',
+          entityType: 'USER',
+          entityId: user.id,
+          actorId: user.id,
+          oldValue: { timeZone: user.timeZone },
+          newValue: { timeZone },
+        },
+        tx
+      );
     });
 
     revalidatePath('/settings/profile');
     return { success: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Unable to update preferences.' };
+    logger.error('Error updating user preferences', { component: 'settings-actions', error });
+    return { error: 'Unable to update preferences. Please try again.' };
   }
 }
 
@@ -222,7 +261,7 @@ export async function updateNotificationPreferences(
       : formData.has('phoneNumberWhatsApp')
         ? (formData.get('phoneNumberWhatsApp') as string | null)?.trim() || null
         : undefined;
-    const effectivePhone = hasPhoneField ? submittedPhone ?? null : user.phoneNumber ?? null;
+    const effectivePhone = hasPhoneField ? (submittedPhone ?? null) : (user.phoneNumber ?? null);
 
     if ((smsEnabled || whatsappEnabled) && !effectivePhone) {
       return {
@@ -275,22 +314,51 @@ export async function updateNotificationPreferences(
       }
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailNotificationsEnabled: emailEnabled,
-        smsNotificationsEnabled: smsEnabled,
-        pushNotificationsEnabled: pushEnabled,
-        whatsappNotificationsEnabled: whatsappEnabled,
-        ...(hasPhoneField ? { phoneNumber: submittedPhone ?? null } : {}),
-      },
+    await prisma.$transaction(async tx => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          emailNotificationsEnabled: emailEnabled,
+          smsNotificationsEnabled: smsEnabled,
+          pushNotificationsEnabled: pushEnabled,
+          whatsappNotificationsEnabled: whatsappEnabled,
+          ...(hasPhoneField ? { phoneNumber: submittedPhone ?? null } : {}),
+        },
+      });
+      await logAudit(
+        {
+          action: 'user.notification_preferences.updated',
+          entityType: 'USER',
+          entityId: user.id,
+          actorId: user.id,
+          oldValue: {
+            emailNotificationsEnabled: user.emailNotificationsEnabled,
+            smsNotificationsEnabled: user.smsNotificationsEnabled,
+            pushNotificationsEnabled: user.pushNotificationsEnabled,
+            whatsappNotificationsEnabled: user.whatsappNotificationsEnabled,
+            hasPhoneNumber: Boolean(user.phoneNumber),
+          },
+          newValue: {
+            emailNotificationsEnabled: emailEnabled,
+            smsNotificationsEnabled: smsEnabled,
+            pushNotificationsEnabled: pushEnabled,
+            whatsappNotificationsEnabled: whatsappEnabled,
+            hasPhoneNumber: Boolean(effectivePhone),
+          },
+        },
+        tx
+      );
     });
 
     revalidatePath('/settings/profile');
     return { success: true };
   } catch (error) {
+    logger.error('Error updating notification preferences', {
+      component: 'settings-actions',
+      error,
+    });
     return {
-      error: error instanceof Error ? error.message : 'Unable to update notification preferences.',
+      error: 'Unable to update notification preferences. Please try again.',
     };
   }
 }

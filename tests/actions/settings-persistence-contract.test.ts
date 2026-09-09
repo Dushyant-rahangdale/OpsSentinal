@@ -107,7 +107,7 @@ describe('settings persistence contracts', () => {
     const result = await updateNotificationPreferences({}, formData);
 
     expect(result).toEqual({ success: true });
-    expect(mocks.userUpdate).toHaveBeenCalledWith({
+    expect(mocks.txUserUpdate).toHaveBeenCalledWith({
       where: { id: 'user-1' },
       data: {
         emailNotificationsEnabled: false,
@@ -125,7 +125,7 @@ describe('settings persistence contracts', () => {
     const result = await updateNotificationPreferences({}, formData);
 
     expect(result).toEqual({ success: true });
-    expect(mocks.userUpdate).toHaveBeenCalledWith(
+    expect(mocks.txUserUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ phoneNumber: null }),
       })
@@ -166,6 +166,33 @@ describe('settings persistence contracts', () => {
     });
     expect(mocks.topLevelUserAvatarDeleteMany).not.toHaveBeenCalled();
     expect(mocks.topLevelUserAvatarUpsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid submitted profile name instead of silently reporting success', async () => {
+    const formData = new FormData();
+    formData.set('name', ' ');
+
+    const result = await updateProfile({}, formData);
+
+    expect(result).toEqual({ error: 'Name must be between 2 and 120 characters.' });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it('writes notification-preference changes and their audit event atomically', async () => {
+    const formData = new FormData();
+    formData.set('emailNotificationsEnabled', 'true');
+
+    const result = await updateNotificationPreferences({}, formData);
+
+    expect(result).toEqual({ success: true });
+    expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    expect(mocks.logAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'user.notification_preferences.updated',
+        actorId: 'user-1',
+      }),
+      tx
+    );
   });
 
   it('does not write a duplicate revoke audit when the key is already revoked', async () => {
