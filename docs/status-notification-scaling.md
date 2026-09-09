@@ -46,6 +46,12 @@ rolled back by deploying the previous compatible application/worker version, not
 runtime flags. Roll forward by applying additive schema first, then workers, then web processes.
 Keep snapshot-only public serving fail-closed during rollback.
 
+After applying the status-platform schema migration, run
+`npm run prisma:indexes:status-platform` before enabling the new workers. This installs the
+Notification and StatusPageSubscription indexes with PostgreSQL's online concurrent build, outside
+Prisma's migration transaction. The command is idempotent and must complete on every production
+database before the rollout proceeds.
+
 Run combined load validation with:
 
 ```sh

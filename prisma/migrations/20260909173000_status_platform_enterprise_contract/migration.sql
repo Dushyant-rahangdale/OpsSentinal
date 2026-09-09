@@ -1,9 +1,9 @@
 CREATE TYPE "StatusPageSubscriptionState" AS ENUM ('PENDING', 'ACTIVE', 'UNSUBSCRIBED', 'SUPPRESSED', 'BOUNCED', 'COMPLAINED');
 
 ALTER TABLE "Notification" ADD COLUMN "tenantKey" TEXT NOT NULL DEFAULT 'system';
--- These indexes cover existing, write-heavy tables. Prisma applies PostgreSQL
--- migrations without an implicit transaction, which permits online creation.
-CREATE INDEX CONCURRENTLY "idx_notification_tenant_fair_delivery" ON "Notification"("trafficClass", "tenantKey", "status", "nextAttemptAt", "createdAt");
+-- Indexes on existing write-heavy tables are installed by
+-- `npm run prisma:indexes:status-platform` after this transactional migration.
+-- PostgreSQL concurrent index builds cannot run inside Prisma's migration transaction.
 
 ALTER TABLE "StatusPageSubscription"
   ADD COLUMN "state" "StatusPageSubscriptionState" NOT NULL DEFAULT 'PENDING',
@@ -20,8 +20,6 @@ SET "state" = CASE
   WHEN "verified" = TRUE THEN 'ACTIVE'::"StatusPageSubscriptionState"
   ELSE 'PENDING'::"StatusPageSubscriptionState"
 END;
-
-CREATE INDEX CONCURRENTLY "StatusPageSubscription_statusPageId_state_idx" ON "StatusPageSubscription"("statusPageId", "state");
 
 CREATE TABLE "NotificationProviderFeedback" (
   "id" TEXT NOT NULL,
