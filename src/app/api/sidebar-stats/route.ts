@@ -76,7 +76,7 @@ export async function GET() {
     const criticalIncidentsCount = urgencyCounts.find(u => u.urgency === 'HIGH')?._count._all || 0;
     const mediumIncidentsCount = urgencyCounts.find(u => u.urgency === 'MEDIUM')?._count._all || 0;
     const lowIncidentsCount = urgencyCounts.find(u => u.urgency === 'LOW')?._count._all || 0;
-    const isStatusPageAdmin = hasCapability(user.role, CAPABILITIES.ADMIN);
+    const isStatusPageAdmin = hasCapability(user.role, CAPABILITIES.ADMIN_MANAGE);
 
     return jsonOk(
       {
