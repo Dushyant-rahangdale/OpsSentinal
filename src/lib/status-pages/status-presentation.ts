@@ -1,5 +1,15 @@
 import type { PublicServiceStatus } from './public-contract';
 
+/** Canonical product policy for projecting incident urgency onto every public status surface. */
+export function publicStatusForIncidentUrgency(urgency: string): PublicServiceStatus {
+  switch (urgency) {
+    case 'LOW': return 'DEGRADED';
+    case 'MEDIUM': return 'PARTIAL_OUTAGE';
+    case 'HIGH': return 'MAJOR_OUTAGE';
+    default: return 'UNKNOWN';
+  }
+}
+
 function statusRank(status: PublicServiceStatus): number {
   switch (status) {
     case 'OPERATIONAL': return 0;

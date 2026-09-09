@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       name,
       slug,
       organizationName,
+      timeZone,
       subdomain,
       customDomain,
       enabled,
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest) {
     const updateData: Prisma.StatusPageUpdateInput = {
       slug: hasField('slug') ? slug || null : undefined,
       organizationName: hasField('organizationName') ? nullableText(organizationName) : undefined,
+      timeZone: hasField('timeZone') ? timeZone : undefined,
       subdomain: hasField('subdomain') ? nullableText(subdomain) : undefined,
       customDomain: hasField('customDomain') ? nullableText(customDomain) : undefined,
       enabled: hasField('enabled') ? enabled : undefined,

@@ -11,10 +11,18 @@ import { getReportingWindowForDays } from '@/lib/retention-policy';
 import { projectServiceStatus, visibleMaintenanceServiceIds } from '@/lib/status-page-projection';
 import { calculateMultiServiceUptime } from '@/lib/sla-server';
 import { addOperationalMetric, setOperationalGauge } from '@/lib/metrics/operational/registry';
-import { getStatusPageServingStore, statusSnapshotIntegrity } from './serving-store';
+import {
+  getStatusPageServingStore,
+  statusSnapshotIntegrity,
+  type StatusServingRoute,
+} from './serving-store';
 import type { PublicStatusPageSnapshot } from './public-contract';
 import { aggregatePublicRegions, buildPublicServiceHistory } from './history';
-import { getWorstPublicStatus, normalizePublicStatus } from './status-presentation';
+import {
+  getWorstPublicStatus,
+  normalizePublicStatus,
+  publicStatusForIncidentUrgency,
+} from './status-presentation';
 import { parsePublicStatusPageSnapshot } from './public-contract-schema';
 
 export type StatusPageSnapshot = PublicStatusPageSnapshot;
@@ -110,7 +118,10 @@ export async function buildStatusPageSnapshot(
           : {},
         visibility.showUptime ? prisma.incident.findMany({
           where: {
-            serviceId: { in: ids }, visibility: 'PUBLIC', createdAt: { lte: now },
+            serviceId: { in: ids },
+            visibility: 'PUBLIC',
+            status: { notIn: ['SUPPRESSED', 'SNOOZED'] },
+            createdAt: { lt: now },
             OR: [{ resolvedAt: { gte: earliestRequiredStart } }, { resolvedAt: null }],
           },
           select: { serviceId: true, createdAt: true, resolvedAt: true, urgency: true, status: true },
@@ -125,12 +136,21 @@ export async function buildStatusPageSnapshot(
       ])
     : [[], [], {}, {}, [], []];
 
-  const impactByService = new Map<string, { active: number; critical: boolean }>();
+  const impactByService = new Map<string, { active: number; statuses: PublicStatusPageSnapshot['status'][] }>();
   for (const group of groups) {
-    const current = impactByService.get(group.serviceId) || { active: 0, critical: false };
+    const current = impactByService.get(group.serviceId) || { active: 0, statuses: [] };
     current.active += group._count._all;
-    if (group.urgency === 'HIGH') current.critical = true;
+    current.statuses.push(publicStatusForIncidentUrgency(group.urgency));
     impactByService.set(group.serviceId, current);
+  }
+
+  // Partition once so each service only scans its own incidents while building
+  // daily history and 30/90-day counts.
+  const historyIncidentsByService = new Map<string, typeof historyIncidents>();
+  for (const incident of historyIncidents) {
+    const serviceIncidents = historyIncidentsByService.get(incident.serviceId) ?? [];
+    serviceIncidents.push(incident);
+    historyIncidentsByService.set(incident.serviceId, serviceIncidents);
   }
 
   const maintenance = visibleMaintenanceServiceIds(page.announcements, ids, now);
@@ -147,11 +167,15 @@ export async function buildStatusPageSnapshot(
   const uptime90Values = uptime90 as Record<string, number>;
   const services = page.services.map(mapping => {
     const impact = impactByService.get(mapping.serviceId);
-    const state = impact?.critical ? 'MAJOR_OUTAGE' : impact?.active ? 'DEGRADED' : 'OPERATIONAL';
+    const state = impact?.active
+      ? getWorstPublicStatus(impact.statuses)
+      : 'OPERATIONAL';
+    const serviceHistoryIncidents = historyIncidentsByService.get(mapping.serviceId) ?? [];
     const history = visibility.showUptime ? buildPublicServiceHistory({
       serviceId: mapping.serviceId,
-      incidents: historyIncidents,
+      incidents: serviceHistoryIncidents,
       maintenance: maintenanceHistory,
+      timezone: page.timeZone,
       start: window.start,
       end: now,
     }).slice(-90) : undefined;
@@ -171,12 +195,12 @@ export async function buildStatusPageSnapshot(
         uptime: {
           days30: {
             percentage: measuredDays30 >= 30 ? (uptime30Values[mapping.serviceId] ?? null) : null,
-            incidentCount: historyIncidents.filter(item => item.serviceId === mapping.serviceId && item.createdAt <= now && (item.resolvedAt ?? now) >= window30.start).length,
+            incidentCount: serviceHistoryIncidents.filter(item => item.createdAt <= now && (item.resolvedAt ?? now) >= window30.start).length,
             measuredDays: Math.min(30, measuredDays30), complete: measuredDays30 >= 30,
           },
           days90: {
             percentage: measuredDays90 >= 90 ? (uptime90Values[mapping.serviceId] ?? null) : null,
-            incidentCount: historyIncidents.filter(item => item.serviceId === mapping.serviceId && item.createdAt <= now && (item.resolvedAt ?? now) >= window90.start).length,
+            incidentCount: serviceHistoryIncidents.filter(item => item.createdAt <= now && (item.resolvedAt ?? now) >= window90.start).length,
             measuredDays: Math.min(90, measuredDays90), complete: measuredDays90 >= 90,
           },
         },
@@ -193,6 +217,7 @@ export async function buildStatusPageSnapshot(
       id: page.id,
       name: page.name,
       organizationName: page.organizationName,
+      timeZone: page.timeZone,
       branding: page.branding,
       showSubscribe: page.showSubscribe,
       showServicesByRegion: page.showServicesByRegion,
@@ -274,13 +299,19 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
     integrityHash: statusSnapshotIntegrity(result.snapshot as unknown as Prisma.JsonValue),
   });
   const slug = result.snapshot.page?.slug;
-  if (slug) await store.publishRoute(slug, pageId);
-  if (result.snapshot.page?.isDefault) await store.publishRoute('default', pageId);
+  const route: StatusServingRoute = {
+    pageId,
+    slug: slug ?? null,
+    requireAuth: result.snapshot.page.requireAuth,
+    revision: result.revision,
+  };
+  if (slug) await store.publishRoute(slug, route);
+  if (result.snapshot.page?.isDefault) await store.publishRoute('default', route);
   if (result.snapshot.page.customDomain) {
-    await store.publishRoute(`domain:${result.snapshot.page.customDomain.toLowerCase()}`, pageId);
+    await store.publishRoute(`domain:${result.snapshot.page.customDomain.toLowerCase()}`, route);
   }
   if (result.snapshot.page.subdomain) {
-    await store.publishRoute(`subdomain:${result.snapshot.page.subdomain.toLowerCase()}`, pageId);
+    await store.publishRoute(`subdomain:${result.snapshot.page.subdomain.toLowerCase()}`, route);
   }
   return true;
 }
@@ -358,8 +389,8 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
 
 export async function getStatusPageSnapshotByRoute(routeKey: string) {
   const store = getStatusPageServingStore();
-  const pageId = await store.resolveRoute(routeKey || 'default');
-  return pageId
-    ? { pageId, ...(await getStatusPageSnapshot(pageId)) }
+  const route = await store.resolveRoute(routeKey || 'default');
+  return route
+    ? { pageId: route.pageId, ...(await getStatusPageSnapshot(route.pageId)) }
     : { pageId: null, snapshot: null, stale: true };
 }

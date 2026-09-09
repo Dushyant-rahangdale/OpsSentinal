@@ -152,6 +152,13 @@ describe('central notification control plane', () => {
     expect(prisma.notification.create).not.toHaveBeenCalled();
   });
 
+  it('rejects malformed runtime input before accessing typed fields', async () => {
+    await expect(
+      createCentralNotificationIntent({ ...input, sourceType: 42 } as never)
+    ).rejects.toThrow('Notification input is invalid');
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
   it('derives recipient identity from the existing session secret, not a new setting', async () => {
     const previousSessionSecret = process.env.NEXTAUTH_SECRET;
     const previousIdentitySecret = process.env.NOTIFICATION_IDENTITY_KEY;

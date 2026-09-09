@@ -27,8 +27,9 @@ const historyDay = z.object({
   incidentCount: z.number().int().nonnegative(),
   availabilityPercent: z.number().min(0).max(100).nullable(),
   timeline: z.array(z.object({
-    startMinute: z.number().int().min(0).max(1440),
-    endMinute: z.number().int().min(0).max(1440),
+    // A local day can contain 25 hours when daylight-saving time ends.
+    startMinute: z.number().int().min(0).max(1500),
+    endMinute: z.number().int().min(0).max(1500),
     status,
   }).strict()).optional(),
 }).strict();
@@ -49,6 +50,7 @@ export const publicStatusPageSnapshotSchema = z.object({
     id: z.string(),
     name: z.string(),
     organizationName: z.string().nullable().optional(),
+    timeZone: z.string().min(1),
     branding: z.unknown().optional(),
     showSubscribe: z.boolean(),
     showServicesByRegion: z.boolean(),

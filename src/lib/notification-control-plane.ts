@@ -30,6 +30,7 @@ import {
   notificationAgingFloor,
   NOTIFICATION_AGING_FLOOR,
 } from './notification-priority';
+import { z } from 'zod';
 
 const MAX_ENCRYPTED_PAYLOAD_BYTES = 768 * 1024;
 const MAX_ERROR_LENGTH = 1_000;
@@ -177,6 +178,30 @@ export type CentralNotificationInput = {
   tenantKey?: string;
 };
 
+const centralNotificationInputSchema = z.object({
+  category: z.enum(['INCIDENT', 'SECURITY', 'STATUS_PAGE', 'SLA', 'ADMINISTRATION', 'SYSTEM']),
+  channel: z.enum(['EMAIL', 'SMS', 'PUSH', 'SLACK', 'WEBHOOK', 'WHATSAPP']),
+  recipientType: z.enum(['USER', 'EMAIL', 'PHONE', 'SUBSCRIBER', 'SLACK_CHANNEL', 'WEBHOOK']),
+  recipientId: z.string().max(191).optional(),
+  recipientAddress: z.string().max(2_048),
+  userId: z.string().max(191).optional(),
+  incidentId: z.string().max(191).optional(),
+  templateKey: z.string().max(191),
+  sourceType: z.string().max(191),
+  sourceId: z.string().max(191),
+  eventKey: z.string().max(512),
+  displayMessage: z.string().max(2_000),
+  payload: z.unknown(),
+  priority: z.number().int().optional(),
+  trafficClass: z.enum(['CRITICAL', 'TRANSACTIONAL', 'PUBLIC_INCIDENT', 'BULK']).optional(),
+  scheduledAt: z.date().optional(),
+  expiresAt: z.date().optional(),
+  maxAttempts: z.number().int().optional(),
+  contentId: z.string().max(191).optional(),
+  fanoutId: z.string().max(191).optional(),
+  tenantKey: z.string().trim().min(1).max(191).optional(),
+}).strict();
+
 type NotificationStore = Pick<Prisma.TransactionClient, 'notification'>;
 
 type DeliveryResult = {
@@ -305,6 +330,9 @@ function isCentralNotificationPayload(value: unknown): value is CentralNotificat
 }
 
 function assertValidInput(input: CentralNotificationInput): void {
+  if (!centralNotificationInputSchema.safeParse(input).success) {
+    throw new Error('Notification input is invalid');
+  }
   if (!isCentralNotificationPayload(input.payload)) {
     throw new Error('Notification payload is incomplete or unsupported');
   }

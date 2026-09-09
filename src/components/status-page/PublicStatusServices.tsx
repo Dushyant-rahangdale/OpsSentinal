@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PublicStatusHistoryDay, PublicStatusService } from '@/lib/status-pages/public-contract';
 import { statusPresentation } from '@/lib/status-pages/status-presentation';
 
@@ -20,6 +20,11 @@ export default function PublicStatusServices({
   groupByRegion?: boolean;
 }) {
   const [open, setOpen] = useState<{ serviceId: string; date: string } | null>(null);
+  const pointerSelection = useRef<{
+    serviceId: string;
+    date: string;
+    wasSelected: boolean;
+  } | null>(null);
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(null);
     window.addEventListener('keydown', close);
@@ -58,6 +63,7 @@ export default function PublicStatusServices({
                 {service.history.map(day => {
                   const presentation = statusPresentation(day.status);
                   const selected = open?.serviceId === service.id && open.date === day.date;
+                  const tooltipId = `status-history-${service.id}-${day.date}`;
                   return (
                     <div key={day.date} className="public-history__item">
                       <button
@@ -65,10 +71,30 @@ export default function PublicStatusServices({
                         className={`public-history__cell status-${presentation.token}`}
                         aria-label={historyLabel(service, day)}
                         aria-expanded={selected}
-                        onClick={() => setOpen(selected ? null : { serviceId: service.id, date: day.date })}
-                        onFocus={() => setOpen({ serviceId: service.id, date: day.date })}
+                        aria-describedby={selected ? tooltipId : undefined}
+                        onPointerDown={() => {
+                          pointerSelection.current = {
+                            serviceId: service.id,
+                            date: day.date,
+                            wasSelected: selected,
+                          };
+                        }}
+                        onClick={() => {
+                          const pointer = pointerSelection.current;
+                          pointerSelection.current = null;
+                          const wasSelected = pointer?.serviceId === service.id && pointer.date === day.date
+                            ? pointer.wasSelected
+                            : selected;
+                          setOpen(wasSelected ? null : { serviceId: service.id, date: day.date });
+                        }}
+                        onFocus={() => {
+                          const pointer = pointerSelection.current;
+                          if (pointer?.serviceId !== service.id || pointer.date !== day.date) {
+                            setOpen({ serviceId: service.id, date: day.date });
+                          }
+                        }}
                       ><span className="sr-only">{presentation.label}</span></button>
-                      {selected && <div role="tooltip" className="public-history__tooltip">
+                      {selected && <div id={tooltipId} role="tooltip" className="public-history__tooltip">
                         <strong>{day.date}: {presentation.label}</strong>
                         <span>{day.availabilityPercent == null ? 'Availability unavailable' : `${day.availabilityPercent.toFixed(2)}% availability`}</span>
                         <span>{day.incidentCount} incidents</span>

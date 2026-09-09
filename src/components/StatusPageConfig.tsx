@@ -19,6 +19,7 @@ import StatusPageWebhooksSettings from '@/components/status-page/StatusPageWebho
 import StatusPageSubscribers from '@/components/status-page/StatusPageSubscribers';
 import StatusPageEmailConfig from '@/components/status-page/StatusPageEmailConfig';
 import { Badge } from '@/components/ui/shadcn/badge';
+import TimeZoneSelect from '@/components/TimeZoneSelect';
 import {
   STATUS_PAGE_FONTS,
   STATUS_PAGE_COLOR_PRESETS,
@@ -56,6 +57,7 @@ type StatusPageConfigProps = {
   statusPage: {
     id: string;
     name: string;
+    timeZone?: string;
     slug?: string | null;
     isDefault?: boolean;
     organizationName?: string | null;
@@ -726,6 +728,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
   const [formData, setFormData] = useState({
     name: statusPage.name,
+    timeZone: statusPage.timeZone || 'UTC',
     slug: statusPage.slug || '',
     isDefault: statusPage.isDefault ?? false,
     organizationName: statusPage.organizationName || '',
@@ -1018,6 +1021,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                 id: statusPage.id,
                 expectedUpdatedAt: revision,
                 name: formData.name,
+                timeZone: formData.timeZone,
                 slug: formData.slug || null,
                 organizationName: formData.organizationName || null,
                 subdomain: formData.subdomain || null,
@@ -1686,6 +1690,24 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             helperText="Used in email headers (e.g., 'OpsKnight'). Overrides Status Page Name if set."
                             placeholder="e.g. OpsKnight"
                           />
+
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="status-page-time-zone"
+                              className="text-sm font-medium text-gray-900"
+                            >
+                              History time zone
+                            </label>
+                            <TimeZoneSelect
+                              id="status-page-time-zone"
+                              name="timeZone"
+                              defaultValue={formData.timeZone}
+                              onChange={timeZone => setFormData(prev => ({ ...prev, timeZone }))}
+                            />
+                            <p className="text-sm text-gray-600">
+                              Defines calendar-day boundaries for uptime and incident history.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </Card>

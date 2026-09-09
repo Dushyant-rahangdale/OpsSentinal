@@ -3,9 +3,13 @@ import type {
   PublicServiceStatus,
   PublicStatusHistoryDay,
 } from './public-contract';
-import { getWorstPublicStatus } from './status-presentation';
-
-const DAY_MS = 86_400_000;
+import { getWorstPublicStatus, publicStatusForIncidentUrgency } from './status-presentation';
+import {
+  addDaysToDateKey,
+  formatDateKeyInTimeZone,
+  startOfDayFromDateKey,
+  startOfNextDayFromDateKey,
+} from '@/lib/timezone';
 
 export interface PublicHistoryIncident {
   serviceId: string;
@@ -21,24 +25,20 @@ export interface PublicHistoryMaintenance {
   affectedServiceIds: string[];
 }
 
-function incidentStatus(urgency: string): PublicServiceStatus {
-  if (urgency === 'HIGH') return 'MAJOR_OUTAGE';
-  if (urgency === 'MEDIUM') return 'DEGRADED';
-  if (urgency === 'LOW') return 'PARTIAL_OUTAGE';
-  return 'UNKNOWN';
-}
-
 function overlapMinutes(start: Date, end: Date, dayStart: Date, dayEnd: Date) {
   const from = Math.max(start.getTime(), dayStart.getTime());
   const to = Math.min(end.getTime(), dayEnd.getTime());
   return {
     startMinute: Math.max(0, Math.floor((from - dayStart.getTime()) / 60_000)),
-    endMinute: Math.min(1440, Math.ceil((to - dayStart.getTime()) / 60_000)),
+    endMinute: Math.min(
+      Math.round((dayEnd.getTime() - dayStart.getTime()) / 60_000),
+      Math.ceil((to - dayStart.getTime()) / 60_000)
+    ),
   };
 }
 
-function mergeSlices(slices: PublicHistorySlice[]): PublicHistorySlice[] {
-  const points = new Set([0, 1440]);
+function mergeSlices(slices: PublicHistorySlice[], dayMinutes: number): PublicHistorySlice[] {
+  const points = new Set([0, dayMinutes]);
   for (const slice of slices) {
     points.add(slice.startMinute);
     points.add(slice.endMinute);
@@ -66,6 +66,7 @@ export function buildPublicServiceHistory({
   serviceId,
   incidents,
   maintenance,
+  timezone,
   start,
   end,
 }: {
@@ -76,45 +77,81 @@ export function buildPublicServiceHistory({
   start: Date;
   end: Date;
 }): PublicStatusHistoryDay[] {
-  const days: PublicStatusHistoryDay[] = [];
-  const cursor = new Date(start);
-  cursor.setUTCHours(0, 0, 0, 0);
-  const last = new Date(end);
-  last.setUTCHours(0, 0, 0, 0);
+  if (end <= start) return [];
 
-  while (cursor <= last) {
-    const dayStart = new Date(cursor);
-    const dayEnd = new Date(dayStart.getTime() + DAY_MS);
-    const incidentSlices = incidents
-      .filter(
-        incident =>
-          incident.serviceId === serviceId &&
-          incident.status !== 'SUPPRESSED' &&
-          incident.status !== 'SNOOZED' &&
-          incident.createdAt < dayEnd &&
-          (incident.resolvedAt ?? end) > dayStart
-      )
-      .map(incident => ({
-        ...overlapMinutes(incident.createdAt, incident.resolvedAt ?? end, dayStart, dayEnd),
-        status: incidentStatus(incident.urgency),
-      }));
-    const maintenanceSlices = maintenance
-      .filter(
-        item =>
-          (item.affectedServiceIds.length === 0 || item.affectedServiceIds.includes(serviceId)) &&
-          item.startDate < dayEnd &&
-          (item.endDate ?? end) > dayStart
-      )
-      .map(item => ({
-        ...overlapMinutes(item.startDate, item.endDate ?? end, dayStart, dayEnd),
-        status: 'MAINTENANCE' as const,
-      }));
-    const timeline = mergeSlices([...incidentSlices, ...maintenanceSlices]);
-    const elapsedMinutes = dayStart.getTime() === last.getTime()
-      ? Math.max(1, Math.min(1440, Math.ceil((end.getTime() - dayStart.getTime()) / 60_000)))
-      : 1440;
+  const days: PublicStatusHistoryDay[] = [];
+  const historyTimeZone = timezone || 'UTC';
+  let dateKey = formatDateKeyInTimeZone(start, historyTimeZone);
+  // The history range is half-open. An end exactly at local midnight belongs to
+  // the preceding day and must not create a zero-length trailing cell.
+  const lastDateKey = formatDateKeyInTimeZone(new Date(end.getTime() - 1), historyTimeZone);
+  const incidentSlicesByDate = new Map<string, PublicHistorySlice[]>();
+  const maintenanceSlicesByDate = new Map<string, PublicHistorySlice[]>();
+
+  const addInterval = (
+    intervalStart: Date,
+    intervalEnd: Date,
+    status: PublicServiceStatus,
+    target: Map<string, PublicHistorySlice[]>
+  ) => {
+    const boundedStart = new Date(Math.max(start.getTime(), intervalStart.getTime()));
+    const boundedEnd = new Date(Math.min(end.getTime(), intervalEnd.getTime()));
+    if (boundedEnd <= boundedStart) return;
+    let intervalDateKey = formatDateKeyInTimeZone(boundedStart, historyTimeZone);
+    const intervalLastDateKey = formatDateKeyInTimeZone(
+      new Date(boundedEnd.getTime() - 1),
+      historyTimeZone
+    );
+    while (intervalDateKey <= intervalLastDateKey) {
+      const dayStart = startOfDayFromDateKey(intervalDateKey, historyTimeZone);
+      const dayEnd = startOfNextDayFromDateKey(intervalDateKey, historyTimeZone);
+      const slices = target.get(intervalDateKey) ?? [];
+      slices.push({ ...overlapMinutes(boundedStart, boundedEnd, dayStart, dayEnd), status });
+      target.set(intervalDateKey, slices);
+      intervalDateKey = addDaysToDateKey(intervalDateKey, 1);
+    }
+  };
+
+  for (const incident of incidents) {
+    if (
+      incident.serviceId !== serviceId ||
+      incident.status === 'SUPPRESSED' ||
+      incident.status === 'SNOOZED'
+    ) continue;
+    addInterval(
+      incident.createdAt,
+      incident.resolvedAt ?? end,
+      publicStatusForIncidentUrgency(incident.urgency),
+      incidentSlicesByDate
+    );
+  }
+  for (const item of maintenance) {
+    if (item.affectedServiceIds.length > 0 && !item.affectedServiceIds.includes(serviceId)) continue;
+    addInterval(item.startDate, item.endDate ?? end, 'MAINTENANCE', maintenanceSlicesByDate);
+  }
+
+  while (dateKey <= lastDateKey) {
+    const dayStart = startOfDayFromDateKey(dateKey, historyTimeZone);
+    const dayEnd = startOfNextDayFromDateKey(dateKey, historyTimeZone);
+    const dayMinutes = Math.round((dayEnd.getTime() - dayStart.getTime()) / 60_000);
+    const incidentSlices = incidentSlicesByDate.get(dateKey) ?? [];
+    const maintenanceSlices = maintenanceSlicesByDate.get(dateKey) ?? [];
+    const timeline = mergeSlices([...incidentSlices, ...maintenanceSlices], dayMinutes);
+    const measuredStartMinute = Math.max(
+      0,
+      Math.min(dayMinutes, Math.floor((start.getTime() - dayStart.getTime()) / 60_000))
+    );
+    const measuredEndMinute = Math.max(
+      measuredStartMinute + 1,
+      Math.min(dayMinutes, Math.ceil((end.getTime() - dayStart.getTime()) / 60_000))
+    );
+    const elapsedMinutes = measuredEndMinute - measuredStartMinute;
     const relevant = timeline
-      .map(slice => ({ ...slice, endMinute: Math.min(slice.endMinute, elapsedMinutes) }))
+      .map(slice => ({
+        ...slice,
+        startMinute: Math.max(slice.startMinute, measuredStartMinute),
+        endMinute: Math.min(slice.endMinute, measuredEndMinute),
+      }))
       .filter(slice => slice.startMinute < slice.endMinute);
     const status = getWorstPublicStatus(relevant.map(slice => slice.status));
     const unavailable = relevant.reduce(
@@ -127,13 +164,13 @@ export function buildPublicServiceHistory({
       0
     );
     days.push({
-      date: dayStart.toISOString().slice(0, 10),
+      date: dateKey,
       status,
       incidentCount: incidentSlices.length,
       availabilityPercent: Number((((elapsedMinutes - unavailable) / elapsedMinutes) * 100).toFixed(3)),
       timeline: relevant,
     });
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    dateKey = addDaysToDateKey(dateKey, 1);
   }
   return days;
 }

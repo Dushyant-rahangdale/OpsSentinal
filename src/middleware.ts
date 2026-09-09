@@ -52,6 +52,10 @@ const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
   .map(value => value.trim())
   .filter(Boolean);
 const STATUS_DOMAIN_CACHE_TTL = Number(process.env.STATUS_PAGE_DOMAIN_CACHE_TTL || 60);
+const STATUS_ROUTE_POSITIVE_TTL_MS = 60_000;
+const STATUS_ROUTE_NEGATIVE_TTL_MS = 10_000;
+const STATUS_ROUTE_MAX_STALE_MS = 5 * 60_000;
+const STATUS_ROUTE_CACHE_MAX_ENTRIES = 1_000;
 
 function isPublicPath(pathname: string) {
   // Exact matches for public paths
@@ -92,7 +96,13 @@ function isStatusDomainPath(pathname: string) {
 
 function normalizeHostname(value?: string | null) {
   if (!value) return '';
-  return value.split(':')[0]?.trim().toLowerCase() || '';
+  const candidate = value.trim().toLowerCase().replace(/\.$/, '');
+  if (!candidate || candidate.length > 253 || /[^a-z0-9.:[\]-]/.test(candidate)) return '';
+  try {
+    return new URL(`http://${candidate}`).hostname.replace(/^\[|\]$/g, '');
+  } catch {
+    return '';
+  }
 }
 
 function parseHostname(value?: string | null) {
@@ -123,6 +133,14 @@ function buildSubdomainHost(subdomain: string, appHost: string) {
 const INTERNAL_API_BASE =
   process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
+function usesExternalStatusServingStore(): boolean {
+  return (
+    process.env.STATUS_PAGE_EXTERNAL_SERVING_STORE === 'true' &&
+    Boolean(process.env.STATUS_PAGE_SERVING_STORE_URL?.trim()) &&
+    Boolean(process.env.STATUS_PAGE_SERVING_STORE_TOKEN?.trim())
+  );
+}
+
 type StatusDomainPage = {
     id: string;
     slug?: string | null;
@@ -130,6 +148,12 @@ type StatusDomainPage = {
     subdomain?: string | null;
     customDomain?: string | null;
     requireAuth?: boolean;
+};
+type PublishedStatusRoute = {
+  pageId: string;
+  slug: string | null;
+  requireAuth: boolean;
+  revision: string;
 };
 type StatusDomainConfig = {
   enabled: boolean;
@@ -192,30 +216,116 @@ async function fetchStatusDomainConfig(): Promise<StatusDomainConfig | null> {
   return inflightStatusDomainFetch;
 }
 
-async function fetchPublishedStatusDomain(hostname: string): Promise<StatusDomainPage | null> {
+type CachedPublishedRoute = {
+  value: PublishedStatusRoute | null;
+  expiresAt: number;
+  staleUntil: number;
+};
+const publishedRouteCache = new Map<string, CachedPublishedRoute>();
+const publishedRouteInflight = new Map<string, Promise<PublishedStatusRoute | null>>();
+
+function cachePublishedRoute(routeKey: string, entry: CachedPublishedRoute): void {
+  if (!publishedRouteCache.has(routeKey) && publishedRouteCache.size >= STATUS_ROUTE_CACHE_MAX_ENTRIES) {
+    const oldestKey = publishedRouteCache.keys().next().value;
+    if (oldestKey) publishedRouteCache.delete(oldestKey);
+  }
+  publishedRouteCache.set(routeKey, entry);
+}
+
+function isSafeStatusSlug(value: string): boolean {
+  return (
+    value.length > 0 &&
+    value.length <= 128 &&
+    value.split('-').every(part => part.length > 0 && /^[a-z0-9]+$/.test(part))
+  );
+}
+
+export function parsePublishedStatusRoute(value: unknown): PublishedStatusRoute | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).some(key => !['pageId', 'slug', 'requireAuth', 'revision'].includes(key))) {
+    return null;
+  }
+  const slug = record.slug === null ? null : record.slug;
+  if (
+    typeof record.pageId !== 'string' ||
+    !/^[A-Za-z0-9_-]{1,128}$/.test(record.pageId) ||
+    (typeof slug !== 'string' && slug !== null) ||
+    (typeof slug === 'string' && !isSafeStatusSlug(slug)) ||
+    typeof record.requireAuth !== 'boolean' ||
+    typeof record.revision !== 'string' ||
+    !/^[A-Za-z0-9._:-]{1,128}$/.test(record.revision)
+  ) {
+    return null;
+  }
+  return { pageId: record.pageId, slug, requireAuth: record.requireAuth, revision: record.revision };
+}
+
+export function externalRouteKey(hostname: string): string {
+  const appHostname = parseHostname(INTERNAL_API_BASE);
+  if (appHostname && hostname.endsWith(`.${appHostname}`)) {
+    const subdomain = hostname.slice(0, -(appHostname.length + 1));
+    if (isSafeStatusSlug(subdomain)) return `subdomain:${subdomain}`;
+  }
+  return `domain:${hostname}`;
+}
+
+export async function fetchPublishedStatusDomain(
+  hostname: string
+): Promise<PublishedStatusRoute | null> {
   const base = process.env.STATUS_PAGE_SERVING_STORE_URL?.trim();
   const token = process.env.STATUS_PAGE_SERVING_STORE_TOKEN?.trim();
   if (!base || !token || process.env.STATUS_PAGE_EXTERNAL_SERVING_STORE !== 'true') return null;
-  try {
-    const origin = new URL(base);
-    if (origin.protocol !== 'https:' || origin.username || origin.password) return null;
-    const storeBase = origin.pathname.endsWith('/') ? origin : new URL(`${origin.pathname}/`, origin);
-    const headers = { Authorization: `Bearer ${token}` };
-    const route = await fetch(new URL(`status-pages/routes/${encodeURIComponent(`domain:${hostname}`)}`, storeBase), { headers, cache: 'no-store', signal: AbortSignal.timeout(2000) });
-    if (!route.ok) return null;
-    const routeData = await route.json() as { pageId?: unknown };
-    if (typeof routeData.pageId !== 'string') return null;
-    const manifestResponse = await fetch(new URL(`status-pages/${routeData.pageId}/manifest`, storeBase), { headers, cache: 'no-store', signal: AbortSignal.timeout(2000) });
-    if (!manifestResponse.ok) return null;
-    const manifest = await manifestResponse.json() as { enabled?: unknown; revoked?: unknown; revision?: unknown };
-    if (manifest.enabled !== true || manifest.revoked === true || typeof manifest.revision !== 'string') return null;
-    const snapshotResponse = await fetch(new URL(`status-pages/${routeData.pageId}/${manifest.revision}.json`, storeBase), { headers, cache: 'no-store', signal: AbortSignal.timeout(2000) });
-    if (!snapshotResponse.ok) return null;
-    const snapshot = await snapshotResponse.json() as { page?: StatusDomainPage };
-    return snapshot.page ?? null;
-  } catch {
-    return null;
-  }
+  const routeKey = externalRouteKey(hostname);
+  const now = Date.now();
+  const cached = publishedRouteCache.get(routeKey);
+  if (cached && cached.expiresAt > now) return cached.value;
+  const inflight = publishedRouteInflight.get(routeKey);
+  if (inflight) return inflight;
+
+  const request = (async () => {
+    try {
+      const origin = new URL(base);
+      if (origin.protocol !== 'https:' || origin.username || origin.password) return null;
+      const storeBase = origin.pathname.endsWith('/') ? origin : new URL(`${origin.pathname}/`, origin);
+      const response = await fetch(
+        new URL(`status-pages/routes/${encodeURIComponent(routeKey)}`, storeBase),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+          signal: AbortSignal.timeout(2000),
+        }
+      );
+      if (!response.ok && response.status !== 404) throw new Error('Status route lookup failed');
+      const value = response.status === 404
+        ? null
+        : parsePublishedStatusRoute(await response.json());
+      if (response.status !== 404 && !value) throw new Error('Invalid status route payload');
+      const cachedAt = Date.now();
+      cachePublishedRoute(routeKey, {
+        value,
+        expiresAt: cachedAt + (value ? STATUS_ROUTE_POSITIVE_TTL_MS : STATUS_ROUTE_NEGATIVE_TTL_MS),
+        staleUntil: cachedAt + (value ? STATUS_ROUTE_MAX_STALE_MS : STATUS_ROUTE_NEGATIVE_TTL_MS),
+      });
+      return value;
+    } catch {
+      // Retain the last known route briefly when the serving store is unavailable.
+      if (cached?.value && cached.staleUntil > Date.now()) {
+        cachePublishedRoute(routeKey, {
+          value: cached.value,
+          expiresAt: Math.min(Date.now() + STATUS_ROUTE_NEGATIVE_TTL_MS, cached.staleUntil),
+          staleUntil: cached.staleUntil,
+        });
+        return cached.value;
+      }
+      publishedRouteCache.delete(routeKey);
+      return null;
+    } finally {
+      publishedRouteInflight.delete(routeKey);
+    }
+  })();
+  publishedRouteInflight.set(routeKey, request);
+  return request;
 }
 
 /**
@@ -299,9 +409,11 @@ export default async function middleware(req: NextRequest) {
       .at(-1);
     const hostname = normalizeHostname(forwardedHost || req.headers.get('host'));
     const publishedPage = hostname ? await fetchPublishedStatusDomain(hostname) : null;
-    const statusConfig = publishedPage ? { enabled: true, pages: [publishedPage] } : await fetchStatusDomainConfig();
+    const statusConfig = publishedPage || usesExternalStatusServingStore()
+      ? null
+      : await fetchStatusDomainConfig();
     if (statusConfig?.enabled) {
-      const matchedPage = publishedPage ?? statusConfig.pages?.find(page => {
+      const matchedPage = statusConfig.pages?.find(page => {
         const subdomainHost =
           page.subdomain && statusConfig.appHost
             ? buildSubdomainHost(page.subdomain, statusConfig.appHost)
@@ -325,6 +437,20 @@ export default async function middleware(req: NextRequest) {
         if (matchedPage.requireAuth) rewriteResponse.headers.set('Vary', 'Cookie');
         return rewriteResponse;
       }
+    }
+    if (hostname && publishedPage && isStatusDomainPath(pathname)) {
+      const url = req.nextUrl.clone();
+      const pageRoot = publishedPage.slug ? `/status/${publishedPage.slug}` : '/status';
+      url.pathname = pathname === '/' || pathname === '' ? pageRoot : `${pageRoot}${pathname}`;
+      const rewriteResponse = NextResponse.rewrite(url);
+      Object.entries(securityHeaders).forEach(([key, value]) => rewriteResponse.headers.set(key, value));
+      rewriteResponse.headers.set('x-request-id', requestId);
+      rewriteResponse.headers.set(
+        'Cache-Control',
+        publishedPage.requireAuth ? PRIVATE_STATUS_CACHE_CONTROL : PUBLIC_STATUS_CACHE_CONTROL
+      );
+      if (publishedPage.requireAuth) rewriteResponse.headers.set('Vary', 'Cookie');
+      return rewriteResponse;
     }
   }
 

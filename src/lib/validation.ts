@@ -168,6 +168,14 @@ export const StatusPageSettingsSchema = z
       .optional()
       .nullable(),
     organizationName: z.string().trim().max(200).optional().nullable(),
+    timeZone: z.string().trim().refine(value => {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'Use a valid IANA timezone.').optional(),
     subdomain: statusPageHostname.optional().nullable(),
     customDomain: statusPageHostname.optional().nullable(),
     enabled: z.boolean().optional(),

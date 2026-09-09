@@ -103,6 +103,7 @@ export interface PublicStatusPageSnapshot {
     id: string;
     name: string;
     organizationName?: string | null;
+    timeZone: string;
     branding?: unknown;
     showSubscribe: boolean;
     showServicesByRegion: boolean;

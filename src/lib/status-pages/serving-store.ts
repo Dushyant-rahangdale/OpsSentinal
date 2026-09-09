@@ -8,6 +8,7 @@ import {
 import { scalingFeatureEnabled } from '@/lib/scaling-feature-flags';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 export interface StatusServingManifest {
   pageId: string;
@@ -20,20 +21,42 @@ export interface StatusServingManifest {
   integrityHash: string;
 }
 
+export interface StatusServingRoute {
+  pageId: string;
+  slug: string | null;
+  requireAuth: boolean;
+  revision: string;
+}
+
+function isSafeStatusSlug(value: string): boolean {
+  return (
+    value.length > 0 &&
+    value.length <= 128 &&
+    value.split('-').every(part => part.length > 0 && /^[a-z0-9]+$/.test(part))
+  );
+}
+
+const routeSchema = z.object({
+  pageId: z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/),
+  slug: z.string().refine(isSafeStatusSlug).nullable(),
+  requireAuth: z.boolean(),
+  revision: z.string().min(1).max(128).regex(/^[A-Za-z0-9._:-]+$/),
+}).strict();
+
 const manifestSchema = z.object({
   pageId: z.string(), revision: z.string(), enabled: z.boolean(), revoked: z.boolean(),
   snapshotKey: z.string(), publishedAt: z.string().datetime({ offset: true }),
   schemaVersion: z.number().int().positive(), integrityHash: z.string().regex(/^[a-f0-9]{64}$/),
-}).strict();
+});
 
 export function statusSnapshotIntegrity(snapshot: Prisma.JsonValue) {
   return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
 }
 
 export interface StatusPageServingStore {
-  publishRoute(routeKey: string, pageId: string): Promise<void>;
+  publishRoute(routeKey: string, route: StatusServingRoute): Promise<void>;
   removeRoute(routeKey: string): Promise<void>;
-  resolveRoute(routeKey: string): Promise<string | null>;
+  resolveRoute(routeKey: string): Promise<StatusServingRoute | null>;
   publishManifest(manifest: StatusServingManifest): Promise<void>;
   publishSnapshot(pageId: string, revision: string, snapshot: Prisma.JsonValue): Promise<void>;
   readManifest(pageId: string): Promise<StatusServingManifest | null>;
@@ -60,12 +83,24 @@ async function observed<T>(operation: string, task: () => Promise<T>): Promise<T
 class PostgreSqlStatusPageServingStore implements StatusPageServingStore {
   async publishRoute(): Promise<void> {}
   async removeRoute(): Promise<void> {}
-  async resolveRoute(routeKey: string): Promise<string | null> {
+  async resolveRoute(routeKey: string): Promise<StatusServingRoute | null> {
     const page = await prisma.statusPage.findFirst({
       where: routeKey === 'default' ? { isDefault: true } : { slug: routeKey },
-      select: { id: true },
+      select: {
+        id: true,
+        slug: true,
+        requireAuth: true,
+        snapshot: { select: { publishedRevision: true } },
+      },
     });
-    return page?.id ?? null;
+    return page
+      ? {
+          pageId: page.id,
+          slug: page.slug,
+          requireAuth: page.requireAuth,
+          revision: page.snapshot?.publishedRevision.toString() ?? '-1',
+        }
+      : null;
   }
   async publishManifest(): Promise<void> {}
   async publishSnapshot(): Promise<void> {}
@@ -141,11 +176,11 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
     });
   }
 
-  async publishRoute(routeKey: string, pageId: string): Promise<void> {
+  async publishRoute(routeKey: string, route: StatusServingRoute): Promise<void> {
     await observed('publish_route', async () => {
       const response = await this.request(`status-pages/routes/${encodeURIComponent(routeKey)}`, {
         method: 'PUT',
-        body: JSON.stringify({ pageId }),
+        body: JSON.stringify(route),
       });
       if (!response.ok) throw new Error(`Serving store route publish failed (${response.status})`);
     });
@@ -162,13 +197,13 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
     });
   }
 
-  async resolveRoute(routeKey: string): Promise<string | null> {
+  async resolveRoute(routeKey: string): Promise<StatusServingRoute | null> {
     return observed('resolve_route', async () => {
       const response = await this.request(`status-pages/routes/${encodeURIComponent(routeKey)}`);
       if (response.status === 404) return null;
       if (!response.ok) throw new Error(`Serving store route lookup failed (${response.status})`);
-      const payload = (await response.json()) as { pageId?: unknown };
-      return typeof payload.pageId === 'string' ? payload.pageId : null;
+      const parsed = routeSchema.safeParse(await response.json());
+      return parsed.success ? parsed.data : null;
     });
   }
 
@@ -204,7 +239,14 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
       if (response.status === 404) return null;
       if (!response.ok) throw new Error(`Serving store manifest read failed (${response.status})`);
       const parsed = manifestSchema.safeParse(await response.json());
-      return parsed.success ? parsed.data : null;
+      if (!parsed.success) {
+        logger.error('status.serving_store.manifest_invalid', {
+          pageId,
+          issues: parsed.error.issues.map(issue => issue.path.join('.')),
+        });
+        return null;
+      }
+      return parsed.data;
     });
   }
 

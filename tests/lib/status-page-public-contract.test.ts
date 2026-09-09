@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { aggregatePublicRegions, buildPublicServiceHistory } from '@/lib/status-pages/history';
 import { parsePublicStatusPageSnapshot } from '@/lib/status-pages/public-contract-schema';
-import { getWorstPublicStatus, normalizePublicStatus } from '@/lib/status-pages/status-presentation';
+import {
+  getWorstPublicStatus,
+  normalizePublicStatus,
+  publicStatusForIncidentUrgency,
+} from '@/lib/status-pages/status-presentation';
 
 describe('canonical public status contract', () => {
   it('never converts malformed or missing status to operational', () => {
@@ -16,6 +20,13 @@ describe('canonical public status contract', () => {
     expect(getWorstPublicStatus(['OPERATIONAL', 'UNKNOWN'])).toBe('UNKNOWN');
   });
 
+  it('uses one monotonic urgency policy for current and historical status', () => {
+    expect(publicStatusForIncidentUrgency('LOW')).toBe('DEGRADED');
+    expect(publicStatusForIncidentUrgency('MEDIUM')).toBe('PARTIAL_OUTAGE');
+    expect(publicStatusForIncidentUrgency('HIGH')).toBe('MAJOR_OUTAGE');
+    expect(publicStatusForIncidentUrgency('UNRECOGNIZED')).toBe('UNKNOWN');
+  });
+
   it('keeps degraded history, timeline and availability semantically aligned', () => {
     const history = buildPublicServiceHistory({
       serviceId: 'payments',
@@ -28,10 +39,48 @@ describe('canonical public status contract', () => {
       start: new Date('2026-09-09T00:00:00.000Z'),
       end: new Date('2026-09-10T00:00:00.000Z'),
     })[0];
-    expect(history.status).toBe('DEGRADED');
+    expect(history.status).toBe('PARTIAL_OUTAGE');
     expect(history.incidentCount).toBe(1);
     expect(history.availabilityPercent).toBeLessThan(100);
-    expect(history.timeline).toContainEqual({ startMinute: 735, endMinute: 805, status: 'DEGRADED' });
+    expect(history.timeline).toContainEqual({ startMinute: 735, endMinute: 805, status: 'PARTIAL_OUTAGE' });
+  });
+
+  it('uses half-open history ranges without a trailing midnight day', () => {
+    const history = buildPublicServiceHistory({
+      serviceId: 'api', incidents: [], maintenance: [], timezone: 'UTC',
+      start: new Date('2026-09-09T00:00:00.000Z'),
+      end: new Date('2026-09-10T00:00:00.000Z'),
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({ date: '2026-09-09', status: 'OPERATIONAL' });
+  });
+
+  it('assigns incidents across midnight in the configured timezone', () => {
+    const history = buildPublicServiceHistory({
+      serviceId: 'api',
+      incidents: [{
+        serviceId: 'api', status: 'RESOLVED', urgency: 'LOW',
+        createdAt: new Date('2026-09-09T06:30:00.000Z'),
+        resolvedAt: new Date('2026-09-09T07:30:00.000Z'),
+      }],
+      maintenance: [],
+      timezone: 'America/Los_Angeles',
+      start: new Date('2026-09-09T06:00:00.000Z'),
+      end: new Date('2026-09-09T08:00:00.000Z'),
+    });
+    expect(history.map(day => day.date)).toEqual(['2026-09-08', '2026-09-09']);
+    expect(history[0]?.timeline).toContainEqual({ startMinute: 1410, endMinute: 1440, status: 'DEGRADED' });
+    expect(history[1]?.timeline).toContainEqual({ startMinute: 0, endMinute: 30, status: 'DEGRADED' });
+  });
+
+  it('models the 25-hour daylight-saving fallback day without truncation', () => {
+    const history = buildPublicServiceHistory({
+      serviceId: 'api', incidents: [], maintenance: [], timezone: 'America/New_York',
+      start: new Date('2026-11-01T04:00:00.000Z'),
+      end: new Date('2026-11-02T05:00:00.000Z'),
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0]?.timeline).toEqual([{ startMinute: 0, endMinute: 1500, status: 'OPERATIONAL' }]);
   });
 
   it('preserves maintenance and aggregates multi-region services into each region', () => {
