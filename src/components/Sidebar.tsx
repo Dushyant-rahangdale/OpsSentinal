@@ -44,8 +44,7 @@ type SidebarProps = {
   initialActiveCount?: number;
 };
 
-// Section render order
-const SECTION_ORDER: NavSectionKey[] = ['MAIN', 'RELIABILITY', 'ON_CALL', 'ANALYTICS', 'GOVERNANCE'];
+
 
 export default function Sidebar({
   userName = null,
@@ -71,8 +70,10 @@ export default function Sidebar({
   });
   const [statusPages, setStatusPages] = useState<SidebarStatusPage[]>([]);
   const [isStatusPageAdmin, setIsStatusPageAdmin] = useState(false);
-  // Expanded state for multi-page accordion in the sidebar
-  const [statusPagesExpanded, setStatusPagesExpanded] = useState(false);
+  // Manual toggle state; accordion is also open when user is on any /status route
+  const [statusPagesManuallyExpanded, setStatusPagesExpanded] = useState(false);
+  // Derive expanded state — no useEffect needed, avoids cascading renders
+  const statusPagesExpanded = statusPagesManuallyExpanded || pathname.startsWith('/status');
 
   const isDesktopCollapsed = !isMobile && isCollapsed;
   const sidebarId = 'app-sidebar';
@@ -117,13 +118,6 @@ export default function Sidebar({
       closeMobile();
     }
   }, [pathname, closeMobile]);
-
-  // Auto-expand status pages accordion when user is on a status page route
-  useEffect(() => {
-    if (pathname.startsWith('/status')) {
-      setStatusPagesExpanded(true);
-    }
-  }, [pathname]);
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true;
@@ -583,9 +577,12 @@ export default function Sidebar({
             isDesktopCollapsed ? 'py-3 px-2' : 'p-3'
           )}
         >
-          {SECTION_ORDER.map(sectionKey =>
-            renderSection(sectionKey, groupedItems[sectionKey] ?? [])
-          )}
+          {/* Explicit per-section rendering — avoids dynamic key access (no object injection risk) */}
+          {renderSection('MAIN', groupedItems.MAIN)}
+          {renderSection('RELIABILITY', groupedItems.RELIABILITY)}
+          {renderSection('ON_CALL', groupedItems.ON_CALL)}
+          {renderSection('ANALYTICS', groupedItems.ANALYTICS)}
+          {renderSection('GOVERNANCE', groupedItems.GOVERNANCE)}
         </nav>
 
         {/* Sidebar Footer Section */}

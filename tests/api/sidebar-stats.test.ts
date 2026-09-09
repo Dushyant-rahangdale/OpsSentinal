@@ -61,7 +61,7 @@ describe('API Route - Sidebar Stats', () => {
 
     vi.mocked(prisma.statusPage.findMany).mockResolvedValue([
       { id: 'sp-1', name: 'OpsKnight Status', slug: null, isDefault: true },
-    ] as any);
+    ] as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
     const res = await GET();
     const { status, data } = await parseResponse(res);

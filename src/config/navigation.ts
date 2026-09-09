@@ -55,7 +55,19 @@ export const NAV_SECTIONS: Record<NavSectionKey, NavSectionConfig> = {
 };
 
 export function getNavSectionConfig(key: NavSectionKey): NavSectionConfig {
-  return NAV_SECTIONS[key] ?? NAV_SECTIONS.MAIN;
+  switch (key) {
+    case 'RELIABILITY':
+      return NAV_SECTIONS.RELIABILITY;
+    case 'ON_CALL':
+      return NAV_SECTIONS.ON_CALL;
+    case 'ANALYTICS':
+      return NAV_SECTIONS.ANALYTICS;
+    case 'GOVERNANCE':
+      return NAV_SECTIONS.GOVERNANCE;
+    case 'MAIN':
+    default:
+      return NAV_SECTIONS.MAIN;
+  }
 }
 
 export interface NavItemConfig {
