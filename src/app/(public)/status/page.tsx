@@ -55,13 +55,35 @@ export default async function PublicStatusPage() {
 
 export async function renderPublicStatusPage(slug?: string) {
   const projected = await getStatusPageSnapshotByRoute(slug || 'default');
-  const statusPage = projected.snapshot?.page;
+  const snapshot = projected.snapshot;
+  const statusPage = snapshot?.page;
 
-  if (!statusPage) {
-    return <Unavailable message="Status page is not configured." />;
+  // A missing projection used to be reported as "not configured", which is only true when no page
+  // owns this address at all. The route resolving proves one does, so a missing body means the
+  // projection is unavailable right now -- an entirely different thing to tell a visitor.
+  if (!snapshot || !statusPage) {
+    if (!projected.pageId) {
+      return (
+        <Unavailable
+          title="Status page not configured"
+          message="No status page has been published at this address."
+        />
+      );
+    }
+    return (
+      <Unavailable
+        title="Status information unavailable"
+        message="We're refreshing the latest service status. Please try again shortly."
+      />
+    );
   }
   if (statusPage.enabled === false) {
-    return <Unavailable message="This status page is currently disabled." />;
+    return (
+      <Unavailable
+        title="Status page unavailable"
+        message="This status page is currently disabled."
+      />
+    );
   }
   if (statusPage.requireAuth) {
     const session = await getServerSession(await getAuthOptions());
@@ -70,20 +92,21 @@ export async function renderPublicStatusPage(slug?: string) {
       redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
     }
   }
-  if (!projected.snapshot) {
-    return <Unavailable message="Status information is temporarily unavailable." />;
-  }
 
   return (
     <StatusPageSnapshotView
       page={statusPage}
-      snapshot={projected.snapshot}
+      snapshot={snapshot}
       stale={projected.stale}
     />
   );
 }
 
-function Unavailable({ message }: { message: string }) {
+/**
+ * Shown when there is no projection to render. Deliberately carries no page name, branding or
+ * service data: the reason it renders at all is that none of that could be verified.
+ */
+function Unavailable({ title, message }: { title: string; message: string }) {
   return (
     <main
       style={{
@@ -91,10 +114,24 @@ function Unavailable({ message }: { message: string }) {
         display: 'grid',
         placeItems: 'center',
         padding: '2rem',
-        color: '#374151',
+        background: '#f8fafc',
+        color: '#334155',
+        fontFamily:
+          'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      <p>{message}</p>
+      <section
+        aria-labelledby="status-unavailable-heading"
+        style={{ maxWidth: 460, textAlign: 'center' }}
+      >
+        <h1
+          id="status-unavailable-heading"
+          style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem', color: '#0f172a' }}
+        >
+          {title}
+        </h1>
+        <p style={{ margin: 0, lineHeight: 1.6 }}>{message}</p>
+      </section>
     </main>
   );
 }

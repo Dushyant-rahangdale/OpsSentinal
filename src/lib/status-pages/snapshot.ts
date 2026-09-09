@@ -13,6 +13,7 @@ import { calculateMultiServiceUptime } from '@/lib/sla-server';
 import { addOperationalMetric, setOperationalGauge } from '@/lib/metrics/operational/registry';
 import {
   getStatusPageServingStore,
+  manifestServingState,
   statusSnapshotIntegrity,
   type StatusServingRoute,
 } from './serving-store';
@@ -475,8 +476,18 @@ export async function readStatusPageSnapshot(pageId: string): Promise<StatusPage
 }
 
 /**
- * Return only a revision-current sanitized projection. Dirty payloads remain in
- * storage for recovery/diagnostics but are never returned to a public renderer.
+ * Return a sanitized projection, preferring the current revision.
+ *
+ * When the current revision is not servable, the previous one is used only if the control plane
+ * marked the invalidation as benign. That marker is written exclusively by a configuration change
+ * classified as non-tightening, so every disclosure-narrowing transition -- a tightened setting, a
+ * disabled page, or any invalidation of unknown provenance, including the database triggers that
+ * cannot classify themselves -- leaves the marker fail-closed and withholds everything.
+ *
+ * The fallback body is safe to show because it is a previously published projection, already
+ * sanitized under a disclosure policy at least as broad as the one now in force. The access gate
+ * cannot be weakened this way either: raising `requireAuth` classifies as tightening and fails
+ * closed, while lowering it can only leave a stale `true` behind, which merely over-prompts.
  */
 export async function getStatusPageSnapshot(pageId: string): Promise<{
   snapshot: StatusPageSnapshot | null;
@@ -484,13 +495,26 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
 }> {
   const store = getStatusPageServingStore();
   const manifest = await store.readManifest(pageId);
-  if (!manifest?.enabled || manifest.revoked) return { snapshot: null, stale: true };
-  const payload = await store.readSnapshot(pageId, manifest.revision);
-  if (!payload || statusSnapshotIntegrity(payload) !== manifest.integrityHash) {
-    return { snapshot: null, stale: true };
+  if (!manifest) return { snapshot: null, stale: true };
+
+  if (manifest.enabled && !manifest.revoked) {
+    const payload = await store.readSnapshot(pageId, manifest.revision);
+    if (payload && statusSnapshotIntegrity(payload) === manifest.integrityHash) {
+      const current = parseStatusPageSnapshot(pageId, payload);
+      if (current) return { snapshot: current, stale: false };
+    }
   }
-  const current = parseStatusPageSnapshot(pageId, payload);
-  return current ? { snapshot: current, stale: false } : { snapshot: null, stale: true };
+
+  if (manifestServingState(manifest) === 'STALE_OK') {
+    const lastGood = await store.readLastGoodSnapshot(pageId);
+    const previous = lastGood ? parseStatusPageSnapshot(pageId, lastGood.payload) : null;
+    if (previous) {
+      addOperationalMetric('opsknight_status_page_stale_serves_total', 1, { surface: 'snapshot' });
+      return { snapshot: previous, stale: true };
+    }
+  }
+
+  return { snapshot: null, stale: true };
 }
 
 export async function getStatusPageSnapshotByRoute(routeKey: string) {

@@ -483,6 +483,14 @@ export const OPERATIONAL_METRICS = [
     estimatedMaxSeries: 4,
   },
   {
+    name: 'opsknight_status_page_stale_serves_total',
+    help: 'Public status reads served from the last known good projection',
+    kind: 'counter',
+    labels: ['surface'],
+    scope: 'counter',
+    estimatedMaxSeries: 4,
+  },
+  {
     name: 'opsknight_status_page_revocations_total',
     help: 'Status-page serving revocations by reason',
     kind: 'counter',

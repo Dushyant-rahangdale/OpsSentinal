@@ -162,13 +162,12 @@ describe('status page publication lifecycle', () => {
 
     expect(result.publication.status).toBe('FAILED');
     expect(result.publication.lastError).toBeTruthy();
-    // Marked servable rather than withheld, because nothing was retracted. Whether the reader
-    // actually falls back to this body is asserted where that behaviour is implemented.
+    // Nothing was retracted, so the previous body stays servable and the visitor still sees
+    // status rather than an error page.
     expect(await servingState(page.id)).toBe('STALE_OK');
-    expect(await testPrisma.$queryRaw`
-      SELECT "payload" IS NOT NULL AS "kept" FROM "StatusPageSnapshot"
-       WHERE "statusPageId" = ${page.id}
-    `).toEqual([{ kept: true }]);
+    const after = await getStatusPageSnapshot(page.id);
+    expect(after.snapshot).not.toBeNull();
+    expect(after.stale).toBe(true);
   });
 
   it('keeps a failed privacy tightening dark', async () => {
@@ -260,5 +259,27 @@ describe('status page publication lifecycle', () => {
     expect(result.publication.lastError).toContain('did not resolve');
     // Nothing removed: two working addresses beats none.
     expect(removeRoute).not.toHaveBeenCalled();
+  });
+
+  it('withholds the previous body when a disclosure was narrowed, though it is still stored', async () => {
+    // Fail-closed is decided by the marker, not by whether a body exists: it does exist here.
+    const { page } = await livePage();
+    const { calculateMultiServiceUptime } = await import('@/lib/sla-server');
+    vi.mocked(calculateMultiServiceUptime).mockRejectedValueOnce(new Error('uptime backend down'));
+
+    await applyStatusPageConfigurationChange({
+      pageId: page.id,
+      actor,
+      patch: { showServiceDescriptions: false },
+      expectedUpdatedAt: page.updatedAt.toISOString(),
+    });
+
+    expect(await servingState(page.id)).toBe('FAIL_CLOSED');
+    const stored = await testPrisma.$queryRaw<Array<{ kept: boolean }>>`
+      SELECT "payload" IS NOT NULL AS "kept" FROM "StatusPageSnapshot"
+       WHERE "statusPageId" = ${page.id}
+    `;
+    expect(stored[0].kept).toBe(true);
+    expect((await getStatusPageSnapshot(page.id)).snapshot).toBeNull();
   });
 });
