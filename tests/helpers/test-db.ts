@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
+import { invalidateNotificationProviderCache } from '@/lib/notification-providers';
 
 const prisma = new PrismaClient();
 
@@ -191,7 +192,7 @@ export async function createTestNotificationProvider(
   config: Prisma.InputJsonObject = {},
   overrides: Partial<Prisma.NotificationProviderCreateInput> = {}
 ) {
-  return await prisma.notificationProvider.upsert({
+  const record = await prisma.notificationProvider.upsert({
     where: {
       provider: provider,
     },
@@ -207,6 +208,8 @@ export async function createTestNotificationProvider(
       ...overrides,
     },
   });
+  invalidateNotificationProviderCache();
+  return record;
 }
 
 export async function createTestEscalationPolicy(

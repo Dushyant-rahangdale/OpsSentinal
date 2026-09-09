@@ -1,4 +1,4 @@
-import { processPendingJobs } from './jobs/queue';
+import { processPendingJobs, processPendingJobsByType } from './jobs/queue';
 import { logger } from './logger';
 import {
   consumeEscalationWakeRequest,
@@ -35,6 +35,8 @@ let lastRunAt: Date | null = null;
 let lastSuccessAt: Date | null = null;
 let startedAt: Date | null = null;
 let lastError: string | null = null;
+export type JobWorkerLane = 'all' | 'critical' | 'bulk' | 'projector';
+let workerLane: JobWorkerLane = 'all';
 
 function readBoundedInteger(
   rawValue: string | undefined,
@@ -126,6 +128,77 @@ async function runOnce(): Promise<void> {
   const startedAt = Date.now();
 
   try {
+    if (workerLane === 'projector') {
+      const { reconcileStatusPageSnapshots } = await import('./status-pages/snapshot');
+      const projection = await reconcileStatusPageSnapshots(workerConfig.batchSize);
+      lastSuccessAt = new Date();
+      lastError = null;
+      scheduleNextRun(projection.attempted > 0 ? workerConfig.busyPollMs : workerConfig.idlePollMs);
+      return;
+    }
+
+    if (workerLane === 'bulk') {
+      const { isBulkNotificationDeliveryPaused } = await import('./notification-capacity-control');
+      if (await isBulkNotificationDeliveryPaused()) {
+        lastSuccessAt = new Date();
+        lastError = null;
+        scheduleNextRun(withIdleJitter(workerConfig.idlePollMs));
+        return;
+      }
+      const { processCentralNotificationQueue } = await import('./notification-control-plane');
+      const notifications = await processCentralNotificationQueue({
+        trafficClasses: ['PUBLIC_INCIDENT', 'BULK'],
+        batchSize: workerConfig.batchSize,
+        concurrency: workerConfig.concurrency,
+      });
+      const incidentFanout = await processPendingJobsByType(
+        'STATUS_PAGE_NOTIFICATION',
+        workerConfig.batchSize,
+        workerConfig.concurrency
+      );
+      const announcementFanout = await processPendingJobsByType(
+        'STATUS_PAGE_ANNOUNCEMENT_FANOUT',
+        workerConfig.batchSize,
+        workerConfig.concurrency
+      );
+      const failed = notifications.failed + incidentFanout.failed + announcementFanout.failed;
+      if (failed > 0) {
+        lastError = `${failed} bulk delivery job(s) failed`;
+        logger.warn('[JobWorker] Bulk lane degraded', { failed });
+      } else {
+        lastSuccessAt = new Date();
+        lastError = null;
+      }
+      const busy = notifications.processed + incidentFanout.total + announcementFanout.total > 0;
+      scheduleNextRun(busy ? workerConfig.busyPollMs : withIdleJitter(workerConfig.idlePollMs));
+      return;
+    }
+
+    if (workerLane === 'critical') {
+      const escalation = await runCriticalEscalationCycle({
+        batchSize: Math.min(workerConfig.batchSize, 50),
+        concurrency: Math.min(workerConfig.concurrency, 10),
+      });
+      const notifications = await runCriticalNotificationCycle();
+      const laneErrors = [...escalation.errors, ...notifications.errors];
+      if (escalation.jobsFailed > 0)
+        laneErrors.push(`${escalation.jobsFailed} escalation job(s) failed`);
+      if (notifications.centralFailed > 0)
+        laneErrors.push(`${notifications.centralFailed} central notification(s) failed`);
+      if (laneErrors.length > 0) {
+        lastError = laneErrors.join('; ');
+        logger.warn('[JobWorker] Critical lane degraded', { errors: laneErrors });
+      } else {
+        lastSuccessAt = new Date();
+        lastError = null;
+      }
+      const busy =
+        criticalEscalationCycleWasBusy(escalation) ||
+        criticalNotificationCycleWasBusy(notifications);
+      scheduleNextRun(busy ? workerConfig.busyPollMs : withIdleJitter(workerConfig.idlePollMs));
+      return;
+    }
+
     // Escalation first, in its own claim batch. A page must never queue behind
     // a backlog of webhooks or status-page notifications, and this lane owns
     // escalation's recovery so it does not depend on the scheduler lease.
@@ -188,13 +261,14 @@ async function runOnce(): Promise<void> {
  * claim is the concurrency boundary, so multiple worker processes can safely
  * call this loop against the same database.
  */
-export function startJobWorker(): void {
+export function startJobWorker(lane: JobWorkerLane = 'all'): void {
   if (initialized) {
     logger.debug('[JobWorker] Already initialized, skipping');
     return;
   }
 
   workerConfig = getJobWorkerConfig();
+  workerLane = lane;
   initialized = true;
   lastRunAt = null;
   lastSuccessAt = null;
@@ -206,6 +280,7 @@ export function startJobWorker(): void {
     concurrency: workerConfig.concurrency,
     idlePollMs: workerConfig.idlePollMs,
     busyPollMs: workerConfig.busyPollMs,
+    lane: workerLane,
   });
 
   // Start immediately. Subsequent iterations are paced based on queue activity.
@@ -249,5 +324,6 @@ export function getJobWorkerStatus() {
     startedAt,
     lastError,
     config: workerConfig ? { ...workerConfig } : null,
+    lane: workerLane,
   };
 }

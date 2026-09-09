@@ -1,5 +1,6 @@
 import type { Incident, Service } from '@prisma/client';
 import prisma from './prisma';
+import { incidentNotificationPriority } from './notification-priority';
 import {
   dispatchNotificationAttempt,
   NOTIFICATION_CHANNELS,
@@ -36,6 +37,8 @@ async function sendCentralIncidentNotification(input: {
   eventAt: Date;
   escalationGeneration?: number;
   escalationStep?: number | null;
+  priority?: string | null;
+  urgency?: string | null;
 }): Promise<SendNotificationResult | null> {
   if (!['EMAIL', 'SMS', 'PUSH', 'WHATSAPP'].includes(input.channel)) return null;
   const recipient = await prisma.user.findUnique({
@@ -76,6 +79,7 @@ async function sendCentralIncidentNotification(input: {
     sourceId: input.incidentId,
     eventKey: input.eventKey,
     displayMessage: 'Incident notification',
+    ...incidentNotificationPriority(input),
     payload: {
       kind,
       userId: input.userId,
@@ -204,7 +208,7 @@ export async function sendNotification(
     userId,
     channel,
     triggerGeneration:
-      eventType === 'triggered' ? identityIncident.escalationGeneration ?? 0 : undefined,
+      eventType === 'triggered' ? (identityIncident.escalationGeneration ?? 0) : undefined,
   });
   const durableMessage = encodeNotificationEnvelope(
     buildNotificationEnvelope(identityIncident, eventType, eventAt, message)
@@ -220,6 +224,8 @@ export async function sendNotification(
       eventAt,
       escalationGeneration: identityIncident.escalationGeneration,
       escalationStep: identityIncident.currentEscalationStep,
+      priority: identityIncident.priority,
+      urgency: identityIncident.urgency,
     });
     if (central) return central;
   }

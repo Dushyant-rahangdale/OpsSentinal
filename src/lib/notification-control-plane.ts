@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import {
   Prisma,
   type NotificationCategory,
+  type NotificationTrafficClass,
   type NotificationChannel,
   type NotificationRecipientType,
 } from '@prisma/client';
@@ -24,6 +25,11 @@ import {
 } from './provider-admission';
 import { notificationRetryDelayMs, NOTIFICATION_RETRY_POLICY } from './notification-delivery';
 import { logger } from './logger';
+import {
+  defaultNotificationPolicy,
+  notificationAgingFloor,
+  NOTIFICATION_AGING_FLOOR,
+} from './notification-priority';
 
 const MAX_ENCRYPTED_PAYLOAD_BYTES = 768 * 1024;
 const MAX_ERROR_LENGTH = 1_000;
@@ -74,7 +80,9 @@ export type CentralNotificationPayload =
       kind: 'EMAIL';
       to: string;
       subject: string;
-      html: string;
+      html?: string;
+      contentId?: string;
+      unsubscribeUrl?: string;
       text?: string;
       providerScope?: {
         statusPageId: string;
@@ -160,9 +168,12 @@ export type CentralNotificationInput = {
   displayMessage: string;
   payload: CentralNotificationPayload;
   priority?: number;
+  trafficClass?: NotificationTrafficClass;
   scheduledAt?: Date;
   expiresAt?: Date;
   maxAttempts?: number;
+  contentId?: string;
+  fanoutId?: string;
 };
 
 type NotificationStore = Pick<Prisma.TransactionClient, 'notification'>;
@@ -261,7 +272,11 @@ function isCentralNotificationPayload(value: unknown): value is CentralNotificat
         hasText(value.durableMessage)
       );
     case 'EMAIL':
-      return hasText(value.to) && hasText(value.subject) && hasText(value.html);
+      return (
+        hasText(value.to) &&
+        hasText(value.subject) &&
+        (hasText(value.html) || hasText(value.contentId))
+      );
     case 'SMS':
     case 'WHATSAPP':
       return hasText(value.to) && hasText(value.message);
@@ -341,7 +356,12 @@ export async function createCentralNotificationIntent(
     Math.max(input.maxAttempts ?? NOTIFICATION_RETRY_POLICY.maxAttempts, 1),
     20
   );
-  const priority = Math.min(Math.max(input.priority ?? 5, 0), 9);
+  const policy = defaultNotificationPolicy(input.category, input.templateKey);
+  const trafficClass = input.trafficClass ?? policy.trafficClass;
+  const priority = Math.min(
+    Math.max(input.priority ?? policy.priority, notificationAgingFloor(trafficClass)),
+    9
+  );
   const id = intentId(deliveryKey);
 
   try {
@@ -364,7 +384,10 @@ export async function createCentralNotificationIntent(
         sourceId: input.sourceId,
         deliveryKey,
         payloadEncrypted,
+        contentId: input.contentId,
+        fanoutId: input.fanoutId,
         priority,
+        trafficClass,
         scheduledAt,
         nextAttemptAt: scheduledAt,
         maxAttempts,
@@ -382,6 +405,71 @@ export async function createCentralNotificationIntent(
     if (!existing) throw error;
     return { id: existing.id, created: false };
   }
+}
+
+/** Materialize a fanout page with one INSERT statement and stable-key deduplication. */
+export async function createCentralNotificationIntentsBatch(
+  inputs: CentralNotificationInput[]
+): Promise<{ created: number; skipped: number }> {
+  const now = new Date();
+  const rows: Prisma.NotificationCreateManyInput[] = await Promise.all(
+    inputs.map(async input => {
+      assertValidInput(input);
+      const recipientHash = recipientDigest(input.channel, input.recipientAddress);
+      const deliveryKey = stableDigest(
+        input.category,
+        input.channel,
+        recipientHash,
+        input.templateKey,
+        input.sourceType,
+        input.sourceId,
+        input.eventKey
+      );
+      const serializedPayload = JSON.stringify(input.payload);
+      if (Buffer.byteLength(serializedPayload, 'utf8') > MAX_ENCRYPTED_PAYLOAD_BYTES) {
+        throw new Error('Notification payload exceeds the durable delivery limit');
+      }
+      const scheduledAt = input.scheduledAt ?? now;
+      const policy = defaultNotificationPolicy(input.category, input.templateKey);
+      const trafficClass = input.trafficClass ?? policy.trafficClass;
+      return {
+        id: intentId(deliveryKey),
+        incidentId: input.incidentId,
+        userId: input.userId,
+        channel: input.channel,
+        status: 'PENDING',
+        message: input.displayMessage.slice(0, 2_000),
+        eventType: input.templateKey,
+        category: input.category,
+        recipientType: input.recipientType,
+        recipientId: input.recipientId || recipientHash,
+        recipientDisplay: maskedNotificationRecipient(input.channel, input.recipientAddress),
+        recipientHash,
+        templateKey: input.templateKey,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        deliveryKey,
+        payloadEncrypted: await encrypt(serializedPayload),
+        contentId: input.contentId,
+        fanoutId: input.fanoutId,
+        priority: Math.min(
+          Math.max(input.priority ?? policy.priority, notificationAgingFloor(trafficClass)),
+          9
+        ),
+        trafficClass,
+        scheduledAt,
+        nextAttemptAt: scheduledAt,
+        maxAttempts: Math.min(
+          Math.max(input.maxAttempts ?? NOTIFICATION_RETRY_POLICY.maxAttempts, 1),
+          20
+        ),
+        expiresAt: input.expiresAt,
+      };
+    })
+  );
+  if (rows.length === 0) return { created: 0, skipped: 0 };
+  const result = await prisma.notification.createMany({ data: rows, skipDuplicates: true });
+  return { created: result.count, skipped: rows.length - result.count };
 }
 
 /**
@@ -488,9 +576,17 @@ function payloadProviderKey(payload: CentralNotificationPayload): string {
   return 'default';
 }
 
-async function providerAdmission(payload: CentralNotificationPayload) {
+async function providerAdmission(
+  payload: CentralNotificationPayload,
+  trafficClass: NotificationTrafficClass
+) {
   const channel = channelForPayload(payload);
-  return acquireProviderAdmission(channel as ProviderAdmissionScope, payloadProviderKey(payload));
+  return acquireProviderAdmission(
+    channel as ProviderAdmissionScope,
+    payloadProviderKey(payload),
+    new Date(),
+    trafficClass
+  );
 }
 
 function providerAdmissionIdentity(payload: CentralNotificationPayload) {
@@ -651,15 +747,26 @@ async function dispatchPayload(
     }
     case 'EMAIL': {
       const { sendEmail } = await import('./email');
-      const config = payload.providerScope?.statusPageId
-        ? await import('./notification-providers').then(module =>
-            module.getStatusPageEmailConfig(payload.providerScope!.statusPageId)
-          )
-        : payload.providerKey
-          ? await import('./notification-providers')
-              .then(module => module.getAllConfiguredEmailProviders())
-              .then(configs => configs.find(item => item.provider === payload.providerKey))
-          : undefined;
+      let html = payload.html;
+      if (!html && payload.contentId) {
+        const content = await prisma.notificationContent.findUnique({
+          where: { id: payload.contentId },
+          select: { encryptedTemplate: true },
+        });
+        if (!content) {
+          return { success: false, statusCode: 410, error: 'Notification content expired' };
+        }
+        html = (await decrypt(content.encryptedTemplate)).replaceAll(
+          '{{unsubscribe_url}}',
+          payload.unsubscribeUrl ?? ''
+        );
+      }
+      if (!html) return { success: false, statusCode: 422, error: 'Email content is missing' };
+      const config = payload.providerKey
+        ? await import('./notification-providers')
+            .then(module => module.getAllConfiguredEmailProviders())
+            .then(configs => configs.find(item => item.provider === payload.providerKey))
+        : undefined;
       if (payload.providerKey && (!config || config.provider !== payload.providerKey))
         return {
           success: false,
@@ -672,7 +779,7 @@ async function dispatchPayload(
           {
             to: payload.to,
             subject: payload.subject,
-            html: payload.html,
+            html,
             text: payload.text,
             idempotencyKey: notificationId,
           },
@@ -1084,50 +1191,54 @@ async function serviceSlackDeliveryRevoked(
 async function statusSubscriberDeliveryRevoked(
   payload: CentralNotificationPayload
 ): Promise<string | null> {
-  if (
-    payload.kind !== 'EMAIL' ||
-    !payload.providerScope?.subscriptionId ||
-    !payload.providerScope.incidentId
-  )
-    return null;
+  if (payload.kind !== 'EMAIL' || !payload.providerScope?.subscriptionId) return null;
+
+  const scope = payload.providerScope;
+  const subscription = await prisma.statusPageSubscription.findFirst({
+    where: {
+      id: scope.subscriptionId,
+      statusPageId: scope.statusPageId,
+      email: normalizedRecipient('EMAIL', payload.to),
+      verified: true,
+      unsubscribedAt: null,
+      statusPage: { enabled: true },
+    },
+    select: { id: true },
+  });
+  if (!subscription) return 'Status-page subscription or page was revoked';
+
+  // Announcement fanout has no incident scope. The active subscription/page
+  // check above is still required at claim time so an unsubscribe racing with
+  // batch materialization cannot result in a later provider send.
+  if (!scope.incidentId) return null;
+
   const incident = await prisma.incident.findUnique({
-    where: { id: payload.providerScope.incidentId },
+    where: { id: scope.incidentId },
     select: { visibility: true, serviceId: true, status: true, escalationGeneration: true },
   });
   if (!incident || incident.visibility !== 'PUBLIC')
     return 'Status-page incident is no longer public';
+  if (scope.expectedStatus && incident.status !== scope.expectedStatus)
+    return `Status-page lifecycle moved from ${scope.expectedStatus} to ${incident.status}`;
   if (
-    payload.providerScope.expectedStatus &&
-    incident.status !== payload.providerScope.expectedStatus
-  )
-    return `Status-page lifecycle moved from ${payload.providerScope.expectedStatus} to ${incident.status}`;
-  if (
-    payload.providerScope.escalationGeneration != null &&
-    incident.escalationGeneration !== payload.providerScope.escalationGeneration
+    scope.escalationGeneration != null &&
+    incident.escalationGeneration !== scope.escalationGeneration
   )
     return 'Status-page incident generation was superseded';
-  if (payload.providerScope.eventType && isLifecycleEventType(payload.providerScope.eventType)) {
-    const stale = lifecycleStatusRevocation(payload.providerScope.eventType, incident.status);
+  if (scope.eventType && isLifecycleEventType(scope.eventType)) {
+    const stale = lifecycleStatusRevocation(scope.eventType, incident.status);
     if (stale) return stale;
   }
   const page = await prisma.statusPage.findFirst({
     where: {
-      id: payload.providerScope.statusPageId,
+      id: scope.statusPageId,
       enabled: true,
       showIncidents: true,
       services: { some: { serviceId: incident.serviceId, showOnPage: true } },
-      subscriptions: {
-        some: {
-          id: payload.providerScope.subscriptionId,
-          email: normalizedRecipient('EMAIL', payload.to),
-          verified: true,
-          unsubscribedAt: null,
-        },
-      },
     },
     select: { id: true },
   });
-  return page ? null : 'Status-page subscription, target, or visibility was revoked';
+  return page ? null : 'Status-page target or incident visibility was revoked';
 }
 
 async function statusWebhookDeliveryRevoked(
@@ -1157,7 +1268,7 @@ async function statusWebhookDeliveryRevoked(
       statusPageId: payload.statusPageId,
       url: payload.url,
       enabled: true,
-      events: { array_contains: payload.payload.event },
+      events: { array_contains: [payload.payload.event] },
       statusPage: {
         enabled: true,
         showIncidents: payload.incidentId ? true : undefined,
@@ -1207,16 +1318,34 @@ async function finishAttempt(input: {
   }
 }
 
+async function recordFanoutTerminal(
+  fanoutId: string | null,
+  outcome: 'completed' | 'failed' | 'skipped'
+) {
+  if (!fanoutId) return;
+  await prisma.notificationFanout.updateMany({
+    where: { id: fanoutId },
+    data:
+      outcome === 'completed'
+        ? { completedTargets: { increment: 1 } }
+        : outcome === 'skipped'
+          ? { skippedTargets: { increment: 1 } }
+          : { failedTargets: { increment: 1 } },
+  });
+}
+
 export async function deliverCentralNotification(
-  notificationId: string
+  notificationId: string,
+  options: { claimToken?: string; claimedAt?: Date } = {}
 ): Promise<{ success: boolean; claimed: boolean; error?: string }> {
-  const now = new Date();
+  const now = options.claimedAt ?? new Date();
   const candidate = await prisma.notification.findUnique({
     where: { id: notificationId },
     select: {
       id: true,
       status: true,
       category: true,
+      trafficClass: true,
       attempts: true,
       maxAttempts: true,
       nextAttemptAt: true,
@@ -1228,6 +1357,8 @@ export async function deliverCentralNotification(
       sourceId: true,
       recipientId: true,
       templateKey: true,
+      claimToken: true,
+      fanoutId: true,
     },
   });
   if (!candidate || !candidate.payloadEncrypted) {
@@ -1254,19 +1385,28 @@ export async function deliverCentralNotification(
   ) {
     return { success: false, claimed: false };
   }
-  const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
-  const claim = await prisma.notification.updateMany({
-    where: {
-      id: candidate.id,
-      status: candidate.status,
-      attempts: candidate.attempts,
-      scheduledAt: { lte: now },
-      nextAttemptAt: { lte: now },
-      OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: staleClaimBefore } }],
-    },
-    data: { status: 'PENDING', lastAttemptAt: now, errorMsg: null },
-  });
-  if (claim.count === 0) return { success: false, claimed: false };
+  if (options.claimToken) {
+    if (
+      candidate.claimToken !== options.claimToken ||
+      candidate.lastAttemptAt?.getTime() !== now.getTime()
+    ) {
+      return { success: false, claimed: false };
+    }
+  } else {
+    const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
+    const claim = await prisma.notification.updateMany({
+      where: {
+        id: candidate.id,
+        status: candidate.status,
+        attempts: candidate.attempts,
+        scheduledAt: { lte: now },
+        nextAttemptAt: { lte: now },
+        OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: staleClaimBefore } }],
+      },
+      data: { status: 'PENDING', lastAttemptAt: now, errorMsg: null },
+    });
+    if (claim.count === 0) return { success: false, claimed: false };
+  }
 
   if (!candidate.payloadEncrypted) {
     await prisma.notification.updateMany({
@@ -1337,7 +1477,7 @@ export async function deliverCentralNotification(
 
   let admission;
   try {
-    admission = await providerAdmission(payload);
+    admission = await providerAdmission(payload, candidate.trafficClass);
   } catch (error) {
     const errorMessage = safeError(error);
     await prisma.notification.updateMany({
@@ -1369,7 +1509,12 @@ export async function deliverCentralNotification(
   const identity = providerAdmissionIdentity(payload);
   let concurrency;
   try {
-    concurrency = await acquireProviderConcurrency(identity.scope, identity.providerKey, now);
+    concurrency = await acquireProviderConcurrency(
+      identity.scope,
+      identity.providerKey,
+      now,
+      candidate.trafficClass
+    );
   } catch (error) {
     const errorMessage = safeError(error);
     await prisma.notification.updateMany({
@@ -1492,6 +1637,7 @@ export async function deliverCentralNotification(
         });
       }
       if (committed.count === 0) return { success: false, claimed: false };
+      await recordFanoutTerminal(candidate.fanoutId, result.skipped ? 'skipped' : 'completed');
       return { success: true, claimed: true };
     }
 
@@ -1527,7 +1673,7 @@ export async function deliverCentralNotification(
     }
     const permanent = isPermanentProviderError(errorMessage);
     const exhausted = deliveryAttempt >= candidate.maxAttempts;
-    await prisma.notification.updateMany({
+    const failedUpdate = await prisma.notification.updateMany({
       where: { id: candidate.id, status: 'PENDING', lastAttemptAt: now },
       data: {
         status: 'FAILED',
@@ -1552,6 +1698,9 @@ export async function deliverCentralNotification(
       errorMessage,
       errorCode: result.errorCode,
     });
+    if (failedUpdate.count > 0 && (permanent || exhausted)) {
+      await recordFanoutTerminal(candidate.fanoutId, 'failed');
+    }
     return { success: false, claimed: true, error: errorMessage };
   } catch (error) {
     const circuitOpen = error instanceof CircuitBreakerError;
@@ -1640,21 +1789,58 @@ export async function deliverCentralNotification(
   }
 }
 
-export async function processCentralNotificationQueue(): Promise<{
+const ALL_NOTIFICATION_TRAFFIC_CLASSES: readonly NotificationTrafficClass[] = [
+  'CRITICAL',
+  'TRANSACTIONAL',
+  'PUBLIC_INCIDENT',
+  'BULK',
+];
+
+export async function processCentralNotificationQueue(
+  options: {
+    trafficClasses?: readonly NotificationTrafficClass[];
+    batchSize?: number;
+    concurrency?: number;
+  } = {}
+): Promise<{
   processed: number;
   succeeded: number;
   failed: number;
 }> {
   const now = new Date();
   await cleanupExpiredNotifications(now);
+  const { isBulkNotificationDeliveryPaused } = await import('./notification-capacity-control');
+  const bulkPaused = await isBulkNotificationDeliveryPaused();
+  const requestedTrafficClasses = options.trafficClasses?.length
+    ? Array.from(new Set(options.trafficClasses))
+    : [...ALL_NOTIFICATION_TRAFFIC_CLASSES];
+  const trafficClasses = bulkPaused
+    ? requestedTrafficClasses.filter(
+        value => value !== 'PUBLIC_INCIDENT' && value !== 'BULK'
+      )
+    : requestedTrafficClasses;
+  if (trafficClasses.length === 0) return { processed: 0, succeeded: 0, failed: 0 };
+
   const staleClaimBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
-  const candidates = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    SELECT "id"
-    FROM "Notification"
+  const trafficFilter = Prisma.sql`AND "trafficClass" IN (${Prisma.join(
+    trafficClasses.map(value => Prisma.sql`${value}::"NotificationTrafficClass"`)
+  )})`;
+  const batchSize = Math.max(1, Math.min(options.batchSize ?? SYSTEM_NOTIFICATION_BATCH_SIZE, 500));
+  const concurrency = Math.max(
+    1,
+    Math.min(options.concurrency ?? SYSTEM_NOTIFICATION_CONCURRENCY, 100)
+  );
+  const claimToken = crypto.randomUUID();
+  const claimedBy = process.env.OPSKNIGHT_WORKER_ID?.slice(0, 128) || 'integrated-worker';
+  const candidates = await prisma.$queryRaw<Array<{ id: string; claimToken: string }>>(Prisma.sql`
+    WITH candidates AS (
+      SELECT "id"
+      FROM "Notification"
     WHERE "payloadEncrypted" IS NOT NULL
       AND "attempts" < "maxAttempts"
       AND "scheduledAt" <= ${now}
       AND "nextAttemptAt" <= ${now}
+      ${trafficFilter}
       AND ("expiresAt" IS NULL OR "expiresAt" > ${now})
       AND (
         "status" = 'FAILED'::"NotificationStatus"
@@ -1663,21 +1849,35 @@ export async function processCentralNotificationQueue(): Promise<{
           AND ("lastAttemptAt" IS NULL OR "lastAttemptAt" < ${staleClaimBefore})
         )
       )
-    -- Age one priority level every five minutes. Critical work wins initially,
-    -- while sustained critical traffic cannot starve older normal deliveries.
+    -- Aging cannot promote customer broadcasts into responder precedence.
     ORDER BY GREATEST(
-      0,
+      CASE "trafficClass"
+        WHEN 'CRITICAL' THEN ${NOTIFICATION_AGING_FLOOR.CRITICAL}
+        WHEN 'TRANSACTIONAL' THEN ${NOTIFICATION_AGING_FLOOR.TRANSACTIONAL}
+        WHEN 'PUBLIC_INCIDENT' THEN ${NOTIFICATION_AGING_FLOOR.PUBLIC_INCIDENT}
+        ELSE ${NOTIFICATION_AGING_FLOOR.BULK}
+      END,
       "priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - "createdAt")) / 300)
     ) ASC, "nextAttemptAt" ASC, "createdAt" ASC
-    LIMIT ${SYSTEM_NOTIFICATION_BATCH_SIZE}
+    FOR UPDATE SKIP LOCKED
+    LIMIT ${batchSize}
+    )
+    UPDATE "Notification" AS notification
+    SET "status" = 'PENDING'::"NotificationStatus", "lastAttemptAt" = ${now},
+      "claimToken" = ${claimToken}, "claimedBy" = ${claimedBy}, "errorMsg" = NULL
+    FROM candidates
+    WHERE notification."id" = candidates."id"
+    RETURNING notification."id", notification."claimToken"
   `);
 
   let succeeded = 0;
   let failed = 0;
-  for (let index = 0; index < candidates.length; index += SYSTEM_NOTIFICATION_CONCURRENCY) {
-    const batch = candidates.slice(index, index + SYSTEM_NOTIFICATION_CONCURRENCY);
+  for (let index = 0; index < candidates.length; index += concurrency) {
+    const batch = candidates.slice(index, index + concurrency);
     const results = await Promise.allSettled(
-      batch.map(item => deliverCentralNotification(item.id))
+      batch.map(item =>
+        deliverCentralNotification(item.id, { claimToken: item.claimToken, claimedAt: now })
+      )
     );
     for (const result of results) {
       if (result.status === 'fulfilled' && result.value.claimed && result.value.success)

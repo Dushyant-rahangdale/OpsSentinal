@@ -15,12 +15,43 @@ import {
 } from '@/lib/status-page-projection';
 import { calculateMultiServiceUptime } from '@/lib/sla-server';
 import { addOperationalMetric, setOperationalGauge } from '@/lib/metrics/operational/registry';
+import { getStatusPageServingStore } from './serving-store';
+
+export type StatusHistoryDay = {
+  date: string;
+  status: 'operational' | 'degraded' | 'outage';
+};
 
 export type StatusPageSnapshot = {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   pageId: string;
   revision: string;
   generatedAt: string;
+  page?: {
+    id: string;
+    name: string;
+    organizationName: string | null;
+    branding: Prisma.JsonValue | null;
+    showSubscribe: boolean;
+    showServicesByRegion: boolean;
+    showRegionHeatmap: boolean;
+    showPostIncidentReview: boolean;
+    showChangelog: boolean;
+    enableUptimeExports: boolean;
+    footerText: string | null;
+    contactEmail: string | null;
+    contactUrl: string | null;
+    slug: string | null;
+    customDomain: string | null;
+    subdomain: string | null;
+    isDefault: boolean;
+    requireAuth: boolean;
+    enabled?: boolean;
+    statusApiRequireToken?: boolean;
+    statusApiRateLimitEnabled?: boolean;
+    statusApiRateLimitMax?: number;
+    statusApiRateLimitWindowSec?: number;
+  };
   status: 'operational' | 'degraded' | 'maintenance' | 'outage';
   services: Array<{
     id: string;
@@ -30,9 +61,12 @@ export type StatusPageSnapshot = {
     slaTier?: string | null;
     team?: { id: string; name: string } | null;
     status: string;
+    activeIncidentCount?: number;
   }>;
   incidents: Array<Record<string, unknown>>;
   uptime: Record<string, number>;
+  uptime30?: Record<string, number>;
+  statusHistory?: Record<string, StatusHistoryDay[]>;
   announcements: Array<{
     id: string;
     title: string;
@@ -50,7 +84,8 @@ function parseStatusPageSnapshot(
 ): StatusPageSnapshot | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   const record = payload as Prisma.JsonObject;
-  if (record.schemaVersion !== 1 || record.pageId !== pageId) return null;
+  if ((record.schemaVersion !== 1 && record.schemaVersion !== 2) || record.pageId !== pageId)
+    return null;
   return payload as unknown as StatusPageSnapshot;
 }
 
@@ -88,7 +123,10 @@ export async function buildStatusPageSnapshot(
   const visibility = publicStatusVisibility(page);
   const ids = page.services.map(mapping => mapping.serviceId);
   const window = await getReportingWindowForDays(limits.historyDays, 'incident', now);
-  const [groups, incidents, uptime] = ids.length
+  const thirtyDayStart = new Date(
+    Math.max(window.start.getTime(), now.getTime() - 30 * 86_400_000)
+  );
+  const [groups, incidents, uptime, uptime30, affectedHistoryDays] = ids.length
     ? await Promise.all([
         prisma.incident.groupBy({
           by: ['serviceId', 'urgency'],
@@ -117,13 +155,39 @@ export async function buildStatusPageSnapshot(
                 createdAt: true,
                 resolvedAt: true,
                 service: { select: { name: true, region: true } },
+                events: {
+                  orderBy: { createdAt: 'asc' },
+                  take: 50,
+                  select: { id: true, message: true, createdAt: true },
+                },
                 postmortem: { select: { status: true, isPublic: true } },
               },
             })
           : [],
         visibility.showUptime ? calculateMultiServiceUptime(ids, window.start, now, 'PUBLIC') : {},
+        visibility.showUptime
+          ? calculateMultiServiceUptime(ids, thirtyDayStart, now, 'PUBLIC')
+          : {},
+        visibility.showUptime
+          ? prisma.$queryRaw<Array<{ serviceId: string; date: Date; outage: boolean }>>`
+              SELECT i."serviceId", d.day AS date,
+                BOOL_OR(i.urgency = 'HIGH') AS outage
+              FROM generate_series(
+                date_trunc('day', ${window.start}::timestamp),
+                date_trunc('day', ${now}::timestamp),
+                interval '1 day'
+              ) AS d(day)
+              JOIN "Incident" i ON i."serviceId" IN (${Prisma.join(ids)})
+                AND i.visibility = 'PUBLIC'
+                AND i.status NOT IN ('SUPPRESSED', 'SNOOZED')
+                AND i."createdAt" < d.day + interval '1 day'
+                AND COALESCE(i."resolvedAt", ${now}) > d.day
+              GROUP BY i."serviceId", d.day
+              ORDER BY i."serviceId", d.day
+            `
+          : [],
       ])
-    : [[], [], {}];
+    : [[], [], {}, {}, []];
 
   const impactByService = new Map<string, { active: number; critical: boolean }>();
   for (const group of groups) {
@@ -145,15 +209,63 @@ export async function buildStatusPageSnapshot(
       ...(visibility.showServiceSlaTier ? { slaTier: mapping.service.slaTier } : {}),
       ...(visibility.showTeam ? { team: mapping.service.team } : {}),
       status: projectServiceStatus(mapping.serviceId, state, maintenance),
+      activeIncidentCount: impact?.active ?? 0,
     };
   });
   const impactStates = Array.from(impactByService.values());
 
+  const statusHistory = visibility.showUptime ? Object.fromEntries(
+    ids.map(serviceId => {
+      const affected = new Map(
+        affectedHistoryDays
+          .filter(day => day.serviceId === serviceId)
+          .map(day => [
+            day.date.toISOString().slice(0, 10),
+            day.outage ? ('outage' as const) : ('degraded' as const),
+          ])
+      );
+      const cursor = new Date(window.start);
+      cursor.setUTCHours(0, 0, 0, 0);
+      const days: StatusHistoryDay[] = [];
+      while (cursor <= now) {
+        const date = cursor.toISOString().slice(0, 10);
+        days.push({ date, status: affected.get(date) ?? 'operational' });
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+      return [serviceId, days.slice(-90)];
+    })
+  ) as Record<string, StatusHistoryDay[]> : undefined;
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     pageId,
     revision,
     generatedAt: now.toISOString(),
+    page: {
+      id: page.id,
+      name: page.name,
+      organizationName: page.organizationName,
+      branding: page.branding,
+      showSubscribe: page.showSubscribe,
+      showServicesByRegion: page.showServicesByRegion,
+      showRegionHeatmap: page.showRegionHeatmap,
+      showPostIncidentReview: page.showPostIncidentReview,
+      showChangelog: page.showChangelog,
+      enableUptimeExports: page.enableUptimeExports,
+      footerText: page.footerText,
+      contactEmail: page.contactEmail,
+      contactUrl: page.contactUrl,
+      slug: page.slug,
+      customDomain: page.customDomain,
+      subdomain: page.subdomain,
+      isDefault: page.isDefault,
+      requireAuth: page.requireAuth,
+      enabled: page.enabled,
+      statusApiRequireToken: page.statusApiRequireToken,
+      statusApiRateLimitEnabled: page.statusApiRateLimitEnabled,
+      statusApiRateLimitMax: page.statusApiRateLimitMax,
+      statusApiRateLimitWindowSec: page.statusApiRateLimitWindowSec,
+    },
     status: projectOverallStatus(
       impactStates.some(impact => impact.critical),
       impactStates.some(impact => impact.active > 0),
@@ -162,6 +274,8 @@ export async function buildStatusPageSnapshot(
     services: visibility.showServices ? services : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
     uptime,
+    uptime30,
+    statusHistory,
     announcements: page.announcements
       .filter(item => item.startDate <= now && (!item.endDate || item.endDate > now))
       .map(item => ({
@@ -178,16 +292,16 @@ export async function buildStatusPageSnapshot(
 
 /** A PostgreSQL lease prevents simultaneous builders; revision CAS rejects a stale build. */
 export async function rebuildStatusPageSnapshot(pageId: string) {
-  return prisma.$transaction(
+  const result = await prisma.$transaction(
     async tx => {
       const locks = await tx.$queryRaw<
         Array<{ acquired: boolean }>
       >`SELECT pg_try_advisory_xact_lock(hashtextextended(${`status-snapshot:${pageId}`}, 0)) AS acquired`;
-      if (!locks[0]?.acquired) return false;
+      if (!locks[0]?.acquired) return null;
       const rows = await tx.$queryRaw<
         Array<{ revision: bigint }>
       >`SELECT "revision" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-      if (!rows[0]) return false;
+      if (!rows[0]) return null;
       const revision = rows[0].revision;
       const snapshot = await buildStatusPageSnapshot(pageId, revision.toString());
       const changed = await tx.$executeRaw`
@@ -196,10 +310,28 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
       WHERE "statusPageId" = ${pageId} AND "revision" = ${revision}
     `;
       // Drivers can surface row counts as either number or bigint; normalize at this boundary.
-      return Number(changed) === 1;
+      return Number(changed) === 1 ? { snapshot, revision: revision.toString() } : null;
     },
     { timeout: 30_000 }
   );
+  if (!result?.snapshot) return false;
+  const store = getStatusPageServingStore();
+  await store.publishSnapshot(
+    pageId,
+    result.revision,
+    result.snapshot as unknown as Prisma.JsonValue
+  );
+  await store.publishManifest({
+    pageId,
+    revision: result.revision,
+    enabled: true,
+    revoked: false,
+    snapshotKey: `${result.revision}.json`,
+  });
+  const slug = result.snapshot.page?.slug;
+  if (slug) await store.publishRoute(slug, pageId);
+  if (result.snapshot.page?.isDefault) await store.publishRoute('default', pageId);
+  return true;
 }
 
 /** Bounded reconciliation also advances maintenance boundaries and time-derived uptime. */
@@ -218,14 +350,19 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
     Math.max(0, health?.oldestAgeSeconds ?? 0)
   );
 
-  const pages = await prisma.$queryRaw<Array<{ statusPageId: string }>>`
-    SELECT "statusPageId" FROM "StatusPageSnapshot"
+  const pages = await prisma.$queryRaw<Array<{ statusPageId: string; dirty: boolean }>>`
+    SELECT "statusPageId", ("publishedRevision" <> "revision") AS "dirty"
+    FROM "StatusPageSnapshot"
     WHERE "publishedRevision" <> "revision" OR "generatedAt" < NOW() - INTERVAL '1 minute'
     ORDER BY "generatedAt" ASC NULLS FIRST LIMIT ${Math.max(1, Math.min(50, limit))}
   `;
   let rebuilt = 0;
   for (const page of pages) {
     try {
+      // A dirty revision may represent disclosure tightening and must fail closed.
+      // Purely time-derived refreshes retain the current healthy manifest until the
+      // replacement snapshot is successfully published.
+      if (page.dirty) await getStatusPageServingStore().revoke(page.statusPageId);
       if (await rebuildStatusPageSnapshot(page.statusPageId)) {
         rebuilt++;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {
@@ -257,29 +394,28 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
   snapshot: StatusPageSnapshot | null;
   stale: boolean;
 }> {
-  const state = await prisma.$queryRaw<
-    Array<{ revision: bigint; publishedRevision: bigint; payload: Prisma.JsonValue }>
-  >`SELECT "revision", "publishedRevision", "payload" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-  const row = state[0];
-  if (!row) return { snapshot: null, stale: true };
-
-  const current = parseStatusPageSnapshot(pageId, row.payload);
-  if (row.revision === row.publishedRevision && current) return { snapshot: current, stale: false };
-
-  try {
-    const published = await rebuildStatusPageSnapshot(pageId);
-    if (!published) return { snapshot: null, stale: true };
-    const [verified] = await prisma.$queryRaw<
-      Array<{ revision: bigint; publishedRevision: bigint; payload: Prisma.JsonValue }>
-    >`SELECT "revision", "publishedRevision", "payload" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-    if (!verified || verified.revision !== verified.publishedRevision) {
-      return { snapshot: null, stale: true };
-    }
-    const rebuilt = parseStatusPageSnapshot(pageId, verified.payload);
-    if (rebuilt) return { snapshot: rebuilt, stale: false };
-  } catch {
-    // A dirty projection may contain fields that have since been made private.
-    // Retain it for diagnosis, but never return it to a public renderer.
+  const store = getStatusPageServingStore();
+  const manifest = await store.readManifest(pageId);
+  if (!manifest?.enabled || manifest.revoked) return { snapshot: null, stale: true };
+  const [revision] = await prisma.$queryRaw<
+    Array<{ revision: bigint; publishedRevision: bigint }>
+  >`SELECT "revision", "publishedRevision" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
+  if (
+    !revision ||
+    revision.revision !== revision.publishedRevision ||
+    manifest.revision !== revision.publishedRevision.toString()
+  ) {
+    return { snapshot: null, stale: true };
   }
-  return { snapshot: null, stale: true };
+  const payload = await store.readSnapshot(pageId, manifest.revision);
+  const current = parseStatusPageSnapshot(pageId, payload);
+  return current ? { snapshot: current, stale: false } : { snapshot: null, stale: true };
+}
+
+export async function getStatusPageSnapshotByRoute(routeKey: string) {
+  const store = getStatusPageServingStore();
+  const pageId = await store.resolveRoute(routeKey || 'default');
+  return pageId
+    ? { pageId, ...(await getStatusPageSnapshot(pageId)) }
+    : { pageId: null, snapshot: null, stale: true };
 }

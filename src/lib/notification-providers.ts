@@ -2,6 +2,17 @@ import prisma from './prisma';
 import { logger } from './logger';
 import { decryptProviderConfig } from './encrypted-provider-config';
 
+async function getProviderRecords() {
+  return new Map(
+    (await prisma.notificationProvider.findMany()).map(record => [record.provider, record])
+  );
+}
+
+export function invalidateNotificationProviderCache() {
+  // Kept for writer compatibility. Provider state is resolved from the shared
+  // database on every read so disabling credentials takes effect immediately.
+}
+
 /**
  * Type guard for provider config records
  */
@@ -97,10 +108,9 @@ export async function getAllConfiguredEmailProviders(): Promise<EmailConfig[]> {
   const providers: EmailConfig[] = [];
 
   try {
+    const records = await getProviderRecords();
     // 1. Resend
-    const resendProvider = await prisma.notificationProvider.findUnique({
-      where: { provider: 'resend' },
-    });
+    const resendProvider = records.get('resend');
     if (resendProvider && resendProvider.enabled && resendProvider.config) {
       const config = await getDecryptedConfig('resend', resendProvider.config);
       if (config.apiKey) {
@@ -115,9 +125,7 @@ export async function getAllConfiguredEmailProviders(): Promise<EmailConfig[]> {
     }
 
     // 2. SendGrid
-    const sendgridProvider = await prisma.notificationProvider.findUnique({
-      where: { provider: 'sendgrid' },
-    });
+    const sendgridProvider = records.get('sendgrid');
     if (sendgridProvider && sendgridProvider.enabled && sendgridProvider.config) {
       const config = await getDecryptedConfig('sendgrid', sendgridProvider.config);
       if (config.apiKey) {
@@ -132,9 +140,7 @@ export async function getAllConfiguredEmailProviders(): Promise<EmailConfig[]> {
     }
 
     // 3. Amazon SES
-    const sesProvider = await prisma.notificationProvider.findUnique({
-      where: { provider: 'ses' },
-    });
+    const sesProvider = records.get('ses');
     if (sesProvider && sesProvider.enabled && sesProvider.config) {
       const config = await getDecryptedConfig('ses', sesProvider.config);
       if (config.accessKeyId && config.secretAccessKey) {
@@ -151,9 +157,7 @@ export async function getAllConfiguredEmailProviders(): Promise<EmailConfig[]> {
     }
 
     // 4. SMTP
-    const smtpProvider = await prisma.notificationProvider.findUnique({
-      where: { provider: 'smtp' },
-    });
+    const smtpProvider = records.get('smtp');
     if (smtpProvider && smtpProvider.enabled && smtpProvider.config) {
       const config = await getDecryptedConfig('smtp', smtpProvider.config);
       if (config.host && config.user && config.password) {
@@ -212,9 +216,7 @@ export async function getStatusPageEmailConfig(statusPageId?: string): Promise<E
 
     // If status page has a preferred provider, try it first
     if (preferredProvider) {
-      const provider = await prisma.notificationProvider.findUnique({
-        where: { provider: preferredProvider },
-      });
+      const provider = (await getProviderRecords()).get(preferredProvider);
 
       if (provider && provider.enabled && provider.config) {
         const config = await getDecryptedConfig(preferredProvider, provider.config);

@@ -1,26 +1,12 @@
-import prisma from '@/lib/prisma';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
-import { activeIncidentStatuses } from '@/lib/incident-status';
-import { getReportingWindowForDays } from '@/lib/retention-policy';
-import {
-  publicStatusVisibility,
-  serializePublicStatusApiIncident,
-} from '@/lib/status-page-public-data';
 import { createHash } from 'node:crypto';
-import {
-  projectOverallStatus,
-  projectServiceStatus,
-  statusProjectionClock,
-  visibleMaintenanceServiceIds,
-} from '@/lib/status-page-projection';
 import { observeOperationalHistogram } from '@/lib/metrics/operational/registry';
-import { statusPagePublicationLimits } from '@/lib/status-pages/publication-policy';
-import { getStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import { getStatusPageSnapshotByRoute } from '@/lib/status-pages/snapshot';
 import {
   PRIVATE_STATUS_CACHE_CONTROL,
   PUBLIC_STATUS_CACHE_CONTROL,
@@ -39,65 +25,23 @@ export async function GET(req: NextRequest) {
 export async function getStatusResponse(req: NextRequest, slug?: string) {
   const projectionStartedAt = performance.now();
   try {
-    const statusPage = await prisma.statusPage.findFirst({
-      where: slug ? { enabled: true, slug } : { enabled: true, isDefault: true },
-      select: {
-        id: true,
-        updatedAt: true,
-        maxIncidentsToShow: true,
-        incidentHistoryDays: true,
-        dataRetentionDays: true,
-        enabled: true,
-        requireAuth: true,
-        statusApiRequireToken: true,
-        statusApiRateLimitEnabled: true,
-        statusApiRateLimitMax: true,
-        statusApiRateLimitWindowSec: true,
-        showServices: true,
-        showIncidents: true,
-        showMetrics: true,
-        showIncidentDetails: true,
-        showIncidentTitles: true,
-        showIncidentDescriptions: true,
-        showAffectedServices: true,
-        showIncidentTimestamps: true,
-        showServiceMetrics: true,
-        showServiceRegions: true,
-        showServiceOwners: true,
-        showServiceSlaTier: true,
-        showTeamInformation: true,
-        showIncidentUrgency: true,
-        showUptimeHistory: true,
-        showRecentIncidents: true,
-        services: {
-          select: {
-            serviceId: true,
-            showOnPage: true,
-            order: true,
-          },
-          orderBy: { order: 'asc' },
-        },
-        announcements: {
-          where: {
-            isActive: true,
-            type: 'MAINTENANCE',
-            startDate: { lte: new Date() },
-            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
-          },
-          select: { affectedServiceIds: true, updatedAt: true },
-        },
-      },
-    });
-
-    if (!statusPage) {
+    const projected = await getStatusPageSnapshotByRoute(slug || 'default');
+    if (!projected.pageId) {
       return jsonError('Status page not found or disabled', 404);
+    }
+    const statusPage = projected.snapshot?.page;
+    if (!statusPage) {
+      return jsonError('Published status information is temporarily unavailable', 503, undefined, {
+        'Retry-After': '30',
+        'Cache-Control': 'public, max-age=5, stale-if-error=30',
+      });
     }
 
     const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
-      requireToken: statusPage.statusApiRequireToken,
-      rateLimitEnabled: statusPage.statusApiRateLimitEnabled,
-      rateLimitMax: statusPage.statusApiRateLimitMax,
-      rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec,
+      requireToken: statusPage.statusApiRequireToken === true,
+      rateLimitEnabled: statusPage.statusApiRateLimitEnabled === true,
+      rateLimitMax: statusPage.statusApiRateLimitMax ?? 120,
+      rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec ?? 60,
     });
     if (!authResult.allowed) {
       if (authResult.status === 429) {
@@ -122,12 +66,6 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       }
     }
 
-    const visibility = publicStatusVisibility(statusPage);
-    const publicationLimits = statusPagePublicationLimits(statusPage);
-
-    const serviceIds = statusPage.services.filter(sp => sp.showOnPage).map(sp => sp.serviceId);
-
-    const projected = await getStatusPageSnapshot(statusPage.id);
     if (projected.snapshot) {
       const snapshot = projected.snapshot;
       const responseData = {
@@ -158,208 +96,6 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       return jsonOk(responseData, 200, { ...headers, ETag: etag });
     }
 
-    if (serviceIds.length === 0) {
-      return jsonOk(
-        {
-          status: 'operational',
-          services: [],
-          incidents: [],
-          metrics: { uptime: [] },
-          retention: null,
-          updatedAt: new Date().toISOString(),
-        },
-        200,
-        {
-          'Cache-Control':
-            statusPage.requireAuth || statusPage.statusApiRequireToken
-              ? PRIVATE_STATUS_CACHE_CONTROL
-              : PUBLIC_STATUS_CACHE_CONTROL,
-        }
-      );
-    }
-
-    const services = await prisma.service.findMany({
-      where: { id: { in: serviceIds } },
-      select: {
-        id: true,
-        name: true,
-        region: true,
-        slaTier: true,
-        status: true,
-        team: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            incidents: {
-              where: {
-                status: { in: activeIncidentStatuses() },
-                visibility: 'PUBLIC',
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const { calculateMultiServiceUptime, getExternalStatusLabel } =
-      await import('@/lib/sla-server');
-    // Public projections advance on a bounded clock. This keeps ETags useful
-    // across request bursts while still refreshing time-derived uptime once a minute.
-    const projectionNow = statusProjectionClock();
-    const uptimeWindow = await getReportingWindowForDays(30, 'incident', projectionNow);
-    const incidentWindow = await getReportingWindowForDays(
-      publicationLimits.historyDays,
-      'incident',
-      projectionNow
-    );
-    const [activeGroups, recentIncidents] = await Promise.all([
-      prisma.incident.groupBy({
-        by: ['serviceId', 'urgency'],
-        where: {
-          serviceId: { in: serviceIds },
-          visibility: 'PUBLIC',
-          status: { in: activeIncidentStatuses() },
-        },
-        _count: { _all: true },
-      }),
-      visibility.showIncidents
-        ? prisma.incident.findMany({
-            where: {
-              serviceId: { in: serviceIds },
-              visibility: 'PUBLIC',
-              createdAt: { gte: incidentWindow.start, lte: incidentWindow.end },
-            },
-            orderBy: { createdAt: 'desc' },
-            take: publicationLimits.maxIncidents,
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              status: true,
-              urgency: true,
-              createdAt: true,
-              resolvedAt: true,
-              service: { select: { name: true, region: true } },
-            },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    const serviceStatusMap = new Map<string, string>();
-    const serviceActiveCountMap = new Map<string, number>();
-
-    for (const serviceId of serviceIds) {
-      const groups = activeGroups.filter(group => group.serviceId === serviceId);
-      const activeCount = groups.reduce((sum, group) => sum + group._count._all, 0);
-      const dynamicStatus = groups.some(group => group.urgency === 'HIGH')
-        ? 'CRITICAL'
-        : activeCount > 0
-          ? 'DEGRADED'
-          : 'OPERATIONAL';
-      serviceStatusMap.set(serviceId, getExternalStatusLabel(dynamicStatus));
-      serviceActiveCountMap.set(serviceId, activeCount);
-    }
-
-    const maintenanceServiceIds = visibleMaintenanceServiceIds(
-      statusPage.announcements,
-      serviceIds,
-      projectionNow
-    );
-    for (const serviceId of serviceIds) {
-      serviceStatusMap.set(
-        serviceId,
-        projectServiceStatus(
-          serviceId,
-          serviceStatusMap.get(serviceId) ?? 'OPERATIONAL',
-          maintenanceServiceIds
-        )
-      );
-    }
-
-    const overallStatus = projectOverallStatus(
-      activeGroups.some(group => group.urgency === 'HIGH'),
-      activeGroups.length > 0,
-      maintenanceServiceIds
-    );
-
-    const servicesData = visibility.showServices
-      ? services.map(service => ({
-          id: service.id,
-          name: service.name,
-          ...(visibility.showServiceRegion ? { region: service.region ?? null } : {}),
-          ...(visibility.showServiceSlaTier ? { slaTier: service.slaTier ?? null } : {}),
-          ...(visibility.showTeam
-            ? { ownerTeam: service.team ? { id: service.team.id, name: service.team.name } : null }
-            : {}),
-          status: serviceStatusMap.get(service.id) || service.status,
-          ...(visibility.showMetrics
-            ? { activeIncidents: serviceActiveCountMap.get(service.id) || 0 }
-            : {}),
-        }))
-      : [];
-
-    const uptimeMap = visibility.showUptime
-      ? await calculateMultiServiceUptime(
-          serviceIds,
-          uptimeWindow.start,
-          uptimeWindow.end,
-          'PUBLIC'
-        )
-      : {};
-    const uptimeMetrics = visibility.showUptime
-      ? services.map(service => ({
-          serviceId: service.id,
-          uptime: parseFloat((uptimeMap[service.id] ?? 100).toFixed(3)),
-        }))
-      : [];
-
-    // Never let a shared cache satisfy a request that is protected at the
-    // origin. Public status payloads can absorb outage traffic at the edge;
-    // token/session-protected payloads remain private.
-    const headers: Record<string, string> = {
-      'Cache-Control':
-        statusPage.requireAuth || statusPage.statusApiRequireToken
-          ? PRIVATE_STATUS_CACHE_CONTROL
-          : PUBLIC_STATUS_CACHE_CONTROL,
-      Expires: '0',
-    };
-    const snapshotUpdatedAt = [
-      statusPage.updatedAt,
-      ...statusPage.announcements.map(item => item.updatedAt),
-      ...recentIncidents.flatMap(
-        item => [item.createdAt, item.resolvedAt].filter(Boolean) as Date[]
-      ),
-    ].reduce(
-      (latest, candidate) => (candidate > latest ? candidate : latest),
-      statusPage.updatedAt
-    );
-
-    const responseData = {
-      status: overallStatus,
-      services: servicesData,
-      incidents: visibility.showIncidents
-        ? recentIncidents.map(inc => serializePublicStatusApiIncident(inc, statusPage))
-        : [],
-      metrics: { uptime: uptimeMetrics },
-      retention: {
-        effectiveStart: uptimeWindow.start.toISOString(),
-        effectiveEnd: uptimeWindow.end.toISOString(),
-        isClipped: uptimeWindow.isClipped,
-      },
-      updatedAt: snapshotUpdatedAt.toISOString(),
-    };
-    if (!statusPage.requireAuth && !statusPage.statusApiRequireToken) {
-      const etag = `"${createHash('sha256').update(JSON.stringify(responseData)).digest('base64url')}"`;
-      if (req.headers.get('if-none-match') === etag) {
-        return new NextResponse(null, { status: 304, headers: { ...headers, ETag: etag } });
-      }
-      headers.ETag = etag;
-    }
-    return jsonOk(responseData, 200, headers);
   } catch (error: unknown) {
     logger.error('api.status.error', {
       error: error instanceof Error ? error.message : String(error),

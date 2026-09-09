@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { invalidateNotificationProviderCache } from '@/lib/notification-providers';
 import { Prisma } from '@prisma/client';
 import { assertAdmin } from '@/lib/rbac';
 import { jsonError, jsonOk } from '@/lib/api-response';
@@ -157,9 +158,7 @@ export async function POST(req: NextRequest) {
           new AppError({
             code: 'VALIDATION_FAILED',
             userMessage: 'Invalid SMS provider.',
-            fields: [
-              { field: 'sms.provider', code: 'invalid', message: 'Invalid SMS provider.' },
-            ],
+            fields: [{ field: 'sms.provider', code: 'invalid', message: 'Invalid SMS provider.' }],
           })
         );
       }
@@ -298,6 +297,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    invalidateNotificationProviderCache();
     return jsonOk({
       success: true,
       message: 'Notification provider settings saved successfully',

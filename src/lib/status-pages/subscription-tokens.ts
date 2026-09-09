@@ -16,6 +16,20 @@ export async function issueUnsubscribeToken(subscriptionId: string) {
   return token;
 }
 
+export async function issueUnsubscribeTokensBatch(subscriptionIds: readonly string[]) {
+  const issued = subscriptionIds.map(subscriptionId => {
+    const token = randomBytes(32).toString('hex');
+    return { subscriptionId, token, tokenHash: hashSubscriptionToken(token) };
+  });
+  if (issued.length > 0) {
+    await prisma.statusPageSubscriptionToken.createMany({
+      data: issued.map(({ subscriptionId, tokenHash }) => ({ subscriptionId, tokenHash })),
+      skipDuplicates: true,
+    });
+  }
+  return new Map(issued.map(({ subscriptionId, token }) => [subscriptionId, token]));
+}
+
 export async function findUnsubscribeSubscription(token: string) {
   if (!token || token.length > 256) return null;
   const hash = hashSubscriptionToken(token);

@@ -20,13 +20,15 @@ const mockPrisma = vi.hoisted(() => ({
     findFirst: vi.fn().mockResolvedValue(null),
   },
 }));
+const mockGetStatusPageSnapshot = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/prisma', () => ({
   default: mockPrisma,
 }));
 
 vi.mock('@/lib/status-pages/snapshot', () => ({
-  getStatusPageSnapshot: vi.fn().mockResolvedValue({ snapshot: null, stale: true }),
+  getStatusPageSnapshot: mockGetStatusPageSnapshot,
+  getStatusPageSnapshotByRoute: mockGetStatusPageSnapshot,
 }));
 
 vi.mock('@/lib/sla-server', () => ({
@@ -58,6 +60,42 @@ vi.mock('@/components/status-page/StatusPageAnnouncements', () => ({
 describe('PublicStatusPage Custom CSS', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetStatusPageSnapshot.mockResolvedValue({
+      stale: false,
+      snapshot: {
+        schemaVersion: 2,
+        pageId: 'sp-1',
+        revision: '1',
+        generatedAt: '2026-09-08T00:00:00.000Z',
+        page: {
+          id: 'sp-1',
+          name: 'Status Page',
+          organizationName: null,
+          branding: {},
+          showSubscribe: false,
+          showServicesByRegion: false,
+          showRegionHeatmap: false,
+          showPostIncidentReview: false,
+          showChangelog: false,
+          enableUptimeExports: false,
+          footerText: null,
+          contactEmail: null,
+          contactUrl: null,
+          slug: null,
+          customDomain: null,
+          subdomain: null,
+          isDefault: true,
+          requireAuth: false,
+        },
+        status: 'operational',
+        services: [],
+        incidents: [],
+        uptime: {},
+        statusHistory: {},
+        announcements: [],
+        historyDays: 90,
+      },
+    });
   });
 
   it('renders custom css when provided in status page config', async () => {
@@ -79,6 +117,14 @@ describe('PublicStatusPage Custom CSS', () => {
     });
     mockPrisma.service.findMany.mockResolvedValue([]);
     mockPrisma.incident.findMany.mockResolvedValue([]);
+    const projection = await mockGetStatusPageSnapshot();
+    mockGetStatusPageSnapshot.mockResolvedValue({
+      ...projection,
+      snapshot: {
+        ...projection.snapshot,
+        page: { ...projection.snapshot.page, branding: { customCss } },
+      },
+    });
 
     // We need to await the component since it's an async server component
     // In actual Next.js this is handled by the framework, but for testing we await it directly
@@ -113,6 +159,14 @@ describe('PublicStatusPage Custom CSS', () => {
     });
     mockPrisma.service.findMany.mockResolvedValue([]);
     mockPrisma.incident.findMany.mockResolvedValue([]);
+    const projection = await mockGetStatusPageSnapshot();
+    mockGetStatusPageSnapshot.mockResolvedValue({
+      ...projection,
+      snapshot: {
+        ...projection.snapshot,
+        page: { ...projection.snapshot.page, branding: { customCss: '' } },
+      },
+    });
 
     const component = await PublicStatusPage();
     render(component);

@@ -76,7 +76,7 @@ export async function register() {
 
     if (responsibilities.startJobWorker) {
       const { startJobWorker, stopJobWorker } = await import('./lib/job-worker');
-      startJobWorker();
+      startJobWorker(responsibilities.workerLane ?? 'all');
       stopJobWorkerService = stopJobWorker;
     }
 

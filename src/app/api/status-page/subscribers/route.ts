@@ -118,10 +118,24 @@ export async function DELETE(req: NextRequest) {
       return jsonError(new AppError(SUBSCRIPTION_NOT_FOUND));
     }
 
-    await prisma.statusPageSubscription.update({
-      where: { id: subscriptionId },
-      data: { unsubscribedAt: new Date() },
-    });
+    await prisma.$transaction([
+      prisma.statusPageSubscription.update({
+        where: { id: subscriptionId },
+        data: { unsubscribedAt: new Date() },
+      }),
+      prisma.notification.updateMany({
+        where: {
+          recipientType: 'SUBSCRIBER',
+          recipientId: subscriptionId,
+          status: { in: ['PENDING', 'FAILED'] },
+        },
+        data: {
+          status: 'SKIPPED',
+          payloadEncrypted: null,
+          errorMsg: 'Subscription was revoked before delivery.',
+        },
+      }),
+    ]);
 
     logger.info('api.status_page.subscriber.unsubscribed', {
       subscriptionId,

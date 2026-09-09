@@ -29,6 +29,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     incident: { findUnique: vi.fn() },
     service: { findUnique: vi.fn() },
+    systemConfig: { findUnique: vi.fn() },
     notificationDeliveryAttempt: { create: vi.fn(), count: vi.fn() },
     $queryRaw: vi.fn(),
     $transaction: vi.fn(async (operation: unknown) =>
@@ -105,6 +106,7 @@ describe('central notification control plane', () => {
     vi.mocked(prisma.notification.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.notification.findMany).mockResolvedValue([]);
     vi.mocked(prisma.notificationDeliveryAttempt.count).mockResolvedValue(0);
+    vi.mocked(prisma.systemConfig.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
   });
 
@@ -122,6 +124,23 @@ describe('central notification control plane', () => {
           payloadEncrypted: expect.stringMatching(/^encrypted:/),
           deliveryKey: expect.stringMatching(/^[a-f0-9]{64}$/),
         }),
+      })
+    );
+  });
+
+  it('enforces the traffic-class aging floor when persisting a caller priority', async () => {
+    vi.mocked(prisma.notification.create).mockResolvedValue({ id: 'notification_one' } as never);
+
+    await createCentralNotificationIntent({
+      ...input,
+      category: 'STATUS_PAGE',
+      trafficClass: 'BULK',
+      priority: 0,
+    });
+
+    expect(prisma.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ trafficClass: 'BULK', priority: 5 }),
       })
     );
   });
@@ -411,6 +430,21 @@ describe('central notification control plane', () => {
         data: expect.objectContaining({ status: 'SKIPPED', payloadEncrypted: null }),
       })
     );
+  });
+
+  it('uses class-specific floors when aging queued notifications', async () => {
+    await processCentralNotificationQueue();
+
+    const queueQuery = vi.mocked(prisma.$queryRaw).mock.calls.at(-1)?.[0] as {
+      strings?: readonly string[];
+      values?: readonly unknown[];
+    };
+    const sql = queueQuery.strings?.join('?') ?? '';
+    expect(sql).toContain('CASE "trafficClass"');
+    expect(sql).toContain("WHEN 'CRITICAL'");
+    expect(sql).toContain("WHEN 'PUBLIC_INCIDENT'");
+    expect(sql).toContain('ELSE');
+    expect(queueQuery.values).toEqual(expect.arrayContaining([0, 1, 3, 5]));
   });
 
   it('never redelivers an already terminal notification', async () => {

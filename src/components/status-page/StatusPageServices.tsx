@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable security/detect-object-injection */
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatDateTime, getBrowserTimeZone } from '@/lib/timezone';
@@ -45,6 +46,10 @@ interface StatusPageServicesProps {
     status: string;
     urgency: string;
   }>;
+  statusHistory?: Record<
+    string,
+    Array<{ date: string; status: 'operational' | 'degraded' | 'outage' }>
+  >;
   privacySettings?: PrivacySettings;
   groupByRegionDefault?: boolean;
   showServiceOwners?: boolean;
@@ -105,6 +110,7 @@ export default function StatusPageServices({
   statusPageServices,
   uptime90,
   incidents,
+  statusHistory,
   privacySettings,
   groupByRegionDefault,
   showServiceOwners,
@@ -175,6 +181,7 @@ export default function StatusPageServices({
   }, [incidents]);
 
   const historyByService = useMemo(() => {
+    if (statusHistory) return statusHistory;
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     start.setDate(start.getDate() - (daysToShow - 1));
@@ -217,7 +224,7 @@ export default function StatusPageServices({
     }
 
     return historyMap;
-  }, [services, incidentsByService, now]);
+  }, [services, incidentsByService, now, statusHistory]);
 
   const activeTimelineData = useMemo(() => {
     if (!hoveredBar) return null;

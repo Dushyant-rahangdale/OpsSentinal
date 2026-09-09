@@ -1,7 +1,8 @@
 import prisma from '@/lib/prisma';
-import { issueUnsubscribeToken } from '@/lib/status-pages/subscription-tokens';
+import { NOTIFICATION_PRIORITY, statusNotificationPriority } from '@/lib/notification-priority';
+import { issueUnsubscribeTokensBatch } from '@/lib/status-pages/subscription-tokens';
 import { getStatusPageEmailConfig } from '@/lib/notification-providers';
-import { enqueueCentralNotification } from '@/lib/notification-control-plane';
+import { createCentralNotificationIntentsBatch } from '@/lib/notification-control-plane';
 import { logger } from '@/lib/logger';
 import { getBaseUrl } from '@/lib/env-validation';
 import { getStatusPageLogoUrl, getStatusPagePublicUrl } from '@/lib/status-page-url';
@@ -18,6 +19,11 @@ import {
   escapeHtml,
 } from '@/lib/email-components';
 import { addOperationalMetric } from '@/lib/metrics/operational/registry';
+import {
+  beginNotificationFanout,
+  bulkQueueHasCapacity,
+  recordFanoutPage,
+} from '@/lib/notification-fanout';
 
 export async function notifyStatusPageSubscribers(
   incidentId: string,
@@ -129,13 +135,26 @@ export async function notifyStatusPageSubscribers(
         }
       );
 
-      const BATCH_SIZE = 25;
       const PAGE_SIZE = 500;
+      const policy = statusNotificationPriority(eventType);
+      const fanout = await beginNotificationFanout({
+        statusPageId: page.id,
+        sourceType: 'STATUS_PAGE_INCIDENT',
+        sourceId: incidentId,
+        eventKey: effectiveDeliveryKey,
+        trafficClass: policy.trafficClass,
+        providerKey: emailConfig.provider || undefined,
+        subject,
+        html,
+      });
       let sent = 0;
       let failed = 0;
-      let cursor: string | undefined;
+      let cursor: string | undefined = fanout.cursor ?? undefined;
 
       while (true) {
+        if (!(await bulkQueueHasCapacity())) {
+          throw new Error('Bulk notification queue reached its high watermark');
+        }
         const subscriptions = await prisma.statusPageSubscription.findMany({
           where: { statusPageId: page.id, verified: true, unsubscribedAt: null },
           orderBy: { id: 'asc' },
@@ -143,59 +162,87 @@ export async function notifyStatusPageSubscribers(
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           select: { id: true, email: true, token: true },
         });
-        if (subscriptions.length === 0) break;
+        if (subscriptions.length === 0) {
+          await recordFanoutPage(fanout.id, {
+            cursor,
+            materialized: 0,
+            failed: 0,
+            complete: true,
+          });
+          break;
+        }
+        const unsubscribeTokens = await issueUnsubscribeTokensBatch(
+          subscriptions.map(subscription => subscription.id)
+        );
+        let pageSent = 0;
+        let pageFailed = 0;
+        let pageError: unknown;
 
-        for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
-          const batch = subscriptions.slice(i, i + BATCH_SIZE);
-          const results = await Promise.allSettled(
-            batch.map(async sub => {
-              const intent = await enqueueCentralNotification({
-                category: 'STATUS_PAGE',
-                channel: 'EMAIL',
-                recipientType: 'SUBSCRIBER',
-                recipientId: sub.id,
-                recipientAddress: sub.email,
-                incidentId,
-                templateKey: `status-page-incident-${eventType}`,
-                sourceType: 'STATUS_PAGE_INCIDENT',
-                sourceId: `${page.id}:${incidentId}`,
-                eventKey: effectiveDeliveryKey,
-                displayMessage: subject,
-                priority: eventType === 'resolved' ? 3 : 1,
-                payload: {
-                  kind: 'EMAIL',
-                  to: sub.email,
-                  subject,
-                  html: html.replaceAll(
-                    '{{unsubscribe_url}}',
-                    `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
-                  ),
-                  providerScope: {
-                    statusPageId: page.id,
-                    subscriptionId: sub.id,
-                    incidentId,
-                    eventType,
-                    expectedStatus: incident.status,
-                    escalationGeneration: incident.escalationGeneration,
-                  },
+        try {
+          const result = await createCentralNotificationIntentsBatch(
+            subscriptions.map(sub => ({
+              category: 'STATUS_PAGE',
+              channel: 'EMAIL',
+              recipientType: 'SUBSCRIBER',
+              recipientId: sub.id,
+              recipientAddress: sub.email,
+              incidentId,
+              templateKey: `status-page-incident-${eventType}`,
+              sourceType: 'STATUS_PAGE_INCIDENT',
+              sourceId: `${page.id}:${incidentId}`,
+              eventKey: effectiveDeliveryKey,
+              displayMessage: subject,
+              ...policy,
+              contentId: fanout.contentId,
+              fanoutId: fanout.id,
+              payload: {
+                kind: 'EMAIL',
+                providerKey: emailConfig.provider || undefined,
+                to: sub.email,
+                subject,
+                contentId: fanout.contentId,
+                unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
+                providerScope: {
+                  statusPageId: page.id,
+                  subscriptionId: sub.id,
+                  incidentId,
+                  eventType,
+                  expectedStatus: incident.status,
+                  escalationGeneration: incident.escalationGeneration,
                 },
-              });
-              return { success: true, skipped: !intent.created };
-            })
+              },
+            }))
           );
-
-          sent += results.filter(
-            r => r.status === 'fulfilled' && r.value.success && !r.value.skipped
-          ).length;
-          failed += results.filter(
-            r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
-          ).length;
+          pageSent = result.created;
+        } catch (error) {
+          pageFailed = subscriptions.length;
+          pageError = error;
+          logger.error('status_page.incident_fanout_page_failed', {
+            statusPageId: page.id,
+            incidentId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        sent += pageSent;
+        failed += pageFailed;
+        if (pageFailed > 0) {
+          throw new Error(
+            `Failed to materialize ${pageFailed} notification intents; retrying page: ${pageError instanceof Error ? pageError.message : String(pageError)}`
+          );
         }
         cursor = subscriptions.at(-1)?.id;
+        if (cursor) {
+          await recordFanoutPage(fanout.id, {
+            cursor,
+            materialized: pageSent,
+            failed: pageFailed,
+            complete: subscriptions.length < PAGE_SIZE,
+          });
+        }
         if (subscriptions.length < PAGE_SIZE || !cursor) break;
       }
 
-      logger.info(`Status page notifications sent: ${sent} success, ${failed} failed`);
+      logger.info(`Status page notifications enqueued: ${sent} success, ${failed} failed`);
       totalSent += sent;
       totalFailed += failed;
     }
@@ -219,17 +266,21 @@ export async function notifyStatusPageSubscribers(
 
 function formatSubject(pageName: string, incidentTitle: string, eventType: string): string {
   const prefix = `[${pageName}]`;
-  const statusMap: Record<string, string> = {
-    triggered: 'New Incident',
-    acknowledged: 'Investigating',
-    resolved: 'Resolved',
-    investigating: 'Investigating',
-    identified: 'Identified',
-    monitoring: 'Monitoring',
-    completed: 'Completed',
-  };
-
-  return `${prefix} ${statusMap[eventType] || 'Update'}: ${incidentTitle}`;
+  const label =
+    eventType === 'triggered'
+      ? 'New Incident'
+      : eventType === 'acknowledged' || eventType === 'investigating'
+        ? 'Investigating'
+        : eventType === 'resolved'
+          ? 'Resolved'
+          : eventType === 'identified'
+            ? 'Identified'
+            : eventType === 'monitoring'
+              ? 'Monitoring'
+              : eventType === 'completed'
+                ? 'Completed'
+                : 'Update';
+  return `${prefix} ${label}: ${incidentTitle}`;
 }
 
 function resolveBrandLogoUrl(logoUrl: string | undefined, baseUrl: string): string | undefined {
@@ -270,7 +321,11 @@ function normalizeSupportUrl(value?: string | null): string | undefined {
 
 function formatEmailBody(
   pageName: string,
-  incident: any,
+  incident: {
+    title?: string | null;
+    description?: string | null;
+    service?: { name?: string | null } | null;
+  },
   eventType: string,
   statusPageUrl: string,
   contactUrl?: string | null,
@@ -281,22 +336,20 @@ function formatEmailBody(
     showTimestamp: boolean;
   } = { showAffectedService: true, showDescription: true, showTimestamp: true }
 ): string {
-  const statusMap: Record<
+  const statusInfo = new Map<
     string,
     { label: string; badge: 'success' | 'warning' | 'error' | 'info' }
-  > = {
-    triggered: { label: 'New Incident', badge: 'error' },
-    acknowledged: { label: 'Investigating', badge: 'warning' },
-    resolved: { label: 'Resolved', badge: 'success' },
-    investigating: { label: 'Investigating', badge: 'warning' },
-    identified: { label: 'Identified', badge: 'warning' },
-    monitoring: { label: 'Monitoring', badge: 'info' },
-    completed: { label: 'Maintenance Completed', badge: 'success' },
-    scheduled: { label: 'Maintenance Scheduled', badge: 'info' },
-    inprogress: { label: 'In Progress', badge: 'warning' },
-  };
-
-  const statusInfo = statusMap[eventType] || { label: 'Update', badge: 'info' };
+  >([
+    ['triggered', { label: 'New Incident', badge: 'error' }],
+    ['acknowledged', { label: 'Investigating', badge: 'warning' }],
+    ['resolved', { label: 'Resolved', badge: 'success' }],
+    ['investigating', { label: 'Investigating', badge: 'warning' }],
+    ['identified', { label: 'Identified', badge: 'warning' }],
+    ['monitoring', { label: 'Monitoring', badge: 'info' }],
+    ['completed', { label: 'Maintenance Completed', badge: 'success' }],
+    ['scheduled', { label: 'Maintenance Scheduled', badge: 'info' }],
+    ['inprogress', { label: 'In Progress', badge: 'warning' }],
+  ]).get(eventType) ?? { label: 'Update', badge: 'info' as const };
   const safePageName = escapeHtml(pageName);
   const safeIncidentTitle = escapeHtml(incident.title || 'Incident Update');
   const safeServiceName = escapeHtml(incident.service?.name || 'Service');
@@ -333,8 +386,16 @@ function formatEmailBody(
     },
   };
 
+  const headerGradient =
+    statusInfo.badge === 'success'
+      ? headerGradients.success
+      : statusInfo.badge === 'warning'
+        ? headerGradients.warning
+        : statusInfo.badge === 'error'
+          ? headerGradients.error
+          : headerGradients.info;
   const header = SubscriberEmailHeader(safePageName, safeStatusLabel, safeIncidentTitle, {
-    headerGradient: headerGradients[statusInfo.badge] || headerGradients.info,
+    headerGradient,
     logoUrl,
     brandName: safePageName,
   });
@@ -370,7 +431,14 @@ function formatEmailBody(
         </div>
     `;
 
-  const buttonTheme = buttonThemes[statusInfo.badge] || buttonThemes.info;
+  const buttonTheme =
+    statusInfo.badge === 'success'
+      ? buttonThemes.success
+      : statusInfo.badge === 'warning'
+        ? buttonThemes.warning
+        : statusInfo.badge === 'error'
+          ? buttonThemes.error
+          : buttonThemes.info;
   contentBody += EmailButton('View Status Page', safeStatusPageUrl, {
     buttonBackground: buttonTheme.background,
     buttonShadow: buttonTheme.shadow,
@@ -523,13 +591,26 @@ export async function notifyStatusPageSubscribersAnnouncement(
 
     html = EmailContainer(announcementHeader + body + footer);
 
-    const BATCH_SIZE = 25;
     const PAGE_SIZE = 500;
+    const trafficClass = 'BULK' as const;
+    const fanout = await beginNotificationFanout({
+      statusPageId,
+      sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
+      sourceId: announcement.id,
+      eventKey: announcement.updatedAt.toISOString(),
+      trafficClass,
+      providerKey: emailConfig.provider || undefined,
+      subject,
+      html,
+    });
     let sent = 0;
     let failed = 0;
-    let cursor: string | undefined;
+    let cursor: string | undefined = fanout.cursor ?? undefined;
 
     while (true) {
+      if (!(await bulkQueueHasCapacity())) {
+        throw new Error('Bulk notification queue reached its high watermark');
+      }
       const subscriptions = await prisma.statusPageSubscription.findMany({
         where: { statusPageId, verified: true, unsubscribedAt: null },
         orderBy: { id: 'asc' },
@@ -537,49 +618,83 @@ export async function notifyStatusPageSubscribersAnnouncement(
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
         select: { id: true, email: true, token: true },
       });
-      if (subscriptions.length === 0) break;
+      if (subscriptions.length === 0) {
+        await recordFanoutPage(fanout.id, {
+          cursor,
+          materialized: 0,
+          failed: 0,
+          complete: true,
+        });
+        break;
+      }
+      const unsubscribeTokens = await issueUnsubscribeTokensBatch(
+        subscriptions.map(subscription => subscription.id)
+      );
+      let pageSent = 0;
+      let pageFailed = 0;
+      let pageError: unknown;
 
-      for (let i = 0; i < subscriptions.length; i += BATCH_SIZE) {
-        const batch = subscriptions.slice(i, i + BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map(async sub => {
-            const intent = await enqueueCentralNotification({
-              category: 'STATUS_PAGE',
-              channel: 'EMAIL',
-              recipientType: 'SUBSCRIBER',
-              recipientId: sub.id,
-              recipientAddress: sub.email,
-              templateKey: 'status-page-announcement',
-              sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
-              sourceId: announcement.id,
-              eventKey: announcement.updatedAt.toISOString(),
-              displayMessage: subject,
-              priority: announcement.type === 'INCIDENT' ? 1 : 4,
-              payload: {
-                kind: 'EMAIL',
-                to: sub.email,
-                subject,
-                html: html.replaceAll(
-                  '{{unsubscribe_url}}',
-                  `${statusPageUrl}/unsubscribe/${await issueUnsubscribeToken(sub.id)}`
-                ),
-                providerScope: { statusPageId: page.id },
-              },
-            });
-            return { success: true, skipped: !intent.created };
-          })
+      try {
+        const result = await createCentralNotificationIntentsBatch(
+          subscriptions.map(sub => ({
+            category: 'STATUS_PAGE',
+            channel: 'EMAIL',
+            recipientType: 'SUBSCRIBER',
+            recipientId: sub.id,
+            recipientAddress: sub.email,
+            templateKey: 'status-page-announcement',
+            sourceType: 'STATUS_PAGE_ANNOUNCEMENT',
+            sourceId: announcement.id,
+            eventKey: announcement.updatedAt.toISOString(),
+            displayMessage: subject,
+            trafficClass,
+            priority:
+              announcement.type === 'INCIDENT'
+                ? NOTIFICATION_PRIORITY.STATUS_INCIDENT_ANNOUNCEMENT
+                : NOTIFICATION_PRIORITY.STATUS_ANNOUNCEMENT,
+            contentId: fanout.contentId,
+            fanoutId: fanout.id,
+            payload: {
+              kind: 'EMAIL',
+              providerKey: emailConfig.provider || undefined,
+              to: sub.email,
+              subject,
+              contentId: fanout.contentId,
+              unsubscribeUrl: `${statusPageUrl}/unsubscribe/${unsubscribeTokens.get(sub.id)}`,
+              providerScope: { statusPageId: page.id, subscriptionId: sub.id },
+            },
+          }))
         );
-
-        sent += results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-        failed += results.filter(
-          r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
-        ).length;
+        pageSent = result.created;
+      } catch (error) {
+        pageFailed = subscriptions.length;
+        pageError = error;
+        logger.error('status_page.announcement_fanout_page_failed', {
+          statusPageId: page.id,
+          announcementId: announcement.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      sent += pageSent;
+      failed += pageFailed;
+      if (pageFailed > 0) {
+        throw new Error(
+          `Failed to materialize ${pageFailed} notification intents; retrying page: ${pageError instanceof Error ? pageError.message : String(pageError)}`
+        );
       }
       cursor = subscriptions.at(-1)?.id;
+      if (cursor) {
+        await recordFanoutPage(fanout.id, {
+          cursor,
+          materialized: pageSent,
+          failed: pageFailed,
+          complete: subscriptions.length < PAGE_SIZE,
+        });
+      }
       if (subscriptions.length < PAGE_SIZE || !cursor) break;
     }
 
-    logger.info(`Status announcement notifications sent: ${sent} success, ${failed} failed`);
+    logger.info(`Status announcement notifications enqueued: ${sent} success, ${failed} failed`);
     addOperationalMetric('opsknight_status_page_fanout_total', sent, {
       event: 'announcement',
       outcome: 'enqueued',

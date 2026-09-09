@@ -1,10 +1,19 @@
-export const OPSKNIGHT_PROCESS_ROLES = ['integrated', 'web', 'scheduler', 'worker'] as const;
+export const OPSKNIGHT_PROCESS_ROLES = [
+  'integrated',
+  'web',
+  'scheduler',
+  'worker',
+  'critical-worker',
+  'bulk-worker',
+  'status-projector',
+] as const;
 
 export type OpsKnightProcessRole = (typeof OPSKNIGHT_PROCESS_ROLES)[number];
 
 export interface RuntimeResponsibilities {
   startScheduler: boolean;
   startJobWorker: boolean;
+  workerLane: 'all' | 'critical' | 'bulk' | 'projector' | null;
 }
 
 const DEFAULT_PROCESS_ROLE: OpsKnightProcessRole = 'integrated';
@@ -39,12 +48,18 @@ export function getOpsKnightProcessRole(
 export function getRuntimeResponsibilities(role: OpsKnightProcessRole): RuntimeResponsibilities {
   switch (role) {
     case 'integrated':
-      return { startScheduler: true, startJobWorker: true };
+      return { startScheduler: true, startJobWorker: true, workerLane: 'all' };
     case 'web':
-      return { startScheduler: false, startJobWorker: false };
+      return { startScheduler: false, startJobWorker: false, workerLane: null };
     case 'scheduler':
-      return { startScheduler: true, startJobWorker: false };
+      return { startScheduler: true, startJobWorker: false, workerLane: null };
     case 'worker':
-      return { startScheduler: false, startJobWorker: true };
+      return { startScheduler: false, startJobWorker: true, workerLane: 'all' };
+    case 'critical-worker':
+      return { startScheduler: false, startJobWorker: true, workerLane: 'critical' };
+    case 'bulk-worker':
+      return { startScheduler: false, startJobWorker: true, workerLane: 'bulk' };
+    case 'status-projector':
+      return { startScheduler: false, startJobWorker: true, workerLane: 'projector' };
   }
 }

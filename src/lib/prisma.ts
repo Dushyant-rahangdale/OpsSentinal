@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { configurePrismaDatasource } from './prisma-datasource';
+import { getOpsKnightProcessRole } from './runtime-role';
 
 /**
  * Prisma Client Configuration for Scale
@@ -13,12 +14,31 @@ import { configurePrismaDatasource } from './prisma-datasource';
  * DATABASE_URL="postgresql://...?connection_limit=10&pool_timeout=30"
  */
 
+function rolePoolSize(): string | undefined {
+  switch (getOpsKnightProcessRole()) {
+    case 'integrated':
+      return process.env.DATABASE_POOL_SIZE_INTEGRATED;
+    case 'web':
+      return process.env.DATABASE_POOL_SIZE_WEB;
+    case 'scheduler':
+      return process.env.DATABASE_POOL_SIZE_SCHEDULER;
+    case 'worker':
+      return process.env.DATABASE_POOL_SIZE_WORKER;
+    case 'critical-worker':
+      return process.env.DATABASE_POOL_SIZE_CRITICAL_WORKER;
+    case 'bulk-worker':
+      return process.env.DATABASE_POOL_SIZE_BULK_WORKER;
+    case 'status-projector':
+      return process.env.DATABASE_POOL_SIZE_STATUS_PROJECTOR;
+  }
+}
+
 const prismaClientSingleton = () => {
   // Log configuration for debugging
   const logLevel: Array<'error' | 'warn'> = ['error', 'warn'];
   const datasourceUrl = configurePrismaDatasource(
     process.env.DATABASE_URL,
-    process.env.DATABASE_POOL_SIZE
+    rolePoolSize() ?? process.env.DATABASE_POOL_SIZE
   );
 
   return new PrismaClient({

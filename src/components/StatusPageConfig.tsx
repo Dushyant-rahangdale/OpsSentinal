@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any, security/detect-object-injection, @next/next/no-img-element, react/no-unescaped-entities, @next/next/no-html-link-for-pages */
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { statusPageSectionPatch } from '@/lib/status-pages/settings-sections';
@@ -23,6 +24,33 @@ import {
   STATUS_PAGE_COLOR_PRESETS,
   computeStatusPageTheme,
 } from '@/lib/status-page-theme';
+
+type StatusPageBranding = {
+  logoUrl?: string;
+  logo?: string;
+  faviconUrl?: string;
+  primaryColor?: string;
+  primary?: string;
+  backgroundColor?: string;
+  background?: string;
+  textColor?: string;
+  text?: string;
+  fontFamily?: string;
+  customCss?: string;
+  layout?: string;
+  showHeader?: boolean;
+  showFooter?: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  showRssLink?: boolean;
+  showApiLink?: boolean;
+};
+
+function isStatusPageBranding(value: unknown): value is StatusPageBranding {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 type StatusPageConfigProps = {
   statusPage: {
@@ -53,7 +81,7 @@ type StatusPageConfigProps = {
     contactEmail?: string | null;
     contactUrl?: string | null;
     emailProvider?: string | null;
-    branding?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    branding?: unknown;
     requireAuth?: boolean;
     updatedAt?: Date | string;
     privacyMode?: string | null;
@@ -694,8 +722,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
   );
 
   // Parse branding JSON
-  const branding =
-    statusPage.branding && typeof statusPage.branding === 'object' ? statusPage.branding : {};
+  const branding = isStatusPageBranding(statusPage.branding) ? statusPage.branding : {};
 
   const [formData, setFormData] = useState({
     name: statusPage.name,
@@ -1065,10 +1092,6 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
   };
 
   const handleDeletePage = async () => {
-    if (statusPage.isDefault) {
-      setError('Choose another default status page before deleting this page.');
-      return;
-    }
     setError(null);
     const response = await fetch(
       `/api/settings/status-pages?id=${encodeURIComponent(statusPage.id)}`,
@@ -1782,43 +1805,43 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                       </div>
                     </Card>
 
-                    {!statusPage.isDefault && (
-                      <Card>
-                        <div style={{ padding: 'var(--spacing-6)' }}>
-                          <h2 className="status-page-config-card-title">Delete Status Page</h2>
-                          <p className="status-page-config-card-desc">
-                            Permanently removes this page and its page-specific subscriptions,
-                            announcements, tokens, mappings, and webhooks. Shared services and
-                            incidents are not deleted.
-                          </p>
-                          {!deleteArmed ? (
+                    <Card>
+                      <div style={{ padding: 'var(--spacing-6)' }}>
+                        <h2 className="status-page-config-card-title">Delete Status Page</h2>
+                        <p className="status-page-config-card-desc">
+                          Permanently removes this page and its page-specific subscriptions,
+                          announcements, tokens, mappings, and webhooks. Shared services and
+                          incidents are not deleted.
+                          {statusPage.isDefault &&
+                            ' If other pages exist, make one of them the default first.'}
+                        </p>
+                        {!deleteArmed ? (
+                          <Button
+                            type="button"
+                            variant="danger"
+                            onClick={() => setDeleteArmed(true)}
+                          >
+                            Delete status page
+                          </Button>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-red-700">
+                              This cannot be undone. Confirm deletion.
+                            </span>
+                            <Button type="button" variant="danger" onClick={handleDeletePage}>
+                              Confirm permanent deletion
+                            </Button>
                             <Button
                               type="button"
-                              variant="danger"
-                              onClick={() => setDeleteArmed(true)}
+                              variant="secondary"
+                              onClick={() => setDeleteArmed(false)}
                             >
-                              Delete status page
+                              Cancel
                             </Button>
-                          ) : (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm text-red-700">
-                                This cannot be undone. Confirm deletion.
-                              </span>
-                              <Button type="button" variant="danger" onClick={handleDeletePage}>
-                                Confirm permanent deletion
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={() => setDeleteArmed(false)}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    )}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
                   </div>
                 )}
 
@@ -3867,32 +3890,42 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                         >
                           Preview
                         </h2>
-                        <a
-                          href="/status"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'inline-block',
-                            padding: 'var(--spacing-3) var(--spacing-5)',
-                            background: 'var(--primary-color)',
-                            color: 'white',
-                            textDecoration: 'none',
-                            borderRadius: 'var(--radius-md)',
-                            fontSize: 'var(--font-size-sm)',
-                            fontWeight: '600',
-                            transition: 'all 0.2s ease',
-                          }}
-                          onMouseEnter={e => {
-                            e.currentTarget.style.background = 'var(--primary-hover)';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.background = 'var(--primary-color)';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                          }}
-                        >
-                          View Status Page
-                        </a>
+                        {formData.enabled && !privacySettings.requireAuth ? (
+                          <a
+                            href={
+                              formData.slug && !formData.isDefault
+                                ? `/status/${encodeURIComponent(formData.slug)}`
+                                : '/status'
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-block',
+                              padding: 'var(--spacing-3) var(--spacing-5)',
+                              background: 'var(--primary-color)',
+                              color: 'white',
+                              textDecoration: 'none',
+                              borderRadius: 'var(--radius-md)',
+                              fontSize: 'var(--font-size-sm)',
+                              fontWeight: '600',
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = 'var(--primary-hover)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = 'var(--primary-color)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                          >
+                            View Status Page
+                          </a>
+                        ) : (
+                          <p className="text-sm text-gray-600">
+                            Enable the page and Public Access to open its public URL.
+                          </p>
+                        )}
                         <p
                           style={{
                             fontSize: 'var(--font-size-xs)',

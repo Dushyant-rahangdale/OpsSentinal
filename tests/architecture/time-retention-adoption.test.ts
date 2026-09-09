@@ -19,8 +19,8 @@ const adoptedPaths = [
     'src/app/api/status/history/route.ts',
     readFileSync('src/app/api/status/history/route.ts', 'utf8'),
   ],
-  ['src/app/api/status/route.ts', readFileSync('src/app/api/status/route.ts', 'utf8')],
-  ['src/app/(public)/status/page.tsx', readFileSync('src/app/(public)/status/page.tsx', 'utf8')],
+  ['src/lib/status-pages/snapshot.ts', readFileSync('src/lib/status-pages/snapshot.ts', 'utf8')],
+  ['src/lib/status-pages/snapshot.ts', readFileSync('src/lib/status-pages/snapshot.ts', 'utf8')],
 ] as const;
 
 describe('time and retention adoption', () => {
