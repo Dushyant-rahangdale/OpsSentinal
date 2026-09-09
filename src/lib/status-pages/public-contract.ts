@@ -150,6 +150,8 @@ export interface PublicStatusPageSnapshot {
     headline: string;
     note: string | null;
   };
+  /** The page's own SLA thresholds, so every surface grades uptime the same way. */
+  thresholds?: { uptimeExcellent: number; uptimeGood: number };
   services: PublicStatusService[];
   regions: PublicRegionStatus[];
   incidents: PublicIncident[];

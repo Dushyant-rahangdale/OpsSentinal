@@ -1,7 +1,13 @@
+import { STATUS_PAGE_PUBLIC_CSS } from '@/lib/status-pages/public-css';
+
 /**
- * Baseline styles used by public status-page components that render inside the
- * admin preview's ShadowRoot. Keep these selectors aligned with globals.css;
- * customer CSS is injected after this baseline so its normal cascade wins.
+ * Baseline styles for the admin preview's ShadowRoot.
+ *
+ * The shared public stylesheet is appended verbatim rather than restated, so the preview cannot
+ * drift from the live page: the two surfaces render the same components against the same rules.
+ * What remains here is only what a shadow root needs and a document does not -- the `:host` reset
+ * and the admin-shell form controls the preview chrome reuses. Customer CSS is injected after this
+ * baseline so its normal cascade wins.
  */
 export const STATUS_PAGE_PREVIEW_BASE_CSS = `
 :host {
@@ -90,4 +96,6 @@ button, input, select, textarea {
   border-color: var(--status-primary-hover, #1d4ed8);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--status-primary, #2563eb) 22%, transparent);
 }
+
+${STATUS_PAGE_PUBLIC_CSS}
 `;

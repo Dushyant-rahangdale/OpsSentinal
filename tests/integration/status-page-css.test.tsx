@@ -47,7 +47,7 @@ vi.mock('@/lib/sla-server', () => ({
 vi.mock('@/components/status-page/StatusPageHeader', () => ({
   default: () => <div data-testid="status-page-header">Header</div>,
 }));
-vi.mock('@/components/status-page/StatusPageServices', () => ({
+vi.mock('@/components/status-page/StatusPageExperience', () => ({
   default: () => <div data-testid="status-page-services">Services</div>,
 }));
 vi.mock('@/components/status-page/StatusPageIncidents', () => ({

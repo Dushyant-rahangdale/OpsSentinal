@@ -10,7 +10,7 @@ vi.mock('@/components/status-page/StatusPageHeader', () => ({
   default: () => <div data-testid="preview-header">Header</div>,
 }));
 
-vi.mock('@/components/status-page/StatusPageServices', () => ({
+vi.mock('@/components/status-page/StatusPageExperience', () => ({
   default: () => <div data-testid="preview-services">Services</div>,
 }));
 

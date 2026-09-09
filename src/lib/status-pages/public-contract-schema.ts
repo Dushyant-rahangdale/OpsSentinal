@@ -56,6 +56,10 @@ export const publicStatusPageSnapshotSchema = z.object({
   revision: z.string(),
   generatedAt: dateTime,
   overall: overallHealth.optional(),
+  thresholds: z.object({
+    uptimeExcellent: z.number(),
+    uptimeGood: z.number(),
+  }).strict().optional(),
   page: z.object({
     id: z.string(),
     name: z.string(),

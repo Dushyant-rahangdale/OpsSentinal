@@ -50,25 +50,8 @@
   --status-panel-muted-border: var(--sp-panel-muted-border, color-mix(in srgb, #e2e8f0 80%, var(--status-primary, #2563eb) 20%));
 }
 
-.public-service-health, .public-regions { display: grid; gap: 1rem; margin: 2rem 0; }
-.public-service-card, .public-region-card { position: relative; padding: 1rem; border: 1px solid var(--status-panel-border, #e2e8f0); border-radius: .75rem; background: var(--status-panel-bg, #fff); }
-.public-service-card__header, .public-region-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
-.status-badge { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid currentColor; border-radius: 999px; padding: .25rem .6rem; font-weight: 700; }
-.status-operational { color: var(--status-operational); background: var(--status-operational-bg); }
-.status-degraded { color: var(--status-degraded); background: var(--status-degraded-bg); }
-.status-maintenance { color: var(--status-maintenance); background: var(--status-maintenance-bg); }
-.status-partial-outage { color: var(--status-partial-outage); background: var(--status-partial-outage-bg); }
-.status-major-outage { color: var(--status-major-outage); background: var(--status-major-outage-bg); }
-.status-unknown { color: var(--status-unknown); background: var(--status-unknown-bg); }
-.public-service-metrics { display: flex; flex-wrap: wrap; gap: 1.5rem; margin: .75rem 0; }
-.public-service-metrics dt { font-size: .75rem; color: var(--status-text-muted, #64748b); }
-.public-history { display: flex; align-items: center; gap: 2px; min-height: 2rem; overflow-x: auto; }
-.public-history__item { position: relative; flex: 1 0 4px; }
-.public-history__cell { width: 100%; min-width: 4px; height: 1.5rem; padding: 0; border: 0; border-radius: 2px; cursor: pointer; }
-.public-history__cell:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
-.public-history__tooltip { position: absolute; z-index: 10; bottom: 2rem; left: 50%; transform: translateX(-50%); min-width: 18rem; display: grid; gap: .35rem; padding: .75rem; color: var(--status-text, #0f172a); background: var(--status-panel-bg, #fff); border: 1px solid var(--status-panel-border, #cbd5e1); border-radius: .5rem; box-shadow: 0 10px 30px rgba(15,23,42,.2); }
-.public-history__timeline { display: flex; height: .65rem; gap: 1px; }
-.public-history__timeline > span { min-width: 1px; }
+/* Public status-page rules now live in src/lib/status-pages/public-css.ts, so the live page and
+   the admin preview's shadow root render from one stylesheet instead of two that can drift. */
 
 .status-page-button {
   padding: 0.4rem 0.75rem;

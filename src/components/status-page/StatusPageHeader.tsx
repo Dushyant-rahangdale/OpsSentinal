@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { formatDateTime } from '@/lib/timezone';
 import { isDarkHex } from '@/lib/status-page-theme';
+import type { PublicServiceStatus } from '@/lib/status-pages/public-contract';
+import { normalizePublicStatus } from '@/lib/status-pages/status-presentation';
 
 interface StatusPageHeaderProps {
   statusPage: {
@@ -10,13 +12,17 @@ interface StatusPageHeaderProps {
     contactEmail?: string | null;
     contactUrl?: string | null;
   };
-  overallStatus: 'operational' | 'maintenance' | 'degraded' | 'outage' | 'unknown';
+  /** Canonical public status. Partial and major outage stay distinct on purpose. */
+  overallStatus: PublicServiceStatus;
   branding?: Record<string, unknown>;
   lastUpdated?: string;
 }
 
-const STATUS_CONFIG = {
-  operational: {
+const STATUS_CONFIG: Record<
+  PublicServiceStatus,
+  { badge: string; text: string; color: string; background: string; border: string; pulse: boolean }
+> = {
+  OPERATIONAL: {
     badge: 'Operational',
     text: 'All systems operational',
     color: '#16a34a',
@@ -24,33 +30,47 @@ const STATUS_CONFIG = {
     border: '#86efac',
     pulse: true,
   },
-  degraded: {
+  DEGRADED: {
     badge: 'Degraded',
-    text: 'Some systems experiencing issues',
+    text: 'Some services are experiencing reduced performance',
     color: '#d97706',
     background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
     border: '#fcd34d',
     pulse: true,
   },
-  maintenance: {
+  MAINTENANCE: {
     badge: 'Maintenance',
-    text: 'Scheduled maintenance in progress',
+    text: 'Planned maintenance is currently in progress',
     color: '#2563eb',
     background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
     border: '#93c5fd',
     pulse: true,
   },
-  outage: {
-    badge: 'Outage',
-    text: 'Some systems are down',
+  // Partial outage reads amber-red rather than sharing the major-outage treatment: some
+  // functionality being unavailable is a different message to most of it being unavailable.
+  PARTIAL_OUTAGE: {
+    badge: 'Partial outage',
+    text: 'Some services are currently unavailable',
+    color: '#ea580c',
+    background: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)',
+    border: '#fdba74',
+    pulse: true,
+  },
+  MAJOR_OUTAGE: {
+    badge: 'Major outage',
+    text: 'Multiple services are experiencing disruption',
     color: '#dc2626',
     background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
     border: '#fca5a5',
     pulse: true,
   },
-  unknown: {
-    badge: 'Unknown', text: 'Current status is unavailable', color: '#475569',
-    background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', border: '#94a3b8', pulse: false,
+  UNKNOWN: {
+    badge: 'Status unavailable',
+    text: "We can't currently verify service health",
+    color: '#475569',
+    background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+    border: '#94a3b8',
+    pulse: false,
   },
 };
 
@@ -60,14 +80,9 @@ export default function StatusPageHeader({
   branding = {},
   lastUpdated,
 }: StatusPageHeaderProps) {
-  const status =
-    overallStatus === 'maintenance'
-      ? STATUS_CONFIG.maintenance
-      : overallStatus === 'degraded'
-        ? STATUS_CONFIG.degraded
-        : overallStatus === 'outage'
-          ? STATUS_CONFIG.outage
-          : overallStatus === 'unknown' ? STATUS_CONFIG.unknown : STATUS_CONFIG.operational;
+  // A lookup with an explicit fallback, so an unrecognized value reads as unverifiable rather
+  // than silently claiming everything is fine.
+  const status = STATUS_CONFIG[normalizePublicStatus(overallStatus)] ?? STATUS_CONFIG.UNKNOWN;
   const logoUrl =
     (typeof branding.logoUrl === 'string' && branding.logoUrl) ||
     (typeof branding.logo === 'string' && branding.logo) ||

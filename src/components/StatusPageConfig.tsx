@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation';
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { formatDateTime } from '@/lib/timezone';
 import _StatusPageHeader from '@/components/status-page/StatusPageHeader';
-import _StatusPageServices from '@/components/status-page/StatusPageServices';
 import _StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import _StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 import StatusPagePrivacySettings, {

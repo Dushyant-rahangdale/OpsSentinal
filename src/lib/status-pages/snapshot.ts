@@ -233,6 +233,10 @@ export async function buildStatusPageSnapshot(
     // severity and confidence that the page header and summary panel render.
     status: getWorstPublicStatus(services.map(service => service.status)),
     overall: deriveOverallPublicHealth(visibility.showServices ? services : []),
+    thresholds: {
+      uptimeExcellent: page.uptimeExcellentThreshold,
+      uptimeGood: page.uptimeGoodThreshold,
+    },
     services: visibility.showServices ? services : [],
     regions: visibility.showServices ? aggregatePublicRegions(services) : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),

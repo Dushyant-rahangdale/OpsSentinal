@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import StatusPageHeader from '@/components/status-page/StatusPageHeader';
-import StatusPageServices from '@/components/status-page/StatusPageServices';
 import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
 import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 import { logger } from '@/lib/logger';
 import { toSafeStyleTagContent } from '@/lib/status-page-content';
 import { computeStatusPageTheme } from '@/lib/status-page-theme';
+import { buildPreviewSnapshot } from '@/lib/status-pages/preview-snapshot';
+import StatusPageExperience from '@/components/status-page/StatusPageExperience';
 import { STATUS_PAGE_PREVIEW_BASE_CSS } from '@/lib/status-page-preview-css';
 
 export interface StatusPagePreviewService {
@@ -117,6 +118,8 @@ export interface StatusPagePreviewData {
   showApiLink: boolean;
   layout: string;
   privacySettings?: StatusPagePreviewPrivacySettings | null;
+  uptimeExcellentThreshold?: number | null;
+  uptimeGoodThreshold?: number | null;
 }
 
 export interface StatusPageLivePreviewProps {
@@ -148,13 +151,55 @@ export default function StatusPageLivePreview({
   const [previewRoot, setPreviewRoot] = useState<ShadowRoot | null>(null);
   const [frameHeight, setFrameHeight] = useState('100%');
 
-  // Calculate overall status based on services
-  // Derived state - no need for effect
-  const overallStatus = useMemo(() => {
-    const hasOutage = previewData.services.some(s => s.status === 'MAJOR_OUTAGE');
-    const hasDegraded = previewData.services.some(s => s.status === 'PARTIAL_OUTAGE');
-    return hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
-  }, [previewData.services]);
+  // Overall status is no longer derived here. The preview projects the same contract the
+  // publisher does, so severity and confidence come from one implementation rather than a local
+  // approximation that could disagree with what visitors are told.
+  const previewSnapshot = useMemo(
+    () =>
+      buildPreviewSnapshot({
+        pageId: 'preview',
+        services: previewData.services,
+        mappings: previewData.statusPageServices,
+        incidents: previewData.incidents,
+        announcements: previewData.announcements,
+        uptime90: previewData.uptime90,
+        privacy: previewData.privacySettings ?? null,
+        showServices: previewData.showServices,
+        showIncidents: previewData.showIncidents,
+        showServiceOwners: previewData.showServiceOwners,
+        showServiceSlaTier: previewData.showServiceSlaTier,
+        thresholds: {
+          uptimeExcellent:
+            typeof previewData.uptimeExcellentThreshold === 'number'
+              ? previewData.uptimeExcellentThreshold
+              : 99.9,
+          uptimeGood:
+            typeof previewData.uptimeGoodThreshold === 'number'
+              ? previewData.uptimeGoodThreshold
+              : 99,
+        },
+      }),
+    [previewData]
+  );
+
+  const previewPage = useMemo(
+    () => ({
+      id: 'preview',
+      name: previewData.statusPage.name,
+      contactEmail: previewData.statusPage.contactEmail,
+      contactUrl: previewData.statusPage.contactUrl,
+      branding: previewData.branding,
+      footerText: previewData.footerText,
+      showSubscribe: previewData.showSubscribe !== false,
+      showServicesByRegion: previewData.showServicesByRegion === true,
+      showRegionHeatmap: previewData.showRegionHeatmap === true,
+      showChangelog: previewData.showChangelog !== false,
+      showPostIncidentReview: previewData.showPostIncidentReview === true,
+      enableUptimeExports: false,
+      isDefault: true,
+    }),
+    [previewData]
+  );
 
   // Log mounting and prop changes for debugging
   useEffect(() => {
@@ -302,296 +347,35 @@ export default function StatusPageLivePreview({
     if (host) setPreviewRoot(host.shadowRoot || host.attachShadow({ mode: 'open' }));
   }, []);
 
+  /**
+   * Renders the published page component from unsaved settings.
+   *
+   * There is deliberately no preview-specific markup left here. The preview previously drew its
+   * own header, subscribe card and footer, omitted the uptime section entirely, and ignored the
+   * region and changelog toggles, which meant an administrator could approve a layout that
+   * visitors never received. Whatever this shows now is, by construction, the live page.
+   */
   const renderStatusPageContent = (contentMaxWidthValue: string) => (
-    <>
-      {previewData.showHeader && (
-        <StatusPageHeader
-          statusPage={previewData.statusPage}
-          overallStatus={overallStatus}
-          branding={previewData.branding}
-          lastUpdated={new Date().toISOString()}
+    <main
+      className="status-page-container"
+      style={{
+        flex: 1,
+        background: computedTheme.backgroundColor,
+        color: computedTheme.textColor,
+        fontFamily: computedTheme.fontFamily,
+        padding: 'clamp(1rem, 4vw, 3rem)',
+        ...(computedTheme.cssVariables as CSSProperties),
+      }}
+    >
+      <div style={{ maxWidth: contentMaxWidthValue, margin: '0 auto' }}>
+        <StatusPageExperience
+          page={previewPage}
+          snapshot={previewSnapshot}
+          styleMode="inherited"
+          subscribeEnabled={false}
         />
-      )}
-      <main
-        style={{
-          width: '100%',
-          maxWidth: contentMaxWidthValue,
-          margin: '0 auto',
-          padding: previewData.layout === 'compact' ? '1.5rem' : '2rem',
-          boxSizing: 'border-box',
-          flex: 1,
-        }}
-      >
-        {previewData.announcements.length > 0 && (
-          <StatusPageAnnouncements
-            announcements={
-              previewData.announcements as unknown as React.ComponentProps<
-                typeof StatusPageAnnouncements
-              >['announcements']
-            }
-            showServiceRegions={previewData.privacySettings?.showServiceRegions !== false}
-          />
-        )}
-
-        {previewData.showServices && previewData.services.length > 0 && (
-          <StatusPageServices
-            services={
-              previewData.services as unknown as React.ComponentProps<
-                typeof StatusPageServices
-              >['services']
-            }
-            statusPageServices={
-              previewData.statusPageServices as unknown as React.ComponentProps<
-                typeof StatusPageServices
-              >['statusPageServices']
-            }
-            uptime90={previewData.uptime90}
-            incidents={
-              previewData.incidents as unknown as React.ComponentProps<
-                typeof StatusPageServices
-              >['incidents']
-            }
-            privacySettings={
-              (previewData.privacySettings ?? undefined) as unknown as React.ComponentProps<
-                typeof StatusPageServices
-              >['privacySettings']
-            }
-            groupByRegionDefault={previewData.showServicesByRegion}
-            showServiceOwners={previewData.showServiceOwners}
-            showServiceSlaTier={previewData.showServiceSlaTier}
-          />
-        )}
-
-        {previewData.showIncidents && (
-          <StatusPageIncidents
-            incidents={
-              previewData.incidents as unknown as React.ComponentProps<
-                typeof StatusPageIncidents
-              >['incidents']
-            }
-            privacySettings={
-              (previewData.privacySettings ?? undefined) as unknown as React.ComponentProps<
-                typeof StatusPageIncidents
-              >['privacySettings']
-            }
-          />
-        )}
-
-        {previewData.showSubscribe !== false && (
-          <section style={{ marginBottom: 'clamp(2.5rem, 7vw, 5rem)' }}>
-            <div
-              style={{
-                position: 'relative',
-                overflow: 'hidden',
-                borderRadius: '1rem',
-                border: '1px solid var(--status-panel-border, #e5e7eb)',
-                background: 'var(--status-panel-bg, #ffffff)',
-                padding: 'clamp(1.5rem, 4vw, 2.5rem)',
-                boxShadow: 'var(--status-card-shadow, 0 20px 45px rgba(15, 23, 42, 0.08))',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '-60px',
-                  right: '-60px',
-                  width: '180px',
-                  height: '180px',
-                  background:
-                    'radial-gradient(circle, color-mix(in srgb, var(--status-primary, #6366f1) 20%, transparent) 0%, transparent 70%)',
-                  pointerEvents: 'none',
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '-80px',
-                  left: '-80px',
-                  width: '220px',
-                  height: '220px',
-                  background:
-                    'radial-gradient(circle, color-mix(in srgb, var(--status-primary, #0ea5e9) 18%, transparent) 0%, transparent 70%)',
-                  pointerEvents: 'none',
-                }}
-              />
-              <div
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'clamp(1.5rem, 4vw, 2.5rem)',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div
-                  style={{
-                    flex: '1 1 260px',
-                    minWidth: '240px',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '0.75rem',
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                      color: previewPrimaryColor,
-                      fontWeight: '700',
-                      marginBottom: '0.5rem',
-                    }}
-                  >
-                    Stay in the loop
-                  </div>
-                  <h2
-                    style={{
-                      fontSize: 'clamp(1.35rem, 3vw, 1.75rem)',
-                      fontWeight: '700',
-                      marginBottom: '0.75rem',
-                      color: previewTextColor,
-                    }}
-                  >
-                    Subscribe to Updates
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: 'clamp(0.9rem, 2.2vw, 1rem)',
-                      color: 'var(--status-text-muted, #4b5563)',
-                      marginBottom: '1rem',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Get incident alerts, maintenance notices, and recovery updates the moment they
-                    happen.
-                  </p>
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.35rem 0.75rem',
-                      borderRadius: '999px',
-                      background: 'var(--status-panel-bg, #ffffff)',
-                      border: '1px solid var(--status-panel-border, #e5e7eb)',
-                      color: 'var(--status-text, #374151)',
-                      fontSize: '0.8125rem',
-                      fontWeight: '600',
-                    }}
-                  >
-                    Email notifications only
-                  </div>
-                </div>
-                <div
-                  style={{
-                    flex: '1 1 320px',
-                    minWidth: '280px',
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: 'clamp(1rem, 3vw, 1.5rem)',
-                      background: 'var(--status-panel-bg, #ffffff)',
-                      border: '1px solid var(--status-panel-border, #e5e7eb)',
-                      borderRadius: '0.875rem',
-                      boxShadow: 'var(--status-card-shadow, 0 12px 25px rgba(15, 23, 42, 0.12))',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 'var(--spacing-3)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <label
-                        style={{
-                          fontSize: 'var(--font-size-sm)',
-                          fontWeight: '600',
-                          color: previewTextColor,
-                        }}
-                      >
-                        Subscribe to Updates
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="your@email.com"
-                        disabled
-                        style={{
-                          width: '100%',
-                          padding: '0.65rem 0.75rem',
-                          borderRadius: '0.5rem',
-                          border: '1px solid var(--status-panel-border, #e5e7eb)',
-                          background: 'var(--status-panel-muted-bg, #f9fafb)',
-                          color: 'var(--status-text-subtle, #9ca3af)',
-                        }}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      disabled
-                      style={{
-                        width: '100%',
-                        padding: '0.65rem 0.75rem',
-                        borderRadius: '0.5rem',
-                        border: '1px solid var(--status-panel-border, #e5e7eb)',
-                        background: 'var(--status-panel-muted-bg, #e5e7eb)',
-                        color: 'var(--status-text-subtle, #9ca3af)',
-                        fontWeight: '600',
-                        cursor: 'not-allowed',
-                      }}
-                    >
-                      Subscribe
-                    </button>
-                  </div>
-                  <p
-                    style={{
-                      marginTop: '0.75rem',
-                      fontSize: '0.8125rem',
-                      color: 'var(--status-text-muted, #6b7280)',
-                      textAlign: 'center',
-                    }}
-                  >
-                    We&apos;ll never share your email. Unsubscribe anytime.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {previewData.showFooter && (
-          <footer
-            style={{
-              marginTop: '4rem',
-              paddingTop: '2rem',
-              borderTop: '1px solid #e5e7eb',
-              textAlign: 'center',
-              color: 'var(--status-text-muted, #6b7280)',
-              fontSize: '0.875rem',
-              paddingBottom: '2rem',
-            }}
-          >
-            {previewData.footerText && (
-              <p style={{ marginBottom: '1rem' }}>{previewData.footerText}</p>
-            )}
-            {(previewData.showRssLink || previewData.showApiLink) && (
-              <div
-                style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}
-              >
-                {previewData.showRssLink && (
-                  <span style={{ color: 'var(--status-text-muted, #6b7280)' }}>RSS Feed</span>
-                )}
-                {previewData.showRssLink && previewData.showApiLink && <span>|</span>}
-                {previewData.showApiLink && (
-                  <span style={{ color: 'var(--status-text-muted, #6b7280)' }}>JSON API</span>
-                )}
-              </div>
-            )}
-          </footer>
-        )}
-      </main>
-    </>
+      </div>
+    </main>
   );
 
   return (
