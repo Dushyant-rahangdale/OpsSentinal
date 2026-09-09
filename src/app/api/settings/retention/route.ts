@@ -20,14 +20,6 @@ import {
   parseSettingsRevision,
 } from '@/lib/settings-result';
 
-const RETENTION_FIELD_NAMES = [
-  'incidentRetentionDays',
-  'alertRetentionDays',
-  'logRetentionDays',
-  'metricsRetentionDays',
-  'realTimeWindowDays',
-] as const;
-
 const RetentionFieldsSchema = z.object({
   incidentRetentionDays: z.number().int().min(30).max(3650).optional(),
   alertRetentionDays: z.number().int().min(7).max(3650).optional(),
@@ -36,16 +28,25 @@ const RetentionFieldsSchema = z.object({
   realTimeWindowDays: z.number().int().min(7).max(365).optional(),
 });
 
-const RetentionPolicyPatchSchema = RetentionFieldsSchema.refine(
-  data => RETENTION_FIELD_NAMES.some(field => data[field] !== undefined),
-  { message: 'No valid fields provided' }
-);
+const RetentionPolicyPatchSchema = RetentionFieldsSchema.refine(hasRetentionFieldUpdate, {
+  message: 'No valid fields provided',
+});
 
 const RetentionUpdateSchema = RetentionFieldsSchema.extend({
   expectedUpdatedAt: z.string().datetime().nullable().optional(),
-}).refine(data => RETENTION_FIELD_NAMES.some(field => data[field] !== undefined), {
+}).refine(hasRetentionFieldUpdate, {
   message: 'No valid fields provided',
 });
+
+function hasRetentionFieldUpdate(data: Partial<RetentionPolicy>): boolean {
+  return (
+    data.incidentRetentionDays !== undefined ||
+    data.alertRetentionDays !== undefined ||
+    data.logRetentionDays !== undefined ||
+    data.metricsRetentionDays !== undefined ||
+    data.realTimeWindowDays !== undefined
+  );
+}
 
 function retentionValidationError(error: z.ZodError) {
   return new AppError({
@@ -103,11 +104,46 @@ export async function GET() {
       stats,
       updatedAt: settings?.updatedAt?.toISOString() ?? null,
       presets: [
-        { name: 'Minimal (90 days)', incidentRetentionDays: 90, alertRetentionDays: 30, logRetentionDays: 14, metricsRetentionDays: 90, realTimeWindowDays: 30 },
-        { name: 'Standard (1 year)', incidentRetentionDays: 365, alertRetentionDays: 180, logRetentionDays: 365, metricsRetentionDays: 365, realTimeWindowDays: 60 },
-        { name: 'Extended (2 years)', incidentRetentionDays: 730, alertRetentionDays: 365, logRetentionDays: 730, metricsRetentionDays: 730, realTimeWindowDays: 90 },
-        { name: 'Enterprise (5 years)', incidentRetentionDays: 1825, alertRetentionDays: 730, logRetentionDays: 1825, metricsRetentionDays: 1825, realTimeWindowDays: 90 },
-        { name: 'Compliance (7 years)', incidentRetentionDays: 2555, alertRetentionDays: 1825, logRetentionDays: 2555, metricsRetentionDays: 2555, realTimeWindowDays: 90 },
+        {
+          name: 'Minimal (90 days)',
+          incidentRetentionDays: 90,
+          alertRetentionDays: 30,
+          logRetentionDays: 14,
+          metricsRetentionDays: 90,
+          realTimeWindowDays: 30,
+        },
+        {
+          name: 'Standard (1 year)',
+          incidentRetentionDays: 365,
+          alertRetentionDays: 180,
+          logRetentionDays: 365,
+          metricsRetentionDays: 365,
+          realTimeWindowDays: 60,
+        },
+        {
+          name: 'Extended (2 years)',
+          incidentRetentionDays: 730,
+          alertRetentionDays: 365,
+          logRetentionDays: 730,
+          metricsRetentionDays: 730,
+          realTimeWindowDays: 90,
+        },
+        {
+          name: 'Enterprise (5 years)',
+          incidentRetentionDays: 1825,
+          alertRetentionDays: 730,
+          logRetentionDays: 1825,
+          metricsRetentionDays: 1825,
+          realTimeWindowDays: 90,
+        },
+        {
+          name: 'Compliance (7 years)',
+          incidentRetentionDays: 2555,
+          alertRetentionDays: 1825,
+          logRetentionDays: 2555,
+          metricsRetentionDays: 2555,
+          realTimeWindowDays: 90,
+        },
       ],
     });
   } catch (error) {
@@ -130,7 +166,9 @@ export async function PUT(request: NextRequest) {
 
     const parsed = RetentionUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return jsonError(retentionValidationError(parsed.error), undefined, { issues: parsed.error.issues });
+      return jsonError(retentionValidationError(parsed.error), undefined, {
+        issues: parsed.error.issues,
+      });
     }
 
     const { expectedUpdatedAt = null, ...parsedUpdates } = parsed.data;
@@ -229,7 +267,9 @@ export async function POST(request: NextRequest) {
     if (payload.policy && typeof payload.policy === 'object') {
       const parsed = RetentionPolicyPatchSchema.safeParse(payload.policy);
       if (!parsed.success) {
-        return jsonError(retentionValidationError(parsed.error), undefined, { issues: parsed.error.issues });
+        return jsonError(retentionValidationError(parsed.error), undefined, {
+          issues: parsed.error.issues,
+        });
       }
       const current = await getRetentionPolicy();
       const effective = { ...current, ...parsed.data };
@@ -249,7 +289,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    logger.info('[API] Data cleanup executed', { userId: admin.id, dryRun, result, policyOverride });
+    logger.info('[API] Data cleanup executed', {
+      userId: admin.id,
+      dryRun,
+      result,
+      policyOverride,
+    });
     return jsonOk({ success: true, dryRun, result });
   } catch (error) {
     if (isAppError(error)) return jsonError(error);

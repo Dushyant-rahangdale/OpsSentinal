@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/shadcn/button';
@@ -152,11 +152,6 @@ export default function SsoSettingsForm({
   configError,
 }: Props) {
   const router = useRouter();
-  const [state, formAction] = useActionState<SettingsActionState, FormData>(saveOidcConfig, {
-    error: null,
-    success: false,
-    updatedAt: initialConfig?.updatedAt ?? null,
-  });
   const initialIssuer = initialConfig?.issuer ?? '';
   const initialClientId = initialConfig?.clientId ?? '';
   const initialDomains = (initialConfig?.allowedDomains ?? []).join(', ');
@@ -247,14 +242,19 @@ export default function SsoSettingsForm({
     (clientSecretRequired && !clientSecretValue.trim());
   const [lastSaved, setLastSaved] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (state?.success) {
-      setClientSecretValue('');
-      setShowSecret(false);
-      setLastSaved(new Date().toLocaleString());
-      router.refresh();
-    }
-  }, [state?.success, router]);
+  const [state, formAction] = useActionState<SettingsActionState, FormData>(
+    async (previousState, formData) => {
+      const nextState = await saveOidcConfig(previousState, formData);
+      if (nextState.success) {
+        setClientSecretValue('');
+        setShowSecret(false);
+        setLastSaved(new Date().toLocaleString());
+        router.refresh();
+      }
+      return nextState;
+    },
+    { error: null, success: false, updatedAt: initialConfig?.updatedAt ?? null }
+  );
 
   const validateFields = () => {
     const errors: ValidationErrors = {};
