@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { errorFromResponse } from '@/lib/client-error';
 import { toUserFacingError } from '@/lib/user-facing-error';
+import { SETTINGS_CHANGED_MESSAGE } from '@/lib/settings-result';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -77,6 +78,8 @@ function displayError(error: unknown, fallback: string): string {
 export default function RetentionPolicySettings() {
   const [policy, setPolicy] = useState<RetentionPolicy | null>(null);
   const [initialPolicy, setInitialPolicy] = useState<RetentionPolicy | null>(null);
+  const [revision, setRevision] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<string | null>(null);
   const [stats, setStats] = useState<StorageStats | null>(null);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,12 +88,10 @@ export default function RetentionPolicySettings() {
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Field-level validation errors
   const [validationErrors, setValidationErrors] = useState<
     Partial<Record<keyof RetentionPolicy, string>>
   >({});
 
-  // Confirm Dialog State
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingCleanupAction, setPendingCleanupAction] = useState<(() => void) | null>(null);
 
@@ -104,8 +105,11 @@ export default function RetentionPolicySettings() {
       const data = await res.json();
       setPolicy(data.policy);
       setInitialPolicy(data.policy);
+      setRevision(typeof data.updatedAt === 'string' ? data.updatedAt : null);
+      setConflict(null);
       setStats(data.stats);
       setPresets(data.presets);
+      setGeneralError(null);
     } catch (err) {
       setGeneralError(displayError(err, 'Failed to load retention settings'));
     } finally {
@@ -149,7 +153,6 @@ export default function RetentionPolicySettings() {
     return isValid;
   };
 
-  // Use useMemo for dirty check instead of JSON.stringify on every render
   const isDirty = useMemo(() => {
     if (!policy || !initialPolicy) return false;
     return (
@@ -162,7 +165,7 @@ export default function RetentionPolicySettings() {
   }, [policy, initialPolicy]);
 
   const handleSave = async () => {
-    if (!policy) return;
+    if (!policy || conflict) return;
 
     if (!validatePolicy(policy)) {
       setGeneralError('Please fix the validation errors below.');
@@ -177,15 +180,23 @@ export default function RetentionPolicySettings() {
       const res = await fetch('/api/settings/retention', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(policy),
+        body: JSON.stringify({ ...policy, expectedUpdatedAt: revision }),
       });
 
+      if (res.status === 409) {
+        setConflict(SETTINGS_CHANGED_MESSAGE);
+        return;
+      }
       if (!res.ok) {
         throw await errorFromResponse(res, 'Failed to save');
       }
 
+      const data = await res.json();
+      const committedPolicy = (data.policy ?? policy) as RetentionPolicy;
+      setPolicy(committedPolicy);
+      setInitialPolicy(committedPolicy);
+      if (typeof data.updatedAt === 'string') setRevision(data.updatedAt);
       setSuccess('Retention policy updated successfully');
-      setInitialPolicy(policy);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setGeneralError(displayError(err, 'Failed to save settings'));
@@ -195,7 +206,7 @@ export default function RetentionPolicySettings() {
   };
 
   const executeCleanup = async (dryRun: boolean) => {
-    if (!policy) return;
+    if (!policy || conflict) return;
 
     if (!validatePolicy(policy)) {
       setGeneralError(
@@ -224,7 +235,6 @@ export default function RetentionPolicySettings() {
 
       if (!dryRun) {
         setSuccess('Data cleanup completed successfully');
-        // Refresh stats after cleanup
         fetchData();
         setTimeout(() => setSuccess(null), 3000);
       }
@@ -261,8 +271,7 @@ export default function RetentionPolicySettings() {
     const num = Number.parseInt(value, 10);
     if (!policy) return;
 
-    // Clear error for this field when user types
-    // `field` is a compile-time `keyof RetentionPolicy`, not request input.
+    // `field` is a compile-time keyof RetentionPolicy, not request input.
     // eslint-disable-next-line security/detect-object-injection
     if (validationErrors[field]) {
       setValidationErrors(prev => ({ ...prev, [field]: undefined }));
@@ -302,6 +311,21 @@ export default function RetentionPolicySettings() {
 
   return (
     <div className="space-y-6 py-2">
+      {conflict && (
+        <Alert className="bg-amber-500/10 border-amber-500/30" role="alert">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-800 dark:text-amber-200">
+            <span>
+              <strong>Settings changed elsewhere.</strong> Your unsaved retention values are still
+              present. Reload the latest policy before saving or running cleanup.
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={fetchData} className="gap-1.5 shrink-0">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reload latest
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {generalError && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -309,7 +333,7 @@ export default function RetentionPolicySettings() {
         </Alert>
       )}
       {success && (
-        <Alert className="bg-emerald-500/10 border-emerald-500/30">
+        <Alert className="bg-emerald-500/10 border-emerald-500/30" role="status">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           <AlertDescription className="text-emerald-700 dark:text-emerald-300 font-medium">
             {success}
@@ -317,9 +341,6 @@ export default function RetentionPolicySettings() {
         </Alert>
       )}
 
-      {/* ════════════════════════════════════════════════
-          CARD 1: CURRENT STORAGE FOOTPRINT
-      ════════════════════════════════════════════════ */}
       {stats && (
         <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
@@ -389,9 +410,6 @@ export default function RetentionPolicySettings() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════
-          CARD 2: RETENTION SCHEDULE & POLICY RULES
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
           <div className="flex items-start sm:items-center gap-3 min-w-0">
@@ -407,7 +425,6 @@ export default function RetentionPolicySettings() {
             </div>
           </div>
 
-          {/* Quick preset selector pills */}
           {presets.length > 0 && (
             <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-lg border shrink-0 self-start sm:self-center">
               <span className="text-[11px] font-medium text-muted-foreground px-1.5 hidden sm:inline">
@@ -429,7 +446,7 @@ export default function RetentionPolicySettings() {
                     variant={isActive ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => handlePresetClick(preset)}
-                    disabled={saving}
+                    disabled={saving || Boolean(conflict)}
                     className="text-xs h-7 px-2.5 font-medium"
                   >
                     {preset.name}
@@ -505,9 +522,6 @@ export default function RetentionPolicySettings() {
         )}
       </div>
 
-      {/* ════════════════════════════════════════════════
-          CARD 3: DATA PRUNING & LIFECYCLE CLEANUP
-      ════════════════════════════════════════════════ */}
       <div className="rounded-xl border border-rose-500/20 bg-card p-5 sm:p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b">
           <div className="flex items-start gap-3 min-w-0">
@@ -539,7 +553,7 @@ export default function RetentionPolicySettings() {
               variant="outline"
               size="sm"
               onClick={() => handleCleanupClick(true)}
-              disabled={saving}
+              disabled={saving || Boolean(conflict)}
               className="h-8 text-xs gap-1.5 font-medium"
             >
               {saving ? (
@@ -554,7 +568,7 @@ export default function RetentionPolicySettings() {
               variant="destructive"
               size="sm"
               onClick={() => handleCleanupClick(false)}
-              disabled={saving}
+              disabled={saving || Boolean(conflict)}
               className="h-8 text-xs gap-1.5 font-semibold"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -563,7 +577,6 @@ export default function RetentionPolicySettings() {
           </div>
         </div>
 
-        {/* Cleanup result breakdown */}
         {cleanupResult && (
           <div
             className={`rounded-xl border p-4 space-y-3 ${
@@ -574,11 +587,9 @@ export default function RetentionPolicySettings() {
           >
             <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
               <div className="flex items-center gap-2">
-                {cleanupResult.dryRun ? (
-                  <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                )}
+                <CheckCircle2
+                  className={`h-4 w-4 ${cleanupResult.dryRun ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}
+                />
                 <span className="text-xs font-bold text-foreground">
                   {cleanupResult.dryRun
                     ? 'Simulation Audit Result (Dry Run)'
@@ -612,9 +623,6 @@ export default function RetentionPolicySettings() {
         )}
       </div>
 
-      {/* ════════════════════════════════════════════════
-          CARD 4: STICKY SAVE ACTION BAR
-      ════════════════════════════════════════════════ */}
       <div className="sticky bottom-4 z-10 rounded-xl border bg-card/95 backdrop-blur-md p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
         <div className="flex items-center gap-2">
           {!isDirty ? (
@@ -623,6 +631,7 @@ export default function RetentionPolicySettings() {
               variant="ghost"
               size="sm"
               onClick={handleResetDefaults}
+              disabled={Boolean(conflict)}
               className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -652,9 +661,10 @@ export default function RetentionPolicySettings() {
           <Button
             type="button"
             onClick={handleSave}
-            disabled={saving || !isDirty}
+            disabled={saving || !isDirty || Boolean(conflict)}
             size="sm"
             className="h-9 text-xs px-4 font-semibold"
+            title={conflict ? 'Reload latest settings before saving again.' : undefined}
           >
             {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
             <span>Save Retention Policy</span>
@@ -681,8 +691,6 @@ export default function RetentionPolicySettings() {
     </div>
   );
 }
-
-// Subcomponents
 
 function daysToHuman(days: number | string): string {
   const num = typeof days === 'number' ? days : Number(days);
@@ -762,7 +770,6 @@ function RetentionFieldRow({
           )}
         </div>
 
-        {/* Quick shortcut duration chips */}
         {shortcuts && shortcuts.length > 0 && (
           <div className="flex items-center gap-1 pt-0.5">
             <span className="text-[10px] text-muted-foreground">Quick:</span>

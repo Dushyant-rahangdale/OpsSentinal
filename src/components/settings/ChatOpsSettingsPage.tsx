@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { saveChatOpsConfig } from '@/app/(app)/settings/integrations/chatops/actions';
+import type { SettingsActionState } from '@/lib/settings-result';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -26,6 +27,7 @@ import {
   ExternalLink,
   MessageSquare,
   Zap,
+  RefreshCw,
 } from 'lucide-react';
 
 type ChatOpsConfigView = {
@@ -147,12 +149,12 @@ export default function ChatOpsSettingsPage({
   isSlackConnected: boolean;
 }) {
   const router = useRouter();
-  const [state, formAction] = useActionState(saveChatOpsConfig, {
+  const [state, formAction] = useActionState<SettingsActionState, FormData>(saveChatOpsConfig, {
     error: null,
     success: false,
+    updatedAt: config?.updatedAt ? new Date(config.updatedAt).toISOString() : null,
   });
 
-  // Local state for interactive controls
   const [enabled, setEnabled] = useState(config?.enabled ?? false);
   const [channelPrefix, setChannelPrefix] = useState(config?.channelPrefix ?? 'inc');
   const [selectedUrgencies, setSelectedUrgencies] = useState<string[]>(
@@ -185,7 +187,6 @@ export default function ChatOpsSettingsPage({
     }
   }, [state?.success, router]);
 
-  // Dirty state tracking
   const isDirty = useMemo(() => {
     if (!config) return Boolean(enabled || channelPrefix !== 'inc');
     const origUrgencies = config.autoCreateOnUrgency || [];
@@ -253,9 +254,29 @@ export default function ChatOpsSettingsPage({
 
   return (
     <form action={formAction} className="space-y-6">
-      {/* ── Global Alerts (Error / Success) ── */}
-      {state?.error && (
-        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-3 shadow-sm">
+      {state?.code === 'SETTINGS_CHANGED' && (
+        <div
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-900 dark:text-amber-100 flex flex-col sm:flex-row sm:items-start justify-between gap-3 shadow-sm"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="flex items-start gap-3 min-w-0">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="space-y-1 min-w-0">
+              <p className="font-semibold">Settings changed elsewhere</p>
+              <p>{state.error}</p>
+              <p className="opacity-80">Your unsaved ChatOps edits are preserved. Reload before saving again.</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="gap-1.5 shrink-0">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Reload latest
+          </Button>
+        </div>
+      )}
+
+      {state?.error && state.code !== 'SETTINGS_CHANGED' && (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-800 dark:text-rose-200 flex items-start gap-3 shadow-sm" role="alert">
           <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           <div className="space-y-1 min-w-0">
             <p className="font-semibold">Configuration Error</p>
@@ -265,7 +286,7 @@ export default function ChatOpsSettingsPage({
       )}
 
       {state?.success && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-3 shadow-sm">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-3 shadow-sm" role="status" aria-live="polite">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="space-y-1 min-w-0">
             <p className="font-semibold">Configuration Saved</p>
@@ -274,7 +295,6 @@ export default function ChatOpsSettingsPage({
         </div>
       )}
 
-      {/* ── Slack Integration Prerequisite Banner ── */}
       {!isSlackConnected ? (
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-900 dark:text-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-start gap-3">
@@ -315,7 +335,6 @@ export default function ChatOpsSettingsPage({
         </div>
       )}
 
-      {/* ── CARD 1: Slack Channel Automation & Naming ── */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b">
           <div className="flex items-center gap-3">
@@ -341,7 +360,6 @@ export default function ChatOpsSettingsPage({
           </div>
         </div>
 
-        {/* Master Toggle */}
         <div className="rounded-lg border bg-muted/20 p-3.5 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
             <Label
@@ -365,7 +383,6 @@ export default function ChatOpsSettingsPage({
           <input type="hidden" name="enabled" value={enabled ? 'on' : 'off'} />
         </div>
 
-        {/* Channel Prefix & Dynamic Simulator */}
         <div className="grid gap-5 md:grid-cols-2">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -401,7 +418,6 @@ export default function ChatOpsSettingsPage({
             </p>
           </div>
 
-          {/* Dynamic Live Simulation Pill */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -427,7 +443,6 @@ export default function ChatOpsSettingsPage({
           </div>
         </div>
 
-        {/* Auto Archive Toggle */}
         <div className="rounded-lg border bg-muted/20 p-3.5 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
             <Label
@@ -452,7 +467,6 @@ export default function ChatOpsSettingsPage({
         </div>
       </div>
 
-      {/* ── CARD 2: Incident Auto-Creation Trigger Matrix ── */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b">
           <div>
@@ -469,7 +483,6 @@ export default function ChatOpsSettingsPage({
           </div>
         </div>
 
-        {/* Hidden inputs to pass multi-select values to saveChatOpsConfig */}
         {selectedPriorities.map(p => (
           <input
             key={`hidden-p-${p}`}
@@ -493,7 +506,6 @@ export default function ChatOpsSettingsPage({
           />
         ))}
 
-        {/* Priority Triggers */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -544,7 +556,6 @@ export default function ChatOpsSettingsPage({
           </div>
         </div>
 
-        {/* Urgency Triggers */}
         <div className="space-y-3 pt-4 border-t">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -582,7 +593,6 @@ export default function ChatOpsSettingsPage({
         </div>
       </div>
 
-      {/* ── CARD 3: Video War Room Provider & URL Template ── */}
       <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b">
           <div>
@@ -598,10 +608,8 @@ export default function ChatOpsSettingsPage({
           </div>
         </div>
 
-        {/* Hidden input for select bridge provider */}
         <input type="hidden" name="defaultVideoBridge" value={selectedBridge} />
 
-        {/* Provider Cards Selector (2x2 Grid) */}
         <div className="space-y-3">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <Video className="h-3.5 w-3.5" />
@@ -652,7 +660,6 @@ export default function ChatOpsSettingsPage({
           </div>
         </div>
 
-        {/* Custom URL Template */}
         {selectedBridge !== 'NONE' && (
           <div className="space-y-3 pt-4 border-t">
             <div className="flex items-center justify-between">
@@ -685,7 +692,6 @@ export default function ChatOpsSettingsPage({
               disabled={!isAdmin}
             />
 
-            {/* Provider Guidance & Examples */}
             <div className="rounded-lg border bg-muted/20 p-3.5 space-y-2 text-xs">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <Info className="h-3.5 w-3.5 text-blue-500" />
@@ -712,7 +718,6 @@ export default function ChatOpsSettingsPage({
         )}
       </div>
 
-      {/* ── STICKY FLOATING ACTION BAR ── */}
       <div className="sticky bottom-4 z-10 bg-card/95 backdrop-blur-md shadow-lg border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground flex items-center gap-2">
           {isDirty && (
@@ -731,7 +736,10 @@ export default function ChatOpsSettingsPage({
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto">
-          <SubmitButton disabled={!isAdmin} isDirty={isDirty} />
+          <SubmitButton
+            disabled={!isAdmin || state?.code === 'SETTINGS_CHANGED'}
+            isDirty={isDirty}
+          />
         </div>
       </div>
     </form>

@@ -15,6 +15,7 @@ import {
 import { logger } from '@/lib/logger';
 import { getDefaultAvatar } from '@/lib/avatar';
 import { logAudit } from '@/lib/audit';
+import { isValidTimeZone } from '@/lib/timezone';
 import {
   API_SCOPES,
   CAPABILITIES,
@@ -36,27 +37,21 @@ export async function updateProfile(
 ): Promise<ActionState> {
   try {
     const user = await getCurrentUser();
-
     const avatarFile = formData.get('avatar') as File | null;
-
     const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
-    let avatarUrl = undefined;
+    let avatarUpload: { data: Buffer; mimeType: string; url: string } | null = null;
     if (avatarFile && avatarFile.size > 0) {
-      // Validate file type
       if (!ALLOWED_MIME_TYPES.has(avatarFile.type)) {
         return { error: 'Invalid file type. Please upload a PNG, JPEG, WebP, or GIF image.' };
       }
       if (avatarFile.size > 2 * 1024 * 1024) {
-        // 2MB limit
         return { error: 'File size too large. Max 2MB.' };
       }
 
       try {
         const bytes = await avatarFile.arrayBuffer();
         const buffer = Buffer.from(bytes);
-
-        // Verify magic bytes
         const isPng =
           buffer.length >= 4 &&
           buffer[0] === 0x89 &&
@@ -76,24 +71,13 @@ export async function updateProfile(
           return { error: 'Invalid image file signature. Please upload a valid image.' };
         }
 
-        // Save to database (UserAvatar table)
-        await prisma.userAvatar.upsert({
-          where: { userId: user.id },
-          update: {
-            data: buffer,
-            mimeType: avatarFile.type,
-          },
-          create: {
-            userId: user.id,
-            data: buffer,
-            mimeType: avatarFile.type,
-          },
-        });
-
-        // Set avatarUrl to API route with cache-busting timestamp
-        avatarUrl = `/api/users/${user.id}/avatar?t=${Date.now()}`;
+        avatarUpload = {
+          data: buffer,
+          mimeType: avatarFile.type,
+          url: `/api/users/${user.id}/avatar?t=${Date.now()}`,
+        };
       } catch (err) {
-        logger.error('Failed to save avatar to database', { error: err });
+        logger.error('Failed to read avatar upload', { error: err });
         return { error: 'Failed to upload profile photo.' };
       }
     }
@@ -101,7 +85,6 @@ export async function updateProfile(
     const removeAvatar =
       formData.get('removeAvatar') === 'true' || formData.get('resetAvatar') === 'true';
 
-    // Prepare update data
     const data: Partial<{
       name: string;
       department: string | null;
@@ -109,13 +92,14 @@ export async function updateProfile(
       avatarUrl: string | null;
     }> = {};
 
-    // Handle Name
     if (formData.has('name')) {
       const n = (formData.get('name') as string | null)?.trim();
-      if (n && n.length >= 2) data.name = n;
+      if (!n || n.length < 2 || n.length > 120) {
+        return { error: 'Name must be between 2 and 120 characters.' };
+      }
+      data.name = n;
     }
 
-    // Handle Department & Job Title
     if (formData.has('department')) {
       data.department = (formData.get('department') as string | null)?.trim() || null;
     }
@@ -123,7 +107,6 @@ export async function updateProfile(
       data.jobTitle = (formData.get('jobTitle') as string | null)?.trim() || null;
     }
 
-    // Handle direct avatarUrl (from avatar picker)
     const directAvatarUrl = (formData.get('avatarUrl') as string | null)?.trim();
     const isValidDirectUrl = (url: string) => {
       if (url.startsWith('/api/avatar') || url.startsWith('/avatars/')) return true;
@@ -135,32 +118,69 @@ export async function updateProfile(
       }
     };
 
-    // Avatar Logic
     const currentName = data.name || user.name || 'User';
-
     if (removeAvatar) {
-      // User explicitly requested removal - clean up DB binary and set to default initials
-      await prisma.userAvatar.deleteMany({ where: { userId: user.id } });
       data.avatarUrl = getDefaultAvatar(currentName, user.id);
     } else if (directAvatarUrl && isValidDirectUrl(directAvatarUrl)) {
-      // User selected an avatar from the picker
       data.avatarUrl = directAvatarUrl;
-    } else if (avatarUrl !== undefined) {
-      // User uploaded a NEW file
-      data.avatarUrl = avatarUrl;
+    } else if (directAvatarUrl) {
+      return { error: 'Invalid avatar URL.' };
+    } else if (avatarUpload) {
+      data.avatarUrl = avatarUpload.url;
     }
 
-    // If no data to update, return early
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(data).length === 0 && !avatarUpload && !removeAvatar) {
       return { success: true };
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data,
+    await prisma.$transaction(async tx => {
+      if (removeAvatar) {
+        await tx.userAvatar.deleteMany({ where: { userId: user.id } });
+      } else if (avatarUpload) {
+        await tx.userAvatar.upsert({
+          where: { userId: user.id },
+          update: {
+            data: avatarUpload.data,
+            mimeType: avatarUpload.mimeType,
+          },
+          create: {
+            userId: user.id,
+            data: avatarUpload.data,
+            mimeType: avatarUpload.mimeType,
+          },
+        });
+      }
+
+      if (Object.keys(data).length > 0) {
+        await tx.user.update({
+          where: { id: user.id },
+          data,
+        });
+      }
+
+      await logAudit(
+        {
+          action: 'user.profile.updated',
+          entityType: 'USER',
+          entityId: user.id,
+          actorId: user.id,
+          oldValue: {
+            name: user.name,
+            department: user.department,
+            jobTitle: user.jobTitle,
+            avatarUrl: user.avatarUrl,
+          },
+          newValue: {
+            name: data.name ?? user.name,
+            department: data.department ?? user.department,
+            jobTitle: data.jobTitle ?? user.jobTitle,
+            avatarChanged: Boolean(removeAvatar || avatarUpload || directAvatarUrl),
+          },
+        },
+        tx
+      );
     });
 
-    // Revalidate multiple paths to ensure UI updates everywhere
     revalidatePath('/settings/profile');
     revalidatePath('/settings');
     revalidatePath('/');
@@ -168,13 +188,12 @@ export async function updateProfile(
     revalidatePath('/users');
     revalidatePath('/policies');
     revalidatePath('/schedules');
-    // Revalidate layout to update topbar
     revalidatePath('/', 'layout');
 
     return { success: true };
   } catch (error) {
     logger.error('Error updating profile', { component: 'settings-actions', error });
-    return { error: error instanceof Error ? error.message : 'Unable to update profile.' };
+    return { error: 'Unable to update profile. Please try again.' };
   }
 }
 
@@ -184,19 +203,35 @@ export async function updatePreferences(
 ): Promise<ActionState> {
   try {
     const user = await getCurrentUser();
-    const timeZone = (formData.get('timeZone') as string | null)?.trim() ?? 'UTC';
+    const timeZone = (formData.get('timeZone') as string | null)?.trim() || '';
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        timeZone,
-      },
+    if (!timeZone || !isValidTimeZone(timeZone)) {
+      return { error: 'Please select a valid IANA timezone.' };
+    }
+
+    await prisma.$transaction(async tx => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { timeZone },
+      });
+      await logAudit(
+        {
+          action: 'user.preferences.updated',
+          entityType: 'USER',
+          entityId: user.id,
+          actorId: user.id,
+          oldValue: { timeZone: user.timeZone },
+          newValue: { timeZone },
+        },
+        tx
+      );
     });
 
     revalidatePath('/settings/profile');
     return { success: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'Unable to update preferences.' };
+    logger.error('Error updating user preferences', { component: 'settings-actions', error });
+    return { error: 'Unable to update preferences. Please try again.' };
   }
 }
 
@@ -219,13 +254,28 @@ export async function updateNotificationPreferences(
     const whatsappEnabled =
       formData.get('whatsappNotificationsEnabled') === 'on' ||
       formData.get('whatsappNotificationsEnabled') === 'true';
-    // Phone number can come from SMS or WhatsApp field (they share the same number)
-    const phoneNumber =
-      (formData.get('phoneNumber') as string | null)?.trim() ||
-      (formData.get('phoneNumberWhatsApp') as string | null)?.trim() ||
-      null;
 
-    // Check provider availability
+    const hasPhoneField = formData.has('phoneNumber') || formData.has('phoneNumberWhatsApp');
+    const submittedPhone = formData.has('phoneNumber')
+      ? (formData.get('phoneNumber') as string | null)?.trim() || null
+      : formData.has('phoneNumberWhatsApp')
+        ? (formData.get('phoneNumberWhatsApp') as string | null)?.trim() || null
+        : undefined;
+    const effectivePhone = hasPhoneField ? (submittedPhone ?? null) : (user.phoneNumber ?? null);
+
+    if ((smsEnabled || whatsappEnabled) && !effectivePhone) {
+      return {
+        error: 'A valid phone number is required when SMS or WhatsApp notifications are enabled.',
+      };
+    }
+
+    if (effectivePhone) {
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(effectivePhone)) {
+        return { error: 'Phone number must be in E.164 format (e.g., +1234567890)' };
+      }
+    }
+
     if (emailEnabled) {
       const emailConfig = await getEmailConfig();
       if (!emailConfig.enabled) {
@@ -264,31 +314,51 @@ export async function updateNotificationPreferences(
       }
     }
 
-    // Validate phone number if SMS or WhatsApp is enabled
-    if ((smsEnabled || whatsappEnabled) && phoneNumber) {
-      // Basic E.164 format validation
-      const phoneRegex = /^\+[1-9]\d{1,14}$/;
-      if (!phoneRegex.test(phoneNumber)) {
-        return { error: 'Phone number must be in E.164 format (e.g., +1234567890)' };
-      }
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailNotificationsEnabled: emailEnabled,
-        smsNotificationsEnabled: smsEnabled,
-        pushNotificationsEnabled: pushEnabled,
-        whatsappNotificationsEnabled: whatsappEnabled,
-        phoneNumber: smsEnabled || whatsappEnabled ? phoneNumber : null,
-      },
+    await prisma.$transaction(async tx => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          emailNotificationsEnabled: emailEnabled,
+          smsNotificationsEnabled: smsEnabled,
+          pushNotificationsEnabled: pushEnabled,
+          whatsappNotificationsEnabled: whatsappEnabled,
+          ...(hasPhoneField ? { phoneNumber: submittedPhone ?? null } : {}),
+        },
+      });
+      await logAudit(
+        {
+          action: 'user.notification_preferences.updated',
+          entityType: 'USER',
+          entityId: user.id,
+          actorId: user.id,
+          oldValue: {
+            emailNotificationsEnabled: user.emailNotificationsEnabled,
+            smsNotificationsEnabled: user.smsNotificationsEnabled,
+            pushNotificationsEnabled: user.pushNotificationsEnabled,
+            whatsappNotificationsEnabled: user.whatsappNotificationsEnabled,
+            hasPhoneNumber: Boolean(user.phoneNumber),
+          },
+          newValue: {
+            emailNotificationsEnabled: emailEnabled,
+            smsNotificationsEnabled: smsEnabled,
+            pushNotificationsEnabled: pushEnabled,
+            whatsappNotificationsEnabled: whatsappEnabled,
+            hasPhoneNumber: Boolean(effectivePhone),
+          },
+        },
+        tx
+      );
     });
 
     revalidatePath('/settings/profile');
     return { success: true };
   } catch (error) {
+    logger.error('Error updating notification preferences', {
+      component: 'settings-actions',
+      error,
+    });
     return {
-      error: error instanceof Error ? error.message : 'Unable to update notification preferences.',
+      error: 'Unable to update notification preferences. Please try again.',
     };
   }
 }
@@ -466,7 +536,6 @@ export async function updatePassword(
       where: { id: user.id },
       data: { passwordHash },
     });
-    // Revoke all existing sessions after password change (world-class security default).
     await revokeUserSessions(user.id);
 
     await logAudit({
@@ -513,26 +582,30 @@ export async function createApiKey(
     }
 
     const expiresAt = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000);
-
     const { token, prefix, tokenHash } = generateApiKey();
 
-    const key = await prisma.apiKey.create({
-      data: {
-        name,
-        prefix,
-        tokenHash,
-        scopes: finalScopes,
-        userId: user.id,
-        expiresAt,
-      },
-    });
+    await prisma.$transaction(async tx => {
+      const key = await tx.apiKey.create({
+        data: {
+          name,
+          prefix,
+          tokenHash,
+          scopes: finalScopes,
+          userId: user.id,
+          expiresAt,
+        },
+      });
 
-    await logAudit({
-      action: 'api_key.created',
-      entityType: 'API_KEY',
-      entityId: key.id,
-      actorId: user.id,
-      details: { name, prefix, scopes: finalScopes, expiresAt: expiresAt.toISOString() },
+      await logAudit(
+        {
+          action: 'api_key.created',
+          entityType: 'API_KEY',
+          entityId: key.id,
+          actorId: user.id,
+          details: { name, prefix, scopes: finalScopes, expiresAt: expiresAt.toISOString() },
+        },
+        tx
+      );
     });
 
     revalidatePath('/settings/api-keys');
@@ -556,22 +629,30 @@ export async function revokeApiKey(formData: FormData) {
   if (!key || (user.role !== 'ADMIN' && key.userId !== user.id)) {
     throw new Error('API key not found or you do not have permission to revoke it.');
   }
-  await prisma.apiKey.updateMany({
-    where: {
-      id: keyId,
-      revokedAt: null,
-    },
-    data: {
-      revokedAt: new Date(),
-    },
-  });
 
-  await logAudit({
-    action: 'api_key.revoked',
-    entityType: 'API_KEY',
-    entityId: keyId,
-    actorId: user.id,
-    details: { ownerId: key.userId },
+  await prisma.$transaction(async tx => {
+    const result = await tx.apiKey.updateMany({
+      where: {
+        id: keyId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    if (result.count === 0) return;
+
+    await logAudit(
+      {
+        action: 'api_key.revoked',
+        entityType: 'API_KEY',
+        entityId: keyId,
+        actorId: user.id,
+        details: { ownerId: key.userId },
+      },
+      tx
+    );
   });
 
   revalidatePath('/settings/api-keys');

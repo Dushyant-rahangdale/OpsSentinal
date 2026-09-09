@@ -1,7 +1,9 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest } from 'next/server';
+import prisma from '@/lib/prisma';
 import {
+  clearRetentionPolicyCache,
   getRetentionPolicy,
-  updateRetentionPolicy,
   type RetentionPolicy,
 } from '@/lib/retention-policy';
 import { getStorageStats, performDataCleanup, CleanupConflictError } from '@/lib/data-cleanup';
@@ -11,28 +13,40 @@ import { AppError, isAppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/audit';
 import { z } from 'zod';
+import { jsonSettingsChanged } from '@/lib/settings-api-response';
+import {
+  SettingsChangedMutationError,
+  isSettingsChangedError,
+  parseSettingsRevision,
+} from '@/lib/settings-result';
 
-const RetentionUpdateSchema = z
-  .object({
-    incidentRetentionDays: z.number().int().min(30).max(3650).optional(),
-    alertRetentionDays: z.number().int().min(7).max(3650).optional(),
-    logRetentionDays: z.number().int().min(1).max(3650).optional(),
-    metricsRetentionDays: z.number().int().min(30).max(3650).optional(),
-    realTimeWindowDays: z.number().int().min(7).max(365).optional(),
-  })
-  .refine(data => Object.keys(data).length > 0, { message: 'No valid fields provided' })
-  .refine(
-    data => {
-      if (data.realTimeWindowDays !== undefined && data.metricsRetentionDays !== undefined) {
-        return data.realTimeWindowDays <= data.metricsRetentionDays;
-      }
-      return true;
-    },
-    {
-      message: 'Real-time window cannot exceed metrics retention period',
-      path: ['realTimeWindowDays'],
-    }
+const RetentionFieldsSchema = z.object({
+  incidentRetentionDays: z.number().int().min(30).max(3650).optional(),
+  alertRetentionDays: z.number().int().min(7).max(3650).optional(),
+  logRetentionDays: z.number().int().min(1).max(3650).optional(),
+  metricsRetentionDays: z.number().int().min(30).max(3650).optional(),
+  realTimeWindowDays: z.number().int().min(7).max(365).optional(),
+});
+
+const RetentionPolicyPatchSchema = RetentionFieldsSchema.refine(hasRetentionFieldUpdate, {
+  message: 'No valid fields provided',
+});
+
+const RetentionUpdateSchema = RetentionFieldsSchema.extend({
+  expectedUpdatedAt: z.string().datetime().nullable().optional(),
+}).refine(hasRetentionFieldUpdate, {
+  message: 'No valid fields provided',
+});
+
+function hasRetentionFieldUpdate(data: Partial<RetentionPolicy>): boolean {
+  return (
+    data.incidentRetentionDays !== undefined ||
+    data.alertRetentionDays !== undefined ||
+    data.logRetentionDays !== undefined ||
+    data.metricsRetentionDays !== undefined ||
+    data.realTimeWindowDays !== undefined
   );
+}
 
 function retentionValidationError(error: z.ZodError) {
   return new AppError({
@@ -46,19 +60,49 @@ function retentionValidationError(error: z.ZodError) {
   });
 }
 
-/**
- * GET /api/settings/retention
- * Fetch current retention policy and storage statistics
- */
+function validateEffectivePolicy(policy: RetentionPolicy) {
+  if (policy.realTimeWindowDays > policy.metricsRetentionDays) {
+    throw new AppError({
+      code: 'VALIDATION_FAILED',
+      userMessage: 'Real-time window cannot exceed metrics retention period',
+      fields: [
+        {
+          field: 'realTimeWindowDays',
+          code: 'cross_field_constraint',
+          message: 'Real-time window cannot exceed metrics retention period',
+        },
+      ],
+    });
+  }
+}
+
+function retentionAuditSnapshot(policy: RetentionPolicy): Prisma.InputJsonObject {
+  return {
+    incidentRetentionDays: policy.incidentRetentionDays,
+    alertRetentionDays: policy.alertRetentionDays,
+    logRetentionDays: policy.logRetentionDays,
+    metricsRetentionDays: policy.metricsRetentionDays,
+    realTimeWindowDays: policy.realTimeWindowDays,
+    businessHoursTimeZone: policy.businessHoursTimeZone,
+  };
+}
+
 export async function GET() {
   try {
     await assertAdmin();
-
-    const [policy, stats] = await Promise.all([getRetentionPolicy(), getStorageStats()]);
+    const [policy, stats, settings] = await Promise.all([
+      getRetentionPolicy(),
+      getStorageStats(),
+      prisma.systemSettings.findUnique({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      }),
+    ]);
 
     return jsonOk({
       policy,
       stats,
+      updatedAt: settings?.updatedAt?.toISOString() ?? null,
       presets: [
         {
           name: 'Minimal (90 days)',
@@ -109,10 +153,6 @@ export async function GET() {
   }
 }
 
-/**
- * PUT /api/settings/retention
- * Update retention policy settings
- */
 export async function PUT(request: NextRequest) {
   try {
     const admin = await assertAdmin();
@@ -131,30 +171,85 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    const updates: Partial<RetentionPolicy> = parsed.data;
-    const updatedPolicy = await updateRetentionPolicy(updates);
+    const { expectedUpdatedAt = null, ...parsedUpdates } = parsed.data;
+    const updates: Partial<RetentionPolicy> = parsedUpdates;
+    const [current, existing] = await Promise.all([
+      getRetentionPolicy(),
+      prisma.systemSettings.findUnique({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      }),
+    ]);
+    const expectedRevision = parseSettingsRevision(expectedUpdatedAt);
+    if (existing && !expectedRevision) return jsonSettingsChanged();
+    if (!existing && expectedRevision) return jsonSettingsChanged();
 
-    await logAudit({
-      action: 'retention.policy.updated',
-      entityType: 'USER',
-      entityId: admin.id,
-      actorId: admin.id,
-      details: updates,
+    const effective: RetentionPolicy = { ...current, ...updates };
+    validateEffectivePolicy(effective);
+
+    const updatedAt = await prisma.$transaction(async tx => {
+      if (existing) {
+        const updated = await tx.systemSettings.updateMany({
+          where: { id: 'default', updatedAt: expectedRevision! },
+          data: {
+            incidentRetentionDays: effective.incidentRetentionDays,
+            alertRetentionDays: effective.alertRetentionDays,
+            logRetentionDays: effective.logRetentionDays,
+            metricsRetentionDays: effective.metricsRetentionDays,
+            realTimeWindowDays: effective.realTimeWindowDays,
+          },
+        });
+        if (updated.count !== 1) throw new SettingsChangedMutationError();
+      } else {
+        await tx.systemSettings.create({
+          data: {
+            id: 'default',
+            incidentRetentionDays: effective.incidentRetentionDays,
+            alertRetentionDays: effective.alertRetentionDays,
+            logRetentionDays: effective.logRetentionDays,
+            metricsRetentionDays: effective.metricsRetentionDays,
+            realTimeWindowDays: effective.realTimeWindowDays,
+            businessHoursTimeZone: effective.businessHoursTimeZone,
+          },
+        });
+      }
+
+      await logAudit(
+        {
+          action: 'retention.policy.updated',
+          entityType: 'USER',
+          entityId: admin.id,
+          actorId: admin.id,
+          oldValue: retentionAuditSnapshot(current),
+          newValue: retentionAuditSnapshot(effective),
+          details: { changedFields: Object.keys(updates) },
+        },
+        tx
+      );
+
+      const saved = await tx.systemSettings.findUniqueOrThrow({
+        where: { id: 'default' },
+        select: { updatedAt: true },
+      });
+      return saved.updatedAt.toISOString();
     });
 
+    clearRetentionPolicyCache();
     logger.info('[API] Retention policy updated', { userId: admin.id, updates });
-    return jsonOk({ success: true, policy: updatedPolicy });
+    return jsonOk({ success: true, policy: effective, updatedAt });
   } catch (error) {
+    if (
+      isSettingsChangedError(error) ||
+      (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+    ) {
+      return jsonSettingsChanged();
+    }
     if (isAppError(error)) return jsonError(error);
     logger.error('[API] Failed to update retention settings', { error });
     return jsonError('Failed to update settings', 500);
   }
 }
 
-/**
- * POST /api/settings/retention
- * Trigger data cleanup (dry run or actual)
- */
 export async function POST(request: NextRequest) {
   try {
     const admin = await assertAdmin();
@@ -170,12 +265,15 @@ export async function POST(request: NextRequest) {
 
     let policyOverride: Partial<RetentionPolicy> | undefined;
     if (payload.policy && typeof payload.policy === 'object') {
-      const parsed = RetentionUpdateSchema.safeParse(payload.policy);
+      const parsed = RetentionPolicyPatchSchema.safeParse(payload.policy);
       if (!parsed.success) {
         return jsonError(retentionValidationError(parsed.error), undefined, {
           issues: parsed.error.issues,
         });
       }
+      const current = await getRetentionPolicy();
+      const effective = { ...current, ...parsed.data };
+      validateEffectivePolicy(effective);
       policyOverride = parsed.data;
     }
 
@@ -200,9 +298,7 @@ export async function POST(request: NextRequest) {
     return jsonOk({ success: true, dryRun, result });
   } catch (error) {
     if (isAppError(error)) return jsonError(error);
-    if (error instanceof CleanupConflictError) {
-      return jsonError(error.message, error.status);
-    }
+    if (error instanceof CleanupConflictError) return jsonError(error.message, error.status);
     logger.error('[API] Data cleanup failed', { error });
     return jsonError('Failed to execute cleanup', 500);
   }

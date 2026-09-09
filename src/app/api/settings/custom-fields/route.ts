@@ -8,6 +8,7 @@ import { AppError, isAppError } from '@/lib/errors';
 import { prismaToAppError } from '@/lib/prisma-errors';
 import { CustomFieldCreateSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { emitAuditEvent } from '@/lib/audit';
 import type { Prisma } from '@prisma/client';
 
 const CUSTOM_FIELD_KEY_CONFLICT = {
@@ -18,6 +19,8 @@ const CUSTOM_FIELD_KEY_CONFLICT = {
     { field: 'key', code: 'duplicate', message: 'A custom field with this key already exists' },
   ],
 };
+
+const CUSTOM_FIELD_ORDER_LOCK = 'settings:custom-fields:order';
 
 /**
  * Create Custom Field
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
       return jsonError(new AppError({ code: 'AUTHENTICATION_REQUIRED' }));
     }
 
-    await assertAdmin();
+    const actor = await assertAdmin();
 
     let body: unknown;
     try {
@@ -57,28 +60,56 @@ export async function POST(req: NextRequest) {
     }
     const { name, key, type, required, defaultValue, options, showInList } = parsed.data;
 
-    const existing = await prisma.customField.findUnique({ where: { key } });
-    if (existing) {
-      return jsonError(new AppError(CUSTOM_FIELD_KEY_CONFLICT));
-    }
+    const customField = await prisma.$transaction(async tx => {
+      // Serialize the read-next-order/create sequence so concurrent admins cannot
+      // silently assign the same ordering slot.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${CUSTOM_FIELD_ORDER_LOCK}, 0))`;
 
-    const maxOrder = await prisma.customField.aggregate({ _max: { order: true } });
+      const existing = await tx.customField.findUnique({ where: { key } });
+      if (existing) {
+        throw new AppError(CUSTOM_FIELD_KEY_CONFLICT);
+      }
 
-    const fieldData: Prisma.CustomFieldCreateInput = {
-      name,
-      key,
-      type,
-      required: required || false,
-      defaultValue: defaultValue || null,
-      showInList: showInList || false,
-      order: (maxOrder._max.order || 0) + 1,
-    };
+      const maxOrder = await tx.customField.aggregate({ _max: { order: true } });
 
-    if (options !== undefined && options !== null) {
-      fieldData.options = options as Prisma.InputJsonValue;
-    }
+      const fieldData: Prisma.CustomFieldCreateInput = {
+        name,
+        key,
+        type,
+        required: required || false,
+        defaultValue: defaultValue || null,
+        showInList: showInList || false,
+        order: (maxOrder._max.order || 0) + 1,
+      };
 
-    const customField = await prisma.customField.create({ data: fieldData });
+      if (options !== undefined && options !== null) {
+        fieldData.options = options as Prisma.InputJsonValue;
+      }
+
+      const created = await tx.customField.create({ data: fieldData });
+
+      await emitAuditEvent(
+        {
+          action: 'custom_field.created',
+          source: 'UI',
+          target: { type: 'CUSTOM_FIELD', id: created.id },
+          actor: { type: 'USER', id: actor.id, email: actor.email, name: actor.name },
+          newValue: {
+            name: created.name,
+            key: created.key,
+            type: created.type,
+            required: created.required,
+            defaultValue: created.defaultValue,
+            options: created.options as Prisma.InputJsonValue,
+            showInList: created.showInList,
+            order: created.order,
+          },
+        },
+        tx
+      );
+
+      return created;
+    });
 
     logger.info('api.custom_fields.created', { customFieldId: customField.id });
     return jsonOk({ success: true, field: customField }, 200);

@@ -8,6 +8,7 @@ import { AppError, isAppError } from '@/lib/errors';
 import { prismaToAppError } from '@/lib/prisma-errors';
 import { CustomFieldUpdateSchema } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { emitAuditEvent } from '@/lib/audit';
 import { Prisma } from '@prisma/client';
 
 /**
@@ -21,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return jsonError(new AppError({ code: 'AUTHENTICATION_REQUIRED' }));
     }
 
-    await assertAdmin();
+    const actor = await assertAdmin();
     const { id } = await params;
 
     let body: unknown;
@@ -60,9 +61,44 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updateData.options = (options as Prisma.InputJsonValue) ?? Prisma.DbNull;
     }
 
-    const updatedField = await prisma.customField.update({
-      where: { id },
-      data: updateData,
+    const updatedField = await prisma.$transaction(async tx => {
+      const existing = await tx.customField.findUnique({ where: { id } });
+      if (!existing) {
+        throw new AppError({ code: 'RESOURCE_NOT_FOUND', userMessage: 'Custom field not found.' });
+      }
+
+      const updated = await tx.customField.update({
+        where: { id },
+        data: updateData,
+      });
+
+      await emitAuditEvent(
+        {
+          action: 'custom_field.updated',
+          source: 'UI',
+          target: { type: 'CUSTOM_FIELD', id },
+          actor: { type: 'USER', id: actor.id, email: actor.email, name: actor.name },
+          oldValue: {
+            name: existing.name,
+            required: existing.required,
+            defaultValue: existing.defaultValue,
+            options: existing.options as Prisma.InputJsonValue,
+            showInList: existing.showInList,
+            order: existing.order,
+          },
+          newValue: {
+            name: updated.name,
+            required: updated.required,
+            defaultValue: updated.defaultValue,
+            options: updated.options as Prisma.InputJsonValue,
+            showInList: updated.showInList,
+            order: updated.order,
+          },
+        },
+        tx
+      );
+
+      return updated;
     });
 
     logger.info('api.custom_fields.updated', { customFieldId: id });
@@ -93,11 +129,39 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return jsonError(new AppError({ code: 'AUTHENTICATION_REQUIRED' }));
     }
 
-    await assertAdmin();
+    const actor = await assertAdmin();
     const { id } = await params;
 
-    await prisma.customFieldValue.deleteMany({ where: { customFieldId: id } });
-    await prisma.customField.delete({ where: { id } });
+    await prisma.$transaction(async tx => {
+      const existing = await tx.customField.findUnique({ where: { id } });
+      if (!existing) {
+        throw new AppError({ code: 'RESOURCE_NOT_FOUND', userMessage: 'Custom field not found.' });
+      }
+
+      await tx.customFieldValue.deleteMany({ where: { customFieldId: id } });
+      await tx.customField.delete({ where: { id } });
+
+      await emitAuditEvent(
+        {
+          action: 'custom_field.deleted',
+          source: 'UI',
+          target: { type: 'CUSTOM_FIELD', id },
+          actor: { type: 'USER', id: actor.id, email: actor.email, name: actor.name },
+          oldValue: {
+            name: existing.name,
+            key: existing.key,
+            type: existing.type,
+            required: existing.required,
+            defaultValue: existing.defaultValue,
+            options: existing.options as Prisma.InputJsonValue,
+            showInList: existing.showInList,
+            order: existing.order,
+          },
+          metadata: { cascade: 'customFieldValue' },
+        },
+        tx
+      );
+    });
 
     logger.info('api.custom_fields.deleted', { customFieldId: id });
     return jsonOk({ success: true }, 200);

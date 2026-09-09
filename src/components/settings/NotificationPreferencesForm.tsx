@@ -37,23 +37,6 @@ export default function NotificationPreferencesForm({
   const [phone, setPhone] = useState(initialPhoneNumber || '');
   const [testingChannel, setTestingChannel] = useState<string | null>(null);
 
-  const handleSendTest = async (channel: 'EMAIL' | 'SMS' | 'WHATSAPP' | 'PUSH') => {
-    setTestingChannel(channel);
-    try {
-      const res = await sendTestNotification(channel);
-      if (res.success) {
-        toast.success(`Test ${channel.toLowerCase()} notification dispatched!`);
-      } else {
-        toast.error(res.error || `Failed to send test ${channel.toLowerCase()}`);
-      }
-    } catch (_e) {
-      toast.error(`Error sending test ${channel.toLowerCase()} notification`);
-    } finally {
-      setTestingChannel(null);
-    }
-  };
-
-  // Autosave notification channels directly to user account
   const handleAutoSave = useCallback(
     async (data: {
       email: boolean;
@@ -75,12 +58,12 @@ export default function NotificationPreferencesForm({
       if (result.success) {
         router.refresh();
         return { success: true };
-      } else {
-        return {
-          success: false,
-          error: result.error || 'Failed to save notification preferences',
-        };
       }
+
+      return {
+        success: false,
+        error: result.error || 'Failed to save notification preferences',
+      };
     },
     [router]
   );
@@ -93,12 +76,41 @@ export default function NotificationPreferencesForm({
     phoneNumber: phone,
   };
 
-  const { status: saveStatus, error: saveError } = useAutosave({
+  const {
+    status: saveStatus,
+    error: saveError,
+    retry,
+    hasPendingChanges,
+    isSaving,
+  } = useAutosave({
     data: currentSettings,
     onSave: handleAutoSave,
     delay: 500,
     enabled: true,
   });
+
+  const testBlocked = hasPendingChanges || isSaving || saveStatus === 'error';
+
+  const handleSendTest = async (channel: 'EMAIL' | 'SMS' | 'WHATSAPP' | 'PUSH') => {
+    if (testBlocked) {
+      toast.error('Finish saving these notification changes before sending a test.');
+      return;
+    }
+
+    setTestingChannel(channel);
+    try {
+      const res = await sendTestNotification(channel);
+      if (res.success) {
+        toast.success(`Test ${channel.toLowerCase()} notification dispatched!`);
+      } else {
+        toast.error(res.error || `Failed to send test ${channel.toLowerCase()}`);
+      }
+    } catch (_e) {
+      toast.error(`Error sending test ${channel.toLowerCase()} notification`);
+    } finally {
+      setTestingChannel(null);
+    }
+  };
 
   const phoneRow = (
     <SettingsRow
@@ -116,14 +128,16 @@ export default function NotificationPreferencesForm({
     </SettingsRow>
   );
 
+  const testButtonDisabled = (channel: string) => testBlocked || testingChannel === channel;
+
   return (
     <SettingsSection
       title="Notification Channels"
       description="Configure how you receive incident alerts and team updates across your devices"
-      action={<SaveIndicator status={saveStatus} error={saveError} />}
+      action={<SaveIndicator status={saveStatus} error={saveError} onRetry={retry} />}
       footer={
         <p className="text-xs text-muted-foreground">
-          Auto-saved · Critical alerts route according to your active channels
+          Auto-saved · Tests are enabled only after the visible configuration has been persisted
         </p>
       }
     >
@@ -136,7 +150,7 @@ export default function NotificationPreferencesForm({
                 variant="outline"
                 size="sm"
                 onClick={() => handleSendTest('EMAIL')}
-                disabled={testingChannel === 'EMAIL'}
+                disabled={testButtonDisabled('EMAIL')}
                 className="h-7 text-xs gap-1.5 px-2.5 font-medium"
               >
                 {testingChannel === 'EMAIL' ? (
@@ -162,7 +176,7 @@ export default function NotificationPreferencesForm({
                 variant="outline"
                 size="sm"
                 onClick={() => handleSendTest('SMS')}
-                disabled={testingChannel === 'SMS'}
+                disabled={testButtonDisabled('SMS')}
                 className="h-7 text-xs gap-1.5 px-2.5 font-medium"
               >
                 {testingChannel === 'SMS' ? (
@@ -190,7 +204,7 @@ export default function NotificationPreferencesForm({
                 variant="outline"
                 size="sm"
                 onClick={() => handleSendTest('PUSH')}
-                disabled={testingChannel === 'PUSH'}
+                disabled={testButtonDisabled('PUSH')}
                 className="h-7 text-xs gap-1.5 px-2.5 font-medium"
               >
                 {testingChannel === 'PUSH' ? (
@@ -216,7 +230,7 @@ export default function NotificationPreferencesForm({
                 variant="outline"
                 size="sm"
                 onClick={() => handleSendTest('WHATSAPP')}
-                disabled={testingChannel === 'WHATSAPP'}
+                disabled={testButtonDisabled('WHATSAPP')}
                 className="h-7 text-xs gap-1.5 px-2.5 font-medium"
               >
                 {testingChannel === 'WHATSAPP' ? (

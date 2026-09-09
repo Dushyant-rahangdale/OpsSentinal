@@ -83,7 +83,7 @@ export default function ProfileHeroBanner({ user, stats, localTime }: ProfileHer
 
       startTransition(async () => {
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('avatar', file);
 
         const result = await updateProfile({ error: null, success: false }, formData);
 

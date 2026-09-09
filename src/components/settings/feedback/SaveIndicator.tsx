@@ -1,16 +1,18 @@
 'use client';
 
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, RotateCcw, XCircle } from 'lucide-react';
 import { type SaveStatus } from '@/lib/hooks/use-autosave';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/shadcn/button';
 
 interface SaveIndicatorProps {
   status: SaveStatus;
   error?: string | null;
+  onRetry?: () => void;
   className?: string;
 }
 
-export function SaveIndicator({ status, error, className }: SaveIndicatorProps) {
+export function SaveIndicator({ status, error, onRetry, className }: SaveIndicatorProps) {
   if (status === 'idle') return null;
 
   return (
@@ -43,6 +45,18 @@ export function SaveIndicator({ status, error, className }: SaveIndicatorProps) 
         <>
           <XCircle className="h-4 w-4" />
           <span>{error || 'Failed to save'}</span>
+          {onRetry && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onRetry}
+              className="h-7 gap-1 px-2 text-xs"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Retry
+            </Button>
+          )}
         </>
       )}
     </div>

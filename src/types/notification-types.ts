@@ -86,12 +86,13 @@ export interface NotificationSettings {
 }
 
 // Provider Configuration (used by SystemNotificationSettings)
+// Server actions serialize updatedAt before crossing the server/client boundary.
 export interface ProviderRecord {
   id: string;
   provider: string;
   enabled: boolean;
   config: Record<string, unknown>;
-  updatedAt: Date | string;
+  updatedAt: string;
 }
 
 // Form Field Configuration
