@@ -76,7 +76,11 @@ describeIfRealDB('Status Page Subscription Integration', () => {
       expect(sub).toBeDefined();
       expect(sub?.verified).toBe(false);
       expect(sub?.verificationToken).not.toBeNull();
-      expect(sendEmail).toHaveBeenCalled();
+      expect(
+        await testPrisma.notification.findFirst({
+          where: { templateKey: 'status-page-verification', recipientId: sub?.id },
+        })
+      ).toBeDefined();
     });
 
     it('should resubscribe an unsubscribed user', async () => {

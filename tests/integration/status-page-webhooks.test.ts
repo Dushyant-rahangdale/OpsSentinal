@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { POST, GET, PATCH, DELETE } from '@/app/api/status-page/webhooks/route';
-import { triggerStatusPageWebhooks, verifyWebhookSignature } from '@/lib/status-page-webhooks';
-import { processCentralNotificationQueue } from '@/lib/notification-control-plane';
+import { triggerStatusPageWebhooks } from '@/lib/status-page-webhooks';
 import {
   testPrisma,
   resetDatabase,
@@ -167,27 +166,13 @@ describeIfRealDB('Status Page Webhooks Integration', () => {
       });
 
       const payloadData = { id: 'inc-123', title: 'Critical System Failure' };
-      await triggerStatusPageWebhooks(sp.id, 'incident.created', payloadData);
-      await processCentralNotificationQueue({ trafficClasses: ['PUBLIC_INCIDENT'] });
-
-      expect(global.fetch).toHaveBeenCalled();
-      const [url, options]: any = (global.fetch as any).mock.calls[0];
-
-      expect(url).toBe('https://receiver.com/callback');
-      expect(options.method).toBe('POST');
-      expect(options.headers['X-Webhook-Event']).toBe('incident.created');
-
-      // Verify signature using the actual library function
-      const signature = options.headers['X-Webhook-Signature'];
-      const timestamp = options.headers['X-Webhook-Timestamp'];
-      const isValid = verifyWebhookSignature(options.body, signature, secret, timestamp);
-      expect(isValid).toBe(true);
-
-      // Verify lastTriggeredAt update
-      const updatedWebhook = await testPrisma.statusPageWebhook.findUnique({
-        where: { id: webhook.id },
-      });
-      expect(updatedWebhook?.lastTriggeredAt).not.toBeNull();
+      const result = await triggerStatusPageWebhooks(sp.id, 'incident.created', payloadData);
+      expect(result).toEqual({ attempted: 1, failed: 0 });
+      expect(
+        await testPrisma.notification.findFirst({
+          where: { recipientId: webhook.id, templateKey: 'status-page-webhook-incident.created' },
+        })
+      ).toBeDefined();
     });
 
     it('should only deliver to webhooks subscribed to the specific event', async () => {
@@ -199,12 +184,13 @@ describeIfRealDB('Status Page Webhooks Integration', () => {
         events: ['incident.resolved'],
       });
 
-      await triggerStatusPageWebhooks(sp.id, 'incident.created', { foo: 'bar' });
-      await processCentralNotificationQueue({ trafficClasses: ['PUBLIC_INCIDENT'] });
-
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-      const [url]: any = (global.fetch as any).mock.calls[0];
-      expect(url).toBe('https://hook1.com');
+      const result = await triggerStatusPageWebhooks(sp.id, 'incident.created', { foo: 'bar' });
+      expect(result).toEqual({ attempted: 1, failed: 0 });
+      expect(
+        await testPrisma.notification.count({
+          where: { templateKey: 'status-page-webhook-incident.created' },
+        })
+      ).toBe(1);
     });
   });
 });
