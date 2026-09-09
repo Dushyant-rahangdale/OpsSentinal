@@ -44,7 +44,10 @@ vi.mock('@/lib/notification-providers', async importOriginal => {
 
 import { getServerSession } from 'next-auth';
 import { sendEmail } from '@/lib/email';
-import { processCentralNotificationQueue } from '@/lib/notification-control-plane';
+import {
+  createCentralNotificationIntent,
+  processCentralNotificationQueue,
+} from '@/lib/notification-control-plane';
 import { ingestNotificationProviderFeedback } from '@/lib/notification-provider-feedback';
 
 describeIfRealDB('Status Page Subscription Integration', () => {
@@ -151,14 +154,27 @@ describeIfRealDB('Status Page Subscription Integration', () => {
         unsubscribedAt,
         verified: false,
       });
-      await testPrisma.notification.create({
-        data: {
-          channel: 'EMAIL',
-          category: 'STATUS_PAGE',
-          recipientType: 'SUBSCRIBER',
-          recipientId: sub.id,
-          providerMessageId: 'provider-message-delayed-complaint',
+      const notification = await createCentralNotificationIntent({
+        category: 'STATUS_PAGE',
+        channel: 'EMAIL',
+        recipientType: 'SUBSCRIBER',
+        recipientId: sub.id,
+        recipientAddress: 'complaint@example.com',
+        templateKey: 'status-page-update',
+        sourceType: 'STATUS_PAGE',
+        sourceId: sp.id,
+        eventKey: 'delayed-complaint',
+        displayMessage: 'Status page update',
+        payload: {
+          kind: 'EMAIL',
+          to: 'complaint@example.com',
+          subject: 'Status page update',
+          html: '<p>Status page update</p>',
         },
+      });
+      await testPrisma.notification.update({
+        where: { id: notification.id },
+        data: { providerMessageId: 'provider-message-delayed-complaint' },
       });
       const complainedAt = new Date('2026-09-09T09:05:00.000Z');
 
