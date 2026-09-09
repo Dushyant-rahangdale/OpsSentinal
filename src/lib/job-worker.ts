@@ -161,8 +161,14 @@ async function runOnce(): Promise<void> {
         workerConfig.batchSize,
         workerConfig.concurrency
       );
-      lastSuccessAt = new Date();
-      lastError = null;
+      const failed = notifications.failed + incidentFanout.failed + announcementFanout.failed;
+      if (failed > 0) {
+        lastError = `${failed} bulk delivery job(s) failed`;
+        logger.warn('[JobWorker] Bulk lane degraded', { failed });
+      } else {
+        lastSuccessAt = new Date();
+        lastError = null;
+      }
       const busy = notifications.processed + incidentFanout.total + announcementFanout.total > 0;
       scheduleNextRun(busy ? workerConfig.busyPollMs : withIdleJitter(workerConfig.idlePollMs));
       return;
@@ -173,15 +179,22 @@ async function runOnce(): Promise<void> {
         batchSize: Math.min(workerConfig.batchSize, 50),
         concurrency: Math.min(workerConfig.concurrency, 10),
       });
-      const { processCentralNotificationQueue } = await import('./notification-control-plane');
-      const notifications = await processCentralNotificationQueue({
-        trafficClasses: ['CRITICAL', 'TRANSACTIONAL'],
-        batchSize: workerConfig.batchSize,
-        concurrency: workerConfig.concurrency,
-      });
-      lastSuccessAt = new Date();
-      lastError = null;
-      const busy = criticalEscalationCycleWasBusy(escalation) || notifications.processed > 0;
+      const notifications = await runCriticalNotificationCycle();
+      const laneErrors = [...escalation.errors, ...notifications.errors];
+      if (escalation.jobsFailed > 0)
+        laneErrors.push(`${escalation.jobsFailed} escalation job(s) failed`);
+      if (notifications.centralFailed > 0)
+        laneErrors.push(`${notifications.centralFailed} central notification(s) failed`);
+      if (laneErrors.length > 0) {
+        lastError = laneErrors.join('; ');
+        logger.warn('[JobWorker] Critical lane degraded', { errors: laneErrors });
+      } else {
+        lastSuccessAt = new Date();
+        lastError = null;
+      }
+      const busy =
+        criticalEscalationCycleWasBusy(escalation) ||
+        criticalNotificationCycleWasBusy(notifications);
       scheduleNextRun(busy ? workerConfig.busyPollMs : withIdleJitter(workerConfig.idlePollMs));
       return;
     }

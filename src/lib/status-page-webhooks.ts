@@ -292,7 +292,8 @@ export async function triggerStatusPageWebhooks(
               sourceId: webhook.id,
               eventKey: effectiveDeliveryKey,
               displayMessage: `Status-page webhook: ${event}`,
-              ...statusNotificationPriority(event.replace(/^incident\./, '')),
+              trafficClass: 'TRANSACTIONAL',
+              priority: statusNotificationPriority(event.replace(/^incident\./, '')).priority,
               payload: {
                 kind: 'STATUS_PAGE_WEBHOOK',
                 url: webhook.url,

@@ -32,10 +32,19 @@ export async function GET(req: NextRequest) {
 export async function getStatusRssResponse(req: NextRequest, slug?: string) {
   try {
     const projected = await getStatusPageSnapshotByRoute(slug || 'default');
+    if (!projected.pageId) {
+      return new NextResponse('Status page not found', { status: 404 });
+    }
     const statusPage = projected.snapshot?.page;
 
     if (!statusPage) {
-      return new NextResponse('Status page not found', { status: 404 });
+      return new NextResponse('Published status information is temporarily unavailable', {
+        status: 503,
+        headers: {
+          'Retry-After': '30',
+          'Cache-Control': 'public, max-age=5, stale-if-error=30',
+        },
+      });
     }
 
     const authResult = await authorizeStatusApiRequest(req, statusPage.id, {

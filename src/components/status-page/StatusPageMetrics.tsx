@@ -136,17 +136,23 @@ export default function StatusPageMetrics({
     // Use current date for calculation
     const periodEnd = new Date();
 
-    return services.map(service => ({
+    return services
+      .filter(service => !precomputedUptime || precomputedUptime[service.id] !== undefined)
+      .map(service => ({
       service: service.name,
       thirtyDays:
-        precomputedUptime30?.[service.id] === undefined
+        precomputedUptime30?.[service.id] === undefined && !precomputedUptime
           ? calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd)
-          : { uptime: precomputedUptime30[service.id], downtime: 0, incidents: 0 },
+          : {
+              uptime: precomputedUptime30?.[service.id] ?? precomputedUptime?.[service.id] ?? 0,
+              downtime: 0,
+              incidents: 0,
+            },
       ninetyDays:
         precomputedUptime?.[service.id] === undefined
           ? calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd)
           : { uptime: precomputedUptime[service.id], downtime: 0, incidents: 0 },
-    }));
+      }));
   }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo, precomputedUptime, precomputedUptime30]);
 
   if (services.length === 0) return null;

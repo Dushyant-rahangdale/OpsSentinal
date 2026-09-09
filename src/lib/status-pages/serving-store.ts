@@ -108,8 +108,10 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
     if (url.origin !== this.origin.origin) throw new Error('Serving store request escaped its origin');
     const { assertSafeOutboundUrl, safeOutboundFetch } = await import('@/lib/network-security');
     await assertSafeOutboundUrl(url.toString());
+    const signal = init?.signal ?? AbortSignal.timeout(10_000);
     return safeOutboundFetch(url.toString(), {
       ...init,
+      signal,
       headers: {
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json',

@@ -43,19 +43,28 @@ export default function NotificationCapacityOverview({
 }) {
   const [paused, setPaused] = useState(initialPaused);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const togglePause = async () => {
     setSaving(true);
-    const response = await fetch('/api/admin/notifications/capacity', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bulkPaused: !paused }),
-    });
-    if (response.ok) setPaused(value => !value);
-    setSaving(false);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/notifications/capacity', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bulkPaused: !paused }),
+      });
+      if (!response.ok) throw new Error('Capacity update failed');
+      setPaused(value => !value);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Capacity update failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="space-y-4">
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <div className="grid gap-3 md:grid-cols-3">
         <Card className="border-border/80 shadow-xs">
           <CardHeader className="pb-2">
@@ -115,7 +124,7 @@ export default function NotificationCapacityOverview({
         <CardHeader>
           <CardTitle className="text-sm">Provider capacity</CardTitle>
           <CardDescription>
-            Configured ceilings, protected bulk share, and current adaptive rate.
+            Configured ceilings and protected bulk share. Worker metrics report live throttling.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -127,7 +136,7 @@ export default function NotificationCapacityOverview({
               </div>
               <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Effective</span>
+                  <span className="text-muted-foreground">Configured</span>
                   <div className="font-bold">{item.effectiveRatePerSecond}/s</div>
                 </div>
                 <div>

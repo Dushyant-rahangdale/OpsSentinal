@@ -214,7 +214,7 @@ export async function buildStatusPageSnapshot(
   });
   const impactStates = Array.from(impactByService.values());
 
-  const statusHistory = Object.fromEntries(
+  const statusHistory = visibility.showUptime ? Object.fromEntries(
     ids.map(serviceId => {
       const affected = new Map(
         affectedHistoryDays
@@ -234,7 +234,7 @@ export async function buildStatusPageSnapshot(
       }
       return [serviceId, days.slice(-90)];
     })
-  ) as Record<string, StatusHistoryDay[]>;
+  ) as Record<string, StatusHistoryDay[]> : undefined;
 
   return {
     schemaVersion: 2,
@@ -328,7 +328,8 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
     revoked: false,
     snapshotKey: `${result.revision}.json`,
   });
-  await store.publishRoute(result.snapshot.page?.slug || 'default', pageId);
+  const slug = result.snapshot.page?.slug;
+  if (slug) await store.publishRoute(slug, pageId);
   if (result.snapshot.page?.isDefault) await store.publishRoute('default', pageId);
   return true;
 }
@@ -396,6 +397,16 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
   const store = getStatusPageServingStore();
   const manifest = await store.readManifest(pageId);
   if (!manifest?.enabled || manifest.revoked) return { snapshot: null, stale: true };
+  const [revision] = await prisma.$queryRaw<
+    Array<{ revision: bigint; publishedRevision: bigint }>
+  >`SELECT "revision", "publishedRevision" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
+  if (
+    !revision ||
+    revision.revision !== revision.publishedRevision ||
+    manifest.revision !== revision.publishedRevision.toString()
+  ) {
+    return { snapshot: null, stale: true };
+  }
   const payload = await store.readSnapshot(pageId, manifest.revision);
   const current = parseStatusPageSnapshot(pageId, payload);
   return current ? { snapshot: current, stale: false } : { snapshot: null, stale: true };
@@ -404,5 +415,7 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
 export async function getStatusPageSnapshotByRoute(routeKey: string) {
   const store = getStatusPageServingStore();
   const pageId = await store.resolveRoute(routeKey || 'default');
-  return pageId ? getStatusPageSnapshot(pageId) : { snapshot: null, stale: true };
+  return pageId
+    ? { pageId, ...(await getStatusPageSnapshot(pageId)) }
+    : { pageId: null, snapshot: null, stale: true };
 }

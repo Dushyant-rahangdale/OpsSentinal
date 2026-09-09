@@ -26,10 +26,15 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
   const projectionStartedAt = performance.now();
   try {
     const projected = await getStatusPageSnapshotByRoute(slug || 'default');
-    const statusPage = projected.snapshot?.page;
-
-    if (!statusPage) {
+    if (!projected.pageId) {
       return jsonError('Status page not found or disabled', 404);
+    }
+    const statusPage = projected.snapshot?.page;
+    if (!statusPage) {
+      return jsonError('Published status information is temporarily unavailable', 503, undefined, {
+        'Retry-After': '30',
+        'Cache-Control': 'public, max-age=5, stale-if-error=30',
+      });
     }
 
     const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
@@ -90,11 +95,6 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       }
       return jsonOk(responseData, 200, { ...headers, ETag: etag });
     }
-
-    return jsonError('Published status information is temporarily unavailable', 503, undefined, {
-      'Retry-After': '30',
-      'Cache-Control': 'public, max-age=5, stale-if-error=30',
-    });
 
   } catch (error: unknown) {
     logger.error('api.status.error', {

@@ -48,23 +48,6 @@ const prismaClientSingleton = () => {
   });
 };
 
-function getRolePoolSize(role: string | undefined): string | undefined {
-  switch (role?.toUpperCase().replaceAll('-', '_')) {
-    case 'WEB':
-      return process.env.DATABASE_POOL_SIZE_WEB;
-    case 'SCHEDULER':
-      return process.env.DATABASE_POOL_SIZE_SCHEDULER;
-    case 'CRITICAL_WORKER':
-      return process.env.DATABASE_POOL_SIZE_CRITICAL_WORKER;
-    case 'BULK_WORKER':
-      return process.env.DATABASE_POOL_SIZE_BULK_WORKER;
-    case 'STATUS_PROJECTOR':
-      return process.env.DATABASE_POOL_SIZE_STATUS_PROJECTOR;
-    default:
-      return undefined;
-  }
-}
-
 declare global {
   var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
 }

@@ -62,20 +62,21 @@ export async function acquireProviderAdmission(
     capacity.quotaBlockSize,
     bulk ? capacity.bulkRatePerSecond : capacity.effectiveRatePerSecond
   );
+  await prisma.$executeRaw(Prisma.sql`
+    INSERT INTO "ProviderQuotaWindow"
+      ("id", "providerKey", "channel", "windowStart", "globalUsed", "bulkUsed", "expiresAt", "updatedAt")
+    VALUES (${id}, ${providerKey}, ${scope}, ${windowStart}, 0, 0, ${expiresAt}, NOW())
+    ON CONFLICT ("id") DO NOTHING
+  `);
   const rows = await prisma.$queryRaw<Array<{ granted: number }>>(Prisma.sql`
-    WITH ensured AS (
-      INSERT INTO "ProviderQuotaWindow"
-        ("id", "providerKey", "channel", "windowStart", "globalUsed", "bulkUsed", "expiresAt", "updatedAt")
-      VALUES (${id}, ${providerKey}, ${scope}, ${windowStart}, 0, 0, ${expiresAt}, NOW())
-      ON CONFLICT ("id") DO UPDATE SET "expiresAt" = EXCLUDED."expiresAt", "updatedAt" = NOW()
-      RETURNING *
-    ), capacity AS (
+    WITH capacity AS (
       SELECT LEAST(
         ${requested},
         GREATEST(0, ${capacity.effectiveRatePerSecond} - "globalUsed"),
         ${bulk ? Prisma.sql`GREATEST(0, ${capacity.bulkRatePerSecond} - "bulkUsed")` : Prisma.sql`${requested}`}
       )::integer AS granted
-      FROM ensured
+      FROM "ProviderQuotaWindow"
+      WHERE "id" = ${id}
     )
     UPDATE "ProviderQuotaWindow" AS quota_window
     SET "globalUsed" = quota_window."globalUsed" + capacity.granted,

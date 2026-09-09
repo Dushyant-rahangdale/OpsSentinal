@@ -1,23 +1,16 @@
 import prisma from './prisma';
 import { logger } from './logger';
 import { decryptProviderConfig } from './encrypted-provider-config';
-import type { NotificationProvider } from '@prisma/client';
-
-const PROVIDER_CACHE_TTL_MS = 30_000;
-let providerCache: { expiresAt: number; records: Map<string, NotificationProvider> } | undefined;
 
 async function getProviderRecords() {
-  const now = Date.now();
-  if (providerCache && providerCache.expiresAt > now) return providerCache.records;
-  const records = new Map(
+  return new Map(
     (await prisma.notificationProvider.findMany()).map(record => [record.provider, record])
   );
-  providerCache = { expiresAt: now + PROVIDER_CACHE_TTL_MS, records };
-  return records;
 }
 
 export function invalidateNotificationProviderCache() {
-  providerCache = undefined;
+  // Kept for writer compatibility. Provider state is resolved from the shared
+  // database on every read so disabling credentials takes effect immediately.
 }
 
 /**

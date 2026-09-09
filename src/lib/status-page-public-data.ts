@@ -86,7 +86,11 @@ export function serializePublicStatusIncident(
       ...(visibility.showServiceRegion ? { region: incident.service.region ?? null } : {}),
     };
   }
-  if (visibility.showIncidentId && incident.events?.length) {
+  if (
+    visibility.showIncidentId &&
+    visibility.showIncidentDescription &&
+    incident.events?.length
+  ) {
     result.events = incident.events.map(event => ({
       id: event.id,
       message: event.message,

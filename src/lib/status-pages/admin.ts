@@ -63,8 +63,7 @@ export async function makeDefaultStatusPage(statusPageId: string) {
 }
 
 export async function deleteStatusPage(statusPageId: string, replacementDefaultId?: string) {
-  await getStatusPageServingStore().revoke(statusPageId);
-  return prisma.$transaction(async tx => {
+  await prisma.$transaction(async tx => {
     await lockLifecycle(tx);
     const page = await requireStatusPageForAdmin(statusPageId, tx);
     const count = await tx.statusPage.count();
@@ -92,4 +91,5 @@ export async function deleteStatusPage(statusPageId: string, replacementDefaultI
 
     await tx.statusPage.delete({ where: { id: statusPageId } });
   });
+  await getStatusPageServingStore().revoke(statusPageId);
 }

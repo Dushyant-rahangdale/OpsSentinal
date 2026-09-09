@@ -176,6 +176,7 @@ export async function notifyStatusPageSubscribers(
         );
         let pageSent = 0;
         let pageFailed = 0;
+        let pageError: unknown;
 
         try {
           const result = await createCentralNotificationIntentsBatch(
@@ -213,14 +214,20 @@ export async function notifyStatusPageSubscribers(
             }))
           );
           pageSent = result.created;
-        } catch {
+        } catch (error) {
           pageFailed = subscriptions.length;
+          pageError = error;
+          logger.error('status_page.incident_fanout_page_failed', {
+            statusPageId: page.id,
+            incidentId,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
         sent += pageSent;
         failed += pageFailed;
         if (pageFailed > 0) {
           throw new Error(
-            `Failed to materialize ${pageFailed} notification intents; retrying page`
+            `Failed to materialize ${pageFailed} notification intents; retrying page: ${pageError instanceof Error ? pageError.message : String(pageError)}`
           );
         }
         cursor = subscriptions.at(-1)?.id;
@@ -625,6 +632,7 @@ export async function notifyStatusPageSubscribersAnnouncement(
       );
       let pageSent = 0;
       let pageFailed = 0;
+      let pageError: unknown;
 
       try {
         const result = await createCentralNotificationIntentsBatch(
@@ -658,13 +666,21 @@ export async function notifyStatusPageSubscribersAnnouncement(
           }))
         );
         pageSent = result.created;
-      } catch {
+      } catch (error) {
         pageFailed = subscriptions.length;
+        pageError = error;
+        logger.error('status_page.announcement_fanout_page_failed', {
+          statusPageId: page.id,
+          announcementId: announcement.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
       sent += pageSent;
       failed += pageFailed;
       if (pageFailed > 0) {
-        throw new Error(`Failed to materialize ${pageFailed} notification intents; retrying page`);
+        throw new Error(
+          `Failed to materialize ${pageFailed} notification intents; retrying page: ${pageError instanceof Error ? pageError.message : String(pageError)}`
+        );
       }
       cursor = subscriptions.at(-1)?.id;
       if (cursor) {
