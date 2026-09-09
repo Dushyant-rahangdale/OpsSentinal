@@ -138,6 +138,18 @@ export interface PublicStatusPageSnapshot {
     statusApiRateLimitWindowSec: number;
   };
   status: PublicServiceStatus;
+  /**
+   * Severity and data confidence reported separately, so a service we cannot verify neither
+   * masks a real outage nor is silently counted as healthy.
+   */
+  overall: {
+    status: PublicServiceStatus;
+    knownServiceCount: number;
+    unknownServiceCount: number;
+    confidence: 'complete' | 'partial' | 'none';
+    headline: string;
+    note: string | null;
+  };
   services: PublicStatusService[];
   regions: PublicRegionStatus[];
   incidents: PublicIncident[];

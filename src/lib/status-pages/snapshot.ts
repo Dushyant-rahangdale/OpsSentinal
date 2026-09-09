@@ -20,6 +20,7 @@ import {
 import type { PublicStatusPageSnapshot } from './public-contract';
 import { aggregatePublicRegions, buildPublicHistorySegments } from './history';
 import {
+  deriveOverallPublicHealth,
   getWorstPublicStatus,
   normalizePublicStatus,
   publicStatusForIncidentUrgency,
@@ -228,7 +229,10 @@ export async function buildStatusPageSnapshot(
       statusApiRateLimitMax: page.statusApiRateLimitMax,
       statusApiRateLimitWindowSec: page.statusApiRateLimitWindowSec,
     },
+    // `status` keeps worst-rank-wins for existing consumers; `overall` carries the split between
+    // severity and confidence that the page header and summary panel render.
     status: getWorstPublicStatus(services.map(service => service.status)),
+    overall: deriveOverallPublicHealth(visibility.showServices ? services : []),
     services: visibility.showServices ? services : [],
     regions: visibility.showServices ? aggregatePublicRegions(services) : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
