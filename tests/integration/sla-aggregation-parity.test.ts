@@ -1,8 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { calculateSLAMetrics, checkIncidentSLA } from '@/lib/sla-server';
 import { projectIncidentSlaState } from '@/lib/incident-sla/state';
+import { resolveNewIncidentSlaContract } from '@/lib/incident-sla/contract';
 import { generateDailyRollup, queryRollupMetrics } from '@/lib/metric-rollup';
 import { clearRetentionPolicyCache } from '@/lib/retention-policy';
+import { applyIncidentCreation } from '@/lib/incidents/creation';
+import { resolveIncidentClassification } from '@/lib/incidents/classification';
 import { resetDatabase, testPrisma } from '../helpers/test-db';
 
 const describeIfRealDB =
@@ -162,4 +165,162 @@ describeIfRealDB('SLA aggregation threshold parity', { timeout: 60_000 }, () => 
     expect(compatible.ackSLA).toMatchObject({ breached: false, applicability: 'NOT_REQUIRED' });
     expect(historical.ackCompliance).toBeNull();
   });
+
+  it.each([
+    ['P1', 5, 60, 2, 30],
+    ['P2', 15, 240, 4, 45],
+    ['P3', 30, 480, 6, 60],
+    ['P4', 60, 1_440, 8, 90],
+    ['P5', 120, 2_880, 10, 120],
+  ] as const)(
+    '%s resolves, classifies, freezes, projects, and aggregates consistently',
+    async (
+      priority,
+      workspaceAckMinutes,
+      workspaceResolveMinutes,
+      serviceAckMinutes,
+      serviceResolveMinutes
+    ) => {
+      const service = await testPrisma.service.create({
+        data: { name: `Priority contract ${priority} ${crypto.randomUUID()}` },
+      });
+      const classificationDraft = await testPrisma.incidentClassificationPolicy.create({
+        data: {
+          scopeKey: 'workspace',
+          version: 2,
+          inheritWorkspace: false,
+          derivePriorityFromUrgency: false,
+          rules: {
+            create: [
+              {
+                matchType: 'ALERT_SEVERITY',
+                matchValue: 'critical',
+                priority,
+                urgency: 'HIGH',
+              },
+            ],
+          },
+        },
+      });
+      await testPrisma.incidentClassificationPolicy.update({
+        where: { id: classificationDraft.id },
+        data: { sealedAt: new Date() },
+      });
+
+      const workspaceContract = await testPrisma.$transaction(tx =>
+        resolveNewIncidentSlaContract(tx, { serviceId: service.id, priority, now: new Date() })
+      );
+      expect(workspaceContract).toMatchObject({
+        source: 'WORKSPACE_PRIORITY_OVERRIDE',
+        policyRule: priority,
+        ackTargetMs: workspaceAckMinutes * 60_000,
+        resolveTargetMs: workspaceResolveMinutes * 60_000,
+      });
+
+      const servicePolicy = await testPrisma.incidentSlaPolicy.create({
+        data: {
+          scopeKey: `service:${service.id}`,
+          version: 1,
+          inheritWorkspace: true,
+          rules: {
+            create: {
+              priority,
+              ackTargetMs: serviceAckMinutes * 60_000,
+              resolveTargetMs: serviceResolveMinutes * 60_000,
+            },
+          },
+        },
+      });
+      await testPrisma.incidentSlaPolicy.update({
+        where: { id: servicePolicy.id },
+        data: { sealedAt: new Date() },
+      });
+
+      const classification = await testPrisma.$transaction(tx =>
+        resolveIncidentClassification(tx, {
+          serviceId: service.id,
+          alertSeverity: 'critical',
+        })
+      );
+      expect(classification).toMatchObject({
+        priority,
+        prioritySource: 'CLASSIFICATION_RULE',
+        policyId: classificationDraft.id,
+      });
+
+      const createdAt = new Date();
+      createdAt.setUTCDate(createdAt.getUTCDate() - 1);
+      createdAt.setUTCHours(14, 0, 0, 0);
+      const creation = await testPrisma.$transaction(tx =>
+        applyIncidentCreation(tx, {
+          title: `${priority} immutable SLA contract`,
+          serviceId: service.id,
+          urgency: classification.urgency,
+          priority: classification.priority,
+          source: 'REST_API',
+          now: createdAt,
+        })
+      );
+      const acknowledgedAt = new Date(createdAt.getTime() + serviceAckMinutes * 30_000);
+      const resolvedAt = new Date(createdAt.getTime() + serviceResolveMinutes * 30_000);
+      await testPrisma.incident.update({
+        where: { id: creation.id },
+        data: {
+          status: 'RESOLVED',
+          createdAt,
+          acknowledgedAt,
+          resolvedAt,
+          resolutionKind: 'MANUAL',
+          slaAckElapsedMs: BigInt(acknowledgedAt.getTime() - createdAt.getTime()),
+          slaResolveElapsedMs: BigInt(resolvedAt.getTime() - createdAt.getTime()),
+        },
+      });
+
+      const replacement = await testPrisma.incidentSlaPolicy.create({
+        data: {
+          scopeKey: `service:${service.id}`,
+          version: 2,
+          inheritWorkspace: false,
+          baseAckTargetMs: 23 * 60_000,
+          baseResolveTargetMs: 230 * 60_000,
+        },
+      });
+      await testPrisma.incidentSlaPolicy.update({
+        where: { id: replacement.id },
+        data: { sealedAt: new Date() },
+      });
+
+      const stored = await testPrisma.incident.findUniqueOrThrow({ where: { id: creation.id } });
+      expect(stored).toMatchObject({
+        priority,
+        slaPriorityAtCapture: priority,
+        slaPolicyId: servicePolicy.id,
+        slaPolicyVersion: 1,
+        slaPolicyRule: priority,
+        slaAckTargetMs: serviceAckMinutes * 60_000,
+        slaResolveTargetMs: serviceResolveMinutes * 60_000,
+      });
+      const projected = projectIncidentSlaState(stored, { now: resolvedAt });
+      if (!projected.valid) throw new Error(projected.reason);
+      expect(projected.ack.status).toBe('MET');
+      expect(projected.resolve.status).toBe('MET');
+      expect(projected.contract.priorityAtCapture).toBe(priority);
+
+      const range = {
+        serviceId: service.id,
+        startDate: new Date(createdAt.getTime() - 1),
+        endDate: new Date(resolvedAt.getTime() + 1),
+        userTimeZone: 'UTC',
+      } as const;
+      const live = await calculateSLAMetrics({ ...range, _forceLive: true });
+      await generateDailyRollup(createdAt, service.id);
+      const historical = await queryRollupMetrics(createdAt, createdAt, {
+        serviceId: service.id,
+      });
+      expect(live.ackCompliance).toBe(100);
+      expect(live.resolveCompliance).toBe(100);
+      expect(historical.ackCompliance).toBe(live.ackCompliance);
+      expect(historical.resolveCompliance).toBe(live.resolveCompliance);
+    }
+  );
 });
