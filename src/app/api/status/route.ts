@@ -1,4 +1,5 @@
 import { jsonError, jsonOk } from '@/lib/api-response';
+import { legacyPublicStatus } from '@/lib/status-pages/status-presentation';
 import { logger } from '@/lib/logger';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
@@ -72,7 +73,15 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       const snapshot = projected.snapshot;
       const responseData = {
         status: snapshot.status,
-        services: snapshot.services,
+        // The pre-existing four-value vocabulary, kept alongside the canonical one so consumers
+        // that switch on it do not silently fall through when a page reports a partial outage or
+        // an unverifiable service.
+        statusLegacy: legacyPublicStatus(snapshot.status),
+        overall: snapshot.overall,
+        services: snapshot.services.map(service => ({
+          ...service,
+          statusLegacy: legacyPublicStatus(service.status),
+        })),
         incidents: snapshot.incidents,
         metrics: {
           uptime: snapshot.services.map(service => ({
@@ -82,6 +91,7 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
           })),
         },
         retention: { historyDays: snapshot.historyDays },
+        thresholds: snapshot.thresholds ?? null,
         updatedAt: snapshot.generatedAt,
         projection: { revision: snapshot.revision, stale: projected.stale },
       };

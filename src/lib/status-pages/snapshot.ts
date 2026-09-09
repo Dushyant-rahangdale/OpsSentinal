@@ -13,12 +13,14 @@ import { calculateMultiServiceUptime } from '@/lib/sla-server';
 import { addOperationalMetric, setOperationalGauge } from '@/lib/metrics/operational/registry';
 import {
   getStatusPageServingStore,
+  manifestServingState,
   statusSnapshotIntegrity,
   type StatusServingRoute,
 } from './serving-store';
 import type { PublicStatusPageSnapshot } from './public-contract';
 import { aggregatePublicRegions, buildPublicHistorySegments } from './history';
 import {
+  deriveOverallPublicHealth,
   getWorstPublicStatus,
   normalizePublicStatus,
   publicStatusForIncidentUrgency,
@@ -227,7 +229,14 @@ export async function buildStatusPageSnapshot(
       statusApiRateLimitMax: page.statusApiRateLimitMax,
       statusApiRateLimitWindowSec: page.statusApiRateLimitWindowSec,
     },
+    // `status` keeps worst-rank-wins for existing consumers; `overall` carries the split between
+    // severity and confidence that the page header and summary panel render.
     status: getWorstPublicStatus(services.map(service => service.status)),
+    overall: deriveOverallPublicHealth(visibility.showServices ? services : []),
+    thresholds: {
+      uptimeExcellent: page.uptimeExcellentThreshold,
+      uptimeGood: page.uptimeGoodThreshold,
+    },
     services: visibility.showServices ? services : [],
     regions: visibility.showServices ? aggregatePublicRegions(services) : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
@@ -245,32 +254,140 @@ export async function buildStatusPageSnapshot(
   };
 }
 
+/**
+ * What a publish attempt actually did.
+ *
+ * Callers need to tell "the page is now live" from "someone else is already publishing it", so
+ * that a save racing the background projector is not reported to an administrator as a failure.
+ */
+export type StatusPagePublishOutcome =
+  /** The snapshot was built, committed and pushed to the serving store. */
+  | { kind: 'published'; revision: string }
+  /** The page is disabled, so there is deliberately nothing to serve. */
+  | { kind: 'disabled'; revision: string }
+  /** Another builder holds the lease. It will finish the work; nothing is wrong. */
+  | { kind: 'contended' }
+  /** The revision moved under us. A later build already covers this change. */
+  | { kind: 'superseded' }
+  /** Building or publishing threw. The previous payload is untouched. */
+  | { kind: 'failed'; error: unknown };
+
+export type StatusPagePublishOptions = {
+  /** Lease attempts before reporting contention. Each attempt uses its own transaction. */
+  lockAttempts?: number;
+  lockRetryDelayMs?: number;
+  /** Wall-clock budget, also applied server-side via statement_timeout. */
+  budgetMs?: number;
+};
+
+const DEFAULT_PUBLISH_BUDGET_MS = 30_000;
+
 /** A PostgreSQL lease prevents simultaneous builders; revision CAS rejects a stale build. */
 export async function rebuildStatusPageSnapshot(pageId: string) {
+  const outcome = await publishStatusPageSnapshot(pageId);
+  return outcome.kind === 'published';
+}
+
+/**
+ * Build and publish one page, reporting precisely what happened.
+ *
+ * Ordering is load-bearing throughout: the commit happens in a single transaction so a partial
+ * write cannot be observed, and the store receives snapshot, then manifest, then routes, so a
+ * manifest never points at a body that is not yet readable and a route never resolves to a page
+ * with no manifest.
+ */
+export async function publishStatusPageSnapshot(
+  pageId: string,
+  options: StatusPagePublishOptions = {}
+): Promise<StatusPagePublishOutcome> {
+  const budgetMs = Math.max(1_000, options.budgetMs ?? DEFAULT_PUBLISH_BUDGET_MS);
+  const attempts = Math.max(1, options.lockAttempts ?? 1);
+  const retryDelayMs = Math.max(0, options.lockRetryDelayMs ?? 50);
+  const deadline = Date.now() + budgetMs;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) return { kind: 'contended' };
+    let result: Awaited<ReturnType<typeof buildAndCommitSnapshot>>;
+    try {
+      result = await buildAndCommitSnapshot(pageId, remainingMs);
+    } catch (error) {
+      return { kind: 'failed', error };
+    }
+    if (result === 'contended') {
+      // Retry in a fresh transaction rather than holding one open, so a busy page never pins a
+      // pooled connection while it waits.
+      if (attempt + 1 < attempts && retryDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      }
+      continue;
+    }
+    if (result === 'superseded') return { kind: 'superseded' };
+    if (result === 'missing') {
+      // No control row: the page was deleted between resolving it and building it.
+      return { kind: 'failed', error: new Error(`No snapshot row for status page ${pageId}`) };
+    }
+    if (!result.snapshot) return { kind: 'disabled', revision: result.revision };
+    try {
+      await pushSnapshotToServingStore(pageId, result.revision, result.snapshot);
+    } catch (error) {
+      return { kind: 'failed', error };
+    }
+    return { kind: 'published', revision: result.revision };
+  }
+  return { kind: 'contended' };
+}
+
+async function buildAndCommitSnapshot(
+  pageId: string,
+  remainingMs: number
+): Promise<
+  | 'contended'
+  | 'missing'
+  | 'superseded'
+  | { snapshot: StatusPageSnapshot | null; revision: string }
+> {
   const result = await prisma.$transaction(
     async tx => {
+      // Abort server-side rather than letting a slow build outlive the caller's budget.
+      await tx.$executeRawUnsafe(
+        `SET LOCAL statement_timeout = ${Math.max(1_000, Math.floor(remainingMs))}`
+      );
       const locks = await tx.$queryRaw<
         Array<{ acquired: boolean }>
       >`SELECT pg_try_advisory_xact_lock(hashtextextended(${`status-snapshot:${pageId}`}, 0)) AS acquired`;
-      if (!locks[0]?.acquired) return null;
+      if (!locks[0]?.acquired) return 'contended' as const;
       const rows = await tx.$queryRaw<
         Array<{ revision: bigint }>
       >`SELECT "revision" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-      if (!rows[0]) return null;
+      if (!rows[0]) return 'missing' as const;
       const revision = rows[0].revision;
       const snapshot = await buildStatusPageSnapshot(pageId, revision.toString());
+      // The only writer of LIVE. A disabled page records DISABLED so the reader can tell
+      // "turned off" from "temporarily unavailable".
       const changed = await tx.$executeRaw`
       UPDATE "StatusPageSnapshot" SET "payload" = ${snapshot ? JSON.stringify(snapshot) : null}::jsonb,
-        "publishedRevision" = ${revision}, "generatedAt" = NOW(), "lastError" = NULL
+        "publishedRevision" = ${revision}, "generatedAt" = NOW(), "lastError" = NULL,
+        "servingState" = ${snapshot ? 'LIVE' : 'DISABLED'}
       WHERE "statusPageId" = ${pageId} AND "revision" = ${revision}
     `;
       // Drivers can surface row counts as either number or bigint; normalize at this boundary.
-      return Number(changed) === 1 ? { snapshot, revision: revision.toString() } : null;
+      return Number(changed) === 1
+        ? { snapshot, revision: revision.toString() }
+        : ('superseded' as const);
     },
     { timeout: 30_000 }
   );
-  if (!result?.snapshot) return false;
+  return result;
+}
+
+async function pushSnapshotToServingStore(
+  pageId: string,
+  revision: string,
+  snapshot: StatusPageSnapshot
+) {
   const store = getStatusPageServingStore();
+  const result = { snapshot, revision };
   await store.publishSnapshot(
     pageId,
     result.revision,
@@ -285,6 +402,12 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
     publishedAt: result.snapshot.generatedAt,
     schemaVersion: result.snapshot.schemaVersion,
     integrityHash: statusSnapshotIntegrity(result.snapshot as unknown as Prisma.JsonValue),
+    servingState: 'LIVE',
+    lastGoodRevision: result.revision,
+    lastGoodSnapshotKey: `${result.revision}.json`,
+    lastGoodIntegrityHash: statusSnapshotIntegrity(
+      result.snapshot as unknown as Prisma.JsonValue
+    ),
   });
   const slug = result.snapshot.page?.slug;
   const route: StatusServingRoute = {
@@ -301,17 +424,23 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
   if (result.snapshot.page.subdomain) {
     await store.publishRoute(`subdomain:${result.snapshot.page.subdomain.toLowerCase()}`, route);
   }
-  return true;
 }
 
 /** Bounded reconciliation also advances maintenance boundaries and time-derived uptime. */
 export async function reconcileStatusPageSnapshots(limit = 10) {
   const [health] = await prisma.$queryRaw<
-    Array<{ dirty: bigint; oldestAgeSeconds: number | null }>
+    Array<{
+      dirty: bigint;
+      oldestAgeSeconds: number | null;
+      failed: bigint;
+      failClosed: bigint;
+    }>
   >`
     SELECT
       COUNT(*) FILTER (WHERE "publishedRevision" <> "revision") AS "dirty",
-      EXTRACT(EPOCH FROM (NOW() - MIN("generatedAt")))::double precision AS "oldestAgeSeconds"
+      EXTRACT(EPOCH FROM (NOW() - MIN("generatedAt")))::double precision AS "oldestAgeSeconds",
+      COUNT(*) FILTER (WHERE "lastError" IS NOT NULL) AS "failed",
+      COUNT(*) FILTER (WHERE "servingState" = 'FAIL_CLOSED') AS "failClosed"
     FROM "StatusPageSnapshot"
   `;
   setOperationalGauge('opsknight_status_page_snapshot_dirty', Number(health?.dirty ?? 0));
@@ -319,9 +448,15 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
     'opsknight_status_page_snapshot_oldest_age_seconds',
     Math.max(0, health?.oldestAgeSeconds ?? 0)
   );
+  // The two alerting signals: a publication that keeps failing, and a page currently withheld
+  // from the public. Either persisting is an operator problem, not a transient.
+  setOperationalGauge('opsknight_status_page_publication_failed', Number(health?.failed ?? 0));
+  setOperationalGauge('opsknight_status_page_fail_closed', Number(health?.failClosed ?? 0));
 
-  const pages = await prisma.$queryRaw<Array<{ statusPageId: string; dirty: boolean }>>`
-    SELECT "statusPageId", ("publishedRevision" <> "revision") AS "dirty"
+  const pages = await prisma.$queryRaw<
+    Array<{ statusPageId: string; dirty: boolean; servingState: string }>
+  >`
+    SELECT "statusPageId", "servingState", ("publishedRevision" <> "revision") AS "dirty"
     FROM "StatusPageSnapshot"
     WHERE "publishedRevision" <> "revision" OR "generatedAt" < NOW() - INTERVAL '1 minute'
     ORDER BY "generatedAt" ASC NULLS FIRST LIMIT ${Math.max(1, Math.min(50, limit))}
@@ -329,10 +464,13 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
   let rebuilt = 0;
   for (const page of pages) {
     try {
-      // A dirty revision may represent disclosure tightening and must fail closed.
-      // Purely time-derived refreshes retain the current healthy manifest until the
-      // replacement snapshot is successfully published.
-      if (page.dirty) await getStatusPageServingStore().revoke(page.statusPageId);
+      // A dirty revision of unknown provenance may represent disclosure tightening and must
+      // fail closed. A row already carrying a non-LIVE state holds a decision the control plane
+      // made deliberately, and overwriting it here would flap the page dark between an
+      // administrator's commit and its synchronous republish.
+      if (page.dirty && page.servingState === 'LIVE') {
+        await getStatusPageServingStore().revoke(page.statusPageId, 'PRIVACY');
+      }
       if (await rebuildStatusPageSnapshot(page.statusPageId)) {
         rebuilt++;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {
@@ -357,8 +495,18 @@ export async function readStatusPageSnapshot(pageId: string): Promise<StatusPage
 }
 
 /**
- * Return only a revision-current sanitized projection. Dirty payloads remain in
- * storage for recovery/diagnostics but are never returned to a public renderer.
+ * Return a sanitized projection, preferring the current revision.
+ *
+ * When the current revision is not servable, the previous one is used only if the control plane
+ * marked the invalidation as benign. That marker is written exclusively by a configuration change
+ * classified as non-tightening, so every disclosure-narrowing transition -- a tightened setting, a
+ * disabled page, or any invalidation of unknown provenance, including the database triggers that
+ * cannot classify themselves -- leaves the marker fail-closed and withholds everything.
+ *
+ * The fallback body is safe to show because it is a previously published projection, already
+ * sanitized under a disclosure policy at least as broad as the one now in force. The access gate
+ * cannot be weakened this way either: raising `requireAuth` classifies as tightening and fails
+ * closed, while lowering it can only leave a stale `true` behind, which merely over-prompts.
  */
 export async function getStatusPageSnapshot(pageId: string): Promise<{
   snapshot: StatusPageSnapshot | null;
@@ -366,13 +514,26 @@ export async function getStatusPageSnapshot(pageId: string): Promise<{
 }> {
   const store = getStatusPageServingStore();
   const manifest = await store.readManifest(pageId);
-  if (!manifest?.enabled || manifest.revoked) return { snapshot: null, stale: true };
-  const payload = await store.readSnapshot(pageId, manifest.revision);
-  if (!payload || statusSnapshotIntegrity(payload) !== manifest.integrityHash) {
-    return { snapshot: null, stale: true };
+  if (!manifest) return { snapshot: null, stale: true };
+
+  if (manifest.enabled && !manifest.revoked) {
+    const payload = await store.readSnapshot(pageId, manifest.revision);
+    if (payload && statusSnapshotIntegrity(payload) === manifest.integrityHash) {
+      const current = parseStatusPageSnapshot(pageId, payload);
+      if (current) return { snapshot: current, stale: false };
+    }
   }
-  const current = parseStatusPageSnapshot(pageId, payload);
-  return current ? { snapshot: current, stale: false } : { snapshot: null, stale: true };
+
+  if (manifestServingState(manifest) === 'STALE_OK') {
+    const lastGood = await store.readLastGoodSnapshot(pageId);
+    const previous = lastGood ? parseStatusPageSnapshot(pageId, lastGood.payload) : null;
+    if (previous) {
+      addOperationalMetric('opsknight_status_page_stale_serves_total', 1, { surface: 'snapshot' });
+      return { snapshot: previous, stale: true };
+    }
+  }
+
+  return { snapshot: null, stale: true };
 }
 
 export async function getStatusPageSnapshotByRoute(routeKey: string) {

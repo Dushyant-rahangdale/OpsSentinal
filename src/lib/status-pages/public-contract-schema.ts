@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import type { PublicStatusPageSnapshot } from './public-contract';
 import { aggregatePublicRegions } from './history';
-import { normalizePublicStatus } from './status-presentation';
+import { deriveOverallPublicHealth, normalizePublicStatus } from './status-presentation';
 
 const status = z.enum([
   'OPERATIONAL',
@@ -36,11 +36,30 @@ const incidentUpdate = z.object({
   createdAt: dateTime.optional(),
 }).strict();
 
+/**
+ * Optional so payloads published before this field existed keep validating. The reader derives it
+ * when absent; making it required would make every already-published snapshot unparseable, which
+ * takes the public pages dark until the projector rewrites them.
+ */
+const overallHealth = z.object({
+  status,
+  knownServiceCount: z.number().int().nonnegative(),
+  unknownServiceCount: z.number().int().nonnegative(),
+  confidence: z.enum(['complete', 'partial', 'none']),
+  headline: z.string(),
+  note: z.string().nullable(),
+}).strict();
+
 export const publicStatusPageSnapshotSchema = z.object({
   schemaVersion: z.literal(3),
   pageId: z.string(),
   revision: z.string(),
   generatedAt: dateTime,
+  overall: overallHealth.optional(),
+  thresholds: z.object({
+    uptimeExcellent: z.number(),
+    uptimeGood: z.number(),
+  }).strict().optional(),
   page: z.object({
     id: z.string(),
     name: z.string(),
@@ -113,7 +132,12 @@ export function parsePublicStatusPageSnapshot(
   payload: Prisma.JsonValue | null | undefined
 ): PublicStatusPageSnapshot | null {
   const parsed = publicStatusPageSnapshotSchema.safeParse(payload);
-  if (parsed.success && parsed.data.pageId === pageId) return parsed.data as PublicStatusPageSnapshot;
+  if (parsed.success && parsed.data.pageId === pageId) {
+    return {
+      ...parsed.data,
+      overall: parsed.data.overall ?? deriveOverallPublicHealth(parsed.data.services),
+    } as PublicStatusPageSnapshot;
+  }
   const legacy = legacySnapshotSchema.safeParse(payload);
   if (!legacy.success || legacy.data.pageId !== pageId) return null;
   const services = legacy.data.services.map(service => ({
@@ -133,6 +157,7 @@ export function parsePublicStatusPageSnapshot(
     generatedAt: legacy.data.generatedAt,
     page: legacy.data.page,
     status: normalizePublicStatus(legacy.data.status),
+    overall: deriveOverallPublicHealth(services),
     services,
     regions: aggregatePublicRegions(services),
     incidents: legacy.data.incidents.map(incident => ({
@@ -153,7 +178,12 @@ export function parsePublicStatusPageSnapshot(
     historyDays: legacy.data.historyDays,
   };
   const migrated = publicStatusPageSnapshotSchema.safeParse(candidate);
-  return migrated.success ? migrated.data as PublicStatusPageSnapshot : null;
+  return migrated.success
+    ? ({
+        ...migrated.data,
+        overall: migrated.data.overall ?? deriveOverallPublicHealth(services),
+      } as PublicStatusPageSnapshot)
+    : null;
 }
 
 const legacySnapshotSchema = z.object({

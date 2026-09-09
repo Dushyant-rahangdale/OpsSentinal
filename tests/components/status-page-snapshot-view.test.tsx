@@ -16,6 +16,14 @@ const snapshot: StatusPageSnapshot = {
   revision: '7',
   generatedAt: '2026-09-07T10:00:00.000Z',
   status: 'DEGRADED',
+  overall: {
+    status: 'DEGRADED',
+    knownServiceCount: 1,
+    unknownServiceCount: 0,
+    confidence: 'complete',
+    headline: 'Degraded performance',
+    note: null,
+  },
   page: {
     id: 'page-1', name: 'Acme status', showSubscribe: false, showServicesByRegion: false,
     showRegionHeatmap: false, showPostIncidentReview: true, showChangelog: true,

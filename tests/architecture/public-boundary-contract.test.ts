@@ -11,7 +11,9 @@ describe('public boundary contract', () => {
   it('does not let public status-page rendering create configuration', () => {
     const page = readFileSync('src/app/(public)/status/page.tsx', 'utf8');
 
-    expect(page).toContain('Status page is not configured.');
+    // Public rendering only ever reports an unconfigured address; it never provisions one.
+    expect(page).toContain('Status page not configured');
+    expect(page).toContain('No status page has been published at this address.');
     expect(page).not.toContain('const newStatusPage = await prisma.statusPage.create');
   });
 

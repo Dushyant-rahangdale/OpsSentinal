@@ -1,0 +1,224 @@
+import type {
+  PublicIncident,
+  PublicIncidentStatus,
+  PublicIncidentUrgency,
+  PublicServiceStatus,
+  PublicStatusPageSnapshot,
+  PublicStatusService,
+} from './public-contract';
+import { aggregatePublicRegions } from './history';
+import {
+  deriveOverallPublicHealth,
+  getWorstPublicStatus,
+  publicStatusForIncidentUrgency,
+} from './status-presentation';
+
+type PreviewService = {
+  id: string;
+  name: string;
+  description?: string | null;
+  region?: string | null;
+  slaTier?: string | null;
+  team?: { id: string; name: string } | null;
+  [key: string]: unknown;
+};
+
+type PreviewMapping = { serviceId: string; displayName?: string | null; showOnPage: boolean };
+
+type PreviewIncident = {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  urgency?: string;
+  createdAt: string | Date;
+  acknowledgedAt?: string | Date | null;
+  resolvedAt?: string | Date | null;
+  service?: { id: string; name: string; region?: string | null };
+  events?: Array<{ id: string; message: string; createdAt: string | Date }>;
+  postmortem?: { id: string; status: string; isPublic?: boolean | null } | null;
+};
+
+type PreviewAnnouncement = {
+  id: string;
+  title: string;
+  message: string;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+type PreviewPrivacy = Record<string, unknown> | null | undefined;
+
+const ACTIVE_STATUSES = new Set(['OPEN', 'ACKNOWLEDGED']);
+
+function iso(value: string | Date | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function splitRegions(region: string | null | undefined): string[] {
+  return (region ?? '')
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Project unsaved settings into the published contract so the preview can render the real page.
+ *
+ * The preview is a configuration preview: it answers "what will visitors see if I save this",
+ * which is a question about layout, branding, which services appear, and which fields the privacy
+ * toggles disclose. It deliberately does not attempt to reproduce measured uptime or daily
+ * history, because those come from the projection pipeline and cannot be recomputed in a browser.
+ * Their absence is honest -- the contract already treats a missing window as unmeasured -- and it
+ * keeps preview and live rendering the same component tree, which is the property that matters.
+ */
+export function buildPreviewSnapshot(input: {
+  pageId: string;
+  services: PreviewService[];
+  mappings: PreviewMapping[];
+  incidents: PreviewIncident[];
+  announcements: PreviewAnnouncement[];
+  uptime90: Record<string, number>;
+  privacy: PreviewPrivacy;
+  showServices: boolean;
+  showIncidents: boolean;
+  showServiceOwners?: boolean;
+  showServiceSlaTier?: boolean;
+  thresholds: { uptimeExcellent: number; uptimeGood: number };
+  now?: Date;
+}): PublicStatusPageSnapshot {
+  const now = input.now ?? new Date();
+  const allow = (flag: string) => input.privacy?.[flag] !== false;
+
+  const visible = new Map(
+    input.mappings.filter(mapping => mapping.showOnPage).map(mapping => [mapping.serviceId, mapping])
+  );
+  const activeByService = new Map<string, { count: number; statuses: PublicServiceStatus[] }>();
+  for (const incident of input.incidents) {
+    if (!incident.service || !ACTIVE_STATUSES.has(incident.status)) continue;
+    const entry = activeByService.get(incident.service.id) ?? { count: 0, statuses: [] };
+    entry.count += 1;
+    entry.statuses.push(publicStatusForIncidentUrgency(incident.urgency ?? 'LOW'));
+    activeByService.set(incident.service.id, entry);
+  }
+
+  const services: PublicStatusService[] = input.showServices
+    ? input.services
+        .filter(service => visible.has(service.id))
+        .map(service => {
+          const impact = activeByService.get(service.id);
+          const uptime = input.uptime90[service.id];
+          return {
+            id: service.id,
+            name: visible.get(service.id)?.displayName || service.name,
+            ...(allow('showServiceDescriptions') && service.description
+              ? { description: service.description }
+              : {}),
+            ...(allow('showServiceRegions') ? { regions: splitRegions(service.region) } : {}),
+            ...(input.showServiceSlaTier !== false && service.slaTier
+              ? { slaTier: service.slaTier }
+              : {}),
+            ...(input.showServiceOwners !== false && allow('showTeamInformation')
+              ? { team: service.team ?? null }
+              : {}),
+            status: impact ? getWorstPublicStatus(impact.statuses) : 'OPERATIONAL',
+            activeIncidentCount: impact?.count ?? 0,
+            ...(allow('showServiceMetrics') && typeof uptime === 'number'
+              ? {
+                  uptime: {
+                    days30: {
+                      percentage: uptime,
+                      incidentCount: 0,
+                      measuredDays: 30,
+                      complete: true,
+                    },
+                    days90: {
+                      percentage: uptime,
+                      incidentCount: 0,
+                      measuredDays: 90,
+                      complete: true,
+                    },
+                  },
+                }
+              : {}),
+          };
+        })
+    : [];
+
+  const incidents: PublicIncident[] = input.showIncidents
+    ? input.incidents.map(incident => ({
+        status: incident.status as PublicIncidentStatus,
+        ...(allow('showIncidentDetails') ? { id: incident.id } : {}),
+        ...(allow('showIncidentTitles') ? { title: incident.title } : {}),
+        ...(allow('showIncidentDescriptions') && incident.description
+          ? { description: incident.description }
+          : {}),
+        ...(allow('showIncidentUrgency') && incident.urgency
+          ? { urgency: incident.urgency as PublicIncidentUrgency }
+          : {}),
+        ...(allow('showIncidentTimestamps')
+          ? {
+              ...(iso(incident.createdAt) ? { createdAt: iso(incident.createdAt) } : {}),
+              ...(iso(incident.acknowledgedAt)
+                ? { acknowledgedAt: iso(incident.acknowledgedAt) }
+                : {}),
+              ...(iso(incident.resolvedAt) ? { resolvedAt: iso(incident.resolvedAt) } : {}),
+            }
+          : {}),
+        ...(allow('showAffectedServices') && incident.service
+          ? {
+              service: {
+                id: incident.service.id,
+                name: incident.service.name,
+                ...(allow('showServiceRegions')
+                  ? { regions: splitRegions(incident.service.region) }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(incident.postmortem?.isPublic ? { postIncidentReview: true } : {}),
+      }))
+    : [];
+
+  return {
+    schemaVersion: 3,
+    pageId: input.pageId,
+    revision: 'preview',
+    generatedAt: now.toISOString(),
+    page: {
+      id: input.pageId,
+      name: 'preview',
+      showSubscribe: true,
+      showServicesByRegion: false,
+      showRegionHeatmap: false,
+      showPostIncidentReview: false,
+      showChangelog: true,
+      enableUptimeExports: false,
+      isDefault: true,
+      requireAuth: false,
+      enabled: true,
+      statusApiRequireToken: false,
+      statusApiRateLimitEnabled: false,
+      statusApiRateLimitMax: 120,
+      statusApiRateLimitWindowSec: 60,
+    },
+    status: getWorstPublicStatus(services.map(service => service.status)),
+    overall: deriveOverallPublicHealth(services),
+    thresholds: input.thresholds,
+    services,
+    regions: aggregatePublicRegions(services),
+    incidents,
+    announcements: input.announcements.map(item => ({
+      id: item.id,
+      title: item.title,
+      message: item.message,
+      type: item.type ?? 'INFO',
+      startDate: iso(item.startDate) ?? now.toISOString(),
+      endDate: iso(item.endDate) ?? null,
+    })),
+    historyDays: 90,
+  };
+}

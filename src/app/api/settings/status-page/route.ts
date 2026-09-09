@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { assertAdmin } from '@/lib/rbac';
-import { emitAuditEvent } from '@/lib/audit';
 import { jsonError, jsonOk } from '@/lib/api-response';
 import { AppError, isAppError } from '@/lib/errors';
 import { prismaToAppError } from '@/lib/prisma-errors';
@@ -11,7 +9,9 @@ import { logger } from '@/lib/logger';
 import { Prisma } from '@prisma/client';
 import { assertStatusPageNameAvailable, UniqueNameConflictError } from '@/lib/unique-names';
 import { externalizeStatusPageLogo } from '@/lib/status-pages/assets';
-import { getStatusPageServingStore } from '@/lib/status-pages/serving-store';
+import { StatusPageAdminError } from '@/lib/status-pages/admin';
+import { applyStatusPageConfigurationChange } from '@/lib/status-pages/publish-configuration';
+import { STATUS_PAGE_SECTION_HEADER } from '@/lib/status-pages/settings-sections';
 
 function statusPageUniqueError(fields: string[]) {
   if (fields.includes('subdomain')) {
@@ -194,71 +194,38 @@ export async function POST(req: NextRequest) {
     if (statusApiRateLimitMax !== undefined) updateData.statusApiRateLimitMax = statusApiRateLimitMax;
     if (statusApiRateLimitWindowSec !== undefined) updateData.statusApiRateLimitWindowSec = statusApiRateLimitWindowSec;
 
-    await getStatusPageServingStore().revoke(statusPage.id);
-    const updated = await prisma.$transaction(async tx => {
-      if (branding && typeof branding === 'object') {
-        updateData.branding = (await externalizeStatusPageLogo(tx, statusPage.id, branding)) as Prisma.InputJsonValue;
-      }
-
-      const saved = await tx.statusPage.update({
-        where: { id: statusPage.id, updatedAt: expectedUpdatedAt ? new Date(expectedUpdatedAt) : statusPage.updatedAt },
-        data: updateData,
-      });
-
-      if (serviceIds !== undefined) {
-        await tx.statusPageService.deleteMany({ where: { statusPageId: statusPage.id } });
-        if (serviceIds.length > 0) {
-          await tx.statusPageService.createMany({
-            data: serviceIds.map((serviceId: string) => {
-              const config = Reflect.get(serviceConfigs, serviceId) || {};
-              return {
-                statusPageId: statusPage.id,
-                serviceId,
-                displayName: config.displayName || null,
-                order: config.order || 0,
-                showOnPage: config.showOnPage !== false,
-              };
-            }),
-          });
-        }
-      }
-
-      await emitAuditEvent(
-        {
-          action: 'status_page.config.updated',
-          source: 'UI',
-          target: { type: 'STATUS_PAGE', id: statusPage.id },
-          actor: { type: 'USER', id: actor.id, email: actor.email, name: actor.name },
-          oldValue: { updatedAt: statusPage.updatedAt.toISOString() },
-          newValue: { updatedAt: saved.updatedAt.toISOString() },
-          metadata: {
-            changedFields: Object.keys(updateData),
-            serviceMappingsChanged: serviceIds !== undefined,
-            expectedUpdatedAt: expectedUpdatedAt || statusPage.updatedAt.toISOString(),
-          },
-        },
-        tx
-      );
-
-      return saved;
+    // No revoke here. Whether the current projection must be withdrawn is a property of the
+    // change, and the publication command decides it from the diff. Unconditionally revoking is
+    // what previously took the public page dark on every save, including a colour change.
+    const result = await applyStatusPageConfigurationChange({
+      pageId: statusPage.id,
+      actor,
+      patch: updateData as Record<string, unknown>,
+      serviceIds,
+      serviceConfigs,
+      expectedUpdatedAt,
+      section: req.headers.get(STATUS_PAGE_SECTION_HEADER) ?? undefined,
+      // Logo externalization must commit atomically with the settings row that references it.
+      transform: async (tx, patch) =>
+        branding && typeof branding === 'object'
+          ? { ...patch, branding: await externalizeStatusPageLogo(tx, statusPage.id, branding) }
+          : patch,
     });
 
-    const store = getStatusPageServingStore();
-    await Promise.all([
-      ...(statusPage.slug && statusPage.slug !== updated.slug
-        ? [store.removeRoute(statusPage.slug)] : []),
-      ...(statusPage.customDomain && statusPage.customDomain !== updated.customDomain
-        ? [store.removeRoute(`domain:${statusPage.customDomain.toLowerCase()}`)] : []),
-      ...(statusPage.subdomain && statusPage.subdomain !== updated.subdomain
-        ? [store.removeRoute(`subdomain:${statusPage.subdomain.toLowerCase()}`)] : []),
-    ]);
-
-    revalidatePath('/status');
-    revalidatePath('/');
-
-    logger.info('api.status_page.updated', { statusPageId: statusPage.id });
-    return jsonOk({ success: true, updatedAt: updated.updatedAt.toISOString() }, 200);
+    // revalidatePath is deliberately absent: this route is force-dynamic with revalidate = 0, so
+    // there is no cache entry to invalidate. Public reads propagate through the serving store,
+    // and subdomain/custom-domain lookups through the middleware's own domain cache.
+    logger.info('api.status_page.updated', {
+      statusPageId: statusPage.id,
+      changeClass: result.classification.dominant,
+      publication: result.publication.status,
+    });
+    return jsonOk(
+      { success: true, updatedAt: result.updatedAt, publication: result.publication },
+      200
+    );
   } catch (error) {
+    if (error instanceof StatusPageAdminError) return jsonError(error.message, 404);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return jsonError(new AppError({ code: 'STATUS_PAGE_STALE', cause: error }));
     }
