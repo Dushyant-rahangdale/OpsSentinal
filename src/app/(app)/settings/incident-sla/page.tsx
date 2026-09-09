@@ -26,12 +26,15 @@ export default async function IncidentSlaSettingsPage() {
     }),
     prisma.service.count(),
     prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*)::bigint AS count FROM (
-        SELECT DISTINCT ON ("scopeKey") "inheritWorkspace"
+      SELECT COUNT(*)::bigint AS count
+      FROM "Service" s
+      LEFT JOIN (
+        SELECT DISTINCT ON ("scopeKey") "scopeKey", "inheritWorkspace"
         FROM "IncidentSlaPolicy"
         WHERE "scopeKey" LIKE 'service:%' AND "sealedAt" IS NOT NULL
         ORDER BY "scopeKey", "version" DESC
-      ) latest WHERE "inheritWorkspace" = true
+      ) latest ON latest."scopeKey" = 'service:' || s."id"
+      WHERE latest."scopeKey" IS NULL OR latest."inheritWorkspace" = true
     `.then(rows => Number(rows[0]?.count ?? 0)),
   ]);
   const viewPolicy = policy

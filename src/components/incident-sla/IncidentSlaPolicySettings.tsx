@@ -79,6 +79,13 @@ export default function IncidentSlaPolicySettings({
       })
     );
   const submit = () => {
+    const incompleteRule = rules.find(
+      rule => rule.enabled && (rule.ack.trim() === '' || rule.resolve.trim() === '')
+    );
+    if (incompleteRule) {
+      notify.error(`${incompleteRule.priority} needs both acknowledgement and resolution targets.`);
+      return;
+    }
     startTransition(async () => {
       try {
         const result = await saveIncidentSlaPolicyAction({

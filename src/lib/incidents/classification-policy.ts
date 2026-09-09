@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { getUserPermissions } from '@/lib/rbac';
 import { emitAuditEvent } from '@/lib/audit';
+import { IncidentResponsePolicyError } from '@/lib/incident-sla/policy-config';
 
 const classificationPolicyInput = z
   .object({
@@ -31,7 +32,7 @@ export async function saveWorkspaceClassificationPolicy(rawInput: unknown) {
   const input = classificationPolicyInput.parse(rawInput);
   const permissions = await getUserPermissions();
   if (!permissions.authenticated || !permissions.capabilities.includes('admin.manage')) {
-    throw new Error('Unauthorized. Admin access required.');
+    throw new IncidentResponsePolicyError('UNAUTHORIZED');
   }
 
   const result = await prisma.$transaction(async tx => {
@@ -41,7 +42,7 @@ export async function saveWorkspaceClassificationPolicy(rawInput: unknown) {
       orderBy: { version: 'desc' },
     });
     if ((previous?.version ?? 0) !== input.expectedVersion) {
-      throw new Error('Classification policy changed. Reload settings before saving.');
+      throw new IncidentResponsePolicyError('CONFLICT');
     }
     const policy = await tx.incidentClassificationPolicy.create({
       data: {

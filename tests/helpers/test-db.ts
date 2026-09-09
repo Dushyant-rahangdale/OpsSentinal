@@ -61,8 +61,27 @@ async function seedRequiredReferenceData() {
       scopeKey: 'workspace',
       version: 1,
       inheritWorkspace: false,
-      sealedAt: new Date(0),
     },
+  });
+  await prisma.incidentClassificationPolicyRule.createMany({
+    data: [
+      ['critical', 'P1', 'HIGH'],
+      ['error', 'P2', 'MEDIUM'],
+      ['warning', 'P3', 'MEDIUM'],
+      ['info', 'P5', 'LOW'],
+    ].map(([matchValue, priority, urgency]) => ({
+      policyId: 'test-incident-classification-workspace-v1',
+      matchType: 'ALERT_SEVERITY',
+      matchValue,
+      priority,
+      urgency: urgency as 'HIGH' | 'MEDIUM' | 'LOW',
+      label: `${matchValue} alert`,
+    })),
+    skipDuplicates: true,
+  });
+  await prisma.incidentClassificationPolicy.update({
+    where: { id: 'test-incident-classification-workspace-v1' },
+    data: { sealedAt: new Date(0) },
   });
 }
 

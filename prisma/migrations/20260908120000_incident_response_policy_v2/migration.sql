@@ -40,11 +40,11 @@ CREATE TABLE "IncidentClassificationPolicyRule" (
   "label" TEXT,
   CONSTRAINT incident_classification_rule_effect CHECK ("priority" IS NOT NULL OR "urgency" IS NOT NULL)
 );
-CREATE UNIQUE INDEX "IncidentClassificationPolicyRule_policyId_matchType_matchValue_key"
+CREATE UNIQUE INDEX "IncidentClassificationPolicyRule_match_key"
   ON "IncidentClassificationPolicyRule" ("policyId", "matchType", "matchValue");
 ALTER TABLE "Incident" ADD CONSTRAINT "Incident_classificationPolicyId_fkey"
   FOREIGN KEY ("classificationPolicyId") REFERENCES "IncidentClassificationPolicy"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
+  ON DELETE RESTRICT ON UPDATE CASCADE NOT VALID;
 
 -- Preserve pre-v2 product behavior exactly: provider severity chooses urgency,
 -- while incident priority remains unassigned unless an administrator explicitly opts in.
@@ -120,8 +120,12 @@ WITH latest_workspace AS (
     ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
   SELECT
     'incident-response-v2-workspace-' || md5(l."id" || ':' || l."version"::text),
-    'workspace', l."version" + 1, false, l."baseAckTargetMs", l."baseResolveTargetMs"
+    'workspace', next_version."version", false, l."baseAckTargetMs", l."baseResolveTargetMs"
   FROM latest_workspace l
+  CROSS JOIN LATERAL (
+    SELECT COALESCE(MAX("version"), 0) + 1 AS "version"
+    FROM "IncidentSlaPolicy" WHERE "scopeKey" = 'workspace'
+  ) next_version
   RETURNING "id"
 )
 INSERT INTO "IncidentSlaPolicyRule"
@@ -156,13 +160,18 @@ WITH latest AS (
   SELECT DISTINCT ON ("scopeKey") * FROM "IncidentSlaPolicy"
   WHERE "scopeKey" LIKE 'service:%' AND "sealedAt" IS NOT NULL
   ORDER BY "scopeKey", "version" DESC
+), next_versions AS (
+  SELECT "scopeKey", MAX("version") + 1 AS "version"
+  FROM "IncidentSlaPolicy"
+  WHERE "scopeKey" LIKE 'service:%'
+  GROUP BY "scopeKey"
 )
 INSERT INTO "IncidentSlaPolicy"
   ("id","scopeKey","version","inheritWorkspace","baseAckTargetMs","baseResolveTargetMs")
 SELECT
-  'incident-response-v2-service-' || md5("scopeKey" || ':' || "id" || ':' || "version"::text),
-  "scopeKey", "version" + 1, "inheritWorkspace", "baseAckTargetMs", "baseResolveTargetMs"
-FROM latest;
+  'incident-response-v2-service-' || md5(l."scopeKey" || ':' || l."id" || ':' || n."version"::text),
+  l."scopeKey", n."version", l."inheritWorkspace", l."baseAckTargetMs", l."baseResolveTargetMs"
+FROM latest l JOIN next_versions n USING ("scopeKey");
 
 WITH latest AS (
   SELECT DISTINCT ON ("scopeKey") * FROM "IncidentSlaPolicy"
@@ -265,12 +274,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Resolution provenance for historical rows is necessarily conservative.
-UPDATE "Incident" i SET "resolutionKind" = CASE
-  WHEN EXISTS (SELECT 1 FROM "IncidentEvent" e WHERE e."incidentId" = i."id" AND e."type" = 'MANUAL_RESOLVED') THEN 'MANUAL'::"IncidentResolutionKind"
-  WHEN EXISTS (SELECT 1 FROM "IncidentEvent" e WHERE e."incidentId" = i."id" AND e."type" = 'AUTO_RESOLVED') THEN 'SOURCE_RECOVERY'::"IncidentResolutionKind"
-  ELSE 'UNKNOWN'::"IncidentResolutionKind" END
-WHERE i."status" = 'RESOLVED' AND i."resolutionKind" IS NULL;
+-- Historical provenance is backfilled by a bounded maintenance job after
+-- deployment. Until then null fails closed and is never source recovery.
 
 -- Keep provenance structurally consistent during rolling upgrades. Older
 -- writers may not yet provide resolutionKind; UNKNOWN deliberately fails

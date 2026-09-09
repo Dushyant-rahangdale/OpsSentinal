@@ -770,7 +770,7 @@ model IncidentClassificationPolicyRule {
   label      String?
   policy     IncidentClassificationPolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
 
-  @@unique([policyId, matchType, matchValue])
+  @@unique([policyId, matchType, matchValue], map: "IncidentClassificationPolicyRule_match_key")
 }
 
 /// Durable daily rollout counters, including legacy writers that already pass explicit targets.

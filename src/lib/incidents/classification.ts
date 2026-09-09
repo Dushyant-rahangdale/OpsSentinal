@@ -38,8 +38,8 @@ export async function resolveIncidentClassification(
 ): Promise<IncidentClassification> {
   const explicitPriority = normalizeIncidentPriority(input.explicitPriority);
 
-  // During a rolling deploy an old database can briefly lack the additive table.
-  // Preserve the pre-v2 severity -> urgency behavior until the migration lands.
+  // Unit-test transaction doubles do not always expose every generated Prisma
+  // delegate. Production startup applies migrations before serving requests.
   const workspace = tx.incidentClassificationPolicy
     ? await tx.incidentClassificationPolicy.findFirst({
         where: { scopeKey: 'workspace', sealedAt: { not: null } },
@@ -51,8 +51,7 @@ export async function resolveIncidentClassification(
   const severity = input.alertSeverity ?? null;
   const matchedRule = severity
     ? workspace?.rules.find(
-        candidate =>
-          candidate.matchType === 'ALERT_SEVERITY' && candidate.matchValue === severity
+        candidate => candidate.matchType === 'ALERT_SEVERITY' && candidate.matchValue === severity
       )
     : undefined;
   const fallback = severity ? defaultAlertClassification(severity) : null;

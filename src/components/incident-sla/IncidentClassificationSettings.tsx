@@ -79,8 +79,8 @@ export default function IncidentClassificationSettings({
           <div>
             <CardTitle className="text-sm">Alert classification</CardTitle>
             <CardDescription>
-              Severity always maps to notification urgency. Assign a response priority only when
-              you want the source signal to choose a P1–P5 SLA contract.
+              Severity always maps to notification urgency. Assign a response priority only when you
+              want the source signal to choose a P1–P5 SLA contract.
             </CardDescription>
           </div>
           <Badge variant="outline">v{version}</Badge>
@@ -108,7 +108,7 @@ export default function IncidentClassificationSettings({
                 })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label={`Priority for ${rule.matchValue} alerts`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -125,7 +125,7 @@ export default function IncidentClassificationSettings({
               disabled={pending}
               onValueChange={value => update(rule.matchValue, { urgency: value as Urgency })}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label={`Urgency for ${rule.matchValue} alerts`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -150,8 +150,8 @@ export default function IncidentClassificationSettings({
             <strong>Derive priority from urgency when no severity rule assigns priority</strong>
             <br />
             <span className="text-muted-foreground">
-              HIGH → P1, MEDIUM → P3, LOW → P5. Disabled by default so paging intensity and
-              response obligation remain independent.
+              HIGH → P1, MEDIUM → P3, LOW → P5. Disabled by default so paging intensity and response
+              obligation remain independent.
             </span>
           </span>
         </label>

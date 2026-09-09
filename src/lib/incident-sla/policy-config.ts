@@ -5,6 +5,22 @@ import { revalidatePath } from 'next/cache';
 import { incidentSlaPolicyInputSchema } from './policy-validation';
 import { emitAuditEvent } from '@/lib/audit';
 
+export type IncidentResponsePolicyErrorCode = 'CONFLICT' | 'UNAUTHORIZED' | 'NOT_FOUND';
+
+/** A stable boundary between policy persistence and user-facing actions. */
+export class IncidentResponsePolicyError extends Error {
+  constructor(public readonly code: IncidentResponsePolicyErrorCode) {
+    super(
+      code === 'CONFLICT'
+        ? 'Policy changed. Reload settings before saving.'
+        : code === 'UNAUTHORIZED'
+          ? 'Admin access required.'
+          : 'Service not found.'
+    );
+    this.name = 'IncidentResponsePolicyError';
+  }
+}
+
 /** Deliberately uncached: creation reads the current immutable version transactionally. */
 export async function getIncidentSlaPolicy(scopeKey: string) {
   return prisma.incidentSlaPolicy.findFirst({
@@ -17,12 +33,12 @@ export async function getIncidentSlaPolicy(scopeKey: string) {
 export async function saveIncidentSlaPolicy(rawInput: unknown) {
   const input = incidentSlaPolicyInputSchema.parse(rawInput);
   const permissions = await getUserPermissions();
-  if (!permissions.authenticated) throw new Error('Unauthorized');
+  if (!permissions.authenticated) throw new IncidentResponsePolicyError('UNAUTHORIZED');
   const serviceId = input.scopeKey.startsWith('service:') ? input.scopeKey.slice(8) : null;
   if (serviceId) {
     await assertCanModifyService(serviceId);
   } else if (!permissions.capabilities.includes('admin.manage')) {
-    throw new Error('Unauthorized. Admin access required.');
+    throw new IncidentResponsePolicyError('UNAUTHORIZED');
   }
   const result = await prisma.$transaction(async tx => {
     // Scope-specific xact lock serializes even first-version creation (no row exists yet).
@@ -32,14 +48,14 @@ export async function saveIncidentSlaPolicy(rawInput: unknown) {
         where: { id: serviceId },
         select: { id: true },
       });
-      if (!exists) throw new Error('Service not found');
+      if (!exists) throw new IncidentResponsePolicyError('NOT_FOUND');
     }
     const previous = await tx.incidentSlaPolicy.findFirst({
       where: { scopeKey: input.scopeKey, sealedAt: { not: null } },
       orderBy: { version: 'desc' },
     });
     if ((previous?.version ?? 0) !== input.expectedVersion)
-      throw new Error('SLA policy changed. Reload settings before saving.');
+      throw new IncidentResponsePolicyError('CONFLICT');
     const policy = await tx.incidentSlaPolicy.create({
       data: {
         scopeKey: input.scopeKey,

@@ -1,7 +1,10 @@
 'use server';
 
 import { ZodError } from 'zod';
-import { saveIncidentSlaPolicy } from '@/lib/incident-sla/policy-config';
+import {
+  IncidentResponsePolicyError,
+  saveIncidentSlaPolicy,
+} from '@/lib/incident-sla/policy-config';
 import { saveWorkspaceClassificationPolicy } from '@/lib/incidents/classification-policy';
 import { logger } from '@/lib/logger';
 
@@ -13,7 +16,10 @@ export type IncidentResponsePolicySaveResult =
       message: string;
     };
 
-function policySaveError(error: unknown, fallbackMessage: string): IncidentResponsePolicySaveResult {
+function policySaveError(
+  error: unknown,
+  fallbackMessage: string
+): IncidentResponsePolicySaveResult {
   if (error instanceof ZodError) {
     return {
       ok: false,
@@ -21,24 +27,25 @@ function policySaveError(error: unknown, fallbackMessage: string): IncidentRespo
       message: error.issues[0]?.message ?? 'Check the policy values and try again.',
     };
   }
-  if (error instanceof Error) {
-    if (error.message.includes('changed. Reload settings before saving.')) {
+  if (error instanceof IncidentResponsePolicyError) {
+    if (error.code === 'CONFLICT') {
+      logger.warn('[IncidentResponsePolicy] Save conflict', { code: error.code });
       return {
         ok: false,
-        code: 'CONFLICT',
-        message: 'This policy changed in another session. Reload the page and review the latest version.',
+        code: error.code,
+        message:
+          'This policy changed in another session. Reload the page and review the latest version.',
       };
     }
-    if (error.message.startsWith('Unauthorized')) {
+    if (error.code === 'UNAUTHORIZED') {
+      logger.warn('[IncidentResponsePolicy] Unauthorized save attempt', { code: error.code });
       return {
         ok: false,
-        code: 'UNAUTHORIZED',
+        code: error.code,
         message: 'You no longer have permission to change this policy.',
       };
     }
-    if (error.message.endsWith('not found')) {
-      return { ok: false, code: 'NOT_FOUND', message: error.message };
-    }
+    return { ok: false, code: error.code, message: 'The selected service no longer exists.' };
   }
 
   logger.error('[IncidentResponsePolicy] Save failed', { error });
