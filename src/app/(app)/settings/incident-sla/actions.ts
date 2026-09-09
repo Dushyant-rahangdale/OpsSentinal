@@ -1,7 +1,75 @@
 'use server';
 
-import { saveIncidentSlaPolicy } from '@/lib/incident-sla/policy-config';
+import { ZodError } from 'zod';
+import {
+  IncidentResponsePolicyError,
+  saveIncidentSlaPolicy,
+} from '@/lib/incident-sla/policy-config';
+import { saveWorkspaceClassificationPolicy } from '@/lib/incidents/classification-policy';
+import { logger } from '@/lib/logger';
 
-export async function saveIncidentSlaPolicyAction(input: unknown) {
-  return saveIncidentSlaPolicy(input);
+export type IncidentResponsePolicySaveResult =
+  | { ok: true; version: number }
+  | {
+      ok: false;
+      code: 'VALIDATION' | 'CONFLICT' | 'UNAUTHORIZED' | 'NOT_FOUND' | 'UNEXPECTED';
+      message: string;
+    };
+
+function policySaveError(
+  error: unknown,
+  fallbackMessage: string
+): IncidentResponsePolicySaveResult {
+  if (error instanceof ZodError) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: error.issues[0]?.message ?? 'Check the policy values and try again.',
+    };
+  }
+  if (error instanceof IncidentResponsePolicyError) {
+    if (error.code === 'CONFLICT') {
+      logger.warn('[IncidentResponsePolicy] Save conflict', { code: error.code });
+      return {
+        ok: false,
+        code: error.code,
+        message:
+          'This policy changed in another session. Reload the page and review the latest version.',
+      };
+    }
+    if (error.code === 'UNAUTHORIZED') {
+      logger.warn('[IncidentResponsePolicy] Unauthorized save attempt', { code: error.code });
+      return {
+        ok: false,
+        code: error.code,
+        message: 'You no longer have permission to change this policy.',
+      };
+    }
+    return { ok: false, code: error.code, message: 'The selected service no longer exists.' };
+  }
+
+  logger.error('[IncidentResponsePolicy] Save failed', { error });
+  return { ok: false, code: 'UNEXPECTED', message: fallbackMessage };
+}
+
+export async function saveIncidentSlaPolicyAction(
+  input: unknown
+): Promise<IncidentResponsePolicySaveResult> {
+  try {
+    const policy = await saveIncidentSlaPolicy(input);
+    return { ok: true, version: policy.version };
+  } catch (error) {
+    return policySaveError(error, 'Unable to save the incident response SLA policy. Try again.');
+  }
+}
+
+export async function saveWorkspaceClassificationPolicyAction(
+  input: unknown
+): Promise<IncidentResponsePolicySaveResult> {
+  try {
+    const policy = await saveWorkspaceClassificationPolicy(input);
+    return { ok: true, version: policy.version };
+  } catch (error) {
+    return policySaveError(error, 'Unable to save the alert classification policy. Try again.');
+  }
 }

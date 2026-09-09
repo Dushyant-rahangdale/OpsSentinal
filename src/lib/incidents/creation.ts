@@ -9,6 +9,7 @@ import { enqueueIncidentCreationSideEffects } from '@/lib/event-outbox';
 import { initializeEscalationExecution } from '@/lib/escalation/repository';
 import { applyIncidentLifecycleCommand } from '@/lib/incidents/lifecycle';
 import { resolveNewIncidentSlaContract } from '@/lib/incident-sla/contract';
+import { resolveIncidentClassification } from '@/lib/incidents/classification';
 
 export const INCIDENT_CREATION_OUTCOMES = ['CREATED', 'MERGED', 'REOPENED'] as const;
 export type IncidentCreationOutcome = (typeof INCIDENT_CREATION_OUTCOMES)[number];
@@ -320,10 +321,15 @@ export async function applyIncidentCreation(
   }
 
   const { assigneeName, teamName } = await validateAssignmentReferences(tx, input);
+  const classification = await resolveIncidentClassification(tx, {
+    serviceId: input.serviceId,
+    explicitPriority: input.priority,
+    explicitUrgency: input.urgency,
+  });
   const slaContract = tx.incidentSlaPolicy
     ? await resolveNewIncidentSlaContract(tx, {
         serviceId: input.serviceId,
-        priority: input.priority,
+        priority: classification.priority,
         now,
       })
     : null;
@@ -333,10 +339,10 @@ export async function applyIncidentCreation(
       title: input.title,
       description: input.description ?? null,
       status: 'OPEN',
-      urgency: input.urgency,
+      urgency: classification.urgency,
       serviceId: input.serviceId,
       visibility: resolvedVisibility,
-      priority: input.priority ?? null,
+      priority: classification.priority,
       dedupKey: input.dedupKey ?? null,
       assigneeId: input.assigneeId ?? null,
       slaAckTargetMs: slaContract?.ackTargetMs,
@@ -346,6 +352,12 @@ export async function applyIncidentCreation(
       slaPolicyId: slaContract?.policyId,
       slaPolicyVersion: slaContract?.policyVersion,
       slaPolicyRule: slaContract?.policyRule,
+      slaPriorityAtCapture: classification.priority,
+      classificationPrioritySource: classification.prioritySource,
+      classificationUrgencySource: classification.urgencySource,
+      classificationPolicyId: classification.policyId,
+      classificationPolicyVersion: classification.policyVersion,
+      classificationRule: classification.rule,
       teamId: input.assigneeId ? null : (input.teamId ?? null),
       events: {
         create: {

@@ -165,7 +165,10 @@ export default function StatusPageSnapshotView({
         {branding.showFooter !== false && (
           <footer style={{ marginTop: '3rem', opacity: 0.75 }}>
             <p>{page.footerText || 'Powered by OpsKnight'}</p>
-            <nav aria-label="Status resources" style={{ display: 'flex', gap: 12 }}>
+            <nav
+              aria-label="Status resources"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}
+            >
               {branding.showApiLink !== false && <a href={apiPath}>JSON API</a>}
               {branding.showRssLink !== false && <a href={`${apiPath}/rss`}>RSS</a>}
               {page.enableUptimeExports === true && Object.keys(view.uptime).length > 0 && (

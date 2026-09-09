@@ -6,6 +6,7 @@ import { runReadCommittedTransaction } from './db-utils';
 import { enqueueEventSideEffects, enqueueLifecycleSideEffects } from './event-outbox';
 import { applyIncidentLifecycleCommand } from './incidents/lifecycle';
 import { resolveNewIncidentSlaContract } from './incident-sla/contract';
+import { resolveIncidentClassification } from './incidents/classification';
 
 export type EventSeverity = 'critical' | 'error' | 'warning' | 'info';
 
@@ -23,26 +24,11 @@ export type EventPayload = {
 const MAX_DEDUP_KEY_LENGTH = 512;
 const MAX_STORED_ALERT_PAYLOAD_BYTES = 64 * 1024;
 
-// Centralized severity → urgency mapping for consistency
-// Critical = HIGH (P1 - immediate response needed)
-// Error/Warning = MEDIUM (P2 - respond within SLA)
-// Info = LOW (P3 - informational, no immediate action)
-const SEVERITY_TO_URGENCY: Record<EventSeverity, IncidentUrgency> = {
-  critical: 'HIGH',
-  error: 'MEDIUM',
-  warning: 'MEDIUM', // Warning is MEDIUM, not LOW - important alerts shouldn't be missed
-  info: 'LOW',
-};
-
 const URGENCY_RANK: Record<IncidentUrgency, number> = {
   LOW: 0,
   MEDIUM: 1,
   HIGH: 2,
 };
-
-function mapSeverityToUrgency(severity: EventSeverity): IncidentUrgency {
-  return SEVERITY_TO_URGENCY[severity] ?? 'MEDIUM'; // Default to MEDIUM if unknown
-}
 
 function maxUrgency(current: IncidentUrgency, incoming: IncidentUrgency): IncidentUrgency {
   return URGENCY_RANK[incoming] > URGENCY_RANK[current] ? incoming : current;
@@ -275,7 +261,12 @@ export async function processEvent(
           data: { incidentId: existingIncident.id },
         });
 
-        const incomingUrgency = mapSeverityToUrgency(eventData.severity);
+        const incomingClassification = await resolveIncidentClassification(tx, {
+          serviceId,
+          integrationId,
+          alertSeverity: eventData.severity,
+        });
+        const incomingUrgency = incomingClassification.urgency;
         const effectiveUrgency = maxUrgency(existingIncident.urgency, incomingUrgency);
         const urgencyRaised = effectiveUrgency !== existingIncident.urgency;
         if (urgencyRaised) {
@@ -321,7 +312,12 @@ export async function processEvent(
       });
 
       // Create New Incident with proper severity → urgency mapping
-      const urgency = mapSeverityToUrgency(eventData.severity);
+      const classification = await resolveIncidentClassification(tx, {
+        serviceId,
+        integrationId,
+        alertSeverity: eventData.severity,
+      });
+      const urgency = classification.urgency;
 
       // Keep canonical text in persistence. React/email/API boundaries are
       // responsible for context-appropriate output escaping.
@@ -340,6 +336,7 @@ export async function processEvent(
         const resolutionAt = new Date();
         const resolvedSla = await resolveNewIncidentSlaContract(tx, {
           serviceId,
+          priority: classification.priority,
           now: resolutionAt,
         });
         const resolvedIncident = await tx.incident.create({
@@ -349,7 +346,9 @@ export async function processEvent(
             status: 'RESOLVED',
             createdAt: resolutionAt,
             resolvedAt: resolutionAt,
+            resolutionKind: 'SOURCE_RECOVERY',
             urgency,
+            priority: classification.priority,
             dedupKey: dedup_key,
             serviceId,
             visibility: service.defaultIncidentVisibility ?? 'PUBLIC',
@@ -360,6 +359,12 @@ export async function processEvent(
             slaPolicyId: resolvedSla.policyId,
             slaPolicyVersion: resolvedSla.policyVersion,
             slaPolicyRule: resolvedSla.policyRule,
+            slaPriorityAtCapture: classification.priority,
+            classificationPrioritySource: classification.prioritySource,
+            classificationUrgencySource: classification.urgencySource,
+            classificationPolicyId: classification.policyId,
+            classificationPolicyVersion: classification.policyVersion,
+            classificationRule: classification.rule,
             escalationStatus: 'COMPLETED',
           },
         });
@@ -410,7 +415,7 @@ export async function processEvent(
       const incidentCreatedAt = new Date();
       const newSla = await resolveNewIncidentSlaContract(tx, {
         serviceId,
-        priority: null,
+        priority: classification.priority,
         now: incidentCreatedAt,
       });
       const newIncident = await tx.incident.create({
@@ -419,6 +424,7 @@ export async function processEvent(
           description: truncatedDescription,
           status: isFlapping ? 'SUPPRESSED' : 'OPEN',
           urgency,
+          priority: classification.priority,
           dedupKey: dedup_key,
           serviceId,
           visibility: service.defaultIncidentVisibility ?? 'PUBLIC',
@@ -429,6 +435,12 @@ export async function processEvent(
           slaPolicyId: newSla.policyId,
           slaPolicyVersion: newSla.policyVersion,
           slaPolicyRule: newSla.policyRule,
+          slaPriorityAtCapture: classification.priority,
+          classificationPrioritySource: classification.prioritySource,
+          classificationUrgencySource: classification.urgencySource,
+          classificationPolicyId: classification.policyId,
+          classificationPolicyVersion: classification.policyVersion,
+          classificationRule: classification.rule,
           createdAt: incidentCreatedAt,
           ...(isFlapping
             ? {

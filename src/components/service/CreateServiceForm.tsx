@@ -162,7 +162,10 @@ export default function CreateServiceForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slaTier">SLA Tier</Label>
+              <Label htmlFor="slaTier">Service Tier</Label>
+              <p className="text-xs text-muted-foreground">
+                Informational service classification. Does not control incident response SLA.
+              </p>
               <Select value={slaTier} onValueChange={setSlaTier}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Tier" />

@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { INCIDENT_PRIORITY_DEFINITIONS } from '@/lib/incidents/priority';
 
 type PrioritySelectorProps = {
   incidentId: string;
@@ -31,35 +32,35 @@ type PrioritySelectorProps = {
 const PRIORITY_OPTIONS = [
   {
     key: 'P1',
-    label: 'Crisis',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P1.label,
     icon: ShieldAlert,
     iconColor: 'text-rose-600 dark:text-rose-400',
     textColor: 'text-rose-700 dark:text-rose-400',
   },
   {
     key: 'P2',
-    label: 'High',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P2.label,
     icon: ArrowUp,
     iconColor: 'text-amber-600 dark:text-amber-400',
     textColor: 'text-amber-700 dark:text-amber-400',
   },
   {
     key: 'P3',
-    label: 'Medium',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P3.label,
     icon: AlertCircle,
     iconColor: 'text-orange-600 dark:text-orange-400',
     textColor: 'text-orange-700 dark:text-orange-400',
   },
   {
     key: 'P4',
-    label: 'Low',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P4.label,
     icon: Zap,
     iconColor: 'text-blue-600 dark:text-blue-400',
     textColor: 'text-blue-700 dark:text-blue-400',
   },
   {
     key: 'P5',
-    label: 'Info',
+    label: INCIDENT_PRIORITY_DEFINITIONS.P5.label,
     icon: Info,
     iconColor: 'text-slate-500 dark:text-slate-400',
     textColor: 'text-slate-700 dark:text-slate-400',

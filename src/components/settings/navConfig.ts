@@ -72,14 +72,24 @@ export const SETTINGS_NAV_SECTIONS: SettingsNavSection[] = [
     items: [
       {
         id: 'incident-sla',
-        label: 'Incident Response SLA',
+        label: 'Incident Response Policy',
         description:
-          'Set workspace acknowledgement, resolution, and priority override targets for future incidents',
+          'Configure alert classification, priority and urgency semantics, and immutable incident response SLA targets',
         href: '/settings/incident-sla',
         icon: 'activity',
         requiresAdmin: true,
         badge: 'Admin',
-        keywords: ['sla', 'incident', 'acknowledgement', 'resolution', 'priority'],
+        keywords: [
+          'sla',
+          'incident',
+          'acknowledgement',
+          'resolution',
+          'priority',
+          'urgency',
+          'severity',
+          'classification',
+          'response policy',
+        ],
       },
       {
         id: 'custom-fields',

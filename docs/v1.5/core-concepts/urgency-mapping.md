@@ -6,33 +6,35 @@ order: 14
 
 # Urgency and severity mapping
 
-Inbound integrations normalize provider-specific alert fields into the Events API's four severity values. Event processing then assigns one of three incident urgency values.
+Inbound integrations normalize provider-specific alert fields into the Events API's four severity values. Event processing then applies the workspace Incident Response Policy to determine incident urgency. By default, severity does **not** assign P1–P5 priority; automatic priority is an explicit administrator opt-in.
 
-## Canonical mapping
+## Canonical default mapping
 
-| Event severity | Incident urgency | Intended meaning                              |
-| -------------- | ---------------- | --------------------------------------------- |
-| `critical`     | **High**         | Immediate, severe operational impact.         |
-| `error`        | **Medium**       | Significant fault requiring response.         |
-| `warning`      | **Medium**       | Degradation or risk requiring attention.      |
-| `info`         | **Low**          | Informational, recovery, or low-impact event. |
+| Event severity | Automatic priority | Incident urgency | Intended meaning                              |
+| -------------- | ------------------ | ---------------- | --------------------------------------------- |
+| `critical`     | None               | **High**         | Immediate, severe operational impact.         |
+| `error`        | None               | **Medium**       | Significant fault requiring response.         |
+| `warning`      | None               | **Medium**       | Degradation or risk requiring attention.      |
+| `info`         | None               | **Low**          | Informational, recovery, or low-impact event. |
 
-Unknown severity cannot pass the published Events API schema. Integration adapters commonly normalize an unrecognized provider value to `warning`, which then becomes Medium urgency; the exact fallback is adapter-specific.
+Unknown severity cannot pass the published Events API schema. Integration adapters commonly normalize an unrecognized provider value to `warning`, which then becomes Medium urgency under the default workspace policy; the exact adapter fallback is provider-specific.
+
+Administrators can change the workspace severity mapping at **Settings → Incident Response Policy**. Each severity always has an urgency mapping and can optionally assign a P1–P5 priority. The optional urgency-to-priority fallback (`HIGH → P1`, `MEDIUM → P3`, `LOW → P5`) is disabled by default.
 
 Urgency does not automatically choose SMS, push, Slack, or email. Delivery is determined by escalation-step data, user preferences, service notification selections, provider configuration, and recipient data. Some provider implementations format High urgency differently, but do not treat urgency alone as a channel-routing policy.
 
 ## Urgency, priority, and service health
 
-- **Urgency** is High, Medium, or Low and is derived from event severity unless a responder changes it.
-- **Priority** is an optional P1–P5 business-impact classification set on the incident.
+- **Urgency** is High, Medium, or Low and is derived from normalized provider severity unless a trusted creation path or the workspace policy overrides it.
+- **Priority** is an optional P1–P5 business-impact/response-obligation classification. It is not inferred from severity unless the administrator explicitly configures that behavior.
 - Service health treats active High-urgency incidents as critical in its calculated status.
-- Priority-specific SLA targets can take precedence over the service defaults when configured.
+- Priority-specific SLA targets can take precedence over service or workspace fallback targets when priority exists.
 
-Keep these classifications separate. For example, a noisy technical alert may be High urgency but need priority review, while a broad customer-impact issue may require a higher business priority than its source initially supplied.
+Keep these classifications separate unless your operating model deliberately couples them. For example, a noisy technical alert may be High urgency but still require human priority review, while a broad customer-impact issue may be explicitly classified at a higher business priority than its source signal alone would justify.
 
 ## Common provider mappings
 
-All resulting severity values pass through the canonical table above.
+All resulting severity values pass through the workspace Incident Response Policy.
 
 ### AWS CloudWatch
 
@@ -83,9 +85,9 @@ A resolved alert produces `info` and resolves its deduplication key.
 | Sentry level      | Normalized severity |
 | ----------------- | ------------------- |
 | `fatal`           | `critical`          |
-| `error`           | `error`             |
-| `warning`         | `warning`           |
-| `info` or `debug` | `info`              |
+| `error`           | `error`              |
+| `warning`         | `warning`            |
+| `info` or `debug` | `info`               |
 
 Resolved events resolve; ignored, assigned, or unassigned actions acknowledge; created, reopened, or triggered actions trigger.
 
@@ -117,16 +119,21 @@ Reuse the same `dedup_key` for acknowledge and resolve actions. See the [Events 
 ## Validate a mapping
 
 1. Send a representative test payload through the service integration.
-2. Confirm action, service, title, source, urgency, and deduplication behavior.
+2. Confirm action, service, title, normalized severity, urgency, priority, and deduplication behavior.
 3. Acknowledge or resolve using the same provider identity/key.
 4. Confirm the existing incident changes state instead of creating a duplicate.
 5. Test the provider's unknown/default severity and recovery payload.
+6. If automatic priority is enabled, confirm the captured SLA policy/rule and priority-at-capture match the configured response policy.
 
 ## Troubleshooting
 
 ### Warning becomes Medium, not Low
 
-This is intentional in v1.4. The central mapping treats both `error` and `warning` as Medium.
+This is the default workspace mapping. Change it in Incident Response Policy only when your operating model requires different notification urgency.
+
+### Critical severity does not become P1
+
+This is intentional by default. Severity controls urgency; priority remains unassigned until the workspace Incident Response Policy explicitly maps that severity to a P1–P5 value or enables urgency-to-priority fallback.
 
 ### A resolved alert creates or leaves an open incident
 
@@ -138,6 +145,7 @@ Inspect the policy step, user's preferences/contact data, service notification s
 
 ## Related topics
 
+- [Incident Response Policy](../administration/incident-response-policy.md)
 - [Events API](../api/events.md)
 - [Incident management](incidents.md)
 - [Escalation policies](escalation-policies.md)
