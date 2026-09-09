@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/shadcn/tooltip';
-import { X, HelpCircle, Settings, LogOut, Keyboard } from 'lucide-react';
+import { X, HelpCircle, Settings, LogOut, Keyboard, Activity, Globe, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import UserAvatar from '@/components/UserAvatar';
 import BrandLockup from '@/components/layout/BrandLockup';
@@ -26,6 +26,14 @@ import {
   groupNavItemsBySection,
 } from '@/config/navigation';
 
+// Status page shape from sidebar-stats API
+interface SidebarStatusPage {
+  id: string;
+  name: string;
+  slug: string | null;
+  isDefault: boolean;
+}
+
 type SidebarProps = {
   userName?: string | null;
   userEmail?: string | null;
@@ -35,6 +43,9 @@ type SidebarProps = {
   userId?: string;
   initialActiveCount?: number;
 };
+
+// Section render order
+const SECTION_ORDER: NavSectionKey[] = ['MAIN', 'RELIABILITY', 'ON_CALL', 'ANALYTICS', 'GOVERNANCE'];
 
 export default function Sidebar({
   userName = null,
@@ -58,11 +69,15 @@ export default function Sidebar({
   const [stats, setStats] = useState<{ count: number; calculatedAt?: string } | null>(() => {
     return typeof initialActiveCount === 'number' ? { count: initialActiveCount } : null;
   });
+  const [statusPages, setStatusPages] = useState<SidebarStatusPage[]>([]);
+  const [isStatusPageAdmin, setIsStatusPageAdmin] = useState(false);
+  // Expanded state for multi-page accordion in the sidebar
+  const [statusPagesExpanded, setStatusPagesExpanded] = useState(false);
 
   const isDesktopCollapsed = !isMobile && isCollapsed;
   const sidebarId = 'app-sidebar';
 
-  // Fetch real-time active incident counts
+  // Fetch real-time active incident counts + status page metadata
   useEffect(() => {
     let isMounted = true;
     fetch('/api/sidebar-stats')
@@ -77,6 +92,12 @@ export default function Sidebar({
             count: data.activeIncidentsCount,
             calculatedAt: data.calculatedAt,
           });
+        }
+        if (Array.isArray(data?.statusPages)) {
+          setStatusPages(data.statusPages);
+        }
+        if (typeof data?.isStatusPageAdmin === 'boolean') {
+          setIsStatusPageAdmin(data.isStatusPageAdmin);
         }
       })
       .catch(() => {
@@ -97,6 +118,13 @@ export default function Sidebar({
     }
   }, [pathname, closeMobile]);
 
+  // Auto-expand status pages accordion when user is on a status page route
+  useEffect(() => {
+    if (pathname.startsWith('/status')) {
+      setStatusPagesExpanded(true);
+    }
+  }, [pathname]);
+
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true;
     if (path !== '/' && pathname.startsWith(path)) return true;
@@ -108,6 +136,12 @@ export default function Sidebar({
     const authorized = getAuthorizedNavItems(currentRole);
     return groupNavItemsBySection(authorized);
   }, [currentRole]);
+
+  // Determine the URL for a status page
+  const statusPageHref = (page: SidebarStatusPage) => {
+    if (page.isDefault || !page.slug) return '/status';
+    return `/status/${page.slug}`;
+  };
 
   // Render a single navigation link (with tooltips when collapsed)
   const renderNavItem = (item: NavItemConfig) => {
@@ -204,9 +238,258 @@ export default function Sidebar({
     return <div key={item.href}>{linkContent}</div>;
   };
 
-  // Render a navigation section
+  // ─── Status Pages nav item (dynamic, conditional) ───────────────────────────
+  const renderStatusPagesItem = () => {
+    const isOnStatusPage = pathname.startsWith('/status');
+    const hasPages = statusPages.length > 0;
+    const showManageLink = isStatusPageAdmin;
+
+    // Non-admin with no enabled pages: hide entirely
+    if (!hasPages && !showManageLink) return null;
+
+    // No enabled pages but admin: show a setup prompt
+    if (!hasPages && showManageLink) {
+      if (isDesktopCollapsed) {
+        return (
+          <Tooltip key="status-setup" delayDuration={150}>
+            <TooltipTrigger asChild>
+              <Link
+                href="/settings/status-pages"
+                aria-label="Setup Status Page"
+                className={cn(
+                  'group relative flex items-center rounded-lg font-medium transition-all duration-150 select-none',
+                  'h-10 w-10 justify-center p-0 mx-auto',
+                  'text-slate-500 hover:text-white hover:bg-slate-800/60'
+                )}
+              >
+                <Globe className="h-[18px] w-[18px]" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} className="text-xs bg-slate-900 text-white border-slate-700 shadow-xl">
+              Setup Status Page
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      return (
+        <div key="status-setup">
+          <Link
+            href="/settings/status-pages"
+            className={cn(
+              'group relative flex items-center rounded-lg font-medium transition-all duration-150 select-none',
+              'px-2.5 py-2 gap-2.5 text-[13px] w-full',
+              'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
+            )}
+          >
+            <span className="shrink-0 flex items-center justify-center">
+              <Globe className="h-[18px] w-[18px]" />
+            </span>
+            <span className="min-w-0 flex-1 truncate">Status Page</span>
+            <span className="ml-auto text-[10px] text-slate-500 font-medium bg-slate-800 px-1.5 py-0.5 rounded">Setup</span>
+          </Link>
+        </div>
+      );
+    }
+
+    // Exactly one enabled page → direct link
+    if (hasPages && statusPages.length === 1) {
+      const page = statusPages[0];
+      const href = statusPageHref(page);
+      const active = isOnStatusPage;
+
+      if (isDesktopCollapsed) {
+        return (
+          <Tooltip key="status-single" delayDuration={150}>
+            <TooltipTrigger asChild>
+              <Link
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                aria-label={page.name}
+                className={cn(
+                  'group relative flex items-center rounded-lg font-medium transition-all duration-150 select-none',
+                  'h-10 w-10 justify-center p-0 mx-auto',
+                  active
+                    ? 'bg-slate-800/90 text-white font-semibold shadow-xs ring-1 ring-white/10'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                )}
+              >
+                <Activity className={cn('h-[18px] w-[18px]', active && 'text-rose-400')} />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} className="text-xs bg-slate-900 text-white border-slate-700 shadow-xl">
+              {page.name}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+
+      return (
+        <div key="status-single">
+          <Link
+            href={href}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'group relative flex items-center rounded-lg font-medium transition-all duration-150 select-none',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900',
+              'px-2.5 py-2 gap-2.5 text-[13px] w-full',
+              active
+                ? 'bg-slate-800/90 text-white font-semibold shadow-xs ring-1 ring-white/10'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            )}
+          >
+            {active && (
+              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-gradient-to-b from-red-500 to-rose-600 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+            )}
+            <span className={cn('shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform', active ? 'text-rose-400' : 'text-slate-400 group-hover:text-white')}>
+              <Activity className="h-[18px] w-[18px]" />
+            </span>
+            <span className="min-w-0 flex-1 truncate">{page.name}</span>
+            {showManageLink && (
+              <Link
+                href="/settings/status-pages"
+                onClick={e => e.stopPropagation()}
+                className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-slate-300 p-0.5 rounded"
+                title="Manage status pages"
+                aria-label="Manage status pages"
+              >
+                <Settings className="h-3 w-3" />
+              </Link>
+            )}
+          </Link>
+        </div>
+      );
+    }
+
+    // Multiple enabled pages → expandable accordion
+    const active = isOnStatusPage;
+
+    if (isDesktopCollapsed) {
+      // Collapsed: globe icon with tooltip listing all pages
+      return (
+        <Tooltip key="status-multi-collapsed" delayDuration={150}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Status Pages"
+              className={cn(
+                'group relative flex items-center rounded-lg font-medium transition-all duration-150 select-none',
+                'h-10 w-10 justify-center p-0 mx-auto',
+                active
+                  ? 'bg-slate-800/90 text-white shadow-xs ring-1 ring-white/10'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              )}
+            >
+              {active && (
+                <span className="absolute top-1 right-1 flex h-2 w-2">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+              )}
+              <Globe className={cn('h-[18px] w-[18px]', active && 'text-rose-400')} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={12} className="text-xs bg-slate-900 text-white border-slate-700 shadow-xl p-2 max-w-48">
+            <p className="font-semibold mb-1.5 text-slate-300">Status Pages</p>
+            <div className="flex flex-col gap-1">
+              {statusPages.map(page => (
+                <Link
+                  key={page.id}
+                  href={statusPageHref(page)}
+                  className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{page.name}</span>
+                </Link>
+              ))}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    // Expanded: accordion
+    return (
+      <div key="status-multi">
+        {/* Accordion trigger */}
+        <button
+          type="button"
+          onClick={() => setStatusPagesExpanded(prev => !prev)}
+          aria-expanded={statusPagesExpanded}
+          className={cn(
+            'group relative flex items-center rounded-lg font-medium transition-all duration-150 select-none w-full',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900',
+            'px-2.5 py-2 gap-2.5 text-[13px]',
+            active
+              ? 'bg-slate-800/90 text-white font-semibold shadow-xs ring-1 ring-white/10'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          )}
+        >
+          {active && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-gradient-to-b from-red-500 to-rose-600 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+          )}
+          <span className={cn('shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform', active ? 'text-rose-400' : 'text-slate-400 group-hover:text-white')}>
+            <Globe className="h-[18px] w-[18px]" />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-left">Status Pages</span>
+          <span className="ml-auto flex items-center gap-1">
+            <span className="text-[10px] font-bold text-slate-500 tabular-nums">{statusPages.length}</span>
+            {statusPagesExpanded
+              ? <ChevronDown className="h-3.5 w-3.5 text-slate-500 transition-transform" />
+              : <ChevronRight className="h-3.5 w-3.5 text-slate-500 transition-transform" />
+            }
+          </span>
+        </button>
+
+        {/* Accordion body */}
+        {statusPagesExpanded && (
+          <div className="mt-0.5 ml-3 pl-3 border-l border-slate-700/60 flex flex-col gap-0.5">
+            {statusPages.map(page => {
+              const href = statusPageHref(page);
+              const pageActive = pathname === href || (page.isDefault && pathname === '/status');
+              return (
+                <Link
+                  key={page.id}
+                  href={href}
+                  aria-current={pageActive ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] font-medium transition-all duration-100 select-none',
+                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-500/40',
+                    pageActive
+                      ? 'bg-slate-800/70 text-white'
+                      : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/40'
+                  )}
+                >
+                  <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', pageActive ? 'bg-green-400' : 'bg-slate-600')} />
+                  <span className="truncate flex-1">{page.name}</span>
+                  {page.isDefault && (
+                    <span className="text-[9px] font-semibold text-slate-500 bg-slate-800 px-1 py-0.5 rounded shrink-0">default</span>
+                  )}
+                </Link>
+              );
+            })}
+            {showManageLink && (
+              <Link
+                href="/settings/status-pages"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] font-medium text-slate-600 hover:text-slate-400 hover:bg-slate-800/30 transition-colors mt-0.5"
+              >
+                <Settings className="h-3 w-3 shrink-0" />
+                <span>Manage pages</span>
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render a navigation section — injects dynamic Status Pages into RELIABILITY
   const renderSection = (sectionKey: NavSectionKey, items: NavItemConfig[]) => {
-    if (!items || items.length === 0) return null;
+    // For RELIABILITY, inject status pages item between Postmortems and Action Items
+    const isReliability = sectionKey === 'RELIABILITY';
+    const statusItem = isReliability ? renderStatusPagesItem() : null;
+    const hasContent = (items && items.length > 0) || (isReliability && statusItem !== null);
+
+    if (!hasContent) return null;
+
     const sectionConfig = getNavSectionConfig(sectionKey);
 
     return (
@@ -228,6 +511,7 @@ export default function Sidebar({
 
         <div className={cn('flex flex-col gap-1', isDesktopCollapsed && 'items-center')}>
           {items.map(renderNavItem)}
+          {isReliability && statusItem}
         </div>
       </div>
     );
@@ -299,9 +583,9 @@ export default function Sidebar({
             isDesktopCollapsed ? 'py-3 px-2' : 'p-3'
           )}
         >
-          {renderSection('MAIN', groupedItems.MAIN)}
-          {renderSection('OPERATIONS', groupedItems.OPERATIONS)}
-          {renderSection('INSIGHTS', groupedItems.INSIGHTS)}
+          {SECTION_ORDER.map(sectionKey =>
+            renderSection(sectionKey, groupedItems[sectionKey] ?? [])
+          )}
         </nav>
 
         {/* Sidebar Footer Section */}

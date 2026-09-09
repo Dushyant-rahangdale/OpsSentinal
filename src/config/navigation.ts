@@ -8,7 +8,6 @@ import {
   ShieldAlert,
   PieChart,
   FileWarning,
-  Activity,
   ListTodo,
   FileClock,
   ClipboardList,
@@ -16,7 +15,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 
-export type NavSectionKey = 'MAIN' | 'OPERATIONS' | 'INSIGHTS';
+export type NavSectionKey = 'MAIN' | 'RELIABILITY' | 'ON_CALL' | 'ANALYTICS' | 'GOVERNANCE';
 
 export interface NavSectionConfig {
   key: NavSectionKey;
@@ -29,30 +28,34 @@ export const NAV_SECTIONS: Record<NavSectionKey, NavSectionConfig> = {
   MAIN: {
     key: 'MAIN',
   },
-  OPERATIONS: {
-    key: 'OPERATIONS',
-    label: 'Operations',
+  RELIABILITY: {
+    key: 'RELIABILITY',
+    label: 'Reliability',
+    dotClass: 'bg-green-500/80',
+    textClass: 'text-slate-400 dark:text-slate-400',
+  },
+  ON_CALL: {
+    key: 'ON_CALL',
+    label: 'On-Call',
     dotClass: 'bg-blue-500/80',
     textClass: 'text-slate-400 dark:text-slate-400',
   },
-  INSIGHTS: {
-    key: 'INSIGHTS',
-    label: 'Insights',
-    dotClass: 'bg-purple-500/80',
+  ANALYTICS: {
+    key: 'ANALYTICS',
+    label: 'Analytics',
+    dotClass: 'bg-cyan-500/80',
+    textClass: 'text-slate-400 dark:text-slate-400',
+  },
+  GOVERNANCE: {
+    key: 'GOVERNANCE',
+    label: 'Governance',
+    dotClass: 'bg-amber-500/80',
     textClass: 'text-slate-400 dark:text-slate-400',
   },
 };
 
 export function getNavSectionConfig(key: NavSectionKey): NavSectionConfig {
-  switch (key) {
-    case 'OPERATIONS':
-      return NAV_SECTIONS.OPERATIONS;
-    case 'INSIGHTS':
-      return NAV_SECTIONS.INSIGHTS;
-    case 'MAIN':
-    default:
-      return NAV_SECTIONS.MAIN;
-  }
+  return NAV_SECTIONS[key] ?? NAV_SECTIONS.MAIN;
 }
 
 export interface NavItemConfig {
@@ -66,7 +69,7 @@ export interface NavItemConfig {
 }
 
 export const NAVIGATION_ITEMS: readonly NavItemConfig[] = [
-  // Main
+  // ── MAIN ──────────────────────────────────────────────────────────────────
   {
     href: '/',
     label: 'Dashboard',
@@ -87,76 +90,75 @@ export const NAVIGATION_ITEMS: readonly NavItemConfig[] = [
     section: 'MAIN',
   },
 
-  // Operations Section
-  {
-    href: '/teams',
-    label: 'Teams',
-    icon: Users,
-    section: 'OPERATIONS',
-  },
-  {
-    href: '/users',
-    label: 'Users',
-    icon: User,
-    section: 'OPERATIONS',
-  },
-  {
-    href: '/schedules',
-    label: 'Schedules',
-    icon: Calendar,
-    section: 'OPERATIONS',
-  },
-  {
-    href: '/policies',
-    label: 'Escalation Policies',
-    icon: ShieldAlert,
-    section: 'OPERATIONS',
-  },
-
-  // Insights Section
-  {
-    href: '/analytics',
-    label: 'Analytics',
-    icon: PieChart,
-    section: 'INSIGHTS',
-  },
+  // ── RELIABILITY ───────────────────────────────────────────────────────────
+  // Status Pages are rendered dynamically by Sidebar (conditional on enabled pages)
   {
     href: '/postmortems',
     label: 'Postmortems',
     icon: FileWarning,
-    section: 'INSIGHTS',
-  },
-  {
-    href: '/status',
-    label: 'Status Page',
-    icon: Activity,
-    section: 'INSIGHTS',
+    section: 'RELIABILITY',
   },
   {
     href: '/action-items',
     label: 'Action Items',
     icon: ListTodo,
-    section: 'INSIGHTS',
+    section: 'RELIABILITY',
+  },
+
+  // ── ON-CALL ──────────────────────────────────────────────────────────────
+  {
+    href: '/schedules',
+    label: 'Schedules',
+    icon: Calendar,
+    section: 'ON_CALL',
   },
   {
-    href: '/events',
-    label: 'Event Logs',
-    icon: FileClock,
-    section: 'INSIGHTS',
-    requiresRole: ['ADMIN'],
+    href: '/policies',
+    label: 'Escalation Policies',
+    icon: ShieldAlert,
+    section: 'ON_CALL',
   },
   {
-    href: '/audit',
-    label: 'Audit Log',
-    icon: ClipboardList,
-    section: 'INSIGHTS',
-    requiresRole: ['ADMIN', 'AUDITOR'],
+    href: '/teams',
+    label: 'Teams',
+    icon: Users,
+    section: 'ON_CALL',
+  },
+  {
+    href: '/users',
+    label: 'Users',
+    icon: User,
+    section: 'ON_CALL',
+  },
+
+  // ── ANALYTICS ─────────────────────────────────────────────────────────────
+  {
+    href: '/analytics',
+    label: 'Analytics',
+    icon: PieChart,
+    section: 'ANALYTICS',
   },
   {
     href: '/reports',
     label: 'Reports & Dashboards',
     icon: BarChart,
-    section: 'INSIGHTS',
+    section: 'ANALYTICS',
+  },
+
+  // ── GOVERNANCE ────────────────────────────────────────────────────────────
+  {
+    href: '/audit',
+    label: 'Audit Log',
+    icon: ClipboardList,
+    section: 'GOVERNANCE',
+    requiresRole: ['ADMIN', 'AUDITOR'],
+  },
+  {
+    href: '/events',
+    label: 'Event Logs',
+    icon: FileClock,
+    section: 'GOVERNANCE',
+    requiresRole: ['ADMIN'],
   },
 ] as const;
 
@@ -179,8 +181,10 @@ export function groupNavItemsBySection(
 ): Record<NavSectionKey, NavItemConfig[]> {
   const groups: Record<NavSectionKey, NavItemConfig[]> = {
     MAIN: [],
-    OPERATIONS: [],
-    INSIGHTS: [],
+    RELIABILITY: [],
+    ON_CALL: [],
+    ANALYTICS: [],
+    GOVERNANCE: [],
   };
 
   for (const item of items) {
