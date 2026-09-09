@@ -50,8 +50,8 @@ export default function StatusPageServiceBoard({
   services: PublicStatusService[];
   groupByRegion: boolean;
   thresholds: { excellent: number; good: number };
-  /** Resolved on the client; null during server render so markup stays deterministic. */
-  timeZone: string | null;
+  /** Starts at UTC on both server and first client render, then becomes the reader's own zone. */
+  timeZone: string;
 }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -72,8 +72,7 @@ export default function StatusPageServiceBoard({
       services.map(service => ({
         ...service,
         searchKey: serviceSearchKey(service),
-        days:
-          timeZone && service.history ? buildPublicHistoryDays(service.history, timeZone) : [],
+        days: service.history ? buildPublicHistoryDays(service.history, timeZone) : [],
       })),
     [services, timeZone]
   );

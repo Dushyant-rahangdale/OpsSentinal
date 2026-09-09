@@ -52,9 +52,17 @@ export default function StatusPageExperience({
       ? (page.branding as Record<string, unknown>)
       : {};
 
-  // Resolved after mount: every date on this page is shown in the reader's own zone, and there is
-  // deliberately no page-level timezone setting to contradict it.
-  const [timeZone, setTimeZone] = useState<string | null>(null);
+  /**
+   * Dates are shown in the reader's own zone, and there is deliberately no page-level timezone
+   * setting to contradict that.
+   *
+   * It starts at UTC rather than null so the daily history is present in the server-rendered HTML:
+   * the strip is the page's signature element, and resolving the zone before rendering anything
+   * left it absent on first paint and entirely absent without JavaScript. The client's first
+   * render also uses UTC, so hydration matches exactly, and the effect then re-renders in the
+   * local zone.
+   */
+  const [timeZone, setTimeZone] = useState('UTC');
   useEffect(() => {
     setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   }, []);
