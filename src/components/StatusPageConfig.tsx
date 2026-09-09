@@ -25,6 +25,29 @@ import {
   computeStatusPageTheme,
 } from '@/lib/status-page-theme';
 
+type StatusPageBranding = {
+  logoUrl?: string;
+  logo?: string;
+  faviconUrl?: string;
+  primaryColor?: string;
+  primary?: string;
+  backgroundColor?: string;
+  background?: string;
+  textColor?: string;
+  text?: string;
+  fontFamily?: string;
+  customCss?: string;
+  layout?: string;
+  showHeader?: boolean;
+  showFooter?: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  showRssLink?: boolean;
+  showApiLink?: boolean;
+};
+
 type StatusPageConfigProps = {
   statusPage: {
     id: string;
@@ -54,7 +77,7 @@ type StatusPageConfigProps = {
     contactEmail?: string | null;
     contactUrl?: string | null;
     emailProvider?: string | null;
-    branding?: any;
+    branding?: StatusPageBranding | null;
     requireAuth?: boolean;
     updatedAt?: Date | string;
     privacyMode?: string | null;
@@ -695,8 +718,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
   );
 
   // Parse branding JSON
-  const branding =
-    statusPage.branding && typeof statusPage.branding === 'object' ? statusPage.branding : {};
+  const branding = statusPage.branding ?? {};
 
   const [formData, setFormData] = useState({
     name: statusPage.name,
