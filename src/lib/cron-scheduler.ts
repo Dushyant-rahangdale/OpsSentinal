@@ -165,9 +165,13 @@ async function releaseLock(nextRunAt: Date): Promise<void> {
 }
 
 /**
- * Update scheduler state in database
+ * Update scheduler state in database.
+ *
+ * Production note: the singleton row can be missing on a fresh or partially
+ * reconstructed database. The scheduler should self-heal by recreating the
+ * row instead of logging a record-not-found failure and continuing forever.
  */
-async function updateState(data: {
+export async function updateState(data: {
   lastRunAt?: Date;
   lastSuccessAt?: Date;
   lastError?: string | null;
@@ -183,6 +187,21 @@ async function updateState(data: {
       data,
     });
   } catch (error) {
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : '';
+    if (code === 'P2025' || (error instanceof Error && /Record to update not found/.test(error.message))) {
+      try {
+        await prisma.cronSchedulerState.upsert({
+          where: { id: SINGLETON_ID },
+          update: data,
+          create: { id: SINGLETON_ID, ...data },
+        });
+        return;
+      } catch (upsertError) {
+        logger.error('[Cron] Failed to recreate missing scheduler state row', { error: upsertError });
+        return;
+      }
+    }
+
     logger.error('[Cron] Failed to update state', { error });
   }
 }

@@ -144,6 +144,30 @@ export const OVERALL_HEADLINE: Record<PublicServiceStatus, string> = {
   UNKNOWN: 'Status information unavailable',
 };
 
+/**
+ * The four-value vocabulary the public API used before partial outage and unknown existed.
+ *
+ * Emitted alongside the canonical value so an integrator switching on the old set keeps working:
+ * PARTIAL_OUTAGE and MAJOR_OUTAGE both fold to `outage`, and UNKNOWN folds to `degraded` because
+ * "we cannot verify this" must never be reported to an existing consumer as healthy.
+ */
+export type LegacyPublicStatus = 'operational' | 'degraded' | 'maintenance' | 'outage';
+
+export function legacyPublicStatus(status: PublicServiceStatus): LegacyPublicStatus {
+  switch (status) {
+    case 'OPERATIONAL':
+      return 'operational';
+    case 'MAINTENANCE':
+      return 'maintenance';
+    case 'PARTIAL_OUTAGE':
+    case 'MAJOR_OUTAGE':
+      return 'outage';
+    case 'DEGRADED':
+    case 'UNKNOWN':
+      return 'degraded';
+  }
+}
+
 /** Supporting sentence under the headline. */
 export const OVERALL_DETAIL: Record<PublicServiceStatus, string> = {
   OPERATIONAL: 'All services are operating normally.',
