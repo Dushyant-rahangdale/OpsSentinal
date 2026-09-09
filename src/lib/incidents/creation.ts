@@ -10,6 +10,9 @@ import { initializeEscalationExecution } from '@/lib/escalation/repository';
 import { applyIncidentLifecycleCommand } from '@/lib/incidents/lifecycle';
 import { resolveNewIncidentSlaContract } from '@/lib/incident-sla/contract';
 import { resolveIncidentClassification } from '@/lib/incidents/classification';
+import { deriveNewIncidentSlaTransition } from '@/lib/incident-sla/next-transition';
+import { resolveSupportHours } from '@/lib/incidents/support-hours';
+import { resolveIncidentEngagement } from '@/lib/incidents/engagement';
 
 export const INCIDENT_CREATION_OUTCOMES = ['CREATED', 'MERGED', 'REOPENED'] as const;
 export type IncidentCreationOutcome = (typeof INCIDENT_CREATION_OUTCOMES)[number];
@@ -333,6 +336,13 @@ export async function applyIncidentCreation(
         now,
       })
     : null;
+  const engagement = tx.responseSupportHoursPolicy
+    ? resolveIncidentEngagement({
+        urgency: classification.urgency,
+        supportHours: await resolveSupportHours(tx, { serviceId: input.serviceId, at: now }),
+        now,
+      })
+    : null;
 
   const incident = await tx.incident.create({
     data: {
@@ -358,6 +368,20 @@ export async function applyIncidentCreation(
       classificationPolicyId: classification.policyId,
       classificationPolicyVersion: classification.policyVersion,
       classificationRule: classification.rule,
+      classificationPriorityPolicyId: classification.priorityProvenance.policyId,
+      classificationPriorityPolicyVersion: classification.priorityProvenance.policyVersion,
+      classificationPriorityRule: classification.priorityProvenance.rule,
+      classificationPriorityScope: classification.priorityProvenance.scope,
+      classificationUrgencyPolicyId: classification.urgencyProvenance.policyId,
+      classificationUrgencyPolicyVersion: classification.urgencyProvenance.policyVersion,
+      classificationUrgencyRule: classification.urgencyProvenance.rule,
+      classificationUrgencyScope: classification.urgencyProvenance.scope,
+      ...(slaContract
+        ? (() => {
+            const next = deriveNewIncidentSlaTransition(slaContract, now);
+            return { nextSlaTransitionAt: next?.at, nextSlaTransitionKind: next?.kind };
+          })()
+        : {}),
       teamId: input.assigneeId ? null : (input.teamId ?? null),
       events: {
         create: {
@@ -385,11 +409,13 @@ export async function applyIncidentCreation(
     incidentId: incident.id,
     serviceId: input.serviceId,
     now,
+    notBefore: engagement?.earliestDeliveryAt,
   });
 
   await enqueueIncidentCreationSideEffects(tx, {
     incidentId: incident.id,
     source: input.source,
+    responderNotBefore: engagement?.earliestDeliveryAt,
   });
 
   return { id: incident.id, outcome: 'CREATED' };

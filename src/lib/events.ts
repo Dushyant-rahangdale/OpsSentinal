@@ -7,6 +7,9 @@ import { enqueueEventSideEffects, enqueueLifecycleSideEffects } from './event-ou
 import { applyIncidentLifecycleCommand } from './incidents/lifecycle';
 import { resolveNewIncidentSlaContract } from './incident-sla/contract';
 import { resolveIncidentClassification } from './incidents/classification';
+import { deriveNewIncidentSlaTransition } from './incident-sla/next-transition';
+import { resolveSupportHours } from './incidents/support-hours';
+import { resolveIncidentEngagement } from './incidents/engagement';
 
 export type EventSeverity = 'critical' | 'error' | 'warning' | 'info';
 
@@ -365,6 +368,16 @@ export async function processEvent(
             classificationPolicyId: classification.policyId,
             classificationPolicyVersion: classification.policyVersion,
             classificationRule: classification.rule,
+            classificationPriorityPolicyId: classification.priorityProvenance.policyId,
+            classificationPriorityPolicyVersion: classification.priorityProvenance.policyVersion,
+            classificationPriorityRule: classification.priorityProvenance.rule,
+            classificationPriorityScope: classification.priorityProvenance.scope,
+            classificationUrgencyPolicyId: classification.urgencyProvenance.policyId,
+            classificationUrgencyPolicyVersion: classification.urgencyProvenance.policyVersion,
+            classificationUrgencyRule: classification.urgencyProvenance.rule,
+            classificationUrgencyScope: classification.urgencyProvenance.scope,
+            nextSlaTransitionAt: null,
+            nextSlaTransitionKind: null,
             escalationStatus: 'COMPLETED',
           },
         });
@@ -418,6 +431,11 @@ export async function processEvent(
         priority: classification.priority,
         now: incidentCreatedAt,
       });
+      const engagement = resolveIncidentEngagement({
+        urgency,
+        supportHours: await resolveSupportHours(tx, { serviceId, at: incidentCreatedAt }),
+        now: incidentCreatedAt,
+      });
       const newIncident = await tx.incident.create({
         data: {
           title: sanitizedTitle,
@@ -441,6 +459,18 @@ export async function processEvent(
           classificationPolicyId: classification.policyId,
           classificationPolicyVersion: classification.policyVersion,
           classificationRule: classification.rule,
+          classificationPriorityPolicyId: classification.priorityProvenance.policyId,
+          classificationPriorityPolicyVersion: classification.priorityProvenance.policyVersion,
+          classificationPriorityRule: classification.priorityProvenance.rule,
+          classificationPriorityScope: classification.priorityProvenance.scope,
+          classificationUrgencyPolicyId: classification.urgencyProvenance.policyId,
+          classificationUrgencyPolicyVersion: classification.urgencyProvenance.policyVersion,
+          classificationUrgencyRule: classification.urgencyProvenance.rule,
+          classificationUrgencyScope: classification.urgencyProvenance.scope,
+          ...(() => {
+            const next = deriveNewIncidentSlaTransition(newSla, incidentCreatedAt);
+            return { nextSlaTransitionAt: next?.at, nextSlaTransitionKind: next?.kind };
+          })(),
           createdAt: incidentCreatedAt,
           ...(isFlapping
             ? {
@@ -493,8 +523,15 @@ export async function processEvent(
         await initializeEscalationExecution(tx, {
           incidentId: newIncident.id,
           serviceId,
+          now: incidentCreatedAt,
+          notBefore: engagement.earliestDeliveryAt,
         });
-        await enqueueEventSideEffects(tx, 'triggered', newIncident.id);
+        await enqueueEventSideEffects(
+          tx,
+          'triggered',
+          newIncident.id,
+          engagement.earliestDeliveryAt
+        );
       }
 
       return {
