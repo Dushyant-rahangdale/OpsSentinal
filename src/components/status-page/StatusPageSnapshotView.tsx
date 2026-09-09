@@ -3,8 +3,7 @@ import StatusPageAnnouncements from './StatusPageAnnouncements';
 import StatusPageAutoRefresh from './StatusPageAutoRefresh';
 import StatusPageHeader from './StatusPageHeader';
 import StatusPageIncidents from './StatusPageIncidents';
-import StatusPageMetrics from './StatusPageMetrics';
-import StatusPageServices from './StatusPageServices';
+import PublicStatusServices from './PublicStatusServices';
 import StatusPageSubscribe from './StatusPageSubscribe';
 import type { StatusPageSnapshot } from '@/lib/status-pages/snapshot';
 import {
@@ -13,6 +12,7 @@ import {
 } from '@/lib/status-pages/view-model';
 import { toSafeStyleTagContent } from '@/lib/status-page-content';
 import { computeStatusPageTheme } from '@/lib/status-page-theme';
+import { statusPresentation } from '@/lib/status-pages/status-presentation';
 
 export default function StatusPageSnapshotView({
   page,
@@ -44,10 +44,6 @@ export default function StatusPageSnapshotView({
     page.slug && !page.isDefault ? `/status/${encodeURIComponent(page.slug)}` : '/status';
   const apiPath =
     page.slug && !page.isDefault ? `/api/status/${encodeURIComponent(page.slug)}` : '/api/status';
-  const thirtyDaysAgo = new Date(snapshot.generatedAt);
-  thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
-  const ninetyDaysAgo = new Date(snapshot.generatedAt);
-  ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 90);
   const customCss = toSafeStyleTagContent(branding.customCss);
 
   return (
@@ -70,7 +66,10 @@ export default function StatusPageSnapshotView({
         {branding.showHeader !== false && (
           <StatusPageHeader
             statusPage={page}
-            overallStatus={snapshot.status}
+            overallStatus={snapshot.status === 'OPERATIONAL' ? 'operational'
+              : snapshot.status === 'MAINTENANCE' ? 'maintenance'
+                : snapshot.status === 'MAJOR_OUTAGE' || snapshot.status === 'PARTIAL_OUTAGE' ? 'outage'
+                  : snapshot.status === 'UNKNOWN' ? 'unknown' : 'degraded'}
             branding={branding}
             lastUpdated={snapshot.generatedAt}
           />
@@ -78,64 +77,26 @@ export default function StatusPageSnapshotView({
         {stale && <p role="note">Showing the last verified status update.</p>}
         <StatusPageAnnouncements
           announcements={view.announcements.filter(item => item.type !== 'UPDATE')}
-          showServiceRegions={snapshot.services.some(service => service.region !== undefined)}
+          showServiceRegions={snapshot.services.some(service => service.regions !== undefined)}
         />
-        {page.showRegionHeatmap === true && (
-          <section aria-labelledby="region-health-heading">
+        {page.showRegionHeatmap === true && snapshot.regions.length > 0 && (
+          <section aria-labelledby="region-health-heading" className="public-regions">
             <h2 id="region-health-heading">Region health</h2>
-            {Array.from(
-              new Set(
-                snapshot.services.flatMap(service =>
-                  (service.region || '')
-                    .split(',')
-                    .map(region => region.trim())
-                    .filter(Boolean)
-                )
-              )
-            ).map(region => (
-              <p key={region}>{region}</p>
-            ))}
+            {snapshot.regions.map(region => {
+              const presentation = statusPresentation(region.status);
+              return <article key={region.name} className="public-region-card">
+                <strong>{region.name}</strong>
+                <span className={`status-badge status-${presentation.token}`}>{presentation.icon} {presentation.label}</span>
+                <span>{region.totalServices} services · {region.impactedServices} impacted</span>
+                <span>{region.operationalServices} operational · {region.degradedServices} degraded · {region.maintenanceServices} maintenance · {region.partialOutageServices} partial · {region.majorOutageServices} major · {region.unknownServices} unknown</span>
+              </article>;
+            })}
           </section>
         )}
-        {page.showServicesByRegion === true &&
-          Array.from(
-            new Set(
-              snapshot.services.flatMap(service =>
-                (service.region || '')
-                  .split(',')
-                  .map(region => region.trim())
-                  .filter(Boolean)
-              )
-            )
-          ).map(region => <section key={region} aria-label={`${region} services`} />)}
-        <StatusPageServices
-          services={view.services}
-          statusPageServices={view.mappings}
-          uptime90={view.uptime}
-          incidents={[]}
-          statusHistory={view.statusHistory}
-          groupByRegionDefault={page.showServicesByRegion}
-          showServiceOwners={snapshot.services.some(service => service.team !== undefined)}
-          showServiceSlaTier={snapshot.services.some(service => service.slaTier !== undefined)}
-          privacySettings={{
-            showServiceDescriptions: snapshot.services.some(
-              service => service.description !== undefined
-            ),
-            showServiceRegions: snapshot.services.some(service => service.region !== undefined),
-            showTeamInformation: snapshot.services.some(service => service.team !== undefined),
-            showUptimeHistory: snapshot.statusHistory !== undefined,
-          }}
+        <PublicStatusServices
+          services={snapshot.services}
+          groupByRegion={page.showServicesByRegion === true}
         />
-        {Object.keys(view.uptime).length > 0 && (
-          <StatusPageMetrics
-            services={view.services}
-            incidents={[]}
-            thirtyDaysAgo={thirtyDaysAgo}
-            ninetyDaysAgo={ninetyDaysAgo}
-            precomputedUptime={view.uptime}
-            precomputedUptime30={view.uptime30}
-          />
-        )}
         <StatusPageIncidents
           incidents={view.incidents}
           privacySettings={{

@@ -37,12 +37,14 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
       });
     }
 
-    const authResult = await authorizeStatusApiRequest(req, statusPage.id, {
+    const needsApiControl = statusPage.statusApiRequireToken === true ||
+      statusPage.statusApiRateLimitEnabled === true || req.headers.has('authorization');
+    const authResult = needsApiControl ? await authorizeStatusApiRequest(req, statusPage.id, {
       requireToken: statusPage.statusApiRequireToken === true,
       rateLimitEnabled: statusPage.statusApiRateLimitEnabled === true,
       rateLimitMax: statusPage.statusApiRateLimitMax ?? 120,
       rateLimitWindowSec: statusPage.statusApiRateLimitWindowSec ?? 60,
-    });
+    }) : { allowed: true };
     if (!authResult.allowed) {
       if (authResult.status === 429) {
         return NextResponse.json(
@@ -73,9 +75,10 @@ export async function getStatusResponse(req: NextRequest, slug?: string) {
         services: snapshot.services,
         incidents: snapshot.incidents,
         metrics: {
-          uptime: Object.entries(snapshot.uptime).map(([serviceId, uptime]) => ({
-            serviceId,
-            uptime: Number(uptime.toFixed(3)),
+          uptime: snapshot.services.map(service => ({
+            serviceId: service.id,
+            days30: service.uptime?.days30 ?? null,
+            days90: service.uptime?.days90 ?? null,
           })),
         },
         retention: { historyDays: snapshot.historyDays },

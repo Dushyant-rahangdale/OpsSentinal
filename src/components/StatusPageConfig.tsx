@@ -1686,6 +1686,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                             helperText="Used in email headers (e.g., 'OpsKnight'). Overrides Status Page Name if set."
                             placeholder="e.g. OpsKnight"
                           />
+
                         </div>
                       </div>
                     </Card>

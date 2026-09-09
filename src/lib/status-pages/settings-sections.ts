@@ -1,7 +1,15 @@
 const sectionFields = new Map<string, readonly string[]>([
   [
     'general',
-    ['name', 'slug', 'organizationName', 'subdomain', 'customDomain', 'enabled', 'requireAuth'],
+    [
+      'name',
+      'slug',
+      'organizationName',
+      'subdomain',
+      'customDomain',
+      'enabled',
+      'requireAuth',
+    ],
   ],
   ['appearance', ['branding']],
   ['customization', ['branding']],

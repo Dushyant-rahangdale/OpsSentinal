@@ -2,7 +2,9 @@ import 'server-only';
 
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { emitAuditEvent } from '@/lib/audit';
 import { getStatusPageServingStore } from './serving-store';
+import { rebuildStatusPageSnapshot } from './snapshot';
 
 const STATUS_PAGE_LIFECYCLE_LOCK = 'opsknight:status-pages:lifecycle:v1';
 
@@ -63,7 +65,7 @@ export async function makeDefaultStatusPage(statusPageId: string) {
 }
 
 export async function deleteStatusPage(statusPageId: string, replacementDefaultId?: string) {
-  await prisma.$transaction(async tx => {
+  const { page, replacementId } = await prisma.$transaction(async tx => {
     await lockLifecycle(tx);
     const page = await requireStatusPageForAdmin(statusPageId, tx);
     const count = await tx.statusPage.count();
@@ -81,7 +83,13 @@ export async function deleteStatusPage(statusPageId: string, replacementDefaultI
           'The replacement default must be a different status page.'
         );
       }
-      await requireStatusPageForAdmin(replacementDefaultId, tx);
+      const replacement = await requireStatusPageForAdmin(replacementDefaultId, tx);
+      if (!replacement.enabled) {
+        throw new StatusPageAdminError(
+          'STATUS_PAGE_DEFAULT_REPLACEMENT_INVALID',
+          'The replacement default status page must be public.'
+        );
+      }
       await tx.statusPage.update({ where: { id: statusPageId }, data: { isDefault: false } });
       await tx.statusPage.update({
         where: { id: replacementDefaultId },
@@ -89,7 +97,59 @@ export async function deleteStatusPage(statusPageId: string, replacementDefaultI
       });
     }
 
-    await tx.statusPage.delete({ where: { id: statusPageId } });
+    return {
+      page,
+      replacementId: page.isDefault && count > 1 ? replacementDefaultId : undefined,
+    };
   });
-  await getStatusPageServingStore().revoke(statusPageId);
+  const store = getStatusPageServingStore();
+  // Publish the replacement and switch the default route before revoking the
+  // old page. This keeps /status continuously available during replacement.
+  if (replacementId) {
+    try {
+      if (!(await rebuildStatusPageSnapshot(replacementId))) {
+        throw new Error('Failed to publish the replacement default status page.');
+      }
+    } catch (error) {
+      // Keep the operation retryable if publication fails. The old route still
+      // points to a healthy page because revocation has not started yet.
+      await prisma.$transaction(async tx => {
+        await lockLifecycle(tx);
+        await tx.statusPage.updateMany({
+          where: { id: replacementId },
+          data: { isDefault: false },
+        });
+        await tx.statusPage.updateMany({
+          where: { id: statusPageId },
+          data: { isDefault: true },
+        });
+      });
+      throw error;
+    }
+  }
+  await store.revoke(statusPageId);
+  await Promise.all([
+    ...(page.slug ? [store.removeRoute(page.slug)] : []),
+    ...(page.customDomain ? [store.removeRoute(`domain:${page.customDomain.toLowerCase()}`)] : []),
+    ...(page.subdomain ? [store.removeRoute(`subdomain:${page.subdomain.toLowerCase()}`)] : []),
+    ...(page.isDefault && !replacementId ? [store.removeRoute('default')] : []),
+  ]);
+  await prisma.$transaction(async tx => {
+    await lockLifecycle(tx);
+    await tx.statusPage.update({ where: { id: statusPageId }, data: { enabled: false } });
+    await tx.$executeRaw`UPDATE "StatusPageSnapshot" SET "revision" = "revision" + 1 WHERE "statusPageId" = ${statusPageId}`;
+    await tx.notification.updateMany({
+      where: {
+        tenantKey: `status-page:${statusPageId}`,
+        status: { in: ['PENDING', 'FAILED'] },
+      },
+      data: { status: 'SKIPPED', errorMsg: 'Status page deleted' },
+    });
+    await tx.statusPage.delete({ where: { id: statusPageId } });
+    await emitAuditEvent({
+      action: 'STATUS_PAGE_DELETED',
+      source: 'UI',
+      target: { type: 'STATUS_PAGE', id: statusPageId },
+    }, tx);
+  });
 }

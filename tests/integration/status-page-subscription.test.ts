@@ -44,7 +44,11 @@ vi.mock('@/lib/notification-providers', async importOriginal => {
 
 import { getServerSession } from 'next-auth';
 import { sendEmail } from '@/lib/email';
-import { processCentralNotificationQueue } from '@/lib/notification-control-plane';
+import {
+  createCentralNotificationIntent,
+  processCentralNotificationQueue,
+} from '@/lib/notification-control-plane';
+import { ingestNotificationProviderFeedback } from '@/lib/notification-provider-feedback';
 
 describeIfRealDB('Status Page Subscription Integration', () => {
   beforeAll(() => {
@@ -88,6 +92,7 @@ describeIfRealDB('Status Page Subscription Integration', () => {
       const sub = await createTestStatusPageSubscription(sp.id, 'user@example.com', {
         unsubscribedAt: new Date(),
         verified: true,
+        state: 'UNSUBSCRIBED',
       });
 
       const req = new Request('http://localhost/api/status-page/subscribe', {
@@ -103,6 +108,186 @@ describeIfRealDB('Status Page Subscription Integration', () => {
       });
       expect(updatedSub?.unsubscribedAt).toBeNull();
       expect(updatedSub?.verified).toBe(false);
+      expect(updatedSub?.state).toBe('PENDING');
+      expect(updatedSub?.suppressionReason).toBeNull();
+    });
+
+    it.each(['COMPLAINED', 'SUPPRESSED', 'BOUNCED'] as const)(
+      'does not automatically reactivate a %s subscriber',
+      async state => {
+        const sp = await createTestStatusPage();
+        const unsubscribedAt = new Date('2026-09-09T09:00:00.000Z');
+        const sub = await createTestStatusPageSubscription(sp.id, 'blocked@example.com', {
+          state,
+          unsubscribedAt,
+          suppressionReason: `provider:${state.toLowerCase()}`,
+          verified: false,
+        });
+
+        const res = await POST(
+          new Request('http://localhost/api/status-page/subscribe', {
+            method: 'POST',
+            body: JSON.stringify({ statusPageId: sp.id, email: 'blocked@example.com' }),
+          }) as NextRequest
+        );
+
+        expect(res.status).toBe(200);
+        expect(await testPrisma.statusPageSubscription.findUnique({ where: { id: sub.id } })).toMatchObject({
+          state,
+          unsubscribedAt,
+          suppressionReason: `provider:${state.toLowerCase()}`,
+          verified: false,
+        });
+        expect(
+          await testPrisma.notification.count({
+            where: { recipientType: 'SUBSCRIBER', recipientId: sub.id },
+          })
+        ).toBe(0);
+      }
+    );
+
+    it('preserves a delayed complaint received after unsubscribe', async () => {
+      const sp = await createTestStatusPage();
+      const unsubscribedAt = new Date('2026-09-09T09:00:00.000Z');
+      const sub = await createTestStatusPageSubscription(sp.id, 'complaint@example.com', {
+        state: 'UNSUBSCRIBED',
+        unsubscribedAt,
+        verified: false,
+      });
+      const notification = await createCentralNotificationIntent({
+        category: 'STATUS_PAGE',
+        channel: 'EMAIL',
+        recipientType: 'SUBSCRIBER',
+        recipientId: sub.id,
+        recipientAddress: 'complaint@example.com',
+        templateKey: 'status-page-update',
+        sourceType: 'STATUS_PAGE',
+        sourceId: sp.id,
+        eventKey: 'delayed-complaint',
+        displayMessage: 'Status page update',
+        payload: {
+          kind: 'EMAIL',
+          to: 'complaint@example.com',
+          subject: 'Status page update',
+          html: '<p>Status page update</p>',
+        },
+      });
+      await testPrisma.notification.update({
+        where: { id: notification.id },
+        data: { providerMessageId: 'provider-message-delayed-complaint' },
+      });
+      const complainedAt = new Date('2026-09-09T09:05:00.000Z');
+
+      await ingestNotificationProviderFeedback({
+        provider: 'test-provider',
+        providerEventId: 'delayed-complaint-event',
+        providerMessageId: 'provider-message-delayed-complaint',
+        type: 'COMPLAINT',
+        occurredAt: complainedAt,
+      });
+      const res = await POST(
+        new Request('http://localhost/api/status-page/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ statusPageId: sp.id, email: 'complaint@example.com' }),
+        }) as NextRequest
+      );
+
+      expect(res.status).toBe(200);
+      expect(await testPrisma.statusPageSubscription.findUnique({ where: { id: sub.id } })).toMatchObject({
+        state: 'COMPLAINED',
+        unsubscribedAt,
+        suppressionReason: 'COMPLAINT',
+        complainedAt,
+        verified: false,
+      });
+      expect(
+        await testPrisma.notification.count({
+          where: {
+            recipientType: 'SUBSCRIBER',
+            recipientId: sub.id,
+            templateKey: 'status-page-verification',
+          },
+        })
+      ).toBe(0);
+    });
+
+    it('keeps an active subscriber active without queueing verification', async () => {
+      const sp = await createTestStatusPage();
+      const sub = await createTestStatusPageSubscription(sp.id, 'active@example.com', {
+        state: 'ACTIVE',
+        verified: true,
+      });
+
+      const res = await POST(
+        new Request('http://localhost/api/status-page/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ statusPageId: sp.id, email: 'active@example.com' }),
+        }) as NextRequest
+      );
+
+      expect(res.status).toBe(200);
+      expect(await testPrisma.statusPageSubscription.findUnique({ where: { id: sub.id } })).toMatchObject({
+        state: 'ACTIVE',
+        verified: true,
+      });
+      expect(
+        await testPrisma.notification.count({ where: { recipientId: sub.id } })
+      ).toBe(0);
+    });
+
+    it('does not resend verification for a recently created pending subscriber', async () => {
+      const sp = await createTestStatusPage();
+      const sub = await createTestStatusPageSubscription(sp.id, 'recent@example.com', {
+        state: 'PENDING',
+        verified: false,
+        subscribedAt: new Date(),
+      });
+
+      const res = await POST(
+        new Request('http://localhost/api/status-page/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ statusPageId: sp.id, email: 'recent@example.com' }),
+        }) as NextRequest
+      );
+
+      expect(res.status).toBe(200);
+      expect(
+        await testPrisma.notification.count({ where: { recipientId: sub.id } })
+      ).toBe(0);
+    });
+
+    it('refreshes verification for an expired pending subscriber', async () => {
+      const sp = await createTestStatusPage();
+      const oldVerificationToken = hashSubscriptionToken('old-verification-token');
+      const sub = await createTestStatusPageSubscription(sp.id, 'pending@example.com', {
+        state: 'PENDING',
+        verified: false,
+        subscribedAt: new Date(Date.now() - 61_000),
+        verificationToken: oldVerificationToken,
+      });
+
+      const res = await POST(
+        new Request('http://localhost/api/status-page/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ statusPageId: sp.id, email: 'pending@example.com' }),
+        }) as NextRequest
+      );
+
+      expect(res.status).toBe(200);
+      const updatedSub = await testPrisma.statusPageSubscription.findUnique({
+        where: { id: sub.id },
+      });
+      expect(updatedSub).toMatchObject({ state: 'PENDING', verified: false });
+      expect(updatedSub?.verificationToken).not.toBe(oldVerificationToken);
+      expect(
+        await testPrisma.notification.count({
+          where: {
+            recipientType: 'SUBSCRIBER',
+            recipientId: sub.id,
+            templateKey: 'status-page-verification',
+          },
+        })
+      ).toBe(1);
     });
   });
 

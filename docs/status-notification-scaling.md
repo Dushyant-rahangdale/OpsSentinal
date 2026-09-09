@@ -23,6 +23,18 @@ The operations page shows effective capacity, leases, campaigns, and bulk pause 
 delivery leaves critical and transactional workers running. Provider credentials remain in the
 encrypted provider store.
 
+Provider/account overrides use
+`NOTIFICATION_<CHANNEL>_<PROVIDER_ACCOUNT>_RATE_PER_SECOND` and
+`NOTIFICATION_<CHANNEL>_<PROVIDER_ACCOUNT>_MAX_IN_FLIGHT`. Non-alphanumeric characters in the
+provider account key become underscores. The precedence is provider account, channel, then the
+built-in system default. Queue claims cap each tenant within each traffic class so a large public
+campaign cannot consume an entire worker batch.
+
+Subscriber delivery state is explicit: pending, active, unsubscribed, suppressed, bounced, or
+complained. Provider feedback is idempotent by provider event ID. Hard bounces, complaints,
+invalid recipients, and provider suppressions stop later delivery; three soft bounces transition a
+subscriber to bounced. The worker revalidates this state immediately before provider submission.
+
 Public HTML, JSON, and RSS serve published snapshots only. Set
 `STATUS_PAGE_SERVING_STORE_URL` and `STATUS_PAGE_SERVING_STORE_TOKEN` for an external store and
 opt in with `STATUS_PAGE_EXTERNAL_SERVING_STORE=true`. Privacy changes revoke the manifest before
@@ -34,6 +46,12 @@ rolled back by deploying the previous compatible application/worker version, not
 runtime flags. Roll forward by applying additive schema first, then workers, then web processes.
 Keep snapshot-only public serving fail-closed during rollback.
 
+After applying the status-platform schema migration, run
+`npm run prisma:indexes:status-platform` before enabling the new workers. This installs the
+Notification and StatusPageSubscription indexes with PostgreSQL's online concurrent build, outside
+Prisma's migration transaction. The command is idempotent and must complete on every production
+database before the rollout proceeds.
+
 Run combined load validation with:
 
 ```sh
@@ -42,9 +60,17 @@ k6 run -e BASE_URL=https://staging.example.com -e PUBLIC_RPS=1000 \
   scripts/load/status-notification-scaling.js
 ```
 
-Execute subscriber campaigns at 1k, 10k, and 100k while recording PostgreSQL CPU, connections,
+Execute subscriber campaigns at 1k, 10k, 100k, and 1M while recording PostgreSQL CPU, connections,
 query rate, queue depth/age, provider throughput, worker memory, public latency, and internal p95.
 Repeat with provider 429, 500, two-second latency, a 30-minute outage, PostgreSQL pressure, and a
 bulk-worker termination. Acceptance requires internal p95 degradation below 15%, uninterrupted
 critical paging, crash-safe campaign resume, and correct Retry-After behavior at 250/s, 500/s, and
 1,000/s test ceilings.
+
+Release SLOs are: public availability 99.99%, public p95 below 250 ms, critical queue p95 below two
+seconds, transactional queue p95 below ten seconds, snapshot publication p95 below 60 seconds,
+zero false-green responses, and zero duplicate lifecycle deliveries. Run public traffic at 100,
+500, 1,000, and 5,000 RPS. The final mixed test combines 1,000 public RPS, a 1M-recipient campaign,
+critical responder traffic, and internal incident traffic. Store the dated k6 output and database,
+worker, provider, bounce, complaint, and queue telemetry with the release record; targets without
+recorded evidence do not count as certification.

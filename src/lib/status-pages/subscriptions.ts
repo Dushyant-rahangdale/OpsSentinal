@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { hashSubscriptionToken } from './subscription-tokens';
+import { subscriptionRequestAction } from './subscription-policy';
 import {
   getStatusPageLogoUrl,
   getStatusPagePublicUrl,
@@ -106,28 +107,39 @@ export async function subscribeStatusPageRequest(req: NextRequest) {
     });
 
     if (existing) {
-      if (existing.unsubscribedAt) {
-        await prisma.statusPageSubscription.update({
-          where: { id: existing.id },
+      const action = subscriptionRequestAction(existing.state, existing.subscribedAt, Date.now());
+      // Deliverability state is authoritative. Provider suppressions can arrive
+      // after an unsubscribe, so unsubscribedAt alone must never reactivate a
+      // complained, bounced, or suppressed address.
+      if (action === 'ACCEPT') {
+        return subscriptionAccepted();
+      }
+
+      if (action === 'REACTIVATE') {
+        const reactivated = await prisma.statusPageSubscription.updateMany({
+          where: { id: existing.id, state: 'UNSUBSCRIBED' },
           data: {
             unsubscribedAt: null,
+            state: 'PENDING',
+            suppressionReason: null,
             token: hashSubscriptionToken(token),
             verificationToken: hashSubscriptionToken(verificationToken),
             verified: false,
           },
         });
-      } else if (existing.verified) {
-        return subscriptionAccepted();
-      } else if (Date.now() - existing.subscribedAt.getTime() < 60_000) {
-        return subscriptionAccepted();
+
+        // A provider callback may have applied a stronger suppression after the
+        // initial read. Preserve that state and avoid queueing verification.
+        if (reactivated.count === 0) return subscriptionAccepted();
       } else {
-        await prisma.statusPageSubscription.update({
-          where: { id: existing.id },
+        const refreshed = await prisma.statusPageSubscription.updateMany({
+          where: { id: existing.id, state: 'PENDING' },
           data: {
             token: hashSubscriptionToken(token),
             verificationToken: hashSubscriptionToken(verificationToken),
           },
         });
+        if (refreshed.count === 0) return subscriptionAccepted();
       }
     } else {
       await prisma.statusPageSubscription.create({
@@ -137,6 +149,7 @@ export async function subscribeStatusPageRequest(req: NextRequest) {
           token: hashSubscriptionToken(token),
           verificationToken: hashSubscriptionToken(verificationToken),
           verified: false,
+          state: 'PENDING',
         },
       });
     }

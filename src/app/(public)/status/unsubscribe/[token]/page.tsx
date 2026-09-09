@@ -21,7 +21,7 @@ async function confirmUnsubscribe(formData: FormData) {
       await prisma.$transaction([
         prisma.statusPageSubscription.updateMany({
           where: { id: subscription.id, unsubscribedAt: null },
-          data: { unsubscribedAt: new Date() },
+          data: { unsubscribedAt: new Date(), state: 'UNSUBSCRIBED' },
         }),
         prisma.notification.updateMany({
           where: {

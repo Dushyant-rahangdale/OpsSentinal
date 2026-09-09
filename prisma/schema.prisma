@@ -93,6 +93,15 @@ enum NotificationTrafficClass {
   BULK
 }
 
+enum StatusPageSubscriptionState {
+  PENDING
+  ACTIVE
+  UNSUBSCRIBED
+  SUPPRESSED
+  BOUNCED
+  COMPLAINED
+}
+
 enum NotificationCategory {
   INCIDENT
   SECURITY
@@ -1144,6 +1153,7 @@ model Notification {
   contentId         String?
   fanoutId          String?
   trafficClass      NotificationTrafficClass  @default(TRANSACTIONAL)
+  tenantKey         String                    @default("system")
   priority          Int                       @default(5)
   scheduledAt       DateTime                  @default(now())
   nextAttemptAt     DateTime                  @default(now())
@@ -1176,6 +1186,7 @@ model Notification {
   @@index([incidentId, userId, status], name: "idx_notification_incident_user_status") // For per-incident per-user dedup checks
   @@index([status, nextAttemptAt, priority, createdAt], name: "idx_notification_delivery_due")
   @@index([trafficClass, status, nextAttemptAt, priority, createdAt], name: "idx_notification_traffic_delivery_due")
+  @@index([trafficClass, tenantKey, status, nextAttemptAt, createdAt], name: "idx_notification_tenant_fair_delivery")
   @@index([category, createdAt], name: "idx_notification_category_created")
   @@index([recipientHash, createdAt], name: "idx_notification_recipient_created")
   @@index([sourceType, sourceId, createdAt], name: "idx_notification_source_created")
@@ -1240,6 +1251,21 @@ model NotificationDeliveryAttempt {
   @@unique([notificationId, ordinal])
   @@index([notificationId, startedAt])
   @@index([outcome, startedAt])
+}
+
+model NotificationProviderFeedback {
+  id                String   @id @default(cuid())
+  provider          String
+  providerEventId   String
+  providerMessageId String?
+  eventType         String
+  recipientHash     String?
+  occurredAt        DateTime
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerEventId])
+  @@index([providerMessageId])
+  @@index([eventType, occurredAt])
 }
 
 model InAppNotification {
@@ -1630,6 +1656,13 @@ model StatusPageSubscription {
   subscribedAt      DateTime  @default(now())
   unsubscribedAt    DateTime?
   verified          Boolean   @default(false)
+  state             StatusPageSubscriptionState @default(PENDING)
+  suppressionReason String?
+  lastBounceAt      DateTime?
+  bounceCount       Int       @default(0)
+  complainedAt      DateTime?
+  lastDeliveredAt   DateTime?
+  lastFailedAt      DateTime?
   verificationToken String?
   preferences       Json? // Notification preferences (all incidents, major only, etc.)
 

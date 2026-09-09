@@ -7,7 +7,7 @@ import { formatDateTime } from '@/lib/timezone';
 interface IncidentEvent {
   id: string;
   message: string;
-  createdAt: Date;
+  createdAt?: Date;
 }
 
 interface Incident {
@@ -16,7 +16,7 @@ interface Incident {
   description?: string | null;
   status: string;
   urgency: string;
-  createdAt: Date;
+  createdAt?: Date;
   acknowledgedAt?: Date | null;
   resolvedAt?: Date | null;
   service: {
@@ -460,7 +460,7 @@ export default function StatusPageIncidents({
                                   <polyline points="12 6 12 12 16 14"></polyline>
                                 </svg>
                                 Started{' '}
-                                {formatDateTime(incident.createdAt, browserTimeZone, {
+                                {incident.createdAt && formatDateTime(incident.createdAt, browserTimeZone, {
                                   format: 'datetime',
                                 })}
                               </span>
@@ -693,7 +693,7 @@ export default function StatusPageIncidents({
                         >
                           <span>Detected</span>
                           <span>
-                            {formatDateTime(incident.createdAt, browserTimeZone, {
+                            {incident.createdAt && formatDateTime(incident.createdAt, browserTimeZone, {
                               format: 'short',
                             })}
                           </span>
@@ -857,7 +857,7 @@ export default function StatusPageIncidents({
                               >
                                 {event.message}
                               </p>
-                              <span
+                              {event.createdAt && <span
                                 style={{
                                   fontSize: '0.8125rem',
                                   color: 'var(--status-text-subtle, #9ca3af)',
@@ -880,7 +880,7 @@ export default function StatusPageIncidents({
                                 {formatDateTime(event.createdAt, browserTimeZone, {
                                   format: 'short',
                                 })}
-                              </span>
+                              </span>}
                             </div>
                           </div>
                         ))}

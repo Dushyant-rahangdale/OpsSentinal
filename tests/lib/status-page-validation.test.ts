@@ -38,6 +38,16 @@ describe('Status Page Validation Schemas', () => {
       expect(result.success).toBe(true);
     });
 
+    it('does not expose browser-local timezone as a persisted setting', () => {
+      const result = StatusPageSettingsSchema.safeParse({
+        enabled: true,
+        timeZone: 'America/New_York',
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data).toEqual({ enabled: true });
+    });
+
     it('should validate privacy mode values', () => {
       const validModes = ['PUBLIC', 'RESTRICTED', 'PRIVATE'];
 
