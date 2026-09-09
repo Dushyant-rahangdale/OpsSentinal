@@ -9,7 +9,12 @@ import {
 import { Label } from '@/components/ui/shadcn/label';
 import { cn } from '@/lib/utils';
 import { HelpCircle } from 'lucide-react';
-import Tooltip from '@/components/ui/Tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/shadcn/tooltip';
 
 interface FormFieldProps {
   name: string;
@@ -52,9 +57,22 @@ export function FormField({
               {required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {tooltip && (
-              <Tooltip content={tooltip}>
-                <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-              </Tooltip>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`More information about ${label}`}
+                      className="inline-flex rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <HelpCircle aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="start" className="max-w-xs leading-relaxed">
+                    {tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
           {description && <p className="text-xs text-muted-foreground">{description}</p>}
