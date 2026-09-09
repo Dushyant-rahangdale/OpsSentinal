@@ -21,18 +21,13 @@ const uptimeWindow = z.object({
   complete: z.boolean(),
 }).strict();
 
-const historyDay = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  status,
-  incidentCount: z.number().int().nonnegative(),
-  availabilityPercent: z.number().min(0).max(100).nullable(),
-  timeline: z.array(z.object({
-    // A local day can contain 25 hours when daylight-saving time ends.
-    startMinute: z.number().int().min(0).max(1500),
-    endMinute: z.number().int().min(0).max(1500),
-    status,
-  }).strict()).optional(),
-}).strict();
+const historySegment = z.object({
+  startAt: dateTime,
+  endAt: dateTime,
+  status: status.exclude(['OPERATIONAL']),
+}).strict().refine(segment => Date.parse(segment.startAt) < Date.parse(segment.endAt), {
+  message: 'History segment end must follow its start',
+});
 
 const incidentUpdate = z.object({
   id: z.string(),
@@ -50,7 +45,6 @@ export const publicStatusPageSnapshotSchema = z.object({
     id: z.string(),
     name: z.string(),
     organizationName: z.string().nullable().optional(),
-    timeZone: z.string().min(1),
     branding: z.unknown().optional(),
     showSubscribe: z.boolean(),
     showServicesByRegion: z.boolean(),
@@ -83,8 +77,14 @@ export const publicStatusPageSnapshotSchema = z.object({
     team: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
     slaTier: z.string().nullable().optional(),
     uptime: z.object({ days30: uptimeWindow, days90: uptimeWindow }).strict().optional(),
-    history: z.array(historyDay).optional(),
-    historyComplete: z.boolean().optional(),
+    history: z.object({
+      rangeStart: dateTime,
+      rangeEnd: dateTime,
+      coverage: z.enum(['COMPLETE', 'PARTIAL']),
+      segments: z.array(historySegment),
+    }).strict().refine(history => Date.parse(history.rangeStart) < Date.parse(history.rangeEnd), {
+      message: 'History range end must follow its start',
+    }).optional(),
   }).strict()),
   regions: z.array(z.object({
     name: z.string(), status, totalServices: z.number().int().nonnegative(),

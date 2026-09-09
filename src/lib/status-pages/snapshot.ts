@@ -17,7 +17,7 @@ import {
   type StatusServingRoute,
 } from './serving-store';
 import type { PublicStatusPageSnapshot } from './public-contract';
-import { aggregatePublicRegions, buildPublicServiceHistory } from './history';
+import { aggregatePublicRegions, buildPublicHistorySegments } from './history';
 import {
   getWorstPublicStatus,
   normalizePublicStatus,
@@ -156,14 +156,18 @@ export async function buildStatusPageSnapshot(
       ? getWorstPublicStatus(impact.statuses)
       : 'OPERATIONAL';
     const serviceHistoryIncidents = historyIncidentsByService.get(mapping.serviceId) ?? [];
-    const history = visibility.showUptime ? buildPublicServiceHistory({
+    const history = visibility.showUptime ? {
+      rangeStart: window.start.toISOString(),
+      rangeEnd: now.toISOString(),
+      coverage: 'COMPLETE' as const,
+      segments: buildPublicHistorySegments({
       serviceId: mapping.serviceId,
       incidents: serviceHistoryIncidents,
       maintenance: maintenanceHistory,
-      timezone: page.timeZone,
       start: window.start,
       end: now,
-    }).slice(-90) : undefined;
+      }),
+    } : undefined;
     const status = normalizePublicStatus(projectServiceStatus(mapping.serviceId, state, maintenance));
     return {
       id: mapping.serviceId,
@@ -190,7 +194,6 @@ export async function buildStatusPageSnapshot(
           },
         },
         history,
-        historyComplete: true,
       } : {}),
     };
   });
@@ -203,7 +206,6 @@ export async function buildStatusPageSnapshot(
       id: page.id,
       name: page.name,
       organizationName: page.organizationName,
-      timeZone: page.timeZone,
       branding: page.branding,
       showSubscribe: page.showSubscribe,
       showServicesByRegion: page.showServicesByRegion,

@@ -1,2 +1,0 @@
-ALTER TABLE "StatusPage"
-ADD COLUMN "timeZone" TEXT NOT NULL DEFAULT 'UTC';

@@ -18,6 +18,16 @@ describe('status page section mutation boundaries', () => {
     });
   });
 
+  it('does not persist browser-local history timezone preferences', () => {
+    expect(
+      statusPageSectionPatch('general', {
+        id: 'page',
+        name: 'Public status',
+        timeZone: 'America/New_York',
+      })
+    ).toEqual({ id: 'page', name: 'Public status' });
+  });
+
   it('rejects sections that own their own independent controls', () => {
     expect(() => statusPageSectionPatch('subscribers', {})).toThrow();
   });

@@ -24,6 +24,19 @@ export interface PublicStatusHistoryDay {
   timeline?: PublicHistorySlice[];
 }
 
+export interface PublicStatusHistorySegment {
+  startAt: string;
+  endAt: string;
+  status: Exclude<PublicServiceStatus, 'OPERATIONAL'>;
+}
+
+export interface PublicStatusHistory {
+  rangeStart: string;
+  rangeEnd: string;
+  coverage: 'COMPLETE' | 'PARTIAL';
+  segments: PublicStatusHistorySegment[];
+}
+
 export interface PublicUptimeWindow {
   percentage: number | null;
   incidentCount: number;
@@ -41,9 +54,7 @@ export interface PublicStatusService {
   team?: { id: string; name: string } | null;
   slaTier?: string | null;
   uptime?: { days30: PublicUptimeWindow; days90: PublicUptimeWindow };
-  history?: PublicStatusHistoryDay[];
-  /** True only after the complete authoritative history window has been read. */
-  historyComplete?: boolean;
+  history?: PublicStatusHistory;
 }
 
 export interface PublicRegionStatus {
@@ -105,7 +116,6 @@ export interface PublicStatusPageSnapshot {
     id: string;
     name: string;
     organizationName?: string | null;
-    timeZone: string;
     branding?: unknown;
     showSubscribe: boolean;
     showServicesByRegion: boolean;

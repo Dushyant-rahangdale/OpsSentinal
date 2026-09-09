@@ -17,7 +17,7 @@ const snapshot: StatusPageSnapshot = {
   generatedAt: '2026-09-07T10:00:00.000Z',
   status: 'DEGRADED',
   page: {
-    id: 'page-1', name: 'Acme status', timeZone: 'UTC', showSubscribe: false, showServicesByRegion: false,
+    id: 'page-1', name: 'Acme status', showSubscribe: false, showServicesByRegion: false,
     showRegionHeatmap: false, showPostIncidentReview: true, showChangelog: true,
     enableUptimeExports: true, isDefault: true, requireAuth: false, enabled: true,
     statusApiRequireToken: false, statusApiRateLimitEnabled: false,

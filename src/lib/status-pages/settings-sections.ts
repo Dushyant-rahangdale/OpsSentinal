@@ -3,7 +3,6 @@ const sectionFields = new Map<string, readonly string[]>([
     'general',
     [
       'name',
-      'timeZone',
       'slug',
       'organizationName',
       'subdomain',

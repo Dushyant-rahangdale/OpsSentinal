@@ -1,10 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { PublicStatusHistoryDay, PublicStatusService } from '@/lib/status-pages/public-contract';
 import { statusPresentation } from '@/lib/status-pages/status-presentation';
+import { buildPublicHistoryDays } from '@/lib/status-pages/history-presentation';
 
-function historyLabel(service: PublicStatusService, day: PublicStatusHistoryDay) {
+const subscribeToBrowserTimeZone = () => () => {};
+const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const getServerTimeZone = () => null;
+
+function historyLabel(service: Pick<PublicStatusService, 'name'>, day: PublicStatusHistoryDay) {
   const presentation = statusPresentation(day.status);
   const availability = day.availabilityPercent == null
     ? 'availability unavailable'
@@ -20,6 +25,11 @@ export default function PublicStatusServices({
   groupByRegion?: boolean;
 }) {
   const [open, setOpen] = useState<{ serviceId: string; date: string } | null>(null);
+  const browserTimeZone = useSyncExternalStore(
+    subscribeToBrowserTimeZone,
+    getBrowserTimeZone,
+    getServerTimeZone
+  );
   const pointerSelection = useRef<{
     serviceId: string;
     date: string;
@@ -31,7 +41,19 @@ export default function PublicStatusServices({
     return () => window.removeEventListener('keydown', close);
   }, []);
 
-  const renderServices = (items: PublicStatusService[]) => items.map(service => {
+  const displayServices = useMemo(
+    () => services.map(service => ({
+      ...service,
+      history: browserTimeZone && service.history
+        ? buildPublicHistoryDays(service.history, browserTimeZone)
+        : undefined,
+    })),
+    [browserTimeZone, services]
+  );
+
+  const renderServices = (
+    items: Array<Omit<PublicStatusService, 'history'> & { history?: PublicStatusHistoryDay[] }>
+  ) => items.map(service => {
         const current = statusPresentation(service.status);
         return (
           <article key={service.id} className="public-service-card">
@@ -116,18 +138,23 @@ export default function PublicStatusServices({
         );
       });
   if (services.length === 0) return null;
-  const regions = [...new Set(services.flatMap(service => service.regions ?? []))].sort();
+  const regions = [...new Set(displayServices.flatMap(service => service.regions ?? []))].sort();
   return (
     <section aria-labelledby="service-health-heading" className="public-service-health">
       <h2 id="service-health-heading">Services</h2>
+      <p className="public-service-health__timezone" aria-live="polite">
+        {browserTimeZone
+          ? `Daily history is shown in your browser timezone (${browserTimeZone}).`
+          : 'Loading daily history in your browser timezone…'}
+      </p>
       {groupByRegion && regions.length > 0
         ? regions.map(region => (
           <section key={region} aria-label={`${region} services`} className="public-service-region">
             <h3>{region}</h3>
-            {renderServices(services.filter(service => service.regions?.includes(region)))}
+            {renderServices(displayServices.filter(service => service.regions?.includes(region)))}
           </section>
         ))
-        : renderServices(services)}
+        : renderServices(displayServices)}
     </section>
   );
 }

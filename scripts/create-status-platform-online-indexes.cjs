@@ -22,7 +22,10 @@ async function main() {
   let lockAcquired = false;
 
   try {
-    await prisma.$queryRawUnsafe(`SELECT pg_advisory_lock(${INSTALL_LOCK_ID})`);
+    // Cast PostgreSQL's void result so Prisma can deserialize the row.
+    await prisma.$queryRawUnsafe(
+      `SELECT pg_advisory_lock(${INSTALL_LOCK_ID})::text AS "lockResult"`
+    );
     lockAcquired = true;
 
     for (const statement of indexes) {
