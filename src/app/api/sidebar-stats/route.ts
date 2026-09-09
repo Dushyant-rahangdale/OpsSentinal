@@ -57,16 +57,26 @@ export async function GET() {
     }
 
     // Group by Urgency to get breakdown
-    const urgencyCounts = await prisma.incident.groupBy({
-      by: ['urgency'],
-      where,
-      _count: { _all: true },
-    });
+    const [urgencyCounts, enabledStatusPages] = await Promise.all([
+      prisma.incident.groupBy({
+        by: ['urgency'],
+        where,
+        _count: { _all: true },
+      }),
+      // Lightweight piggyback: fetch enabled status page metadata for sidebar nav.
+      // Indexed on `enabled` field — negligible cost. Avoids a separate API call per page render.
+      prisma.statusPage.findMany({
+        where: { enabled: true },
+        select: { id: true, name: true, slug: true, isDefault: true },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+      }),
+    ]);
 
     const activeIncidentsCount = urgencyCounts.reduce((acc, curr) => acc + curr._count._all, 0);
     const criticalIncidentsCount = urgencyCounts.find(u => u.urgency === 'HIGH')?._count._all || 0;
     const mediumIncidentsCount = urgencyCounts.find(u => u.urgency === 'MEDIUM')?._count._all || 0;
     const lowIncidentsCount = urgencyCounts.find(u => u.urgency === 'LOW')?._count._all || 0;
+    const isStatusPageAdmin = hasCapability(user.role, CAPABILITIES.ADMIN_MANAGE);
 
     return jsonOk(
       {
@@ -74,6 +84,8 @@ export async function GET() {
         criticalIncidentsCount,
         mediumIncidentsCount,
         lowIncidentsCount,
+        statusPages: enabledStatusPages,
+        isStatusPageAdmin,
         scope: 'current',
         dataState: 'available',
         calculatedAt: new Date().toISOString(),
