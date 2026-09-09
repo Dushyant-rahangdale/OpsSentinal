@@ -87,6 +87,7 @@ describe('notification provider persistence contract', () => {
       expect.objectContaining({
         where: {
           id: 'provider-1',
+          provider: 'resend',
           updatedAt: new Date('2026-09-08T12:00:00.000Z'),
         },
       })
@@ -103,6 +104,29 @@ describe('notification provider persistence contract', () => {
       success: true,
       updatedAt: '2026-09-08T12:01:00.000Z',
     });
+  });
+
+  it('rejects a provider id that belongs to a different provider type', async () => {
+    mocks.findUnique.mockResolvedValue({
+      id: 'provider-1',
+      provider: 'smtp',
+      enabled: true,
+      config: { encrypted: true },
+      updatedAt: new Date('2026-09-08T12:00:00.000Z'),
+    });
+
+    await expect(
+      updateNotificationProvider(
+        'provider-1',
+        'resend',
+        true,
+        { apiKey: 'attacker-controlled' },
+        '2026-09-08T12:00:00.000Z'
+      )
+    ).rejects.toThrow('Provider identity does not match');
+
+    expect(mocks.decryptProviderConfig).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it('rejects a stale administrator and does not write an audit event', async () => {

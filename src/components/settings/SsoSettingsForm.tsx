@@ -51,7 +51,7 @@ type OidcConfig = {
   providerType?: string | null;
   providerLabel?: string | null;
   profileMapping?: ProfileMapping | null;
-  updatedAt: string;
+  updatedAt?: string;
 };
 
 type Props = {
@@ -830,7 +830,13 @@ export default function SsoSettingsForm({
               <strong>Settings changed elsewhere.</strong> Your unsaved SSO edits, including any
               candidate secret, are still present. Reload latest before saving again.
             </span>
-            <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="gap-1.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="gap-1.5 shrink-0"
+            >
               <RefreshCw className="h-3.5 w-3.5" />
               Reload latest
             </Button>
@@ -855,7 +861,11 @@ export default function SsoSettingsForm({
       <div className="sticky bottom-4 z-10 rounded-xl border bg-card/95 backdrop-blur-md p-4 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
         <div className="text-xs text-muted-foreground">
           {lastSaved ? (
-            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium" role="status" aria-live="polite">
+            <span
+              className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium"
+              role="status"
+              aria-live="polite"
+            >
               <CheckCircle2 className="h-4 w-4" />
               Configuration saved at {lastSaved}
             </span>

@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { assertAdmin } from '@/lib/rbac';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/lib/logger';
 import {
   SettingsChangedMutationError,
   isSettingsChangedError,
@@ -89,8 +90,9 @@ export async function saveChatOpsConfig(
       autoCreateOnPriority: formData.getAll('autoCreateOnPriority'),
       archiveOnResolve: ['on', 'true'].includes(String(formData.get('archiveOnResolve') ?? '')),
       defaultVideoBridge: (formData.get('defaultVideoBridge') as string | null) ?? 'NONE',
-      customBridgeUrlTemplate:
-        ((formData.get('customBridgeUrlTemplate') as string | null) ?? '').trim(),
+      customBridgeUrlTemplate: (
+        (formData.get('customBridgeUrlTemplate') as string | null) ?? ''
+      ).trim(),
     });
 
     if (!parsed.success) {
@@ -176,10 +178,11 @@ export async function saveChatOpsConfig(
     ) {
       return settingsChangedState(expectedUpdatedAt);
     }
+    logger.error('settings.chatops.save_failed', { error });
     return {
       success: false,
       code: 'INTERNAL_ERROR',
-      error: error instanceof Error ? error.message : 'Failed to save ChatOps configuration.',
+      error: 'Failed to save ChatOps configuration.',
       updatedAt: expectedUpdatedAt,
     };
   }

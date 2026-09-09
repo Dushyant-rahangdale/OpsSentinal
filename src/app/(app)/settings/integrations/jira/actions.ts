@@ -8,6 +8,7 @@ import { logAudit } from '@/lib/audit';
 import { assertAdmin } from '@/lib/rbac';
 import { normalizeJiraBaseUrl } from '@/lib/jira-validation';
 import { revalidatePath } from 'next/cache';
+import { logger } from '@/lib/logger';
 import {
   SettingsChangedMutationError,
   isSettingsChangedError,
@@ -166,10 +167,11 @@ export async function saveJiraConfig(
     ) {
       return settingsChangedState(expectedUpdatedAt);
     }
+    logger.error('settings.jira.save_failed', { error });
     return {
       success: false,
       code: 'INTERNAL_ERROR',
-      error: error instanceof Error ? error.message : 'Failed to save Jira configuration.',
+      error: 'Failed to save Jira configuration.',
       updatedAt: expectedUpdatedAt,
     };
   }

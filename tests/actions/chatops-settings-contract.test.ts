@@ -3,14 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   assertAdmin: vi.fn(),
   findUnique: vi.fn(),
-  upsert: vi.fn(),
+  create: vi.fn(),
+  findUniqueOrThrow: vi.fn(),
   transaction: vi.fn(),
   logAudit: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
 const tx = {
-  chatOpsConfig: { upsert: mocks.upsert },
+  chatOpsConfig: { create: mocks.create, findUniqueOrThrow: mocks.findUniqueOrThrow },
 };
 
 vi.mock('@/lib/rbac', () => ({
@@ -47,7 +48,8 @@ describe('ChatOps settings contract', () => {
     vi.clearAllMocks();
     mocks.assertAdmin.mockResolvedValue({ id: 'admin-1' });
     mocks.findUnique.mockResolvedValue(null);
-    mocks.upsert.mockResolvedValue({});
+    mocks.create.mockResolvedValue({});
+    mocks.findUniqueOrThrow.mockResolvedValue({ updatedAt: new Date('2026-09-09T00:00:00Z') });
     mocks.transaction.mockImplementation(async callback => callback(tx));
   });
 
@@ -57,7 +59,9 @@ describe('ChatOps settings contract', () => {
 
     const result = await saveChatOpsConfig(undefined, formData);
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
+      success: false,
+      code: 'VALIDATION_ERROR',
       error: 'Custom bridge URL must be a valid HTTP(S) URL template.',
     });
     expect(mocks.transaction).not.toHaveBeenCalled();
@@ -69,7 +73,9 @@ describe('ChatOps settings contract', () => {
 
     const result = await saveChatOpsConfig(undefined, formData);
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
+      success: false,
+      code: 'VALIDATION_ERROR',
       error: 'Unsupported bridge URL template variable: {workspaceId}.',
     });
     expect(mocks.transaction).not.toHaveBeenCalled();
@@ -81,11 +87,15 @@ describe('ChatOps settings contract', () => {
 
     const result = await saveChatOpsConfig(undefined, formData);
 
-    expect(result).toEqual({ success: true, error: null });
+    expect(result).toEqual({
+      success: true,
+      error: null,
+      updatedAt: '2026-09-09T00:00:00.000Z',
+    });
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
-    expect(mocks.upsert).toHaveBeenCalledWith(
+    expect(mocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        update: expect.objectContaining({
+        data: expect.objectContaining({
           customBridgeUrlTemplate: 'https://meet.example.com/{incidentId}',
         }),
       })

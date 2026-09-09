@@ -231,8 +231,7 @@ export default function ProviderCard({
     setError(null);
 
     try {
-      const { generateVapidKeys } =
-        await import('@/app/(app)/settings/system/provider-actions');
+      const { generateVapidKeys } = await import('@/app/(app)/settings/system/provider-actions');
       const subjectValue = typeof config.vapidSubject === 'string' ? config.vapidSubject : '';
       const result = await generateVapidKeys({
         subject: subjectValue,
@@ -244,7 +243,9 @@ export default function ProviderCard({
       const nextConfig = {
         ...config,
         vapidPublicKey: result.publicKey,
-        vapidPrivateKey: result.privateKey,
+        // Preserve the masked value already loaded by the form. The newly
+        // generated private key remains encrypted on the server.
+        vapidPrivateKey: '********',
         vapidSubject: result.subject,
       };
       setConfig(nextConfig);
@@ -566,7 +567,10 @@ export default function ProviderCard({
                   </Alert>
                 )}
                 {saveStatus === 'error' && error && (
-                  <Alert variant="destructive" className="flex items-center gap-2 py-2 [&>svg]:static [&>svg]:shrink-0 [&>svg+div]:translate-y-0 [&>svg~*]:pl-0">
+                  <Alert
+                    variant="destructive"
+                    className="flex items-center gap-2 py-2 [&>svg]:static [&>svg]:shrink-0 [&>svg+div]:translate-y-0 [&>svg~*]:pl-0"
+                  >
                     <XCircle className="h-4 w-4 shrink-0" />
                     <AlertDescription className="text-xs leading-4">{error}</AlertDescription>
                   </Alert>

@@ -76,6 +76,9 @@ export async function updateNotificationProvider(
   if (providerId && !existingProvider) {
     throw new SettingsChangedError();
   }
+  if (existingProvider && existingProvider.provider !== normalizedProvider) {
+    throw new Error('Provider identity does not match the stored configuration. Reload the page.');
+  }
 
   const expectedRevision = parseExpectedUpdatedAt(expectedUpdatedAt);
   if (existingProvider && !expectedRevision) {
@@ -101,6 +104,7 @@ export async function updateNotificationProvider(
       const updateResult = await tx.notificationProvider.updateMany({
         where: {
           id: existingProvider.id,
+          provider: normalizedProvider,
           updatedAt: expectedRevision!,
         },
         data: {
@@ -159,7 +163,6 @@ export async function generateVapidKeys(options?: {
   expectedUpdatedAt?: string | null;
 }): Promise<{
   publicKey: string;
-  privateKey: string;
   subject: string;
   updatedAt: string;
 }> {
@@ -256,5 +259,7 @@ export async function generateVapidKeys(options?: {
   revalidatePath('/settings/notifications');
   revalidatePath('/settings/system');
 
-  return { publicKey, privateKey, subject, updatedAt };
+  // The private key is encrypted and persisted above; it must never cross the
+  // server-action boundary into browser state or logs.
+  return { publicKey, subject, updatedAt };
 }

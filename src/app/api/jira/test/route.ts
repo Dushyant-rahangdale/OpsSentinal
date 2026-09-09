@@ -53,10 +53,18 @@ export async function POST(request: NextRequest) {
     const baseUrl = normalizeJiraBaseUrl(candidate.baseUrl || existing?.baseUrl || '');
     const userEmail = (candidate.userEmail || existing?.userEmail || '').trim().toLowerCase();
     const candidateToken = candidate.apiToken?.trim();
+    const isStoredOrigin = (() => {
+      if (!existing?.baseUrl || !baseUrl) return false;
+      try {
+        return new URL(baseUrl).origin === new URL(normalizeJiraBaseUrl(existing.baseUrl)).origin;
+      } catch {
+        return false;
+      }
+    })();
     const apiToken =
       candidateToken && candidateToken !== '********'
         ? candidateToken
-        : existing?.apiTokenEncrypted
+        : isStoredOrigin && existing?.apiTokenEncrypted
           ? await decrypt(existing.apiTokenEncrypted)
           : '';
 
