@@ -75,6 +75,12 @@ const sectionFields = new Map<string, readonly string[]>([
   ],
 ]);
 
+/**
+ * Carries the originating section to the shared settings handler for audit purposes. A header
+ * rather than a body field, because section payloads are filtered to their own allow-list.
+ */
+export const STATUS_PAGE_SECTION_HEADER = 'x-status-page-section';
+
 export function statusPageSectionFields(section: string): ReadonlySet<string> | null {
   const fields = sectionFields.get(section);
   return fields ? new Set(['id', 'expectedUpdatedAt', ...fields]) : null;

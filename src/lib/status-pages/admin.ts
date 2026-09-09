@@ -3,6 +3,7 @@ import 'server-only';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { emitAuditEvent } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { getStatusPageServingStore } from './serving-store';
 import { rebuildStatusPageSnapshot } from './snapshot';
 
@@ -53,15 +54,65 @@ export async function createStatusPage(input: {
 }
 
 export async function makeDefaultStatusPage(statusPageId: string) {
-  return prisma.$transaction(async tx => {
+  const { page, previousDefaultId } = await prisma.$transaction(async tx => {
     await lockLifecycle(tx);
     await requireStatusPageForAdmin(statusPageId, tx);
+    const previousDefault = await tx.statusPage.findFirst({
+      where: { isDefault: true, id: { not: statusPageId } },
+      select: { id: true },
+    });
     await tx.statusPage.updateMany({
       where: { isDefault: true, id: { not: statusPageId } },
       data: { isDefault: false },
     });
-    return tx.statusPage.update({ where: { id: statusPageId }, data: { isDefault: true } });
+    return {
+      page: await tx.statusPage.update({
+        where: { id: statusPageId },
+        data: { isDefault: true },
+      }),
+      previousDefaultId: previousDefault?.id ?? null,
+    };
   });
+
+  // Imported lazily: publish-configuration imports StatusPageAdminError from this module, and a
+  // static cycle here would leave one of the two half-initialized at module evaluation time.
+  const { publishStatusPageConfiguration } = await import('./publish-configuration');
+
+  // Strictly after the commit: publishing opens its own transaction, and doing that while the
+  // lifecycle lock is held would deadlock at the application level.
+  const publication = await publishStatusPageConfiguration({
+    pageId: statusPageId,
+    classification: defaultRouteClassification({ gained: true }),
+  });
+
+  if (previousDefaultId) {
+    // The demoted page's published payload still claims isDefault, and its revision was already
+    // bumped by the row trigger. Republishing now avoids waiting for the projector.
+    try {
+      await publishStatusPageConfiguration({
+        pageId: previousDefaultId,
+        classification: defaultRouteClassification({ gained: false }),
+      });
+    } catch (error) {
+      logger.error('status.default_page.demoted_republish_failed', { previousDefaultId, error });
+    }
+  }
+
+  return { ...page, publication };
+}
+
+/** Minimal classification for a default-route move, so admin flows reuse the publish path. */
+function defaultRouteClassification({ gained }: { gained: boolean }) {
+  return {
+    classes: ['ROUTING'] as const,
+    dominant: 'ROUTING' as const,
+    failClosed: false,
+    revocationReason: 'SUPERSEDED' as const,
+    changedFields: ['isDefault'] as const,
+    routes: gained
+      ? { added: ['default'] as const, removed: [] as const }
+      : { added: [] as const, removed: [] as const },
+  };
 }
 
 export async function deleteStatusPage(statusPageId: string, replacementDefaultId?: string) {
