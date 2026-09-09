@@ -50,7 +50,8 @@ describe('status-page administration isolation contract', () => {
   it('publishes a replacement default before revoking the deleted page', () => {
     const service = fs.readFileSync('src/lib/status-pages/admin.ts', 'utf8');
     const publishReplacement = service.indexOf('rebuildStatusPageSnapshot(replacementId)');
-    const revokeDeleted = service.indexOf('store.revoke(statusPageId)');
+    // Matched without the reason argument so the ordering contract survives signature changes.
+    const revokeDeleted = service.indexOf('store.revoke(statusPageId,');
 
     expect(publishReplacement).toBeGreaterThan(-1);
     expect(revokeDeleted).toBeGreaterThan(publishReplacement);

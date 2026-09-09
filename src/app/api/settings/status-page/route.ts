@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
     if (statusApiRateLimitMax !== undefined) updateData.statusApiRateLimitMax = statusApiRateLimitMax;
     if (statusApiRateLimitWindowSec !== undefined) updateData.statusApiRateLimitWindowSec = statusApiRateLimitWindowSec;
 
-    await getStatusPageServingStore().revoke(statusPage.id);
+    await getStatusPageServingStore().revoke(statusPage.id, 'PRIVACY');
     const updated = await prisma.$transaction(async tx => {
       if (branding && typeof branding === 'object') {
         updateData.branding = (await externalizeStatusPageLogo(tx, statusPage.id, branding)) as Prisma.InputJsonValue;
@@ -246,11 +246,11 @@ export async function POST(req: NextRequest) {
     const store = getStatusPageServingStore();
     await Promise.all([
       ...(statusPage.slug && statusPage.slug !== updated.slug
-        ? [store.removeRoute(statusPage.slug)] : []),
+        ? [store.removeRoute(statusPage.slug, statusPage.id)] : []),
       ...(statusPage.customDomain && statusPage.customDomain !== updated.customDomain
-        ? [store.removeRoute(`domain:${statusPage.customDomain.toLowerCase()}`)] : []),
+        ? [store.removeRoute(`domain:${statusPage.customDomain.toLowerCase()}`, statusPage.id)] : []),
       ...(statusPage.subdomain && statusPage.subdomain !== updated.subdomain
-        ? [store.removeRoute(`subdomain:${statusPage.subdomain.toLowerCase()}`)] : []),
+        ? [store.removeRoute(`subdomain:${statusPage.subdomain.toLowerCase()}`, statusPage.id)] : []),
     ]);
 
     revalidatePath('/status');

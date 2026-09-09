@@ -127,12 +127,16 @@ export async function deleteStatusPage(statusPageId: string, replacementDefaultI
       throw error;
     }
   }
-  await store.revoke(statusPageId);
+  await store.revoke(statusPageId, 'DELETED');
   await Promise.all([
-    ...(page.slug ? [store.removeRoute(page.slug)] : []),
-    ...(page.customDomain ? [store.removeRoute(`domain:${page.customDomain.toLowerCase()}`)] : []),
-    ...(page.subdomain ? [store.removeRoute(`subdomain:${page.subdomain.toLowerCase()}`)] : []),
-    ...(page.isDefault && !replacementId ? [store.removeRoute('default')] : []),
+    ...(page.slug ? [store.removeRoute(page.slug, statusPageId)] : []),
+    ...(page.customDomain
+      ? [store.removeRoute(`domain:${page.customDomain.toLowerCase()}`, statusPageId)]
+      : []),
+    ...(page.subdomain
+      ? [store.removeRoute(`subdomain:${page.subdomain.toLowerCase()}`, statusPageId)]
+      : []),
+    ...(page.isDefault && !replacementId ? [store.removeRoute('default', statusPageId)] : []),
   ]);
   await prisma.$transaction(async tx => {
     await lockLifecycle(tx);

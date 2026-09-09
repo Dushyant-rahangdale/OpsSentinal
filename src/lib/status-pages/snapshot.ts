@@ -320,8 +320,10 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
     Math.max(0, health?.oldestAgeSeconds ?? 0)
   );
 
-  const pages = await prisma.$queryRaw<Array<{ statusPageId: string; dirty: boolean }>>`
-    SELECT "statusPageId", ("publishedRevision" <> "revision") AS "dirty"
+  const pages = await prisma.$queryRaw<
+    Array<{ statusPageId: string; dirty: boolean; servingState: string }>
+  >`
+    SELECT "statusPageId", "servingState", ("publishedRevision" <> "revision") AS "dirty"
     FROM "StatusPageSnapshot"
     WHERE "publishedRevision" <> "revision" OR "generatedAt" < NOW() - INTERVAL '1 minute'
     ORDER BY "generatedAt" ASC NULLS FIRST LIMIT ${Math.max(1, Math.min(50, limit))}
@@ -329,10 +331,13 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
   let rebuilt = 0;
   for (const page of pages) {
     try {
-      // A dirty revision may represent disclosure tightening and must fail closed.
-      // Purely time-derived refreshes retain the current healthy manifest until the
-      // replacement snapshot is successfully published.
-      if (page.dirty) await getStatusPageServingStore().revoke(page.statusPageId);
+      // A dirty revision of unknown provenance may represent disclosure tightening and must
+      // fail closed. A row already carrying a non-LIVE state holds a decision the control plane
+      // made deliberately, and overwriting it here would flap the page dark between an
+      // administrator's commit and its synchronous republish.
+      if (page.dirty && page.servingState === 'LIVE') {
+        await getStatusPageServingStore().revoke(page.statusPageId, 'PRIVACY');
+      }
       if (await rebuildStatusPageSnapshot(page.statusPageId)) {
         rebuilt++;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {

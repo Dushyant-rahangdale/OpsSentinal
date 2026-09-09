@@ -457,6 +457,14 @@ export const OPERATIONAL_METRICS = [
     scope: 'counter',
     estimatedMaxSeries: 8,
   },
+  {
+    name: 'opsknight_status_page_revocations_total',
+    help: 'Status-page serving revocations by reason',
+    kind: 'counter',
+    labels: ['reason'],
+    scope: 'counter',
+    estimatedMaxSeries: 4,
+  },
 ] as const satisfies readonly MetricDefinition[];
 
 type RegisteredMetricName = (typeof OPERATIONAL_METRICS)[number]['name'];
