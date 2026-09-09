@@ -483,6 +483,22 @@ export const OPERATIONAL_METRICS = [
     estimatedMaxSeries: 4,
   },
   {
+    name: 'opsknight_status_page_publication_failed',
+    help: 'Status pages whose last publication attempt failed',
+    kind: 'gauge',
+    labels: [],
+    scope: 'cluster_snapshot',
+    estimatedMaxSeries: 1,
+  },
+  {
+    name: 'opsknight_status_page_fail_closed',
+    help: 'Status pages currently withheld from public serving',
+    kind: 'gauge',
+    labels: [],
+    scope: 'cluster_snapshot',
+    estimatedMaxSeries: 1,
+  },
+  {
     name: 'opsknight_status_page_stale_serves_total',
     help: 'Public status reads served from the last known good projection',
     kind: 'counter',

@@ -421,11 +421,18 @@ async function pushSnapshotToServingStore(
 /** Bounded reconciliation also advances maintenance boundaries and time-derived uptime. */
 export async function reconcileStatusPageSnapshots(limit = 10) {
   const [health] = await prisma.$queryRaw<
-    Array<{ dirty: bigint; oldestAgeSeconds: number | null }>
+    Array<{
+      dirty: bigint;
+      oldestAgeSeconds: number | null;
+      failed: bigint;
+      failClosed: bigint;
+    }>
   >`
     SELECT
       COUNT(*) FILTER (WHERE "publishedRevision" <> "revision") AS "dirty",
-      EXTRACT(EPOCH FROM (NOW() - MIN("generatedAt")))::double precision AS "oldestAgeSeconds"
+      EXTRACT(EPOCH FROM (NOW() - MIN("generatedAt")))::double precision AS "oldestAgeSeconds",
+      COUNT(*) FILTER (WHERE "lastError" IS NOT NULL) AS "failed",
+      COUNT(*) FILTER (WHERE "servingState" = 'FAIL_CLOSED') AS "failClosed"
     FROM "StatusPageSnapshot"
   `;
   setOperationalGauge('opsknight_status_page_snapshot_dirty', Number(health?.dirty ?? 0));
@@ -433,6 +440,10 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
     'opsknight_status_page_snapshot_oldest_age_seconds',
     Math.max(0, health?.oldestAgeSeconds ?? 0)
   );
+  // The two alerting signals: a publication that keeps failing, and a page currently withheld
+  // from the public. Either persisting is an operator problem, not a transient.
+  setOperationalGauge('opsknight_status_page_publication_failed', Number(health?.failed ?? 0));
+  setOperationalGauge('opsknight_status_page_fail_closed', Number(health?.failClosed ?? 0));
 
   const pages = await prisma.$queryRaw<
     Array<{ statusPageId: string; dirty: boolean; servingState: string }>

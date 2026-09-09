@@ -705,6 +705,15 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // What the public page is actually doing, as reported by the save. Distinct from "saved",
+  // because settings can persist while publishing them fails.
+  const [publication, setPublication] = useState<{
+    status: 'LIVE' | 'PUBLISHING' | 'FAILED' | 'DISABLED';
+    revision: string;
+    lastError?: string | null;
+    stale?: boolean;
+  } | null>(null);
+  const [retryingPublication, setRetryingPublication] = useState(false);
   const [activeSection, setActiveSection] = useState('general');
   const [showPreview, setShowPreview] = useState(false);
   const [announcementError, setAnnouncementError] = useState<string | null>(null);
@@ -1080,15 +1089,52 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
 
         const saved = await response.json();
         if (typeof saved.data?.updatedAt === 'string') setRevision(saved.data.updatedAt);
-        setSuccessMessage('Settings saved successfully!');
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccessMessage(null), 3000);
+        const state = saved.data?.publication ?? null;
+        setPublication(state);
+        // Only claim success once the public page can actually serve the change. Saying "saved"
+        // while /status is unusable is what made publication failures invisible.
+        setSuccessMessage(
+          state?.status === 'LIVE'
+            ? 'Settings saved successfully and published.'
+            : state?.status === 'DISABLED'
+              ? 'Settings saved successfully. This status page is disabled, so it is not public.'
+              : state?.status === 'PUBLISHING'
+                ? 'Settings saved successfully. Publishing to the public page…'
+                : state?.status === 'FAILED'
+                  ? null
+                  : // No publication state reported: say the change was saved, and claim nothing
+                    // about the public page either way.
+                    'Settings saved successfully!'
+        );
+        if (state?.status !== 'PUBLISHING') {
+          setTimeout(() => setSuccessMessage(null), 3000);
+        }
         router.refresh();
       } catch (err: unknown) {
         const { getUserFacingErrorMessage } = await import('@/lib/user-facing-error');
         setError(getUserFacingErrorMessage(err) || 'Failed to save settings');
       }
     });
+  };
+
+  const handleRetryPublication = async () => {
+    setRetryingPublication(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/settings/status-pages/${encodeURIComponent(statusPage.id)}/publish`,
+        { method: 'POST' }
+      );
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Failed to republish the status page.');
+      setPublication(payload?.data?.publication ?? null);
+      router.refresh();
+    } catch (err: unknown) {
+      const { getUserFacingErrorMessage } = await import('@/lib/user-facing-error');
+      setError(getUserFacingErrorMessage(err) || 'Failed to republish the status page.');
+    } finally {
+      setRetryingPublication(false);
+    }
   };
 
   const handleDeletePage = async () => {
@@ -4440,6 +4486,56 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
                         </div>
                       </div>
                     </Card>
+                  </div>
+                )}
+
+                {/* Publication state is reported separately from save state: settings can
+                    persist while publishing them to the public page fails. */}
+                {publication && publication.status !== 'LIVE' && (
+                  <div
+                    role={publication.status === 'FAILED' ? 'alert' : 'status'}
+                    style={{
+                      marginBottom: 'var(--spacing-4)',
+                      padding: 'var(--spacing-3)',
+                      borderRadius: 'var(--radius-md)',
+                      background: publication.status === 'FAILED' ? '#fffbeb' : '#eff6ff',
+                      border: `1px solid ${publication.status === 'FAILED' ? '#fcd34d' : '#bfdbfe'}`,
+                      color: publication.status === 'FAILED' ? '#78350f' : '#1e3a8a',
+                      display: 'flex',
+                      gap: 'var(--spacing-3)',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ display: 'block', marginBottom: 2 }}>
+                        {publication.status === 'FAILED'
+                          ? '⚠ Publication failed'
+                          : publication.status === 'PUBLISHING'
+                            ? '◐ Publishing'
+                            : '○ Disabled'}
+                      </strong>
+                      <span style={{ fontSize: '0.875rem' }}>
+                        {publication.status === 'FAILED'
+                          ? 'Your settings were saved but could not be published.' +
+                            (publication.stale
+                              ? ' Visitors are still seeing the last published version.'
+                              : ' The public page is unavailable until this succeeds.')
+                          : publication.status === 'PUBLISHING'
+                            ? 'The public page is being rebuilt and will update shortly.'
+                            : 'This status page is turned off, so its public URL is unavailable.'}
+                      </span>
+                    </div>
+                    {publication.status === 'FAILED' && (
+                      <Button
+                        variant="secondary"
+                        onClick={handleRetryPublication}
+                        disabled={retryingPublication}
+                      >
+                        {retryingPublication ? 'Retrying…' : 'Retry publication'}
+                      </Button>
+                    )}
                   </div>
                 )}
 
