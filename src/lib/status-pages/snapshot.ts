@@ -245,32 +245,140 @@ export async function buildStatusPageSnapshot(
   };
 }
 
+/**
+ * What a publish attempt actually did.
+ *
+ * Callers need to tell "the page is now live" from "someone else is already publishing it", so
+ * that a save racing the background projector is not reported to an administrator as a failure.
+ */
+export type StatusPagePublishOutcome =
+  /** The snapshot was built, committed and pushed to the serving store. */
+  | { kind: 'published'; revision: string }
+  /** The page is disabled, so there is deliberately nothing to serve. */
+  | { kind: 'disabled'; revision: string }
+  /** Another builder holds the lease. It will finish the work; nothing is wrong. */
+  | { kind: 'contended' }
+  /** The revision moved under us. A later build already covers this change. */
+  | { kind: 'superseded' }
+  /** Building or publishing threw. The previous payload is untouched. */
+  | { kind: 'failed'; error: unknown };
+
+export type StatusPagePublishOptions = {
+  /** Lease attempts before reporting contention. Each attempt uses its own transaction. */
+  lockAttempts?: number;
+  lockRetryDelayMs?: number;
+  /** Wall-clock budget, also applied server-side via statement_timeout. */
+  budgetMs?: number;
+};
+
+const DEFAULT_PUBLISH_BUDGET_MS = 30_000;
+
 /** A PostgreSQL lease prevents simultaneous builders; revision CAS rejects a stale build. */
 export async function rebuildStatusPageSnapshot(pageId: string) {
+  const outcome = await publishStatusPageSnapshot(pageId);
+  return outcome.kind === 'published';
+}
+
+/**
+ * Build and publish one page, reporting precisely what happened.
+ *
+ * Ordering is load-bearing throughout: the commit happens in a single transaction so a partial
+ * write cannot be observed, and the store receives snapshot, then manifest, then routes, so a
+ * manifest never points at a body that is not yet readable and a route never resolves to a page
+ * with no manifest.
+ */
+export async function publishStatusPageSnapshot(
+  pageId: string,
+  options: StatusPagePublishOptions = {}
+): Promise<StatusPagePublishOutcome> {
+  const budgetMs = Math.max(1_000, options.budgetMs ?? DEFAULT_PUBLISH_BUDGET_MS);
+  const attempts = Math.max(1, options.lockAttempts ?? 1);
+  const retryDelayMs = Math.max(0, options.lockRetryDelayMs ?? 50);
+  const deadline = Date.now() + budgetMs;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) return { kind: 'contended' };
+    let result: Awaited<ReturnType<typeof buildAndCommitSnapshot>>;
+    try {
+      result = await buildAndCommitSnapshot(pageId, remainingMs);
+    } catch (error) {
+      return { kind: 'failed', error };
+    }
+    if (result === 'contended') {
+      // Retry in a fresh transaction rather than holding one open, so a busy page never pins a
+      // pooled connection while it waits.
+      if (attempt + 1 < attempts && retryDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      }
+      continue;
+    }
+    if (result === 'superseded') return { kind: 'superseded' };
+    if (result === 'missing') {
+      // No control row: the page was deleted between resolving it and building it.
+      return { kind: 'failed', error: new Error(`No snapshot row for status page ${pageId}`) };
+    }
+    if (!result.snapshot) return { kind: 'disabled', revision: result.revision };
+    try {
+      await pushSnapshotToServingStore(pageId, result.revision, result.snapshot);
+    } catch (error) {
+      return { kind: 'failed', error };
+    }
+    return { kind: 'published', revision: result.revision };
+  }
+  return { kind: 'contended' };
+}
+
+async function buildAndCommitSnapshot(
+  pageId: string,
+  remainingMs: number
+): Promise<
+  | 'contended'
+  | 'missing'
+  | 'superseded'
+  | { snapshot: StatusPageSnapshot | null; revision: string }
+> {
   const result = await prisma.$transaction(
     async tx => {
+      // Abort server-side rather than letting a slow build outlive the caller's budget.
+      await tx.$executeRawUnsafe(
+        `SET LOCAL statement_timeout = ${Math.max(1_000, Math.floor(remainingMs))}`
+      );
       const locks = await tx.$queryRaw<
         Array<{ acquired: boolean }>
       >`SELECT pg_try_advisory_xact_lock(hashtextextended(${`status-snapshot:${pageId}`}, 0)) AS acquired`;
-      if (!locks[0]?.acquired) return null;
+      if (!locks[0]?.acquired) return 'contended' as const;
       const rows = await tx.$queryRaw<
         Array<{ revision: bigint }>
       >`SELECT "revision" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-      if (!rows[0]) return null;
+      if (!rows[0]) return 'missing' as const;
       const revision = rows[0].revision;
       const snapshot = await buildStatusPageSnapshot(pageId, revision.toString());
+      // The only writer of LIVE. A disabled page records DISABLED so the reader can tell
+      // "turned off" from "temporarily unavailable".
       const changed = await tx.$executeRaw`
       UPDATE "StatusPageSnapshot" SET "payload" = ${snapshot ? JSON.stringify(snapshot) : null}::jsonb,
-        "publishedRevision" = ${revision}, "generatedAt" = NOW(), "lastError" = NULL
+        "publishedRevision" = ${revision}, "generatedAt" = NOW(), "lastError" = NULL,
+        "servingState" = ${snapshot ? 'LIVE' : 'DISABLED'}
       WHERE "statusPageId" = ${pageId} AND "revision" = ${revision}
     `;
       // Drivers can surface row counts as either number or bigint; normalize at this boundary.
-      return Number(changed) === 1 ? { snapshot, revision: revision.toString() } : null;
+      return Number(changed) === 1
+        ? { snapshot, revision: revision.toString() }
+        : ('superseded' as const);
     },
     { timeout: 30_000 }
   );
-  if (!result?.snapshot) return false;
+  return result;
+}
+
+async function pushSnapshotToServingStore(
+  pageId: string,
+  revision: string,
+  snapshot: StatusPageSnapshot
+) {
   const store = getStatusPageServingStore();
+  const result = { snapshot, revision };
   await store.publishSnapshot(
     pageId,
     result.revision,
@@ -285,6 +393,12 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
     publishedAt: result.snapshot.generatedAt,
     schemaVersion: result.snapshot.schemaVersion,
     integrityHash: statusSnapshotIntegrity(result.snapshot as unknown as Prisma.JsonValue),
+    servingState: 'LIVE',
+    lastGoodRevision: result.revision,
+    lastGoodSnapshotKey: `${result.revision}.json`,
+    lastGoodIntegrityHash: statusSnapshotIntegrity(
+      result.snapshot as unknown as Prisma.JsonValue
+    ),
   });
   const slug = result.snapshot.page?.slug;
   const route: StatusServingRoute = {
@@ -301,7 +415,6 @@ export async function rebuildStatusPageSnapshot(pageId: string) {
   if (result.snapshot.page.subdomain) {
     await store.publishRoute(`subdomain:${result.snapshot.page.subdomain.toLowerCase()}`, route);
   }
-  return true;
 }
 
 /** Bounded reconciliation also advances maintenance boundaries and time-derived uptime. */
