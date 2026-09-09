@@ -111,6 +111,8 @@ export async function subscribeStatusPageRequest(req: NextRequest) {
           where: { id: existing.id },
           data: {
             unsubscribedAt: null,
+            state: 'PENDING',
+            suppressionReason: null,
             token: hashSubscriptionToken(token),
             verificationToken: hashSubscriptionToken(verificationToken),
             verified: false,
@@ -137,6 +139,7 @@ export async function subscribeStatusPageRequest(req: NextRequest) {
           token: hashSubscriptionToken(token),
           verificationToken: hashSubscriptionToken(verificationToken),
           verified: false,
+          state: 'PENDING',
         },
       });
     }

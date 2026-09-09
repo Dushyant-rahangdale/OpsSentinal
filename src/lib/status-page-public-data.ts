@@ -1,3 +1,10 @@
+import type {
+  PublicIncident,
+  PublicIncidentStatus,
+  PublicIncidentUpdateType,
+  PublicIncidentUrgency,
+} from '@/lib/status-pages/public-contract';
+
 export type StatusPagePublicSettings = {
   showServices: boolean;
   showIncidents: boolean;
@@ -48,17 +55,19 @@ type PublicIncidentInput = {
   urgency?: string;
   createdAt: string | Date;
   resolvedAt: string | Date | null;
-  service?: { name?: string; region?: string | null } | null;
+  acknowledgedAt?: string | Date | null;
+  service?: { id?: string; name?: string; region?: string | null } | null;
   postmortem?: { status?: string; isPublic?: boolean | null } | null;
   events?: Array<{
     id: string;
+    type?: string | null;
     message: string;
     createdAt: string | Date;
   }>;
 };
 
-function serializeDate(value: string | Date | null): string | null {
-  if (value === null) return null;
+function serializeDate(value: string | Date | null | undefined): string | undefined {
+  if (value == null) return undefined;
   return value instanceof Date ? value.toISOString() : value;
 }
 
@@ -66,24 +75,32 @@ function serializeDate(value: string | Date | null): string | null {
 export function serializePublicStatusIncident(
   incident: PublicIncidentInput,
   settings: StatusPagePublicSettings
-): Record<string, unknown> {
+): PublicIncident {
   const visibility = publicStatusVisibility(settings);
-  const result: Record<string, unknown> = { status: incident.status };
+  const result: PublicIncident = { status: incident.status as PublicIncidentStatus };
 
   if (visibility.showIncidentId) result.id = incident.id;
   if (visibility.showIncidentTitle) result.title = incident.title;
   if (visibility.showIncidentDescription && incident.description) {
     result.description = incident.description;
   }
-  if (visibility.showIncidentUrgency && incident.urgency) result.urgency = incident.urgency;
+  if (visibility.showIncidentUrgency && incident.urgency) {
+    result.urgency = incident.urgency as PublicIncidentUrgency;
+  }
   if (visibility.showIncidentTimestamp) {
     result.createdAt = serializeDate(incident.createdAt);
-    result.resolvedAt = serializeDate(incident.resolvedAt);
+    const acknowledgedAt = serializeDate(incident.acknowledgedAt);
+    const resolvedAt = serializeDate(incident.resolvedAt);
+    if (acknowledgedAt) result.acknowledgedAt = acknowledgedAt;
+    if (resolvedAt) result.resolvedAt = resolvedAt;
   }
   if (visibility.showAffectedService && incident.service) {
     result.service = {
+      ...(incident.service.id ? { id: incident.service.id } : {}),
       ...(incident.service.name ? { name: incident.service.name } : {}),
-      ...(visibility.showServiceRegion ? { region: incident.service.region ?? null } : {}),
+      ...(visibility.showServiceRegion && incident.service.region
+        ? { regions: incident.service.region.split(',').map(value => value.trim()).filter(Boolean) }
+        : {}),
     };
   }
   if (
@@ -91,8 +108,9 @@ export function serializePublicStatusIncident(
     visibility.showIncidentDescription &&
     incident.events?.length
   ) {
-    result.events = incident.events.map(event => ({
+    result.updates = incident.events.map(event => ({
       id: event.id,
+      type: publicUpdateType(event.type),
       message: event.message,
       ...(visibility.showIncidentTimestamp ? { createdAt: serializeDate(event.createdAt) } : {}),
     }));
@@ -109,6 +127,14 @@ export function serializePublicStatusIncident(
   return result;
 }
 
+function publicUpdateType(type: string | null | undefined): PublicIncidentUpdateType {
+  if (type === 'ACKNOWLEDGED') return 'ACKNOWLEDGED';
+  if (type === 'RESOLVED' || type === 'AUTO_RESOLVED' || type === 'MANUAL_RESOLVED') {
+    return 'RESOLVED';
+  }
+  return 'UPDATE';
+}
+
 /**
  * Keep the long-standing `/api/status` incident shape while applying the
  * same visibility policy used by the other public status endpoints.
@@ -117,15 +143,15 @@ export function serializePublicStatusApiIncident(
   incident: PublicIncidentInput,
   settings: StatusPagePublicSettings
 ): Record<string, unknown> {
-  const result = serializePublicStatusIncident(incident, settings);
+  const result = { ...serializePublicStatusIncident(incident, settings) } as Record<string, unknown>;
   const service = result.service;
   if (!service || typeof service !== 'object' || Array.isArray(service)) return result;
 
   const { service: _service, ...withoutService } = result;
-  const publicService = service as { name?: unknown; region?: unknown };
+  const publicService = service as { name?: unknown; regions?: unknown };
   return {
     ...withoutService,
     ...(typeof publicService.name === 'string' ? { service: publicService.name } : {}),
-    ...('region' in publicService ? { serviceRegion: publicService.region } : {}),
+    ...('regions' in publicService ? { serviceRegions: publicService.regions } : {}),
   };
 }

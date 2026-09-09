@@ -63,7 +63,7 @@ export async function makeDefaultStatusPage(statusPageId: string) {
 }
 
 export async function deleteStatusPage(statusPageId: string, replacementDefaultId?: string) {
-  await prisma.$transaction(async tx => {
+  const page = await prisma.$transaction(async tx => {
     await lockLifecycle(tx);
     const page = await requireStatusPageForAdmin(statusPageId, tx);
     const count = await tx.statusPage.count();
@@ -89,7 +89,27 @@ export async function deleteStatusPage(statusPageId: string, replacementDefaultI
       });
     }
 
-    await tx.statusPage.delete({ where: { id: statusPageId } });
+    await tx.statusPage.update({ where: { id: statusPageId }, data: { enabled: false } });
+    await tx.$executeRaw`UPDATE "StatusPageSnapshot" SET "revision" = "revision" + 1 WHERE "statusPageId" = ${statusPageId}`;
+    return page;
   });
-  await getStatusPageServingStore().revoke(statusPageId);
+  const store = getStatusPageServingStore();
+  await store.revoke(statusPageId);
+  await Promise.all([
+    ...(page.slug ? [store.removeRoute(page.slug)] : []),
+    ...(page.customDomain ? [store.removeRoute(`domain:${page.customDomain.toLowerCase()}`)] : []),
+    ...(page.subdomain ? [store.removeRoute(`subdomain:${page.subdomain.toLowerCase()}`)] : []),
+    ...(page.isDefault ? [store.removeRoute('default')] : []),
+  ]);
+  await prisma.$transaction(async tx => {
+    await lockLifecycle(tx);
+    await tx.notification.updateMany({
+      where: { sourceType: 'STATUS_PAGE', sourceId: statusPageId, status: 'PENDING' },
+      data: { status: 'SKIPPED', errorMsg: 'Status page deleted' },
+    });
+    await tx.statusPage.delete({ where: { id: statusPageId } });
+    await tx.auditLog.create({
+      data: { action: 'STATUS_PAGE_DELETED', entityType: 'STATUS_PAGE', entityId: statusPageId },
+    });
+  });
 }

@@ -440,7 +440,9 @@ describe('central notification control plane', () => {
       values?: readonly unknown[];
     };
     const sql = queueQuery.strings?.join('?') ?? '';
-    expect(sql).toContain('CASE "trafficClass"');
+    expect(sql).toContain('CASE ranked."trafficClass"');
+    expect(sql).toContain('PARTITION BY "trafficClass", "tenantKey"');
+    expect(sql).toContain('tenant_rank <=');
     expect(sql).toContain("WHEN 'CRITICAL'");
     expect(sql).toContain("WHEN 'PUBLIC_INCIDENT'");
     expect(sql).toContain('ELSE');

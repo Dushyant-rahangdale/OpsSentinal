@@ -10,7 +10,7 @@ interface StatusPageHeaderProps {
     contactEmail?: string | null;
     contactUrl?: string | null;
   };
-  overallStatus: 'operational' | 'maintenance' | 'degraded' | 'outage';
+  overallStatus: 'operational' | 'maintenance' | 'degraded' | 'outage' | 'unknown';
   branding?: Record<string, unknown>;
   lastUpdated?: string;
 }
@@ -48,6 +48,10 @@ const STATUS_CONFIG = {
     border: '#fca5a5',
     pulse: true,
   },
+  unknown: {
+    badge: 'Unknown', text: 'Current status is unavailable', color: '#475569',
+    background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', border: '#94a3b8', pulse: false,
+  },
 };
 
 export default function StatusPageHeader({
@@ -63,7 +67,7 @@ export default function StatusPageHeader({
         ? STATUS_CONFIG.degraded
         : overallStatus === 'outage'
           ? STATUS_CONFIG.outage
-          : STATUS_CONFIG.operational;
+          : overallStatus === 'unknown' ? STATUS_CONFIG.unknown : STATUS_CONFIG.operational;
   const logoUrl =
     (typeof branding.logoUrl === 'string' && branding.logoUrl) ||
     (typeof branding.logo === 'string' && branding.logo) ||
@@ -199,7 +203,8 @@ export default function StatusPageHeader({
                   e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                 }}
               >
-                <img
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                   src={logoUrl}
                   alt={statusPage.name}
                   style={{

@@ -104,8 +104,12 @@ export function getProviderCapacity(
   providerKey = 'default',
   env: NodeJS.ProcessEnv = process.env
 ): ProviderCapacity {
+  const providerEnvKey = providerKey.toUpperCase().replace(/[^A-Z0-9]+/g, '_').slice(0, 80);
+  const scoped = (suffix: string) =>
+    envValue(env, `NOTIFICATION_${scope}_${providerEnvKey}_${suffix}`) ??
+    envValue(env, `NOTIFICATION_${scope}_${suffix}`);
   const configuredRatePerSecond = integerSetting(
-    envValue(env, `NOTIFICATION_${scope}_RATE_PER_SECOND`),
+    scoped('RATE_PER_SECOND'),
     defaultRate(scope),
     1,
     ABSOLUTE_RATE_CEILING
@@ -126,7 +130,7 @@ export function getProviderCapacity(
   const bulkShare = shareSetting(env.NOTIFICATION_BULK_SHARE);
   const bulkRatePerSecond = Math.max(1, Math.floor(effectiveRatePerSecond * bulkShare));
   const maxInFlight = integerSetting(
-    envValue(env, `NOTIFICATION_${scope}_MAX_IN_FLIGHT`),
+    scoped('MAX_IN_FLIGHT'),
     defaultInFlight(scope),
     1,
     ABSOLUTE_IN_FLIGHT_CEILING

@@ -174,6 +174,7 @@ export type CentralNotificationInput = {
   maxAttempts?: number;
   contentId?: string;
   fanoutId?: string;
+  tenantKey?: string;
 };
 
 type NotificationStore = Pick<Prisma.TransactionClient, 'notification'>;
@@ -322,6 +323,18 @@ function assertValidInput(input: CentralNotificationInput): void {
   }
 }
 
+function tenantKeyForInput(input: CentralNotificationInput): string {
+  if (input.tenantKey?.trim()) return input.tenantKey.trim().slice(0, 191);
+  const payload = input.payload;
+  if (payload.kind === 'EMAIL' && payload.providerScope?.statusPageId) {
+    return `status-page:${payload.providerScope.statusPageId}`;
+  }
+  if (payload.kind === 'STATUS_PAGE_WEBHOOK' && payload.statusPageId) {
+    return `status-page:${payload.statusPageId}`;
+  }
+  return input.userId ? `user:${input.userId}` : 'system';
+}
+
 function isUniqueConstraintError(error: unknown): boolean {
   return Boolean(
     error &&
@@ -388,6 +401,7 @@ export async function createCentralNotificationIntent(
         fanoutId: input.fanoutId,
         priority,
         trafficClass,
+        tenantKey: tenantKeyForInput(input),
         scheduledAt,
         nextAttemptAt: scheduledAt,
         maxAttempts,
@@ -457,6 +471,7 @@ export async function createCentralNotificationIntentsBatch(
           9
         ),
         trafficClass,
+        tenantKey: tenantKeyForInput(input),
         scheduledAt,
         nextAttemptAt: scheduledAt,
         maxAttempts: Math.min(
@@ -1201,6 +1216,7 @@ async function statusSubscriberDeliveryRevoked(
       email: normalizedRecipient('EMAIL', payload.to),
       verified: true,
       unsubscribedAt: null,
+      state: 'ACTIVE',
       statusPage: { enabled: true },
     },
     select: { id: true },
@@ -1833,9 +1849,10 @@ export async function processCentralNotificationQueue(
   const claimToken = crypto.randomUUID();
   const claimedBy = process.env.OPSKNIGHT_WORKER_ID?.slice(0, 128) || 'integrated-worker';
   const candidates = await prisma.$queryRaw<Array<{ id: string; claimToken: string }>>(Prisma.sql`
-    WITH candidates AS (
-      SELECT "id"
-      FROM "Notification"
+    WITH ranked AS MATERIALIZED (
+        SELECT "id", "trafficClass", "priority", "nextAttemptAt", "createdAt",
+          ROW_NUMBER() OVER (PARTITION BY "trafficClass", "tenantKey" ORDER BY "priority", "nextAttemptAt", "createdAt") AS tenant_rank
+        FROM "Notification"
     WHERE "payloadEncrypted" IS NOT NULL
       AND "attempts" < "maxAttempts"
       AND "scheduledAt" <= ${now}
@@ -1849,17 +1866,23 @@ export async function processCentralNotificationQueue(
           AND ("lastAttemptAt" IS NULL OR "lastAttemptAt" < ${staleClaimBefore})
         )
       )
-    -- Aging cannot promote customer broadcasts into responder precedence.
+    ), candidates AS (
+      SELECT notification."id"
+      FROM "Notification" notification
+      JOIN ranked ON ranked."id" = notification."id"
+      WHERE ranked.tenant_rank <= ${Math.max(1, Math.ceil(batchSize / 10))}
+    -- Aging cannot promote customer broadcasts into responder precedence; the
+    -- per-tenant cap prevents a large campaign from consuming the full claim.
     ORDER BY GREATEST(
-      CASE "trafficClass"
+      CASE ranked."trafficClass"
         WHEN 'CRITICAL' THEN ${NOTIFICATION_AGING_FLOOR.CRITICAL}
         WHEN 'TRANSACTIONAL' THEN ${NOTIFICATION_AGING_FLOOR.TRANSACTIONAL}
         WHEN 'PUBLIC_INCIDENT' THEN ${NOTIFICATION_AGING_FLOOR.PUBLIC_INCIDENT}
         ELSE ${NOTIFICATION_AGING_FLOOR.BULK}
       END,
-      "priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - "createdAt")) / 300)
-    ) ASC, "nextAttemptAt" ASC, "createdAt" ASC
-    FOR UPDATE SKIP LOCKED
+      ranked."priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - ranked."createdAt")) / 300)
+    ) ASC, ranked."nextAttemptAt" ASC, ranked."createdAt" ASC
+    FOR UPDATE OF notification SKIP LOCKED
     LIMIT ${batchSize}
     )
     UPDATE "Notification" AS notification

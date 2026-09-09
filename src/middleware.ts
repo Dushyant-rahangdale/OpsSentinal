@@ -123,16 +123,17 @@ function buildSubdomainHost(subdomain: string, appHost: string) {
 const INTERNAL_API_BASE =
   process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
-type StatusDomainConfig = {
-  enabled: boolean;
-  pages?: Array<{
+type StatusDomainPage = {
     id: string;
     slug?: string | null;
     isDefault?: boolean;
     subdomain?: string | null;
     customDomain?: string | null;
     requireAuth?: boolean;
-  }>;
+};
+type StatusDomainConfig = {
+  enabled: boolean;
+  pages?: StatusDomainPage[];
   appHost?: string | null;
 };
 
@@ -189,6 +190,32 @@ async function fetchStatusDomainConfig(): Promise<StatusDomainConfig | null> {
   })();
 
   return inflightStatusDomainFetch;
+}
+
+async function fetchPublishedStatusDomain(hostname: string): Promise<StatusDomainPage | null> {
+  const base = process.env.STATUS_PAGE_SERVING_STORE_URL?.trim();
+  const token = process.env.STATUS_PAGE_SERVING_STORE_TOKEN?.trim();
+  if (!base || !token || process.env.STATUS_PAGE_EXTERNAL_SERVING_STORE !== 'true') return null;
+  try {
+    const origin = new URL(base);
+    if (origin.protocol !== 'https:' || origin.username || origin.password) return null;
+    const storeBase = origin.pathname.endsWith('/') ? origin : new URL(`${origin.pathname}/`, origin);
+    const headers = { Authorization: `Bearer ${token}` };
+    const route = await fetch(new URL(`status-pages/routes/${encodeURIComponent(`domain:${hostname}`)}`, storeBase), { headers, cache: 'no-store', signal: AbortSignal.timeout(2000) });
+    if (!route.ok) return null;
+    const routeData = await route.json() as { pageId?: unknown };
+    if (typeof routeData.pageId !== 'string') return null;
+    const manifestResponse = await fetch(new URL(`status-pages/${routeData.pageId}/manifest`, storeBase), { headers, cache: 'no-store', signal: AbortSignal.timeout(2000) });
+    if (!manifestResponse.ok) return null;
+    const manifest = await manifestResponse.json() as { enabled?: unknown; revoked?: unknown; revision?: unknown };
+    if (manifest.enabled !== true || manifest.revoked === true || typeof manifest.revision !== 'string') return null;
+    const snapshotResponse = await fetch(new URL(`status-pages/${routeData.pageId}/${manifest.revision}.json`, storeBase), { headers, cache: 'no-store', signal: AbortSignal.timeout(2000) });
+    if (!snapshotResponse.ok) return null;
+    const snapshot = await snapshotResponse.json() as { page?: StatusDomainPage };
+    return snapshot.page ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -264,16 +291,17 @@ export default async function middleware(req: NextRequest) {
     /\.(jpg|jpeg|png|webp|avif|gif|svg|ico|css|js|woff|woff2|ttf|eot|webmanifest)$/i.test(pathname);
 
   if (!skipDomainCheck) {
-    const statusConfig = await fetchStatusDomainConfig();
+    const forwardedHost = req.headers
+      .get('x-forwarded-host')
+      ?.split(',')
+      .map(value => value.trim())
+      .filter(Boolean)
+      .at(-1);
+    const hostname = normalizeHostname(forwardedHost || req.headers.get('host'));
+    const publishedPage = hostname ? await fetchPublishedStatusDomain(hostname) : null;
+    const statusConfig = publishedPage ? { enabled: true, pages: [publishedPage] } : await fetchStatusDomainConfig();
     if (statusConfig?.enabled) {
-      const forwardedHost = req.headers
-        .get('x-forwarded-host')
-        ?.split(',')
-        .map(value => value.trim())
-        .filter(Boolean)
-        .at(-1);
-      const hostname = normalizeHostname(forwardedHost || req.headers.get('host'));
-      const matchedPage = statusConfig.pages?.find(page => {
+      const matchedPage = publishedPage ?? statusConfig.pages?.find(page => {
         const subdomainHost =
           page.subdomain && statusConfig.appHost
             ? buildSubdomainHost(page.subdomain, statusConfig.appHost)

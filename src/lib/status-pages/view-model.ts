@@ -18,7 +18,7 @@ export type StatusPageSnapshotPage = {
   isDefault?: boolean;
 };
 
-function snapshotIncidentEvents(value: unknown, generatedAt: string) {
+function snapshotIncidentEvents(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry, index) => {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
@@ -28,8 +28,7 @@ function snapshotIncidentEvents(value: unknown, generatedAt: string) {
       {
         id: typeof event.id === 'string' ? event.id : `public-event-${index}`,
         message: event.message,
-        createdAt:
-          typeof event.createdAt === 'string' ? new Date(event.createdAt) : new Date(generatedAt),
+        createdAt: typeof event.createdAt === 'string' ? new Date(event.createdAt) : undefined,
       },
     ];
   });
@@ -41,6 +40,7 @@ export function createStatusPageViewModel(
 ) {
   const services = snapshot.services.map(service => ({
     ...service,
+    region: service.regions?.join(', ') ?? null,
     _count: { incidents: service.activeIncidentCount ?? 0 },
   }));
   return {
@@ -56,7 +56,7 @@ export function createStatusPageViewModel(
     incidents: snapshot.incidents.map((incident, index) => {
       const service =
         incident.service && typeof incident.service === 'object' && !Array.isArray(incident.service)
-          ? (incident.service as { name?: unknown; region?: unknown })
+          ? (incident.service as { name?: unknown; regions?: unknown })
           : {};
       return {
         id: typeof incident.id === 'string' ? incident.id : `public-${index}`,
@@ -64,17 +64,16 @@ export function createStatusPageViewModel(
         description: typeof incident.description === 'string' ? incident.description : null,
         status: typeof incident.status === 'string' ? incident.status : 'OPEN',
         urgency: typeof incident.urgency === 'string' ? incident.urgency : 'MEDIUM',
-        createdAt:
-          typeof incident.createdAt === 'string'
-            ? new Date(incident.createdAt)
-            : new Date(snapshot.generatedAt),
+        createdAt: typeof incident.createdAt === 'string' ? new Date(incident.createdAt) : undefined,
+        acknowledgedAt:
+          typeof incident.acknowledgedAt === 'string' ? new Date(incident.acknowledgedAt) : undefined,
         resolvedAt: typeof incident.resolvedAt === 'string' ? new Date(incident.resolvedAt) : null,
         service: {
           id: '',
           name: typeof service.name === 'string' ? service.name : 'Service',
-          region: typeof service.region === 'string' ? service.region : null,
+          region: Array.isArray(service.regions) ? service.regions.join(', ') : null,
         },
-        events: snapshotIncidentEvents(incident.events, snapshot.generatedAt),
+        events: snapshotIncidentEvents(incident.updates),
         postIncidentReview: incident.postIncidentReview === true,
       };
     }),
@@ -83,8 +82,12 @@ export function createStatusPageViewModel(
       startDate: new Date(item.startDate),
       endDate: item.endDate ? new Date(item.endDate) : null,
     })),
-    uptime: snapshot.uptime,
-    uptime30: snapshot.uptime30 ?? snapshot.uptime,
-    statusHistory: snapshot.statusHistory ?? {},
+    uptime: Object.fromEntries(snapshot.services.flatMap(service =>
+      service.uptime?.days90.percentage == null ? [] : [[service.id, service.uptime.days90.percentage]]
+    )),
+    uptime30: Object.fromEntries(snapshot.services.flatMap(service =>
+      service.uptime?.days30.percentage == null ? [] : [[service.id, service.uptime.days30.percentage]]
+    )),
+    statusHistory: Object.fromEntries(snapshot.services.map(service => [service.id, service.history ?? []])),
   };
 }

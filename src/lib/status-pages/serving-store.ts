@@ -6,6 +6,8 @@ import {
   observeOperationalHistogram,
 } from '@/lib/metrics/operational/registry';
 import { scalingFeatureEnabled } from '@/lib/scaling-feature-flags';
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
 
 export interface StatusServingManifest {
   pageId: string;
@@ -13,10 +15,24 @@ export interface StatusServingManifest {
   enabled: boolean;
   revoked: boolean;
   snapshotKey: string;
+  publishedAt: string;
+  schemaVersion: number;
+  integrityHash: string;
+}
+
+const manifestSchema = z.object({
+  pageId: z.string(), revision: z.string(), enabled: z.boolean(), revoked: z.boolean(),
+  snapshotKey: z.string(), publishedAt: z.string().datetime({ offset: true }),
+  schemaVersion: z.number().int().positive(), integrityHash: z.string().regex(/^[a-f0-9]{64}$/),
+}).strict();
+
+export function statusSnapshotIntegrity(snapshot: Prisma.JsonValue) {
+  return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
 }
 
 export interface StatusPageServingStore {
   publishRoute(routeKey: string, pageId: string): Promise<void>;
+  removeRoute(routeKey: string): Promise<void>;
   resolveRoute(routeKey: string): Promise<string | null>;
   publishManifest(manifest: StatusServingManifest): Promise<void>;
   publishSnapshot(pageId: string, revision: string, snapshot: Prisma.JsonValue): Promise<void>;
@@ -43,6 +59,7 @@ async function observed<T>(operation: string, task: () => Promise<T>): Promise<T
 
 class PostgreSqlStatusPageServingStore implements StatusPageServingStore {
   async publishRoute(): Promise<void> {}
+  async removeRoute(): Promise<void> {}
   async resolveRoute(routeKey: string): Promise<string | null> {
     const page = await prisma.statusPage.findFirst({
       where: routeKey === 'default' ? { isDefault: true } : { slug: routeKey },
@@ -63,6 +80,9 @@ class PostgreSqlStatusPageServingStore implements StatusPageServingStore {
         enabled: true,
         revoked: row.publishedRevision !== row.revision || !row.payload,
         snapshotKey: `${row.publishedRevision}.json`,
+        publishedAt: row.generatedAt?.toISOString() ?? new Date(0).toISOString(),
+        schemaVersion: 3,
+        integrityHash: row.payload ? statusSnapshotIntegrity(row.payload) : '0'.repeat(64),
       };
     });
   }
@@ -131,6 +151,17 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
     });
   }
 
+  async removeRoute(routeKey: string): Promise<void> {
+    await observed('remove_route', async () => {
+      const response = await this.request(`status-pages/routes/${encodeURIComponent(routeKey)}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`Serving store route removal failed (${response.status})`);
+      }
+    });
+  }
+
   async resolveRoute(routeKey: string): Promise<string | null> {
     return observed('resolve_route', async () => {
       const response = await this.request(`status-pages/routes/${encodeURIComponent(routeKey)}`);
@@ -172,7 +203,8 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
       const response = await this.request(`status-pages/${pageId}/manifest`);
       if (response.status === 404) return null;
       if (!response.ok) throw new Error(`Serving store manifest read failed (${response.status})`);
-      return (await response.json()) as StatusServingManifest;
+      const parsed = manifestSchema.safeParse(await response.json());
+      return parsed.success ? parsed.data : null;
     });
   }
 
@@ -192,6 +224,9 @@ class HttpStatusPageServingStore implements StatusPageServingStore {
       enabled: false,
       revoked: true,
       snapshotKey: '',
+      publishedAt: new Date().toISOString(),
+      schemaVersion: 3,
+      integrityHash: '0'.repeat(64),
     });
   }
 }
