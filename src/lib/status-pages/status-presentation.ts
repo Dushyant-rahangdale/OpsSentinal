@@ -1,13 +1,15 @@
 import type { PublicServiceStatus } from './public-contract';
 
-const RANK: Record<PublicServiceStatus, number> = {
-  UNKNOWN: -1,
-  OPERATIONAL: 0,
-  MAINTENANCE: 1,
-  DEGRADED: 2,
-  PARTIAL_OUTAGE: 3,
-  MAJOR_OUTAGE: 4,
-};
+function statusRank(status: PublicServiceStatus): number {
+  switch (status) {
+    case 'OPERATIONAL': return 0;
+    case 'UNKNOWN': return 1;
+    case 'MAINTENANCE': return 2;
+    case 'DEGRADED': return 3;
+    case 'PARTIAL_OUTAGE': return 4;
+    case 'MAJOR_OUTAGE': return 5;
+  }
+}
 
 export const STATUS_PRESENTATION: Record<
   PublicServiceStatus,
@@ -22,18 +24,29 @@ export const STATUS_PRESENTATION: Record<
 };
 
 export function normalizePublicStatus(value: unknown): PublicServiceStatus {
-  return typeof value === 'string' && value in STATUS_PRESENTATION
-    ? (value as PublicServiceStatus)
-    : 'UNKNOWN';
+  switch (value) {
+    case 'OPERATIONAL': case 'DEGRADED': case 'MAINTENANCE':
+    case 'PARTIAL_OUTAGE': case 'MAJOR_OUTAGE': case 'UNKNOWN': return value;
+    default: return 'UNKNOWN';
+  }
 }
 
 export function getWorstPublicStatus(
   statuses: readonly PublicServiceStatus[]
 ): PublicServiceStatus {
   if (statuses.length === 0) return 'UNKNOWN';
-  return statuses.reduce((worst, status) => (RANK[status] > RANK[worst] ? status : worst));
+  return statuses.reduce((worst, status) => (
+    statusRank(status) > statusRank(worst) ? status : worst
+  ));
 }
 
 export function statusPresentation(status: PublicServiceStatus) {
-  return STATUS_PRESENTATION[status];
+  switch (status) {
+    case 'OPERATIONAL': return STATUS_PRESENTATION.OPERATIONAL;
+    case 'DEGRADED': return STATUS_PRESENTATION.DEGRADED;
+    case 'MAINTENANCE': return STATUS_PRESENTATION.MAINTENANCE;
+    case 'PARTIAL_OUTAGE': return STATUS_PRESENTATION.PARTIAL_OUTAGE;
+    case 'MAJOR_OUTAGE': return STATUS_PRESENTATION.MAJOR_OUTAGE;
+    case 'UNKNOWN': return STATUS_PRESENTATION.UNKNOWN;
+  }
 }

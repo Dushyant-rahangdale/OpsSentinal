@@ -243,6 +243,16 @@ export async function POST(req: NextRequest) {
       return saved;
     });
 
+    const store = getStatusPageServingStore();
+    await Promise.all([
+      ...(statusPage.slug && statusPage.slug !== updated.slug
+        ? [store.removeRoute(statusPage.slug)] : []),
+      ...(statusPage.customDomain && statusPage.customDomain !== updated.customDomain
+        ? [store.removeRoute(`domain:${statusPage.customDomain.toLowerCase()}`)] : []),
+      ...(statusPage.subdomain && statusPage.subdomain !== updated.subdomain
+        ? [store.removeRoute(`subdomain:${statusPage.subdomain.toLowerCase()}`)] : []),
+    ]);
+
     revalidatePath('/status');
     revalidatePath('/');
 

@@ -12,7 +12,13 @@ function historyLabel(service: PublicStatusService, day: PublicStatusHistoryDay)
   return `${day.date}, ${service.name}, ${presentation.label}, ${availability}, ${day.incidentCount} incidents`;
 }
 
-export default function PublicStatusServices({ services }: { services: PublicStatusService[] }) {
+export default function PublicStatusServices({
+  services,
+  groupByRegion = false,
+}: {
+  services: PublicStatusService[];
+  groupByRegion?: boolean;
+}) {
   const [open, setOpen] = useState<{ serviceId: string; date: string } | null>(null);
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(null);
@@ -20,11 +26,7 @@ export default function PublicStatusServices({ services }: { services: PublicSta
     return () => window.removeEventListener('keydown', close);
   }, []);
 
-  if (services.length === 0) return null;
-  return (
-    <section aria-labelledby="service-health-heading" className="public-service-health">
-      <h2 id="service-health-heading">Services</h2>
-      {services.map(service => {
+  const renderServices = (items: PublicStatusService[]) => items.map(service => {
         const current = statusPresentation(service.status);
         return (
           <article key={service.id} className="public-service-card">
@@ -86,7 +88,20 @@ export default function PublicStatusServices({ services }: { services: PublicSta
             ) : null}
           </article>
         );
-      })}
+      });
+  if (services.length === 0) return null;
+  const regions = [...new Set(services.flatMap(service => service.regions ?? []))].sort();
+  return (
+    <section aria-labelledby="service-health-heading" className="public-service-health">
+      <h2 id="service-health-heading">Services</h2>
+      {groupByRegion && regions.length > 0
+        ? regions.map(region => (
+          <section key={region} aria-label={`${region} services`} className="public-service-region">
+            <h3>{region}</h3>
+            {renderServices(services.filter(service => service.regions?.includes(region)))}
+          </section>
+        ))
+        : renderServices(services)}
     </section>
   );
 }

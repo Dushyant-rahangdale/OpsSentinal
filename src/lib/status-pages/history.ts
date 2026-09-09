@@ -118,7 +118,12 @@ export function buildPublicServiceHistory({
       .filter(slice => slice.startMinute < slice.endMinute);
     const status = getWorstPublicStatus(relevant.map(slice => slice.status));
     const unavailable = relevant.reduce(
-      (total, slice) => total + (slice.status === 'OPERATIONAL' ? 0 : slice.endMinute - slice.startMinute),
+      (total, slice) => total + (
+        slice.status === 'DEGRADED' || slice.status === 'PARTIAL_OUTAGE' ||
+        slice.status === 'MAJOR_OUTAGE' || slice.status === 'UNKNOWN'
+          ? slice.endMinute - slice.startMinute
+          : 0
+      ),
       0
     );
     days.push({

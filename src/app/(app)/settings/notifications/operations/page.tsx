@@ -40,6 +40,7 @@ export default async function NotificationOperationsPage() {
     prisma.statusPageSubscription.groupBy({ by: ['state'], _count: { _all: true } }),
     prisma.notificationProviderFeedback.groupBy({
       by: ['eventType'],
+      // eslint-disable-next-line react-hooks/purity -- server request timestamp bounds live telemetry.
       where: { occurredAt: { gte: new Date(Date.now() - 24 * 60 * 60_000) } },
       _count: { _all: true },
     }),

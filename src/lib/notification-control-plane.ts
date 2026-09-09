@@ -1870,10 +1870,11 @@ export async function processCentralNotificationQueue(
       SELECT notification."id"
       FROM "Notification" notification
       JOIN ranked ON ranked."id" = notification."id"
-      WHERE ranked.tenant_rank <= ${Math.max(1, Math.ceil(batchSize / 10))}
-    -- Aging cannot promote customer broadcasts into responder precedence; the
-    -- per-tenant cap prevents a large campaign from consuming the full claim.
-    ORDER BY GREATEST(
+    -- Prefer each tenant's initial share, then redistribute unused slots so
+    -- small tenant sets can still fill the worker batch. Traffic-class floors
+    -- keep aged customer broadcasts behind responder notifications.
+    ORDER BY CASE WHEN ranked.tenant_rank <= ${Math.max(1, Math.ceil(batchSize / 10))} THEN 0 ELSE 1 END,
+    GREATEST(
       CASE ranked."trafficClass"
         WHEN 'CRITICAL' THEN ${NOTIFICATION_AGING_FLOOR.CRITICAL}
         WHEN 'TRANSACTIONAL' THEN ${NOTIFICATION_AGING_FLOOR.TRANSACTIONAL}

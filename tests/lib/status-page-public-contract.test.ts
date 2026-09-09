@@ -13,6 +13,7 @@ describe('canonical public status contract', () => {
   it('uses one precedence for service, region and history aggregation', () => {
     expect(getWorstPublicStatus(['OPERATIONAL', 'MAINTENANCE', 'DEGRADED'])).toBe('DEGRADED');
     expect(getWorstPublicStatus(['DEGRADED', 'MAJOR_OUTAGE'])).toBe('MAJOR_OUTAGE');
+    expect(getWorstPublicStatus(['OPERATIONAL', 'UNKNOWN'])).toBe('UNKNOWN');
   });
 
   it('keeps degraded history, timeline and availability semantically aligned', () => {
@@ -40,6 +41,7 @@ describe('canonical public status contract', () => {
       start: new Date('2026-09-09T00:00:00.000Z'), end: new Date('2026-09-10T00:00:00.000Z'),
     })[0];
     expect(maintenance.status).toBe('MAINTENANCE');
+    expect(maintenance.availabilityPercent).toBe(100);
     const regions = aggregatePublicRegions([
       { id: 'api', regions: ['us-east-1', 'eu-west-1'], status: 'DEGRADED' },
       { id: 'web', regions: ['us-east-1'], status: 'OPERATIONAL' },

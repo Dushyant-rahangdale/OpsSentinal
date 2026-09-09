@@ -443,6 +443,7 @@ describe('central notification control plane', () => {
     expect(sql).toContain('CASE ranked."trafficClass"');
     expect(sql).toContain('PARTITION BY "trafficClass", "tenantKey"');
     expect(sql).toContain('tenant_rank <=');
+    expect(sql).not.toContain('WHERE ranked.tenant_rank <=');
     expect(sql).toContain("WHEN 'CRITICAL'");
     expect(sql).toContain("WHEN 'PUBLIC_INCIDENT'");
     expect(sql).toContain('ELSE');

@@ -93,10 +93,10 @@ export default function StatusPageSnapshotView({
             })}
           </section>
         )}
-        {page.showServicesByRegion === true && snapshot.regions.map(region => (
-          <section key={region.name} aria-label={`${region.name} services`} />
-        ))}
-        <PublicStatusServices services={snapshot.services} />
+        <PublicStatusServices
+          services={snapshot.services}
+          groupByRegion={page.showServicesByRegion === true}
+        />
         <StatusPageIncidents
           incidents={view.incidents}
           privacySettings={{

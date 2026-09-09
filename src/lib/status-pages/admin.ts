@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { emitAuditEvent } from '@/lib/audit';
 import { getStatusPageServingStore } from './serving-store';
 
 const STATUS_PAGE_LIFECYCLE_LOCK = 'opsknight:status-pages:lifecycle:v1';
@@ -104,12 +105,17 @@ export async function deleteStatusPage(statusPageId: string, replacementDefaultI
   await prisma.$transaction(async tx => {
     await lockLifecycle(tx);
     await tx.notification.updateMany({
-      where: { sourceType: 'STATUS_PAGE', sourceId: statusPageId, status: 'PENDING' },
+      where: {
+        tenantKey: `status-page:${statusPageId}`,
+        status: { in: ['PENDING', 'FAILED'] },
+      },
       data: { status: 'SKIPPED', errorMsg: 'Status page deleted' },
     });
     await tx.statusPage.delete({ where: { id: statusPageId } });
-    await tx.auditLog.create({
-      data: { action: 'STATUS_PAGE_DELETED', entityType: 'STATUS_PAGE', entityId: statusPageId },
-    });
+    await emitAuditEvent({
+      action: 'STATUS_PAGE_DELETED',
+      source: 'UI',
+      target: { type: 'STATUS_PAGE', id: statusPageId },
+    }, tx);
   });
 }
