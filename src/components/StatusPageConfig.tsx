@@ -48,6 +48,10 @@ type StatusPageBranding = {
   showApiLink?: boolean;
 };
 
+function isStatusPageBranding(value: unknown): value is StatusPageBranding {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 type StatusPageConfigProps = {
   statusPage: {
     id: string;
@@ -77,7 +81,7 @@ type StatusPageConfigProps = {
     contactEmail?: string | null;
     contactUrl?: string | null;
     emailProvider?: string | null;
-    branding?: StatusPageBranding | null;
+    branding?: unknown;
     requireAuth?: boolean;
     updatedAt?: Date | string;
     privacyMode?: string | null;
@@ -718,7 +722,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
   );
 
   // Parse branding JSON
-  const branding = statusPage.branding ?? {};
+  const branding = isStatusPageBranding(statusPage.branding) ? statusPage.branding : {};
 
   const [formData, setFormData] = useState({
     name: statusPage.name,

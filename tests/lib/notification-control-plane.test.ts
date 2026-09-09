@@ -29,6 +29,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     incident: { findUnique: vi.fn() },
     service: { findUnique: vi.fn() },
+    systemConfig: { findUnique: vi.fn() },
     notificationDeliveryAttempt: { create: vi.fn(), count: vi.fn() },
     $queryRaw: vi.fn(),
     $transaction: vi.fn(async (operation: unknown) =>
@@ -105,6 +106,7 @@ describe('central notification control plane', () => {
     vi.mocked(prisma.notification.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.notification.findMany).mockResolvedValue([]);
     vi.mocked(prisma.notificationDeliveryAttempt.count).mockResolvedValue(0);
+    vi.mocked(prisma.systemConfig.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
   });
 
