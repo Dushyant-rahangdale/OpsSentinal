@@ -47,6 +47,10 @@ export interface RollupData {
   // SLA Compliance
   ackSlaMet: number;
   ackSlaBreached: number;
+  ackSlaNotRequired: number;
+  autoResolvedBeforeAck: number;
+  manualResolvedWithoutAck: number;
+  sourceRecoveryAfterAckDeadline: number;
   resolveSlaMet: number;
   resolveSlaBreached: number;
 
@@ -154,6 +158,7 @@ export async function generateDailyRollup(
             createdAt: true,
             acknowledgedAt: true,
             resolvedAt: true,
+            resolutionKind: true,
             updatedAt: true,
             slaPausedMs: true,
             slaPauseStartedAt: true,
@@ -191,6 +196,10 @@ export async function generateDailyRollup(
         let mttrCount = 0;
         let ackSlaMet = 0;
         let ackSlaBreached = 0;
+        let ackSlaNotRequired = 0;
+        let autoResolvedBeforeAck = 0;
+        let manualResolvedWithoutAck = 0;
+        let sourceRecoveryAfterAckDeadline = 0;
         let resolveSlaMet = 0;
         let resolveSlaBreached = 0;
         let afterHoursCount = 0;
@@ -209,6 +218,10 @@ export async function generateDailyRollup(
           mttrCount: number;
           ackSlaMet: number;
           ackSlaBreached: number;
+          ackSlaNotRequired: number;
+          autoResolvedBeforeAck: number;
+          manualResolvedWithoutAck: number;
+          sourceRecoveryAfterAckDeadline: number;
           resolveSlaMet: number;
           resolveSlaBreached: number;
         };
@@ -220,6 +233,10 @@ export async function generateDailyRollup(
           mttrCount: 0,
           ackSlaMet: 0,
           ackSlaBreached: 0,
+          ackSlaNotRequired: 0,
+          autoResolvedBeforeAck: 0,
+          manualResolvedWithoutAck: 0,
+          sourceRecoveryAfterAckDeadline: 0,
           resolveSlaMet: 0,
           resolveSlaBreached: 0,
         });
@@ -347,11 +364,28 @@ export async function generateDailyRollup(
               }
             }
           } else if (incident.status === 'RESOLVED' && resolvedTime) {
-            // Resolution is not acknowledgement. The canonical SLA contract
-            // treats a terminal incident without an ACK as an evaluated miss,
-            // regardless of how quickly it was resolved.
-            ackSlaBreached++;
-            if (priorityRecord) priorityRecord.ackSlaBreached++;
+            const recoveryElapsed = resolveElapsedAt(resolvedTime);
+            const timelySourceRecovery =
+              incident.resolutionKind === 'SOURCE_RECOVERY' &&
+              recoveryElapsed <= target.ackTargetMs;
+            if (timelySourceRecovery) {
+              ackSlaNotRequired++;
+              autoResolvedBeforeAck++;
+              if (priorityRecord) {
+                priorityRecord.ackSlaNotRequired++;
+                priorityRecord.autoResolvedBeforeAck++;
+              }
+            } else {
+              ackSlaBreached++;
+              if (incident.resolutionKind === 'SOURCE_RECOVERY') {
+                sourceRecoveryAfterAckDeadline++;
+                if (priorityRecord) priorityRecord.sourceRecoveryAfterAckDeadline++;
+              } else {
+                manualResolvedWithoutAck++;
+                if (priorityRecord) priorityRecord.manualResolvedWithoutAck++;
+              }
+              if (priorityRecord) priorityRecord.ackSlaBreached++;
+            }
           } else if (incident.status !== 'RESOLVED') {
             const snapshotTime = Math.min(Date.now(), nextDayStart.getTime());
             const elapsed = elapsedAt(new Date(snapshotTime));
@@ -490,6 +524,10 @@ export async function generateDailyRollup(
               mttrCount,
               ackSlaMet,
               ackSlaBreached,
+              ackSlaNotRequired,
+              autoResolvedBeforeAck,
+              manualResolvedWithoutAck,
+              sourceRecoveryAfterAckDeadline,
               resolveSlaMet,
               resolveSlaBreached,
               escalationCount,
@@ -530,6 +568,10 @@ export async function generateDailyRollup(
               mttrCount,
               ackSlaMet,
               ackSlaBreached,
+              ackSlaNotRequired,
+              autoResolvedBeforeAck,
+              manualResolvedWithoutAck,
+              sourceRecoveryAfterAckDeadline,
               resolveSlaMet,
               resolveSlaBreached,
               escalationCount,
@@ -570,6 +612,10 @@ export async function generateDailyRollup(
                 mttrCount: sums.mttrCount,
                 ackSlaMet: sums.ackSlaMet,
                 ackSlaBreached: sums.ackSlaBreached,
+                ackSlaNotRequired: sums.ackSlaNotRequired,
+                autoResolvedBeforeAck: sums.autoResolvedBeforeAck,
+                manualResolvedWithoutAck: sums.manualResolvedWithoutAck,
+                sourceRecoveryAfterAckDeadline: sums.sourceRecoveryAfterAckDeadline,
                 resolveSlaMet: sums.resolveSlaMet,
                 resolveSlaBreached: sums.resolveSlaBreached,
               },
@@ -581,6 +627,10 @@ export async function generateDailyRollup(
                 mttrCount: sums.mttrCount,
                 ackSlaMet: sums.ackSlaMet,
                 ackSlaBreached: sums.ackSlaBreached,
+                ackSlaNotRequired: sums.ackSlaNotRequired,
+                autoResolvedBeforeAck: sums.autoResolvedBeforeAck,
+                manualResolvedWithoutAck: sums.manualResolvedWithoutAck,
+                sourceRecoveryAfterAckDeadline: sums.sourceRecoveryAfterAckDeadline,
                 resolveSlaMet: sums.resolveSlaMet,
                 resolveSlaBreached: sums.resolveSlaBreached,
               },

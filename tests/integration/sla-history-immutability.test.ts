@@ -18,16 +18,16 @@ describeIfRealDB('SLA history immutability', () => {
     await testPrisma.$disconnect();
   });
 
-  it('freezes service targets at incident creation even when the service changes later', async () => {
+  it('freezes workspace fallback targets even when legacy service metadata changes later', async () => {
     const service = await createTestService('sla-service', null, {
       targetAckMinutes: 10,
       targetResolveMinutes: 90,
     });
     const incident = await createTestIncident('frozen SLA incident', service.id);
 
-    expect(incident.slaAckTargetMs).toBe(10 * 60_000);
-    expect(incident.slaResolveTargetMs).toBe(90 * 60_000);
-    expect(incident.slaTargetSource).toBe('SERVICE');
+    expect(incident.slaAckTargetMs).toBe(15 * 60_000);
+    expect(incident.slaResolveTargetMs).toBe(120 * 60_000);
+    expect(incident.slaTargetSource).toBe('WORKSPACE_DEFAULT');
     expect(incident.slaTargetCapturedAt).not.toBeNull();
 
     await testPrisma.service.update({
@@ -37,8 +37,8 @@ describeIfRealDB('SLA history immutability', () => {
     const afterServiceChange = await testPrisma.incident.findUniqueOrThrow({
       where: { id: incident.id },
     });
-    expect(afterServiceChange.slaAckTargetMs).toBe(10 * 60_000);
-    expect(afterServiceChange.slaResolveTargetMs).toBe(90 * 60_000);
+    expect(afterServiceChange.slaAckTargetMs).toBe(15 * 60_000);
+    expect(afterServiceChange.slaResolveTargetMs).toBe(120 * 60_000);
   });
 
   it('enforces immutable incident SLA targets in the database', async () => {
@@ -61,7 +61,7 @@ describeIfRealDB('SLA history immutability', () => {
     const incident = await createTestIncident('priority contract', service.id, { priority: 'P2' });
     expect(incident.slaAckTargetMs).toBe(15 * 60_000);
     expect(incident.slaResolveTargetMs).toBe(240 * 60_000);
-    expect(incident.slaTargetSource).toBe('PRIORITY');
+    expect(incident.slaTargetSource).toBe('WORKSPACE_PRIORITY_OVERRIDE');
   });
 
   it('freezes the definition version and targets used by a daily SLA snapshot', async () => {

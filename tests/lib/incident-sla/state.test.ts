@@ -40,6 +40,7 @@ describe('projectIncidentSlaState', () => {
       policyId: 'policy-1',
       policyVersion: 3,
       policyRule: 'P1',
+      priorityAtCapture: null,
     });
     expect(result.ack).toMatchObject({
       targetMs: 10 * minute,
@@ -132,6 +133,35 @@ describe('projectIncidentSlaState', () => {
     expect(result.resolve.status).toBe('BREACHED');
     expect(result.resolve.elapsedMs).toBe(70 * minute);
     expect(result.resolve.warning).toBe('NONE');
+  });
+
+  it('marks timely source recovery as ACK not required', () => {
+    const result = state({
+      status: 'RESOLVED',
+      resolvedAt: at(5 * minute),
+      resolutionKind: 'SOURCE_RECOVERY',
+      slaResolveElapsedMs: BigInt(5 * minute),
+    });
+    expect(result.ack).toMatchObject({
+      applicability: 'NOT_REQUIRED',
+      status: 'NOT_REQUIRED',
+      reason: 'Source recovered before the acknowledgement deadline',
+    });
+  });
+
+  it.each([
+    ['SOURCE_RECOVERY', 11 * minute],
+    ['MANUAL', 5 * minute],
+    ['UNKNOWN', 5 * minute],
+  ] as const)('keeps %s resolution at %dms in the ACK denominator', (resolutionKind, elapsed) => {
+    expect(
+      state({
+        status: 'RESOLVED',
+        resolvedAt: at(elapsed),
+        resolutionKind,
+        slaResolveElapsedMs: BigInt(elapsed),
+      }).ack
+    ).toMatchObject({ applicability: 'REQUIRED', status: 'BREACHED' });
   });
 
   it('falls back to canonical materialized elapsed at completion for legacy uncaptured durations', () => {

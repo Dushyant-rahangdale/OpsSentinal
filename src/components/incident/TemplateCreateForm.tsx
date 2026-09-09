@@ -102,7 +102,7 @@ const URGENCY_OPTIONS = [
     value: 'LOW' as const,
     label: 'Low Urgency',
     sublabel: 'Non-Urgent',
-    desc: 'Queued for standard triage review without active paging alerts',
+    desc: 'Non-disruptive, quiet-hours-aware notification behavior.',
     icon: Info,
     selectedClass:
       'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/30 shadow-2xs dark:text-emerald-300',

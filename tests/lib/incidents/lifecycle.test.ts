@@ -154,32 +154,45 @@ describe('incident lifecycle command engine', () => {
     tx.incident.findUnique.mockResolvedValue(snapshot({ slaPausedMs: BigInt(5 * 60_000) }));
 
     await applyIncidentLifecycleCommand(asTransactionClient(tx), {
-      incidentId: 'inc-ack-clock', command: 'ACKNOWLEDGE', source: 'WEB', now: NOW,
+      incidentId: 'inc-ack-clock',
+      command: 'ACKNOWLEDGE',
+      source: 'WEB',
+      now: NOW,
     });
 
-    expect(tx.incident.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ slaAckElapsedMs: BigInt(15 * 60_000) }),
-    }));
+    expect(tx.incident.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ slaAckElapsedMs: BigInt(15 * 60_000) }),
+      })
+    );
   });
 
   it('captures resolve elapsed while an SLA pause is open', async () => {
-    tx.incident.findUnique.mockResolvedValue(snapshot({
-      createdAt: new Date('2026-08-27T11:00:00.000Z'),
-      slaPausedMs: BigInt(10 * 60_000),
-      slaPauseStartedAt: new Date('2026-08-27T11:50:00.000Z'),
-    }));
+    tx.incident.findUnique.mockResolvedValue(
+      snapshot({
+        createdAt: new Date('2026-08-27T11:00:00.000Z'),
+        slaPausedMs: BigInt(10 * 60_000),
+        slaPauseStartedAt: new Date('2026-08-27T11:50:00.000Z'),
+      })
+    );
 
     await applyIncidentLifecycleCommand(asTransactionClient(tx), {
-      incidentId: 'inc-resolve-clock', command: 'RESOLVE', source: 'WEB', now: NOW,
+      incidentId: 'inc-resolve-clock',
+      command: 'RESOLVE',
+      source: 'WEB',
+      now: NOW,
     });
 
-    expect(tx.incident.update).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        slaResolveElapsedMs: BigInt(40 * 60_000),
-        slaPausedMs: { increment: BigInt(10 * 60_000) },
-        slaPauseStartedAt: null,
-      }),
-    }));
+    expect(tx.incident.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          slaResolveElapsedMs: BigInt(40 * 60_000),
+          resolutionKind: 'MANUAL',
+          slaPausedMs: { increment: BigInt(10 * 60_000) },
+          slaPauseStartedAt: null,
+        }),
+      })
+    );
   });
 
   it('rejects a stale expectedStatus for a real transition', async () => {

@@ -14,6 +14,8 @@ function phaseLabel(phase: Phase): string {
       return 'Met';
     case 'BREACHED':
       return 'Breached';
+    case 'NOT_REQUIRED':
+      return 'Not required';
     default:
       return `${formatTimeMinutesMs(phase.remainingMs)} left`;
   }
@@ -42,8 +44,11 @@ export default function SLAIndicator({ sla, showDetails = false }: SLAIndicatorP
       {phases.map(({ name, phase }) => {
         const breached = phase.status === 'BREACHED';
         const met = phase.status === 'MET';
+        const notRequired = phase.status === 'NOT_REQUIRED';
         const Icon = met ? CheckCircle2 : breached ? AlertCircle : Timer;
-        const measurement = `Time: ${formatTimeMinutesMs(phase.elapsedMs)} / Target: ${formatTimeMinutesMs(phase.targetMs)}`;
+        const measurement = notRequired
+          ? 'Not required for this incident'
+          : `Time: ${formatTimeMinutesMs(phase.elapsedMs)} / Target: ${formatTimeMinutesMs(phase.targetMs)}`;
         return (
           <div
             key={name}
@@ -58,7 +63,7 @@ export default function SLAIndicator({ sla, showDetails = false }: SLAIndicatorP
               <Icon className="h-3 w-3" />
               {name} {phaseLabel(phase)}
             </Badge>
-            {showDetails && (
+            {showDetails && !notRequired && (
               <div
                 className="h-2 mt-3 bg-muted rounded-full overflow-hidden"
                 role="progressbar"
@@ -77,6 +82,12 @@ export default function SLAIndicator({ sla, showDetails = false }: SLAIndicatorP
           </div>
         );
       })}
+      {showDetails && (
+        <p className="text-xs text-muted-foreground">
+          Contract: {sla.contract.priorityAtCapture ?? 'Fallback'} · policy v
+          {sla.contract.policyVersion ?? 'legacy'} · {sla.contract.policyRule ?? 'base'}
+        </p>
+      )}
     </div>
   );
 }
