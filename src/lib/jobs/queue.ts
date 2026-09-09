@@ -1,5 +1,6 @@
 /** PostgreSQL-backed durable job queue. */
 import { Prisma } from '@prisma/client';
+import type { EventSideEffectPayload } from '../event-outbox';
 import { logger } from '../logger';
 import prisma from '../prisma';
 
@@ -28,6 +29,49 @@ interface JobPayload {
   eventType?: string;
   task?: string;
   [key: string]: unknown;
+}
+
+export interface QueuedJob {
+  id: string;
+  type: string;
+  status: string;
+  payload: unknown;
+  attempts: number;
+  maxAttempts: number;
+}
+
+function payloadValue(payload: unknown, key: string): unknown {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return undefined;
+  const values = payload as Record<string, unknown>;
+  switch (key) {
+    case 'announcementId':
+      return values.announcementId;
+    case 'eventType':
+      return values.eventType;
+    case 'generation':
+      return values.generation;
+    case 'incidentId':
+      return values.incidentId;
+    case 'intentId':
+      return values.intentId;
+    case 'operationId':
+      return values.operationId;
+    case 'statusPageId':
+      return values.statusPageId;
+    case 'stepIndex':
+      return values.stepIndex;
+    case 'task':
+      return values.task;
+    default:
+      return undefined;
+  }
+}
+
+function requiredPayloadString(payload: unknown, key: string): string {
+  const value = payloadValue(payload, key);
+  if (typeof value !== 'string' || !value.trim())
+    throw new Error(`Background job payload is missing ${key}`);
+  return value;
 }
 
 function isBulkNotificationJob(type: JobType): boolean {
@@ -91,7 +135,7 @@ export async function claimPendingJobs(
   limit: number = 50,
   type?: JobType,
   excludeTypes: readonly JobType[] = []
-): Promise<any[]> {
+): Promise<QueuedJob[]> {
   await prisma.$executeRaw(
     Prisma.sql`UPDATE "BackgroundJob" SET "status"='FAILED',"error"='Job timed out in PROCESSING state after exceeding maxAttempts',"failedAt"=NOW() WHERE "status"='PROCESSING' AND ("startedAt" IS NULL OR "startedAt"<NOW()-INTERVAL '10 minutes') AND "attempts">="maxAttempts";`
   ).catch(err => logger.warn('[Queue] Failed to sweep zombie processing jobs', { error: err }));
@@ -103,7 +147,7 @@ export async function claimPendingJobs(
         excludeTypes.map(value => Prisma.sql`${value}::"JobType"`)
       )})`
     : Prisma.empty;
-  return prisma.$queryRaw<any[]>(Prisma.sql`
+  return prisma.$queryRaw<QueuedJob[]>(Prisma.sql`
     WITH cte AS (
       SELECT candidate."id" FROM "BackgroundJob" AS candidate
       WHERE (candidate."status"='PENDING' OR (candidate."status"='PROCESSING' AND (candidate."startedAt" IS NULL OR candidate."startedAt"<NOW()-INTERVAL '10 minutes')))
@@ -173,7 +217,8 @@ export async function markJobFailed(jobId: string, error: string): Promise<void>
   });
 }
 
-export async function processJob(job: any): Promise<boolean> {
+export async function processJob(job: QueuedJob | null): Promise<boolean> {
+  if (!job) return false;
   let leaseHeartbeat: NodeJS.Timeout | null = null;
   try {
     if (job.status !== 'PROCESSING') await markJobProcessing(job.id);
@@ -194,9 +239,12 @@ export async function processJob(job: any): Promise<boolean> {
       case 'ESCALATION': {
         const { executeEscalation } = await import('../escalation');
         const { escalationJobIsSettled } = await import('../escalation/types');
-        const generation =
-          typeof job.payload.generation === 'number' ? job.payload.generation : undefined;
-        const result = await executeEscalation(job.payload.incidentId, job.payload.stepIndex, {
+        const generationValue = payloadValue(job.payload, 'generation');
+        const generation = typeof generationValue === 'number' ? generationValue : undefined;
+        const incidentId = requiredPayloadString(job.payload, 'incidentId');
+        const stepIndexValue = payloadValue(job.payload, 'stepIndex');
+        const stepIndex = typeof stepIndexValue === 'number' ? stepIndexValue : undefined;
+        const result = await executeEscalation(incidentId, stepIndex, {
           generation,
         });
         // The engine's typed outcome is authoritative. Only a retryable
@@ -219,31 +267,34 @@ export async function processJob(job: any): Promise<boolean> {
         });
         return true;
       case 'CHATOPS_INTENT': {
-        if (typeof job.payload.intentId !== 'string')
+        if (typeof payloadValue(job.payload, 'intentId') !== 'string')
           throw new Error('ChatOps intent job is missing intentId');
         const { processChatOpsIntent } = await import('../chatops/intents');
-        await processChatOpsIntent(job.payload.intentId);
+        await processChatOpsIntent(requiredPayloadString(job.payload, 'intentId'));
         await markJobCompleted(job.id);
         return true;
       }
       case 'EXTERNAL_OPERATION': {
-        if (typeof job.payload.operationId !== 'string')
+        if (typeof payloadValue(job.payload, 'operationId') !== 'string')
           throw new Error('External operation job is missing operationId');
         const { processExternalOperation } = await import('../external-operations');
-        await processExternalOperation(job.payload.operationId);
+        await processExternalOperation(requiredPayloadString(job.payload, 'operationId'));
         await markJobCompleted(job.id);
         return true;
       }
       case 'STATUS_PAGE_NOTIFICATION': {
         const { notifyStatusPageSubscribers } = await import('../status-page-notifications');
+        const eventType = requiredPayloadString(job.payload, 'eventType');
+        if (!['resolved', 'completed', 'triggered', 'acknowledged', 'scheduled', 'inprogress', 'check', 'investigating', 'identified', 'monitoring', 'snoozed', 'suppressed'].includes(eventType))
+          throw new Error(`Unsupported status page notification event: ${eventType}`);
         const subscriberResult = await notifyStatusPageSubscribers(
-          job.payload.incidentId,
-          job.payload.eventType
+          requiredPayloadString(job.payload, 'incidentId'),
+          eventType as Parameters<typeof notifyStatusPageSubscribers>[1]
         );
         if (!subscriberResult.success)
           throw new Error(`Status page subscriber delivery failed (${subscriberResult.failed})`);
         const incidentForWebhook = await prisma.incident.findUnique({
-          where: { id: job.payload.incidentId },
+          where: { id: requiredPayloadString(job.payload, 'incidentId') },
           select: {
             id: true,
             title: true,
@@ -271,7 +322,7 @@ export async function processJob(job: any): Promise<boolean> {
           };
           const webhookResult = await triggerWebhooksForService(
             incidentForWebhook.serviceId,
-            eventMap[job.payload.eventType] || 'incident.updated',
+            eventMap[requiredPayloadString(job.payload, 'eventType')] || 'incident.updated',
             {
               id: incidentForWebhook.id,
               title: incidentForWebhook.title,
@@ -293,15 +344,15 @@ export async function processJob(job: any): Promise<boolean> {
       }
       case 'STATUS_PAGE_ANNOUNCEMENT_FANOUT': {
         if (
-          typeof job.payload.announcementId !== 'string' ||
-          typeof job.payload.statusPageId !== 'string'
+          typeof payloadValue(job.payload, 'announcementId') !== 'string' ||
+          typeof payloadValue(job.payload, 'statusPageId') !== 'string'
         )
           throw new Error('Status page announcement fan-out job payload is invalid');
         const { notifyStatusPageSubscribersAnnouncement } =
           await import('../status-page-notifications');
         const result = await notifyStatusPageSubscribersAnnouncement(
-          job.payload.announcementId,
-          job.payload.statusPageId
+          requiredPayloadString(job.payload, 'announcementId'),
+          requiredPayloadString(job.payload, 'statusPageId')
         );
         if (result.failed > 0)
           throw new Error(`Status page announcement fan-out failed (${result.failed})`);
@@ -309,25 +360,27 @@ export async function processJob(job: any): Promise<boolean> {
         return true;
       }
       case 'SCHEDULED_TASK': {
-        if (job.payload?.task !== 'EVENT_SIDE_EFFECT') {
+        if (payloadValue(job.payload, 'task') !== 'EVENT_SIDE_EFFECT') {
           await prisma.backgroundJob.update({
             where: { id: job.id },
             data: {
               status: 'FAILED',
               failedAt: new Date(),
-              error: `Unknown scheduled task: ${job.payload?.task || 'missing task'}`,
+              error: `Unknown scheduled task: ${String(payloadValue(job.payload, 'task') || 'missing task')}`,
             },
           });
           return false;
         }
         const { processEventSideEffect } = await import('../event-side-effects');
-        await processEventSideEffect(job.payload);
+        await processEventSideEffect(job.payload as unknown as EventSideEffectPayload);
         await markJobCompleted(job.id);
         return true;
       }
       case 'AUTO_UNSNOOZE': {
         const { processAutoUnsnoozeIncidentInternal } = await import('../unsnooze');
-        const result = await processAutoUnsnoozeIncidentInternal(job.payload.incidentId);
+        const result = await processAutoUnsnoozeIncidentInternal(
+          requiredPayloadString(job.payload, 'incidentId')
+        );
         if (result.outcome === 'changed') {
           await markJobCompleted(job.id);
           return true;
