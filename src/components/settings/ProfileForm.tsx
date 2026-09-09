@@ -58,8 +58,8 @@ export default function ProfileForm({
 
   const defaultValues: ProfileFormData = {
     name,
-    department: department ?? undefined,
-    jobTitle: jobTitle ?? undefined,
+    department: department ?? '',
+    jobTitle: jobTitle ?? '',
   };
 
   const form = useForm<ProfileFormData>({
@@ -73,7 +73,6 @@ export default function ProfileForm({
     defaultValue: defaultValues,
   }) as ProfileFormData;
 
-  // Autosave handler for Personal Information
   const handleAutoSave = useCallback(
     async (data: ProfileFormData) => {
       if (!data.name || data.name.trim().length < 2) {
@@ -82,8 +81,10 @@ export default function ProfileForm({
 
       const formData = new FormData();
       formData.append('name', data.name.trim());
-      if (data.department) formData.append('department', data.department.trim());
-      if (data.jobTitle) formData.append('jobTitle', data.jobTitle.trim());
+      // Always send nullable fields. Empty string means explicitly clear the value;
+      // omission is reserved for "leave unchanged" semantics.
+      formData.append('department', data.department?.trim() ?? '');
+      formData.append('jobTitle', data.jobTitle?.trim() ?? '');
 
       const result = await updateProfile({ error: null, success: false }, formData);
 
@@ -91,17 +92,17 @@ export default function ProfileForm({
         await update({ force: true });
         router.refresh();
         return { success: true };
-      } else {
-        return {
-          success: false,
-          error: result.error || 'Failed to auto-save profile',
-        };
       }
+
+      return {
+        success: false,
+        error: result.error || 'Failed to auto-save profile',
+      };
     },
     [update, router]
   );
 
-  const { status: saveStatus, error: saveError } = useAutosave({
+  const { status: saveStatus, error: saveError, retry } = useAutosave({
     data: watchedData,
     onSave: handleAutoSave,
     delay: 600,
@@ -148,7 +149,8 @@ export default function ProfileForm({
 
       startTransition(async () => {
         const formData = new FormData();
-        formData.append('file', file);
+        // Server action expects the canonical "avatar" field.
+        formData.append('avatar', file);
 
         const result = await updateProfile({ error: null, success: false }, formData);
 
@@ -202,7 +204,6 @@ export default function ProfileForm({
 
   return (
     <div className="space-y-6">
-      {/* Card 1: Personal Information (Autosaved) */}
       <FormProvider {...form}>
         <form
           onSubmit={e => {
@@ -212,7 +213,7 @@ export default function ProfileForm({
           <SettingsSection
             title="Personal Information"
             description="Manage your personal details and organizational identity."
-            action={<SaveIndicator status={saveStatus} error={saveError} />}
+            action={<SaveIndicator status={saveStatus} error={saveError} onRetry={retry} />}
             footer={
               <p className="text-xs text-muted-foreground">
                 Auto-saved · Changes apply immediately across the workspace
@@ -220,7 +221,6 @@ export default function ProfileForm({
             }
           >
             <div className="divide-y text-sm">
-              {/* Profile Photo Row */}
               <SettingsRow
                 label="Profile Photo"
                 description="Choose a preset avatar style or upload a custom image (max 2MB)"
@@ -317,7 +317,6 @@ export default function ProfileForm({
         </form>
       </FormProvider>
 
-      {/* Card 2: Account Details (Read-Only) */}
       <SettingsSection
         title="Account Details"
         description="Core security and authentication parameters managed by your workspace."
@@ -360,9 +359,7 @@ export default function ProfileForm({
                 >
                   SSO Linked
                 </Badge>
-                <span className="text-xs text-muted-foreground">
-                  Synced {new Date(lastOidcSync).toLocaleDateString()}
-                </span>
+                <span className="text-xs text-muted-foreground">Synced {lastOidcSync}</span>
               </div>
             ) : (
               <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -372,13 +369,7 @@ export default function ProfileForm({
           </SettingsRow>
 
           <SettingsRow label="Member Since" description="Account provisioning timestamp">
-            <span className="text-sm text-muted-foreground font-mono">
-              {new Date(memberSince).toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </span>
+            <span className="text-sm text-muted-foreground font-mono">{memberSince}</span>
           </SettingsRow>
         </div>
       </SettingsSection>

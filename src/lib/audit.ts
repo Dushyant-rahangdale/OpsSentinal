@@ -40,7 +40,7 @@ export interface AuditEventInput {
   ip?: string | null;
 }
 
-type AuditClient = Pick<Prisma.TransactionClient, 'auditLog' | 'user'>;
+export type AuditClient = Pick<Prisma.TransactionClient, 'auditLog' | 'user'>;
 
 function resolveRequestId(value: string | null | undefined): string {
   for (const candidate of [value, getRequestContext().requestId]) {
@@ -103,8 +103,6 @@ export async function emitAuditEvent(
         oldValue: jsonValue(input.oldValue),
         newValue: jsonValue(input.newValue),
         metadata: jsonValue(input.metadata),
-        // Preserve the legacy lookup paths while consumers migrate to the
-        // versioned envelope and indexed columns.
         ...(targetEmail ? { targetEmail } : {}),
         ...(ip ? { ip } : {}),
       },
@@ -117,20 +115,27 @@ export async function getDefaultActorId() {
   return null;
 }
 
-/** Backward-compatible adapter for existing callers. New code uses emitAuditEvent. */
-export async function logAudit(params: {
-  action: string;
-  entityType: AuditEntityType;
-  entityId?: string | null;
-  actorId?: string | null;
-  details?: AuditDetails | null;
-  targetEmail?: string | null;
-  ip?: string | null;
-  source?: AuditEventSource;
-  requestId?: string | null;
-  oldValue?: AuditDetails | null;
-  newValue?: AuditDetails | null;
-}) {
+/**
+ * Backward-compatible adapter for existing callers.
+ * Pass a Prisma transaction client as the second argument when the audit event is
+ * part of a mandatory governance mutation so mutation + audit commit atomically.
+ */
+export async function logAudit(
+  params: {
+    action: string;
+    entityType: AuditEntityType;
+    entityId?: string | null;
+    actorId?: string | null;
+    details?: AuditDetails | null;
+    targetEmail?: string | null;
+    ip?: string | null;
+    source?: AuditEventSource;
+    requestId?: string | null;
+    oldValue?: AuditDetails | null;
+    newValue?: AuditDetails | null;
+  },
+  client: AuditClient = prisma
+) {
   const detailsRecord =
     params.details && typeof params.details === 'object' && !Array.isArray(params.details)
       ? (params.details as Record<string, unknown>)
@@ -141,16 +146,19 @@ export async function logAudit(params: {
     (typeof detailsRecord?.email === 'string' ? detailsRecord.email : null);
   const ip = params.ip ?? (typeof detailsRecord?.ip === 'string' ? detailsRecord.ip : null) ?? null;
 
-  await emitAuditEvent({
-    action: params.action,
-    source: params.source ?? (params.actorId ? 'UI' : 'SYSTEM'),
-    target: { type: params.entityType, id: params.entityId },
-    actor: params.actorId ? { type: 'USER', id: params.actorId } : { type: 'SYSTEM' },
-    requestId: params.requestId,
-    oldValue: params.oldValue,
-    newValue: params.newValue,
-    metadata: params.details,
-    targetEmail,
-    ip,
-  });
+  await emitAuditEvent(
+    {
+      action: params.action,
+      source: params.source ?? (params.actorId ? 'UI' : 'SYSTEM'),
+      target: { type: params.entityType, id: params.entityId },
+      actor: params.actorId ? { type: 'USER', id: params.actorId } : { type: 'SYSTEM' },
+      requestId: params.requestId,
+      oldValue: params.oldValue,
+      newValue: params.newValue,
+      metadata: params.details,
+      targetEmail,
+      ip,
+    },
+    client
+  );
 }

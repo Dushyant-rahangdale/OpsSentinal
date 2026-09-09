@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-product-notification';
 import { errorFromResponse } from '@/lib/client-error';
+import { SETTINGS_CHANGED_MESSAGE } from '@/lib/settings-result';
 import { Input } from '@/components/ui/shadcn/input';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
@@ -22,22 +23,28 @@ import {
   Copy,
   Check,
   ExternalLink,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 
 type Props = {
   appUrl: string | null;
   fallback: string;
+  updatedAt: string | null;
 };
 
-export default function AppUrlSettings({ appUrl, fallback }: Props) {
+export default function AppUrlSettings({ appUrl, fallback, updatedAt }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
   const initialValue = appUrl || '';
   const [value, setValue] = useState(initialValue);
+  const [savedValue, setSavedValue] = useState(initialValue);
+  const [revision, setRevision] = useState<string | null>(updatedAt);
+  const [conflict, setConflict] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const isDirty = value !== initialValue;
+  const isDirty = value !== savedValue;
 
   const activeUrl = value.trim() || fallback;
 
@@ -85,15 +92,27 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
     }
 
     setIsLoading(true);
+    setConflict(null);
     try {
       const response = await fetch('/api/settings/app-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appUrl: value.trim() }),
+        body: JSON.stringify({ appUrl: value.trim(), expectedUpdatedAt: revision }),
       });
+      if (response.status === 409) {
+        setConflict(SETTINGS_CHANGED_MESSAGE);
+        return;
+      }
       if (!response.ok) {
         throw await errorFromResponse(response, 'Failed to update app URL');
       }
+
+      const data = await response.json();
+      const nextValue = typeof data.appUrl === 'string' ? data.appUrl : '';
+      const nextRevision = typeof data.updatedAt === 'string' ? data.updatedAt : revision;
+      setValue(nextValue);
+      setSavedValue(nextValue);
+      setRevision(nextRevision);
       showToast('Application URL updated successfully', 'success');
       setLastSaved(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       router.refresh();
@@ -121,7 +140,22 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 py-4">
-      {/* ── Active Resolved URL Showcase Card ── */}
+      {conflict && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-100 flex items-start justify-between gap-4">
+          <div className="flex gap-2 min-w-0">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold">Settings changed elsewhere</p>
+              <p>{conflict}</p>
+              <p className="text-xs mt-1 opacity-80">Your local URL edit has not been overwritten.</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()} className="shrink-0 gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" />Reload latest
+          </Button>
+        </div>
+      )}
+
       <div className="rounded-xl border bg-muted/30 p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1 min-w-0">
@@ -181,15 +215,14 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
         </div>
       </div>
 
-      {/* ── Custom URL Input Section ── */}
       <div className="space-y-3">
         <div className="space-y-0.5">
           <Label htmlFor="app-url" className="text-sm font-semibold">
             Configure Custom Base URL
           </Label>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Provide the canonical public address for this deployment. Leave blank to automatically
-            rely on dynamic request host headers.
+            Provide the canonical public address for this deployment. Leave blank to use
+            NEXT_PUBLIC_APP_URL, then NEXTAUTH_URL, then http://localhost:3000.
           </p>
         </div>
 
@@ -200,13 +233,15 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
               id="app-url"
               type="url"
               value={value}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setValue(e.target.value);
+                setConflict(null);
+              }}
               placeholder={`e.g. ${fallback}`}
               className="pl-10 font-mono text-sm h-10 w-full"
             />
           </div>
 
-          {/* Validation & fallback reset */}
           <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
             <div>
               {urlStatus === 'valid' && (
@@ -244,7 +279,6 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
         </div>
       </div>
 
-      {/* ── Used In Grid ── */}
       <div className="space-y-2.5 pt-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -269,7 +303,6 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
         </div>
       </div>
 
-      {/* ── Action Footer ── */}
       <div className="flex items-center justify-between -mx-4 md:-mx-6 px-4 md:px-6 py-3.5 border-t bg-muted/30 mt-6">
         <div className="text-xs text-muted-foreground">
           {lastSaved ? (
@@ -289,7 +322,10 @@ export default function AppUrlSettings({ appUrl, fallback }: Props) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setValue(initialValue)}
+              onClick={() => {
+                setValue(savedValue);
+                setConflict(null);
+              }}
               disabled={isLoading}
               className="h-8 text-xs"
             >

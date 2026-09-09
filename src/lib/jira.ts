@@ -90,6 +90,8 @@ async function jiraRequest<T>(
   try {
     response = await fetch(`${config.baseUrl}${path}`, {
       ...init,
+      // Never forward Jira credentials to an HTTP redirect target.
+      redirect: 'error',
       headers: {
         Authorization: authHeader(config),
         Accept: 'application/json',

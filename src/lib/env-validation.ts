@@ -15,7 +15,6 @@ export function getBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_APP_URL;
 
   if (!url) {
-    // Fallback to NEXTAUTH_URL if available
     if (process.env.NEXTAUTH_URL) {
       return process.env.NEXTAUTH_URL.replace(/\/$/, '');
     }
@@ -26,14 +25,12 @@ export function getBaseUrl(): string {
           'Using localhost fallback. Set this to your application URL for correct notification links.'
       );
     } else {
-      // Development fallback
       logger.warn('NEXT_PUBLIC_APP_URL not set, using localhost fallback (development only)');
     }
 
     return 'http://localhost:3000';
   }
 
-  // Remove trailing slash for consistency
   return url.replace(/\/$/, '');
 }
 
@@ -46,7 +43,7 @@ export function validateProductionEnv(): void {
     if (process.env.SKIP_ENV_VALIDATION) {
       logger.warn('⚠️  Skipping environment validation due to SKIP_ENV_VALIDATION flag');
     }
-    return; // Skip validation
+    return;
   }
 
   const required: Array<{ name: string; description: string }> = [
@@ -64,7 +61,6 @@ export function validateProductionEnv(): void {
     },
   ];
 
-  // Optional environment variables for reference and documentation
   const _optional: Array<{ name: string; description: string }> = [
     {
       name: 'PROMETHEUS_SCRAPE_TOKEN',
@@ -99,13 +95,11 @@ export function validateProductionEnv(): void {
     throw new Error(errorMessage);
   }
 
-  // Validate NEXT_PUBLIC_APP_URL format if present
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl && !appUrl.startsWith('http')) {
     logger.warn(`NEXT_PUBLIC_APP_URL should start with http:// or https:// (got: ${appUrl})`);
   }
 
-  // Warn about localhost in production
   if (appUrl && appUrl.includes('localhost')) {
     logger.warn(
       '⚠️  NEXT_PUBLIC_APP_URL points to localhost in production. This may cause issues with notifications and webhooks.'
@@ -114,7 +108,7 @@ export function validateProductionEnv(): void {
 
   if (!appUrl) {
     logger.warn(
-      '⚠️  NEXT_PUBLIC_APP_URL is not set. The application will attempt to use the database configuration or request headers.'
+      '⚠️  NEXT_PUBLIC_APP_URL is not set. Public URL resolution uses the database appUrl first, then NEXTAUTH_URL, then localhost as the final fallback.'
     );
   }
 
@@ -131,7 +125,6 @@ export function getFromEmail(): string {
     return fromEmail;
   }
 
-  // Generate from domain
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl) {
     const domain = appUrl.replace(/^https?:\/\//, '').split('/')[0];

@@ -22,15 +22,18 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// Force dynamic rendering to always fetch fresh data
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 /** Server-side env var presence check — no secrets ever exposed */
 function detectEnvStatus() {
+  const nextPublicAppUrl = Boolean(process.env.NEXT_PUBLIC_APP_URL);
+  const nextAuthUrl = Boolean(process.env.NEXTAUTH_URL);
   return {
     encryptionKey: Boolean(process.env.ENCRYPTION_KEY),
-    appUrl: Boolean(process.env.NEXT_PUBLIC_APP_URL),
+    appUrl: nextPublicAppUrl || nextAuthUrl,
+    nextPublicAppUrl,
+    nextAuthUrl,
     databaseUrl: Boolean(process.env.DATABASE_URL),
     nextAuthSecret: Boolean(process.env.NEXTAUTH_SECRET),
   };
@@ -61,19 +64,19 @@ export default async function SystemSettingsPage() {
       );
     }
 
-    // ----------- Data fetching -----------
     const prisma = (await import('@/lib/prisma')).default;
 
     const [systemSettings, rawOidcConfig] = await Promise.all([
       prisma.systemSettings.findUnique({
         where: { id: 'default' },
-        select: { appUrl: true },
+        select: { appUrl: true, updatedAt: true },
       }),
       prisma.oidcConfig.findFirst({ orderBy: { updatedAt: 'desc' } }),
     ]);
 
     const appUrl = systemSettings?.appUrl ?? null;
-    const appUrlFallback = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrlFallback =
+      process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
     let oidcConfig: {
       enabled: boolean;
@@ -87,6 +90,7 @@ export default async function SystemSettingsPage() {
       providerType?: string | null;
       providerLabel?: string | null;
       profileMapping?: Record<string, string> | null;
+      updatedAt: string;
     } | null = null;
 
     if (rawOidcConfig) {
@@ -102,6 +106,7 @@ export default async function SystemSettingsPage() {
         providerType: rawOidcConfig.providerType,
         providerLabel: rawOidcConfig.providerLabel,
         profileMapping: rawOidcConfig.profileMapping as Record<string, string> | null,
+        updatedAt: rawOidcConfig.updatedAt.toISOString(),
       };
     }
 
@@ -118,11 +123,6 @@ export default async function SystemSettingsPage() {
     const allEnvOk = Object.values(effectiveEnv).every(Boolean);
     const missingCount = Object.values(effectiveEnv).filter(v => !v).length;
 
-    // ─────────────────────────────────────────────
-    // TAB PANELS  — all use SettingsSection for a consistent header
-    // ─────────────────────────────────────────────
-
-    /** App URL */
     const appUrlTab = (
       <SettingsSection
         title="Application URL"
@@ -138,11 +138,14 @@ export default async function SystemSettingsPage() {
           </div>
         }
       >
-        <AppUrlSettings appUrl={appUrl} fallback={appUrlFallback} />
+        <AppUrlSettings
+          appUrl={appUrl}
+          fallback={appUrlFallback}
+          updatedAt={systemSettings?.updatedAt?.toISOString() ?? null}
+        />
       </SettingsSection>
     );
 
-    /** SSO */
     const ssoTab = (
       <SsoSettingsForm
         initialConfig={oidcConfig}
@@ -151,10 +154,8 @@ export default async function SystemSettingsPage() {
       />
     );
 
-    /** Data Retention */
     const retentionTab = <RetentionPolicySettings />;
 
-    /** Environment Status */
     const envRows = [
       {
         key: 'ENCRYPTION_KEY',
@@ -168,29 +169,31 @@ export default async function SystemSettingsPage() {
         required: true,
       },
       {
-        key: 'NEXT_PUBLIC_APP_URL',
+        key: 'APP URL FALLBACK',
         ok: isAppUrlConfigured,
         icon: <Globe className="h-4 w-4" />,
         scope: 'Public URL',
         source: appUrl
-          ? env.appUrl
-            ? 'UI Console (Overrides .env)'
-            : 'UI Console (Database)'
-          : env.appUrl
-            ? 'Environment (.env)'
-            : 'Auto Fallback',
-        statusBadgeText: isAppUrlConfigured
-          ? appUrl
-            ? env.appUrl
-              ? 'Configured (UI & Env)'
-              : 'Configured (UI)'
-            : 'Configured (Env)'
-          : 'Missing',
+          ? 'UI Console (Database)'
+          : env.nextPublicAppUrl
+            ? 'NEXT_PUBLIC_APP_URL'
+            : env.nextAuthUrl
+              ? 'NEXTAUTH_URL'
+              : 'localhost fallback',
+        statusBadgeText: appUrl
+          ? 'Configured (UI)'
+          : env.nextPublicAppUrl
+            ? 'NEXT_PUBLIC_APP_URL'
+            : env.nextAuthUrl
+              ? 'NEXTAUTH_URL'
+              : 'Fallback',
         note: appUrl
-          ? `Configured via UI Console (${appUrl}). Active base URL used in dispatch emails, webhooks, and RSS feeds.`
-          : env.appUrl
-            ? `Configured via environment variable (${process.env.NEXT_PUBLIC_APP_URL}). Can also be customized in the App URL tab.`
-            : 'Public base address used in email alerts, webhook payloads, and RSS feeds. Configurable in .env or the App URL tab.',
+          ? `Database setting is authoritative (${appUrl}). Fallback order after clearing it is NEXT_PUBLIC_APP_URL → NEXTAUTH_URL → localhost.`
+          : env.nextPublicAppUrl
+            ? `Using NEXT_PUBLIC_APP_URL (${process.env.NEXT_PUBLIC_APP_URL}). NEXTAUTH_URL is the next fallback.`
+            : env.nextAuthUrl
+              ? `NEXT_PUBLIC_APP_URL is unset, so NEXTAUTH_URL (${process.env.NEXTAUTH_URL}) is the active fallback.`
+              : 'No database or environment URL is configured; localhost is the final fallback.',
         impact: 'Notifications & Webhooks',
         required: false,
         actionHref: '/settings/system?section=app-url',
@@ -251,7 +254,6 @@ export default async function SystemSettingsPage() {
         }
       >
         <div className="py-4 space-y-4">
-          {/* Quick summary notice */}
           <div
             className={`rounded-lg border px-4 py-3 text-xs flex items-center gap-2.5 ${
               allEnvOk
@@ -271,7 +273,6 @@ export default async function SystemSettingsPage() {
             </span>
           </div>
 
-          {/* Variable grid — 2×2 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {envRows.map(row => (
               <div
@@ -282,7 +283,6 @@ export default async function SystemSettingsPage() {
                     : 'border-rose-500/40 bg-rose-500/5 hover:border-rose-500/60'
                 }`}
               >
-                {/* Header: Icon + Variable name + Status */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -320,7 +320,6 @@ export default async function SystemSettingsPage() {
                   <p className="text-xs text-muted-foreground leading-relaxed">{row.note}</p>
                 </div>
 
-                {/* Footer metadata */}
                 <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-[10px] text-muted-foreground/80">
@@ -355,8 +354,6 @@ export default async function SystemSettingsPage() {
       </SettingsSection>
     );
 
-    // ----------- Hero badge -----------
-
     const encryptionBadge = env.encryptionKey ? (
       <Badge
         variant="outline"
@@ -377,7 +374,6 @@ export default async function SystemSettingsPage() {
 
     return (
       <div className="space-y-6">
-        {/* ── Hero Banner ── */}
         <DetailHeroBanner
           breadcrumb={{ label: 'Settings', href: '/settings', current: 'System' }}
           tag="SYSTEM ADMINISTRATION"
@@ -428,7 +424,6 @@ export default async function SystemSettingsPage() {
           ]}
         />
 
-        {/* ── Encryption key warning (non-dev) ── */}
         {!env.encryptionKey && process.env.NODE_ENV !== 'development' && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -440,7 +435,6 @@ export default async function SystemSettingsPage() {
           </Alert>
         )}
 
-        {/* ── DetailTabs ── */}
         <SystemSettingsTabs
           appUrlTab={appUrlTab}
           ssoTab={ssoTab}
