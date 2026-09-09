@@ -1,4 +1,4 @@
-import type { IncidentStatus } from '@prisma/client';
+import type { IncidentResolutionKind, IncidentStatus } from '@prisma/client';
 
 /** Database-shaped input; transport adapters must parse dates before projecting. */
 export interface IncidentSlaProjectionInput {
@@ -6,6 +6,7 @@ export interface IncidentSlaProjectionInput {
   createdAt: Date;
   acknowledgedAt: Date | null;
   resolvedAt: Date | null;
+  resolutionKind?: IncidentResolutionKind | null;
   slaAckTargetMs: number | null;
   slaResolveTargetMs: number | null;
   slaTargetSource: string | null;
@@ -17,6 +18,7 @@ export interface IncidentSlaProjectionInput {
   slaPolicyId?: string | null;
   slaPolicyVersion?: number | null;
   slaPolicyRule?: string | null;
+  slaPriorityAtCapture?: string | null;
 }
 
 export interface IncidentSlaWarningPolicy {
@@ -39,6 +41,7 @@ export interface IncidentSlaContract {
   policyId: string | null;
   policyVersion: number | null;
   policyRule: string | null;
+  priorityAtCapture: string | null;
 }
 
 export interface IncidentSlaClock {
@@ -49,11 +52,14 @@ export interface IncidentSlaClock {
   paused: boolean;
 }
 
-export type IncidentSlaPhaseStatus = 'PENDING' | 'MET' | 'BREACHED';
+export type IncidentSlaPhaseStatus = 'PENDING' | 'MET' | 'BREACHED' | 'NOT_REQUIRED';
+export type IncidentSlaApplicability = 'REQUIRED' | 'NOT_REQUIRED';
 export type IncidentSlaWarning = 'NONE' | 'APPROACHING' | 'BREACHED';
 export type IncidentSlaPhase = 'ack' | 'resolve';
 
 export interface IncidentSlaPhaseState {
+  applicability: IncidentSlaApplicability;
+  reason: string | null;
   targetMs: number;
   elapsedMs: number;
   /** Signed budget: negative values retain the amount overdue. */

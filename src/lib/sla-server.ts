@@ -27,6 +27,7 @@ import { compileIncidentMetricFilter, type IncidentMetricFilter } from './metric
 import { isRollupCompatibleIncidentFilter } from './metrics/domain/rollup-eligibility';
 import { METRIC_ACCUMULATOR } from './metrics/domain/accumulator';
 import { resolveSlaTarget } from './metrics/domain/sla-target';
+import { projectIncidentSlaState } from './incident-sla/state';
 import { slaTargetSql } from './metrics/domain/sla-target-sql';
 import { capturedOrEffectiveElapsedMs, effectiveElapsedMs } from './metrics/domain/sla-clock';
 import {
@@ -296,6 +297,7 @@ async function calculateDbAggregateMetrics(
         SELECT
           "Incident"."id", "Incident"."createdAt", "Incident"."acknowledgedAt",
           "Incident"."resolvedAt", "Incident"."updatedAt", "Incident"."status",
+          "Incident"."resolutionKind",
           "Incident"."urgency", "Incident"."priority", "Incident"."serviceId",
           "Incident"."slaAckTargetMs", "Incident"."slaResolveTargetMs",
           "Incident"."slaAckElapsedMs", "Incident"."slaResolveElapsedMs",
@@ -329,7 +331,9 @@ async function calculateDbAggregateMetrics(
         COUNT(*) FILTER (
           WHERE ("acknowledgedAt" IS NOT NULL
             AND ack_elapsed_ms > ack_target_ms)
-          OR ("acknowledgedAt" IS NULL AND "status" = 'RESOLVED'::"IncidentStatus")
+          OR ("acknowledgedAt" IS NULL AND "status" = 'RESOLVED'::"IncidentStatus"
+            AND NOT ("resolutionKind" = 'SOURCE_RECOVERY'::"IncidentResolutionKind"
+              AND resolve_elapsed_ms <= ack_target_ms))
           OR ("acknowledgedAt" IS NULL AND "status" != 'RESOLVED'::"IncidentStatus"
             AND current_elapsed_ms > ack_target_ms)
         ) as ack_sla_breached,
@@ -503,6 +507,7 @@ async function calculateDbAggregateMetrics(
 type IncidentSLAResult = {
   ackSLA: {
     breached: boolean;
+    applicability: 'REQUIRED' | 'NOT_REQUIRED';
     timeRemaining: number | null;
     targetMinutes: number;
   };
@@ -1005,6 +1010,7 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
     description: true,
     acknowledgedAt: true,
     resolvedAt: true,
+    resolutionKind: true,
     slaPausedMs: true,
     slaPauseStartedAt: true,
     slaAckElapsedMs: true,
@@ -1726,7 +1732,14 @@ export async function calculateSLAMetrics(filters: SLAMetricsFilter = {}): Promi
           ackSlaBreached++;
         }
       } else if (incident.status === 'RESOLVED') {
-        ackSlaBreached++;
+        const resolvedAt = incident.resolvedAt || incident.updatedAt;
+        if (
+          incident.resolutionKind !== 'SOURCE_RECOVERY' ||
+          !resolvedAt ||
+          elapsedAt(resolvedAt) > target.ackTargetMs
+        ) {
+          ackSlaBreached++;
+        }
       } else {
         // Check if unacked incident is overdue
         if (elapsedAt(now) > target.ackTargetMs) {
@@ -2548,6 +2561,7 @@ export async function generateDailySnapshot(definitionId: string, date: Date): P
       createdAt: true,
       acknowledgedAt: true,
       resolvedAt: true,
+      resolutionKind: true,
       updatedAt: true,
       status: true,
       slaPausedMs: true,
@@ -2586,7 +2600,11 @@ export async function generateDailySnapshot(definitionId: string, date: Date): P
         // compliance entirely.
         const ackEvaluationTime = incident.resolvedAt ?? evaluationTime;
         const elapsedMin = elapsedAt(ackEvaluationTime) / 60_000;
-        if (elapsedMin > targetAckTime) {
+        const notRequired =
+          incident.status === 'RESOLVED' &&
+          incident.resolutionKind === 'SOURCE_RECOVERY' &&
+          elapsedMin <= targetAckTime;
+        if (!notRequired && (incident.status === 'RESOLVED' || elapsedMin > targetAckTime)) {
           totalAckEvaluated++; // Count as breach
         }
       }
@@ -2660,58 +2678,22 @@ export async function checkIncidentSLA(incidentId: string): Promise<IncidentSLAR
 
   if (!incident) throw new Error('Incident not found');
 
-  const now = new Date();
-  const target = resolveSlaTarget({
-    incidentTargets: {
-      ackTargetMs: incident.slaAckTargetMs,
-      resolveTargetMs: incident.slaResolveTargetMs,
-    },
-    priority: incident.priority,
-    serviceTargets: {
-      ackMinutes: incident.service.targetAckMinutes,
-      resolveMinutes: incident.service.targetResolveMinutes,
-    },
-  });
-  const elapsedAt = (evaluationAt: Date) =>
-    effectiveElapsedMs({
-      startedAt: incident.createdAt,
-      evaluationAt,
-      pauses: incident.slaPauses,
-    });
-  const elapsedMs = elapsedAt(now);
-
-  let ackBreached = false,
-    ackTimeRemaining: number | null = null;
-  if (incident.acknowledgedAt) {
-    ackBreached = elapsedAt(incident.acknowledgedAt) > target.ackTargetMs;
-  } else if (incident.status === 'RESOLVED') {
-    // A resolution is not an acknowledgement. Keep this compatibility API in
-    // lockstep with the canonical incident SLA projector.
-    ackBreached = true;
-  } else {
-    ackBreached = elapsedMs > target.ackTargetMs;
-    ackTimeRemaining = Math.max(0, (target.ackTargetMs - elapsedMs) / 60_000);
-  }
-
-  let resolveBreached = false,
-    resolveTimeRemaining: number | null = null;
-  if (incident.resolvedAt) {
-    resolveBreached = elapsedAt(incident.resolvedAt) > target.resolveTargetMs;
-  } else if (incident.status !== 'RESOLVED') {
-    resolveBreached = elapsedMs > target.resolveTargetMs;
-    resolveTimeRemaining = Math.max(0, (target.resolveTargetMs - elapsedMs) / 60_000);
-  }
+  const state = projectIncidentSlaState(incident, { now: new Date() });
+  if (!state.valid) throw new Error(`Invalid incident SLA contract: ${state.reason}`);
 
   return {
     ackSLA: {
-      breached: ackBreached,
-      timeRemaining: ackTimeRemaining,
-      targetMinutes: target.ackTargetMs / 60_000,
+      breached: state.ack.status === 'BREACHED',
+      applicability: state.ack.applicability,
+      timeRemaining:
+        state.ack.status === 'PENDING' ? Math.max(0, state.ack.remainingMs / 60_000) : null,
+      targetMinutes: state.ack.targetMs / 60_000,
     },
     resolveSLA: {
-      breached: resolveBreached,
-      timeRemaining: resolveTimeRemaining,
-      targetMinutes: target.resolveTargetMs / 60_000,
+      breached: state.resolve.status === 'BREACHED',
+      timeRemaining:
+        state.resolve.status === 'PENDING' ? Math.max(0, state.resolve.remainingMs / 60_000) : null,
+      targetMinutes: state.resolve.targetMs / 60_000,
     },
   };
 }

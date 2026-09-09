@@ -166,7 +166,8 @@ export default function StatusPageSnapshotView({
       ? projectRegions(snapshot.services)
       : { groups: [], summaries: [] };
   const groupServices = page.showServicesByRegion === true && canUseRegions;
-  const showRegionHeatmap = page.showRegionHeatmap === true && regionProjection.summaries.length > 0;
+  const showRegionHeatmap =
+    page.showRegionHeatmap === true && regionProjection.summaries.length > 0;
   const announcements = snapshot.announcements.filter(item => item.type !== 'UPDATE');
   const changelog = showChangelog
     ? snapshot.announcements.filter(item => item.type === 'UPDATE')
@@ -189,7 +190,7 @@ export default function StatusPageSnapshotView({
           <strong>{service.name}</strong>
           {service.description && <p>{service.description}</p>}
           {service.region && <small>{service.region}</small>}
-          {service.slaTier && <small> · SLA tier {service.slaTier}</small>}
+          {service.slaTier && <small> · Service tier {service.slaTier}</small>}
           {service.team && <small> · Owned by {service.team.name}</small>}
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -384,7 +385,10 @@ export default function StatusPageSnapshotView({
         {showFooter && (
           <footer style={{ marginTop: '3rem', opacity: 0.7 }}>
             <p>{page.footerText || 'Powered by OpsKnight'}</p>
-            <nav aria-label="Status resources" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <nav
+              aria-label="Status resources"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}
+            >
               {branding.showApiLink !== false && <a href={apiPath}>JSON API</a>}
               {branding.showRssLink !== false && <a href={`${apiPath}/rss`}>RSS</a>}
               {showUptimeExports && (

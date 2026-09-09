@@ -780,7 +780,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
 
                   <div className="space-y-1.5">
                     <Label htmlFor="slaTier" className="text-xs font-semibold">
-                      SLA Tier
+                      Service Tier
                     </Label>
                     <select
                       id="slaTier"

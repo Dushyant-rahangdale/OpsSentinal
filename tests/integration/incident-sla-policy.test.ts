@@ -33,7 +33,7 @@ describe('incident SLA policy database invariants', () => {
     });
   }
 
-  it('uses service bases, explicit priority overrides, and rule removal in a newer version', async () => {
+  it('uses service overrides and falls through removed rules to workspace priority', async () => {
     const service = await createTestService('SLA policy service');
     await createSealedServicePolicy(service.id, 1, 10 * 60_000, 90 * 60_000, [
       { priority: 'P1', ackTargetMs: 5 * 60_000, resolveTargetMs: 60 * 60_000 },
@@ -71,11 +71,11 @@ describe('incident SLA policy database invariants', () => {
       })
     );
     expect(afterRemoval).toMatchObject({
-      ackTargetMs: 20 * 60_000,
-      resolveTargetMs: 180 * 60_000,
-      source: 'SERVICE_DEFAULT',
-      policyVersion: 2,
-      policyRule: 'BASE',
+      ackTargetMs: 5 * 60_000,
+      resolveTargetMs: 60 * 60_000,
+      source: 'WORKSPACE_PRIORITY_OVERRIDE',
+      policyVersion: 1,
+      policyRule: 'P1',
     });
   });
 

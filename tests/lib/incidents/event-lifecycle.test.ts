@@ -67,6 +67,7 @@ describe('event-driven incident lifecycle semantics', () => {
       data: expect.objectContaining({
         status: 'RESOLVED',
         resolvedAt: NOW,
+        resolutionKind: 'SOURCE_RECOVERY',
         escalationStatus: 'COMPLETED',
         nextEscalationAt: null,
         events: {

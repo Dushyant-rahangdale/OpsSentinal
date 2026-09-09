@@ -2,8 +2,8 @@ import { projectIncidentSlaState } from './state';
 import type { IncidentSlaProjectionInput, IncidentSlaProjectionOptions } from './types';
 
 export type IncidentSlaCompliance = {
-  ack: 'MET' | 'BREACHED' | 'PENDING' | 'INVALID';
-  resolve: 'MET' | 'BREACHED' | 'PENDING' | 'INVALID';
+  ack: 'MET' | 'BREACHED' | 'PENDING' | 'NOT_REQUIRED' | 'INVALID';
+  resolve: 'MET' | 'BREACHED' | 'PENDING' | 'NOT_REQUIRED' | 'INVALID';
 };
 
 /** Canonical compliance classification. Never resolves mutable policy configuration. */

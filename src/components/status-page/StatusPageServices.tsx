@@ -533,7 +533,7 @@ export default function StatusPageServices({
                       color: 'var(--status-text-muted, #475569)',
                     }}
                   >
-                    SLA: {service.slaTier}
+                    Service tier: {service.slaTier}
                   </span>
                 )}
               </div>
