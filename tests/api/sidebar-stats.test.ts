@@ -25,12 +25,17 @@ vi.mock('@/lib/prisma', () => ({
     incident: {
       groupBy: vi.fn(),
     },
+    statusPage: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
 describe('API Route - Sidebar Stats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no enabled status pages
+    vi.mocked(prisma.statusPage.findMany).mockResolvedValue([]);
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -54,6 +59,10 @@ describe('API Route - Sidebar Stats', () => {
       { urgency: 'HIGH', _count: { _all: 3 } },
     ] as any);
 
+    vi.mocked(prisma.statusPage.findMany).mockResolvedValue([
+      { id: 'sp-1', name: 'OpsKnight Status', slug: null, isDefault: true },
+    ] as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+
     const res = await GET();
     const { status, data } = await parseResponse(res);
 
@@ -61,6 +70,9 @@ describe('API Route - Sidebar Stats', () => {
     expect(data.activeIncidentsCount).toBe(3);
     expect(data.dataState).toBe('available');
     expect(Number.isNaN(Date.parse(data.calculatedAt))).toBe(false);
+    expect(data.statusPages).toHaveLength(1);
+    expect(data.statusPages[0].name).toBe('OpsKnight Status');
+    expect(data.isStatusPageAdmin).toBe(true);
     expect(prisma.incident.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ status: { in: ['OPEN', 'ACKNOWLEDGED'] } }),
@@ -85,6 +97,9 @@ describe('API Route - Sidebar Stats', () => {
 
     expect(status).toBe(200);
     expect(data.activeIncidentsCount).toBe(1);
+    expect(data.statusPages).toHaveLength(0);
+    expect(data.isStatusPageAdmin).toBe(false);
     expect(prisma.incident.groupBy).toHaveBeenCalled();
   });
 });
+
