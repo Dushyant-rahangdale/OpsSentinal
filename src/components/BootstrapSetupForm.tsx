@@ -1,12 +1,12 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useMemo, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Mail, User, CheckCircle2, AlertCircle, ShieldCheck, KeyRound, Lock } from 'lucide-react';
 import { bootstrapAdmin } from '@/app/setup/actions';
 import PasswordStrengthMeter, { isPasswordStrong } from '@/components/auth/PasswordStrengthMeter';
 import Spinner from '@/components/ui/Spinner';
-import { PASSWORD_MAX_LENGTH } from '@/lib/passwords';
+import { PASSWORD_TRANSPORT_MAX_CODE_UNITS } from '@/lib/passwords';
 
 type FormState = {
   error?: string | null;
@@ -38,6 +38,8 @@ function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
 }
 
 export default function BootstrapSetupForm() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [state, formAction] = useActionState<FormState, FormData>(
@@ -45,6 +47,10 @@ export default function BootstrapSetupForm() {
     { error: null, success: false }
   );
   const passwordsMatch = Object.is(password, confirmPassword);
+  const passwordContext = useMemo(
+    () => ({ email: email.trim().toLowerCase(), displayName: name.trim() }),
+    [email, name]
+  );
 
   if (state.success && state.email) {
     return (
@@ -68,7 +74,7 @@ export default function BootstrapSetupForm() {
     );
   }
 
-  const canSubmit = isPasswordStrong(password) && passwordsMatch;
+  const canSubmit = isPasswordStrong(password, passwordContext) && passwordsMatch;
 
   return (
     <form action={formAction} className="space-y-5">
@@ -78,7 +84,7 @@ export default function BootstrapSetupForm() {
         </label>
         <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-slate-500">
           <User className="ml-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-          <input id="setup-name" name="name" type="text" autoComplete="name" required maxLength={100} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
+          <input id="setup-name" name="name" type="text" autoComplete="name" required maxLength={100} value={name} onChange={event => setName(event.target.value)} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
         </div>
       </div>
 
@@ -88,7 +94,7 @@ export default function BootstrapSetupForm() {
         </label>
         <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-slate-500">
           <Mail className="ml-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-          <input id="setup-email" name="email" type="email" autoComplete="email" required maxLength={254} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
+          <input id="setup-email" name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
         </div>
       </div>
 
@@ -108,16 +114,16 @@ export default function BootstrapSetupForm() {
         </label>
         <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-slate-500">
           <Lock className="ml-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-          <input id="setup-password" name="password" type="password" autoComplete="new-password" required maxLength={PASSWORD_MAX_LENGTH} value={password} onChange={event => setPassword(event.target.value)} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
+          <input id="setup-password" name="password" type="password" autoComplete="new-password" required maxLength={PASSWORD_TRANSPORT_MAX_CODE_UNITS} value={password} onChange={event => setPassword(event.target.value)} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
         </div>
-        <PasswordStrengthMeter password={password} />
+        <PasswordStrengthMeter password={password} context={passwordContext} />
       </div>
 
       <div className="space-y-1.5">
         <label htmlFor="setup-confirm-password" className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Confirm password
         </label>
-        <input id="setup-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required maxLength={PASSWORD_MAX_LENGTH} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-slate-500" />
+        <input id="setup-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required maxLength={PASSWORD_TRANSPORT_MAX_CODE_UNITS} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-slate-500" />
         {confirmPassword && !passwordsMatch && (
           <p className="text-xs text-red-600 dark:text-red-400">Passwords do not match.</p>
         )}
