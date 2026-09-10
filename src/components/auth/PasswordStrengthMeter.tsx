@@ -6,11 +6,12 @@ import {
   getPasswordRequirements,
   isPasswordStrong as checkPasswordStrong,
 } from '@/lib/password-strength';
-import { validatePasswordStrength } from '@/lib/passwords';
+import { validatePasswordStrength, type PasswordValidationContext } from '@/lib/passwords';
 
 interface PasswordStrengthMeterProps {
   password: string;
   showRequirements?: boolean;
+  context?: PasswordValidationContext;
   /** @deprecated The security policy is centralized and cannot be weakened per component. */
   minLength?: number;
 }
@@ -18,9 +19,16 @@ interface PasswordStrengthMeterProps {
 export default function PasswordStrengthMeter({
   password,
   showRequirements = true,
+  context,
 }: PasswordStrengthMeterProps) {
-  const strength = useMemo(() => calculatePasswordStrength(password), [password]);
-  const requirements = useMemo(() => getPasswordRequirements(password), [password]);
+  const strength = useMemo(
+    () => calculatePasswordStrength(password, context),
+    [password, context]
+  );
+  const requirements = useMemo(
+    () => getPasswordRequirements(password, context),
+    [password, context]
+  );
 
   if (!password) return null;
 
@@ -67,6 +75,10 @@ export default function PasswordStrengthMeter({
 
 export { checkPasswordStrong as isPasswordStrong };
 
-export function getPasswordError(password: string, _minLength?: number): string | null {
-  return validatePasswordStrength(password);
+export function getPasswordError(
+  password: string,
+  context?: PasswordValidationContext,
+  _minLength?: number
+): string | null {
+  return validatePasswordStrength(password, context);
 }
