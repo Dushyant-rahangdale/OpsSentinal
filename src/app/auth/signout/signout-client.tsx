@@ -38,7 +38,7 @@ export default function SignOutClient() {
       <AuthCard>
         <div className="mb-8 text-center">
           <AuthBrand className="mb-6" />
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Sign out?</h1>
+          <h1 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold text-slate-950 dark:text-white">Sign out?</h1>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">End your current OpsKnight session.</p>
         </div>
         {error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
