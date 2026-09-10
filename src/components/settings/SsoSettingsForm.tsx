@@ -31,6 +31,7 @@ import {
   saveOidcConfig,
   validateOidcConnectionAction,
 } from '@/app/(app)/settings/security/actions';
+import { normalizeOidcProviderType } from '@/lib/oidc-provider';
 import type { SettingsActionState } from '@/lib/settings-result';
 
 type ProfileMapping = {
@@ -77,7 +78,7 @@ const PROVIDER_PRESETS: Preset[] = [
   },
   {
     id: 'azure',
-    label: 'Azure AD',
+    label: 'Microsoft Entra ID',
     issuer: 'https://login.microsoftonline.com/{tenantId}/v2.0',
     note: 'Replace {tenantId} with your directory ID.',
   },
@@ -159,6 +160,7 @@ export default function SsoSettingsForm({
   const initialProviderLabel = initialConfig?.providerLabel ?? '';
   const initialCustomScopes = initialConfig?.customScopes ?? '';
   const initialAutoProvision = initialConfig?.autoProvision ?? true;
+  const initialProviderType = normalizeOidcProviderType(initialConfig?.providerType, initialIssuer);
   const initialRoleMapping = Array.isArray(initialConfig?.roleMapping)
     ? initialConfig?.roleMapping
     : [];
@@ -172,10 +174,7 @@ export default function SsoSettingsForm({
   const [providerLabelValue, setProviderLabelValue] = useState(initialProviderLabel);
   const [customScopesValue, setCustomScopesValue] = useState(initialCustomScopes);
   const [autoProvision, setAutoProvision] = useState(initialAutoProvision);
-  const [selectedPreset, setSelectedPreset] = useState(() => {
-    const match = PROVIDER_PRESETS.find(preset => preset.issuer === initialIssuer);
-    return match?.id ?? 'custom';
-  });
+  const [selectedPreset, setSelectedPreset] = useState(initialProviderType);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
   const [lastTested, setLastTested] = useState<string | null>(null);
@@ -301,9 +300,7 @@ export default function SsoSettingsForm({
         setProviderLabelValue(initialProviderLabel);
         setCustomScopesValue(initialCustomScopes);
         setAutoProvision(initialAutoProvision);
-        setSelectedPreset(
-          PROVIDER_PRESETS.find(preset => preset.issuer === initialIssuer)?.id ?? 'custom'
-        );
+        setSelectedPreset(initialProviderType);
         setTestStatus('idle');
         setTestMessage('');
         setLastTested(null);
