@@ -45,6 +45,8 @@ export function detectOidcProviderType(
 
   const microsoftHosts = [
     'login.microsoftonline.com',
+    'login.microsoftonline.us',
+    'login.partner.microsoftonline.cn',
     'login.microsoft.com',
     'sts.windows.net',
     'microsoftonline.com',
@@ -95,8 +97,8 @@ export function requiresOidcEmailVerifiedClaim(
  * Email assurance used only when first linking an OIDC identity to an existing
  * OpsKnight account. Explicit `email_verified: false` is rejected for every
  * provider before this helper is consulted. Entra is allowed to omit the claim
- * because issuer + subject are cryptographically validated by OIDC and ACTIVE
- * account linking still requires the one-time admin approval.
+ * because issuer + subject are cryptographically validated by OIDC; account
+ * state can still require a fresh one-time administrator linking approval.
  */
 export function hasOidcEmailLinkAssurance(
   providerType: string | null | undefined,
