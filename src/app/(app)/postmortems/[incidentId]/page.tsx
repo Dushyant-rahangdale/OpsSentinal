@@ -40,9 +40,9 @@ export default async function PostmortemPage({
   const canView = postmortem ? postmortem.status === 'PUBLISHED' || canEdit : canEdit;
 
   // A postmortem belongs to exactly one incident/service. Resolve Jira capabilities
-  // from that concrete service instead of using a workspace-wide approximation.
-  const incidentService = await prisma.incident.findUnique({
-    where: { id: incidentId },
+  // from that concrete, authorization-scoped service instead of a workspace approximation.
+  const incidentService = await prisma.incident.findFirst({
+    where: { AND: [incidentReadWhere(actor), { id: incidentId }] },
     select: { serviceId: true },
   });
   const jiraCapability = await getJiraCapabilities({
