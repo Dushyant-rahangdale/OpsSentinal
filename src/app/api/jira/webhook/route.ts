@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
+import { isAppError } from '@/lib/errors';
 import { processJiraWebhookEvent, type JiraWebhookPayload } from '@/lib/jira-sync';
 import { withJiraWorkspaceProviderFence } from '@/lib/jira-concurrency';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -127,8 +128,11 @@ function isHandledJiraEvent(event?: string, eventType?: string): boolean {
 }
 
 function isWorkspaceUnavailable(error: unknown): boolean {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-  return message.includes('jira is not configured') || message.includes('disabled in workspace');
+  return (
+    isAppError(error) &&
+    error.code === 'INTEGRATION_DISABLED' &&
+    error.details?.provider === 'jira'
+  );
 }
 
 async function postJiraWebhook(request: NextRequest) {
