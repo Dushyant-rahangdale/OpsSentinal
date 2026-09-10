@@ -41,6 +41,8 @@ vi.mock('@/lib/jira-sync', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
 import {
+  createJiraIssueFromActionItem,
+  linkJiraIssueToActionItem,
   syncActionItemJiraIssue,
   unlinkJiraIssueFromActionItem,
 } from '@/app/(app)/action-items/jira/actions';
@@ -58,6 +60,40 @@ describe('Jira P0 production action contract', () => {
   });
 
   describe('action-item ownership scoping', () => {
+    it('rejects stale Create Jira requests when the action item is already linked', async () => {
+      mocks.actionItemFindUnique.mockResolvedValue({
+        id: 'action-1',
+        title: 'Follow up',
+        description: null,
+        postmortemId: 'pm-1',
+        incidentId: 'inc-1',
+        externalIssueLinks: [{ externalKey: 'OPS-123' }],
+        incident: { service: { jiraServiceMapping: { projectKey: 'OPS' } } },
+      });
+
+      const result = await createJiraIssueFromActionItem('action-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('already linked');
+      expect(result.error).toContain('OPS-123');
+      expect(mocks.createJiraIssueAndLink).not.toHaveBeenCalled();
+      expect(mocks.jiraConfigFindUnique).not.toHaveBeenCalled();
+    });
+
+    it('rejects stale Link Jira requests when the action item is already linked', async () => {
+      mocks.actionItemFindUnique.mockResolvedValue({
+        id: 'action-1',
+        incidentId: 'inc-1',
+        externalIssueLinks: [{ externalKey: 'OPS-123' }],
+      });
+
+      const result = await linkJiraIssueToActionItem('action-1', 'OPS-456');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('already linked');
+      expect(mocks.linkExistingJiraIssue).not.toHaveBeenCalled();
+    });
+
     it('requires the exact actionItemId for unlink and scopes the mutation itself', async () => {
       mocks.externalIssueFindFirst.mockResolvedValue({
         id: 'link-1',
