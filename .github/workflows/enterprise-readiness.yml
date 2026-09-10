@@ -89,7 +89,9 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Build representative database
-        run: npx prisma migrate deploy
+        run: |
+          npx prisma migrate deploy
+          npm run prisma:indexes:status-platform
       - name: Create backup
         run: |
           mkdir -p reports

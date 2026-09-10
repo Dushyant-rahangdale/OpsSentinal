@@ -93,6 +93,15 @@ enum NotificationTrafficClass {
   BULK
 }
 
+enum StatusPageSubscriptionState {
+  PENDING
+  ACTIVE
+  UNSUBSCRIBED
+  SUPPRESSED
+  BOUNCED
+  COMPLAINED
+}
+
 enum NotificationCategory {
   INCIDENT
   SECURITY
@@ -1144,6 +1153,7 @@ model Notification {
   contentId         String?
   fanoutId          String?
   trafficClass      NotificationTrafficClass  @default(TRANSACTIONAL)
+  tenantKey         String                    @default("system")
   priority          Int                       @default(5)
   scheduledAt       DateTime                  @default(now())
   nextAttemptAt     DateTime                  @default(now())
@@ -1176,6 +1186,7 @@ model Notification {
   @@index([incidentId, userId, status], name: "idx_notification_incident_user_status") // For per-incident per-user dedup checks
   @@index([status, nextAttemptAt, priority, createdAt], name: "idx_notification_delivery_due")
   @@index([trafficClass, status, nextAttemptAt, priority, createdAt], name: "idx_notification_traffic_delivery_due")
+  @@index([trafficClass, tenantKey, status, nextAttemptAt, createdAt], name: "idx_notification_tenant_fair_delivery")
   @@index([category, createdAt], name: "idx_notification_category_created")
   @@index([recipientHash, createdAt], name: "idx_notification_recipient_created")
   @@index([sourceType, sourceId, createdAt], name: "idx_notification_source_created")
@@ -1240,6 +1251,21 @@ model NotificationDeliveryAttempt {
   @@unique([notificationId, ordinal])
   @@index([notificationId, startedAt])
   @@index([outcome, startedAt])
+}
+
+model NotificationProviderFeedback {
+  id                String   @id @default(cuid())
+  provider          String
+  providerEventId   String
+  providerMessageId String?
+  eventType         String
+  recipientHash     String?
+  occurredAt        DateTime
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerEventId])
+  @@index([providerMessageId])
+  @@index([eventType, occurredAt])
 }
 
 model InAppNotification {
@@ -1530,16 +1556,34 @@ model StatusPage {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  services      StatusPageService[]
-  announcements StatusPageAnnouncement[]
-  apiTokens     StatusPageApiToken[]
-  subscriptions StatusPageSubscription[]
-  webhooks      StatusPageWebhook[]
-  snapshot      StatusPageSnapshot?
-  assets        StatusPageAsset[]
+  services        StatusPageService[]
+  announcements   StatusPageAnnouncement[]
+  apiTokens       StatusPageApiToken[]
+  subscriptions   StatusPageSubscription[]
+  webhooks        StatusPageWebhook[]
+  snapshot        StatusPageSnapshot?
+  assets          StatusPageAsset[]
+  routeOperations StatusPageRouteOperation[]
 
   @@index([enabled])
   @@index([isDefault, enabled])
+}
+
+model StatusPageRouteOperation {
+  id            String     @id @default(cuid())
+  statusPageId  String
+  routeKey      String
+  operation     String
+  state         String     @default("PENDING")
+  attempts      Int        @default(0)
+  nextAttemptAt DateTime   @default(now())
+  lastError     String?
+  createdAt     DateTime   @default(now())
+  completedAt   DateTime?
+  statusPage    StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@unique([statusPageId, routeKey, operation])
+  @@index([state, nextAttemptAt])
 }
 
 // Derived, sanitized publication data. A revision fences concurrent rebuilds.
@@ -1547,10 +1591,15 @@ model StatusPageSnapshot {
   statusPageId      String     @id
   revision          BigInt     @default(0)
   publishedRevision BigInt     @default(-1)
+  // Why the current payload may or may not be served. FAIL_CLOSED is the safe default so an
+  // unclassified invalidation never republishes a retracted disclosure.
+  servingState      String     @default("FAIL_CLOSED")
   generatedAt       DateTime?
   payload           Json?
   lastError         String?
   statusPage        StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@index([generatedAt])
 }
 
 // Logos are kept out of the frequently read configuration JSON.
@@ -1622,14 +1671,21 @@ model StatusPageApiToken {
 
 // Status Page Subscriptions (Email notifications)
 model StatusPageSubscription {
-  id                String    @id @default(cuid())
+  id                String                      @id @default(cuid())
   statusPageId      String
   email             String
   phone             String? // For SMS (future)
-  token             String    @unique // Unsubscribe token
-  subscribedAt      DateTime  @default(now())
+  token             String                      @unique // Unsubscribe token
+  subscribedAt      DateTime                    @default(now())
   unsubscribedAt    DateTime?
-  verified          Boolean   @default(false)
+  verified          Boolean                     @default(false)
+  state             StatusPageSubscriptionState @default(PENDING)
+  suppressionReason String?
+  lastBounceAt      DateTime?
+  bounceCount       Int                         @default(0)
+  complainedAt      DateTime?
+  lastDeliveredAt   DateTime?
+  lastFailedAt      DateTime?
   verificationToken String?
   preferences       Json? // Notification preferences (all incidents, major only, etc.)
 

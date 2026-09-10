@@ -11,20 +11,40 @@ vi.mock('@/components/status-page/StatusPageAutoRefresh', () => ({
 }));
 
 const snapshot: StatusPageSnapshot = {
-  schemaVersion: 1,
+  schemaVersion: 3,
   pageId: 'page-1',
   revision: '7',
   generatedAt: '2026-09-07T10:00:00.000Z',
-  status: 'degraded',
+  status: 'DEGRADED',
+  overall: {
+    status: 'DEGRADED',
+    knownServiceCount: 1,
+    unknownServiceCount: 0,
+    confidence: 'complete',
+    headline: 'Degraded performance',
+    note: null,
+  },
+  page: {
+    id: 'page-1', name: 'Acme status', showSubscribe: false, showServicesByRegion: false,
+    showRegionHeatmap: false, showPostIncidentReview: true, showChangelog: true,
+    enableUptimeExports: true, isDefault: true, requireAuth: false, enabled: true,
+    statusApiRequireToken: false, statusApiRateLimitEnabled: false,
+    statusApiRateLimitMax: 120, statusApiRateLimitWindowSec: 60,
+  },
   services: [
     {
       id: 'service-1',
       name: 'Payments',
       description: 'Payment processing',
-      region: 'eu-west-1',
+      regions: ['eu-west-1'],
       slaTier: 'TIER_1',
       team: { id: 'team-1', name: 'Payments team' },
       status: 'DEGRADED',
+      activeIncidentCount: 1,
+      uptime: {
+        days30: { percentage: 99.95, incidentCount: 1, measuredDays: 30, complete: true },
+        days90: { percentage: 99.95, incidentCount: 1, measuredDays: 90, complete: true },
+      },
     },
   ],
   incidents: [
@@ -35,10 +55,14 @@ const snapshot: StatusPageSnapshot = {
       status: 'OPEN',
       urgency: 'HIGH',
       createdAt: '2026-09-07T09:00:00.000Z',
-      service: { name: 'Payments', region: 'eu-west-1' },
+      service: { name: 'Payments', regions: ['eu-west-1'] },
     },
   ],
-  uptime: { 'service-1': 99.95 },
+  regions: [{
+    name: 'eu-west-1', status: 'DEGRADED', totalServices: 1, operationalServices: 0,
+    degradedServices: 1, maintenanceServices: 0, partialOutageServices: 0,
+    majorOutageServices: 0, unknownServices: 0, impactedServices: 1, serviceIds: ['service-1'],
+  }],
   announcements: [],
   historyDays: 30,
 };
@@ -71,7 +95,7 @@ describe('StatusPageSnapshotView publication parity', () => {
         snapshot={{
           ...snapshot,
           incidents: [{ status: 'OPEN' }],
-          services: [{ id: 'service-1', name: 'Payments', status: 'OPERATIONAL' }],
+          services: [{ id: 'service-1', name: 'Payments', status: 'OPERATIONAL', activeIncidentCount: 0 }],
         }}
         stale={false}
       />

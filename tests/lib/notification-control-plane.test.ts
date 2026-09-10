@@ -152,6 +152,13 @@ describe('central notification control plane', () => {
     expect(prisma.notification.create).not.toHaveBeenCalled();
   });
 
+  it('rejects malformed runtime input before accessing typed fields', async () => {
+    await expect(
+      createCentralNotificationIntent({ ...input, sourceType: 42 } as never)
+    ).rejects.toThrow('Notification input is invalid');
+    expect(prisma.notification.create).not.toHaveBeenCalled();
+  });
+
   it('derives recipient identity from the existing session secret, not a new setting', async () => {
     const previousSessionSecret = process.env.NEXTAUTH_SECRET;
     const previousIdentitySecret = process.env.NOTIFICATION_IDENTITY_KEY;
@@ -440,7 +447,10 @@ describe('central notification control plane', () => {
       values?: readonly unknown[];
     };
     const sql = queueQuery.strings?.join('?') ?? '';
-    expect(sql).toContain('CASE "trafficClass"');
+    expect(sql).toContain('CASE ranked."trafficClass"');
+    expect(sql).toContain('PARTITION BY "trafficClass", "tenantKey"');
+    expect(sql).toContain('tenant_rank <=');
+    expect(sql).not.toContain('WHERE ranked.tenant_rank <=');
     expect(sql).toContain("WHEN 'CRITICAL'");
     expect(sql).toContain("WHEN 'PUBLIC_INCIDENT'");
     expect(sql).toContain('ELSE');

@@ -65,6 +65,7 @@ jobs:
           mkdir -p reports
           npx prisma migrate deploy
           npx prisma generate
+          npm run prisma:indexes:status-platform
           npm run prisma:validate
           npm run prisma:health
           node scripts/ci-db-smoke.cjs
@@ -102,6 +103,7 @@ jobs:
             DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_upgrade?schema=public' npx prisma migrate deploy
           )
           DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_upgrade?schema=public' npx prisma migrate deploy
+          DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_upgrade?schema=public' npm run prisma:indexes:status-platform
           DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_upgrade?schema=public' npm run prisma:health
 
       - name: Backup and restore contract
@@ -115,6 +117,7 @@ jobs:
           docker exec "$POSTGRES_CONTAINER" createdb -U postgres opsknight_restore
           docker exec "$POSTGRES_CONTAINER" pg_restore -U postgres --no-owner \
             -d opsknight_restore /tmp/opsknight-release.dump
+          DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_restore?schema=public' npm run prisma:indexes:status-platform
           DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_restore?schema=public' npm run prisma:health
           DATABASE_URL='postgresql://postgres:postgres@localhost:5432/opsknight_restore?schema=public' node scripts/ci-db-smoke.cjs
 

@@ -64,7 +64,7 @@ describe('durable status page projections', () => {
       `;
       expect(lock[0]?.acquired).toBe(true);
       const projected = await getStatusPageSnapshot(page.id);
-      expect(projected).toEqual({ snapshot: null, stale: true });
+      expect(projected).toEqual({ snapshot: null, stale: true, servingState: 'FAIL_CLOSED' });
     });
 
     expect(JSON.stringify(await readStatusPageSnapshot(page.id))).toContain('Public failure');
@@ -91,7 +91,11 @@ describe('durable status page projections', () => {
       new Error('projection unavailable')
     );
 
-    expect(await getStatusPageSnapshot(page.id)).toEqual({ snapshot: null, stale: true });
+    expect(await getStatusPageSnapshot(page.id)).toEqual({
+      snapshot: null,
+      stale: true,
+      servingState: 'FAIL_CLOSED',
+    });
     expect(JSON.stringify(await readStatusPageSnapshot(page.id))).toContain('Sensitive failure');
   });
 });

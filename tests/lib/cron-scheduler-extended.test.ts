@@ -14,6 +14,7 @@ import {
   getCronSchedulerStatus,
   startCronScheduler,
   stopCronScheduler,
+  updateState,
 } from '@/lib/cron-scheduler';
 import prisma from '@/lib/prisma';
 
@@ -79,6 +80,28 @@ describe('Cron Scheduler - Lock Management', () => {
     lockedAt: null,
     lastRollupDate: null,
   };
+
+  it('recovers a missing singleton scheduler row by upserting before writing state', async () => {
+    vi.mocked(prisma.cronSchedulerState.update).mockRejectedValueOnce({
+      code: 'P2025',
+      message: 'Record to update not found',
+    } as any);
+
+    await updateState({ lastRunAt: new Date('2026-01-01T12:00:00.000Z') });
+
+    expect(prisma.cronSchedulerState.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'singleton' },
+        update: expect.objectContaining({
+          lastRunAt: new Date('2026-01-01T12:00:00.000Z'),
+        }),
+        create: expect.objectContaining({
+          id: 'singleton',
+          lastRunAt: new Date('2026-01-01T12:00:00.000Z'),
+        }),
+      })
+    );
+  });
 
   beforeEach(() => {
     vi.useFakeTimers();

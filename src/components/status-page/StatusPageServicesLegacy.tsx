@@ -48,7 +48,7 @@ interface StatusPageServicesProps {
   }>;
   statusHistory?: Record<
     string,
-    Array<{ date: string; status: 'operational' | 'degraded' | 'outage' }>
+    Array<{ date: string; status: 'operational' | 'degraded' | 'outage' | 'maintenance' | 'unknown' }>
   >;
   privacySettings?: PrivacySettings;
   groupByRegionDefault?: boolean;
@@ -126,7 +126,7 @@ export default function StatusPageServices({
   };
   const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
   const [hoveredServiceId, setHoveredServiceId] = useState<string | null>(null);
-  const [visibleDays, setVisibleDays] = useState(90);
+  const visibleDays = 90;
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'operational' | 'degraded' | 'outage' | 'maintenance'
   >('all');
@@ -136,25 +136,10 @@ export default function StatusPageServices({
   const now = useMemo(() => new Date(), []);
   const daysToShow = 90;
 
-  useEffect(() => {
-    const updateVisibleDays = () => {
-      const width = window.innerWidth;
-      if (width < 1024) {
-        setVisibleDays(30);
-      } else if (width < 1440) {
-        setVisibleDays(60);
-      } else {
-        setVisibleDays(90);
-      }
-    };
 
-    updateVisibleDays();
-    window.addEventListener('resize', updateVisibleDays);
-    return () => window.removeEventListener('resize', updateVisibleDays);
-  }, []);
 
   const incidentsByService = useMemo(() => {
-    const map: Record<
+    const map = new Map<
       string,
       Array<{
         createdAt: Date;
@@ -162,19 +147,17 @@ export default function StatusPageServices({
         status: string;
         urgency: string;
       }>
-    > = {};
+    >();
 
     incidents.forEach(incident => {
-      if (!map[incident.serviceId]) {
-        map[incident.serviceId] = [];
-      }
-
-      map[incident.serviceId].push({
+      const serviceIncidents = map.get(incident.serviceId) ?? [];
+      serviceIncidents.push({
         createdAt: new Date(incident.createdAt),
         resolvedAt: incident.resolvedAt ? new Date(incident.resolvedAt) : null,
         status: incident.status,
         urgency: incident.urgency,
       });
+      map.set(incident.serviceId, serviceIncidents);
     });
 
     return map;
@@ -188,7 +171,7 @@ export default function StatusPageServices({
 
     const historyMap: Record<
       string,
-      Array<{ date: string; status: 'operational' | 'degraded' | 'outage' }>
+      Array<{ date: string; status: 'operational' | 'degraded' | 'outage' | 'maintenance' | 'unknown' }>
     > = {};
     services.forEach(service => {
       historyMap[service.id] = [];
@@ -202,7 +185,7 @@ export default function StatusPageServices({
       const dayKey = formatLocalDateKey(dayStart);
 
       services.forEach(service => {
-        const active = (incidentsByService[service.id] || []).filter(incident => {
+        const active = (incidentsByService.get(service.id) || []).filter(incident => {
           if (incident.status === 'SUPPRESSED' || incident.status === 'SNOOZED') {
             return false;
           }
@@ -211,10 +194,11 @@ export default function StatusPageServices({
         });
 
         const hasOutage = active.some(incident => incident.urgency === 'HIGH');
+        const hasMaintenance = active.some(incident => incident.urgency === 'MAINTENANCE');
         const hasDegraded = active.some(
           incident => incident.urgency === 'MEDIUM' || incident.urgency === 'LOW'
         );
-        const status = hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
+        const status = hasOutage ? 'outage' : hasDegraded ? 'degraded' : hasMaintenance ? 'maintenance' : 'operational';
 
         historyMap[service.id].push({
           date: dayKey,
@@ -235,7 +219,7 @@ export default function StatusPageServices({
     const dayEnd = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
 
     const slices: TimelineSliceStatus[] = new Array(144).fill('operational');
-    const relevantIncidents = (incidentsByService[serviceId] || []).filter(incident => {
+    const relevantIncidents = (incidentsByService.get(serviceId) || []).filter(incident => {
       if (incident.status === 'SUPPRESSED' || incident.status === 'SNOOZED') {
         return false;
       }
@@ -243,11 +227,11 @@ export default function StatusPageServices({
       return incident.createdAt < dayEnd && incidentEnd > dayStart;
     });
 
-    const severityRank: Record<TimelineSliceStatus, number> = {
-      operational: 0,
-      degraded: 1,
-      outage: 2,
-      future: -1,
+    const severityRank = (status: TimelineSliceStatus) => {
+      if (status === 'outage') return 2;
+      if (status === 'degraded') return 1;
+      if (status === 'future') return -1;
+      return 0;
     };
 
     relevantIncidents.forEach(incident => {
@@ -268,8 +252,9 @@ export default function StatusPageServices({
             : 'operational';
 
       for (let i = Math.max(0, startIndex); i <= Math.min(143, endIndex); i += 1) {
-        if (severityRank[statusForIncident] > severityRank[slices[i]]) {
-          slices[i] = statusForIncident;
+        const currentStatus = slices.at(i) ?? 'operational';
+        if (severityRank(statusForIncident) > severityRank(currentStatus)) {
+          slices.splice(i, 1, statusForIncident);
         }
       }
     });
@@ -278,7 +263,7 @@ export default function StatusPageServices({
     if (isToday) {
       const currentIndex = Math.floor((now.getTime() - dayStart.getTime()) / (10 * 60 * 1000));
       for (let i = Math.max(0, currentIndex + 1); i < slices.length; i += 1) {
-        slices[i] = 'future';
+        slices.splice(i, 1, 'future');
       }
     }
 
@@ -292,7 +277,7 @@ export default function StatusPageServices({
 
     const markerMap = new Map<number, string>();
     const times: string[] = [];
-    (incidentsByService[serviceId] || []).forEach(incident => {
+    (incidentsByService.get(serviceId) || []).forEach(incident => {
       if (incident.status === 'SUPPRESSED' || incident.status === 'SNOOZED') {
         return;
       }
@@ -349,7 +334,7 @@ export default function StatusPageServices({
             displayName: sp.displayName || service.name,
           };
         })
-        .filter(Boolean) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+        .filter((service): service is Service & { displayName: string } => service !== null);
     }
   }, [services, statusPageServices]);
 
@@ -423,8 +408,7 @@ export default function StatusPageServices({
 
   if (visibleServices.length === 0) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderServiceCard = (service: any, index: number) => {
+  const renderServiceCard = (service: Service & { displayName?: string }, index: number) => {
     const serviceStatus = service.status || 'OPERATIONAL';
     const statusConfig = STATUS_CONFIG[serviceStatus as keyof typeof STATUS_CONFIG] || {
       color: '#475569',
@@ -692,7 +676,7 @@ export default function StatusPageServices({
                       position: 'relative',
                       height: '100%',
                       background:
-                        HISTORY_STATUS_COLORS[barStatus as 'operational' | 'degraded' | 'outage'],
+                        barStatus === 'maintenance' ? '#2563eb' : barStatus === 'unknown' ? '#64748b' : HISTORY_STATUS_COLORS[barStatus as 'operational' | 'degraded' | 'outage'],
                       borderRadius: '3px',
                       boxShadow: isHovered ? '0 0 0 1px #0f172a' : 'none',
                       cursor: entry ? 'pointer' : 'default',
@@ -726,8 +710,8 @@ export default function StatusPageServices({
                       }
                     }}
                     onMouseLeave={event => {
-                      const relatedTarget = (event as any).relatedTarget as HTMLElement | null; // eslint-disable-line @typescript-eslint/no-explicit-any
-                      if (relatedTarget && relatedTarget.closest('[data-tooltip]')) {
+                      const relatedTarget = event.relatedTarget;
+                      if (relatedTarget instanceof Element && relatedTarget.closest('[data-tooltip]')) {
                         return;
                       }
                       setHoveredBar(current =>
@@ -1042,9 +1026,14 @@ export default function StatusPageServices({
                           <div
                             key={`${service.id}-${hoveredBar.date}-${sliceIndex}`}
                             style={(() => {
-                              const sliceColor =
-                                HISTORY_STATUS_COLORS[sliceStatus] ||
-                                HISTORY_STATUS_COLORS.operational;
+                              const sliceColor = (() => {
+                                switch (sliceStatus) {
+                                  case 'degraded': return HISTORY_STATUS_COLORS.degraded;
+                                  case 'outage': return HISTORY_STATUS_COLORS.outage;
+                                  case 'future': return HISTORY_STATUS_COLORS.future;
+                                  default: return HISTORY_STATUS_COLORS.operational;
+                                }
+                              })();
                               return {
                                 flex: '1 1 0',
                                 background: sliceColor,

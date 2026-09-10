@@ -30,6 +30,7 @@ import {
   notificationAgingFloor,
   NOTIFICATION_AGING_FLOOR,
 } from './notification-priority';
+import { z } from 'zod';
 
 const MAX_ENCRYPTED_PAYLOAD_BYTES = 768 * 1024;
 const MAX_ERROR_LENGTH = 1_000;
@@ -174,7 +175,32 @@ export type CentralNotificationInput = {
   maxAttempts?: number;
   contentId?: string;
   fanoutId?: string;
+  tenantKey?: string;
 };
+
+const centralNotificationInputSchema = z.object({
+  category: z.enum(['INCIDENT', 'SECURITY', 'STATUS_PAGE', 'SLA', 'ADMINISTRATION', 'SYSTEM']),
+  channel: z.enum(['EMAIL', 'SMS', 'PUSH', 'SLACK', 'WEBHOOK', 'WHATSAPP']),
+  recipientType: z.enum(['USER', 'EMAIL', 'PHONE', 'SUBSCRIBER', 'SLACK_CHANNEL', 'WEBHOOK']),
+  recipientId: z.string().max(191).optional(),
+  recipientAddress: z.string().max(2_048),
+  userId: z.string().max(191).optional(),
+  incidentId: z.string().max(191).optional(),
+  templateKey: z.string().max(191),
+  sourceType: z.string().max(191),
+  sourceId: z.string().max(191),
+  eventKey: z.string().max(512),
+  displayMessage: z.string().max(2_000),
+  payload: z.unknown(),
+  priority: z.number().int().optional(),
+  trafficClass: z.enum(['CRITICAL', 'TRANSACTIONAL', 'PUBLIC_INCIDENT', 'BULK']).optional(),
+  scheduledAt: z.date().optional(),
+  expiresAt: z.date().optional(),
+  maxAttempts: z.number().int().optional(),
+  contentId: z.string().max(191).optional(),
+  fanoutId: z.string().max(191).optional(),
+  tenantKey: z.string().trim().min(1).max(191).optional(),
+}).strict();
 
 type NotificationStore = Pick<Prisma.TransactionClient, 'notification'>;
 
@@ -304,6 +330,9 @@ function isCentralNotificationPayload(value: unknown): value is CentralNotificat
 }
 
 function assertValidInput(input: CentralNotificationInput): void {
+  if (!centralNotificationInputSchema.safeParse(input).success) {
+    throw new Error('Notification input is invalid');
+  }
   if (!isCentralNotificationPayload(input.payload)) {
     throw new Error('Notification payload is incomplete or unsupported');
   }
@@ -320,6 +349,18 @@ function assertValidInput(input: CentralNotificationInput): void {
   if (input.expiresAt && input.scheduledAt && input.expiresAt <= input.scheduledAt) {
     throw new Error('Notification expiry must be later than its scheduled time');
   }
+}
+
+function tenantKeyForInput(input: CentralNotificationInput): string {
+  if (input.tenantKey?.trim()) return input.tenantKey.trim().slice(0, 191);
+  const payload = input.payload;
+  if (payload.kind === 'EMAIL' && payload.providerScope?.statusPageId) {
+    return `status-page:${payload.providerScope.statusPageId}`;
+  }
+  if (payload.kind === 'STATUS_PAGE_WEBHOOK' && payload.statusPageId) {
+    return `status-page:${payload.statusPageId}`;
+  }
+  return input.userId ? `user:${input.userId}` : 'system';
 }
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -388,6 +429,7 @@ export async function createCentralNotificationIntent(
         fanoutId: input.fanoutId,
         priority,
         trafficClass,
+        tenantKey: tenantKeyForInput(input),
         scheduledAt,
         nextAttemptAt: scheduledAt,
         maxAttempts,
@@ -457,6 +499,7 @@ export async function createCentralNotificationIntentsBatch(
           9
         ),
         trafficClass,
+        tenantKey: tenantKeyForInput(input),
         scheduledAt,
         nextAttemptAt: scheduledAt,
         maxAttempts: Math.min(
@@ -1201,6 +1244,7 @@ async function statusSubscriberDeliveryRevoked(
       email: normalizedRecipient('EMAIL', payload.to),
       verified: true,
       unsubscribedAt: null,
+      state: 'ACTIVE',
       statusPage: { enabled: true },
     },
     select: { id: true },
@@ -1833,9 +1877,10 @@ export async function processCentralNotificationQueue(
   const claimToken = crypto.randomUUID();
   const claimedBy = process.env.OPSKNIGHT_WORKER_ID?.slice(0, 128) || 'integrated-worker';
   const candidates = await prisma.$queryRaw<Array<{ id: string; claimToken: string }>>(Prisma.sql`
-    WITH candidates AS (
-      SELECT "id"
-      FROM "Notification"
+    WITH ranked AS MATERIALIZED (
+        SELECT "id", "trafficClass", "priority", "nextAttemptAt", "createdAt",
+          ROW_NUMBER() OVER (PARTITION BY "trafficClass", "tenantKey" ORDER BY "priority", "nextAttemptAt", "createdAt") AS tenant_rank
+        FROM "Notification"
     WHERE "payloadEncrypted" IS NOT NULL
       AND "attempts" < "maxAttempts"
       AND "scheduledAt" <= ${now}
@@ -1849,17 +1894,24 @@ export async function processCentralNotificationQueue(
           AND ("lastAttemptAt" IS NULL OR "lastAttemptAt" < ${staleClaimBefore})
         )
       )
-    -- Aging cannot promote customer broadcasts into responder precedence.
-    ORDER BY GREATEST(
-      CASE "trafficClass"
+    ), candidates AS (
+      SELECT notification."id"
+      FROM "Notification" notification
+      JOIN ranked ON ranked."id" = notification."id"
+    -- Prefer each tenant's initial share, then redistribute unused slots so
+    -- small tenant sets can still fill the worker batch. Traffic-class floors
+    -- keep aged customer broadcasts behind responder notifications.
+    ORDER BY CASE WHEN ranked.tenant_rank <= ${Math.max(1, Math.ceil(batchSize / 10))} THEN 0 ELSE 1 END,
+    GREATEST(
+      CASE ranked."trafficClass"
         WHEN 'CRITICAL' THEN ${NOTIFICATION_AGING_FLOOR.CRITICAL}
         WHEN 'TRANSACTIONAL' THEN ${NOTIFICATION_AGING_FLOOR.TRANSACTIONAL}
         WHEN 'PUBLIC_INCIDENT' THEN ${NOTIFICATION_AGING_FLOOR.PUBLIC_INCIDENT}
         ELSE ${NOTIFICATION_AGING_FLOOR.BULK}
       END,
-      "priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - "createdAt")) / 300)
-    ) ASC, "nextAttemptAt" ASC, "createdAt" ASC
-    FOR UPDATE SKIP LOCKED
+      ranked."priority" - FLOOR(EXTRACT(EPOCH FROM (${now} - ranked."createdAt")) / 300)
+    ) ASC, ranked."nextAttemptAt" ASC, ranked."createdAt" ASC
+    FOR UPDATE OF notification SKIP LOCKED
     LIMIT ${batchSize}
     )
     UPDATE "Notification" AS notification

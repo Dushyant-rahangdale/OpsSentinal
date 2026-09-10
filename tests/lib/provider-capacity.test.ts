@@ -25,6 +25,18 @@ describe('provider capacity', () => {
     });
   });
 
+  it('prefers provider-account capacity over the channel default', () => {
+    const capacity = getProviderCapacity('EMAIL', 'sendgrid-prod/us', {
+      NODE_ENV: 'test',
+      NOTIFICATION_EMAIL_RATE_PER_SECOND: '100',
+      NOTIFICATION_EMAIL_MAX_IN_FLIGHT: '20',
+      NOTIFICATION_EMAIL_SENDGRID_PROD_US_RATE_PER_SECOND: '25',
+      NOTIFICATION_EMAIL_SENDGRID_PROD_US_MAX_IN_FLIGHT: '4',
+    });
+    expect(capacity.configuredRatePerSecond).toBe(25);
+    expect(capacity.maxInFlight).toBe(4);
+  });
+
   it('halves on pressure and recovers additively without exceeding configuration', () => {
     process.env.NOTIFICATION_EMAIL_RATE_PER_SECOND = '500';
     expect(recordCapacityPressure('EMAIL', 'resend')).toBe(250);

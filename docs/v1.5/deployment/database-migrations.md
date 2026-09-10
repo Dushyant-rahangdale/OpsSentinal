@@ -10,7 +10,7 @@ OpsKnight stores application state in PostgreSQL and ships ordered Prisma migrat
 
 ## Startup behavior
 
-The production container entrypoint in this repository revision runs `prisma migrate deploy` before starting the Next.js server. It attempts migration up to three times, waits five seconds between attempts, and invokes the packaged auto-recovery helper after a failed attempt. If migration still fails, the container exits non-zero instead of serving against an unknown schema.
+The production container entrypoint in this repository revision runs `prisma migrate deploy` before starting the Next.js server. It attempts migration up to three times, waits five seconds between attempts, and invokes the packaged auto-recovery helper after a failed attempt. After migrations succeed, it runs `npm run prisma:indexes:status-platform` to enforce the large-table indexes that PostgreSQL must build concurrently outside Prisma's migration transaction. Both steps are idempotent and fail closed: the application does not start if either migrations or required index enforcement fails.
 
 The `1.4.0` image and later fail closed instead of starting after an unrecovered migration failure. Confirm the exact image release before relying on startup behavior. For every release:
 
@@ -39,7 +39,7 @@ For a controlled manual deployment, the repository's combined command is:
 npm run prisma:migrate:safe
 ```
 
-That command validates files, checks database history, and runs `prisma migrate deploy`. Do not use `prisma db push` as a production upgrade method: it bypasses the reviewed migration history and does not provide the same deployment record.
+That command validates files, checks database history, applies migrations, and enforces the online indexes. Index enforcement uses `CREATE INDEX CONCURRENTLY IF NOT EXISTS`, so repeating the command is safe and avoids a blocking table rewrite. Do not use `prisma db push` as a production upgrade method: it bypasses the reviewed migration history and does not provide the same deployment record.
 
 ## Release procedure
 

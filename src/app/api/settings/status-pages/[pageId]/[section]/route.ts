@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server';
 import { jsonError } from '@/lib/api-response';
 import { assertAdmin } from '@/lib/rbac';
-import { statusPageSectionFields } from '@/lib/status-pages/settings-sections';
+import {
+  STATUS_PAGE_SECTION_HEADER,
+  statusPageSectionFields,
+} from '@/lib/status-pages/settings-sections';
 import { POST } from '@/app/api/settings/status-page/route';
 import { z } from 'zod';
 
@@ -33,7 +36,7 @@ export async function PATCH(
   return POST(
     new NextRequest(request.url, {
       method: 'POST',
-      headers: request.headers,
+      headers: { ...Object.fromEntries(request.headers), [STATUS_PAGE_SECTION_HEADER]: section },
       body: JSON.stringify({ ...parsed.data, id: pageId }),
     })
   );

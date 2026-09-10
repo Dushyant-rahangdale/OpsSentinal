@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/shadcn/badge';
 import NotificationCapacityOverview from '@/components/settings/NotificationCapacityOverview';
 import { getProviderCapacity } from '@/lib/provider-capacity';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export default async function NotificationOperationsPage() {
   let user: Awaited<ReturnType<typeof getCurrentUser>>;
@@ -22,7 +23,7 @@ export default async function NotificationOperationsPage() {
     redirect('/settings');
   }
   const channels = ['EMAIL', 'SMS', 'WHATSAPP', 'PUSH', 'SLACK', 'WEBHOOK'] as const;
-  const [leases, campaigns, control] = await Promise.all([
+  const [leases, campaigns, control, subscriptionStates, feedbackTypes] = await Promise.all([
     prisma.providerWorkerLease.count({ where: { expiresAt: { gt: new Date() } } }),
     prisma.notificationFanout.findMany({
       orderBy: { createdAt: 'desc' },
@@ -37,6 +38,13 @@ export default async function NotificationOperationsPage() {
       },
     }),
     prisma.systemConfig.findUnique({ where: { key: 'notification_capacity_control' } }),
+    prisma.statusPageSubscription.groupBy({ by: ['state'], _count: { _all: true } }),
+    prisma.$queryRaw<Array<{ eventType: string; count: number }>>(Prisma.sql`
+      SELECT "eventType", COUNT(*)::integer AS "count"
+      FROM "NotificationProviderFeedback"
+      WHERE "occurredAt" >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+      GROUP BY "eventType"
+    `),
   ]);
   const controlValue =
     control?.value && typeof control.value === 'object' && !Array.isArray(control.value)
@@ -113,6 +121,21 @@ export default async function NotificationOperationsPage() {
         initialPaused={controlValue.bulkPaused === true}
         canManage={user.role === 'ADMIN'}
       />
+      <section aria-labelledby="deliverability-heading" className="grid gap-3 md:grid-cols-3">
+        <h2 id="deliverability-heading" className="sr-only">Subscriber deliverability</h2>
+        {subscriptionStates.map(item => (
+          <div key={item.state} className="rounded-xl border bg-card p-4">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">{item.state.toLowerCase()}</p>
+            <p className="text-2xl font-bold">{item._count._all}</p>
+          </div>
+        ))}
+        {feedbackTypes.map(item => (
+          <div key={item.eventType} className="rounded-xl border bg-card p-4">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">24h {item.eventType.toLowerCase()}</p>
+            <p className="text-2xl font-bold">{item.count}</p>
+          </div>
+        ))}
+      </section>
       <NotificationOperations canRetry={user.role === 'ADMIN'} />
     </div>
   );

@@ -1,6 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient, IncidentUrgency as PrismaIncidentUrgency } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
+import { PrismaClient, IncidentUrgency as PrismaIncidentUrgency, type Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -25,7 +24,6 @@ const serviceStatuses = ['OPERATIONAL', 'DEGRADED', 'PARTIAL_OUTAGE', 'MAJOR_OUT
 type ServiceStatus = (typeof serviceStatuses)[number];
 
 const notificationChannels = ['EMAIL', 'SMS', 'PUSH', 'SLACK', 'WEBHOOK', 'WHATSAPP'] as const;
-type NotificationChannel = (typeof notificationChannels)[number];
 
 const firstNames = [
   'Ava',
@@ -355,8 +353,8 @@ async function main() {
   for (let i = 0; i < seedConfig.teams; i++) {
     const team = await prisma.team.create({
       data: {
-        name: teamNames[i] ?? `Team ${i + 1}`,
-        description: `Responsible for ${teamNames[i] ?? `Team ${i + 1}`} services`,
+        name: teamNames.at(i) ?? `Team ${i + 1}`,
+        description: `Responsible for ${teamNames.at(i) ?? `Team ${i + 1}`} services`,
       },
     });
 
@@ -488,6 +486,7 @@ async function main() {
   }
 
   const services: Array<{ id: string; name: string; teamId: string; status: ServiceStatus }> = [];
+  const demoRegions = ['us-east-1', 'eu-west-1', 'ap-south-1'] as const;
   const slackIntegration = await prisma.slackIntegration.create({
     data: {
       workspaceId: 'T00000001',
@@ -513,6 +512,10 @@ async function main() {
           name,
           description: `Managed by ${team.name}`,
           status,
+          region:
+            index === 2
+              ? 'us-east-1, eu-west-1'
+              : (demoRegions.at(teams.indexOf(team) % demoRegions.length) ?? 'us-east-1'),
           slaTier: template.tier,
           teamId: team.id,
           escalationPolicyId: policy?.id,
@@ -860,13 +863,22 @@ async function main() {
       organizationName: 'OpsKnight Labs',
       subdomain: 'status-opsknight',
       enabled: true,
+      isDefault: true,
       showServices: true,
       showIncidents: true,
       showMetrics: true,
       showSubscribe: true,
+      showServicesByRegion: true,
+      showRegionHeatmap: true,
       showServiceDescriptions: true,
       showServiceRegions: true,
+      showServiceOwners: true,
       showServiceSlaTier: true,
+      showTeamInformation: true,
+      showUptimeHistory: true,
+      showChangelog: true,
+      showPostIncidentReview: true,
+      enableUptimeExports: true,
       showIncidentUrgency: true,
       showIncidentDetails: true,
       showRecentIncidents: true,
@@ -899,6 +911,33 @@ async function main() {
       affectedServiceIds: services.slice(0, 2).map(service => service.id),
       startDate: hoursAgo(2),
       endDate: hoursAgo(-6),
+      isActive: true,
+    },
+  });
+
+  await prisma.statusPageAnnouncement.create({
+    data: {
+      statusPageId: statusPage.id,
+      title: 'Reliability improvements shipped',
+      message: 'Expanded regional capacity and improved status-history precision.',
+      type: 'UPDATE',
+      affectedServiceIds: services.slice(0, 4).map(service => service.id),
+      startDate: hoursAgo(18),
+      endDate: hoursAgo(-72),
+      isActive: true,
+    },
+  });
+
+  await prisma.statusPageAnnouncement.create({
+    data: {
+      statusPageId: statusPage.id,
+      title: 'Elevated API latency',
+      message: 'A subset of requests may take longer than usual while mitigation is in progress.',
+      type: 'WARNING',
+      incidentId: incidents.find(incident => incident.status !== 'RESOLVED')?.id ?? null,
+      affectedServiceIds: services.slice(2, 5).map(service => service.id),
+      startDate: hoursAgo(1),
+      endDate: hoursAgo(-5),
       isActive: true,
     },
   });

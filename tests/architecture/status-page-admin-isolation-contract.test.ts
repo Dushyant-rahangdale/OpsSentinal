@@ -47,6 +47,19 @@ describe('status-page administration isolation contract', () => {
     expect(migration).toContain('WHERE "isDefault" = true');
   });
 
+  it('publishes a replacement default before revoking the deleted page', () => {
+    const service = fs.readFileSync('src/lib/status-pages/admin.ts', 'utf8');
+    const publishReplacement = service.indexOf('rebuildStatusPageSnapshot(replacementId)');
+    // Matched without the reason argument so the ordering contract survives signature changes.
+    const revokeDeleted = service.indexOf('store.revoke(statusPageId,');
+
+    expect(publishReplacement).toBeGreaterThan(-1);
+    expect(revokeDeleted).toBeGreaterThan(publishReplacement);
+    expect(service).toContain('The replacement default status page must be public.');
+    expect(service).toContain('page.isDefault && !replacementId');
+    expect(service.lastIndexOf('data: { enabled: false }')).toBeGreaterThan(revokeDeleted);
+  });
+
   it('cancels stale page-owned resource requests after navigation', () => {
     const subscribers = fs.readFileSync(
       'src/components/status-page/StatusPageSubscribers.tsx',

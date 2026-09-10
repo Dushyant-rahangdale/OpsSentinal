@@ -3,6 +3,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
+/* eslint-disable security/detect-non-literal-fs-filename, security/detect-non-literal-regexp -- Deployment contract tests inspect a fixed repository-local file set. */
+
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
 
@@ -75,6 +77,26 @@ describe('deployment configuration invariants', () => {
     expect(entrypoint).toContain('Refusing to start against an unknown database schema');
     expect(entrypoint).toMatch(/MIGRATION_SUCCESS=0[\s\S]*exit 1/);
     expect(entrypoint).toContain('scripts/dist/scripts/auto-recover-migrations.js');
+    expect(entrypoint).toMatch(
+      /MIGRATION_SUCCESS[\s\S]*install_status_platform_indexes[\s\S]*Starting application/
+    );
+    expect(entrypoint).toContain(
+      'Refusing to start without required indexes'
+    );
+    expect(read('.github/workflows/tests.yml')).toMatch(
+      /prisma migrate deploy[\s\S]*prisma:indexes:status-platform/
+    );
+    expect(read('.github/workflows/docker-image.yml')).toMatch(
+      /prisma migrate deploy[\s\S]*prisma:indexes:status-platform/
+    );
+    expect(read('package.json')).toContain(
+      'prisma migrate deploy && npm run prisma:indexes:status-platform'
+    );
+    const onlineIndexes = read('scripts/create-status-platform-online-indexes.cjs');
+    expect(onlineIndexes).toContain('CREATE INDEX CONCURRENTLY IF NOT EXISTS');
+    expect(onlineIndexes).toContain("searchParams.set('connection_limit', '1')");
+    expect(onlineIndexes).toContain('pg_advisory_lock');
+    expect(onlineIndexes).toContain('pg_advisory_unlock');
     expect(read('package.json')).toContain(
       'scripts/auto-recover-migrations.ts --rootDir . --outDir scripts/dist'
     );

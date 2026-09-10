@@ -22,6 +22,18 @@
 }
 
 .status-page-container {
+  --status-operational: #047857;
+  --status-operational-bg: #ecfdf5;
+  --status-degraded: #b45309;
+  --status-degraded-bg: #fffbeb;
+  --status-maintenance: #1d4ed8;
+  --status-maintenance-bg: #eff6ff;
+  --status-partial-outage: #c2410c;
+  --status-partial-outage-bg: #fff7ed;
+  --status-major-outage: #be123c;
+  --status-major-outage-bg: #fff1f2;
+  --status-unknown: #475569;
+  --status-unknown-bg: #f1f5f9;
   color: var(--status-text, #111827);
   background-color: var(--status-bg, #ffffff);
   font-family: var(--status-font-family, inherit);
@@ -37,6 +49,9 @@
   --status-panel-muted-bg: var(--sp-panel-muted-bg, color-mix(in srgb, #f8fafc 85%, var(--status-primary, #2563eb) 15%));
   --status-panel-muted-border: var(--sp-panel-muted-border, color-mix(in srgb, #e2e8f0 80%, var(--status-primary, #2563eb) 20%));
 }
+
+/* Public status-page rules now live in src/lib/status-pages/public-css.ts, so the live page and
+   the admin preview's shadow root render from one stylesheet instead of two that can drift. */
 
 .status-page-button {
   padding: 0.4rem 0.75rem;

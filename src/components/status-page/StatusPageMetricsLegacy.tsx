@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable security/detect-object-injection */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import LoadingWrapper from '@/components/ui/LoadingWrapper';
 import _Skeleton, { SkeletonCard } from '@/components/ui/Skeleton';
 
@@ -28,10 +28,15 @@ interface StatusPageMetricsProps {
   uptimeGoodThreshold?: number;
   precomputedUptime?: Record<string, number>;
   precomputedUptime30?: Record<string, number>;
+  precomputedIncidentCounts30?: Record<string, number>;
+  precomputedIncidentCounts90?: Record<string, number>;
+  precomputedCoverage30?: Record<string, string>;
+  precomputedCoverage90?: Record<string, string>;
 }
 
 // Helper function to format percentage consistently (SSR-safe)
-function formatUptimePercent(value: number): string {
+function formatUptimePercent(value: number | null): string {
+  if (value === null) return 'Unavailable';
   // Clamp value between 0 and 100, then round to 3 decimal places
   const clamped = Math.max(0, Math.min(100, isNaN(value) ? 100 : value));
   // Round to avoid floating point precision issues
@@ -87,7 +92,8 @@ function calculateServiceUptime(
   if (intervals.length > 0) {
     let current = { start: intervals[0].start, end: intervals[0].end };
     for (let i = 1; i < intervals.length; i++) {
-      const next = intervals[i];
+      const next = intervals.at(i);
+      if (!next) continue;
       if (next.start <= current.end) {
         if (next.end > current.end) {
           current.end = next.end;
@@ -121,12 +127,16 @@ export default function StatusPageMetrics({
   uptimeGoodThreshold = 99.0,
   precomputedUptime,
   precomputedUptime30,
+  precomputedIncidentCounts30,
+  precomputedIncidentCounts90,
+  precomputedCoverage30,
+  precomputedCoverage90,
 }: StatusPageMetricsProps) {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true); // eslint-disable-line react-hooks/set-state-in-effect
-  }, []);
+  const isClient = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
 
   const metrics = useMemo(() => {
     if (services.length === 0) {
@@ -136,24 +146,36 @@ export default function StatusPageMetrics({
     // Use current date for calculation
     const periodEnd = new Date();
 
-    return services
-      .filter(service => !precomputedUptime || precomputedUptime[service.id] !== undefined)
-      .map(service => ({
+    return services.map(service => ({
+      serviceId: service.id,
       service: service.name,
-      thirtyDays:
-        precomputedUptime30?.[service.id] === undefined && !precomputedUptime
-          ? calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd)
-          : {
-              uptime: precomputedUptime30?.[service.id] ?? precomputedUptime?.[service.id] ?? 0,
-              downtime: 0,
-              incidents: 0,
-            },
-      ninetyDays:
-        precomputedUptime?.[service.id] === undefined
-          ? calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd)
-          : { uptime: precomputedUptime[service.id], downtime: 0, incidents: 0 },
+        thirtyDays:
+          precomputedUptime30?.[service.id] === undefined && !precomputedUptime
+            ? calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd)
+            : {
+                uptime: precomputedUptime30?.[service.id] ?? precomputedUptime?.[service.id] ?? null,
+                downtime: 0,
+                incidents: precomputedIncidentCounts30?.[service.id] ?? 0,
+              },
+        ninetyDays:
+          precomputedUptime?.[service.id] === undefined
+            ? calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd)
+            : {
+                uptime: precomputedUptime[service.id] ?? null,
+                downtime: 0,
+                incidents: precomputedIncidentCounts90?.[service.id] ?? 0,
+              },
       }));
-  }, [services, incidents, thirtyDaysAgo, ninetyDaysAgo, precomputedUptime, precomputedUptime30]);
+  }, [
+    services,
+    incidents,
+    thirtyDaysAgo,
+    ninetyDaysAgo,
+    precomputedUptime,
+    precomputedUptime30,
+    precomputedIncidentCounts30,
+    precomputedIncidentCounts90,
+  ]);
 
   if (services.length === 0) return null;
 
@@ -209,7 +231,8 @@ export default function StatusPageMetrics({
           }}
         >
           {metrics.map(metric => {
-            const getUptimeColor = (uptime: number) => {
+            const getUptimeColor = (uptime: number | null) => {
+              if (uptime === null) return { bg: '#64748b', gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' };
               if (uptime >= uptimeExcellentThreshold)
                 return {
                   bg: '#10b981',
@@ -229,14 +252,14 @@ export default function StatusPageMetrics({
             const thirtyColor = getUptimeColor(metric.thirtyDays.uptime);
             const ninetyColor = getUptimeColor(metric.ninetyDays.uptime);
             const slaBadge =
-              metric.ninetyDays.uptime >= uptimeExcellentThreshold
+              metric.ninetyDays.uptime !== null && metric.ninetyDays.uptime >= uptimeExcellentThreshold
                 ? {
                     label: 'SLA Excellent',
                     color: '#047857',
                     background: '#dcfce7',
                     border: '#bbf7d0',
                   }
-                : metric.ninetyDays.uptime >= uptimeGoodThreshold
+                : metric.ninetyDays.uptime !== null && metric.ninetyDays.uptime >= uptimeGoodThreshold
                   ? {
                       label: 'SLA Good',
                       color: '#92400e',
@@ -244,7 +267,7 @@ export default function StatusPageMetrics({
                       border: '#fde68a',
                     }
                   : {
-                      label: 'Below SLA',
+                      label: metric.ninetyDays.uptime === null ? 'Not measured' : 'Below SLA',
                       color: '#991b1b',
                       background: '#fee2e2',
                       border: '#fecaca',
@@ -344,7 +367,7 @@ export default function StatusPageMetrics({
                           fontFamily: 'monospace',
                         }}
                       >
-                        {formatUptimePercent(metric.thirtyDays.uptime)}%
+                        {formatUptimePercent(metric.thirtyDays.uptime)}{metric.thirtyDays.uptime !== null ? '%' : ''}
                       </span>
                     </div>
                     <div
@@ -360,7 +383,7 @@ export default function StatusPageMetrics({
                     >
                       <div
                         style={{
-                          width: `${Math.max(0, Math.min(100, metric.thirtyDays.uptime))}%`,
+                          width: `${metric.thirtyDays.uptime === null ? 0 : Math.max(0, Math.min(100, metric.thirtyDays.uptime))}%`,
                           height: '100%',
                           background: thirtyColor.gradient,
                           transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -406,6 +429,9 @@ export default function StatusPageMetrics({
                       </svg>
                       {metric.thirtyDays.incidents} incident
                       {metric.thirtyDays.incidents !== 1 ? 's' : ''}
+                      {precomputedCoverage30?.[metric.serviceId] && (
+                        <> · {precomputedCoverage30[metric.serviceId]}</>
+                      )}
                     </div>
                   </div>
 
@@ -438,7 +464,7 @@ export default function StatusPageMetrics({
                           fontFamily: 'monospace',
                         }}
                       >
-                        {formatUptimePercent(metric.ninetyDays.uptime)}%
+                        {formatUptimePercent(metric.ninetyDays.uptime)}{metric.ninetyDays.uptime !== null ? '%' : ''}
                       </span>
                     </div>
                     <div
@@ -454,7 +480,7 @@ export default function StatusPageMetrics({
                     >
                       <div
                         style={{
-                          width: `${Math.max(0, Math.min(100, metric.ninetyDays.uptime))}%`,
+                          width: `${metric.ninetyDays.uptime === null ? 0 : Math.max(0, Math.min(100, metric.ninetyDays.uptime))}%`,
                           height: '100%',
                           background: ninetyColor.gradient,
                           transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -500,6 +526,9 @@ export default function StatusPageMetrics({
                       </svg>
                       {metric.ninetyDays.incidents} incident
                       {metric.ninetyDays.incidents !== 1 ? 's' : ''}
+                      {precomputedCoverage90?.[metric.serviceId] && (
+                        <> · {precomputedCoverage90[metric.serviceId]}</>
+                      )}
                     </div>
                   </div>
                 </div>

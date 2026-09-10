@@ -28,7 +28,7 @@ export async function confirmStatusSubscription(form: FormData) {
       verificationToken: hashSubscriptionToken(input.token),
       unsubscribedAt: null,
     },
-    data: { verified: true, verificationToken: null },
+    data: { verified: true, state: 'ACTIVE', verificationToken: null },
   });
   redirect(getStatusPagePublicUrl(subscription.statusPage));
 }
