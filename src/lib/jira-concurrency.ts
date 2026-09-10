@@ -1,0 +1,53 @@
+import crypto from 'node:crypto';
+import type { Prisma } from '@prisma/client';
+import {
+  acquireAdvisoryLock,
+  acquireSharedAdvisoryLock,
+  LOCK_KEYS,
+} from '@/lib/db-locks';
+
+/**
+ * Provider calls are intentionally bounded below the transaction timeout used
+ * while the shared Jira workspace fence is held.
+ */
+export const JIRA_PROVIDER_FENCE_TIMEOUT_MS = 30_000;
+export const JIRA_PROVIDER_FENCE_MAX_WAIT_MS = 5_000;
+
+/**
+ * Reserve a positive bigint namespace for per-action-item Jira link locks.
+ * The high 16 bits are fixed ("JI"), while the low 48 bits come from SHA-256.
+ * This avoids a global action-item mutex while keeping collision probability
+ * negligible and keeping dynamic keys away from the small static LOCK_KEYS.
+ */
+export function jiraActionItemLinkLockKey(actionItemId: string): bigint {
+  const digest = crypto.createHash('sha256').update(actionItemId).digest();
+  const lower48 = digest.readBigUInt64BE(0) & BigInt('0x0000ffffffffffff');
+  return BigInt('0x4a49000000000000') | lower48;
+}
+
+export async function acquireJiraWorkspaceProviderFence(
+  tx: Prisma.TransactionClient
+): Promise<void> {
+  await acquireSharedAdvisoryLock(tx, LOCK_KEYS.JIRA_WORKSPACE);
+
+  const config = await tx.jiraConfig.findUnique({
+    where: { id: 'default' },
+    select: { enabled: true },
+  });
+  if (!config?.enabled) {
+    throw new Error('Jira is not configured or is disabled in workspace settings.');
+  }
+}
+
+export async function acquireJiraWorkspaceLifecycleFence(
+  tx: Prisma.TransactionClient
+): Promise<void> {
+  await acquireAdvisoryLock(tx, LOCK_KEYS.JIRA_WORKSPACE);
+}
+
+export async function acquireJiraActionItemLinkFence(
+  tx: Prisma.TransactionClient,
+  actionItemId: string
+): Promise<void> {
+  await acquireAdvisoryLock(tx, jiraActionItemLinkLockKey(actionItemId));
+}
