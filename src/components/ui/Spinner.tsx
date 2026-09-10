@@ -12,14 +12,33 @@ interface SpinnerProps {
   style?: CSSProperties;
 }
 
-const sizeMap: Record<SpinnerSize, number> = { sm: 16, md: 24, lg: 32 };
-const colorMap: Record<SpinnerVariant, string> = {
-  default: 'var(--text-muted)',
-  primary: 'var(--primary-color)',
-  white: '#ffffff',
-  black: '#000000',
-  current: 'currentColor',
-};
+function getSpinnerSize(size: SpinnerSize): number {
+  switch (size) {
+    case 'sm':
+      return 16;
+    case 'lg':
+      return 32;
+    case 'md':
+    default:
+      return 24;
+  }
+}
+
+function getSpinnerColor(variant: SpinnerVariant): string {
+  switch (variant) {
+    case 'primary':
+      return 'var(--primary-color)';
+    case 'white':
+      return '#ffffff';
+    case 'black':
+      return '#000000';
+    case 'current':
+      return 'currentColor';
+    case 'default':
+    default:
+      return 'var(--text-muted)';
+  }
+}
 
 export default function Spinner({
   size = 'md',
@@ -27,7 +46,9 @@ export default function Spinner({
   className = '',
   style,
 }: SpinnerProps) {
-  const spinnerSize = sizeMap[size];
+  const spinnerSize = getSpinnerSize(size);
+  const spinnerColor = getSpinnerColor(variant);
+
   return (
     <svg
       className={`spinner spinner-${size} spinner-${variant} ${className}`}
@@ -35,7 +56,7 @@ export default function Spinner({
       height={spinnerSize}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={colorMap[variant]}
+      stroke={spinnerColor}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
