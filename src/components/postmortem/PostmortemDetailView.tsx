@@ -66,6 +66,7 @@ interface PostmortemDetailViewProps {
   canEdit?: boolean;
   incidentId: string;
   isPublicView?: boolean;
+  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
 }
 
 export default function PostmortemDetailView({
@@ -74,6 +75,7 @@ export default function PostmortemDetailView({
   canEdit = false,
   incidentId,
   isPublicView: initialPublicView = false,
+  jiraCapability,
 }: PostmortemDetailViewProps) {
   const { userTimeZone } = useTimezone();
 
@@ -553,6 +555,7 @@ export default function PostmortemDetailView({
                             externalIssue={item.externalIssue}
                             canManage={canEdit}
                             compact
+                            jiraCapability={jiraCapability}
                           />
                         </div>
                       )}

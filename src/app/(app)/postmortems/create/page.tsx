@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { getJiraCapabilities } from '@/lib/jira-capabilities';
 
 export default async function CreatePostmortemPage() {
   const session = await getServerSession(await getAuthOptions());
@@ -57,6 +58,14 @@ export default async function CreatePostmortemPage() {
     orderBy: { name: 'asc' },
   });
 
+  // Workspace-level Jira capabilities for the postmortem form (action items
+  // span services; mapping is validated downstream server-side).
+  const jiraCapability = await getJiraCapabilities({
+    serviceId: null,
+    canManage: canCreate,
+    scope: 'workspace',
+  });
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -87,7 +96,12 @@ export default async function CreatePostmortemPage() {
           </CardContent>
         </Card>
       ) : (
-        <PostmortemForm incidentId="" users={users} resolvedIncidents={resolvedIncidents} />
+        <PostmortemForm
+          incidentId=""
+          users={users}
+          resolvedIncidents={resolvedIncidents}
+          jiraCapability={jiraCapability}
+        />
       )}
     </div>
   );

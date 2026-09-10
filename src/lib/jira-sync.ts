@@ -378,9 +378,47 @@ export async function syncLinkedEntitiesForJiraIssue({
 export async function syncExternalIssueLink(linkId: string) {
   const link = await prisma.externalIssueLink.findUnique({
     where: { id: linkId },
+    include: {
+      incident: {
+        select: {
+          service: {
+            select: {
+              jiraServiceMapping: {
+                select: { syncEnabled: true },
+              },
+            },
+          },
+        },
+      },
+      actionItem: {
+        select: {
+          incident: {
+            select: {
+              service: {
+                select: {
+                  jiraServiceMapping: {
+                    select: { syncEnabled: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!link) throw new Error('External issue link not found.');
+
+  // Enforce syncEnabled: check if the service has sync enabled
+  const mapping =
+    link.incident?.service?.jiraServiceMapping ??
+    link.actionItem?.incident?.service?.jiraServiceMapping;
+  if (mapping?.syncEnabled === false) {
+    throw new Error(
+      'Jira metadata sync is disabled for this service. Enable it in Service Settings → Jira Mapping.'
+    );
+  }
 
   try {
     const issue = await getJiraIssue(link.externalKey);
@@ -519,6 +557,60 @@ export async function processJiraWebhookEvent(
     return { updated: 0 };
   }
 
+  // Enforce syncEnabled: filter out links whose service has sync disabled.
+  // We need to check the service's JiraServiceMapping.syncEnabled for each link.
+  const linkIds = links.map(l => l.id);
+  const linksWithSyncEnabled = await prisma.externalIssueLink.findMany({
+    where: { id: { in: linkIds } },
+    include: {
+      incident: {
+        select: {
+          service: {
+            select: {
+              jiraServiceMapping: {
+                select: { syncEnabled: true },
+              },
+            },
+          },
+        },
+      },
+      actionItem: {
+        select: {
+          incident: {
+            select: {
+              service: {
+                select: {
+                  jiraServiceMapping: {
+                    select: { syncEnabled: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // A link is syncable if its service's syncEnabled is true (or no mapping exists, default true)
+  const syncableLinkIds = new Set(
+    linksWithSyncEnabled
+      .filter(link => {
+        const mapping =
+          link.incident?.service?.jiraServiceMapping ??
+          link.actionItem?.incident?.service?.jiraServiceMapping;
+        // Default to true if no mapping exists
+        return mapping?.syncEnabled !== false;
+      })
+      .map(link => link.id)
+  );
+
+  const syncableLinks = links.filter(l => syncableLinkIds.has(l.id));
+
+  if (syncableLinks.length === 0) {
+    return { updated: 0 };
+  }
+
   // Extract status and assignee from payload fields or changelog
   const { statusName, statusCategoryKey, statusCategoryName, isStatusPresent } =
     extractJiraWebhookStatus(payload);
@@ -537,7 +629,7 @@ export async function processJiraWebhookEvent(
 
   const validLinks =
     eventTime && !isNaN(eventTime.getTime())
-      ? links.filter(l => {
+      ? syncableLinks.filter(l => {
           if (!l.lastSyncedAt) return true;
           if (
             statusName &&
@@ -547,7 +639,7 @@ export async function processJiraWebhookEvent(
           }
           return l.lastSyncedAt.getTime() <= eventTime.getTime() + 300_000;
         })
-      : links;
+      : syncableLinks;
 
   if (validLinks.length === 0) {
     return { updated: 0 };

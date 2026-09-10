@@ -64,7 +64,10 @@ export async function createJiraIssueFromActionItem(
     });
 
     if (!jiraConfig?.enabled) {
-      return { success: false, error: 'Jira is not configured or is disabled in workspace settings.' };
+      return {
+        success: false,
+        error: 'Jira is not configured or is disabled in workspace settings.',
+      };
     }
 
     const projectKey = mapping?.projectKey;
@@ -165,20 +168,25 @@ export async function linkJiraIssueToActionItem(
   }
 }
 
-export async function unlinkJiraIssueFromActionItem(
-  linkId: string
-): Promise<JiraActionResult> {
+export async function unlinkJiraIssueFromActionItem(linkId: string): Promise<JiraActionResult> {
   try {
     await assertAdminOrResponder();
 
-    const link = await prisma.externalIssueLink.findUnique({
-      where: { id: linkId },
+    // Verify the link exists, belongs to an action item, and is a Jira link
+    const link = await prisma.externalIssueLink.findFirst({
+      where: {
+        id: linkId,
+        provider: 'JIRA',
+        actionItemId: { not: null },
+      },
       select: {
         id: true,
+        externalKey: true,
         actionItem: { select: { postmortemId: true, incidentId: true } },
       },
     });
-    if (!link) return { success: false, error: 'Link not found.' };
+    if (!link)
+      return { success: false, error: 'Jira link not found or does not belong to an action item.' };
 
     await prisma.externalIssueLink.delete({
       where: { id: linkId },
@@ -194,20 +202,27 @@ export async function unlinkJiraIssueFromActionItem(
   }
 }
 
-export async function syncActionItemJiraIssue(
-  linkId: string
-): Promise<JiraActionResult> {
+export async function syncActionItemJiraIssue(linkId: string): Promise<JiraActionResult> {
   try {
     await assertAdminOrResponder();
 
-    const link = await prisma.externalIssueLink.findUnique({
-      where: { id: linkId },
+    // Verify the link exists, belongs to an action item, and is a Jira link
+    const link = await prisma.externalIssueLink.findFirst({
+      where: {
+        id: linkId,
+        provider: 'JIRA',
+        actionItemId: { not: null },
+      },
       select: {
+        id: true,
         actionItem: { select: { postmortemId: true, incidentId: true } },
       },
     });
 
-    await syncExternalIssueLink(linkId);
+    const result = await syncExternalIssueLink(linkId);
+    if (!result) {
+      return { success: false, error: 'Jira sync failed. Check integration health in Settings.' };
+    }
 
     revalidateActionItemPaths(link?.actionItem?.postmortemId, link?.actionItem?.incidentId);
     return { success: true };

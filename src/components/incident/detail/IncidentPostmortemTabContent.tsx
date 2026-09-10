@@ -82,6 +82,7 @@ export type IncidentPostmortemTabContentProps = {
       }>;
     }>;
   } | null;
+  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
 };
 
 export default function IncidentPostmortemTabContent({
@@ -92,6 +93,7 @@ export default function IncidentPostmortemTabContent({
   noteCount,
   users = [],
   postmortem,
+  jiraCapability,
 }: IncidentPostmortemTabContentProps) {
   const { userTimeZone } = useTimezone();
   const isResolved = incidentStatus === 'RESOLVED';
@@ -307,6 +309,7 @@ export default function IncidentPostmortemTabContent({
                           externalIssue={item.externalIssue}
                           canManage={canManage}
                           compact
+                          jiraCapability={jiraCapability}
                         />
                       )}
 

@@ -111,6 +111,8 @@ type IncidentCommandBarProps = {
     serviceSettingsHref: string;
   } | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
+  /** Centralized Jira capability contract. When provided, replaces scattered jira.enabled checks. */
+  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
 };
 
 function formatResumeIn(snoozedUntil: Date | null): string | null {
@@ -146,6 +148,7 @@ export default function IncidentCommandBar({
   warRoom,
   jira,
   tags = [],
+  jiraCapability,
 }: IncidentCommandBarProps) {
   const router = useRouter();
   const [showSnoozeDialog, setShowSnoozeDialog] = useState(false);
@@ -217,12 +220,20 @@ export default function IncidentCommandBar({
     });
   };
 
-  // Jira logic
+  // Jira logic — prefer capability contract when available
   const jiraLinks = jira?.links || [];
   const primaryJira = jiraLinks[0];
-  const jiraEnabled = jira?.enabled ?? false;
+  const jiraEnabled = jiraCapability
+    ? jiraCapability.showOperationalJira
+    : (jira?.enabled ?? false);
+  const serviceMapped = jiraCapability
+    ? jiraCapability.serviceMapped
+    : (jira?.serviceMapped ?? false);
 
-  const hasAnyIntegrations = hasActiveWarRoom || Boolean(primaryJira) || canManage;
+  const hasAnyIntegrations =
+    hasActiveWarRoom ||
+    Boolean(primaryJira) ||
+    (jiraCapability ? jiraCapability.showOperationalJira : canManage);
 
   const handleCreateJira = () => {
     setJiraError(null);
@@ -930,7 +941,7 @@ export default function IncidentCommandBar({
               <p className="text-xs text-slate-500">
                 Automatically creates a Jira issue with this incident&apos;s title and description.
               </p>
-              {jira?.serviceMapped ? (
+              {serviceMapped ? (
                 <Button
                   type="button"
                   size="sm"

@@ -85,6 +85,7 @@ type PostmortemFormProps = {
       name: string;
     };
   }>;
+  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
 };
 
 // Helper to extract clean root cause narrative without embedded 5-whys or factor blocks
@@ -187,6 +188,7 @@ export default function PostmortemForm({
   initialData,
   users = [],
   resolvedIncidents = [],
+  jiraCapability,
 }: PostmortemFormProps) {
   const router = useRouter();
   const { userTimeZone } = useTimezone();
@@ -614,7 +616,12 @@ export default function PostmortemForm({
         </Card>
 
         {/* Action Items */}
-        <PostmortemActionItems actionItems={actionItems} onChange={setActionItems} users={users} />
+        <PostmortemActionItems
+          actionItems={actionItems}
+          onChange={setActionItems}
+          users={users}
+          jiraCapability={jiraCapability}
+        />
 
         {/* Lessons Learned */}
         <Card className="bg-gradient-to-br from-white to-slate-50 shadow-md">

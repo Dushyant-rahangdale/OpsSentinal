@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { getJiraCapabilities } from '@/lib/jira-capabilities';
 
 export default async function PostmortemPage({
   params,
@@ -38,6 +39,14 @@ export default async function PostmortemPage({
   const canEdit = permissions.isResponderOrAbove;
   // All users can view published postmortems, but only responders+ can edit
   const canView = postmortem ? postmortem.status === 'PUBLISHED' || canEdit : canEdit;
+
+  // Compute workspace-level Jira capabilities for the postmortem view
+  // (action items within a postmortem can belong to multiple services).
+  const jiraCapability = await getJiraCapabilities({
+    serviceId: null,
+    canManage: canEdit,
+    scope: 'workspace',
+  });
 
   // Get users for action items assignment
   const users = await prisma.user.findMany({
@@ -92,7 +101,7 @@ export default async function PostmortemPage({
         </div>
 
         {canEdit ? (
-          <PostmortemForm incidentId={incidentId} users={users} />
+          <PostmortemForm incidentId={incidentId} users={users} jiraCapability={jiraCapability} />
         ) : (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -130,13 +139,19 @@ export default async function PostmortemPage({
 
       {canView ? (
         editMode && canEdit ? (
-          <PostmortemForm incidentId={incidentId} initialData={postmortem} users={users} />
+          <PostmortemForm
+            incidentId={incidentId}
+            initialData={postmortem}
+            users={users}
+            jiraCapability={jiraCapability}
+          />
         ) : (
           <PostmortemDetailView
             postmortem={postmortem}
             users={users}
             canEdit={canEdit}
             incidentId={incidentId}
+            jiraCapability={jiraCapability}
           />
         )
       ) : (

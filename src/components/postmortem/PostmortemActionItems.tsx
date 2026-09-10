@@ -33,6 +33,7 @@ interface PostmortemActionItemsProps {
     avatarUrl?: string | null;
     gender?: string | null;
   }>;
+  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
 }
 
 import { ACTION_ITEM_STATUS_CONFIG, ACTION_ITEM_PRIORITY_CONFIG } from './shared';
@@ -42,6 +43,7 @@ export default function PostmortemActionItems({
   onChange,
   canManage = true,
   users = [],
+  jiraCapability,
 }: PostmortemActionItemsProps) {
   const { userTimeZone } = useTimezone();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -255,6 +257,7 @@ export default function PostmortemActionItems({
                           externalIssue={item.externalIssue}
                           canManage={canManage}
                           compact
+                          jiraCapability={jiraCapability}
                         />
                       </div>
                       {item.description && (

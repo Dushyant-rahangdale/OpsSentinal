@@ -16,9 +16,7 @@ export type JiraActionResult = {
   url?: string;
 };
 
-export async function createJiraIssueFromIncident(
-  incidentId: string
-): Promise<JiraActionResult> {
+export async function createJiraIssueFromIncident(incidentId: string): Promise<JiraActionResult> {
   try {
     await assertAdminOrResponder();
 
@@ -43,14 +41,18 @@ export async function createJiraIssueFromIncident(
     });
 
     if (!jiraConfig?.enabled) {
-      return { success: false, error: 'Jira is not configured or is disabled in workspace settings.' };
+      return {
+        success: false,
+        error: 'Jira is not configured or is disabled in workspace settings.',
+      };
     }
 
     const projectKey = mapping?.projectKey;
     if (!projectKey) {
       return {
         success: false,
-        error: 'Configure a Jira project for this service in Service Settings before creating Jira issues.',
+        error:
+          'Configure a Jira project for this service in Service Settings before creating Jira issues.',
       };
     }
 
@@ -177,11 +179,16 @@ export async function unlinkJiraIssueFromIncident(
   try {
     await assertAdminOrResponder();
 
-    const link = await prisma.externalIssueLink.findUnique({
-      where: { id: linkId },
+    // Verify the link exists, is a Jira link, belongs to this incident, and is incident-scoped
+    const link = await prisma.externalIssueLink.findFirst({
+      where: {
+        id: linkId,
+        provider: 'JIRA',
+        incidentId,
+      },
       select: { id: true, externalKey: true, incidentId: true },
     });
-    if (!link || link.incidentId !== incidentId) return { success: false, error: 'Link not found.' };
+    if (!link) return { success: false, error: 'Jira link not found for this incident.' };
 
     await prisma.externalIssueLink.delete({
       where: { id: linkId },
@@ -211,7 +218,22 @@ export async function syncIncidentJiraIssue(
 ): Promise<JiraActionResult> {
   try {
     await assertAdminOrResponder();
-    await syncExternalIssueLink(linkId);
+
+    // Verify the link exists, is a Jira link, and belongs to this incident
+    const link = await prisma.externalIssueLink.findFirst({
+      where: {
+        id: linkId,
+        provider: 'JIRA',
+        incidentId,
+      },
+      select: { id: true },
+    });
+    if (!link) return { success: false, error: 'Jira link not found for this incident.' };
+
+    const result = await syncExternalIssueLink(linkId);
+    if (!result) {
+      return { success: false, error: 'Jira sync failed. Check integration health in Settings.' };
+    }
     revalidatePath(`/incidents/${incidentId}`);
     return { success: true };
   } catch (error) {

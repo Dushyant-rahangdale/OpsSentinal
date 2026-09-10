@@ -22,6 +22,7 @@ import {
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { cn } from '@/lib/utils';
 import type { ActionItem } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import { ActionItemStatus } from '@prisma/client';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
 import DueDateBadge from '@/components/action-items/DueDateBadge';
@@ -60,6 +61,7 @@ export interface ActionItemsBoardProps {
     owner?: string;
     priority?: string;
   };
+  jiraCapability?: JiraCapability;
 }
 
 interface ActionItemCardProps {
@@ -69,6 +71,7 @@ interface ActionItemCardProps {
   canManage: boolean;
   onStatusChange: (itemId: string, status: ActionItemStatus) => void;
   isUpdating?: boolean;
+  jiraCapability?: JiraCapability;
 }
 
 const STATUS_CONFIG = {
@@ -148,6 +151,7 @@ function ActionItemCard({
   canManage,
   onStatusChange,
   isUpdating = false,
+  jiraCapability,
 }: ActionItemCardProps) {
   const router = useRouter();
   const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.OPEN;
@@ -254,6 +258,7 @@ function ActionItemCard({
           externalIssue={item.externalIssue}
           canManage={canManage}
           compact
+          jiraCapability={jiraCapability}
         />
       </div>
 
@@ -288,6 +293,7 @@ export default function ActionItemsBoard({
   canManage,
   view,
   filters,
+  jiraCapability,
 }: ActionItemsBoardProps) {
   const router = useRouter();
   const { userTimeZone } = useTimezone();
@@ -593,6 +599,7 @@ export default function ActionItemsBoard({
                         canManage={canManage}
                         onStatusChange={handleStatusChange}
                         isUpdating={updatingId === item.id}
+                        jiraCapability={jiraCapability}
                       />
                     ))
                   )}
@@ -665,6 +672,7 @@ export default function ActionItemsBoard({
                         externalIssue={item.externalIssue}
                         canManage={canManage}
                         compact
+                        jiraCapability={jiraCapability}
                       />
                       {item.description && (
                         <p className="text-sm text-muted-foreground mt-1 mb-2">

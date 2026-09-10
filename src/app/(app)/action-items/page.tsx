@@ -9,6 +9,7 @@ import ActionItemsBoard from '@/components/action-items/ActionItemsBoard';
 import DetailHeroBanner from '@/components/ui/DetailHeroBanner';
 import { CheckSquare, Circle, Clock, CheckCircle2, AlertOctagon } from 'lucide-react';
 import { resolveStoredActionItems, type ActionItem } from '@/lib/action-items';
+import { getJiraCapabilities } from '@/lib/jira-capabilities';
 
 export const dynamic = 'force-dynamic';
 
@@ -177,6 +178,15 @@ export default async function ActionItemsPage({
 
   const canManage = permissions.isResponderOrAbove;
 
+  // Compute workspace-level Jira capabilities (no service-specific mapping
+  // since action items span multiple services). The create action will
+  // validate service mapping server-side.
+  const jiraCapability = await getJiraCapabilities({
+    serviceId: null,
+    canManage,
+    scope: 'workspace',
+  });
+
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 md:px-6 md:py-8">
       {/* Centralized Hero Header */}
@@ -249,6 +259,7 @@ export default async function ActionItemsPage({
           owner,
           priority,
         }}
+        jiraCapability={jiraCapability}
       />
     </div>
   );
