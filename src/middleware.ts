@@ -3,6 +3,7 @@ import { getToken } from 'next-auth/jwt';
 import { logger } from '@/lib/logger';
 import { getNextAuthSecret } from '@/lib/secret-manager';
 import { SESSION_TOKEN_COOKIE_NAME, useSecureCookies } from '@/lib/auth-cookies';
+import { sanitizeCallbackUrl } from '@/lib/callback-url';
 import { statusDomainRequestHeaders } from '@/lib/status-pages/internal-request';
 import {
   PRIVATE_STATUS_CACHE_CONTROL,
@@ -142,12 +143,12 @@ function usesExternalStatusServingStore(): boolean {
 }
 
 type StatusDomainPage = {
-    id: string;
-    slug?: string | null;
-    isDefault?: boolean;
-    subdomain?: string | null;
-    customDomain?: string | null;
-    requireAuth?: boolean;
+  id: string;
+  slug?: string | null;
+  isDefault?: boolean;
+  subdomain?: string | null;
+  customDomain?: string | null;
+  requireAuth?: boolean;
 };
 type PublishedStatusRoute = {
   pageId: string;
@@ -225,7 +226,10 @@ const publishedRouteCache = new Map<string, CachedPublishedRoute>();
 const publishedRouteInflight = new Map<string, Promise<PublishedStatusRoute | null>>();
 
 function cachePublishedRoute(routeKey: string, entry: CachedPublishedRoute): void {
-  if (!publishedRouteCache.has(routeKey) && publishedRouteCache.size >= STATUS_ROUTE_CACHE_MAX_ENTRIES) {
+  if (
+    !publishedRouteCache.has(routeKey) &&
+    publishedRouteCache.size >= STATUS_ROUTE_CACHE_MAX_ENTRIES
+  ) {
     const oldestKey = publishedRouteCache.keys().next().value;
     if (oldestKey) publishedRouteCache.delete(oldestKey);
   }
@@ -243,7 +247,9 @@ function isSafeStatusSlug(value: string): boolean {
 export function parsePublishedStatusRoute(value: unknown): PublishedStatusRoute | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).some(key => !['pageId', 'slug', 'requireAuth', 'revision'].includes(key))) {
+  if (
+    Object.keys(record).some(key => !['pageId', 'slug', 'requireAuth', 'revision'].includes(key))
+  ) {
     return null;
   }
   const slug = record.slug === null ? null : record.slug;
@@ -258,7 +264,12 @@ export function parsePublishedStatusRoute(value: unknown): PublishedStatusRoute 
   ) {
     return null;
   }
-  return { pageId: record.pageId, slug, requireAuth: record.requireAuth, revision: record.revision };
+  return {
+    pageId: record.pageId,
+    slug,
+    requireAuth: record.requireAuth,
+    revision: record.revision,
+  };
 }
 
 export function externalRouteKey(hostname: string): string {
@@ -287,7 +298,9 @@ export async function fetchPublishedStatusDomain(
     try {
       const origin = new URL(base);
       if (origin.protocol !== 'https:' || origin.username || origin.password) return null;
-      const storeBase = origin.pathname.endsWith('/') ? origin : new URL(`${origin.pathname}/`, origin);
+      const storeBase = origin.pathname.endsWith('/')
+        ? origin
+        : new URL(`${origin.pathname}/`, origin);
       const response = await fetch(
         new URL(`status-pages/routes/${encodeURIComponent(routeKey)}`, storeBase),
         {
@@ -297,9 +310,8 @@ export async function fetchPublishedStatusDomain(
         }
       );
       if (!response.ok && response.status !== 404) throw new Error('Status route lookup failed');
-      const value = response.status === 404
-        ? null
-        : parsePublishedStatusRoute(await response.json());
+      const value =
+        response.status === 404 ? null : parsePublishedStatusRoute(await response.json());
       if (response.status !== 404 && !value) throw new Error('Invalid status route payload');
       const cachedAt = Date.now();
       cachePublishedRoute(routeKey, {
@@ -409,9 +421,8 @@ export default async function middleware(req: NextRequest) {
       .at(-1);
     const hostname = normalizeHostname(forwardedHost || req.headers.get('host'));
     const publishedPage = hostname ? await fetchPublishedStatusDomain(hostname) : null;
-    const statusConfig = publishedPage || usesExternalStatusServingStore()
-      ? null
-      : await fetchStatusDomainConfig();
+    const statusConfig =
+      publishedPage || usesExternalStatusServingStore() ? null : await fetchStatusDomainConfig();
     if (statusConfig?.enabled) {
       const matchedPage = statusConfig.pages?.find(page => {
         const subdomainHost =
@@ -443,7 +454,9 @@ export default async function middleware(req: NextRequest) {
       const pageRoot = publishedPage.slug ? `/status/${publishedPage.slug}` : '/status';
       url.pathname = pathname === '/' || pathname === '' ? pageRoot : `${pageRoot}${pathname}`;
       const rewriteResponse = NextResponse.rewrite(url);
-      Object.entries(securityHeaders).forEach(([key, value]) => rewriteResponse.headers.set(key, value));
+      Object.entries(securityHeaders).forEach(([key, value]) =>
+        rewriteResponse.headers.set(key, value)
+      );
       rewriteResponse.headers.set('x-request-id', requestId);
       rewriteResponse.headers.set(
         'Cache-Control',
@@ -615,15 +628,7 @@ export default async function middleware(req: NextRequest) {
       // Redirect authenticated users away from login page to target or home
       const callbackUrl = req.nextUrl.searchParams.get('callbackUrl');
       const defaultDest = isMobile && !preferDesktop ? '/m' : '/';
-      const isValidTarget =
-        callbackUrl &&
-        callbackUrl.startsWith('/') &&
-        !callbackUrl.startsWith('/login') &&
-        !callbackUrl.startsWith('/m/login') &&
-        !callbackUrl.includes('/signout') &&
-        !callbackUrl.includes('/auth/signout');
-
-      const redirectUrl = isValidTarget ? callbackUrl : defaultDest;
+      const redirectUrl = sanitizeCallbackUrl(callbackUrl, defaultDest);
       const redirectResponse = NextResponse.redirect(new URL(redirectUrl, req.url));
       // Apply security headers to redirect
       Object.entries(securityHeaders).forEach(([key, value]) => {

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth';
 import { getOidcConfig, getOidcPublicConfig } from '@/lib/oidc-config';
 import { redirect } from 'next/navigation';
+import { sanitizeCallbackUrl } from '@/lib/callback-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,18 +76,13 @@ export default async function LoginPage({
     }
     const callbackUrl =
       typeof awaitedSearchParams?.callbackUrl === 'string' ? awaitedSearchParams.callbackUrl : '/';
-    // Only redirect to callbackUrl if it's a valid internal path (not login or signout)
-    const isValidCallback =
-      callbackUrl.startsWith('/') &&
-      !callbackUrl.startsWith('/login') &&
-      !callbackUrl.includes('/signout') &&
-      !callbackUrl.includes('/auth/signout');
-    const redirectUrl = isValidCallback ? callbackUrl : '/'; // Default to dashboard
+    const redirectUrl = sanitizeCallbackUrl(callbackUrl);
     redirect(redirectUrl);
   }
 
-  const callbackUrl =
-    typeof awaitedSearchParams?.callbackUrl === 'string' ? awaitedSearchParams.callbackUrl : '/';
+  const callbackUrl = sanitizeCallbackUrl(
+    typeof awaitedSearchParams?.callbackUrl === 'string' ? awaitedSearchParams.callbackUrl : '/'
+  );
   const errorCode =
     typeof awaitedSearchParams?.error === 'string' ? awaitedSearchParams.error : null;
   const passwordSet = awaitedSearchParams?.password === '1';

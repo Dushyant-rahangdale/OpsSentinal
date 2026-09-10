@@ -1,28 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { assertSafeOutboundUrlMock } = vi.hoisted(() => ({
+const { assertSafeOutboundUrlMock, safeOutboundFetchMock } = vi.hoisted(() => ({
   assertSafeOutboundUrlMock: vi.fn(),
+  safeOutboundFetchMock: vi.fn(),
 }));
 
 vi.mock('@/lib/network-security', () => ({
   assertSafeOutboundUrl: assertSafeOutboundUrlMock,
+  safeOutboundFetch: safeOutboundFetchMock,
 }));
 
 import { validateOidcConnection } from '@/lib/oidc-validation';
 
-const metadata = {
-  authorization_endpoint: 'https://idp.example.com/authorize',
-  token_endpoint: 'https://idp.example.com/token',
-  jwks_uri: 'https://idp.example.com/jwks',
-  id_token_signing_alg_values_supported: ['RS256'],
-};
-
-function response(status: number, body: unknown = metadata) {
+function makeMetadata(issuer: string, overrides: Record<string, unknown> = {}) {
   return {
+    authorization_endpoint: `${issuer}/authorize`,
+    token_endpoint: `${issuer}/token`,
+    jwks_uri: `${issuer}/jwks`,
+    id_token_signing_alg_values_supported: ['RS256'],
+    issuer,
+    ...overrides,
+  };
+}
+
+function setupValidFetch(status = 200, body: unknown) {
+  safeOutboundFetchMock.mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
     json: vi.fn().mockResolvedValue(body),
-  } as unknown as Response;
+    headers: { get: vi.fn() },
+  } as unknown as Response);
 }
 
 describe('OIDC discovery provider matrix', () => {
@@ -30,6 +37,7 @@ describe('OIDC discovery provider matrix', () => {
     vi.restoreAllMocks();
     assertSafeOutboundUrlMock.mockReset();
     assertSafeOutboundUrlMock.mockResolvedValue(undefined);
+    safeOutboundFetchMock.mockReset();
   });
 
   it.each([
@@ -42,6 +50,16 @@ describe('OIDC discovery provider matrix', () => {
       'Microsoft Entra ID',
       'https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0',
       'https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0/.well-known/openid-configuration',
+    ],
+    [
+      'Microsoft Entra US Gov',
+      'https://login.microsoftonline.us/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0',
+      'https://login.microsoftonline.us/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0/.well-known/openid-configuration',
+    ],
+    [
+      'Microsoft Entra China',
+      'https://login.partner.microsoftonline.cn/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0',
+      'https://login.partner.microsoftonline.cn/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0/.well-known/openid-configuration',
     ],
     [
       'Okta',
@@ -59,34 +77,48 @@ describe('OIDC discovery provider matrix', () => {
       'https://identity.example.com/oidc/.well-known/openid-configuration',
     ],
   ])('validates %s discovery metadata', async (_provider, issuer, expectedDiscoveryUrl) => {
-    const fetchMock = vi.fn().mockResolvedValue(response(200));
-    vi.stubGlobal('fetch', fetchMock);
+    setupValidFetch(200, makeMetadata(issuer));
 
     const result = await validateOidcConnection(issuer);
 
     expect(result).toEqual({ isValid: true });
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(safeOutboundFetchMock).toHaveBeenCalledWith(
       expectedDiscoveryUrl,
-      expect.objectContaining({ method: 'GET', redirect: 'manual' })
+      expect.objectContaining({ method: 'GET' })
     );
     expect(assertSafeOutboundUrlMock).toHaveBeenCalledWith(expectedDiscoveryUrl, {
       requireHttps: true,
     });
   });
 
-  it('rejects non-HTTPS issuers before network access', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+  it.each([
+    'https://login.microsoftonline.com/common/v2.0',
+    'https://login.microsoftonline.com/organizations/v2.0',
+    'https://login.microsoftonline.com/consumers/v2.0',
+    'https://login.microsoftonline.us/common/v2.0',
+    'https://login.microsoftonline.us/organizations/v2.0',
+    'https://login.microsoftonline.us/consumers/v2.0',
+    'https://login.partner.microsoftonline.cn/common/v2.0',
+    'https://login.partner.microsoftonline.cn/organizations/v2.0',
+    'https://login.partner.microsoftonline.cn/consumers/v2.0',
+  ])('rejects generic Entra authority %s before discovery', async issuer => {
+    const result = await validateOidcConnection(issuer);
 
+    expect(result.isValid).toBe(false);
+    expect(result.error).toMatch(/tenant-specific|common|organizations|consumers/i);
+    expect(safeOutboundFetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-HTTPS issuers before network access', async () => {
     const result = await validateOidcConnection('http://identity.example.com');
 
     expect(result.isValid).toBe(false);
     expect(result.error).toMatch(/HTTPS/i);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(safeOutboundFetchMock).not.toHaveBeenCalled();
   });
 
   it('rejects redirects from discovery to avoid validating a different issuer', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(302)));
+    setupValidFetch(302, makeMetadata('https://identity.example.com'));
 
     const result = await validateOidcConnection('https://identity.example.com');
 
@@ -94,15 +126,38 @@ describe('OIDC discovery provider matrix', () => {
     expect(result.error).toMatch(/redirect/i);
   });
 
+  it('requires discovery metadata to contain issuer', async () => {
+    setupValidFetch(200, makeMetadata('https://identity.example.com', { issuer: undefined }));
+
+    const result = await validateOidcConnection('https://identity.example.com');
+
+    expect(result.isValid).toBe(false);
+    expect(result.error).toMatch(/issuer/i);
+  });
+
+  it('rejects discovery metadata from an unexpected issuer', async () => {
+    setupValidFetch(200, makeMetadata('https://attacker.example.com'));
+
+    const result = await validateOidcConnection('https://identity.example.com');
+
+    expect(result.isValid).toBe(false);
+    expect(result.error).toMatch(/does not match/i);
+  });
+
+  it('accepts benign trailing-slash normalization for discovery issuer equality', async () => {
+    setupValidFetch(200, makeMetadata('https://identity.example.com'));
+
+    const result = await validateOidcConnection('https://identity.example.com/');
+
+    expect(result).toEqual({ isValid: true });
+  });
+
   it('rejects metadata with unsafe endpoints', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        response(200, {
-          ...metadata,
-          token_endpoint: 'https://127.0.0.1/token',
-        })
-      )
+    setupValidFetch(
+      200,
+      makeMetadata('https://identity.example.com', {
+        token_endpoint: 'https://127.0.0.1/token',
+      })
     );
     assertSafeOutboundUrlMock.mockImplementation(async (url: string) => {
       if (url.includes('127.0.0.1')) throw new Error('restricted');
@@ -115,19 +170,29 @@ describe('OIDC discovery provider matrix', () => {
   });
 
   it('rejects providers without an approved asymmetric ID-token algorithm', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        response(200, {
-          ...metadata,
-          id_token_signing_alg_values_supported: ['HS256'],
-        })
-      )
+    setupValidFetch(
+      200,
+      makeMetadata('https://identity.example.com', {
+        id_token_signing_alg_values_supported: ['HS256'],
+      })
     );
 
     const result = await validateOidcConnection('https://identity.example.com');
 
     expect(result.isValid).toBe(false);
     expect(result.error).toMatch(/RS256|ES256/);
+  });
+
+  it('allows providers that omit optional signing-algorithm advertisement', async () => {
+    setupValidFetch(
+      200,
+      makeMetadata('https://identity.example.com', {
+        id_token_signing_alg_values_supported: undefined,
+      })
+    );
+
+    const result = await validateOidcConnection('https://identity.example.com');
+
+    expect(result).toEqual({ isValid: true });
   });
 });

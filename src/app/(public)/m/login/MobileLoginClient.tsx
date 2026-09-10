@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { calculatePasswordStrength } from '@/lib/password-strength';
 import { purgeBrowserAuthCaches } from '@/lib/auth-cache-purge';
+import { sanitizeCallbackUrl } from '@/lib/callback-url';
 
 type Props = {
   callbackUrl: string;
@@ -111,31 +112,13 @@ export default function MobileLoginClient({
     setIsValid(Boolean(email) && Boolean(password));
   }, [email, password]);
 
-  let safeCallbackUrl = callbackUrl;
-  // Ensure we redirect to mobile dashboard /m unless specific deep link
-  if (
-    !safeCallbackUrl ||
-    safeCallbackUrl === '/' ||
-    safeCallbackUrl.includes('/login') ||
-    safeCallbackUrl.includes('/auth') || // Catches /auth/signout
-    !safeCallbackUrl.startsWith('/m')
-  ) {
-    safeCallbackUrl = '/m';
-  }
+  const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/m');
 
   const handleSSO = async () => {
     setIsSSOLoading(true);
     setError('');
     try {
-      let finalCallbackUrl = callbackUrl;
-      if (
-        !finalCallbackUrl ||
-        finalCallbackUrl === '/' ||
-        finalCallbackUrl.includes('/login') ||
-        finalCallbackUrl.includes('/auth/signout')
-      ) {
-        finalCallbackUrl = '/m';
-      }
+      const finalCallbackUrl = sanitizeCallbackUrl(callbackUrl, '/m');
       await purgeBrowserAuthCaches();
       await signIn('oidc', { callbackUrl: finalCallbackUrl });
     } catch {
@@ -168,13 +151,7 @@ export default function MobileLoginClient({
       } else if (result?.ok) {
         setIsSubmitting(false);
         setIsSuccess(true);
-        const target =
-          safeCallbackUrl &&
-          safeCallbackUrl.startsWith('/') &&
-          !safeCallbackUrl.startsWith('/login') &&
-          !safeCallbackUrl.includes('/auth/signout')
-            ? safeCallbackUrl
-            : '/m';
+        const target = sanitizeCallbackUrl(safeCallbackUrl, '/m');
 
         // Purge any stale Service Worker dynamic/RSC caches immediately
         void purgeBrowserAuthCaches();

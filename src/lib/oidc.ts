@@ -13,7 +13,7 @@ type OIDCProfile = {
   name?: string;
   preferred_username?: string;
   email?: string;
-  [key: string]: any; // Allow indexing for custom claims
+  [key: string]: unknown;
 };
 
 export default function OIDCProvider(config: OIDCConfig): OAuthConfig<OIDCProfile> {
@@ -39,6 +39,10 @@ export default function OIDCProvider(config: OIDCConfig): OAuthConfig<OIDCProfil
     clientId: config.clientId,
     clientSecret: config.clientSecret,
     authorization: { params: { scope: scopes } },
+    // openid-client validates the JOSE header against this client metadata at
+    // callback time. This rejects alg=none, HS256, and algorithm downgrade;
+    // discovery-time advertising alone is not a runtime security control.
+    client: { id_token_signed_response_alg: 'RS256' },
     idToken: true,
     checks: ['pkce', 'state', 'nonce'],
     profile(profile) {

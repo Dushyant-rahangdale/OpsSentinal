@@ -1,9 +1,23 @@
 import { logger } from '@/lib/logger';
-import { assertSafeOutboundUrl } from '@/lib/network-security';
+import { assertSafeOutboundUrl, safeOutboundFetch } from '@/lib/network-security';
+import {
+  getMicrosoftEntraTenantAuthority,
+  isMicrosoftEntraGenericAuthority,
+  isMicrosoftEntraHost,
+} from '@/lib/oidc-provider';
+import { getOidcProviderPolicy } from '@/lib/oidc/provider-policy';
 
 export type OidcValidationResult = {
   isValid: boolean;
   error?: string;
+};
+
+type OidcDiscoveryMetadata = {
+  issuer?: unknown;
+  authorization_endpoint?: unknown;
+  token_endpoint?: unknown;
+  jwks_uri?: unknown;
+  id_token_signing_alg_values_supported?: unknown;
 };
 
 function hasQueryOrHash(urlObj: URL): boolean {
@@ -32,15 +46,24 @@ function isPrivateOrLocalHostname(hostname: string): boolean {
   return false;
 }
 
+/**
+ * Normalize an issuer for comparison: strip trailing slashes and lowercase
+ * the scheme+host (path remains case-sensitive per OIDC).
+ */
+function normalizeIssuerForComparison(issuer: string): string {
+  const parsed = new URL(issuer);
+  const scheme = parsed.protocol.toLowerCase();
+  const host = parsed.host.toLowerCase();
+  return `${scheme}//${host}${parsed.pathname.replace(/\/+$/, '')}`;
+}
+
 export async function validateOidcConnection(issuer: string): Promise<OidcValidationResult> {
   try {
-    // 1. Parse and validate the input
     const trimmedIssuer = issuer?.trim();
     if (!trimmedIssuer) {
       return { isValid: false, error: 'Issuer URL is required.' };
     }
 
-    // 2. Parse the URL — this validates structure
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(trimmedIssuer);
@@ -48,7 +71,6 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       return { isValid: false, error: 'Invalid Issuer URL format.' };
     }
 
-    // 3. Enforce HTTPS
     if (parsedUrl.protocol !== 'https:') {
       return {
         isValid: false,
@@ -56,7 +78,6 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       };
     }
 
-    // 4. Reject URLs with queries or fragments
     if (hasQueryOrHash(parsedUrl)) {
       return {
         isValid: false,
@@ -64,9 +85,8 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       };
     }
 
-    // 5. Extract and validate hostname
     const validatedHostname = parsedUrl.hostname.toLowerCase();
-    const port = parsedUrl.port; // preserve non-standard ports
+    const port = parsedUrl.port;
 
     if (!validatedHostname) {
       return { isValid: false, error: 'Issuer URL has no hostname.' };
@@ -82,7 +102,34 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       };
     }
 
-    // 6. Build the discovery URL from validated primitives.
+    // OpsKnight currently models one enterprise/workforce OIDC provider. Entra
+    // generic authorities admit identities from multiple tenants, so require a
+    // tenant-specific authority until an explicit tenant allowlist exists.
+    if (isMicrosoftEntraHost(validatedHostname)) {
+      const authority = getMicrosoftEntraTenantAuthority(parsedUrl);
+      if (!authority || isMicrosoftEntraGenericAuthority(authority)) {
+        logger.warn('[OIDC Validation] Entra non-tenant-specific authority rejected', {
+          component: 'oidc-validation',
+          hostname: validatedHostname,
+          authority,
+        });
+        return {
+          isValid: false,
+          error:
+            'Microsoft Entra common, organizations, and consumers authorities are not allowed. Configure a tenant-specific issuer URL (for example https://login.microsoftonline.com/<tenant-id>/v2.0).',
+        };
+      }
+    }
+
+    const providerPolicy = getOidcProviderPolicy(trimmedIssuer);
+    if (!providerPolicy.validateIssuer(parsedUrl)) {
+      return {
+        isValid: false,
+        error: `The configured issuer is not valid for the detected ${providerPolicy.family} provider policy.`,
+      };
+    }
+
+    // Build the discovery URL only from validated primitives.
     const cleanPath = parsedUrl.pathname.replace(/\/+$/, '');
     const pathSegments = cleanPath.split('/').filter(Boolean);
     if (pathSegments.some(seg => !/^[a-zA-Z0-9._-]+$/.test(seg))) {
@@ -105,11 +152,12 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       return { isValid: false, error: 'OIDC issuer resolves to a restricted network address.' };
     }
 
-    const response = await fetch(discoveryUrl, {
+    // Fetch through the socket-validating safe dispatcher, closing the DNS
+    // rebinding / TOCTOU gap between validation and the actual connection.
+    const response = await safeOutboundFetch(discoveryUrl, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(5000),
-      redirect: 'manual',
     });
 
     if (response.status >= 300 && response.status < 400) {
@@ -127,10 +175,38 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       };
     }
 
-    const config = await response.json();
+    const config = (await response.json()) as OidcDiscoveryMetadata;
 
-    // 2. Metadata Check: Verify required endpoints exist
-    if (!config.authorization_endpoint || !config.token_endpoint || !config.jwks_uri) {
+    // OIDC Discovery requires metadata issuer equality with the configured
+    // issuer. Preserve this check: it prevents discovery substitution.
+    if (typeof config.issuer !== 'string' || !config.issuer) {
+      return {
+        isValid: false,
+        error: 'Issuer metadata is missing the required "issuer" field.',
+      };
+    }
+
+    const expectedIssuer = normalizeIssuerForComparison(trimmedIssuer);
+    const metadataIssuer = normalizeIssuerForComparison(config.issuer);
+    if (metadataIssuer !== expectedIssuer) {
+      logger.warn('[OIDC Validation] Discovery issuer mismatch', {
+        component: 'oidc-validation',
+        configuredIssuer: trimmedIssuer,
+        metadataIssuer: config.issuer,
+      });
+      return {
+        isValid: false,
+        error:
+          'Issuer metadata "issuer" field does not match the configured issuer URL. Configure the exact issuer returned by the identity provider.',
+      };
+    }
+
+    const requiredEndpoints = [
+      config.authorization_endpoint,
+      config.token_endpoint,
+      config.jwks_uri,
+    ];
+    if (requiredEndpoints.some(endpoint => typeof endpoint !== 'string' || !endpoint)) {
       return {
         isValid: false,
         error:
@@ -138,13 +214,9 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       };
     }
 
-    for (const endpoint of [
-      config.authorization_endpoint,
-      config.token_endpoint,
-      config.jwks_uri,
-    ]) {
+    for (const endpoint of requiredEndpoints) {
       try {
-        await assertSafeOutboundUrl(String(endpoint), { requireHttps: true });
+        await assertSafeOutboundUrl(endpoint as string, { requireHttps: true });
       } catch {
         return {
           isValid: false,
@@ -153,9 +225,12 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       }
     }
 
-    // 3. Algorithm Check: permit asymmetric enterprise-safe algorithms only.
+    // Permit asymmetric enterprise-safe algorithms only when the provider
+    // advertises the metadata. Providers that omit the optional advertisement
+    // remain compatible; token verification still enforces the provider's OIDC
+    // cryptographic checks at authentication time.
     if (Array.isArray(config.id_token_signing_alg_values_supported)) {
-      const permittedAlgorithms = new Set(['RS256', 'ES256']);
+      const permittedAlgorithms = new Set(providerPolicy.acceptedIdTokenAlgorithms);
       if (
         !config.id_token_signing_alg_values_supported.some((alg: unknown) =>
           permittedAlgorithms.has(String(alg))
@@ -163,7 +238,7 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       ) {
         return {
           isValid: false,
-          error: 'Identity Provider must support RS256 or ES256 ID-token signing.',
+          error: `Identity Provider must support an accepted ID-token signing algorithm (${[...permittedAlgorithms].join(', ')}).`,
         };
       }
     }
@@ -172,7 +247,6 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
   } catch (error) {
     logger.error('[OIDC Validation] Connection error', { error });
 
-    // Distinguish between network errors and others
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     if (errorMessage.includes('fetch failed') || errorMessage.includes('timeout')) {
       return {

@@ -182,6 +182,14 @@ export default function SsoSettingsForm({
   const [roleMappingPreview, setRoleMappingPreview] =
     useState<RoleMappingRule[]>(initialRoleMapping);
   const [roleMappingResetKey, setRoleMappingResetKey] = useState(0);
+  // Profile-mapping fields are controlled so edits participate in dirty-state
+  // detection ("Profile Mapping changed" stays visible until saved).
+  const initialProfileMapping = {
+    department: initialConfig?.profileMapping?.department ?? '',
+    jobTitle: initialConfig?.profileMapping?.jobTitle ?? '',
+    avatarUrl: initialConfig?.profileMapping?.avatarUrl ?? '',
+  };
+  const [profileMappingValues, setProfileMappingValues] = useState(initialProfileMapping);
 
   const handleTestConnection = async () => {
     if (!issuerUrl) {
@@ -196,7 +204,10 @@ export default function SsoSettingsForm({
       const result = await validateOidcConnectionAction(issuerUrl);
       if (result.isValid) {
         setTestStatus('success');
-        setTestMessage('Connection successful.');
+        // The test validates OIDC discovery only — it does not exercise the
+        // client ID, client secret, redirect URI, or the authorization-code
+        // exchange.  Keep the message accurate.
+        setTestMessage('OIDC discovery validated. Save to apply.');
         setLastTested(new Date().toLocaleString());
       } else {
         setTestStatus('error');
@@ -216,6 +227,10 @@ export default function SsoSettingsForm({
     'Enter the issuer URL from your provider.';
   const isRoleMappingDirty =
     JSON.stringify(roleMappingPreview) !== JSON.stringify(initialRoleMapping);
+  const isProfileMappingDirty =
+    profileMappingValues.department.trim() !== initialProfileMapping.department.trim() ||
+    profileMappingValues.jobTitle.trim() !== initialProfileMapping.jobTitle.trim() ||
+    profileMappingValues.avatarUrl.trim() !== initialProfileMapping.avatarUrl.trim();
   const isDirty =
     enabled !== initialEnabled ||
     issuerUrl.trim() !== initialIssuer.trim() ||
@@ -225,7 +240,8 @@ export default function SsoSettingsForm({
     providerLabelValue.trim() !== initialProviderLabel.trim() ||
     customScopesValue.trim() !== initialCustomScopes.trim() ||
     autoProvision !== initialAutoProvision ||
-    isRoleMappingDirty;
+    isRoleMappingDirty ||
+    isProfileMappingDirty;
   const isIssuerValid = (value: string) => {
     if (!value.trim()) return false;
     try {
@@ -307,6 +323,7 @@ export default function SsoSettingsForm({
         setValidationErrors({});
         setRoleMappingPreview(initialRoleMapping);
         setRoleMappingResetKey(current => current + 1);
+        setProfileMappingValues(initialProfileMapping);
       }}
       className="space-y-6"
     >
@@ -315,6 +332,7 @@ export default function SsoSettingsForm({
           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertDescription className="text-amber-700 dark:text-amber-300">
             Encryption key is required before saving SSO secrets. Set{' '}
+            <code className="font-mono text-xs">ENCRYPTION_KEYS</code> or{' '}
             <code className="font-mono text-xs">ENCRYPTION_KEY</code> in your environment.
           </AlertDescription>
         </Alert>
@@ -766,7 +784,13 @@ export default function SsoSettingsForm({
                   type="text"
                   name="profileMapping.department"
                   placeholder="e.g. department"
-                  defaultValue={initialConfig?.profileMapping?.department ?? ''}
+                  value={profileMappingValues.department}
+                  onChange={event =>
+                    setProfileMappingValues(current => ({
+                      ...current,
+                      department: event.target.value,
+                    }))
+                  }
                   className="h-8 text-xs font-mono"
                 />
               </div>
@@ -779,7 +803,13 @@ export default function SsoSettingsForm({
                   type="text"
                   name="profileMapping.jobTitle"
                   placeholder="e.g. title"
-                  defaultValue={initialConfig?.profileMapping?.jobTitle ?? ''}
+                  value={profileMappingValues.jobTitle}
+                  onChange={event =>
+                    setProfileMappingValues(current => ({
+                      ...current,
+                      jobTitle: event.target.value,
+                    }))
+                  }
                   className="h-8 text-xs font-mono"
                 />
               </div>
@@ -792,7 +822,13 @@ export default function SsoSettingsForm({
                   type="text"
                   name="profileMapping.avatarUrl"
                   placeholder="e.g. picture"
-                  defaultValue={initialConfig?.profileMapping?.avatarUrl ?? ''}
+                  value={profileMappingValues.avatarUrl}
+                  onChange={event =>
+                    setProfileMappingValues(current => ({
+                      ...current,
+                      avatarUrl: event.target.value,
+                    }))
+                  }
                   className="h-8 text-xs font-mono"
                 />
               </div>

@@ -364,11 +364,11 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
       expect(linked).toBeNull();
     });
 
-    it('rejects sign-in when OIDC identity is already linked to another user', async () => {
+    it('identity-first: an existing (issuer, sub) link authenticates the linked user even when the token email differs', async () => {
       await seedOidcConfig();
 
       const user1 = await createTestUser({ email: 'oidc-a@example.com' });
-      const user2 = await createTestUser({ email: 'oidc-b@example.com' });
+      await createTestUser({ email: 'oidc-b@example.com' });
 
       await testPrisma.oidcIdentity.create({
         data: {
@@ -386,13 +386,18 @@ describeIfRealDB('Authentication Logic (Real DB)', () => {
         profile?: Record<string, unknown> | null;
       }) => Promise<boolean>;
 
+      const mockUser = { id: 'sub-conflict', email: 'oidc-b@example.com', name: 'User B' };
       const ok = await signInCallback({
-        user: { id: user2.id, email: user2.email, name: user2.name },
+        user: mockUser,
         account: { provider: 'oidc', providerAccountId: 'sub-conflict' },
         profile: { email_verified: true, sub: 'sub-conflict' },
       });
 
-      expect(ok).toBe(false);
+      // The (issuer, sub) identity is authoritative: the sign-in succeeds and
+      // the authenticated user id is the linked account (user1), not the email
+      // claim (user2). Email is never used to resolve an existing identity.
+      expect(ok).toBe(true);
+      expect(mockUser.id).toBe(user1.id);
     });
 
     it('ignores invalid role mappings', async () => {
