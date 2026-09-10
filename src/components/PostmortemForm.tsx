@@ -9,6 +9,7 @@ import {
   generatePostmortemDraft,
 } from '@/app/(app)/postmortems/actions';
 import { normalizeLegacyActionItems, type ActionItem } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import { notify as toast } from '@/lib/toast';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -85,7 +86,8 @@ type PostmortemFormProps = {
       name: string;
     };
   }>;
-  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
+  /** Mandatory capability contract passed to all persisted action-item Jira surfaces. */
+  jiraCapability: JiraCapability;
 };
 
 // Helper to extract clean root cause narrative without embedded 5-whys or factor blocks
