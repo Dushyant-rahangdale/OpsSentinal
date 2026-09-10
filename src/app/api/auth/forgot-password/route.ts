@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { initiatePasswordReset } from '@/lib/password-reset';
 import { logger } from '@/lib/logger';
 import { getClientIp } from '@/lib/client-ip';
+import { readJsonBodyWithLimit } from '@/lib/request-body';
 
 const GENERIC_MESSAGE =
   'If an account exists with this email, you will receive password reset instructions.';
@@ -27,9 +28,7 @@ function response() {
 
 export async function POST(req: NextRequest) {
   try {
-    const contentLength = Number(req.headers.get('content-length') || '0');
-    if (Number.isFinite(contentLength) && contentLength > 4096) return response();
-    const parsed = schema.safeParse(await req.json());
+    const parsed = schema.safeParse(await readJsonBodyWithLimit(req, 4096));
     if (!parsed.success) return response();
     await initiatePasswordReset(parsed.data.email, getClientIp(req.headers));
     return response();
