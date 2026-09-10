@@ -1,15 +1,13 @@
+import {
+  normalizeJiraIssueReference,
+  serializeJiraIssueReference,
+  type JiraIssueReference,
+} from '@/lib/jira-references';
+
 export type ActionItemStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED';
 export type ActionItemPriority = 'HIGH' | 'MEDIUM' | 'LOW';
 
-export type ActionItemExternalIssue = {
-  linkId: string;
-  provider: string;
-  key: string;
-  url: string;
-  status?: string;
-  assignee?: string;
-  syncState?: string;
-};
+export type ActionItemExternalIssue = JiraIssueReference;
 
 export type ActionItem = {
   id: string;
@@ -76,34 +74,15 @@ function sanitizeIdentifierPart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 160);
 }
 
-function normalizeExternalIssue(value: unknown): ActionItemExternalIssue | undefined {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const entry = value as Record<string, unknown>;
-  const linkId = toStringOrUndefined(entry.linkId) ?? toStringOrUndefined(entry.id);
-  const provider = toStringOrUndefined(entry.provider);
-  const key = toStringOrUndefined(entry.key) ?? toStringOrUndefined(entry.externalKey);
-  const url = toStringOrUndefined(entry.url) ?? toStringOrUndefined(entry.externalUrl);
-
-  if (!linkId || !provider || !key || !url) return undefined;
-
-  return {
-    linkId,
-    provider,
-    key,
-    url,
-    status: toStringOrUndefined(entry.status) ?? toStringOrUndefined(entry.externalStatus),
-    assignee: toStringOrUndefined(entry.assignee) ?? toStringOrUndefined(entry.externalAssignee),
-    syncState: toStringOrUndefined(entry.syncState),
-  };
-}
-
-function normalizeExternalIssueFromEntry(entry: Record<string, unknown>): ActionItemExternalIssue | undefined {
-  const direct = normalizeExternalIssue(entry.externalIssue);
+function normalizeExternalIssueFromEntry(
+  entry: Record<string, unknown>
+): ActionItemExternalIssue | undefined {
+  const direct = normalizeJiraIssueReference(entry.externalIssue);
   if (direct) return direct;
 
   if (!Array.isArray(entry.externalIssueLinks)) return undefined;
   for (const link of entry.externalIssueLinks) {
-    const normalized = normalizeExternalIssue(link);
+    const normalized = normalizeJiraIssueReference(link);
     if (normalized) return normalized;
   }
   return undefined;
@@ -209,17 +188,7 @@ export function serializeActionItemRecord(record: ActionItemRecordLike): ActionI
     status: record.status,
     priority: record.priority,
     completedAt: record.completedAt ?? undefined,
-    externalIssue: externalIssue
-      ? {
-          linkId: externalIssue.id,
-          provider: externalIssue.provider,
-          key: externalIssue.externalKey,
-          url: externalIssue.externalUrl,
-          status: externalIssue.externalStatus ?? undefined,
-          assignee: externalIssue.externalAssignee ?? undefined,
-          syncState: externalIssue.syncState ?? undefined,
-        }
-      : undefined,
+    externalIssue: externalIssue ? serializeJiraIssueReference(externalIssue) : undefined,
   };
 }
 
