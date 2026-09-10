@@ -26,13 +26,15 @@ describeIntegration('Password reset issuance concurrency', () => {
       )
     );
 
-    expect(new Set(issued.map(value => value.tokenHash))).toHaveLength(20);
+    expect(new Set(issued.map(value => value.tokenHash)).size).toBe(20);
 
     const records = await testPrisma.userToken.findMany({
       where: { userId: user.id, type: 'PASSWORD_RESET' },
       orderBy: { createdAt: 'asc' },
     });
-    const live = records.filter(record => !record.usedAt && !record.revokedAt && record.expiresAt > new Date());
+    const live = records.filter(
+      record => !record.usedAt && !record.revokedAt && record.expiresAt > new Date()
+    );
 
     expect(records).toHaveLength(20);
     expect(live).toHaveLength(1);
