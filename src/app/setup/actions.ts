@@ -11,7 +11,10 @@ import { logAudit } from '@/lib/audit';
 import { logger } from '@/lib/logger';
 import { getClientIp } from '@/lib/client-ip';
 import { consumeAuthRateLimit, authPrivacyDigest } from '@/lib/auth-abuse';
-import { validatePasswordStrength } from '@/lib/passwords';
+import {
+  PASSWORD_TRANSPORT_MAX_CODE_UNITS,
+  validatePasswordStrength,
+} from '@/lib/passwords';
 import {
   BOOTSTRAP_CONFIG_KEY,
   hashBootstrapCode,
@@ -26,8 +29,8 @@ const schema = z
     name: z.string().trim().min(1).max(100),
     email: z.string().trim().email().max(254),
     bootstrapCode: z.string().trim().min(16).max(256),
-    password: z.string().min(1).max(64),
-    confirmPassword: z.string().min(1).max(64),
+    password: z.string().min(1).max(PASSWORD_TRANSPORT_MAX_CODE_UNITS),
+    confirmPassword: z.string().min(1).max(PASSWORD_TRANSPORT_MAX_CODE_UNITS),
   })
   .strict();
 
@@ -41,12 +44,10 @@ function constantTimeHexEqual(left: string, right: string): boolean {
 }
 
 function constantTimeUtf8Equal(left: string, right: string): boolean {
-  try {
-    return timingSafeEqual(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
-  } catch {
-    // timingSafeEqual rejects buffers with different byte lengths.
-    return false;
-  }
+  const leftBytes = Buffer.from(left, 'utf8');
+  const rightBytes = Buffer.from(right, 'utf8');
+  if (leftBytes.length !== rightBytes.length) return false;
+  return timingSafeEqual(leftBytes, rightBytes);
 }
 
 export async function bootstrapAdmin(formData: FormData) {
@@ -64,7 +65,7 @@ export async function bootstrapAdmin(formData: FormData) {
   if (!constantTimeUtf8Equal(password, confirmPassword)) {
     return { error: 'Passwords do not match.' };
   }
-  const passwordError = validatePasswordStrength(password);
+  const passwordError = validatePasswordStrength(password, { email, displayName: name });
   if (passwordError) return { error: passwordError };
 
   const headerStore = await headers();
