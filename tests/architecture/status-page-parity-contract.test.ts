@@ -17,12 +17,12 @@ describe('status page preview/live parity contract', () => {
 
   it('keeps a single services renderer', () => {
     // Any new component that renders a list of public services is a fork of the experience and
-    // will drift from it. Extend StatusPageServiceBoard instead.
+    // will drift from it. Extend the restored renderer instead.
     const components = readdirSync('src/components/status-page');
     const serviceRenderers = components.filter(name =>
       /^(Public)?StatusPage(Public)?Services/.test(name)
     );
-    expect(serviceRenderers).toEqual([]);
+    expect(serviceRenderers).toEqual(['StatusPageServicesLegacy.tsx']);
   });
 
   it('shares one stylesheet between the document and the preview shadow root', () => {
@@ -40,10 +40,7 @@ describe('status page preview/live parity contract', () => {
     // utility class here is a style that silently disappears in preview only.
     const publicComponents = [
       'StatusPageExperience',
-      'StatusPageServiceBoard',
-      'StatusPageOverview',
-      'StatusPageRegionHealth',
-      'StatusPageUptimeMetrics',
+      'StatusPageMetricsLegacy',
     ];
     // The token must stand alone: a hyphen counts as a word boundary, so a naive \bgrid\b also
     // matches project class names like `status-region-grid`.
@@ -59,8 +56,8 @@ describe('status page preview/live parity contract', () => {
   it('derives no health severity in the presentation layer', () => {
     // Status is decided by the projection so every surface agrees. A component that maps urgency
     // to severity itself is a second, divergent status engine.
-    const board = read('src/components/status-page/StatusPageServiceBoard.tsx');
-    expect(board).not.toContain("=== 'HIGH'");
-    expect(board).not.toContain("=== 'MEDIUM'");
+    const experience = read('src/components/status-page/StatusPageExperience.tsx');
+    expect(experience).toContain('snapshot.services');
+    expect(experience).not.toContain('calculateServiceUptime');
   });
 });

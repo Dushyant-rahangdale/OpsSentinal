@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Button, FormField } from '@/components/ui';
 
 interface StatusPageSubscribeProps {
     statusPageId: string;
@@ -68,49 +67,44 @@ export default function StatusPageSubscribe({ statusPageId, onSuccess }: StatusP
 
     if (success) {
         return (
-            <div style={{
-                padding: 'var(--spacing-4)',
-                background: '#dcfce7',
-                border: '1px solid #86efac',
-                borderRadius: 'var(--radius-md)',
-                textAlign: 'center',
-            }}>
-                <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: '600', color: '#166534', marginBottom: 'var(--spacing-2)' }}>
+            <div className="status-subscribe__success" role="status">
+                <strong>
                     ✓ Successfully Subscribed!
-                </div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: '#15803d' }}>
+                </strong>
+                <span>
                     Please check your email to verify your subscription.
-                </div>
+                </span>
             </div>
         );
     }
 
     return (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
-            <FormField
-                type="input"
-                inputType="email"
-                label="Subscribe to Updates"
+        <form onSubmit={handleSubmit} className="status-subscribe">
+            <div className="status-subscribe__copy">
+                <strong>Never miss a service update</strong>
+                <span>Get notified when incidents occur or service status changes.</span>
+            </div>
+            <div className="status-subscribe__controls">
+              <label className="sr-only" htmlFor={`status-subscribe-email-${statusPageId}`}>Email address</label>
+              <input
+                id={`status-subscribe-email-${statusPageId}`}
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                helperText="Get notified when incidents occur or status changes"
-                inputClassName="status-page-input"
+                className="status-subscribe__input"
+                autoComplete="email"
                 required
-            />
+              />
+              <button type="submit" className="status-subscribe__button" disabled={isPending}>
+                {isPending ? 'Subscribing…' : 'Subscribe'}
+              </button>
+            </div>
             {error && (
-                <div style={{ padding: 'var(--spacing-2)', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 'var(--radius-md)', color: '#991b1b', fontSize: 'var(--font-size-sm)' }}>
+                <div className="status-subscribe__error" role="alert">
                     {error}
                 </div>
             )}
-            <Button
-                type="submit"
-                variant="primary"
-                isLoading={isPending}
-                fullWidth
-            >
-                Subscribe
-            </Button>
         </form>
     );
 }

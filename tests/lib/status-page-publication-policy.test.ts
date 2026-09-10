@@ -198,11 +198,11 @@ describe('classifyStatusPageChange', () => {
     ).toBe('ENABLE');
   });
 
-  it('treats layout toggles as presentation, not disclosure', () => {
+  it('treats layout toggles as presentation and changelog hiding as disclosure tightening', () => {
     // These render data that showServiceRegions already gates.
     expect(classify({ showServicesByRegion: true }).classes).toEqual(['PRESENTATION']);
     expect(classify({ showRegionHeatmap: true }).classes).toEqual(['PRESENTATION']);
-    expect(classify({ showChangelog: false }).classes).toEqual(['PRESENTATION']);
+    expect(classify({ showChangelog: false }).classes).toEqual(['PRIVACY_TIGHTENING']);
   });
 
   describe('route deltas', () => {

@@ -122,6 +122,15 @@ export interface PublicStatusPageSnapshot {
     showRegionHeatmap: boolean;
     showPostIncidentReview: boolean;
     showChangelog: boolean;
+    visibility?: {
+      services: boolean;
+      incidents: boolean;
+      metrics: boolean;
+      uptime: boolean;
+      regions: boolean;
+      changelog: boolean;
+      subscribe: boolean;
+    };
     enableUptimeExports: boolean;
     footerText?: string | null;
     contactEmail?: string | null;

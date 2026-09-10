@@ -1570,6 +1570,7 @@ export default function StatusPageConfig({ statusPage, allServices }: StatusPage
     incidents: [],
     showServices: formData.showServices,
     showIncidents: formData.showIncidents,
+    showMetrics: formData.showMetrics,
     showSubscribe: formData.showSubscribe,
     showServicesByRegion: formData.showServicesByRegion,
     showServiceOwners: formData.showServiceOwners,

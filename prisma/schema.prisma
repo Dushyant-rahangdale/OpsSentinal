@@ -1556,16 +1556,34 @@ model StatusPage {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  services      StatusPageService[]
-  announcements StatusPageAnnouncement[]
-  apiTokens     StatusPageApiToken[]
-  subscriptions StatusPageSubscription[]
-  webhooks      StatusPageWebhook[]
-  snapshot      StatusPageSnapshot?
-  assets        StatusPageAsset[]
+  services        StatusPageService[]
+  announcements   StatusPageAnnouncement[]
+  apiTokens       StatusPageApiToken[]
+  subscriptions   StatusPageSubscription[]
+  webhooks        StatusPageWebhook[]
+  snapshot        StatusPageSnapshot?
+  assets          StatusPageAsset[]
+  routeOperations StatusPageRouteOperation[]
 
   @@index([enabled])
   @@index([isDefault, enabled])
+}
+
+model StatusPageRouteOperation {
+  id            String     @id @default(cuid())
+  statusPageId  String
+  routeKey      String
+  operation     String
+  state         String     @default("PENDING")
+  attempts      Int        @default(0)
+  nextAttemptAt DateTime   @default(now())
+  lastError     String?
+  createdAt     DateTime   @default(now())
+  completedAt   DateTime?
+  statusPage    StatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@unique([statusPageId, routeKey, operation])
+  @@index([state, nextAttemptAt])
 }
 
 // Derived, sanitized publication data. A revision fences concurrent rebuilds.
@@ -1653,18 +1671,18 @@ model StatusPageApiToken {
 
 // Status Page Subscriptions (Email notifications)
 model StatusPageSubscription {
-  id                String    @id @default(cuid())
+  id                String                      @id @default(cuid())
   statusPageId      String
   email             String
   phone             String? // For SMS (future)
-  token             String    @unique // Unsubscribe token
-  subscribedAt      DateTime  @default(now())
+  token             String                      @unique // Unsubscribe token
+  subscribedAt      DateTime                    @default(now())
   unsubscribedAt    DateTime?
-  verified          Boolean   @default(false)
+  verified          Boolean                     @default(false)
   state             StatusPageSubscriptionState @default(PENDING)
   suppressionReason String?
   lastBounceAt      DateTime?
-  bounceCount       Int       @default(0)
+  bounceCount       Int                         @default(0)
   complainedAt      DateTime?
   lastDeliveredAt   DateTime?
   lastFailedAt      DateTime?

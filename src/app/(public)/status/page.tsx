@@ -70,6 +70,14 @@ export async function renderPublicStatusPage(slug?: string) {
         />
       );
     }
+    if (projected.servingState === 'DISABLED') {
+      return (
+        <Unavailable
+          title="Status page unavailable"
+          message="This status page is currently disabled."
+        />
+      );
+    }
     return (
       <Unavailable
         title="Status information unavailable"

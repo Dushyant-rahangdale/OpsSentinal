@@ -356,6 +356,8 @@ async function runOnce() {
     const integrationReconciliation = await reconcileIntegrationControlPlane();
     const { reconcileStatusPageSnapshots } = await import('./status-pages/snapshot');
     const statusPageReconciliation = await reconcileStatusPageSnapshots();
+    const { reconcileStatusPageRouteOperations } = await import('./status-pages/route-operations');
+    const statusPageRouteReconciliation = await reconcileStatusPageRouteOperations();
 
     logger.info('[Cron] Critical tasks processed', {
       escalations: { processed: escalationResult.processed, total: escalationResult.total },
@@ -363,6 +365,7 @@ async function runOnce() {
       escalationRecovery: reconciliation,
       integrationRecovery: integrationReconciliation,
       statusPageReconciliation,
+      statusPageRouteReconciliation,
     });
 
     // Group 2: Secondary tasks (can run in parallel)
