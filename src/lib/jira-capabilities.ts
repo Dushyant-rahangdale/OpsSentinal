@@ -24,6 +24,12 @@ export type JiraCapabilityReason =
 export type JiraCapability = {
   workspaceState: JiraWorkspaceState;
   serviceMapped: boolean;
+  /**
+   * Effective metadata-sync policy for an already-linked Jira issue.
+   * No service mapping defaults to true because mapping is required for Create,
+   * not for reading/syncing an explicitly linked issue. An existing mapping can
+   * explicitly disable sync with `syncEnabled=false`.
+   */
   syncEnabled: boolean;
   showOperationalJira: boolean;
   canCreate: boolean;
@@ -46,6 +52,7 @@ type DeriveJiraCapabilityInput = {
   workspaceState: JiraWorkspaceState;
   canManage: boolean;
   serviceMapped: boolean;
+  /** Effective sync policy, independent of whether a mapping exists. */
   syncEnabled: boolean;
   rawEnabled: boolean;
 };
@@ -70,9 +77,12 @@ export function deriveJiraCapability(input: DeriveJiraCapabilityInput): JiraCapa
   const isOperational = workspaceState === 'ENABLED';
   const showOperationalJira = isOperational && canManage;
 
+  // Mapping is required only for issue creation. Existing issues can be linked,
+  // synced, and unlinked without a service mapping. If a mapping exists,
+  // syncEnabled=false explicitly disables metadata synchronization.
   const canCreate = showOperationalJira && serviceMapped;
   const canLink = showOperationalJira;
-  const canSync = showOperationalJira && serviceMapped && syncEnabled;
+  const canSync = showOperationalJira && syncEnabled;
   const canUnlink = showOperationalJira;
 
   let reason: JiraCapabilityReason = 'OK';
@@ -103,6 +113,12 @@ const jiraConfigSelect = {
   apiTokenEncrypted: true,
 } as const;
 
+function getEffectiveSyncEnabled(mapping: { syncEnabled: boolean } | null | undefined): boolean {
+  // Explicitly linked Jira issues remain syncable when no mapping exists.
+  // A configured service mapping is the only place that can opt out.
+  return mapping?.syncEnabled ?? true;
+}
+
 export async function getJiraCapabilities(input: JiraCapabilityInput): Promise<JiraCapability> {
   const { serviceId, canManage } = input;
 
@@ -126,7 +142,7 @@ export async function getJiraCapabilities(input: JiraCapabilityInput): Promise<J
     // capability reads are informational and must never surface create/link/sync/unlink.
     canManage: Boolean(serviceId) && canManage,
     serviceMapped,
-    syncEnabled: serviceMapped && Boolean(mapping?.syncEnabled),
+    syncEnabled: serviceId ? getEffectiveSyncEnabled(mapping) : false,
     rawEnabled: jiraConfig?.enabled ?? false,
   });
 }
@@ -163,7 +179,7 @@ export async function getJiraCapabilitiesByServiceIds(
           workspaceState,
           canManage,
           serviceMapped,
-          syncEnabled: serviceMapped && Boolean(mapping?.syncEnabled),
+          syncEnabled: getEffectiveSyncEnabled(mapping),
           rawEnabled: jiraConfig?.enabled ?? false,
         }),
       ];
