@@ -277,10 +277,11 @@ export default function LoginClient({
                 disabled={isSubmitting || isSuccess}
                 className="flex items-center gap-2.5 cursor-pointer select-none group focus:outline-none disabled:opacity-50"
               >
-                {/* Custom checkbox */}
+                {/* Custom checkbox — focus ring shown on the box itself for keyboard users */}
                 <span
                   className={cn(
                     'h-4 w-4 rounded flex items-center justify-center border transition-all duration-150 shrink-0',
+                    'group-focus-visible:ring-2 group-focus-visible:ring-slate-900 group-focus-visible:ring-offset-1 dark:group-focus-visible:ring-white',
                     rememberMe
                       ? 'bg-slate-900 border-slate-900 dark:bg-white dark:border-white'
                       : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 group-hover:border-slate-500 dark:group-hover:border-slate-400'
