@@ -40,6 +40,15 @@ function constantTimeHexEqual(left: string, right: string): boolean {
   return timingSafeEqual(Buffer.from(left, 'hex'), Buffer.from(right, 'hex'));
 }
 
+function constantTimeUtf8Equal(left: string, right: string): boolean {
+  try {
+    return timingSafeEqual(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
+  } catch {
+    // timingSafeEqual rejects buffers with different byte lengths.
+    return false;
+  }
+}
+
 export async function bootstrapAdmin(formData: FormData) {
   const parsed = schema.safeParse({
     name: formData.get('name'),
@@ -52,7 +61,9 @@ export async function bootstrapAdmin(formData: FormData) {
 
   const { name, bootstrapCode, password, confirmPassword } = parsed.data;
   const email = parsed.data.email.toLowerCase();
-  if (password !== confirmPassword) return { error: 'Passwords do not match.' };
+  if (!constantTimeUtf8Equal(password, confirmPassword)) {
+    return { error: 'Passwords do not match.' };
+  }
   const passwordError = validatePasswordStrength(password);
   if (passwordError) return { error: passwordError };
 
