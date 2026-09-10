@@ -35,7 +35,7 @@ export type JiraCapability = {
 };
 
 export type JiraCapabilityInput = {
-  /** Service ID for the entity being rendered. Null is workspace-only state. */
+  /** Service ID for the entity being rendered. Null is informational workspace state only. */
   serviceId: string | null;
   canManage: boolean;
   /** @deprecated Aggregate operational actions must use per-entity capabilities. */
@@ -64,11 +64,7 @@ function getWorkspaceState(jiraConfig: JiraConfigSnapshot): JiraWorkspaceState {
   return 'CONFIGURED';
 }
 
-/**
- * Pure capability derivation used by production and directly exercised by tests.
- * Aggregate screens must call this contract once per entity/service rather than inventing a
- * workspace-wide capability that can lie about service mapping or syncEnabled.
- */
+/** Pure capability derivation used by production and directly exercised by tests. */
 export function deriveJiraCapability(input: DeriveJiraCapabilityInput): JiraCapability {
   const { workspaceState, canManage, serviceMapped, syncEnabled, rawEnabled } = input;
   const isOperational = workspaceState === 'ENABLED';
@@ -126,17 +122,16 @@ export async function getJiraCapabilities(input: JiraCapabilityInput): Promise<J
   const serviceMapped = Boolean(mapping?.projectKey);
   return deriveJiraCapability({
     workspaceState: getWorkspaceState(jiraConfig),
-    canManage,
+    // No service context means there is no safe operational target. Workspace-only
+    // capability reads are informational and must never surface create/link/sync/unlink.
+    canManage: Boolean(serviceId) && canManage,
     serviceMapped,
-    // Missing service context or mapping must never imply that sync is enabled.
     syncEnabled: serviceMapped && Boolean(mapping?.syncEnabled),
     rawEnabled: jiraConfig?.enabled ?? false,
   });
 }
 
-/**
- * Resolve capabilities for aggregate screens in two queries regardless of item count.
- */
+/** Resolve capabilities for aggregate screens in two queries regardless of item count. */
 export async function getJiraCapabilitiesByServiceIds(
   serviceIds: string[],
   canManage: boolean
@@ -192,12 +187,7 @@ export async function getActionItemJiraCapabilities(
 
 export type JiraSyncResult =
   | { ok: true; link: { id: string; externalKey: string; externalStatus: string | null } }
-  | {
-      ok: false;
-      code: string;
-      retryable: boolean;
-      message: string;
-    };
+  | { ok: false; code: string; retryable: boolean; message: string };
 
 export type JiraErrorCode =
   | 'JIRA_AUTH_FAILED'
