@@ -112,6 +112,24 @@ describe('status page publication lifecycle', () => {
     expect((await getStatusPageSnapshot(page.id)).snapshot).not.toBeNull();
   });
 
+  it('does not hold a long transaction while another bounded snapshot build owns the lease', async () => {
+    const { page } = await livePage();
+    await testPrisma.statusPageSnapshot.update({
+      where: { statusPageId: page.id },
+      data: {
+        buildLeaseToken: 'another-projector',
+        buildLeaseExpiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    // A busy build is contention, not a failed publication; the caller must leave the current
+    // immutable snapshot alone and let the lease owner finish its bounded read phase.
+    await expect(rebuildStatusPageSnapshot(page.id)).resolves.toBe(false);
+    await expect(
+      testPrisma.statusPageSnapshot.findUniqueOrThrow({ where: { statusPageId: page.id } })
+    ).resolves.toMatchObject({ buildLeaseToken: 'another-projector' });
+  });
+
   it('withdraws the projection before writing a privacy tightening, then republishes', async () => {
     const { page } = await livePage();
     const { revoke } = trackStoreCalls();

@@ -18,6 +18,30 @@ const indexes = [
    ON "StatusPageSubscription"("statusPageId", "state")`,
 ];
 
+const requiredIndexNames = [
+  'idx_notification_tenant_fair_delivery',
+  'StatusPageSubscription_statusPageId_state_idx',
+];
+
+async function assertRequiredIndexes() {
+  const rows = await prisma.$queryRawUnsafe(`
+    SELECT c.relname AS name, i.indisvalid AS valid
+    FROM pg_index i
+    JOIN pg_class c ON c.oid = i.indexrelid
+    WHERE c.relname = ANY(ARRAY[${requiredIndexNames
+      .map(name => `'${name}'`)
+      .join(',')}])
+  `);
+  const valid = new Set(rows.filter(row => row.valid).map(row => row.name));
+  const missing = requiredIndexNames.filter(name => !valid.has(name));
+  if (missing.length > 0) {
+    throw new Error(
+      `Status platform online indexes are missing or invalid: ${missing.join(', ')}. ` +
+        'Run npm run prisma:indexes:status-platform before starting notification workers.'
+    );
+  }
+}
+
 async function main() {
   let lockAcquired = false;
 
@@ -31,6 +55,7 @@ async function main() {
     for (const statement of indexes) {
       await prisma.$executeRawUnsafe(statement);
     }
+    await assertRequiredIndexes();
   } finally {
     if (lockAcquired) {
       await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${INSTALL_LOCK_ID})`);

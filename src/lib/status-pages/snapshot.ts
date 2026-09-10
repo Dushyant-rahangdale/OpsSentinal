@@ -1,5 +1,6 @@
 import 'server-only';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import prisma from '@/lib/prisma';
 import { statusPagePublicationLimits } from './publication-policy';
 import {
@@ -10,7 +11,11 @@ import { activeIncidentStatuses } from '@/lib/incident-status';
 import { getReportingWindowForDays } from '@/lib/retention-policy';
 import { projectServiceStatus, visibleMaintenanceServiceIds } from '@/lib/status-page-projection';
 import { calculateMultiServiceUptime } from '@/lib/sla-server';
-import { addOperationalMetric, setOperationalGauge } from '@/lib/metrics/operational/registry';
+import {
+  addOperationalMetric,
+  observeOperationalHistogram,
+  setOperationalGauge,
+} from '@/lib/metrics/operational/registry';
 import {
   getStatusPageServingStore,
   manifestServingState,
@@ -40,9 +45,10 @@ function parseStatusPageSnapshot(
 /** All public data is explicitly projected; no Prisma records are spread into the payload. */
 export async function buildStatusPageSnapshot(
   pageId: string,
-  revision: string
+  revision: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<StatusPageSnapshot | null> {
-  const page = await prisma.statusPage.findUnique({
+  const page = await db.statusPage.findUnique({
     where: { id: pageId },
     include: {
       services: {
@@ -78,7 +84,7 @@ export async function buildStatusPageSnapshot(
   const earliestRequiredStart = new Date(Math.min(window.start.getTime(), window90.start.getTime()));
   const [groups, incidents, uptime90, uptime30, historyIncidentsByService, historyMaintenance] = ids.length
     ? await Promise.all([
-        prisma.incident.groupBy({
+        db.incident.groupBy({
           by: ['serviceId', 'urgency'],
           where: {
             serviceId: { in: ids },
@@ -88,7 +94,7 @@ export async function buildStatusPageSnapshot(
           _count: { _all: true },
         }),
         visibility.showIncidents
-          ? prisma.incident.findMany({
+          ? db.incident.findMany({
               where: {
                 serviceId: { in: ids },
                 visibility: 'PUBLIC',
@@ -115,14 +121,14 @@ export async function buildStatusPageSnapshot(
               },
             })
           : [],
-        visibility.showUptime ? calculateMultiServiceUptime(ids, window90.start, now, 'PUBLIC') : {},
+        visibility.showUptime ? calculateMultiServiceUptime(ids, window90.start, now, 'PUBLIC', db) : {},
         visibility.showUptime
-          ? calculateMultiServiceUptime(ids, window30.start, now, 'PUBLIC')
+          ? calculateMultiServiceUptime(ids, window30.start, now, 'PUBLIC', db)
           : {},
         visibility.showUptime
-          ? loadHistoryIncidentsByService(ids, earliestRequiredStart, now)
+          ? loadHistoryIncidentsByService(ids, earliestRequiredStart, now, db)
           : new Map<string, HistoryIncident[]>(),
-        visibility.showUptime ? prisma.statusPageAnnouncement.findMany({
+        visibility.showUptime ? db.statusPageAnnouncement.findMany({
           where: {
             statusPageId: pageId, type: 'MAINTENANCE', startDate: { lte: now },
             OR: [{ endDate: { gte: earliestRequiredStart } }, { endDate: null }],
@@ -313,6 +319,7 @@ export async function publishStatusPageSnapshot(
   const attempts = Math.max(1, options.lockAttempts ?? 1);
   const retryDelayMs = Math.max(0, options.lockRetryDelayMs ?? 50);
   const deadline = Date.now() + budgetMs;
+  const publicationStartedAt = Date.now();
 
   for (let attempt = 0; attempt < attempts; attempt++) {
     const remainingMs = deadline - Date.now();
@@ -338,10 +345,21 @@ export async function publishStatusPageSnapshot(
     }
     if (!result.snapshot) return { kind: 'disabled', revision: result.revision };
     try {
+      const storeStartedAt = Date.now();
       await pushSnapshotToServingStore(pageId, result.revision, result.snapshot);
+      observeOperationalHistogram(
+        'opsknight_status_page_snapshot_build_duration_seconds',
+        (Date.now() - storeStartedAt) / 1_000,
+        { phase: 'serving_store' }
+      );
     } catch (error) {
       return { kind: 'failed', error };
     }
+    observeOperationalHistogram(
+      'opsknight_status_page_snapshot_build_duration_seconds',
+      (Date.now() - publicationStartedAt) / 1_000,
+      { phase: 'total' }
+    );
     return { kind: 'published', revision: result.revision };
   }
   return { kind: 'contended' };
@@ -356,38 +374,94 @@ async function buildAndCommitSnapshot(
   | 'superseded'
   | { snapshot: StatusPageSnapshot | null; revision: string }
 > {
-  const result = await prisma.$transaction(
-    async tx => {
-      // Abort server-side rather than letting a slow build outlive the caller's budget.
-      await tx.$executeRawUnsafe(
-        `SET LOCAL statement_timeout = ${Math.max(1_000, Math.floor(remainingMs))}`
+  const lease = await acquireSnapshotBuildLease(pageId, remainingMs);
+  if (lease === 'contended' || lease === 'missing') return lease;
+  const startedAt = Date.now();
+  try {
+    // The bounded read transaction gives the candidate a consistent source view and enforces the
+    // server-side statement timeout. It deliberately holds no writer lock or build lease
+    // transaction while history and uptime are calculated.
+    const snapshot = await prisma.$transaction(
+      async tx => {
+        await tx.$executeRawUnsafe(
+          `SET LOCAL statement_timeout = ${Math.max(1_000, Math.floor(remainingMs))}`
+        );
+        return buildStatusPageSnapshot(pageId, lease.revision.toString(), tx);
+      },
+      { timeout: Math.max(1_000, Math.floor(remainingMs)) }
+    );
+    observeOperationalHistogram(
+      'opsknight_status_page_snapshot_build_duration_seconds',
+      (Date.now() - startedAt) / 1_000,
+      { phase: 'read' }
+    );
+    if (snapshot) {
+      setOperationalGauge(
+        'opsknight_status_page_snapshot_bytes',
+        Buffer.byteLength(JSON.stringify(snapshot), 'utf8')
       );
-      const locks = await tx.$queryRaw<
-        Array<{ acquired: boolean }>
-      >`SELECT pg_try_advisory_xact_lock(hashtextextended(${`status-snapshot:${pageId}`}, 0)) AS acquired`;
-      if (!locks[0]?.acquired) return 'contended' as const;
-      const rows = await tx.$queryRaw<
-        Array<{ revision: bigint }>
-      >`SELECT "revision" FROM "StatusPageSnapshot" WHERE "statusPageId" = ${pageId}`;
-      if (!rows[0]) return 'missing' as const;
-      const revision = rows[0].revision;
-      const snapshot = await buildStatusPageSnapshot(pageId, revision.toString());
-      // The only writer of LIVE. A disabled page records DISABLED so the reader can tell
-      // "turned off" from "temporarily unavailable".
-      const changed = await tx.$executeRaw`
-      UPDATE "StatusPageSnapshot" SET "payload" = ${snapshot ? JSON.stringify(snapshot) : null}::jsonb,
-        "publishedRevision" = ${revision}, "generatedAt" = NOW(), "lastError" = NULL,
-        "servingState" = ${snapshot ? 'LIVE' : 'DISABLED'}
-      WHERE "statusPageId" = ${pageId} AND "revision" = ${revision}
-    `;
-      // Drivers can surface row counts as either number or bigint; normalize at this boundary.
-      return Number(changed) === 1
-        ? { snapshot, revision: revision.toString() }
-        : ('superseded' as const);
-    },
-    { timeout: 30_000 }
-  );
-  return result;
+    }
+    const commitStartedAt = Date.now();
+    const committed = await commitSnapshotCandidate(pageId, lease, snapshot);
+    observeOperationalHistogram(
+      'opsknight_status_page_snapshot_build_duration_seconds',
+      (Date.now() - commitStartedAt) / 1_000,
+      { phase: 'commit' }
+    );
+    if (!committed) return 'superseded';
+    return { snapshot, revision: lease.revision.toString() };
+  } catch (error) {
+    await releaseSnapshotBuildLease(pageId, lease.token);
+    throw error;
+  }
+}
+
+type SnapshotBuildLease = { token: string; revision: bigint };
+
+async function acquireSnapshotBuildLease(
+  pageId: string,
+  remainingMs: number
+): Promise<SnapshotBuildLease | 'contended' | 'missing'> {
+  const token = randomUUID();
+  const expiresAt = new Date(Date.now() + Math.max(10_000, Math.min(60_000, remainingMs + 5_000)));
+  const rows = await prisma.$queryRaw<Array<{ revision: bigint }>>`
+    UPDATE "StatusPageSnapshot"
+    SET "buildLeaseToken" = ${token}, "buildLeaseExpiresAt" = ${expiresAt}
+    WHERE "statusPageId" = ${pageId}
+      AND ("buildLeaseToken" IS NULL OR "buildLeaseExpiresAt" < NOW())
+    RETURNING "revision"
+  `;
+  if (rows[0]) return { token, revision: rows[0].revision };
+  const exists = await prisma.statusPageSnapshot.findUnique({
+    where: { statusPageId: pageId },
+    select: { statusPageId: true },
+  });
+  return exists ? 'contended' : 'missing';
+}
+
+async function commitSnapshotCandidate(
+  pageId: string,
+  lease: SnapshotBuildLease,
+  snapshot: StatusPageSnapshot | null
+): Promise<boolean> {
+  const changed = await prisma.$executeRaw`
+    UPDATE "StatusPageSnapshot"
+    SET "payload" = ${snapshot ? JSON.stringify(snapshot) : null}::jsonb,
+      "publishedRevision" = ${lease.revision}, "generatedAt" = NOW(), "lastError" = NULL,
+      "servingState" = ${snapshot ? 'LIVE' : 'DISABLED'},
+      "buildLeaseToken" = NULL, "buildLeaseExpiresAt" = NULL
+    WHERE "statusPageId" = ${pageId} AND "revision" = ${lease.revision}
+      AND "buildLeaseToken" = ${lease.token} AND "buildLeaseExpiresAt" >= NOW()
+  `;
+  return Number(changed) === 1;
+}
+
+async function releaseSnapshotBuildLease(pageId: string, token: string) {
+  await prisma.$executeRaw`
+    UPDATE "StatusPageSnapshot"
+    SET "buildLeaseToken" = NULL, "buildLeaseExpiresAt" = NULL
+    WHERE "statusPageId" = ${pageId} AND "buildLeaseToken" = ${token}
+  `;
 }
 
 async function pushSnapshotToServingStore(
