@@ -37,18 +37,19 @@ export default async function PostmortemPage({
     getCurrentAuthorizationActor(),
   ]);
   const canEdit = permissions.isResponderOrAbove;
-  // All users can view published postmortems, but only responders+ can edit
   const canView = postmortem ? postmortem.status === 'PUBLISHED' || canEdit : canEdit;
 
-  // Compute workspace-level Jira capabilities for the postmortem view
-  // (action items within a postmortem can belong to multiple services).
+  // A postmortem belongs to exactly one incident/service. Resolve Jira capabilities
+  // from that concrete service instead of using a workspace-wide approximation.
+  const incidentService = await prisma.incident.findUnique({
+    where: { id: incidentId },
+    select: { serviceId: true },
+  });
   const jiraCapability = await getJiraCapabilities({
-    serviceId: null,
+    serviceId: incidentService?.serviceId ?? null,
     canManage: canEdit,
-    scope: 'workspace',
   });
 
-  // Get users for action items assignment
   const users = await prisma.user.findMany({
     where: { AND: [{ status: 'ACTIVE' }, dashboardUserReadWhere(actor)] },
     select: { id: true, name: true, email: true },
@@ -56,8 +57,6 @@ export default async function PostmortemPage({
   });
 
   if (!postmortem) {
-    // Check if incident exists and is resolved
-    const prisma = (await import('@/lib/prisma')).default;
     const incident = await prisma.incident.findFirst({
       where: { AND: [incidentReadWhere(actor), { id: incidentId }] },
       select: { id: true, title: true, status: true },
@@ -85,7 +84,6 @@ export default async function PostmortemPage({
       );
     }
 
-    // Show create form for new postmortem
     return (
       <div className="p-6">
         <div className="mb-6">
@@ -114,7 +112,6 @@ export default async function PostmortemPage({
     );
   }
 
-  // Show existing postmortem
   return (
     <div className="p-6">
       <div className="mb-6">
