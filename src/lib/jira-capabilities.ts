@@ -50,6 +50,20 @@ type DeriveJiraCapabilityInput = {
   rawEnabled: boolean;
 };
 
+type JiraConfigSnapshot = {
+  enabled: boolean;
+  baseUrl: string | null;
+  userEmail: string | null;
+  apiTokenEncrypted: string | null;
+} | null;
+
+function getWorkspaceState(jiraConfig: JiraConfigSnapshot): JiraWorkspaceState {
+  if (!jiraConfig) return 'NOT_CONFIGURED';
+  if (!jiraConfig.enabled) return 'DISABLED';
+  if (jiraConfig.baseUrl && jiraConfig.userEmail && jiraConfig.apiTokenEncrypted) return 'ENABLED';
+  return 'CONFIGURED';
+}
+
 /**
  * Pure capability derivation used by production and directly exercised by tests.
  * Aggregate screens must call this contract once per entity/service rather than inventing a
@@ -86,53 +100,80 @@ export function deriveJiraCapability(input: DeriveJiraCapabilityInput): JiraCapa
   };
 }
 
+const jiraConfigSelect = {
+  enabled: true,
+  baseUrl: true,
+  userEmail: true,
+  apiTokenEncrypted: true,
+} as const;
+
 export async function getJiraCapabilities(input: JiraCapabilityInput): Promise<JiraCapability> {
   const { serviceId, canManage } = input;
 
-  const jiraConfig = await prisma.jiraConfig.findUnique({
-    where: { id: 'default' },
-    select: {
-      enabled: true,
-      baseUrl: true,
-      userEmail: true,
-      apiTokenEncrypted: true,
-    },
-  });
+  const [jiraConfig, mapping] = await Promise.all([
+    prisma.jiraConfig.findUnique({
+      where: { id: 'default' },
+      select: jiraConfigSelect,
+    }),
+    serviceId
+      ? prisma.jiraServiceMapping.findUnique({
+          where: { serviceId },
+          select: { projectKey: true, syncEnabled: true },
+        })
+      : Promise.resolve(null),
+  ]);
 
-  let workspaceState: JiraWorkspaceState;
-  if (!jiraConfig) {
-    workspaceState = 'NOT_CONFIGURED';
-  } else if (!jiraConfig.enabled) {
-    workspaceState = 'DISABLED';
-  } else if (jiraConfig.baseUrl && jiraConfig.userEmail && jiraConfig.apiTokenEncrypted) {
-    workspaceState = 'ENABLED';
-  } else {
-    workspaceState = 'CONFIGURED';
-  }
-
-  let serviceMapped = false;
-  // Missing service context or missing mapping must never imply that sync is enabled.
-  let syncEnabled = false;
-
-  if (serviceId) {
-    const mapping = await prisma.jiraServiceMapping.findUnique({
-      where: { serviceId },
-      select: {
-        projectKey: true,
-        syncEnabled: true,
-      },
-    });
-    serviceMapped = Boolean(mapping?.projectKey);
-    syncEnabled = serviceMapped && Boolean(mapping?.syncEnabled);
-  }
-
+  const serviceMapped = Boolean(mapping?.projectKey);
   return deriveJiraCapability({
-    workspaceState,
+    workspaceState: getWorkspaceState(jiraConfig),
     canManage,
     serviceMapped,
-    syncEnabled,
+    // Missing service context or mapping must never imply that sync is enabled.
+    syncEnabled: serviceMapped && Boolean(mapping?.syncEnabled),
     rawEnabled: jiraConfig?.enabled ?? false,
   });
+}
+
+/**
+ * Resolve capabilities for aggregate screens in two queries regardless of item count.
+ */
+export async function getJiraCapabilitiesByServiceIds(
+  serviceIds: string[],
+  canManage: boolean
+): Promise<Record<string, JiraCapability>> {
+  const uniqueServiceIds = [...new Set(serviceIds.filter(Boolean))];
+  if (uniqueServiceIds.length === 0) return {};
+
+  const [jiraConfig, mappings] = await Promise.all([
+    prisma.jiraConfig.findUnique({
+      where: { id: 'default' },
+      select: jiraConfigSelect,
+    }),
+    prisma.jiraServiceMapping.findMany({
+      where: { serviceId: { in: uniqueServiceIds } },
+      select: { serviceId: true, projectKey: true, syncEnabled: true },
+    }),
+  ]);
+
+  const workspaceState = getWorkspaceState(jiraConfig);
+  const mappingsByServiceId = new Map(mappings.map(mapping => [mapping.serviceId, mapping]));
+
+  return Object.fromEntries(
+    uniqueServiceIds.map(serviceId => {
+      const mapping = mappingsByServiceId.get(serviceId);
+      const serviceMapped = Boolean(mapping?.projectKey);
+      return [
+        serviceId,
+        deriveJiraCapability({
+          workspaceState,
+          canManage,
+          serviceMapped,
+          syncEnabled: serviceMapped && Boolean(mapping?.syncEnabled),
+          rawEnabled: jiraConfig?.enabled ?? false,
+        }),
+      ];
+    })
+  );
 }
 
 export async function getIncidentJiraCapabilities(
