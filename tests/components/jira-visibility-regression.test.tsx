@@ -167,7 +167,7 @@ describe('IncidentCommandBar Jira visibility regression contract', () => {
 
   it('ENABLED + unmapped allows Link and linked-issue Sync but not Create', () => {
     const unmapped = capability({ serviceMapped: false, syncEnabled: true });
-    const { rerender } = renderIncident(unmapped);
+    const { unmount } = renderIncident(unmapped);
 
     const linkButtons = screen.getAllByText('Link Jira Issue');
     expect(linkButtons.length).toBeGreaterThan(0);
@@ -175,32 +175,11 @@ describe('IncidentCommandBar Jira visibility regression contract', () => {
     expect(screen.queryByText('Create Jira Issue')).not.toBeInTheDocument();
     expect(screen.getByText('Configure Service Mapping')).toBeInTheDocument();
 
-    rerender(
-      <IncidentCommandBar
-        incidentId="incident-1"
-        currentStatus="OPEN"
-        canManage
-        canAcknowledge={false}
-        snoozedUntil={null}
-        onAcknowledge={vi.fn()}
-        onUnacknowledge={vi.fn()}
-        onUnsnooze={vi.fn()}
-        onSuppress={vi.fn()}
-        onUnsuppress={vi.fn()}
-        resolvingIncident={{} as never}
-        postmortemHref="/postmortems/incident-1"
-        postmortemExists={false}
-        warRoom={null}
-        jira={{
-          links: [incidentLink],
-          enabled: true,
-          serviceMapped: false,
-          serviceSettingsHref: '/services/service-1?tab=settings',
-        }}
-        tags={[]}
-        jiraCapability={unmapped}
-      />
-    );
+    // Treat the no-link and historical-link states as independent user scenarios.
+    // Re-rendering the same tree would intentionally preserve the open Radix dialog
+    // portal and make the issue key appear in both the dialog and command bar.
+    unmount();
+    renderIncident(unmapped, [incidentLink]);
 
     expect(screen.getByText('OPS-123')).toBeInTheDocument();
     expect(screen.getByText('Sync')).toBeInTheDocument();
