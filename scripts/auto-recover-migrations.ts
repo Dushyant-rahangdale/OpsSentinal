@@ -43,6 +43,7 @@ interface RecoveryResult {
 const JIRA_ROLLING_GUARD_MIGRATION = '20260910174500_guard_jira_mapping_workspace';
 const JIRA_DUPLICATE_GUARD_FAILURE =
     'Cannot enforce one Jira issue per action item: duplicate Jira links exist.';
+const JIRA_ACTION_ITEM_UNIQUE_INDEX = 'ExternalIssueLink_jira_actionItemId_unique';
 
 function getRecoveryMode(): RecoveryMode {
     return process.env.MIGRATION_RECOVERY_MODE === 'aggressive' ? 'aggressive' : 'safe';
@@ -113,10 +114,18 @@ async function getFailedMigrations(): Promise<MigrationRecord[]> {
 }
 
 function isKnownJiraDuplicateGuardFailure(migration: MigrationRecord): boolean {
-    return (
-        migration.migration_name === JIRA_ROLLING_GUARD_MIGRATION &&
-        Boolean(migration.logs?.includes(JIRA_DUPLICATE_GUARD_FAILURE))
-    );
+    if (migration.migration_name !== JIRA_ROLLING_GUARD_MIGRATION || !migration.logs) {
+        return false;
+    }
+
+    const failedLegacyPrecondition = migration.logs.includes(JIRA_DUPLICATE_GUARD_FAILURE);
+    const failedUniqueIndexBuild =
+        migration.logs.includes(JIRA_ACTION_ITEM_UNIQUE_INDEX) &&
+        (migration.logs.includes('could not create unique index') ||
+            migration.logs.includes('is duplicated') ||
+            migration.logs.includes('duplicate key value'));
+
+    return failedLegacyPrecondition || failedUniqueIndexBuild;
 }
 
 /**
@@ -128,12 +137,14 @@ async function autoResolveMigration(migration: MigrationRecord): Promise<Recover
 
     logger.info('Analyzing migration', { component: 'auto-recover-migrations', migration: migrationName });
 
-    // This migration was shipped with a startup-time legacy-data precondition.
-    // Existing installations can legitimately contain duplicate historical Jira
-    // links, so that precondition is not rolling-deployment compatible. Resolve
-    // only the exact, known failure signature as applied; the immediately
-    // following repair migration recreates the workspace guards idempotently and
-    // installs a write-time uniqueness guard that tolerates legacy duplicates.
+    // This migration was shipped with a startup-time legacy-data precondition
+    // followed by a unique-index build. Both can fail during a rolling deploy:
+    // historical duplicates can trip the precondition, or an older application
+    // instance can create a duplicate between the check and index creation.
+    // Resolve only these exact data-conflict signatures as applied; the
+    // immediately following repair migration recreates the workspace guards
+    // idempotently and installs a write-time uniqueness guard that tolerates
+    // legacy duplicates.
     if (isKnownJiraDuplicateGuardFailure(migration)) {
         logger.warn('Recovering known Jira rolling-migration compatibility failure', {
             component: 'auto-recover-migrations',
@@ -147,7 +158,7 @@ async function autoResolveMigration(migration: MigrationRecord): Promise<Recover
                 action: 'resolved',
                 migration: migrationName,
                 reason:
-                    'Known legacy Jira duplicate precondition bypassed; forward repair migration will enforce new writes safely',
+                    'Known Jira duplicate/index conflict bypassed; forward repair migration will enforce new writes safely',
             };
         } catch (error) {
             return {
