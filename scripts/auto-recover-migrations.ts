@@ -40,6 +40,10 @@ interface RecoveryResult {
     reason: string;
 }
 
+const JIRA_ROLLING_GUARD_MIGRATION = '20260910174500_guard_jira_mapping_workspace';
+const JIRA_DUPLICATE_GUARD_FAILURE =
+    'Cannot enforce one Jira issue per action item: duplicate Jira links exist.';
+
 function getRecoveryMode(): RecoveryMode {
     return process.env.MIGRATION_RECOVERY_MODE === 'aggressive' ? 'aggressive' : 'safe';
 }
@@ -89,7 +93,8 @@ async function enumValueExists(enumName: string, value: string): Promise<boolean
 }
 
 /**
- * Get all failed migrations from database
+ * Get all active failed migrations from database. Rolled-back attempts remain
+ * in Prisma's history and must not be recovered a second time.
  */
 async function getFailedMigrations(): Promise<MigrationRecord[]> {
     try {
@@ -97,6 +102,7 @@ async function getFailedMigrations(): Promise<MigrationRecord[]> {
       SELECT migration_name, started_at, finished_at, logs
       FROM "_prisma_migrations"
       WHERE finished_at IS NULL
+        AND rolled_back_at IS NULL
       ORDER BY started_at ASC
     `;
         return failed;
@@ -104,6 +110,13 @@ async function getFailedMigrations(): Promise<MigrationRecord[]> {
         logger.error('Failed to query _prisma_migrations', { component: 'auto-recover-migrations', error });
         return [];
     }
+}
+
+function isKnownJiraDuplicateGuardFailure(migration: MigrationRecord): boolean {
+    return (
+        migration.migration_name === JIRA_ROLLING_GUARD_MIGRATION &&
+        Boolean(migration.logs?.includes(JIRA_DUPLICATE_GUARD_FAILURE))
+    );
 }
 
 /**
@@ -114,6 +127,37 @@ async function autoResolveMigration(migration: MigrationRecord): Promise<Recover
     const recoveryMode = getRecoveryMode();
 
     logger.info('Analyzing migration', { component: 'auto-recover-migrations', migration: migrationName });
+
+    // This migration was shipped with a startup-time legacy-data precondition.
+    // Existing installations can legitimately contain duplicate historical Jira
+    // links, so that precondition is not rolling-deployment compatible. Resolve
+    // only the exact, known failure signature as applied; the immediately
+    // following repair migration recreates the workspace guards idempotently and
+    // installs a write-time uniqueness guard that tolerates legacy duplicates.
+    if (isKnownJiraDuplicateGuardFailure(migration)) {
+        logger.warn('Recovering known Jira rolling-migration compatibility failure', {
+            component: 'auto-recover-migrations',
+            migration: migrationName,
+        });
+
+        try {
+            runPrisma(['migrate', 'resolve', '--applied', migrationName]);
+            return {
+                success: true,
+                action: 'resolved',
+                migration: migrationName,
+                reason:
+                    'Known legacy Jira duplicate precondition bypassed; forward repair migration will enforce new writes safely',
+            };
+        } catch (error) {
+            return {
+                success: false,
+                action: 'failed',
+                migration: migrationName,
+                reason: `Failed to resolve known Jira migration: ${formatExecError(error)}`,
+            };
+        }
+    }
 
     // Special handling for known enum migrations
     if (migrationName.includes('escalation_policy_enum')) {
