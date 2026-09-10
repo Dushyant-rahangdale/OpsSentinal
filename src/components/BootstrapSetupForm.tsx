@@ -6,6 +6,7 @@ import { Mail, User, CheckCircle2, AlertCircle, ShieldCheck, KeyRound, Lock } fr
 import { bootstrapAdmin } from '@/app/setup/actions';
 import PasswordStrengthMeter, { isPasswordStrong } from '@/components/auth/PasswordStrengthMeter';
 import Spinner from '@/components/ui/Spinner';
+import { PASSWORD_MAX_LENGTH } from '@/lib/passwords';
 
 type FormState = {
   error?: string | null;
@@ -43,13 +44,14 @@ export default function BootstrapSetupForm() {
     async (_previous, formData) => bootstrapAdmin(formData),
     { error: null, success: false }
   );
+  const passwordsMatch = Object.is(password, confirmPassword);
 
   if (state.success && state.email) {
     return (
       <div className="space-y-5" role="status" aria-live="polite">
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center dark:border-emerald-500/20 dark:bg-emerald-500/10">
           <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-          <h3 className="mt-3 text-lg font-semibold text-slate-950 dark:text-white">
+          <h3 className="mt-3 font-['Space_Grotesk',sans-serif] text-lg font-semibold text-slate-950 dark:text-white">
             Administrator created
           </h3>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
@@ -66,7 +68,7 @@ export default function BootstrapSetupForm() {
     );
   }
 
-  const canSubmit = isPasswordStrong(password) && password === confirmPassword;
+  const canSubmit = isPasswordStrong(password) && passwordsMatch;
 
   return (
     <form action={formAction} className="space-y-5">
@@ -106,7 +108,7 @@ export default function BootstrapSetupForm() {
         </label>
         <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-slate-500">
           <Lock className="ml-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-          <input id="setup-password" name="password" type="password" autoComplete="new-password" required maxLength={64} value={password} onChange={event => setPassword(event.target.value)} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
+          <input id="setup-password" name="password" type="password" autoComplete="new-password" required maxLength={PASSWORD_MAX_LENGTH} value={password} onChange={event => setPassword(event.target.value)} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
         </div>
         <PasswordStrengthMeter password={password} />
       </div>
@@ -115,8 +117,8 @@ export default function BootstrapSetupForm() {
         <label htmlFor="setup-confirm-password" className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
           Confirm password
         </label>
-        <input id="setup-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required maxLength={64} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-slate-500" />
-        {confirmPassword && password !== confirmPassword && (
+        <input id="setup-confirm-password" name="confirmPassword" type="password" autoComplete="new-password" required maxLength={PASSWORD_MAX_LENGTH} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none focus:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-slate-500" />
+        {confirmPassword && !passwordsMatch && (
           <p className="text-xs text-red-600 dark:text-red-400">Passwords do not match.</p>
         )}
       </div>
