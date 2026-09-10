@@ -6,7 +6,12 @@ import {
   createTestService,
   linkServiceToStatusPage,
 } from '../helpers/test-db';
-import { getStatusPageSnapshot, rebuildStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import {
+  getStatusPageSnapshot,
+  publishStatusPageSnapshot,
+  rebuildStatusPageSnapshot,
+  reconcileStatusPageSnapshots,
+} from '@/lib/status-pages/snapshot';
 import { applyStatusPageConfigurationChange } from '@/lib/status-pages/publish-configuration';
 import * as servingStore from '@/lib/status-pages/serving-store';
 import { reconcileStatusPageRouteOperations } from '@/lib/status-pages/route-operations';
@@ -110,6 +115,44 @@ describe('status page publication lifecycle', () => {
     expect(result.updatedAt).toBe(page.updatedAt.toISOString());
     expect(await servingState(page.id)).toBe(before);
     expect((await getStatusPageSnapshot(page.id)).snapshot).not.toBeNull();
+  });
+
+  it('does not hold a long transaction while another bounded snapshot build owns the lease', async () => {
+    const { page } = await livePage();
+    await testPrisma.statusPageSnapshot.update({
+      where: { statusPageId: page.id },
+      data: {
+        buildLeaseToken: 'another-projector',
+        buildLeaseExpiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    // A busy build is contention, not a failed publication; the caller must leave the current
+    // immutable snapshot alone and let the lease owner finish its bounded read phase.
+    await expect(rebuildStatusPageSnapshot(page.id)).resolves.toBe(false);
+    await expect(
+      testPrisma.statusPageSnapshot.findUniqueOrThrow({ where: { statusPageId: page.id } })
+    ).resolves.toMatchObject({ buildLeaseToken: 'another-projector' });
+  });
+
+  it('records a serving-store failure so reconciliation retries it immediately', async () => {
+    const { page } = await livePage();
+    const real = servingStore.getStatusPageServingStore();
+    vi.spyOn(servingStore, 'getStatusPageServingStore').mockImplementation(
+      () =>
+        ({
+          ...bindStore(real),
+          publishSnapshot: vi.fn().mockRejectedValue(new Error('serving store unavailable')),
+        }) as typeof real
+    );
+
+    await expect(publishStatusPageSnapshot(page.id)).resolves.toMatchObject({ kind: 'failed' });
+    await expect(
+      testPrisma.statusPageSnapshot.findUniqueOrThrow({ where: { statusPageId: page.id } })
+    ).resolves.toMatchObject({ lastError: 'serving store unavailable' });
+
+    vi.restoreAllMocks();
+    await expect(reconcileStatusPageSnapshots(1)).resolves.toEqual({ attempted: 1, rebuilt: 1 });
   });
 
   it('withdraws the projection before writing a privacy tightening, then republishes', async () => {
