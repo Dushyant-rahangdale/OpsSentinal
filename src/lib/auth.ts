@@ -50,6 +50,8 @@ function profileClaims(profile: unknown): OidcProfileClaims {
 }
 
 function stringClaim(claims: OidcProfileClaims, key: string): string | null {
+  // Claim names are configuration/token data and the claims object has no prototype-sensitive use.
+  // eslint-disable-next-line security/detect-object-injection
   const value = claims[key];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -600,9 +602,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           }
 
           const claims = profileClaims(profile);
-          const email = typeof user.email === 'string' && user.email.trim()
-            ? user.email.trim().toLowerCase()
-            : null;
+          const email =
+            typeof user.email === 'string' && user.email.trim()
+              ? user.email.trim().toLowerCase()
+              : null;
           const emailVerifiedClaim = coerceBooleanClaim(claims.email_verified);
 
           // An explicit negative verification assertion is always a hard fail.
@@ -641,6 +644,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               ),
               autoProvision: activeConfig.autoProvision,
               allowedDomains: activeConfig.allowedDomains,
+              claims,
             });
           } catch (error) {
             logger.error('[Auth] OIDC identity transaction failed', {
@@ -735,22 +739,22 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           if (activeConfig.profileMapping) {
             const mapping = activeConfig.profileMapping;
 
-            if (mapping.department && claims[mapping.department] != null) {
-              const department = String(claims[mapping.department]);
+            if (mapping.department && typeof claims[mapping.department] === 'string') {
+              const department = (claims[mapping.department] as string).trim().slice(0, 128);
               if (department && department !== targetUser.department) {
                 updateData.department = department;
               }
             }
 
-            if (mapping.jobTitle && claims[mapping.jobTitle] != null) {
-              const jobTitle = String(claims[mapping.jobTitle]);
+            if (mapping.jobTitle && typeof claims[mapping.jobTitle] === 'string') {
+              const jobTitle = (claims[mapping.jobTitle] as string).trim().slice(0, 256);
               if (jobTitle && jobTitle !== targetUser.jobTitle) {
                 updateData.jobTitle = jobTitle;
               }
             }
 
-            if (mapping.avatarUrl && claims[mapping.avatarUrl] != null) {
-              const avatar = String(claims[mapping.avatarUrl]);
+            if (mapping.avatarUrl && typeof claims[mapping.avatarUrl] === 'string') {
+              const avatar = claims[mapping.avatarUrl] as string;
               let safeAvatar: string | null = null;
               try {
                 const parsedAvatar = new URL(avatar);

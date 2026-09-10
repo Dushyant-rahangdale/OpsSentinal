@@ -23,8 +23,8 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 vi.mock('@/lib/db-utils', () => ({
-  runSerializableTransaction: vi.fn(
-    async (operation: (client: typeof tx) => Promise<unknown>) => operation(tx)
+  runSerializableTransaction: vi.fn(async (operation: (client: typeof tx) => Promise<unknown>) =>
+    operation(tx)
   ),
 }));
 
@@ -103,6 +103,42 @@ describe('resolveOidcIdentityForSignIn', () => {
 
     expect(result).toEqual({ ok: false, reason: 'OIDC_EMAIL_REQUIRED' });
     expect(runSerializableTransaction).not.toHaveBeenCalled();
+  });
+
+  it('uses the signed Google hd claim instead of the email suffix for Workspace access', async () => {
+    const result = await resolveOidcIdentityForSignIn({
+      ...baseInput,
+      issuer: 'https://accounts.google.com',
+      claims: { email: 'alice@example.com' },
+    });
+
+    expect(result).toEqual({ ok: false, reason: 'OIDC_ORGANIZATION_REJECTED' });
+    expect(tx.user.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts a Google Workspace identity only when signed hd matches', async () => {
+    const result = await resolveOidcIdentityForSignIn({
+      ...baseInput,
+      issuer: 'https://accounts.google.com',
+      email: 'alice@alias.example',
+      claims: { hd: 'EXAMPLE.COM' },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(tx.user.create).toHaveBeenCalled();
+  });
+
+  it('does not use an Entra email suffix as tenant membership proof', async () => {
+    const result = await resolveOidcIdentityForSignIn({
+      ...baseInput,
+      issuer: 'https://login.microsoftonline.com/tenant-id/v2.0',
+      email: 'alice@outside.example',
+      emailVerifiedClaim: undefined,
+      requireEmailVerifiedClaim: false,
+      claims: { tid: 'tenant-id' },
+    });
+
+    expect(result.ok).toBe(true);
   });
 
   it('rejects an established identity whose linked OpsKnight user is disabled', async () => {

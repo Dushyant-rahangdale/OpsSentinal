@@ -5,6 +5,7 @@ import {
   isMicrosoftEntraGenericAuthority,
   isMicrosoftEntraHost,
 } from '@/lib/oidc-provider';
+import { getOidcProviderPolicy } from '@/lib/oidc/provider-policy';
 
 export type OidcValidationResult = {
   isValid: boolean;
@@ -120,6 +121,14 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       }
     }
 
+    const providerPolicy = getOidcProviderPolicy(trimmedIssuer);
+    if (!providerPolicy.validateIssuer(parsedUrl)) {
+      return {
+        isValid: false,
+        error: `The configured issuer is not valid for the detected ${providerPolicy.family} provider policy.`,
+      };
+    }
+
     // Build the discovery URL only from validated primitives.
     const cleanPath = parsedUrl.pathname.replace(/\/+$/, '');
     const pathSegments = cleanPath.split('/').filter(Boolean);
@@ -221,7 +230,7 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
     // remain compatible; token verification still enforces the provider's OIDC
     // cryptographic checks at authentication time.
     if (Array.isArray(config.id_token_signing_alg_values_supported)) {
-      const permittedAlgorithms = new Set(['RS256', 'ES256']);
+      const permittedAlgorithms = new Set(providerPolicy.acceptedIdTokenAlgorithms);
       if (
         !config.id_token_signing_alg_values_supported.some((alg: unknown) =>
           permittedAlgorithms.has(String(alg))
@@ -229,7 +238,7 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       ) {
         return {
           isValid: false,
-          error: 'Identity Provider must support RS256 or ES256 ID-token signing.',
+          error: `Identity Provider must support an accepted ID-token signing algorithm (${[...permittedAlgorithms].join(', ')}).`,
         };
       }
     }

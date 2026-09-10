@@ -31,7 +31,8 @@ export function validateEncryptionKeyConfiguration(
 
   const keyIds = new Set<string>();
   for (const entry of entries) {
-    if (!entry || entry !== entry.trim()) return { valid: false, reason: 'invalid-whitespace' };
+    if (!entry) return { valid: false, reason: 'invalid-separator' };
+    if (entry !== entry.trim()) return { valid: false, reason: 'invalid-whitespace' };
 
     const separator = entry.indexOf(':');
     if (separator <= 0 || separator !== entry.lastIndexOf(':')) {

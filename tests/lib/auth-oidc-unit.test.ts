@@ -110,7 +110,7 @@ describe('Auth JWT + OIDC callback contract', () => {
     const result = await signIn({
       user: { email: 'user@example.com', name: 'User', id: 'oidc-sub' },
       account: { provider: 'oidc', providerAccountId: 'oidc-sub', type: 'oauth' },
-      profile: { email_verified: false },
+      profile: { email_verified: false } as never,
       email: undefined,
       credentials: undefined,
     });
@@ -175,7 +175,7 @@ describe('Auth JWT + OIDC callback contract', () => {
     const result = await signIn({
       user,
       account: { provider: 'oidc', providerAccountId: 'oidc-sub', type: 'oauth' },
-      profile: { email_verified: true, sub: 'oidc-sub' },
+      profile: { email_verified: true, sub: 'oidc-sub' } as never,
       email: undefined,
       credentials: undefined,
     });
@@ -195,7 +195,7 @@ describe('Auth JWT + OIDC callback contract', () => {
     const result = await signIn({
       user: { email: 'user@example.com', name: 'User', id: 'oidc-sub' },
       account: { provider: 'oidc', providerAccountId: 'oidc-sub', type: 'oauth' },
-      profile: { email_verified: true, sub: 'oidc-sub' },
+      profile: { email_verified: true, sub: 'oidc-sub' } as never,
       email: undefined,
       credentials: undefined,
     });
@@ -228,7 +228,7 @@ describe('Auth JWT + OIDC callback contract', () => {
     const result = await signIn({
       user: { email: 'user@example.com', name: 'User', id: 'oidc-sub' },
       account: { provider: 'oidc', providerAccountId: 'oidc-sub', type: 'oauth' },
-      profile: { email_verified: true, sub: 'oidc-sub', groups: ['everyone'] },
+      profile: { email_verified: true, sub: 'oidc-sub', groups: ['everyone'] } as never,
       email: undefined,
       credentials: undefined,
     });
@@ -307,7 +307,7 @@ describe('Auth JWT + OIDC callback contract', () => {
     const jwt = await getJwtCallback();
     const token = await jwt({
       token: { sub: 'u1', role: 'USER', userFetchedAt: Date.now() },
-      user: undefined,
+      user: undefined as never,
       account: null,
       profile: undefined,
       isNewUser: false,
@@ -333,7 +333,7 @@ describe('Auth JWT + OIDC callback contract', () => {
 
     const token = await jwt({
       token: { sub: 'u1', role: 'USER', tokenVersion: 1 },
-      user: undefined,
+      user: undefined as never,
       account: null,
       profile: undefined,
       isNewUser: false,
@@ -359,7 +359,7 @@ describe('Auth JWT + OIDC callback contract', () => {
 
     const token = await jwt({
       token: { sub: 'u1', tokenVersion: 0 },
-      user: undefined,
+      user: undefined as never,
       account: null,
       profile: undefined,
       isNewUser: false,

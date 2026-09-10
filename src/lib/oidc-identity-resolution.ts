@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { runSerializableTransaction } from '@/lib/db-utils';
 import { hasOidcEmailLinkAssurance } from '@/lib/oidc-provider';
 import { isOidcLinkingApprovalUsable } from '@/lib/oidc-linking-approval';
+import { getOidcProviderPolicy, type OidcClaims } from '@/lib/oidc/provider-policy';
 
 export type OidcTargetUser = {
   id: string;
@@ -18,6 +19,7 @@ export type OidcIdentityResolutionFailure =
   | 'OIDC_EMAIL_REQUIRED'
   | 'OIDC_EMAIL_ASSURANCE_REQUIRED'
   | 'OIDC_DOMAIN_NOT_ALLOWED'
+  | 'OIDC_ORGANIZATION_REJECTED'
   | 'OIDC_AUTO_PROVISION_DISABLED'
   | 'OIDC_LINK_NOT_APPROVED'
   | 'OIDC_LINK_APPROVAL_EXPIRED'
@@ -46,6 +48,7 @@ type ResolveOidcIdentityInput = {
   requireEmailVerifiedClaim: boolean;
   autoProvision: boolean;
   allowedDomains: string[];
+  claims?: OidcClaims;
 };
 
 const targetUserSelect = {
@@ -62,15 +65,6 @@ const targetUserSelect = {
 function normalizeEmail(email: string | null): string | null {
   const normalized = email?.trim().toLowerCase() ?? '';
   return normalized || null;
-}
-
-function isAllowedDomain(email: string, allowedDomains: string[]): boolean {
-  if (allowedDomains.length === 0) return true;
-  const separator = email.lastIndexOf('@');
-  if (separator <= 0 || separator === email.length - 1) return false;
-  const domain = email.slice(separator + 1).trim().toLowerCase();
-  const normalizedAllowed = allowedDomains.map(value => value.trim().toLowerCase());
-  return normalizedAllowed.includes(domain);
 }
 
 /**
@@ -112,9 +106,12 @@ export async function resolveOidcIdentityForSignIn(
   }
 
   if (!email) return { ok: false, reason: 'OIDC_EMAIL_REQUIRED' };
-  if (!isAllowedDomain(email, input.allowedDomains)) {
-    return { ok: false, reason: 'OIDC_DOMAIN_NOT_ALLOWED' };
-  }
+  const providerPolicy = getOidcProviderPolicy(input.issuer);
+  const organizationResult = providerPolicy.validateOrganizationBoundary(
+    { ...(input.claims ?? {}), email },
+    input.allowedDomains
+  );
+  if (!organizationResult.ok) return organizationResult;
 
   try {
     return await runSerializableTransaction(async tx => {
@@ -247,6 +244,7 @@ export async function resolveOidcIdentityForSignIn(
       'OIDC_EMAIL_REQUIRED',
       'OIDC_EMAIL_ASSURANCE_REQUIRED',
       'OIDC_DOMAIN_NOT_ALLOWED',
+      'OIDC_ORGANIZATION_REJECTED',
       'OIDC_AUTO_PROVISION_DISABLED',
       'OIDC_LINK_NOT_APPROVED',
       'OIDC_LINK_APPROVAL_EXPIRED',
