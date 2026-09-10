@@ -65,11 +65,14 @@ export function detectOidcProviderType(
  * type is only a legacy fallback for rows that do not have an issuer. This is
  * important because provider type affects authentication policy and must not
  * be able to weaken that policy when it disagrees with the issuer hostname.
+ *
+ * The return is typed as string because persisted UI presets are extensible;
+ * all values produced here are still constrained to OidcProviderType.
  */
 export function normalizeOidcProviderType(
   storedProviderType: string | null | undefined,
   issuerUrl: string | null | undefined
-): OidcProviderType {
+): string {
   if (issuerUrl) return detectOidcProviderType(issuerUrl);
   return isKnownProviderType(storedProviderType) ? storedProviderType : 'custom';
 }
