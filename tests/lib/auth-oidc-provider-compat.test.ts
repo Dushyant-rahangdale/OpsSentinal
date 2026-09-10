@@ -144,6 +144,79 @@ describe('OIDC provider-specific email verification compatibility', () => {
     expect(prisma.oidcIdentity.create).toHaveBeenCalled();
   });
 
+  it('blocks an INVITED Entra account with missing email_verified until an admin approves the link', async () => {
+    const invited = {
+      id: 'u1',
+      email: 'user@example.com',
+      name: 'Invited User',
+      role: 'ADMIN',
+      status: 'INVITED',
+    };
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(invited as never)
+      .mockResolvedValueOnce({ id: 'u1', status: 'INVITED' } as never);
+
+    const signIn = await getSignIn();
+    const result = await signIn({
+      user: { email: 'user@example.com', name: 'Invited User', id: 'entra-sub' },
+      account: { provider: 'oidc', providerAccountId: 'entra-sub' },
+      profile: { sub: 'entra-sub' },
+    });
+
+    expect(result).toBe(false);
+    expect(prisma.oidcLinkingApproval.findFirst).toHaveBeenCalledWith({
+      where: { userId: 'u1', revokedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.oidcIdentity.create).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('allows an approved INVITED Entra account with missing email_verified and consumes the approval', async () => {
+    const invited = {
+      id: 'u1',
+      email: 'user@example.com',
+      name: 'Invited User',
+      role: 'USER',
+      status: 'INVITED',
+    };
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(invited as never)
+      .mockResolvedValueOnce({ id: 'u1', status: 'INVITED' } as never);
+    vi.mocked(prisma.oidcLinkingApproval.findFirst).mockResolvedValue({
+      id: 'approval-1',
+    } as never);
+
+    const signIn = await getSignIn();
+    const result = await signIn({
+      user: { email: 'user@example.com', name: 'Invited User', id: 'entra-sub' },
+      account: { provider: 'oidc', providerAccountId: 'entra-sub' },
+      profile: { sub: 'entra-sub' },
+    });
+
+    expect(result).toBe(true);
+    expect(prisma.oidcLinkingApproval.updateMany).toHaveBeenCalledWith({
+      where: { id: 'approval-1', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(prisma.oidcIdentity.create).toHaveBeenCalledWith({
+      data: {
+        issuer: baseConfig.issuer,
+        subject: 'entra-sub',
+        email: 'user@example.com',
+        userId: 'u1',
+      },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: {
+        status: 'ACTIVE',
+        invitedAt: null,
+        deactivatedAt: null,
+      },
+    });
+  });
+
   it('still rejects an explicit email_verified=false from Entra', async () => {
     const signIn = await getSignIn();
     const result = await signIn({
