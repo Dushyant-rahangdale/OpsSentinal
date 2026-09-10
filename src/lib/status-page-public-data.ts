@@ -4,6 +4,7 @@ import type {
   PublicIncidentUpdateType,
   PublicIncidentUrgency,
 } from '@/lib/status-pages/public-contract';
+import { publicStatusForIncidentUrgency } from '@/lib/status-pages/status-presentation';
 
 export type StatusPagePublicSettings = {
   showServices: boolean;
@@ -57,7 +58,13 @@ type PublicIncidentInput = {
   resolvedAt: string | Date | null;
   acknowledgedAt?: string | Date | null;
   service?: { id?: string; name?: string; region?: string | null } | null;
-  postmortem?: { status?: string; isPublic?: boolean | null } | null;
+  postmortem?: {
+    status?: string;
+    isPublic?: boolean | null;
+    publishedAt?: string | Date | null;
+    title?: string | null;
+    summary?: string | null;
+  } | null;
   events?: Array<{
     id: string;
     type?: string | null;
@@ -86,6 +93,8 @@ export function serializePublicStatusIncident(
   }
   if (visibility.showIncidentUrgency && incident.urgency) {
     result.urgency = incident.urgency as PublicIncidentUrgency;
+    const impact = publicStatusForIncidentUrgency(incident.urgency);
+    if (impact !== 'OPERATIONAL' && impact !== 'MAINTENANCE') result.publicImpact = impact;
   }
   if (visibility.showIncidentTimestamp) {
     result.createdAt = serializeDate(incident.createdAt);
@@ -99,15 +108,16 @@ export function serializePublicStatusIncident(
       ...(incident.service.id ? { id: incident.service.id } : {}),
       ...(incident.service.name ? { name: incident.service.name } : {}),
       ...(visibility.showServiceRegion && incident.service.region
-        ? { regions: incident.service.region.split(',').map(value => value.trim()).filter(Boolean) }
+        ? {
+            regions: incident.service.region
+              .split(',')
+              .map(value => value.trim())
+              .filter(Boolean),
+          }
         : {}),
     };
   }
-  if (
-    visibility.showIncidentId &&
-    visibility.showIncidentDescription &&
-    incident.events?.length
-  ) {
+  if (visibility.showIncidentId && visibility.showIncidentDescription && incident.events?.length) {
     result.updates = incident.events.map(event => ({
       id: event.id,
       type: publicUpdateType(event.type),
@@ -122,6 +132,16 @@ export function serializePublicStatusIncident(
     incident.postmortem.isPublic !== false
   ) {
     result.postIncidentReview = true;
+    if (visibility.showIncidentId && incident.id) {
+      const publishedAt = serializeDate(incident.postmortem.publishedAt);
+      result.postmortem = {
+        available: true,
+        id: incident.id,
+        ...(publishedAt ? { publishedAt } : {}),
+        ...(incident.postmortem.title ? { title: incident.postmortem.title } : {}),
+        ...(incident.postmortem.summary ? { summary: incident.postmortem.summary } : {}),
+      };
+    }
   }
 
   return result;
@@ -143,7 +163,10 @@ export function serializePublicStatusApiIncident(
   incident: PublicIncidentInput,
   settings: StatusPagePublicSettings
 ): Record<string, unknown> {
-  const result = { ...serializePublicStatusIncident(incident, settings) } as Record<string, unknown>;
+  const result = { ...serializePublicStatusIncident(incident, settings) } as Record<
+    string,
+    unknown
+  >;
   const service = result.service;
   if (!service || typeof service !== 'object' || Array.isArray(service)) return result;
 

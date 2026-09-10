@@ -10,7 +10,6 @@ import {
 import { activeIncidentStatuses } from '@/lib/incident-status';
 import { getReportingWindowForDays } from '@/lib/retention-policy';
 import { projectServiceStatus, visibleMaintenanceServiceIds } from '@/lib/status-page-projection';
-import { calculateMultiServiceUptime } from '@/lib/sla-server';
 import {
   addOperationalMetric,
   observeOperationalHistogram,
@@ -23,7 +22,15 @@ import {
   type StatusServingRoute,
 } from './serving-store';
 import type { PublicStatusPageSnapshot } from './public-contract';
-import { aggregatePublicRegions, buildPublicHistorySegments } from './history';
+import { aggregatePublicRegions } from './history';
+import {
+  buildServiceHealthSegments,
+  clipHealthSegments,
+  healthSegmentsToPublic,
+  serviceUptimePercent,
+} from './availability-engine';
+import { projectPublicBranding } from './branding';
+import { publicUptimeGrade } from './presentation';
 import {
   deriveOverallPublicHealth,
   getWorstPublicStatus,
@@ -81,8 +88,10 @@ export async function buildStatusPageSnapshot(
     getReportingWindowForDays(30, 'incident', now),
     getReportingWindowForDays(90, 'incident', now),
   ]);
-  const earliestRequiredStart = new Date(Math.min(window.start.getTime(), window90.start.getTime()));
-  const [groups, incidents, uptime90, uptime30, historyIncidentsByService, historyMaintenance] = ids.length
+  const earliestRequiredStart = new Date(
+    Math.min(window.start.getTime(), window90.start.getTime())
+  );
+  const [groups, incidents, historyIncidentsByService, historyMaintenance] = ids.length
     ? await Promise.all([
         db.incident.groupBy({
           by: ['serviceId', 'urgency'],
@@ -117,28 +126,39 @@ export async function buildStatusPageSnapshot(
                   take: 50,
                   select: { id: true, type: true, message: true, createdAt: true },
                 },
-                postmortem: { select: { status: true, isPublic: true } },
+                postmortem: {
+                  select: {
+                    status: true,
+                    isPublic: true,
+                    publishedAt: true,
+                    title: true,
+                    summary: true,
+                  },
+                },
               },
             })
           : [],
-        visibility.showUptime ? calculateMultiServiceUptime(ids, window90.start, now, 'PUBLIC', db) : {},
-        visibility.showUptime
-          ? calculateMultiServiceUptime(ids, window30.start, now, 'PUBLIC', db)
-          : {},
         visibility.showUptime
           ? loadHistoryIncidentsByService(ids, earliestRequiredStart, now, db)
           : new Map<string, HistoryIncident[]>(),
-        visibility.showUptime ? db.statusPageAnnouncement.findMany({
-          where: {
-            statusPageId: pageId, type: 'MAINTENANCE', startDate: { lte: now },
-            OR: [{ endDate: { gte: earliestRequiredStart } }, { endDate: null }],
-          },
-          select: { startDate: true, endDate: true, affectedServiceIds: true },
-        }) : [],
+        visibility.showUptime
+          ? db.statusPageAnnouncement.findMany({
+              where: {
+                statusPageId: pageId,
+                type: 'MAINTENANCE',
+                startDate: { lte: now },
+                OR: [{ endDate: { gte: earliestRequiredStart } }, { endDate: null }],
+              },
+              select: { startDate: true, endDate: true, affectedServiceIds: true },
+            })
+          : [],
       ])
-    : [[], [], {}, {}, new Map<string, HistoryIncident[]>(), []];
+    : [[], [], new Map<string, HistoryIncident[]>(), []];
 
-  const impactByService = new Map<string, { active: number; statuses: PublicStatusPageSnapshot['status'][] }>();
+  const impactByService = new Map<
+    string,
+    { active: number; statuses: PublicStatusPageSnapshot['status'][] }
+  >();
   for (const group of groups) {
     const current = impactByService.get(group.serviceId) || { active: 0, statuses: [] };
     current.active += group._count._all;
@@ -156,55 +176,188 @@ export async function buildStatusPageSnapshot(
       ? item.affectedServiceIds.filter((value): value is string => typeof value === 'string')
       : [],
   }));
-  const uptime30Values = uptime30 as Record<string, number>;
-  const uptime90Values = uptime90 as Record<string, number>;
+  const uptimeWindowStarts = { days30: window30.start, days90: window90.start };
+  const gradeThresholds = {
+    excellent: page.uptimeExcellentThreshold,
+    good: page.uptimeGoodThreshold,
+  };
+  // Only services actually published on this page are nameable; affected-id references to anything
+  // else are deliberately dropped rather than leaking an unpublished service name.
+  const serviceNameById = new Map(
+    page.services.map(mapping => [mapping.serviceId, mapping.displayName || mapping.service.name])
+  );
   const services = page.services.map(mapping => {
     const impact = impactByService.get(mapping.serviceId);
-    const state = impact?.active
-      ? getWorstPublicStatus(impact.statuses)
-      : 'OPERATIONAL';
+    const state = impact?.active ? getWorstPublicStatus(impact.statuses) : 'OPERATIONAL';
     const serviceHistoryIncidents = historyIncidentsByService.get(mapping.serviceId) ?? [];
-    const history = visibility.showUptime ? {
-      rangeStart: window.start.toISOString(),
-      rangeEnd: now.toISOString(),
-      coverage: 'COMPLETE' as const,
-      segments: buildPublicHistorySegments({
-      serviceId: mapping.serviceId,
-      incidents: serviceHistoryIncidents,
-      maintenance: maintenanceHistory,
-      start: window.start,
-      end: now,
-      }),
-    } : undefined;
-    const status = normalizePublicStatus(projectServiceStatus(mapping.serviceId, state, maintenance));
+    // One interval engine feeds both history and uptime, so a service can never report a different
+    // availability on the timeline than in its 30/90-day figures.
+    const healthSegments = visibility.showUptime
+      ? buildServiceHealthSegments({
+          serviceId: mapping.serviceId,
+          incidents: serviceHistoryIncidents,
+          maintenance: maintenanceHistory,
+          start: earliestRequiredStart,
+          end: now,
+        })
+      : [];
+    const history = visibility.showUptime
+      ? {
+          rangeStart: window.start.toISOString(),
+          rangeEnd: now.toISOString(),
+          coverage: 'COMPLETE' as const,
+          segments: healthSegmentsToPublic(clipHealthSegments(healthSegments, window.start, now)),
+        }
+      : undefined;
+    const status = normalizePublicStatus(
+      projectServiceStatus(mapping.serviceId, state, maintenance)
+    );
+    const uptime30Percentage = visibility.showUptime
+      ? serviceUptimePercent(healthSegments, uptimeWindowStarts.days30, now)
+      : null;
+    const uptime90Percentage = visibility.showUptime
+      ? serviceUptimePercent(healthSegments, uptimeWindowStarts.days90, now)
+      : null;
+    const uptime90Grade = visibility.showUptime
+      ? publicUptimeGrade(uptime90Percentage, gradeThresholds)
+      : undefined;
+    const slaTier = visibility.showServiceSlaTier ? mapping.service.slaTier : null;
+    const sla =
+      slaTier || uptime90Grade
+        ? {
+            ...(slaTier ? { tier: slaTier } : {}),
+            ...(uptime90Grade ? { grade: uptime90Grade } : {}),
+          }
+        : undefined;
     return {
       id: mapping.serviceId,
       name: mapping.displayName || mapping.service.name,
       ...(page.showServiceDescriptions ? { description: mapping.service.description } : {}),
       ...(page.showServiceRegions && mapping.service.region
-        ? { regions: mapping.service.region.split(',').map(value => value.trim()).filter(Boolean) }
+        ? {
+            regions: mapping.service.region
+              .split(',')
+              .map(value => value.trim())
+              .filter(Boolean),
+          }
         : {}),
       ...(visibility.showServiceSlaTier ? { slaTier: mapping.service.slaTier } : {}),
+      ...(sla ? { sla } : {}),
       ...(visibility.showTeam ? { team: mapping.service.team } : {}),
       status,
       activeIncidentCount: impact?.active ?? 0,
-      ...(visibility.showUptime ? {
-        uptime: {
-          days30: {
-            percentage: uptime30Values[mapping.serviceId] ?? null,
-            incidentCount: serviceHistoryIncidents.filter(item => item.createdAt <= now && (item.resolvedAt ?? now) >= window30.start).length,
-            measuredDays: Math.min(30, measuredDays30), complete: measuredDays30 >= 30,
-          },
-          days90: {
-            percentage: uptime90Values[mapping.serviceId] ?? null,
-            incidentCount: serviceHistoryIncidents.filter(item => item.createdAt <= now && (item.resolvedAt ?? now) >= window90.start).length,
-            measuredDays: Math.min(90, measuredDays90), complete: measuredDays90 >= 90,
-          },
-        },
-        history,
-      } : {}),
+      ...(visibility.showUptime
+        ? {
+            uptime: {
+              days30: {
+                percentage: uptime30Percentage,
+                incidentCount: serviceHistoryIncidents.filter(
+                  item => item.createdAt <= now && (item.resolvedAt ?? now) >= window30.start
+                ).length,
+                measuredDays: Math.min(30, measuredDays30),
+                complete: measuredDays30 >= 30,
+                ...(publicUptimeGrade(uptime30Percentage, gradeThresholds)
+                  ? { grade: publicUptimeGrade(uptime30Percentage, gradeThresholds) }
+                  : {}),
+              },
+              days90: {
+                percentage: uptime90Percentage,
+                incidentCount: serviceHistoryIncidents.filter(
+                  item => item.createdAt <= now && (item.resolvedAt ?? now) >= window90.start
+                ).length,
+                measuredDays: Math.min(90, measuredDays90),
+                complete: measuredDays90 >= 90,
+                ...(uptime90Grade ? { grade: uptime90Grade } : {}),
+              },
+            },
+            history,
+          }
+        : {}),
     };
   });
+
+  const affectedServiceRefs = (value: unknown) => {
+    if (!Array.isArray(value)) return undefined;
+    const refs = value
+      .filter((id): id is string => typeof id === 'string')
+      .map(id => {
+        const name = serviceNameById.get(id);
+        return name ? { id, name } : null;
+      })
+      .filter((ref): ref is { id: string; name: string } => ref !== null);
+    return refs.length ? refs : undefined;
+  };
+  const maintenanceState = (
+    start: Date,
+    end: Date | null
+  ): 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' =>
+    end && end <= now ? 'COMPLETED' : start <= now ? 'IN_PROGRESS' : 'SCHEDULED';
+
+  const maintenanceEntries = page.announcements
+    .filter(item => item.type === 'MAINTENANCE')
+    .map(item => {
+      const affected = page.showAffectedServices
+        ? affectedServiceRefs(item.affectedServiceIds)
+        : undefined;
+      return {
+        id: item.id,
+        title: item.title,
+        ...(item.message ? { description: item.message } : {}),
+        state: maintenanceState(item.startDate, item.endDate),
+        startAt: item.startDate.toISOString(),
+        endAt: item.endDate ? item.endDate.toISOString() : null,
+        ...(affected ? { affectedServices: affected } : {}),
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+      };
+    });
+
+  const changelog = page.showChangelog
+    ? page.announcements
+        .filter(
+          item =>
+            item.type === 'UPDATE' && item.startDate <= now && (!item.endDate || item.endDate > now)
+        )
+        .map(item => {
+          const affected = page.showAffectedServices
+            ? affectedServiceRefs(item.affectedServiceIds)
+            : undefined;
+          return {
+            id: item.id,
+            title: item.title,
+            message: item.message,
+            publishedAt: item.startDate.toISOString(),
+            ...(affected ? { affectedServices: affected } : {}),
+          };
+        })
+    : undefined;
+
+  const visibleServices = visibility.showServices ? services : [];
+  const overallBase = deriveOverallPublicHealth(visibleServices);
+  const impactedServiceCount = visibleServices.filter(
+    service => service.status !== 'OPERATIONAL' && service.status !== 'UNKNOWN'
+  ).length;
+  const activeIncidentTotal = visibleServices.reduce(
+    (sum, service) => sum + (service.activeIncidentCount ?? 0),
+    0
+  );
+  const inProgressMaintenance = maintenanceEntries.filter(
+    item => item.state === 'IN_PROGRESS'
+  ).length;
+
+  const lastIncidentUpdateAt = incidents.reduce<Date | null>((latest, incident) => {
+    const times = [incident.createdAt, ...(incident.events?.map(event => event.createdAt) ?? [])];
+    for (const time of times) {
+      if (time && (!latest || time > latest)) latest = time;
+    }
+    return latest;
+  }, null);
+
+  const availableHistoryDays = Math.max(
+    0,
+    Math.round((now.getTime() - window.start.getTime()) / 86_400_000)
+  );
+
   return {
     schemaVersion: 3,
     pageId,
@@ -214,7 +367,38 @@ export async function buildStatusPageSnapshot(
       id: page.id,
       name: page.name,
       organizationName: page.organizationName,
-      branding: page.branding,
+      branding: projectPublicBranding(page.branding),
+      capabilities: {
+        services: true,
+        serviceHistory: true,
+        uptime: true,
+        regions: true,
+        incidents: true,
+        incidentUpdates: true,
+        postmortems: true,
+        maintenance: true,
+        announcements: true,
+        changelog: true,
+        subscriptions: true,
+        rss: true,
+        jsonApi: true,
+        uptimeCsv: true,
+        uptimePdf: true,
+      },
+      resources: {
+        jsonApi: true,
+        rss: true,
+        uptimeCsv: page.enableUptimeExports,
+        uptimePdf: page.enableUptimeExports,
+        postmortems: page.showPostIncidentReview,
+        subscriptions: page.showSubscribe,
+      },
+      subscription: {
+        enabled: page.showSubscribe,
+        channels: ['EMAIL'],
+        verificationRequired: true,
+        serviceSelectionSupported: false,
+      },
       showSubscribe: page.showSubscribe,
       showServicesByRegion: page.showServicesByRegion,
       showRegionHeatmap: page.showRegionHeatmap,
@@ -247,24 +431,50 @@ export async function buildStatusPageSnapshot(
     // `status` keeps worst-rank-wins for existing consumers; `overall` carries the split between
     // severity and confidence that the page header and summary panel render.
     status: getWorstPublicStatus(services.map(service => service.status)),
-    overall: deriveOverallPublicHealth(visibility.showServices ? services : []),
+    overall: {
+      ...overallBase,
+      totalServiceCount: visibleServices.length,
+      impactedServiceCount,
+      activeIncidentCount: activeIncidentTotal,
+      maintenanceCount: inProgressMaintenance,
+    },
     thresholds: {
       uptimeExcellent: page.uptimeExcellentThreshold,
       uptimeGood: page.uptimeGoodThreshold,
     },
-    services: visibility.showServices ? services : [],
+    services: visibleServices,
     regions: visibility.showServices ? aggregatePublicRegions(services) : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
+    ...(maintenanceEntries.length ? { maintenance: maintenanceEntries } : {}),
     announcements: page.announcements
       .filter(item => item.startDate <= now && (!item.endDate || item.endDate > now))
-      .map(item => ({
-        id: item.id,
-        title: item.title,
-        message: item.message,
-        type: item.type,
-        startDate: item.startDate.toISOString(),
-        endDate: item.endDate?.toISOString() ?? null,
-      })),
+      .map(item => {
+        const affected = page.showAffectedServices
+          ? affectedServiceRefs(item.affectedServiceIds)
+          : undefined;
+        return {
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          type: item.type,
+          startDate: item.startDate.toISOString(),
+          endDate: item.endDate?.toISOString() ?? null,
+          ...(affected ? { affectedServices: affected } : {}),
+        };
+      }),
+    ...(changelog ? { changelog } : {}),
+    retention: {
+      requestedHistoryDays: limits.historyDays,
+      availableHistoryDays,
+      rangeStart: window.start.toISOString(),
+      rangeEnd: now.toISOString(),
+      coverage: 'COMPLETE' as const,
+    },
+    freshness: {
+      generatedAt: now.toISOString(),
+      ...(lastIncidentUpdateAt ? { lastIncidentUpdateAt: lastIncidentUpdateAt.toISOString() } : {}),
+      revision,
+    },
     historyDays: limits.historyDays,
   };
 }
@@ -383,10 +593,7 @@ async function buildAndCommitSnapshot(
   pageId: string,
   remainingMs: number
 ): Promise<
-  | 'contended'
-  | 'missing'
-  | 'superseded'
-  | { snapshot: StatusPageSnapshot | null; revision: string }
+  'contended' | 'missing' | 'superseded' | { snapshot: StatusPageSnapshot | null; revision: string }
 > {
   const lease = await acquireSnapshotBuildLease(pageId, remainingMs);
   if (lease === 'contended' || lease === 'missing') return lease;
@@ -524,9 +731,7 @@ async function pushSnapshotToServingStore(
     servingState: 'LIVE',
     lastGoodRevision: result.revision,
     lastGoodSnapshotKey: `${result.revision}.json`,
-    lastGoodIntegrityHash: statusSnapshotIntegrity(
-      result.snapshot as unknown as Prisma.JsonValue
-    ),
+    lastGoodIntegrityHash: statusSnapshotIntegrity(result.snapshot as unknown as Prisma.JsonValue),
   });
   const slug = result.snapshot.page?.slug;
   const route: StatusServingRoute = {
@@ -594,9 +799,9 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
       }
       const outcome = await publishStatusPageSnapshot(page.statusPageId);
       if (outcome.kind === 'failed') {
-        const message = (outcome.error instanceof Error
-          ? outcome.error.message
-          : String(outcome.error)).slice(0, 500);
+        const message = (
+          outcome.error instanceof Error ? outcome.error.message : String(outcome.error)
+        ).slice(0, 500);
         await prisma.$executeRaw`UPDATE "StatusPageSnapshot" SET "lastError" = ${message} WHERE "statusPageId" = ${page.statusPageId}`;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {
           outcome: 'failure',
