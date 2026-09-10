@@ -92,5 +92,8 @@ describe('status-page settings → V3 parity', () => {
     expect(source.includes('loadCurrentIncidentsByService')).toBe(true);
     expect(source.includes('needsHistory')).toBe(true);
     expect(source.includes('isActive: true')).toBe(true);
+    expect(source.includes('loadDisplayFeeds')).toBe(true);
+    expect(source.includes('currentAnnouncementDisplayWhere')).toBe(true);
+    expect(source.includes('maintenanceInProgressDisplayWhere')).toBe(true);
   });
 });

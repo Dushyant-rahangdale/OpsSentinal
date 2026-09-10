@@ -34,6 +34,14 @@ import { publicUptimeGrade } from './presentation';
 import { deriveOverallPublicHealth, getWorstPublicStatus } from './status-presentation';
 import { parsePublicStatusPageSnapshot } from './public-contract-schema';
 import {
+  changelogDisplayWhere,
+  currentAnnouncementDisplayWhere,
+  maintenanceInProgressDisplayWhere,
+  maintenanceUpcomingDisplayWhere,
+  mergeDisplayMaintenance,
+  STATUS_PAGE_DISPLAY_FEED_LIMIT,
+} from './display-feeds';
+import {
   loadCurrentIncidentsByService,
   loadHistoryIncidentsByService,
   type HistoryIncident,
@@ -81,7 +89,6 @@ export async function buildStatusPageSnapshot(
   revision: string,
   db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<StatusPageSnapshot | null> {
-  const DISPLAY_ANNOUNCEMENT_LIMIT = 200;
   const page = await db.statusPage.findUnique({
     where: { id: pageId },
     include: {
@@ -117,12 +124,55 @@ export async function buildStatusPageSnapshot(
   const earliestRequiredStart = new Date(
     Math.min(window.start.getTime(), window90.start.getTime())
   );
+  const DISPLAY_FEED_SELECT = {
+    id: true,
+    title: true,
+    message: true,
+    type: true,
+    startDate: true,
+    endDate: true,
+    affectedServiceIds: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
+  const loadDisplayFeeds = () =>
+    Promise.all([
+      db.statusPageAnnouncement.findMany({
+        where: currentAnnouncementDisplayWhere(pageId, now),
+        orderBy: { startDate: 'desc' },
+        take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
+        select: DISPLAY_FEED_SELECT,
+      }),
+      db.statusPageAnnouncement.findMany({
+        where: maintenanceInProgressDisplayWhere(pageId, now),
+        orderBy: { startDate: 'desc' },
+        take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
+        select: DISPLAY_FEED_SELECT,
+      }),
+      db.statusPageAnnouncement.findMany({
+        where: maintenanceUpcomingDisplayWhere(pageId, now),
+        orderBy: { startDate: 'asc' },
+        take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
+        select: DISPLAY_FEED_SELECT,
+      }),
+      page.showChangelog
+        ? db.statusPageAnnouncement.findMany({
+            where: changelogDisplayWhere(pageId, now),
+            orderBy: { startDate: 'desc' },
+            take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
+            select: DISPLAY_FEED_SELECT,
+          })
+        : Promise.resolve(
+            [] as Awaited<
+              ReturnType<
+                typeof db.statusPageAnnouncement.findMany<{
+                  select: typeof DISPLAY_FEED_SELECT;
+                }>
+              >
+            >
+          ),
+    ]);
   const needsHistory = visibility.showUptime;
-  const announcementDisplay = {
-    where: { statusPageId: pageId, isActive: true },
-    orderBy: { startDate: 'desc' as const },
-    take: DISPLAY_ANNOUNCEMENT_LIMIT,
-  };
   const maintenanceSelect = { startDate: true, endDate: true, affectedServiceIds: true } as const;
   const currentMaintenanceWhere = {
     statusPageId: pageId,
@@ -145,7 +195,7 @@ export async function buildStatusPageSnapshot(
     historyIncidentsByService,
     currentMaintenanceRows,
     historyMaintenanceRows,
-    displayAnnouncements,
+    [displayAnnouncements, maintenanceInProgressRows, maintenanceUpcomingRows, changelogRows],
   ] = ids.length
     ? await Promise.all([
         loadCurrentIncidentsByService(ids, db),
@@ -198,16 +248,9 @@ export async function buildStatusPageSnapshot(
               select: maintenanceSelect,
             })
           : [],
-        db.statusPageAnnouncement.findMany(announcementDisplay),
+        loadDisplayFeeds(),
       ])
-    : [
-        emptyHistory,
-        [],
-        emptyHistory,
-        [],
-        [],
-        await db.statusPageAnnouncement.findMany(announcementDisplay),
-      ];
+    : [emptyHistory, [], emptyHistory, [], [], await loadDisplayFeeds()];
 
   const impactByService = new Map<string, number>();
   for (const [serviceId, serviceIncidents] of currentIncidentsByService) {
@@ -364,45 +407,42 @@ export async function buildStatusPageSnapshot(
   ): 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' =>
     end && end <= now ? 'COMPLETED' : start <= now ? 'IN_PROGRESS' : 'SCHEDULED';
 
-  const maintenanceEntries = displayAnnouncements
-    .filter(item => item.type === 'MAINTENANCE')
-    .map(item => {
-      const affected = page.showAffectedServices
-        ? affectedServiceRefs(item.affectedServiceIds)
-        : undefined;
-      const affectedRegions = affectedRegionsFromIds(item.affectedServiceIds);
-      return {
-        id: item.id,
-        title: item.title,
-        ...(item.message ? { description: item.message } : {}),
-        state: maintenanceState(item.startDate, item.endDate),
-        startAt: item.startDate.toISOString(),
-        endAt: item.endDate ? item.endDate.toISOString() : null,
-        ...(affected ? { affectedServices: affected } : {}),
-        ...(affectedRegions ? { affectedRegions } : {}),
-        createdAt: item.createdAt.toISOString(),
-        updatedAt: item.updatedAt.toISOString(),
-      };
-    });
+  const mapMaintenanceCard = (item: (typeof maintenanceInProgressRows)[number]) => {
+    const affected = page.showAffectedServices
+      ? affectedServiceRefs(item.affectedServiceIds)
+      : undefined;
+    const affectedRegions = affectedRegionsFromIds(item.affectedServiceIds);
+    return {
+      id: item.id,
+      title: item.title,
+      ...(item.message ? { description: item.message } : {}),
+      state: maintenanceState(item.startDate, item.endDate),
+      startAt: item.startDate.toISOString(),
+      endAt: item.endDate ? item.endDate.toISOString() : null,
+      ...(affected ? { affectedServices: affected } : {}),
+      ...(affectedRegions ? { affectedRegions } : {}),
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    };
+  };
+  const maintenanceEntries = mergeDisplayMaintenance(
+    maintenanceInProgressRows,
+    maintenanceUpcomingRows
+  ).map(mapMaintenanceCard);
 
   const changelog = page.showChangelog
-    ? displayAnnouncements
-        .filter(
-          item =>
-            item.type === 'UPDATE' && item.startDate <= now && (!item.endDate || item.endDate > now)
-        )
-        .map(item => {
-          const affected = page.showAffectedServices
-            ? affectedServiceRefs(item.affectedServiceIds)
-            : undefined;
-          return {
-            id: item.id,
-            title: item.title,
-            message: item.message,
-            publishedAt: item.startDate.toISOString(),
-            ...(affected ? { affectedServices: affected } : {}),
-          };
-        })
+    ? changelogRows.map(item => {
+        const affected = page.showAffectedServices
+          ? affectedServiceRefs(item.affectedServiceIds)
+          : undefined;
+        return {
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          publishedAt: item.startDate.toISOString(),
+          ...(affected ? { affectedServices: affected } : {}),
+        };
+      })
     : undefined;
 
   const visibleServices = visibility.showServices ? services : [];
@@ -529,30 +569,22 @@ export async function buildStatusPageSnapshot(
     regions: visibility.showServices ? aggregatePublicRegions(services) : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page, { pageId })),
     ...(maintenanceEntries.length ? { maintenance: maintenanceEntries } : {}),
-    announcements: displayAnnouncements
-      .filter(
-        item =>
-          item.type !== 'MAINTENANCE' &&
-          item.type !== 'UPDATE' &&
-          item.startDate <= now &&
-          (!item.endDate || item.endDate > now)
-      )
-      .map(item => {
-        const affected = page.showAffectedServices
-          ? affectedServiceRefs(item.affectedServiceIds)
-          : undefined;
-        const affectedRegions = affectedRegionsFromIds(item.affectedServiceIds);
-        return {
-          id: item.id,
-          title: item.title,
-          message: item.message,
-          type: item.type,
-          startDate: item.startDate.toISOString(),
-          endDate: item.endDate?.toISOString() ?? null,
-          ...(affected ? { affectedServices: affected } : {}),
-          ...(affectedRegions ? { affectedRegions } : {}),
-        };
-      }),
+    announcements: displayAnnouncements.map(item => {
+      const affected = page.showAffectedServices
+        ? affectedServiceRefs(item.affectedServiceIds)
+        : undefined;
+      const affectedRegions = affectedRegionsFromIds(item.affectedServiceIds);
+      return {
+        id: item.id,
+        title: item.title,
+        message: item.message,
+        type: item.type,
+        startDate: item.startDate.toISOString(),
+        endDate: item.endDate?.toISOString() ?? null,
+        ...(affected ? { affectedServices: affected } : {}),
+        ...(affectedRegions ? { affectedRegions } : {}),
+      };
+    }),
     ...(changelog ? { changelog } : {}),
     retention: {
       requestedHistoryDays: limits.historyDays,
