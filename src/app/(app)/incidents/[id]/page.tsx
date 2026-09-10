@@ -98,14 +98,13 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
 
   const postmortem = incident.status === 'RESOLVED' ? await getPostmortem(id) : null;
 
-  const [initialJiraLinks, jiraConfig, chatOpsConfig, globalSlackIntegration] = await Promise.all([
+  // Rendering an incident must not perform hidden Jira network I/O. Persisted
+  // Jira metadata is refreshed by authenticated webhooks or the explicit Sync
+  // action, keeping page latency deterministic and lifecycle operations fenced.
+  const [jiraLinks, chatOpsConfig, globalSlackIntegration] = await Promise.all([
     prisma.externalIssueLink.findMany({
       where: { incidentId: id, provider: 'JIRA' },
       orderBy: { createdAt: 'desc' },
-    }),
-    prisma.jiraConfig.findUnique({
-      where: { id: 'default' },
-      select: { enabled: true },
     }),
     prisma.chatOpsConfig.findUnique({
       where: { id: 'default' },
@@ -116,26 +115,6 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       select: { workspaceId: true },
     }),
   ]);
-
-  let jiraLinks = initialJiraLinks;
-  if (
-    jiraConfig?.enabled &&
-    initialJiraLinks.some(l => !l.externalStatus || l.externalStatus.toLowerCase() === 'created')
-  ) {
-    try {
-      const { syncExternalIssueLink } = await import('@/lib/jira-sync');
-      const pendingLinks = initialJiraLinks.filter(
-        l => !l.externalStatus || l.externalStatus.toLowerCase() === 'created'
-      );
-      await Promise.allSettled(pendingLinks.map(link => syncExternalIssueLink(link.id)));
-      jiraLinks = await prisma.externalIssueLink.findMany({
-        where: { incidentId: id, provider: 'JIRA' },
-        orderBy: { createdAt: 'desc' },
-      });
-    } catch {
-      // Fallback to initial links if auto-sync fails
-    }
-  }
 
   const incidentJiraIssues = jiraLinks.map(serializeJiraIssueReference);
 
@@ -358,7 +337,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
         }}
         jira={{
           links: jiraLinks,
-          enabled: jiraConfig?.enabled ?? false,
+          enabled: incidentJiraCapability.rawEnabled,
           serviceMapped: Boolean(incident.service.jiraServiceMapping?.projectKey),
           serviceSettingsHref: `/services/${incident.serviceId}/settings`,
         }}
