@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable security/detect-object-injection */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import LoadingWrapper from '@/components/ui/LoadingWrapper';
 import _Skeleton, { SkeletonCard } from '@/components/ui/Skeleton';
 
@@ -91,7 +91,8 @@ function calculateServiceUptime(
   if (intervals.length > 0) {
     let current = { start: intervals[0].start, end: intervals[0].end };
     for (let i = 1; i < intervals.length; i++) {
-      const next = intervals[i];
+      const next = intervals.at(i);
+      if (!next) continue;
       if (next.start <= current.end) {
         if (next.end > current.end) {
           current.end = next.end;
@@ -130,11 +131,11 @@ export default function StatusPageMetrics({
   precomputedCoverage30,
   precomputedCoverage90,
 }: StatusPageMetricsProps) {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true); // eslint-disable-line react-hooks/set-state-in-effect
-  }, []);
+  const isClient = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
 
   const metrics = useMemo(() => {
     if (services.length === 0) {

@@ -139,8 +139,6 @@ describe('status page privacy matrix', () => {
     // Uptime and history hang off each service entry, so removing the catalogue removes them too
     // rather than leaving per-service availability keyed by raw identifiers.
     expect(snapshot.services).toEqual([]);
-    expect(snapshot.services.every(service => !('uptime' in service))).toBe(true);
-    expect(snapshot.services.every(service => !('history' in service))).toBe(true);
   });
 
   it('stops incidents naming a service once affected services are hidden', async () => {
