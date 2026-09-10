@@ -17,14 +17,20 @@ export type JiraActionResult = {
   url?: string;
 };
 
-function revalidateActionItemPaths(postmortemId?: string | null, incidentId?: string | null) {
-  if (postmortemId) revalidatePath(`/postmortems/${postmortemId}`);
+function revalidateActionItemPaths(incidentId?: string | null) {
   if (incidentId) {
     revalidatePath(`/incidents/${incidentId}`);
     revalidatePath(`/postmortems/${incidentId}`);
   }
   revalidatePath('/action-items');
   revalidatePath('/postmortems');
+}
+
+function alreadyLinkedError(externalKey: string): JiraActionResult {
+  return {
+    success: false,
+    error: `This action item is already linked to Jira issue ${externalKey}. Refresh the page to see the current link.`,
+  };
 }
 
 export async function createJiraIssueFromActionItem(
@@ -41,6 +47,12 @@ export async function createJiraIssueFromActionItem(
         description: true,
         postmortemId: true,
         incidentId: true,
+        externalIssueLinks: {
+          where: { provider: 'JIRA' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { externalKey: true },
+        },
         incident: {
           select: {
             service: {
@@ -54,6 +66,9 @@ export async function createJiraIssueFromActionItem(
     });
 
     if (!actionItem) return { success: false, error: 'Action item not found.' };
+
+    const existingLink = actionItem.externalIssueLinks[0];
+    if (existingLink) return alreadyLinkedError(existingLink.externalKey);
 
     const mapping = actionItem.incident?.service?.jiraServiceMapping;
     const jiraConfig = await prisma.jiraConfig.findUnique({
@@ -91,7 +106,7 @@ export async function createJiraIssueFromActionItem(
         component,
       });
 
-      revalidateActionItemPaths(actionItem.postmortemId, actionItem.incidentId);
+      revalidateActionItemPaths(actionItem.incidentId);
       return { success: true, key: issue.key, url: issue.url };
     } catch (error) {
       const classified = classifyJiraError(error);
@@ -114,13 +129,25 @@ export async function linkJiraIssueToActionItem(
 
     const actionItem = await prisma.actionItem.findUnique({
       where: { id: actionItemId },
-      select: { id: true, postmortemId: true, incidentId: true },
+      select: {
+        id: true,
+        incidentId: true,
+        externalIssueLinks: {
+          where: { provider: 'JIRA' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { externalKey: true },
+        },
+      },
     });
     if (!actionItem) return { success: false, error: 'Action item not found.' };
 
+    const existingLink = actionItem.externalIssueLinks[0];
+    if (existingLink) return alreadyLinkedError(existingLink.externalKey);
+
     try {
       const { issue } = await linkExistingJiraIssue({ actionItemId, jiraKey });
-      revalidateActionItemPaths(actionItem.postmortemId, actionItem.incidentId);
+      revalidateActionItemPaths(actionItem.incidentId);
       return { success: true, key: issue.key, url: issue.url };
     } catch (error) {
       const classified = classifyJiraError(error);
@@ -165,7 +192,7 @@ export async function unlinkJiraIssueFromActionItem(
       return { success: false, error: 'Jira link changed before it could be unlinked. Retry.' };
     }
 
-    revalidateActionItemPaths(link.actionItem?.postmortemId, link.actionItem?.incidentId);
+    revalidateActionItemPaths(link.actionItem?.incidentId);
     return { success: true };
   } catch (error) {
     return {
@@ -208,7 +235,7 @@ export async function syncActionItemJiraIssue(
       return { success: false, error: classified.userMessage };
     }
 
-    revalidateActionItemPaths(link.actionItem?.postmortemId, link.actionItem?.incidentId);
+    revalidateActionItemPaths(link.actionItem?.incidentId);
     return { success: true };
   } catch (error) {
     return {
