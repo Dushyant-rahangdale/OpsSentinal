@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { ExternalLink, Link2, Loader2, Plus, RefreshCw, Tickets, Trash2 } from 'lucide-react';
@@ -44,6 +44,11 @@ export default function ActionItemJiraBadge({
   const [linkKey, setLinkKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
+  const [currentExternalIssue, setCurrentExternalIssue] = useState(externalIssue);
+
+  useEffect(() => {
+    setCurrentExternalIssue(externalIssue);
+  }, [externalIssue]);
 
   const showSync = jiraCapability.canSync;
   const showUnlink = jiraCapability.canUnlink;
@@ -52,7 +57,7 @@ export default function ActionItemJiraBadge({
   const showAnyAction = jiraCapability.showOperationalJira;
 
   // Preserve existing Jira references as read-only when Jira is disabled or unavailable.
-  if (externalIssue) {
+  if (currentExternalIssue) {
     return (
       <div
         className="inline-flex items-center gap-1.5 group relative"
@@ -61,19 +66,19 @@ export default function ActionItemJiraBadge({
         onMouseLeave={() => setShowActions(false)}
       >
         <a
-          href={externalIssue.url}
+          href={currentExternalIssue.url}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
-          title={`${externalIssue.key}${externalIssue.status ? ` — ${externalIssue.status}` : ''}${externalIssue.assignee ? ` (${externalIssue.assignee})` : ''}`}
+          title={`${currentExternalIssue.key}${currentExternalIssue.status ? ` — ${currentExternalIssue.status}` : ''}${currentExternalIssue.assignee ? ` (${currentExternalIssue.assignee})` : ''}`}
         >
           <Tickets className="h-3 w-3" />
-          {externalIssue.key}
-          {!compact && externalIssue.status && (
+          {currentExternalIssue.key}
+          {!compact && currentExternalIssue.status && (
             <span
-              className={`ml-1 inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium ${statusColor(externalIssue.status)}`}
+              className={`ml-1 inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium ${statusColor(currentExternalIssue.status)}`}
             >
-              {externalIssue.status}
+              {currentExternalIssue.status}
             </span>
           )}
           <ExternalLink className="h-2.5 w-2.5 opacity-50" />
@@ -86,8 +91,15 @@ export default function ActionItemJiraBadge({
                 onClick={() => {
                   setError(null);
                   startTransition(async () => {
-                    const res = await syncActionItemJiraIssue(actionItemId, externalIssue.linkId);
-                    if (!res.success && res.error) setError(res.error);
+                    const res = await syncActionItemJiraIssue(
+                      actionItemId,
+                      currentExternalIssue.linkId
+                    );
+                    if (!res.success && res.error) {
+                      setError(res.error);
+                    } else if (res.externalIssue) {
+                      setCurrentExternalIssue(res.externalIssue);
+                    }
                   });
                 }}
                 disabled={isPending}
@@ -102,8 +114,16 @@ export default function ActionItemJiraBadge({
                 onClick={() => {
                   setError(null);
                   startTransition(async () => {
-                    const res = await unlinkJiraIssueFromActionItem(actionItemId, externalIssue.linkId);
-                    if (!res.success && res.error) setError(res.error);
+                    const res = await unlinkJiraIssueFromActionItem(
+                      actionItemId,
+                      currentExternalIssue.linkId
+                    );
+                    if (!res.success && res.error) {
+                      setError(res.error);
+                    } else {
+                      setCurrentExternalIssue(undefined);
+                      setShowActions(false);
+                    }
                   });
                 }}
                 disabled={isPending}
@@ -129,6 +149,7 @@ export default function ActionItemJiraBadge({
       if (!res.success && res.error) {
         setError(res.error);
       } else {
+        if (res.externalIssue) setCurrentExternalIssue(res.externalIssue);
         setLinkKey('');
         setShowLinkForm(false);
       }
@@ -177,7 +198,11 @@ export default function ActionItemJiraBadge({
             setError(null);
             startTransition(async () => {
               const res = await createJiraIssueFromActionItem(actionItemId);
-              if (!res.success && res.error) setError(res.error);
+              if (!res.success && res.error) {
+                setError(res.error);
+              } else if (res.externalIssue) {
+                setCurrentExternalIssue(res.externalIssue);
+              }
             });
           }}
           disabled={isPending}
