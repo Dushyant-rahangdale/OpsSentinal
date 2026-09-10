@@ -545,25 +545,55 @@ export default function LoginAnimation({
           />
         ))}
 
-        {/* Occasional shooting stars */}
+        {/* Shooting stars — more frequent, varied trajectories */}
         <span
-          className="absolute h-px w-24 rounded-full bg-gradient-to-r from-white to-transparent"
+          className="absolute h-px w-28 rounded-full bg-gradient-to-r from-white to-transparent opacity-0"
           style={{
-            top: '18%',
-            left: '68%',
+            top: '14%',
+            left: '72%',
             transform: 'rotate(28deg)',
-            animation: 'shooting-star 14s linear infinite',
-            animationDelay: '-3s',
+            animation: 'shooting-star 10s linear infinite',
+            animationDelay: '-1s',
           }}
         />
         <span
-          className="absolute h-px w-16 rounded-full bg-gradient-to-r from-white to-transparent"
+          className="absolute h-px w-20 rounded-full bg-gradient-to-r from-white to-transparent opacity-0"
           style={{
-            top: '38%',
-            left: '20%',
+            top: '36%',
+            left: '18%',
             transform: 'rotate(24deg)',
-            animation: 'shooting-star 19s linear infinite',
-            animationDelay: '-11s',
+            animation: 'shooting-star 13s linear infinite',
+            animationDelay: '-7s',
+          }}
+        />
+        <span
+          className="absolute h-px w-32 rounded-full bg-gradient-to-r from-slate-200 to-transparent opacity-0"
+          style={{
+            top: '8%',
+            left: '45%',
+            transform: 'rotate(32deg)',
+            animation: 'shooting-star 16s linear infinite',
+            animationDelay: '-4s',
+          }}
+        />
+        <span
+          className="absolute h-px w-16 rounded-full bg-gradient-to-r from-white to-transparent opacity-0"
+          style={{
+            top: '55%',
+            left: '60%',
+            transform: 'rotate(20deg)',
+            animation: 'shooting-star 11s linear infinite',
+            animationDelay: '-9s',
+          }}
+        />
+        <span
+          className="absolute h-px w-24 rounded-full bg-gradient-to-r from-blue-100 to-transparent opacity-0"
+          style={{
+            top: '25%',
+            left: '10%',
+            transform: 'rotate(30deg)',
+            animation: 'shooting-star 17s linear infinite',
+            animationDelay: '-14s',
           }}
         />
       </div>
