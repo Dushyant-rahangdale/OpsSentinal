@@ -1,15 +1,18 @@
 import { createHash, randomBytes, randomInt } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { emitAuditEvent } from '@/lib/audit';
 import { AppError, isAppError } from '@/lib/errors';
 import { validatePasswordStrength } from '@/lib/passwords';
 import { authPrivacyDigest, consumeAuthRateLimit } from '@/lib/auth-abuse';
+import { acquireAdvisoryLock } from '@/lib/db-locks';
 
 const GENERIC_RESET_MESSAGE =
   'If an account exists with this email, you will receive password reset instructions.';
-const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+export const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const RESET_ISSUE_ATTEMPTS = 4;
 const COMPLETION_WINDOW_MS = 15 * 60 * 1000;
 const INIT_IDENTIFIER_WINDOW_MS = 60 * 60 * 1000;
 const INIT_IP_WINDOW_MS = 15 * 60 * 1000;
@@ -22,6 +25,91 @@ export type PasswordResetCompletionResult = {
   error?: string;
   code?: 'INVALID_TOKEN' | 'WEAK_PASSWORD' | 'RATE_LIMITED' | 'INTERNAL';
 };
+
+export type IssuedPasswordResetToken = {
+  token: string;
+  tokenHash: string;
+  expiresAt: Date;
+};
+
+function isSerializationConflict(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2034');
+}
+
+/**
+ * Stable signed 64-bit advisory-lock key scoped to one user's reset-token
+ * issuance. This prevents two replicas from simultaneously leaving different
+ * live reset tokens for the same account.
+ */
+function passwordResetIssuanceLockKey(userId: string): bigint {
+  const first64Bits = createHash('sha256')
+    .update(`opsknight:password-reset:${userId}`)
+    .digest('hex')
+    .slice(0, 16);
+  return BigInt.asIntN(64, BigInt(`0x${first64Bits}`));
+}
+
+/**
+ * Authoritative reset-token issuance primitive used by self-service and admin
+ * flows. Issuance is serialized per user across replicas, prior live tokens are
+ * revoked (not silently deleted), and only a SHA-256 digest is persisted.
+ */
+export async function issuePasswordResetToken(params: {
+  userId: string;
+  email: string;
+  ttlMs?: number;
+  metadata?: Prisma.InputJsonObject;
+}): Promise<IssuedPasswordResetToken> {
+  const ttlMs = params.ttlMs ?? RESET_TOKEN_TTL_MS;
+
+  for (let attempt = 1; attempt <= RESET_ISSUE_ATTEMPTS; attempt += 1) {
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + ttlMs);
+    const now = new Date();
+
+    try {
+      await prisma.$transaction(
+        async tx => {
+          await acquireAdvisoryLock(tx, passwordResetIssuanceLockKey(params.userId));
+
+          await tx.userToken.updateMany({
+            where: {
+              type: 'PASSWORD_RESET',
+              usedAt: null,
+              revokedAt: null,
+              OR: [
+                { userId: params.userId },
+                { identifier: params.userId },
+                { identifier: params.email.toLowerCase() },
+              ],
+            },
+            data: { revokedAt: now },
+          });
+
+          await tx.userToken.create({
+            data: {
+              identifier: params.userId,
+              userId: params.userId,
+              type: 'PASSWORD_RESET',
+              tokenHash,
+              expiresAt,
+              ...(params.metadata ? { metadata: params.metadata } : {}),
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+      );
+
+      return { token, tokenHash, expiresAt };
+    } catch (error) {
+      if (isSerializationConflict(error) && attempt < RESET_ISSUE_ATTEMPTS) continue;
+      throw error;
+    }
+  }
+
+  throw new Error('Unable to issue password reset token safely');
+}
 
 async function auditRecoveryEvent(params: {
   action: string;
@@ -68,8 +156,6 @@ export async function checkRateLimit(
   action: string = 'PASSWORD_RESET_INITIATED'
 ) {
   const [identifierRate, ipRate] = await Promise.all([
-    // Invite onboarding has no user identifier until the token is resolved.
-    // Do not turn the shared sentinel into a global tenant-wide throttle.
     identifier === 'unknown'
       ? Promise.resolve({ allowed: true })
       : consumeAuthRateLimit(
@@ -148,27 +234,9 @@ export async function initiatePasswordReset(
       return { success: true, message: GENERIC_RESET_MESSAGE };
     }
 
-    const token = randomBytes(32).toString('base64url');
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
-
-    await prisma.$transaction(async tx => {
-      await tx.userToken.deleteMany({
-        where: {
-          type: 'PASSWORD_RESET',
-          usedAt: null,
-          OR: [{ userId: user.id }, { identifier: user.email }],
-        },
-      });
-      await tx.userToken.create({
-        data: {
-          identifier: user.id,
-          userId: user.id,
-          type: 'PASSWORD_RESET',
-          tokenHash,
-          expiresAt,
-        },
-      });
+    const { token, tokenHash, expiresAt } = await issuePasswordResetToken({
+      userId: user.id,
+      email: user.email,
     });
 
     const { getEmailConfig, getSMSConfig } = await import('./notification-providers');
@@ -324,7 +392,14 @@ export async function completePasswordReset(
 
     const user = await prisma.user.findFirst({
       where: record.userId ? { id: record.userId } : { email: record.identifier },
-      select: { id: true, email: true, status: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        status: true,
+        phoneNumber: true,
+        smsNotificationsEnabled: true,
+      },
     });
     if (!user || user.status !== 'ACTIVE') {
       return {
@@ -334,7 +409,10 @@ export async function completePasswordReset(
       };
     }
 
-    const passwordError = validatePasswordStrength(password || '', { email: user.email });
+    const passwordError = validatePasswordStrength(password || '', {
+      email: user.email,
+      displayName: user.name,
+    });
     if (passwordError) {
       return { success: false, code: 'WEAK_PASSWORD', error: passwordError };
     }
@@ -383,9 +461,11 @@ export async function completePasswordReset(
     });
 
     try {
-      const { getEmailConfig } = await import('./notification-providers');
-      if ((await getEmailConfig())?.enabled) {
-        const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
+      const { getEmailConfig, getSMSConfig } = await import('./notification-providers');
+      const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
+      const emailConfig = await getEmailConfig();
+
+      if (emailConfig?.enabled) {
         await enqueueCentralNotification(
           {
             category: 'SECURITY',
@@ -409,10 +489,34 @@ export async function completePasswordReset(
           },
           { dispatchImmediately: false }
         );
+      } else if (user.phoneNumber && user.smsNotificationsEnabled) {
+        const smsConfig = await getSMSConfig();
+        if (smsConfig?.enabled) {
+          await enqueueCentralNotification(
+            {
+              category: 'SECURITY',
+              channel: 'SMS',
+              recipientType: 'USER',
+              recipientId: user.id,
+              recipientAddress: user.phoneNumber,
+              userId: user.id,
+              templateKey: 'password-changed-sms',
+              sourceType: 'USER',
+              sourceId: user.id,
+              eventKey: `password-changed:${tokenHash}`,
+              displayMessage: 'Password changed',
+              priority: 0,
+              payload: {
+                kind: 'SMS',
+                to: user.phoneNumber,
+                message: `Your OpsKnight password was changed at ${now.toISOString()}. If this was not you, contact your administrator immediately.`,
+              },
+            },
+            { dispatchImmediately: false }
+          );
+        }
       }
     } catch (error) {
-      // Password mutation is authoritative. A notification-provider/control-plane
-      // outage must never roll back or report the already-committed reset as failed.
       logger.warn('auth.password_reset.notification_failed', {
         component: 'password-reset',
         userId: user.id,
