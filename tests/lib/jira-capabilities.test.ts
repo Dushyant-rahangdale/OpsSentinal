@@ -45,7 +45,7 @@ describe('deriveJiraCapability production contract', () => {
     const cap = derive({
       workspaceState: 'NOT_CONFIGURED',
       serviceMapped: false,
-      syncEnabled: false,
+      syncEnabled: true,
       rawEnabled: false,
     });
 
@@ -63,7 +63,7 @@ describe('deriveJiraCapability production contract', () => {
     const cap = derive({
       workspaceState: 'CONFIGURED',
       serviceMapped: false,
-      syncEnabled: false,
+      syncEnabled: true,
     });
 
     expect(cap.showOperationalJira).toBe(false);
@@ -85,13 +85,13 @@ describe('deriveJiraCapability production contract', () => {
     expect(cap.reason).toBe('DISABLED');
   });
 
-  it('enabled but unmapped: allows linking but not create or sync', () => {
-    const cap = derive({ serviceMapped: false, syncEnabled: false });
+  it('enabled but unmapped: allows link/sync/unlink but not create', () => {
+    const cap = derive({ serviceMapped: false, syncEnabled: true });
 
     expect(cap.showOperationalJira).toBe(true);
     expect(cap.canCreate).toBe(false);
     expect(cap.canLink).toBe(true);
-    expect(cap.canSync).toBe(false);
+    expect(cap.canSync).toBe(true);
     expect(cap.canUnlink).toBe(true);
     expect(cap.reason).toBe('NOT_MAPPED');
   });
@@ -107,7 +107,7 @@ describe('deriveJiraCapability production contract', () => {
     expect(cap.reason).toBe('OK');
   });
 
-  it('sync disabled: hides sync while preserving create/link/unlink', () => {
+  it('mapped service with sync disabled: hides sync while preserving create/link/unlink', () => {
     const cap = derive({ syncEnabled: false });
 
     expect(cap.canCreate).toBe(true);
