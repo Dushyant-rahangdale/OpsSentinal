@@ -14,10 +14,16 @@ export type BootstrapAuthorizationState = {
   generation: number;
 };
 
-type BootstrapIssueResult = {
+export type BootstrapAuthorizationStatus = {
+  active: boolean;
+  expiresAt: Date | null;
+  generation: number | null;
+};
+
+export type IssuedBootstrapAuthorization = {
+  code: string;
   expiresAt: Date;
   generation: number;
-  code: string | null;
 };
 
 export function hashBootstrapCode(code: string): string {
@@ -56,33 +62,44 @@ function isBootstrapWriteConflict(error: unknown): boolean {
   );
 }
 
+export async function getBootstrapAuthorizationStatus(): Promise<BootstrapAuthorizationStatus> {
+  const row = await prisma.systemConfig.findUnique({
+    where: { key: BOOTSTRAP_CONFIG_KEY },
+    select: { value: true },
+  });
+  const state = parseBootstrapState(row?.value);
+  if (!state || state.usedAt || new Date(state.expiresAt) <= new Date()) {
+    return { active: false, expiresAt: null, generation: state?.generation ?? null };
+  }
+  return {
+    active: true,
+    expiresAt: new Date(state.expiresAt),
+    generation: state.generation,
+  };
+}
+
 /**
- * Ensure exactly one live one-time setup capability exists across all replicas.
- * The database unique key plus SERIALIZABLE transaction is the coordination
- * boundary; no in-process mutex is relied upon.
+ * Issue/rotate the first-admin bootstrap capability. The raw capability is
+ * returned only to the explicit CLI caller; only its SHA-256 digest is stored.
+ * Application/server logs never receive the plaintext capability.
  */
-export async function ensureBootstrapAuthorization(): Promise<{ expiresAt: Date }> {
-  let result: BootstrapIssueResult | null = null;
+export async function issueBootstrapAuthorization(): Promise<IssuedBootstrapAuthorization> {
+  let result: IssuedBootstrapAuthorization | null = null;
 
   for (let attempt = 1; attempt <= BOOTSTRAP_ISSUE_ATTEMPTS; attempt += 1) {
     try {
       result = await prisma.$transaction(
         async tx => {
+          if ((await tx.user.count()) > 0) {
+            throw new Error('SYSTEM_ALREADY_INITIALIZED');
+          }
+
           const now = new Date();
           const existingRow = await tx.systemConfig.findUnique({
             where: { key: BOOTSTRAP_CONFIG_KEY },
             select: { value: true },
           });
           const existing = parseBootstrapState(existingRow?.value);
-
-          if (existing && !existing.usedAt && new Date(existing.expiresAt) > now) {
-            return {
-              expiresAt: new Date(existing.expiresAt),
-              generation: existing.generation,
-              code: null,
-            };
-          }
-
           const code = randomBytes(24).toString('base64url');
           const expiresAt = new Date(now.getTime() + BOOTSTRAP_TTL_MS);
           const nextState: BootstrapAuthorizationState = {
@@ -103,14 +120,12 @@ export async function ensureBootstrapAuthorization(): Promise<{ expiresAt: Date 
             });
           }
 
-          return { expiresAt, generation: nextState.generation, code };
+          return { code, expiresAt, generation: nextState.generation };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
       );
       break;
     } catch (error) {
-      // Concurrent absent-row creation can surface as P2002, while concurrent
-      // serializable refreshes surface as P2034. Retry and converge on winner.
       if (isBootstrapWriteConflict(error) && attempt < BOOTSTRAP_ISSUE_ATTEMPTS) continue;
       throw error;
     }
@@ -118,18 +133,23 @@ export async function ensureBootstrapAuthorization(): Promise<{ expiresAt: Date 
 
   if (!result) throw new Error('Unable to establish bootstrap authorization safely');
 
-  if (result.code) {
-    // Keep the raw capability out of structured/application log buffers. stderr
-    // is the operator-controlled out-of-band delivery channel for self-hosting.
-    logger.warn('auth.bootstrap.authorization_issued', {
-      component: 'bootstrap-security',
-      generation: result.generation,
-      expiresAt: result.expiresAt.toISOString(),
-    });
-    process.stderr.write(
-      `[OpsKnight setup] One-time authorization code (expires ${result.expiresAt.toISOString()}): ${result.code}\n`
-    );
-  }
+  logger.warn('auth.bootstrap.authorization_issued', {
+    component: 'bootstrap-security',
+    generation: result.generation,
+    expiresAt: result.expiresAt.toISOString(),
+    delivery: 'explicit-cli-only',
+  });
+  return result;
+}
 
-  return { expiresAt: result.expiresAt };
+/**
+ * Compatibility/status helper for setup rendering. It deliberately does not
+ * create a secret: issuance must be an explicit operator CLI action.
+ */
+export async function ensureBootstrapAuthorization(): Promise<{ expiresAt: Date }> {
+  const status = await getBootstrapAuthorizationStatus();
+  if (!status.active || !status.expiresAt) {
+    throw new Error('BOOTSTRAP_AUTHORIZATION_NOT_ISSUED');
+  }
+  return { expiresAt: status.expiresAt };
 }
