@@ -7,7 +7,7 @@ const repairMigrationPath =
   'prisma/migrations/20260911013000_jira_action_item_link_rolling_guard/migration.sql';
 
 describe('Jira rolling migration contract', () => {
-  it('recovers only the exact known legacy-duplicate failure', () => {
+  it('recovers only the exact known duplicate-data/index-build failure class', () => {
     const failedMigration = readFileSync(failedMigrationPath, 'utf8');
     const recovery = readFileSync('scripts/auto-recover-migrations.ts', 'utf8');
 
@@ -18,8 +18,9 @@ describe('Jira rolling migration contract', () => {
     expect(recovery).toContain(
       "'Cannot enforce one Jira issue per action item: duplicate Jira links exist.'"
     );
+    expect(recovery).toContain("'ExternalIssueLink_jira_actionItemId_unique'");
     expect(recovery).toContain("['migrate', 'resolve', '--applied', migrationName]");
-    expect(recovery).toContain('migration.logs?.includes(JIRA_DUPLICATE_GUARD_FAILURE)');
+    expect(recovery).toContain('failedLegacyPrecondition || failedUniqueIndexBuild');
     expect(recovery).toContain('AND rolled_back_at IS NULL');
   });
 
@@ -41,6 +42,7 @@ describe('Jira rolling migration contract', () => {
     expect(repairMigration).toContain(
       'BEFORE UPDATE OF "provider", "actionItemId" ON "ExternalIssueLink"'
     );
+    expect(repairMigration).toContain('IF TG_OP = \'UPDATE\' THEN');
     expect(repairMigration).toContain('"id" <> NEW."id"');
     expect(repairMigration).toContain("ERRCODE = '23505'");
   });
