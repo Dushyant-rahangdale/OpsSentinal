@@ -24,6 +24,55 @@ export interface PasswordRequirement {
   met: boolean;
 }
 
+type PasswordStrengthPresentation = Omit<PasswordStrengthResult, 'meetsMinimum'>;
+
+function getStrengthPresentation(score: number): PasswordStrengthPresentation {
+  switch (score) {
+    case 1:
+      return {
+        score: 1,
+        label: 'Weak',
+        color: 'bg-rose-500',
+        textColor: 'text-rose-500',
+        percentage: 20,
+      };
+    case 2:
+      return {
+        score: 2,
+        label: 'Fair',
+        color: 'bg-amber-500',
+        textColor: 'text-amber-500',
+        percentage: 40,
+      };
+    case 3:
+      return {
+        score: 3,
+        label: 'Good',
+        color: 'bg-yellow-500',
+        textColor: 'text-yellow-600',
+        percentage: 60,
+      };
+    case 4:
+      return {
+        score: 4,
+        label: 'Strong',
+        color: 'bg-emerald-500',
+        textColor: 'text-emerald-600',
+        percentage: 80,
+      };
+    case 5:
+      return {
+        score: 5,
+        label: 'Excellent',
+        color: 'bg-cyan-500',
+        textColor: 'text-cyan-600',
+        percentage: 100,
+      };
+    default:
+      return { score: 0, label: '', color: '', textColor: '', percentage: 0 };
+  }
+}
+
 /**
  * UX strength indicator. Acceptance remains controlled solely by the shared
  * server-compatible password policy; character-class composition is never a
@@ -31,14 +80,7 @@ export interface PasswordRequirement {
  */
 export function calculatePasswordStrength(password: string): PasswordStrengthResult {
   if (!password) {
-    return {
-      score: 0,
-      label: '',
-      color: '',
-      textColor: '',
-      percentage: 0,
-      meetsMinimum: false,
-    };
+    return { ...getStrengthPresentation(0), meetsMinimum: false };
   }
 
   const characterLength = getPasswordCharacterLength(password);
@@ -49,16 +91,7 @@ export function calculatePasswordStrength(password: string): PasswordStrengthRes
   if (meetsMinimum) score = 4;
   if (meetsMinimum && characterLength >= 24) score = 5;
 
-  const map: Record<number, Omit<PasswordStrengthResult, 'meetsMinimum'>> = {
-    0: { score: 0, label: '', color: '', textColor: '', percentage: 0 },
-    1: { score: 1, label: 'Weak', color: 'bg-rose-500', textColor: 'text-rose-500', percentage: 20 },
-    2: { score: 2, label: 'Fair', color: 'bg-amber-500', textColor: 'text-amber-500', percentage: 40 },
-    3: { score: 3, label: 'Good', color: 'bg-yellow-500', textColor: 'text-yellow-600', percentage: 60 },
-    4: { score: 4, label: 'Strong', color: 'bg-emerald-500', textColor: 'text-emerald-600', percentage: 80 },
-    5: { score: 5, label: 'Excellent', color: 'bg-cyan-500', textColor: 'text-cyan-600', percentage: 100 },
-  };
-
-  return { ...map[score], meetsMinimum };
+  return { ...getStrengthPresentation(score), meetsMinimum };
 }
 
 export function getPasswordRequirements(password: string): PasswordRequirement[] {
