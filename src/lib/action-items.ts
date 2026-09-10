@@ -76,6 +76,39 @@ function sanitizeIdentifierPart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 160);
 }
 
+function normalizeExternalIssue(value: unknown): ActionItemExternalIssue | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const entry = value as Record<string, unknown>;
+  const linkId = toStringOrUndefined(entry.linkId) ?? toStringOrUndefined(entry.id);
+  const provider = toStringOrUndefined(entry.provider);
+  const key = toStringOrUndefined(entry.key) ?? toStringOrUndefined(entry.externalKey);
+  const url = toStringOrUndefined(entry.url) ?? toStringOrUndefined(entry.externalUrl);
+
+  if (!linkId || !provider || !key || !url) return undefined;
+
+  return {
+    linkId,
+    provider,
+    key,
+    url,
+    status: toStringOrUndefined(entry.status) ?? toStringOrUndefined(entry.externalStatus),
+    assignee: toStringOrUndefined(entry.assignee) ?? toStringOrUndefined(entry.externalAssignee),
+    syncState: toStringOrUndefined(entry.syncState),
+  };
+}
+
+function normalizeExternalIssueFromEntry(entry: Record<string, unknown>): ActionItemExternalIssue | undefined {
+  const direct = normalizeExternalIssue(entry.externalIssue);
+  if (direct) return direct;
+
+  if (!Array.isArray(entry.externalIssueLinks)) return undefined;
+  for (const link of entry.externalIssueLinks) {
+    const normalized = normalizeExternalIssue(link);
+    if (normalized) return normalized;
+  }
+  return undefined;
+}
+
 export function getStoredActionItemId(params: {
   postmortemId: string;
   legacyId?: string;
@@ -114,7 +147,16 @@ export function parseActionItemDueDate(value: string | null | undefined): Date |
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
-export function normalizeLegacyActionItems(
+/**
+ * Normalize action-item data at UI boundaries.
+ *
+ * During the action-item migration, callers can receive one of three shapes:
+ * legacy postmortem JSON, the stable ActionItem UI shape, or normalized Prisma
+ * ActionItem rows with externalIssueLinks. Preserve Jira linkage metadata when
+ * it is already present so the same persisted action item renders consistently
+ * on the global board, postmortem detail/edit views, and incident postmortem tab.
+ */
+export function normalizeActionItems(
   value: unknown,
   options: { legacyIdPrefix?: string } = {}
 ): ActionItem[] {
@@ -124,12 +166,13 @@ export function normalizeLegacyActionItems(
 
   return value.map((item, index) => {
     const entry = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+    const externalIssue = normalizeExternalIssueFromEntry(entry);
 
     return {
       id: toStringOrUndefined(entry.id) ?? `${legacyIdPrefix}-${index}`,
       title: toStringOrUndefined(entry.title) ?? '',
       description: toStringOrUndefined(entry.description) ?? '',
-      owner: toStringOrUndefined(entry.owner),
+      owner: toStringOrUndefined(entry.owner) ?? toStringOrUndefined(entry.ownerId),
       dueDate: formatActionItemDueDate(
         entry.dueDate instanceof Date || typeof entry.dueDate === 'string'
           ? entry.dueDate
@@ -137,12 +180,21 @@ export function normalizeLegacyActionItems(
       ),
       status: toActionItemStatus(entry.status),
       priority: toActionItemPriority(entry.priority),
+      ...(externalIssue ? { externalIssue } : {}),
       completedAt:
         entry.completedAt instanceof Date || typeof entry.completedAt === 'string'
           ? entry.completedAt
           : undefined,
     };
   });
+}
+
+/** @deprecated Prefer normalizeActionItems for UI boundaries. */
+export function normalizeLegacyActionItems(
+  value: unknown,
+  options: { legacyIdPrefix?: string } = {}
+): ActionItem[] {
+  return normalizeActionItems(value, options);
 }
 
 export function serializeActionItemRecord(record: ActionItemRecordLike): ActionItem {
@@ -185,7 +237,7 @@ export function resolveStoredActionItems(params: {
     return records.map(serializeActionItemRecord);
   }
 
-  return normalizeLegacyActionItems(params.legacy, {
+  return normalizeActionItems(params.legacy, {
     legacyIdPrefix: params.legacyIdPrefix,
   });
 }
