@@ -23,14 +23,6 @@ function makeMetadata(issuer: string, overrides: Record<string, unknown> = {}) {
   };
 }
 
-function response(status: number, body: unknown) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-  } as unknown as Response;
-}
-
 function setupValidFetch(status = 200, body: unknown) {
   safeOutboundFetchMock.mockResolvedValue({
     ok: status >= 200 && status < 300,
@@ -58,6 +50,16 @@ describe('OIDC discovery provider matrix', () => {
       'Microsoft Entra ID',
       'https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0',
       'https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0/.well-known/openid-configuration',
+    ],
+    [
+      'Microsoft Entra US Gov',
+      'https://login.microsoftonline.us/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0',
+      'https://login.microsoftonline.us/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0/.well-known/openid-configuration',
+    ],
+    [
+      'Microsoft Entra China',
+      'https://login.partner.microsoftonline.cn/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0',
+      'https://login.partner.microsoftonline.cn/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0/.well-known/openid-configuration',
     ],
     [
       'Okta',
@@ -89,6 +91,24 @@ describe('OIDC discovery provider matrix', () => {
     });
   });
 
+  it.each([
+    'https://login.microsoftonline.com/common/v2.0',
+    'https://login.microsoftonline.com/organizations/v2.0',
+    'https://login.microsoftonline.com/consumers/v2.0',
+    'https://login.microsoftonline.us/common/v2.0',
+    'https://login.microsoftonline.us/organizations/v2.0',
+    'https://login.microsoftonline.us/consumers/v2.0',
+    'https://login.partner.microsoftonline.cn/common/v2.0',
+    'https://login.partner.microsoftonline.cn/organizations/v2.0',
+    'https://login.partner.microsoftonline.cn/consumers/v2.0',
+  ])('rejects generic Entra authority %s before discovery', async issuer => {
+    const result = await validateOidcConnection(issuer);
+
+    expect(result.isValid).toBe(false);
+    expect(result.error).toMatch(/tenant-specific|common|organizations|consumers/i);
+    expect(safeOutboundFetchMock).not.toHaveBeenCalled();
+  });
+
   it('rejects non-HTTPS issuers before network access', async () => {
     const result = await validateOidcConnection('http://identity.example.com');
 
@@ -104,6 +124,32 @@ describe('OIDC discovery provider matrix', () => {
 
     expect(result.isValid).toBe(false);
     expect(result.error).toMatch(/redirect/i);
+  });
+
+  it('requires discovery metadata to contain issuer', async () => {
+    setupValidFetch(200, makeMetadata('https://identity.example.com', { issuer: undefined }));
+
+    const result = await validateOidcConnection('https://identity.example.com');
+
+    expect(result.isValid).toBe(false);
+    expect(result.error).toMatch(/issuer/i);
+  });
+
+  it('rejects discovery metadata from an unexpected issuer', async () => {
+    setupValidFetch(200, makeMetadata('https://attacker.example.com'));
+
+    const result = await validateOidcConnection('https://identity.example.com');
+
+    expect(result.isValid).toBe(false);
+    expect(result.error).toMatch(/does not match/i);
+  });
+
+  it('accepts benign trailing-slash normalization for discovery issuer equality', async () => {
+    setupValidFetch(200, makeMetadata('https://identity.example.com'));
+
+    const result = await validateOidcConnection('https://identity.example.com/');
+
+    expect(result).toEqual({ isValid: true });
   });
 
   it('rejects metadata with unsafe endpoints', async () => {
@@ -135,5 +181,18 @@ describe('OIDC discovery provider matrix', () => {
 
     expect(result.isValid).toBe(false);
     expect(result.error).toMatch(/RS256|ES256/);
+  });
+
+  it('allows providers that omit optional signing-algorithm advertisement', async () => {
+    setupValidFetch(
+      200,
+      makeMetadata('https://identity.example.com', {
+        id_token_signing_alg_values_supported: undefined,
+      })
+    );
+
+    const result = await validateOidcConnection('https://identity.example.com');
+
+    expect(result).toEqual({ isValid: true });
   });
 });
