@@ -73,7 +73,7 @@ interface ActionItemCardProps {
   canManage: boolean;
   onStatusChange: (itemId: string, status: ActionItemStatus) => void;
   isUpdating?: boolean;
-  jiraCapability?: JiraCapability;
+  jiraCapability: JiraCapability;
 }
 
 const STATUS_CONFIG = {
@@ -131,6 +131,17 @@ function getOwnerName(
 ) {
   if (!ownerId) return 'Unassigned';
   return users.find(user => user.id === ownerId)?.name || 'Unknown';
+}
+
+function requireJiraCapability(
+  capabilities: Record<string, JiraCapability>,
+  serviceId: string
+): JiraCapability {
+  const capability = capabilities[serviceId];
+  if (!capability) {
+    throw new Error(`Missing Jira capability contract for service ${serviceId}`);
+  }
+  return capability;
 }
 
 function ActionItemCard({
@@ -238,17 +249,15 @@ function ActionItemCard({
         </p>
       )}
 
-      {jiraCapability && (
-        <div className="mb-2.5">
-          <ActionItemJiraBadge
-            actionItemId={item.id}
-            externalIssue={item.externalIssue}
-            canManage={canManage}
-            compact
-            jiraCapability={jiraCapability}
-          />
-        </div>
-      )}
+      <div className="mb-2.5">
+        <ActionItemJiraBadge
+          actionItemId={item.id}
+          externalIssue={item.externalIssue}
+          canManage={canManage}
+          compact
+          jiraCapability={jiraCapability}
+        />
+      </div>
 
       <div className="pt-2 border-t border-slate-100 flex flex-col gap-1 text-[11px] text-muted-foreground">
         <div className="flex items-center justify-between">
@@ -566,7 +575,10 @@ export default function ActionItemsBoard({
                         canManage={canManage}
                         onStatusChange={handleStatusChange}
                         isUpdating={updatingId === item.id}
-                        jiraCapability={jiraCapabilitiesByServiceId[item.serviceId]}
+                        jiraCapability={requireJiraCapability(
+                          jiraCapabilitiesByServiceId,
+                          item.serviceId
+                        )}
                       />
                     ))
                   )}
@@ -594,7 +606,10 @@ export default function ActionItemsBoard({
               const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.OPEN;
               const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.MEDIUM;
               const isUpdating = updatingId === item.id;
-              const jiraCapability = jiraCapabilitiesByServiceId[item.serviceId];
+              const jiraCapability = requireJiraCapability(
+                jiraCapabilitiesByServiceId,
+                item.serviceId
+              );
 
               return (
                 <Card
@@ -635,15 +650,13 @@ export default function ActionItemsBoard({
                         />
                       </div>
                       <h3 className="text-base font-semibold mb-1 text-foreground">{item.title}</h3>
-                      {jiraCapability && (
-                        <ActionItemJiraBadge
-                          actionItemId={item.id}
-                          externalIssue={item.externalIssue}
-                          canManage={canManage}
-                          compact
-                          jiraCapability={jiraCapability}
-                        />
-                      )}
+                      <ActionItemJiraBadge
+                        actionItemId={item.id}
+                        externalIssue={item.externalIssue}
+                        canManage={canManage}
+                        compact
+                        jiraCapability={jiraCapability}
+                      />
                       {item.description && (
                         <p className="text-sm text-muted-foreground mt-1 mb-2">{item.description}</p>
                       )}
