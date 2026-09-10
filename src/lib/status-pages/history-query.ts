@@ -1,5 +1,6 @@
 import 'server-only';
 import prisma from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export const HISTORY_INCIDENT_PAGE_SIZE = 1_000;
 
@@ -16,13 +17,14 @@ export type HistoryIncident = {
 export async function loadHistoryIncidentsByService(
   serviceIds: string[],
   earliestRequiredStart: Date,
-  now: Date
+  now: Date,
+  db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<Map<string, HistoryIncident[]>> {
   const byService = new Map<string, HistoryIncident[]>();
   let cursor: string | undefined;
 
   while (true) {
-    const page = await prisma.incident.findMany({
+    const page = await db.incident.findMany({
       where: {
         serviceId: { in: serviceIds },
         visibility: 'PUBLIC',
