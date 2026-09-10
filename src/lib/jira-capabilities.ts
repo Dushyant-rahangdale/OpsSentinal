@@ -44,8 +44,6 @@ export type JiraCapabilityInput = {
   /** Service ID for the entity being rendered. Null is informational workspace state only. */
   serviceId: string | null;
   canManage: boolean;
-  /** @deprecated Aggregate operational actions must use per-entity capabilities. */
-  scope?: 'service' | 'workspace';
 };
 
 type DeriveJiraCapabilityInput = {
@@ -200,10 +198,6 @@ export async function getActionItemJiraCapabilities(
 ): Promise<JiraCapability> {
   return getJiraCapabilities({ serviceId, canManage });
 }
-
-export type JiraSyncResult =
-  | { ok: true; link: { id: string; externalKey: string; externalStatus: string | null } }
-  | { ok: false; code: string; retryable: boolean; message: string };
 
 export type JiraErrorCode =
   | 'JIRA_AUTH_FAILED'
