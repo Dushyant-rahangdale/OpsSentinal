@@ -135,7 +135,10 @@ export async function buildStatusPageSnapshot(
     createdAt: true,
     updatedAt: true,
   } as const;
-  const loadDisplayFeed = (where: object, orderBy: { startDate: 'asc' | 'desc' }) =>
+  const loadDisplayFeed = (
+    where: Prisma.StatusPageAnnouncementWhereInput,
+    orderBy: { startDate: 'asc' | 'desc' }
+  ) =>
     db.statusPageAnnouncement.findMany({
       where,
       orderBy,
@@ -159,66 +162,62 @@ export async function buildStatusPageSnapshot(
     OR: [{ endDate: { gte: earliestRequiredStart } }, { endDate: null }],
   };
   const emptyHistory = new Map<string, HistoryIncident[]>();
-  const [
-    currentIncidentsByService,
-    incidents,
-    historyIncidentsByService,
-    currentMaintenanceRows,
-    historyMaintenanceRows,
-  ] = ids.length
-    ? await Promise.all([
-        loadCurrentIncidentsByService(ids, db),
-        visibility.showIncidents
-          ? db.incident.findMany({
-              where: {
-                serviceId: { in: ids },
-                visibility: 'PUBLIC',
-                createdAt: { gte: window.start, lte: now },
-              },
-              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-              take: limits.maxIncidents,
+  // Interactive transactions cannot run queries in parallel; Promise.all here rolls the
+  // publish lease back with "Transaction already closed".
+  const currentIncidentsByService = ids.length
+    ? await loadCurrentIncidentsByService(ids, db)
+    : emptyHistory;
+  const incidents =
+    ids.length && visibility.showIncidents
+      ? await db.incident.findMany({
+          where: {
+            serviceId: { in: ids },
+            visibility: 'PUBLIC',
+            createdAt: { gte: window.start, lte: now },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: limits.maxIncidents,
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            status: true,
+            urgency: true,
+            createdAt: true,
+            acknowledgedAt: true,
+            resolvedAt: true,
+            service: { select: { id: true, name: true, region: true } },
+            events: {
+              orderBy: { createdAt: 'asc' },
+              take: 50,
+              select: { id: true, type: true, message: true, createdAt: true },
+            },
+            postmortem: {
               select: {
-                id: true,
-                title: true,
-                description: true,
                 status: true,
-                urgency: true,
-                createdAt: true,
-                acknowledgedAt: true,
-                resolvedAt: true,
-                service: { select: { id: true, name: true, region: true } },
-                events: {
-                  orderBy: { createdAt: 'asc' },
-                  take: 50,
-                  select: { id: true, type: true, message: true, createdAt: true },
-                },
-                postmortem: {
-                  select: {
-                    status: true,
-                    isPublic: true,
-                    publishedAt: true,
-                    title: true,
-                    summary: true,
-                  },
-                },
+                isPublic: true,
+                publishedAt: true,
+                title: true,
+                summary: true,
               },
-            })
-          : [],
-        needsHistory
-          ? loadHistoryIncidentsByService(ids, earliestRequiredStart, now, db)
-          : emptyHistory,
-        db.statusPageAnnouncement.findMany({
-          where: currentMaintenanceWhere,
-          select: maintenanceSelect,
-        }),
-        needsHistory
-          ? db.statusPageAnnouncement.findMany({
-              where: historicalMaintenanceWhere,
-              select: maintenanceSelect,
-            })
-          : [],
-      ])
-    : [emptyHistory, [], emptyHistory, [], []];
+            },
+          },
+        })
+      : [];
+  const historyIncidentsByService =
+    ids.length && needsHistory
+      ? await loadHistoryIncidentsByService(ids, earliestRequiredStart, now, db)
+      : emptyHistory;
+  const currentMaintenanceRows = await db.statusPageAnnouncement.findMany({
+    where: currentMaintenanceWhere,
+    select: maintenanceSelect,
+  });
+  const historyMaintenanceRows = needsHistory
+    ? await db.statusPageAnnouncement.findMany({
+        where: historicalMaintenanceWhere,
+        select: maintenanceSelect,
+      })
+    : [];
   const displayAnnouncements = await loadDisplayFeed(currentAnnouncementDisplayWhere(pageId, now), {
     startDate: 'desc',
   });
