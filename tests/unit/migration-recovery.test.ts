@@ -55,6 +55,7 @@ describe('Auto Recovery Migration System', () => {
         migration_name: '20250630_add_escalation_policy_enum',
         started_at: new Date(),
         finished_at: null,
+        logs: null,
       },
     ]);
 
@@ -79,6 +80,7 @@ describe('Auto Recovery Migration System', () => {
         migration_name: '20250630_add_escalation_policy_enum',
         started_at: new Date(),
         finished_at: null,
+        logs: null,
       },
     ]);
 
@@ -94,6 +96,51 @@ describe('Auto Recovery Migration System', () => {
       expect.anything()
     );
     expect(result).toBe(true);
+  });
+
+  it('recovers the known Jira duplicate precondition and applies the forward repair', async () => {
+    const migrationName = '20260910174500_guard_jira_mapping_workspace';
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      {
+        migration_name: migrationName,
+        started_at: new Date(),
+        finished_at: null,
+        logs:
+          'Database error: Cannot enforce one Jira issue per action item: duplicate Jira links exist. Review and unlink duplicates before applying this migration.',
+      },
+    ]);
+
+    const result = await autoRecoverMigrations();
+
+    expect(execFileSync).toHaveBeenNthCalledWith(
+      1,
+      process.execPath,
+      ['node_modules/prisma/build/index.js', 'migrate', 'resolve', '--applied', migrationName],
+      expect.anything()
+    );
+    expect(execFileSync).toHaveBeenNthCalledWith(
+      2,
+      process.execPath,
+      ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+      expect.anything()
+    );
+    expect(result).toBe(true);
+  });
+
+  it('does not auto-resolve an unrelated failure in the Jira migration', async () => {
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      {
+        migration_name: '20260910174500_guard_jira_mapping_workspace',
+        started_at: new Date(),
+        finished_at: null,
+        logs: 'Database error: permission denied for relation ExternalIssueLink',
+      },
+    ]);
+
+    const result = await autoRecoverMigrations();
+
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(result).toBe(false);
   });
 
   it('should deploy pending migrations if healthy', async () => {
