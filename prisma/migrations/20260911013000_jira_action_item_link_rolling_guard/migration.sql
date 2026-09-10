@@ -91,12 +91,14 @@ BEGIN
 
   -- Existing duplicate rows must remain synchronizable. The UPDATE trigger is
   -- scoped to provider/actionItemId columns, but keep this identity check as a
-  -- defense if the trigger definition is broadened in the future.
-  IF TG_OP = 'UPDATE'
-    AND OLD."provider" = NEW."provider"
-    AND OLD."actionItemId" IS NOT DISTINCT FROM NEW."actionItemId"
-  THEN
-    RETURN NEW;
+  -- defense if the trigger definition is broadened in the future. Keep OLD
+  -- inside the UPDATE-only branch because OLD is not assigned for INSERT.
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD."provider" = NEW."provider"
+      AND OLD."actionItemId" IS NOT DISTINCT FROM NEW."actionItemId"
+    THEN
+      RETURN NEW;
+    END IF;
   END IF;
 
   PERFORM pg_advisory_xact_lock(
