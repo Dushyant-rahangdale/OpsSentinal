@@ -135,43 +135,13 @@ export async function buildStatusPageSnapshot(
     createdAt: true,
     updatedAt: true,
   } as const;
-  const loadDisplayFeeds = () =>
-    Promise.all([
-      db.statusPageAnnouncement.findMany({
-        where: currentAnnouncementDisplayWhere(pageId, now),
-        orderBy: { startDate: 'desc' },
-        take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
-        select: DISPLAY_FEED_SELECT,
-      }),
-      db.statusPageAnnouncement.findMany({
-        where: maintenanceInProgressDisplayWhere(pageId, now),
-        orderBy: { startDate: 'desc' },
-        take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
-        select: DISPLAY_FEED_SELECT,
-      }),
-      db.statusPageAnnouncement.findMany({
-        where: maintenanceUpcomingDisplayWhere(pageId, now),
-        orderBy: { startDate: 'asc' },
-        take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
-        select: DISPLAY_FEED_SELECT,
-      }),
-      page.showChangelog
-        ? db.statusPageAnnouncement.findMany({
-            where: changelogDisplayWhere(pageId, now),
-            orderBy: { startDate: 'desc' },
-            take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
-            select: DISPLAY_FEED_SELECT,
-          })
-        : Promise.resolve(
-            [] as Awaited<
-              ReturnType<
-                typeof db.statusPageAnnouncement.findMany<{
-                  select: typeof DISPLAY_FEED_SELECT;
-                }>
-              >
-            >
-          ),
-    ]);
+  const loadDisplayFeed = (where: object, orderBy: { startDate: 'asc' | 'desc' }) =>
+    db.statusPageAnnouncement.findMany({
+      where,
+      orderBy,
+      take: STATUS_PAGE_DISPLAY_FEED_LIMIT,
+      select: DISPLAY_FEED_SELECT,
+    });
   const needsHistory = visibility.showUptime;
   const maintenanceSelect = { startDate: true, endDate: true, affectedServiceIds: true } as const;
   const currentMaintenanceWhere = {
@@ -195,7 +165,6 @@ export async function buildStatusPageSnapshot(
     historyIncidentsByService,
     currentMaintenanceRows,
     historyMaintenanceRows,
-    [displayAnnouncements, maintenanceInProgressRows, maintenanceUpcomingRows, changelogRows],
   ] = ids.length
     ? await Promise.all([
         loadCurrentIncidentsByService(ids, db),
@@ -248,9 +217,22 @@ export async function buildStatusPageSnapshot(
               select: maintenanceSelect,
             })
           : [],
-        loadDisplayFeeds(),
       ])
-    : [emptyHistory, [], emptyHistory, [], [], await loadDisplayFeeds()];
+    : [emptyHistory, [], emptyHistory, [], []];
+  const displayAnnouncements = await loadDisplayFeed(currentAnnouncementDisplayWhere(pageId, now), {
+    startDate: 'desc',
+  });
+  const maintenanceInProgressRows = await loadDisplayFeed(
+    maintenanceInProgressDisplayWhere(pageId, now),
+    { startDate: 'desc' }
+  );
+  const maintenanceUpcomingRows = await loadDisplayFeed(
+    maintenanceUpcomingDisplayWhere(pageId, now),
+    { startDate: 'asc' }
+  );
+  const changelogRows = page.showChangelog
+    ? await loadDisplayFeed(changelogDisplayWhere(pageId, now), { startDate: 'desc' })
+    : [];
 
   const impactByService = new Map<string, number>();
   for (const [serviceId, serviceIncidents] of currentIncidentsByService) {
