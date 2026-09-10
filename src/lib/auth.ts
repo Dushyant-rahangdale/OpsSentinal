@@ -835,16 +835,21 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                     return linked;
                   }
 
-                  // An existing account must prove sufficient provider-specific
-                  // email assurance. ACTIVE accounts additionally require a fresh,
-                  // one-time administrator approval before first linking.
+                  // Existing accounts must meet the provider-specific email
+                  // assurance policy. Entra may omit `email_verified`, but a
+                  // missing claim is not sufficient by itself to claim an
+                  // invited account: that path requires a one-time admin approval.
                   if (
                     existing &&
                     !hasOidcEmailLinkAssurance(activeConfig.providerType, emailVerifiedClaim)
                   ) {
                     throw new Error('OIDC_LINK_NOT_APPROVED');
                   }
-                  if (existing && currentTarget.status !== 'INVITED') {
+
+                  const requiresLinkApproval =
+                    Boolean(existing) &&
+                    (currentTarget.status !== 'INVITED' || emailVerifiedClaim !== true);
+                  if (requiresLinkApproval) {
                     const approval = await tx.oidcLinkingApproval.findFirst({
                       where: { userId: currentTarget.id, revokedAt: null },
                       select: { id: true },
