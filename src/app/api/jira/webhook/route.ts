@@ -3,6 +3,7 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
 import { processJiraWebhookEvent, type JiraWebhookPayload } from '@/lib/jira-sync';
+import { withJiraWorkspaceProviderFence } from '@/lib/jira-concurrency';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger, withRequestContext } from '@/lib/logger';
 import { getClientIp } from '@/lib/client-ip';
@@ -125,6 +126,11 @@ function isHandledJiraEvent(event?: string, eventType?: string): boolean {
   return false;
 }
 
+function isWorkspaceUnavailable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes('jira is not configured') || message.includes('disabled in workspace');
+}
+
 async function postJiraWebhook(request: NextRequest) {
   try {
     const clientIp = getClientIp(request.headers);
@@ -182,9 +188,28 @@ async function postJiraWebhook(request: NextRequest) {
       return new NextResponse(null, { status: 204 });
     }
 
-    const result = await processJiraWebhookEvent(payload as unknown as JiraWebhookPayload);
-
-    return NextResponse.json({ ok: true, ...result });
+    try {
+      // Hold the shared workspace fence for the entire webhook mutation chain,
+      // including linked action-item/timeline side effects. Removal cannot
+      // complete halfway through processing, and a disable/removal that wins
+      // first causes this delivery to become an acknowledged no-op.
+      const result = await withJiraWorkspaceProviderFence(() =>
+        processJiraWebhookEvent(payload as unknown as JiraWebhookPayload)
+      );
+      return NextResponse.json({ ok: true, ...result });
+    } catch (error) {
+      if (isWorkspaceUnavailable(error)) {
+        logger.info('Jira webhook lost workspace lifecycle race; acknowledged without processing', {
+          component: 'jira-webhook',
+        });
+        return NextResponse.json({
+          ok: true,
+          updated: 0,
+          reason: 'integration_disabled_or_removed',
+        });
+      }
+      throw error;
+    }
   } catch (error) {
     logger.error('Jira webhook processing error', {
       component: 'jira-webhook',
