@@ -1,6 +1,5 @@
 import { ExternalLink, Tickets } from 'lucide-react';
-import type { JiraIssueReference } from '@/lib/jira-references';
-import { sanitizeJiraHttpUrl } from '@/lib/jira-references';
+import { sanitizeJiraHttpUrl, type JiraIssueReference } from '@/lib/jira-references';
 import { cn } from '@/lib/utils';
 
 function statusColor(status: string | undefined): string {
