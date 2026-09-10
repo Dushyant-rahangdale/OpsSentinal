@@ -10,6 +10,7 @@ const prisma = new PrismaClient({
 });
 
 const INSTALL_LOCK_ID = 1448233807;
+const MAX_INSTALL_ATTEMPTS = 5;
 
 const indexes = [
   `CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_notification_tenant_fair_delivery"
@@ -43,22 +44,35 @@ async function assertRequiredIndexes() {
 }
 
 async function main() {
-  let lockAcquired = false;
+  for (let attempt = 1; attempt <= MAX_INSTALL_ATTEMPTS; attempt += 1) {
+    let lockAcquired = false;
+    try {
+      // Cast PostgreSQL's void result so Prisma can deserialize the row.
+      await prisma.$queryRawUnsafe(
+        `SELECT pg_advisory_lock(${INSTALL_LOCK_ID})::text AS "lockResult"`
+      );
+      lockAcquired = true;
 
-  try {
-    // Cast PostgreSQL's void result so Prisma can deserialize the row.
-    await prisma.$queryRawUnsafe(
-      `SELECT pg_advisory_lock(${INSTALL_LOCK_ID})::text AS "lockResult"`
-    );
-    lockAcquired = true;
-
-    for (const statement of indexes) {
-      await prisma.$executeRawUnsafe(statement);
-    }
-    await assertRequiredIndexes();
-  } finally {
-    if (lockAcquired) {
-      await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${INSTALL_LOCK_ID})`);
+      for (const statement of indexes) {
+        await prisma.$executeRawUnsafe(statement);
+      }
+      await assertRequiredIndexes();
+      return;
+    } catch (error) {
+      const code = error?.code || error?.meta?.code;
+      // Multiple new replicas can race immediately after a deployment. PostgreSQL can choose one
+      // waiter as a deadlock victim while a concurrent index build waits for its transaction to
+      // finish. The index statements are idempotent, so retrying from a fresh session is safe.
+      if ((code !== '40P01' && code !== '55P03') || attempt === MAX_INSTALL_ATTEMPTS) throw error;
+      const delayMs = attempt * 1_000;
+      console.warn(
+        `Status platform index installer contention on attempt ${attempt}; retrying in ${delayMs}ms.`
+      );
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    } finally {
+      if (lockAcquired) {
+        await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${INSTALL_LOCK_ID})`);
+      }
     }
   }
 }
