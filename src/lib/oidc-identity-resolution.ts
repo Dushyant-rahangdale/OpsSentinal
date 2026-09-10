@@ -21,8 +21,7 @@ export type OidcIdentityResolutionFailure =
   | 'OIDC_AUTO_PROVISION_DISABLED'
   | 'OIDC_LINK_NOT_APPROVED'
   | 'OIDC_LINK_APPROVAL_EXPIRED'
-  | 'OIDC_TARGET_NOT_OPERATIONAL'
-  | 'OIDC_IDENTITY_OWNED_BY_ANOTHER_USER';
+  | 'OIDC_TARGET_NOT_OPERATIONAL';
 
 export type OidcIdentityResolutionResult =
   | {
@@ -44,6 +43,7 @@ type ResolveOidcIdentityInput = {
   displayName: string | null;
   providerType: string | null | undefined;
   emailVerifiedClaim: boolean | undefined;
+  requireEmailVerifiedClaim: boolean;
   autoProvision: boolean;
   allowedDomains: string[];
 };
@@ -87,8 +87,9 @@ export async function resolveOidcIdentityForSignIn(
 ): Promise<OidcIdentityResolutionResult> {
   const email = normalizeEmail(input.email);
 
-  // Established identity fast path. Email/domain/verification changes cannot
-  // move or destroy an existing immutable binding.
+  // Established identity fast path. Missing or changed email/verification
+  // claims cannot move or destroy an existing immutable binding. An explicit
+  // negative email verification claim is rejected by the caller for all paths.
   const existingIdentity = await prisma.oidcIdentity.findUnique({
     where: { issuer_subject: { issuer: input.issuer, subject: input.subject } },
     select: { userId: true },
@@ -138,6 +139,12 @@ export async function resolveOidcIdentityForSignIn(
           userCreated: false,
           approvalConsumed: false,
         };
+      }
+
+      // Strict email verification is a first-binding/provisioning assurance,
+      // not an ongoing identifier for an already-established OIDC identity.
+      if (input.requireEmailVerifiedClaim && input.emailVerifiedClaim !== true) {
+        throw new Error('OIDC_EMAIL_ASSURANCE_REQUIRED');
       }
 
       // Email is discovery material only after stable identity lookup misses.
@@ -244,7 +251,6 @@ export async function resolveOidcIdentityForSignIn(
       'OIDC_LINK_NOT_APPROVED',
       'OIDC_LINK_APPROVAL_EXPIRED',
       'OIDC_TARGET_NOT_OPERATIONAL',
-      'OIDC_IDENTITY_OWNED_BY_ANOTHER_USER',
     ]);
     if (knownReasons.has(reason as OidcIdentityResolutionFailure)) {
       return { ok: false, reason: reason as OidcIdentityResolutionFailure };
