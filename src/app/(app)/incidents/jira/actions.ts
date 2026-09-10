@@ -7,6 +7,7 @@ import {
   linkExistingJiraIssue,
   syncExternalIssueLink,
 } from '@/lib/jira-sync';
+import { classifyJiraError } from '@/lib/jira-capabilities';
 import { revalidatePath } from 'next/cache';
 
 export type JiraActionResult = {
@@ -34,7 +35,6 @@ export async function createJiraIssueFromIncident(incidentId: string): Promise<J
     if (!incident) return { success: false, error: 'Incident not found.' };
 
     const mapping = incident.service?.jiraServiceMapping;
-
     const jiraConfig = await prisma.jiraConfig.findUnique({
       where: { id: 'default' },
       select: { enabled: true },
@@ -59,13 +59,11 @@ export async function createJiraIssueFromIncident(incidentId: string): Promise<J
     const issueType = mapping?.incidentIssueType ?? 'Bug';
     const labels = mapping?.defaultLabels ?? ['opsknight'];
     const component = mapping?.defaultComponent ?? null;
-
     const summary = `[Incident] ${incident.title}`;
     const description = incident.description || `OpsKnight Incident: ${incident.title}`;
 
-    let issue;
     try {
-      const result = await createJiraIssueAndLink({
+      const { issue } = await createJiraIssueAndLink({
         incidentId,
         projectKey,
         issueType,
@@ -74,41 +72,21 @@ export async function createJiraIssueFromIncident(incidentId: string): Promise<J
         labels,
         component,
       });
-      issue = result.issue;
+
+      await prisma.incidentEvent.create({
+        data: {
+          incidentId,
+          type: 'COMMENT',
+          message: `Jira issue ${issue.key} created`,
+        },
+      });
+
+      revalidatePath(`/incidents/${incidentId}`);
+      return { success: true, key: issue.key, url: issue.url };
     } catch (error) {
-      const rawMsg = error instanceof Error ? error.message : String(error);
-      if (rawMsg.includes("target project doesn't exist")) {
-        return {
-          success: false,
-          error: `Jira project "${projectKey}" does not exist or your API token lacks permissions. Check Services → Settings → Jira Mapping.`,
-        };
-      }
-      if (rawMsg.includes('issue type')) {
-        return {
-          success: false,
-          error: `Jira issue type "${issueType}" is invalid for project "${projectKey}". Change Incident Issue Type to "Task" in Services → Settings → Jira Mapping.`,
-        };
-      }
-      if (rawMsg.includes('Component') || rawMsg.includes('component')) {
-        return {
-          success: false,
-          error: `Component "${component}" does not exist in Jira project "${projectKey}". Clear Default Component in Services → Settings → Jira Mapping.`,
-        };
-      }
-      return { success: false, error: `Jira issue creation failed: ${rawMsg}` };
+      const classified = classifyJiraError(error);
+      return { success: false, error: classified.userMessage };
     }
-
-    // Create timeline event
-    await prisma.incidentEvent.create({
-      data: {
-        incidentId,
-        type: 'COMMENT',
-        message: `Jira issue ${issue.key} created`,
-      },
-    });
-
-    revalidatePath(`/incidents/${incidentId}`);
-    return { success: true, key: issue.key, url: issue.url };
   } catch (error) {
     return {
       success: false,
@@ -130,40 +108,23 @@ export async function linkJiraIssueToIncident(
     });
     if (!incident) return { success: false, error: 'Incident not found.' };
 
-    let issue;
     try {
-      const result = await linkExistingJiraIssue({
-        incidentId,
-        jiraKey,
+      const { issue } = await linkExistingJiraIssue({ incidentId, jiraKey });
+
+      await prisma.incidentEvent.create({
+        data: {
+          incidentId,
+          type: 'COMMENT',
+          message: `Jira issue ${issue.key} linked`,
+        },
       });
-      issue = result.issue;
+
+      revalidatePath(`/incidents/${incidentId}`);
+      return { success: true, key: issue.key, url: issue.url };
     } catch (error) {
-      const rawMsg = error instanceof Error ? error.message : String(error);
-      if (rawMsg.includes('already linked')) {
-        return {
-          success: false,
-          error: `Jira issue "${jiraKey.trim()}" is already linked to another incident or item.`,
-        };
-      }
-      if (rawMsg.includes('not found') || rawMsg.includes('404')) {
-        return {
-          success: false,
-          error: `Jira issue "${jiraKey.trim()}" was not found in your Jira workspace.`,
-        };
-      }
-      return { success: false, error: `Failed to link Jira issue: ${rawMsg}` };
+      const classified = classifyJiraError(error);
+      return { success: false, error: classified.userMessage };
     }
-
-    await prisma.incidentEvent.create({
-      data: {
-        incidentId,
-        type: 'COMMENT',
-        message: `Jira issue ${issue.key} linked`,
-      },
-    });
-
-    revalidatePath(`/incidents/${incidentId}`);
-    return { success: true, key: issue.key, url: issue.url };
   } catch (error) {
     return {
       success: false,
@@ -179,20 +140,22 @@ export async function unlinkJiraIssueFromIncident(
   try {
     await assertAdminOrResponder();
 
-    // Verify the link exists, is a Jira link, belongs to this incident, and is incident-scoped
+    const ownershipWhere = {
+      id: linkId,
+      provider: 'JIRA' as const,
+      incidentId,
+    };
+
     const link = await prisma.externalIssueLink.findFirst({
-      where: {
-        id: linkId,
-        provider: 'JIRA',
-        incidentId,
-      },
+      where: ownershipWhere,
       select: { id: true, externalKey: true, incidentId: true },
     });
     if (!link) return { success: false, error: 'Jira link not found for this incident.' };
 
-    await prisma.externalIssueLink.delete({
-      where: { id: linkId },
-    });
+    const deleted = await prisma.externalIssueLink.deleteMany({ where: ownershipWhere });
+    if (deleted.count !== 1) {
+      return { success: false, error: 'Jira link changed before it could be unlinked. Retry.' };
+    }
 
     await prisma.incidentEvent.create({
       data: {
@@ -219,7 +182,6 @@ export async function syncIncidentJiraIssue(
   try {
     await assertAdminOrResponder();
 
-    // Verify the link exists, is a Jira link, and belongs to this incident
     const link = await prisma.externalIssueLink.findFirst({
       where: {
         id: linkId,
@@ -230,10 +192,16 @@ export async function syncIncidentJiraIssue(
     });
     if (!link) return { success: false, error: 'Jira link not found for this incident.' };
 
-    const result = await syncExternalIssueLink(linkId);
-    if (!result) {
-      return { success: false, error: 'Jira sync failed. Check integration health in Settings.' };
+    try {
+      const result = await syncExternalIssueLink(link.id);
+      if (!result) {
+        return { success: false, error: 'Jira sync failed. Check integration health in Settings.' };
+      }
+    } catch (error) {
+      const classified = classifyJiraError(error);
+      return { success: false, error: classified.userMessage };
     }
+
     revalidatePath(`/incidents/${incidentId}`);
     return { success: true };
   } catch (error) {
