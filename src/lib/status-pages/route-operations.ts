@@ -17,7 +17,13 @@ export async function reconcileStatusPageRouteOperations(limit = 50, statusPageI
   });
   const store = getStatusPageServingStore();
   let completed = 0;
-  for (const operation of operations) {
+  // Preserve a working route until every new route in this reconciliation has been verified.
+  // This prevents a partially failed hostname switch from making a public page unreachable.
+  const additions = operations.filter(operation => operation.operation === 'ADD');
+  const removals = operations.filter(operation => operation.operation === 'REMOVE');
+  let additionFailed = false;
+  for (const operation of [...additions, ...removals]) {
+    if (operation.operation === 'REMOVE' && additionFailed) break;
     try {
       if (operation.operation === 'ADD') {
         const route = await store.resolveRoute(operation.routeKey);
@@ -33,6 +39,7 @@ export async function reconcileStatusPageRouteOperations(limit = 50, statusPageI
       });
       completed++;
     } catch (error) {
+      if (operation.operation === 'ADD') additionFailed = true;
       const attempts = operation.attempts + 1;
       await prisma.statusPageRouteOperation.update({
         where: { id: operation.id },

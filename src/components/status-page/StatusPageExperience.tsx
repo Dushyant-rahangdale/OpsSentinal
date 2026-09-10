@@ -181,9 +181,34 @@ export default function StatusPageExperience({
           createdAt: segment.startAt,
           resolvedAt: segment.endAt,
           status: 'RESOLVED',
-          urgency: segment.status === 'MAJOR_OUTAGE' ? 'HIGH' : 'MEDIUM',
+          urgency: segment.status === 'MAJOR_OUTAGE' ? 'HIGH' : segment.status === 'MAINTENANCE' ? 'MAINTENANCE' : 'MEDIUM',
         }))
       ),
+    [snapshot.services]
+  );
+  const legacyStatusHistory = useMemo(
+    () => Object.fromEntries(snapshot.services.flatMap(service => {
+      const history = service.history;
+      if (!history) return [];
+      const start = new Date(history.rangeStart);
+      const end = new Date(history.rangeEnd);
+      const days: Array<{ date: string; status: 'operational' | 'degraded' | 'outage' | 'maintenance' | 'unknown' }> = [];
+      for (const cursor = new Date(start); cursor < end; cursor.setDate(cursor.getDate() + 1)) {
+        const dayStart = new Date(cursor);
+        const dayEnd = new Date(cursor);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        const statuses = history.segments
+          .filter(segment => new Date(segment.startAt) < dayEnd && new Date(segment.endAt) > dayStart)
+          .map(segment => segment.status);
+        const status = statuses.includes('MAJOR_OUTAGE') ? 'outage'
+          : statuses.includes('PARTIAL_OUTAGE') || statuses.includes('DEGRADED') ? 'degraded'
+          : statuses.includes('MAINTENANCE') ? 'maintenance'
+          : statuses.includes('UNKNOWN') ? 'unknown'
+          : 'operational';
+        days.push({ date: dayStart.toLocaleDateString('en-CA'), status });
+      }
+      return [[service.id, days]];
+    })),
     [snapshot.services]
   );
 
@@ -224,6 +249,7 @@ export default function StatusPageExperience({
           statusPageServices={legacyMappings}
           uptime90={legacyUptime90}
           incidents={legacyHistoryIncidents}
+          statusHistory={legacyStatusHistory}
           privacySettings={{
             showServiceMetrics: visibility.metrics,
             showServiceDescriptions: true,
@@ -399,7 +425,7 @@ export default function StatusPageExperience({
       {branding.showFooter !== false && (
         <footer className="status-footer">
           <p className="status-footer__brand">
-            {page.footerText || 'Powered by OpsKnight'}
+            {page.footerText || <><span>Powered by </span><a className="status-footer-link" href="https://opsknight.com/">OpsKnight</a></>}
           </p>
           <nav aria-label="Status resources" className="status-footer__links">
             {branding.showApiLink !== false && <a className="status-footer-link" href={apiPath}>JSON API</a>}

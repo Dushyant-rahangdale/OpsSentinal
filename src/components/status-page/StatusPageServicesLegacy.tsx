@@ -48,7 +48,7 @@ interface StatusPageServicesProps {
   }>;
   statusHistory?: Record<
     string,
-    Array<{ date: string; status: 'operational' | 'degraded' | 'outage' }>
+    Array<{ date: string; status: 'operational' | 'degraded' | 'outage' | 'maintenance' | 'unknown' }>
   >;
   privacySettings?: PrivacySettings;
   groupByRegionDefault?: boolean;
@@ -171,7 +171,7 @@ export default function StatusPageServices({
 
     const historyMap: Record<
       string,
-      Array<{ date: string; status: 'operational' | 'degraded' | 'outage' }>
+      Array<{ date: string; status: 'operational' | 'degraded' | 'outage' | 'maintenance' | 'unknown' }>
     > = {};
     services.forEach(service => {
       historyMap[service.id] = [];
@@ -194,10 +194,11 @@ export default function StatusPageServices({
         });
 
         const hasOutage = active.some(incident => incident.urgency === 'HIGH');
+        const hasMaintenance = active.some(incident => incident.urgency === 'MAINTENANCE');
         const hasDegraded = active.some(
           incident => incident.urgency === 'MEDIUM' || incident.urgency === 'LOW'
         );
-        const status = hasOutage ? 'outage' : hasDegraded ? 'degraded' : 'operational';
+        const status = hasOutage ? 'outage' : hasDegraded ? 'degraded' : hasMaintenance ? 'maintenance' : 'operational';
 
         historyMap[service.id].push({
           date: dayKey,
@@ -675,7 +676,7 @@ export default function StatusPageServices({
                       position: 'relative',
                       height: '100%',
                       background:
-                        HISTORY_STATUS_COLORS[barStatus as 'operational' | 'degraded' | 'outage'],
+                        barStatus === 'maintenance' ? '#2563eb' : barStatus === 'unknown' ? '#64748b' : HISTORY_STATUS_COLORS[barStatus as 'operational' | 'degraded' | 'outage'],
                       borderRadius: '3px',
                       boxShadow: isHovered ? '0 0 0 1px #0f172a' : 'none',
                       cursor: entry ? 'pointer' : 'default',

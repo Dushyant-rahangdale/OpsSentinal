@@ -35,7 +35,8 @@ interface StatusPageMetricsProps {
 }
 
 // Helper function to format percentage consistently (SSR-safe)
-function formatUptimePercent(value: number): string {
+function formatUptimePercent(value: number | null): string {
+  if (value === null) return 'Unavailable';
   // Clamp value between 0 and 100, then round to 3 decimal places
   const clamped = Math.max(0, Math.min(100, isNaN(value) ? 100 : value));
   // Round to avoid floating point precision issues
@@ -145,16 +146,14 @@ export default function StatusPageMetrics({
     // Use current date for calculation
     const periodEnd = new Date();
 
-    return services
-      .filter(service => !precomputedUptime || precomputedUptime[service.id] !== undefined)
-      .map(service => ({
+    return services.map(service => ({
       serviceId: service.id,
       service: service.name,
         thirtyDays:
           precomputedUptime30?.[service.id] === undefined && !precomputedUptime
             ? calculateServiceUptime(service.id, incidents, thirtyDaysAgo, periodEnd)
             : {
-                uptime: precomputedUptime30?.[service.id] ?? precomputedUptime?.[service.id] ?? 0,
+                uptime: precomputedUptime30?.[service.id] ?? precomputedUptime?.[service.id] ?? null,
                 downtime: 0,
                 incidents: precomputedIncidentCounts30?.[service.id] ?? 0,
               },
@@ -162,7 +161,7 @@ export default function StatusPageMetrics({
           precomputedUptime?.[service.id] === undefined
             ? calculateServiceUptime(service.id, incidents, ninetyDaysAgo, periodEnd)
             : {
-                uptime: precomputedUptime[service.id],
+                uptime: precomputedUptime[service.id] ?? null,
                 downtime: 0,
                 incidents: precomputedIncidentCounts90?.[service.id] ?? 0,
               },
@@ -232,7 +231,8 @@ export default function StatusPageMetrics({
           }}
         >
           {metrics.map(metric => {
-            const getUptimeColor = (uptime: number) => {
+            const getUptimeColor = (uptime: number | null) => {
+              if (uptime === null) return { bg: '#64748b', gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' };
               if (uptime >= uptimeExcellentThreshold)
                 return {
                   bg: '#10b981',
@@ -252,14 +252,14 @@ export default function StatusPageMetrics({
             const thirtyColor = getUptimeColor(metric.thirtyDays.uptime);
             const ninetyColor = getUptimeColor(metric.ninetyDays.uptime);
             const slaBadge =
-              metric.ninetyDays.uptime >= uptimeExcellentThreshold
+              metric.ninetyDays.uptime !== null && metric.ninetyDays.uptime >= uptimeExcellentThreshold
                 ? {
                     label: 'SLA Excellent',
                     color: '#047857',
                     background: '#dcfce7',
                     border: '#bbf7d0',
                   }
-                : metric.ninetyDays.uptime >= uptimeGoodThreshold
+                : metric.ninetyDays.uptime !== null && metric.ninetyDays.uptime >= uptimeGoodThreshold
                   ? {
                       label: 'SLA Good',
                       color: '#92400e',
@@ -267,7 +267,7 @@ export default function StatusPageMetrics({
                       border: '#fde68a',
                     }
                   : {
-                      label: 'Below SLA',
+                      label: metric.ninetyDays.uptime === null ? 'Not measured' : 'Below SLA',
                       color: '#991b1b',
                       background: '#fee2e2',
                       border: '#fecaca',
@@ -367,7 +367,7 @@ export default function StatusPageMetrics({
                           fontFamily: 'monospace',
                         }}
                       >
-                        {formatUptimePercent(metric.thirtyDays.uptime)}%
+                        {formatUptimePercent(metric.thirtyDays.uptime)}{metric.thirtyDays.uptime !== null ? '%' : ''}
                       </span>
                     </div>
                     <div
@@ -383,7 +383,7 @@ export default function StatusPageMetrics({
                     >
                       <div
                         style={{
-                          width: `${Math.max(0, Math.min(100, metric.thirtyDays.uptime))}%`,
+                          width: `${metric.thirtyDays.uptime === null ? 0 : Math.max(0, Math.min(100, metric.thirtyDays.uptime))}%`,
                           height: '100%',
                           background: thirtyColor.gradient,
                           transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -464,7 +464,7 @@ export default function StatusPageMetrics({
                           fontFamily: 'monospace',
                         }}
                       >
-                        {formatUptimePercent(metric.ninetyDays.uptime)}%
+                        {formatUptimePercent(metric.ninetyDays.uptime)}{metric.ninetyDays.uptime !== null ? '%' : ''}
                       </span>
                     </div>
                     <div
@@ -480,7 +480,7 @@ export default function StatusPageMetrics({
                     >
                       <div
                         style={{
-                          width: `${Math.max(0, Math.min(100, metric.ninetyDays.uptime))}%`,
+                          width: `${metric.ninetyDays.uptime === null ? 0 : Math.max(0, Math.min(100, metric.ninetyDays.uptime))}%`,
                           height: '100%',
                           background: ninetyColor.gradient,
                           transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',

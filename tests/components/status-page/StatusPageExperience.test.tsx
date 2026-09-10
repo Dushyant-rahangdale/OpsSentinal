@@ -304,7 +304,7 @@ describe('StatusPageExperience', () => {
         ])}
       />
     );
-    const graph = document.querySelector<HTMLElement>('[style*="grid-template-columns: repeat(90"]');
+    const graph = document.querySelector<HTMLElement>('[style*="grid-template-columns: repeat(1"]');
     const day = graph?.firstElementChild;
     expect(day).not.toBeNull();
     fireEvent.mouseEnter(day as Element);
