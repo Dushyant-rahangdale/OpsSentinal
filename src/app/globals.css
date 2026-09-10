@@ -409,22 +409,23 @@ textarea:focus-visible {
    the same clock that rotates the globe, so a ticket can never disagree with
    the marker it points at. */
 
-/* Login page — occasional shooting star streaking across the starfield */
+/* Login page — shooting stars streak across the starfield */
 @keyframes shooting-star {
   0%,
-  92% {
-    transform: translate(0, 0);
+  88% {
+    transform: translate(0, 0) scaleX(0.3);
     opacity: 0;
   }
-  93% {
-    opacity: 1;
+  90% {
+    transform: translate(0, 0) scaleX(1);
+    opacity: 0.9;
   }
-  99% {
-    transform: translate(-220px, 130px);
+  98% {
+    transform: translate(-260px, 155px) scaleX(1);
     opacity: 0;
   }
   100% {
-    transform: translate(-220px, 130px);
+    transform: translate(-260px, 155px) scaleX(0.3);
     opacity: 0;
   }
 }

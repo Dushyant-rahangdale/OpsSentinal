@@ -161,7 +161,9 @@ export default function LoginClient({
             {isSuccess ? 'Station online.' : <HelloGreeting />}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-normal transition-colors duration-300">
-            {isSuccess ? 'Pledge acknowledged. The bridge is yours.' : 'Sign in to take the watch.'}
+            {isSuccess
+              ? 'Pledge acknowledged. The bridge is yours.'
+              : 'The watch never ends. Take your post.'}
           </p>
         </div>
 
@@ -267,22 +269,43 @@ export default function LoginClient({
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <label
-                htmlFor="remember-me"
-                className="flex items-center gap-2 cursor-pointer select-none group"
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={rememberMe}
+                onClick={() => !isSubmitting && !isSuccess && setRememberMe(!rememberMe)}
+                disabled={isSubmitting || isSuccess}
+                className="flex items-center gap-2.5 cursor-pointer select-none group focus:outline-none disabled:opacity-50"
               >
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
-                  disabled={isSubmitting || isSuccess}
-                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-900/20 dark:focus:ring-white/20 dark:bg-slate-900 cursor-pointer transition-colors"
-                />
+                {/* Custom checkbox */}
+                <span
+                  className={cn(
+                    'h-4 w-4 rounded flex items-center justify-center border transition-all duration-150 shrink-0',
+                    rememberMe
+                      ? 'bg-slate-900 border-slate-900 dark:bg-white dark:border-white'
+                      : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 group-hover:border-slate-500 dark:group-hover:border-slate-400'
+                  )}
+                >
+                  {rememberMe && (
+                    <svg
+                      className="h-2.5 w-2.5 text-white dark:text-slate-900"
+                      viewBox="0 0 10 8"
+                      fill="none"
+                    >
+                      <path
+                        d="M1 4l3 3 5-6"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </span>
                 <span className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors font-medium">
                   Remember me
                 </span>
-              </label>
+              </button>
 
               <Link
                 href="/forgot-password"
