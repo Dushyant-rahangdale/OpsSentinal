@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
 import { logger } from '@/lib/logger';
+import { normalizeOidcProviderType } from '@/lib/oidc-provider';
 import { z } from 'zod';
 
 const OIDC_CONFIG_RECORD_CACHE_TTL_MS = Number.parseInt(
@@ -62,30 +63,6 @@ export type OidcPublicConfig = {
   providerType?: string | null;
   providerLabel?: string | null;
 };
-
-function detectProviderType(issuer: string | null): string | null {
-  if (!issuer) return null;
-  const url = issuer.toLowerCase();
-
-  if (
-    url.includes('accounts.google.com') ||
-    url.includes('googleapis.com') ||
-    url.includes('google')
-  ) {
-    return 'google';
-  }
-  if (url.includes('okta')) return 'okta';
-  if (
-    url.includes('login.microsoftonline.com') ||
-    url.includes('login.microsoft.com') ||
-    url.includes('sts.windows.net') ||
-    url.includes('microsoftonline')
-  ) {
-    return 'azure';
-  }
-  if (url.includes('auth0')) return 'auth0';
-  return 'custom';
-}
 
 function normalizeDomains(domains: string[]) {
   return domains.map(domain => domain.trim().toLowerCase()).filter(Boolean);
@@ -296,6 +273,8 @@ export async function getOidcConfig(): Promise<OidcConfig | null> {
         allowedDomains: normalizeDomains(config.allowedDomains),
         roleMapping: parseRoleMapping(config.roleMapping),
         customScopes: config.customScopes,
+        providerType: normalizeOidcProviderType(config.providerType, config.issuer),
+        providerLabel: config.providerLabel,
         profileMapping: parseProfileMapping(config.profileMapping),
       };
 
@@ -304,6 +283,7 @@ export async function getOidcConfig(): Promise<OidcConfig | null> {
         issuer: normalizedConfig.issuer,
         clientId: normalizedConfig.clientId,
         autoProvision: normalizedConfig.autoProvision,
+        providerType: normalizedConfig.providerType,
         allowedDomainCount: normalizedConfig.allowedDomains.length,
         hasRoleMapping: !!normalizedConfig.roleMapping,
         hasCustomScopes: !!normalizedConfig.customScopes,
@@ -346,7 +326,7 @@ export async function getOidcPublicConfig(): Promise<OidcPublicConfig | null> {
     clientId: config.clientId || null,
     autoProvision: config.autoProvision,
     allowedDomains: normalizeDomains(config.allowedDomains),
-    providerType: config.providerType ?? detectProviderType(config.issuer),
+    providerType: normalizeOidcProviderType(config.providerType, config.issuer),
     providerLabel: config.providerLabel,
   };
 }
