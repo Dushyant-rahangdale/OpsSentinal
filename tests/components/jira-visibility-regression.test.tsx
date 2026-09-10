@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import IncidentCommandBar, {
   type JiraLinkItem,
 } from '@/components/incident/detail/IncidentCommandBar';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
+import PostmortemActionItems from '@/components/postmortem/PostmortemActionItems';
 import { deriveJiraCapability, type JiraCapability } from '@/lib/jira-capabilities';
-import type { ActionItemExternalIssue } from '@/lib/action-items';
+import type { ActionItem, ActionItemExternalIssue } from '@/lib/action-items';
 
 vi.mock('@/components/incident/ResolveIncidentModal', () => ({
   default: () => null,
@@ -17,6 +19,10 @@ vi.mock('@/components/incident/detail/SnoozeDurationDialog', () => ({
 
 vi.mock('@/components/incident/detail/IncidentTags', () => ({
   default: () => null,
+}));
+
+vi.mock('@/contexts/TimezoneContext', () => ({
+  useTimezone: () => ({ userTimeZone: 'UTC' }),
 }));
 
 vi.mock('@/app/(app)/incidents/snooze-actions', () => ({
@@ -101,6 +107,22 @@ function renderIncident(jiraCapability: JiraCapability, links: JiraLinkItem[] = 
 function openMobileActions() {
   const triggers = screen.getAllByLabelText('More incident actions');
   fireEvent.click(triggers[triggers.length - 1]);
+}
+
+function PostmortemActionItemsHarness({
+  initialItems = [],
+}: {
+  initialItems?: ActionItem[];
+}) {
+  const [items, setItems] = useState<ActionItem[]>(initialItems);
+  return (
+    <PostmortemActionItems
+      actionItems={items}
+      onChange={setItems}
+      users={[]}
+      jiraCapability={capability()}
+    />
+  );
 }
 
 describe('IncidentCommandBar Jira visibility regression contract', () => {
@@ -315,5 +337,40 @@ describe('ActionItemJiraBadge Jira visibility regression contract', () => {
     fireEvent.mouseEnter(linked.parentElement!);
     expect(screen.getByTitle('Sync status')).toBeInTheDocument();
     expect(screen.getByTitle('Unlink')).toBeInTheDocument();
+  });
+});
+
+describe('PostmortemActionItems persisted Jira controls', () => {
+  it('does not expose Jira actions for a newly added unsaved action item', () => {
+    render(<PostmortemActionItemsHarness />);
+
+    fireEvent.change(screen.getByPlaceholderText('e.g., Add monitoring for service X'), {
+      target: { value: 'Draft follow-up' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Action Item' }));
+
+    expect(screen.getByText('Draft follow-up')).toBeInTheDocument();
+    expect(screen.queryByText('Create Jira')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Link existing Jira issue')).not.toBeInTheDocument();
+  });
+
+  it('keeps Jira actions available for an already persisted action item', () => {
+    render(
+      <PostmortemActionItemsHarness
+        initialItems={[
+          {
+            id: 'ai_postmortem-1_existing',
+            title: 'Persisted follow-up',
+            description: '',
+            status: 'OPEN',
+            priority: 'MEDIUM',
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Persisted follow-up')).toBeInTheDocument();
+    expect(screen.getByText('Create Jira')).toBeInTheDocument();
+    expect(screen.getByTitle('Link existing Jira issue')).toBeInTheDocument();
   });
 });
