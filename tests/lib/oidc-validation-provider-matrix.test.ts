@@ -98,7 +98,7 @@ describe('OIDC discovery provider matrix', () => {
   });
 
   it('rejects redirects from discovery to avoid validating a different issuer', async () => {
-    setupValidFetch(302);
+    setupValidFetch(302, makeMetadata('https://identity.example.com'));
 
     const result = await validateOidcConnection('https://identity.example.com');
 
