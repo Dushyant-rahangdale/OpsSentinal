@@ -30,10 +30,12 @@ import {
   getOidcLinkingState,
   revokeOidcLinking,
 } from '@/app/(app)/users/oidc-actions';
+import { OIDC_LINKING_APPROVAL_TTL_HOURS } from '@/lib/oidc-linking-approval';
 
 describe('OIDC linking approval management', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: 'user-1',
       email: 'User@Example.com',
@@ -45,30 +47,133 @@ describe('OIDC linking approval management', () => {
     vi.mocked(prisma.oidcLinkingApproval.updateMany).mockResolvedValue({ count: 1 });
   });
 
-  it('reports not-approved when an active user has no identity or provisioning evidence', async () => {
+  it('reports not-approved when no identity or approval exists', async () => {
     const result = await getOidcLinkingState('user-1');
     expect(result).toEqual({ success: true, state: 'not-approved', alreadyLinked: false });
   });
 
-  it('records durable provisioning approval without changing user status', async () => {
+  it('reports approved for an active, unrevoked approval', async () => {
+    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
+      id: 'approval-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    } as never);
+
+    const result = await getOidcLinkingState('user-1');
+    expect(result).toEqual({ success: true, state: 'approved', alreadyLinked: false });
+  });
+
+  it('reports expired when the approval expiry is in the past', async () => {
+    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
+      id: 'approval-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() - 1),
+    } as never);
+
+    const result = await getOidcLinkingState('user-1');
+    expect(result).toEqual({ success: true, state: 'expired', alreadyLinked: false });
+  });
+
+  it('reports revoked before considering expiry', async () => {
+    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
+      id: 'approval-1',
+      revokedAt: new Date(),
+      expiresAt: new Date(Date.now() - 1),
+    } as never);
+
+    const result = await getOidcLinkingState('user-1');
+    expect(result).toEqual({ success: true, state: 'revoked', alreadyLinked: false });
+  });
+
+  it('records a time-limited approval without changing user status', async () => {
+    const now = new Date('2026-09-10T12:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
     const result = await allowOidcLinking('user-1');
 
-    expect(result).toEqual({ success: true, state: 'approved' });
+    expect(result).toEqual({ success: true, state: 'approved', renewed: false });
+    const expectedExpiry = new Date(
+      now.getTime() + OIDC_LINKING_APPROVAL_TTL_HOURS * 60 * 60 * 1000
+    );
     expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'user-1' },
         create: expect.objectContaining({
           userId: 'user-1',
           approvedById: 'admin-1',
-          expiresAt: expect.any(Date),
+          approvedAt: now,
+          expiresAt: expectedExpiry,
         }),
-        update: expect.objectContaining({ approvedById: 'admin-1', revokedAt: null }),
       })
     );
     expect(prisma.user.update).toBeUndefined();
   });
 
-  it('allows approval for an INVITED user (Entra invited-account first link)', async () => {
+  it('keeps an active approval idempotent', async () => {
+    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
+      id: 'approval-1',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    } as never);
+
+    const result = await allowOidcLinking('user-1');
+
+    expect(result).toEqual({ success: true, alreadyApproved: true, state: 'approved' });
+    expect(prisma.oidcLinkingApproval.upsert).not.toHaveBeenCalled();
+  });
+
+  it('renews an expired approval with a fresh approver, expiry and generation', async () => {
+    const now = new Date('2026-09-10T12:00:00.000Z');
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
+      id: 'approval-1',
+      revokedAt: null,
+      expiresAt: new Date('2026-09-09T12:00:00.000Z'),
+    } as never);
+
+    const result = await allowOidcLinking('user-1');
+
+    expect(result).toEqual({ success: true, state: 'approved', renewed: true });
+    expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          approvedById: 'admin-1',
+          approvedAt: now,
+          revokedAt: null,
+          expiresAt: expect.any(Date),
+          generation: { increment: 1 },
+        }),
+      })
+    );
+    const update = vi.mocked(prisma.oidcLinkingApproval.upsert).mock.calls[0]?.[0].update;
+    expect(update.expiresAt).toBeInstanceOf(Date);
+    expect((update.expiresAt as Date).getTime()).toBeGreaterThan(now.getTime());
+  });
+
+  it('reapproves a revoked approval directly', async () => {
+    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
+      id: 'approval-1',
+      revokedAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+    } as never);
+
+    const result = await allowOidcLinking('user-1');
+
+    expect(result).toEqual({ success: true, state: 'approved', renewed: true });
+    expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          approvedById: 'admin-1',
+          revokedAt: null,
+          generation: { increment: 1 },
+        }),
+      })
+    );
+  });
+
+  it('allows approval for an INVITED user', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: 'user-invited',
       email: 'invited@example.com',
@@ -77,22 +182,8 @@ describe('OIDC linking approval management', () => {
 
     const result = await allowOidcLinking('user-invited');
 
-    expect(result).toEqual({ success: true, state: 'approved' });
+    expect(result).toEqual({ success: true, state: 'approved', renewed: false });
     expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalled();
-  });
-
-  it('reports approved when provisioning evidence already exists', async () => {
-    vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
-      id: 'approval-1',
-      revokedAt: null,
-    } as never);
-
-    const state = await getOidcLinkingState('user-1');
-    const allowResult = await allowOidcLinking('user-1');
-
-    expect(state).toEqual({ success: true, state: 'approved', alreadyLinked: false });
-    expect(allowResult).toEqual({ success: true, alreadyApproved: true, state: 'approved' });
-    expect(prisma.oidcLinkingApproval.upsert).not.toHaveBeenCalled();
   });
 
   it('reports already-linked users without creating provisioning evidence', async () => {
@@ -109,11 +200,12 @@ describe('OIDC linking approval management', () => {
     vi.mocked(prisma.oidcLinkingApproval.findUnique).mockResolvedValue({
       id: 'approval-1',
       revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
     } as never);
 
     const result = await revokeOidcLinking('user-1');
 
-    expect(result).toEqual({ success: true, state: 'not-approved' });
+    expect(result).toEqual({ success: true, state: 'revoked' });
     expect(prisma.oidcLinkingApproval.updateMany).toHaveBeenCalledWith({
       where: { userId: 'user-1', revokedAt: null },
       data: { revokedAt: expect.any(Date) },
