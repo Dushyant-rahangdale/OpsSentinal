@@ -7,6 +7,7 @@ import {
   linkExistingJiraIssue,
   syncExternalIssueLink,
 } from '@/lib/jira-sync';
+import { classifyJiraError } from '@/lib/jira-capabilities';
 import { revalidatePath } from 'next/cache';
 
 export type JiraActionResult = {
@@ -17,9 +18,7 @@ export type JiraActionResult = {
 };
 
 function revalidateActionItemPaths(postmortemId?: string | null, incidentId?: string | null) {
-  if (postmortemId) {
-    revalidatePath(`/postmortems/${postmortemId}`);
-  }
+  if (postmortemId) revalidatePath(`/postmortems/${postmortemId}`);
   if (incidentId) {
     revalidatePath(`/incidents/${incidentId}`);
     revalidatePath(`/postmortems/${incidentId}`);
@@ -57,14 +56,16 @@ export async function createJiraIssueFromActionItem(
     if (!actionItem) return { success: false, error: 'Action item not found.' };
 
     const mapping = actionItem.incident?.service?.jiraServiceMapping;
-
     const jiraConfig = await prisma.jiraConfig.findUnique({
       where: { id: 'default' },
       select: { enabled: true },
     });
 
     if (!jiraConfig?.enabled) {
-      return { success: false, error: 'Jira is not configured or is disabled in workspace settings.' };
+      return {
+        success: false,
+        error: 'Jira is not configured or is disabled in workspace settings.',
+      };
     }
 
     const projectKey = mapping?.projectKey;
@@ -79,9 +80,8 @@ export async function createJiraIssueFromActionItem(
     const labels = mapping?.defaultLabels ?? ['opsknight'];
     const component = mapping?.defaultComponent ?? null;
 
-    let issue;
     try {
-      const result = await createJiraIssueAndLink({
+      const { issue } = await createJiraIssueAndLink({
         actionItemId,
         projectKey,
         issueType,
@@ -90,26 +90,13 @@ export async function createJiraIssueFromActionItem(
         labels,
         component,
       });
-      issue = result.issue;
-    } catch (error) {
-      const rawMsg = error instanceof Error ? error.message : String(error);
-      if (rawMsg.includes("target project doesn't exist")) {
-        return {
-          success: false,
-          error: `Jira project "${projectKey}" does not exist or your API token lacks permissions. Check Services → Settings → Jira Mapping.`,
-        };
-      }
-      if (rawMsg.includes('issue type')) {
-        return {
-          success: false,
-          error: `Jira issue type "${issueType}" is invalid for project "${projectKey}". Change Action Item Issue Type to "Task" in Services → Settings → Jira Mapping.`,
-        };
-      }
-      return { success: false, error: `Jira issue creation failed: ${rawMsg}` };
-    }
 
-    revalidateActionItemPaths(actionItem.postmortemId, actionItem.incidentId);
-    return { success: true, key: issue.key, url: issue.url };
+      revalidateActionItemPaths(actionItem.postmortemId, actionItem.incidentId);
+      return { success: true, key: issue.key, url: issue.url };
+    } catch (error) {
+      const classified = classifyJiraError(error);
+      return { success: false, error: classified.userMessage };
+    }
   } catch (error) {
     return {
       success: false,
@@ -131,32 +118,14 @@ export async function linkJiraIssueToActionItem(
     });
     if (!actionItem) return { success: false, error: 'Action item not found.' };
 
-    let issue;
     try {
-      const result = await linkExistingJiraIssue({
-        actionItemId,
-        jiraKey,
-      });
-      issue = result.issue;
+      const { issue } = await linkExistingJiraIssue({ actionItemId, jiraKey });
+      revalidateActionItemPaths(actionItem.postmortemId, actionItem.incidentId);
+      return { success: true, key: issue.key, url: issue.url };
     } catch (error) {
-      const rawMsg = error instanceof Error ? error.message : String(error);
-      if (rawMsg.includes('already linked')) {
-        return {
-          success: false,
-          error: `Jira issue "${jiraKey.trim()}" is already linked to another incident or item.`,
-        };
-      }
-      if (rawMsg.includes('not found') || rawMsg.includes('404')) {
-        return {
-          success: false,
-          error: `Jira issue "${jiraKey.trim()}" was not found in your Jira workspace.`,
-        };
-      }
-      return { success: false, error: `Failed to link Jira issue: ${rawMsg}` };
+      const classified = classifyJiraError(error);
+      return { success: false, error: classified.userMessage };
     }
-
-    revalidateActionItemPaths(actionItem.postmortemId, actionItem.incidentId);
-    return { success: true, key: issue.key, url: issue.url };
   } catch (error) {
     return {
       success: false,
@@ -166,23 +135,35 @@ export async function linkJiraIssueToActionItem(
 }
 
 export async function unlinkJiraIssueFromActionItem(
+  actionItemId: string,
   linkId: string
 ): Promise<JiraActionResult> {
   try {
     await assertAdminOrResponder();
 
-    const link = await prisma.externalIssueLink.findUnique({
-      where: { id: linkId },
+    const ownershipWhere = {
+      id: linkId,
+      provider: 'JIRA' as const,
+      actionItemId,
+    };
+
+    const link = await prisma.externalIssueLink.findFirst({
+      where: ownershipWhere,
       select: {
         id: true,
+        externalKey: true,
         actionItem: { select: { postmortemId: true, incidentId: true } },
       },
     });
-    if (!link) return { success: false, error: 'Link not found.' };
+    if (!link) {
+      return { success: false, error: 'Jira link not found for this action item.' };
+    }
 
-    await prisma.externalIssueLink.delete({
-      where: { id: linkId },
-    });
+    // Scope the mutation itself as well as the preflight lookup.
+    const deleted = await prisma.externalIssueLink.deleteMany({ where: ownershipWhere });
+    if (deleted.count !== 1) {
+      return { success: false, error: 'Jira link changed before it could be unlinked. Retry.' };
+    }
 
     revalidateActionItemPaths(link.actionItem?.postmortemId, link.actionItem?.incidentId);
     return { success: true };
@@ -195,21 +176,39 @@ export async function unlinkJiraIssueFromActionItem(
 }
 
 export async function syncActionItemJiraIssue(
+  actionItemId: string,
   linkId: string
 ): Promise<JiraActionResult> {
   try {
     await assertAdminOrResponder();
 
-    const link = await prisma.externalIssueLink.findUnique({
-      where: { id: linkId },
+    const link = await prisma.externalIssueLink.findFirst({
+      where: {
+        id: linkId,
+        provider: 'JIRA',
+        actionItemId,
+      },
       select: {
+        id: true,
         actionItem: { select: { postmortemId: true, incidentId: true } },
       },
     });
 
-    await syncExternalIssueLink(linkId);
+    if (!link) {
+      return { success: false, error: 'Jira link not found for this action item.' };
+    }
 
-    revalidateActionItemPaths(link?.actionItem?.postmortemId, link?.actionItem?.incidentId);
+    try {
+      const result = await syncExternalIssueLink(link.id);
+      if (!result) {
+        return { success: false, error: 'Jira sync failed. Check integration health in Settings.' };
+      }
+    } catch (error) {
+      const classified = classifyJiraError(error);
+      return { success: false, error: classified.userMessage };
+    }
+
+    revalidateActionItemPaths(link.actionItem?.postmortemId, link.actionItem?.incidentId);
     return { success: true };
   } catch (error) {
     return {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
@@ -22,6 +22,7 @@ import {
 import { useTimezone } from '@/contexts/TimezoneContext';
 import { cn } from '@/lib/utils';
 import type { ActionItem } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import { ActionItemStatus } from '@prisma/client';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
 import DueDateBadge from '@/components/action-items/DueDateBadge';
@@ -45,6 +46,7 @@ export interface BoardActionItem extends ActionItem {
   postmortemTitle: string;
   incidentId: string;
   incidentTitle: string;
+  serviceId: string;
   serviceName: string;
   createdAt: Date;
   completedAt?: Date | string | null;
@@ -60,6 +62,8 @@ export interface ActionItemsBoardProps {
     owner?: string;
     priority?: string;
   };
+  /** Per-service capability contract. Aggregate screens must never use one workspace capability. */
+  jiraCapabilitiesByServiceId: Record<string, JiraCapability>;
 }
 
 interface ActionItemCardProps {
@@ -69,6 +73,7 @@ interface ActionItemCardProps {
   canManage: boolean;
   onStatusChange: (itemId: string, status: ActionItemStatus) => void;
   isUpdating?: boolean;
+  jiraCapability: JiraCapability;
 }
 
 const STATUS_CONFIG = {
@@ -115,21 +120,9 @@ const STATUS_CONFIG = {
 };
 
 const PRIORITY_CONFIG = {
-  HIGH: {
-    color: 'text-rose-700',
-    bgColor: 'bg-rose-50 border-rose-200/80',
-    label: 'High',
-  },
-  MEDIUM: {
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50 border-amber-200/80',
-    label: 'Medium',
-  },
-  LOW: {
-    color: 'text-slate-700',
-    bgColor: 'bg-slate-100 border-slate-200/80',
-    label: 'Low',
-  },
+  HIGH: { color: 'text-rose-700', bgColor: 'bg-rose-50 border-rose-200/80', label: 'High' },
+  MEDIUM: { color: 'text-amber-700', bgColor: 'bg-amber-50 border-amber-200/80', label: 'Medium' },
+  LOW: { color: 'text-slate-700', bgColor: 'bg-slate-100 border-slate-200/80', label: 'Low' },
 };
 
 function getOwnerName(
@@ -137,8 +130,18 @@ function getOwnerName(
   users: Array<{ id: string; name: string; email: string }>
 ) {
   if (!ownerId) return 'Unassigned';
-  const user = users.find(u => u.id === ownerId);
-  return user?.name || 'Unknown';
+  return users.find(user => user.id === ownerId)?.name || 'Unknown';
+}
+
+function requireJiraCapability(
+  capabilities: ReadonlyMap<string, JiraCapability>,
+  serviceId: string
+): JiraCapability {
+  const capability = capabilities.get(serviceId);
+  if (!capability) {
+    throw new Error(`Missing Jira capability contract for service ${serviceId}`);
+  }
+  return capability;
 }
 
 function ActionItemCard({
@@ -148,6 +151,7 @@ function ActionItemCard({
   canManage,
   onStatusChange,
   isUpdating = false,
+  jiraCapability,
 }: ActionItemCardProps) {
   const router = useRouter();
   const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.OPEN;
@@ -164,7 +168,6 @@ function ActionItemCard({
       )}
       onClick={() => router.push(`/postmortems/${item.incidentId}`)}
     >
-      {/* Top Header: Priority & Quick Status Dropdown */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span
@@ -185,7 +188,7 @@ function ActionItemCard({
         </div>
 
         {canManage && (
-          <div onClick={e => e.stopPropagation()}>
+          <div onClick={event => event.stopPropagation()}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -237,7 +240,6 @@ function ActionItemCard({
         )}
       </div>
 
-      {/* Title & Description */}
       <h4 className="text-sm font-semibold text-foreground mb-1 leading-snug line-clamp-2">
         {item.title}
       </h4>
@@ -247,17 +249,16 @@ function ActionItemCard({
         </p>
       )}
 
-      {/* Jira / GitHub External Link */}
       <div className="mb-2.5">
         <ActionItemJiraBadge
           actionItemId={item.id}
           externalIssue={item.externalIssue}
           canManage={canManage}
           compact
+          jiraCapability={jiraCapability}
         />
       </div>
 
-      {/* Metadata Footer */}
       <div className="pt-2 border-t border-slate-100 flex flex-col gap-1 text-[11px] text-muted-foreground">
         <div className="flex items-center justify-between">
           <span className="font-medium text-foreground truncate max-w-[150px]">
@@ -272,7 +273,7 @@ function ActionItemCard({
           <Link
             href={`/postmortems/${item.incidentId}`}
             className="hover:underline text-primary"
-            onClick={e => e.stopPropagation()}
+            onClick={event => event.stopPropagation()}
           >
             {item.incidentTitle}
           </Link>
@@ -288,45 +289,43 @@ export default function ActionItemsBoard({
   canManage,
   view,
   filters,
+  jiraCapabilitiesByServiceId,
 }: ActionItemsBoardProps) {
   const router = useRouter();
   const { userTimeZone } = useTimezone();
   const [, startTransition] = useTransition();
-
   const [items, setItems] = useState<BoardActionItem[]>(initialItems);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
   const [selectedOwner, setSelectedOwner] = useState(filters.owner || '');
   const [selectedPriority, setSelectedPriority] = useState(filters.priority || '');
+  const jiraCapabilities = useMemo(
+    () => new Map<string, JiraCapability>(Object.entries(jiraCapabilitiesByServiceId)),
+    [jiraCapabilitiesByServiceId]
+  );
 
-  // Keep internal state in sync with server-passed props
-  useMemo(() => {
+  useEffect(() => {
     setItems(initialItems);
   }, [initialItems]);
 
   const handleStatusChange = async (itemId: string, newStatus: ActionItemStatus) => {
-    // Optimistic UI update
-    setItems(prev =>
-      prev.map(it =>
-        it.id === itemId
+    setItems(previous =>
+      previous.map(item =>
+        item.id === itemId
           ? {
-              ...it,
+              ...item,
               status: newStatus,
               completedAt: newStatus === ActionItemStatus.COMPLETED ? new Date() : null,
             }
-          : it
+          : item
       )
     );
 
     setUpdatingId(itemId);
     try {
-      const res = await updateActionItemStatus(itemId, newStatus);
-      if (!res.success) {
-        // Rollback if failed
-        setItems(initialItems);
-      }
+      const result = await updateActionItemStatus(itemId, newStatus);
+      if (!result.success) setItems(initialItems);
     } catch {
       setItems(initialItems);
     } finally {
@@ -350,39 +349,33 @@ export default function ActionItemsBoard({
     if (targetOwner && targetOwner !== 'all') params.set('owner', targetOwner);
     if (targetPriority && targetPriority !== 'all') params.set('priority', targetPriority);
     if (targetView) params.set('view', targetView);
-
     return `/action-items?${params.toString()}`;
   };
 
   const filteredItems = useMemo(() => {
     let result = items;
-
     if (selectedStatus && selectedStatus !== 'all') {
       result = result.filter(item => item.status === selectedStatus);
     }
-
     if (selectedOwner && selectedOwner !== 'all') {
       result = result.filter(item => item.owner === selectedOwner);
     }
-
     if (selectedPriority && selectedPriority !== 'all') {
       result = result.filter(item => item.priority === selectedPriority);
     }
-
     if (search.trim()) {
-      const q = search.toLowerCase();
+      const query = search.toLowerCase();
       result = result.filter(item => {
         const ownerName = getOwnerName(item.owner, users).toLowerCase();
         return (
-          item.title.toLowerCase().includes(q) ||
-          (item.description && item.description.toLowerCase().includes(q)) ||
-          item.incidentTitle.toLowerCase().includes(q) ||
-          item.serviceName.toLowerCase().includes(q) ||
-          ownerName.includes(q)
+          item.title.toLowerCase().includes(query) ||
+          (item.description && item.description.toLowerCase().includes(query)) ||
+          item.incidentTitle.toLowerCase().includes(query) ||
+          item.serviceName.toLowerCase().includes(query) ||
+          ownerName.includes(query)
         );
       });
     }
-
     return result;
   }, [items, search, selectedStatus, selectedOwner, selectedPriority, users]);
 
@@ -434,7 +427,6 @@ export default function ActionItemsBoard({
 
   return (
     <div className="space-y-4">
-      {/* Unified Search & Filter Toolbar */}
       <SearchFilterBar
         searchValue={search}
         onSearchChange={setSearch}
@@ -446,9 +438,9 @@ export default function ActionItemsBoard({
             <Select
               value={selectedStatus || 'all'}
               onValueChange={value => {
-                const newValue = value === 'all' ? '' : value;
-                setSelectedStatus(newValue);
-                startTransition(() => router.push(buildFilterUrl({ status: newValue })));
+                const next = value === 'all' ? '' : value;
+                setSelectedStatus(next);
+                startTransition(() => router.push(buildFilterUrl({ status: next })));
               }}
             >
               <SelectTrigger className="h-9 w-[130px] bg-slate-50/60 text-xs">
@@ -466,9 +458,9 @@ export default function ActionItemsBoard({
             <Select
               value={selectedOwner || 'all'}
               onValueChange={value => {
-                const newValue = value === 'all' ? '' : value;
-                setSelectedOwner(newValue);
-                startTransition(() => router.push(buildFilterUrl({ owner: newValue })));
+                const next = value === 'all' ? '' : value;
+                setSelectedOwner(next);
+                startTransition(() => router.push(buildFilterUrl({ owner: next })));
               }}
             >
               <SelectTrigger className="h-9 w-[140px] bg-slate-50/60 text-xs">
@@ -487,9 +479,9 @@ export default function ActionItemsBoard({
             <Select
               value={selectedPriority || 'all'}
               onValueChange={value => {
-                const newValue = value === 'all' ? '' : value;
-                setSelectedPriority(newValue);
-                startTransition(() => router.push(buildFilterUrl({ priority: newValue })));
+                const next = value === 'all' ? '' : value;
+                setSelectedPriority(next);
+                startTransition(() => router.push(buildFilterUrl({ priority: next })));
               }}
             >
               <SelectTrigger className="h-9 w-[130px] bg-slate-50/60 text-xs">
@@ -506,7 +498,6 @@ export default function ActionItemsBoard({
         }
         actions={
           <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
             <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/60 p-0.5">
               <Link
                 href={buildFilterUrl({ view: 'board' })}
@@ -535,7 +526,6 @@ export default function ActionItemsBoard({
                 <span>List</span>
               </Link>
             </div>
-
             <Button
               variant="outline"
               size="sm"
@@ -550,13 +540,11 @@ export default function ActionItemsBoard({
         }
       />
 
-      {/* Board or List View */}
       {view === 'board' ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Object.entries(groupedByStatus).map(([status, groupItems]) => {
             const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
             const StatusIcon = config.icon;
-
             return (
               <Card
                 key={status}
@@ -580,9 +568,7 @@ export default function ActionItemsBoard({
                 </CardHeader>
                 <CardContent className="p-0 flex flex-col gap-2.5 flex-1 overflow-y-auto max-h-[75vh]">
                   {groupItems.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground text-xs italic">
-                      No items
-                    </div>
+                    <div className="p-6 text-center text-muted-foreground text-xs italic">No items</div>
                   ) : (
                     groupItems.map(item => (
                       <ActionItemCard
@@ -593,6 +579,7 @@ export default function ActionItemsBoard({
                         canManage={canManage}
                         onStatusChange={handleStatusChange}
                         isUpdating={updatingId === item.id}
+                        jiraCapability={requireJiraCapability(jiraCapabilities, item.serviceId)}
                       />
                     ))
                   )}
@@ -620,6 +607,7 @@ export default function ActionItemsBoard({
               const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.OPEN;
               const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.MEDIUM;
               const isUpdating = updatingId === item.id;
+              const jiraCapability = requireJiraCapability(jiraCapabilities, item.serviceId);
 
               return (
                 <Card
@@ -665,20 +653,19 @@ export default function ActionItemsBoard({
                         externalIssue={item.externalIssue}
                         canManage={canManage}
                         compact
+                        jiraCapability={jiraCapability}
                       />
                       {item.description && (
-                        <p className="text-sm text-muted-foreground mt-1 mb-2">
-                          {item.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1 mb-2">{item.description}</p>
                       )}
                     </div>
 
                     {canManage && (
-                      <div onClick={e => e.stopPropagation()} className="shrink-0">
+                      <div onClick={event => event.stopPropagation()} className="shrink-0">
                         <Select
                           value={item.status}
-                          onValueChange={val =>
-                            handleStatusChange(item.id, val as ActionItemStatus)
+                          onValueChange={value =>
+                            handleStatusChange(item.id, value as ActionItemStatus)
                           }
                         >
                           <SelectTrigger className="h-8 w-[130px] text-xs bg-slate-50">
@@ -702,7 +689,7 @@ export default function ActionItemsBoard({
                       <Link
                         href={`/postmortems/${item.incidentId}`}
                         className="text-primary hover:underline font-medium"
-                        onClick={e => e.stopPropagation()}
+                        onClick={event => event.stopPropagation()}
                       >
                         {item.postmortemTitle}
                       </Link>
@@ -712,7 +699,7 @@ export default function ActionItemsBoard({
                       <Link
                         href={`/incidents/${item.incidentId}`}
                         className="text-primary hover:underline font-medium"
-                        onClick={e => e.stopPropagation()}
+                        onClick={event => event.stopPropagation()}
                       >
                         {item.incidentTitle}
                       </Link>

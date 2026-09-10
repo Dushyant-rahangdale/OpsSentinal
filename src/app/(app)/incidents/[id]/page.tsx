@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/shadcn/badge';
 import CopyButton from '@/components/common/CopyButton';
 import { getAppUrl } from '@/lib/app-url';
 import { AlertCircle, ArrowLeft, CheckCircle2, Pause, Volume2 } from 'lucide-react';
+import { getJiraCapabilities } from '@/lib/jira-capabilities';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -86,6 +87,12 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   ]);
   const permissions = await getUserPermissions();
   const canManageIncident = permissions.isResponderOrAbove;
+
+  // Compute service-specific Jira capabilities for this incident
+  const incidentJiraCapability = await getJiraCapabilities({
+    serviceId: incident.serviceId,
+    canManage: canManageIncident,
+  });
   const canAcknowledgeIncident = permissions.capabilities.includes('incident.acknowledge.scoped');
   const canAddIncidentNote = permissions.capabilities.includes('incident.note.scoped');
 
@@ -254,6 +261,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       noteCount={incident.notes.length}
       users={users}
       postmortem={postmortem}
+      jiraCapability={incidentJiraCapability}
     />
   );
 
@@ -370,6 +378,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
           name: t.tag.name,
           color: t.tag.color,
         }))}
+        jiraCapability={incidentJiraCapability}
       />
 
       {/* Incident Details Card — single unified card for all metadata */}

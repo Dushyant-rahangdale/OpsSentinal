@@ -19,6 +19,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { cn } from '@/lib/utils';
 import { Pencil, Globe, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { normalizeLegacyActionItems } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
 import { togglePostmortemPublicStatus } from '@/app/(app)/postmortems/actions';
 import {
@@ -66,6 +67,8 @@ interface PostmortemDetailViewProps {
   canEdit?: boolean;
   incidentId: string;
   isPublicView?: boolean;
+  /** Mandatory capability contract for persisted action-item Jira surfaces. */
+  jiraCapability: JiraCapability;
 }
 
 export default function PostmortemDetailView({
@@ -74,6 +77,7 @@ export default function PostmortemDetailView({
   canEdit = false,
   incidentId,
   isPublicView: initialPublicView = false,
+  jiraCapability,
 }: PostmortemDetailViewProps) {
   const { userTimeZone } = useTimezone();
 
@@ -553,6 +557,7 @@ export default function PostmortemDetailView({
                             externalIssue={item.externalIssue}
                             canManage={canEdit}
                             compact
+                            jiraCapability={jiraCapability}
                           />
                         </div>
                       )}
