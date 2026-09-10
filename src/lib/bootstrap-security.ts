@@ -79,9 +79,13 @@ export async function getBootstrapAuthorizationStatus(): Promise<BootstrapAuthor
 }
 
 /**
- * Issue/rotate the first-admin bootstrap capability. The raw capability is
- * returned only to the explicit CLI caller; only its SHA-256 digest is stored.
+ * Issue the first-admin bootstrap capability. The raw capability is returned
+ * only to the explicit CLI caller; only its SHA-256 digest is stored.
  * Application/server logs never receive the plaintext capability.
+ *
+ * A live capability is never silently rotated: concurrent CLI callers race
+ * under SERIALIZABLE isolation and exactly one issuer wins. The others fail
+ * closed so no operator is handed a secret that was immediately superseded.
  */
 export async function issueBootstrapAuthorization(): Promise<IssuedBootstrapAuthorization> {
   let result: IssuedBootstrapAuthorization | null = null;
@@ -100,6 +104,10 @@ export async function issueBootstrapAuthorization(): Promise<IssuedBootstrapAuth
             select: { value: true },
           });
           const existing = parseBootstrapState(existingRow?.value);
+          if (existing && !existing.usedAt && new Date(existing.expiresAt) > now) {
+            throw new Error('BOOTSTRAP_AUTHORIZATION_ALREADY_ACTIVE');
+          }
+
           const code = randomBytes(24).toString('base64url');
           const expiresAt = new Date(now.getTime() + BOOTSTRAP_TTL_MS);
           const nextState: BootstrapAuthorizationState = {
