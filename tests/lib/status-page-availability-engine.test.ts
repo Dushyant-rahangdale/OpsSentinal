@@ -257,14 +257,45 @@ describe('canonical availability engine', () => {
       )
     ).toBeNull();
   });
+
+  it('closes resolved incidents at updatedAt when resolvedAt is missing', () => {
+    const segments = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [
+        {
+          serviceId: 'api',
+          status: 'RESOLVED',
+          urgency: 'HIGH',
+          createdAt: new Date('2026-09-09T01:00:00Z'),
+          resolvedAt: null,
+          updatedAt: new Date('2026-09-09T02:00:00Z'),
+        },
+      ],
+      maintenance: [],
+      start,
+      end,
+    });
+    expect(healthSegmentsToPublic(segments)).toEqual([
+      {
+        startAt: '2026-09-09T01:00:00.000Z',
+        endAt: '2026-09-09T02:00:00.000Z',
+        status: 'MAJOR_OUTAGE',
+      },
+    ]);
+    expect(serviceUptimePercent(segments, start, end)).toBeCloseTo((23 / 24) * 100, 5);
+  });
 });
 
 describe('availability engine sweep-line scale', () => {
   it('merges 1k, 10k and 100k intervals well under quadratic time', () => {
     const windowStart = new Date('2026-01-01T00:00:00.000Z');
     const windowEnd = new Date('2026-12-31T00:00:00.000Z');
-    const budgets: Record<number, number> = { 1_000: 500, 10_000: 1_500, 100_000: 8_000 };
-    for (const count of [1_000, 10_000, 100_000]) {
+    const cases = [
+      { count: 1_000, budgetMs: 500 },
+      { count: 10_000, budgetMs: 1_500 },
+      { count: 100_000, budgetMs: 8_000 },
+    ] as const;
+    for (const { count, budgetMs } of cases) {
       const incidents = Array.from({ length: count }, (_, index) => {
         const createdAt = new Date(windowStart.getTime() + (index % 50_000) * 60_000);
         return {
@@ -285,7 +316,7 @@ describe('availability engine sweep-line scale', () => {
       });
       const elapsed = performance.now() - started;
       expect(segments.length).toBeGreaterThan(0);
-      expect(elapsed, `${count} intervals took ${elapsed}ms`).toBeLessThan(budgets[count]!);
+      expect(elapsed, `${count} intervals took ${elapsed}ms`).toBeLessThan(budgetMs);
     }
   });
 });

@@ -9,6 +9,7 @@ export type HistoryIncident = {
   serviceId: string;
   createdAt: Date;
   resolvedAt: Date | null;
+  updatedAt: Date;
   urgency: string;
   status: string;
 };
@@ -40,6 +41,7 @@ export async function loadHistoryIncidentsByService(
         serviceId: true,
         createdAt: true,
         resolvedAt: true,
+        updatedAt: true,
         urgency: true,
         status: true,
       },

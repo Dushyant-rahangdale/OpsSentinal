@@ -14,6 +14,7 @@ export type PublicHistoryIncident = {
   serviceId: string;
   createdAt: Date;
   resolvedAt: Date | null;
+  updatedAt?: Date | null;
   urgency: string;
   status: string;
 };
@@ -40,12 +41,6 @@ export type HealthSegment = {
   status: Exclude<PublicServiceStatus, 'OPERATIONAL'>;
 };
 
-const DOWNTIME_STATUSES: ReadonlySet<PublicServiceStatus> = new Set([
-  'DEGRADED',
-  'PARTIAL_OUTAGE',
-  'MAJOR_OUTAGE',
-]);
-
 export function maintenanceScopeFromAffectedIds(ids: unknown): MaintenanceScope {
   if (!Array.isArray(ids) || ids.length === 0) return { type: 'ALL_SERVICES' };
   const serviceIds = ids.filter((id): id is string => typeof id === 'string' && id.length > 0);
@@ -58,6 +53,20 @@ export function maintenanceAppliesToService(scope: MaintenanceScope, serviceId: 
 
 function scopeOf(item: PublicHistoryMaintenance): MaintenanceScope {
   return item.scope ?? maintenanceScopeFromAffectedIds(item.affectedServiceIds);
+}
+
+const DOWNTIME_STATUSES: ReadonlySet<PublicServiceStatus> = new Set([
+  'DEGRADED',
+  'PARTIAL_OUTAGE',
+  'MAJOR_OUTAGE',
+]);
+
+function incidentIntervalEnd(incident: PublicHistoryIncident, windowEnd: Date): Date {
+  if (incident.resolvedAt) return incident.resolvedAt;
+  // Legacy resolved rows often stored the close time only on `updatedAt`. Treating those as still
+  // open would paint the rest of the reporting window as downtime.
+  if (incident.status === 'RESOLVED') return incident.updatedAt ?? incident.createdAt;
+  return windowEnd;
 }
 
 /**
@@ -100,7 +109,7 @@ export function buildServiceHealthSegments({
       continue;
     add(
       incident.createdAt,
-      incident.resolvedAt ?? end,
+      incidentIntervalEnd(incident, end),
       publicStatusForIncidentUrgency(incident.urgency)
     );
   }
@@ -125,16 +134,41 @@ function mergeHealthSegmentsSweep(raw: HealthSegment[]): HealthSegment[] {
   // Ends before starts at the same timestamp so a touching pair does not create a zero-width span.
   events.sort((a, b) => a.time - b.time || a.delta - b.delta);
 
-  const counts = new Map<HealthSegment['status'], number>();
+  let degraded = 0;
+  let maintenance = 0;
+  let partialOutage = 0;
+  let majorOutage = 0;
+  let unknown = 0;
   const merged: HealthSegment[] = [];
   let cursor: number | undefined;
   let current: HealthSegment['status'] | null = null;
 
+  const applyDelta = (status: HealthSegment['status'], delta: 1 | -1) => {
+    switch (status) {
+      case 'DEGRADED':
+        degraded += delta;
+        return;
+      case 'MAINTENANCE':
+        maintenance += delta;
+        return;
+      case 'PARTIAL_OUTAGE':
+        partialOutage += delta;
+        return;
+      case 'MAJOR_OUTAGE':
+        majorOutage += delta;
+        return;
+      case 'UNKNOWN':
+        unknown += delta;
+    }
+  };
+
   const worstActive = (): HealthSegment['status'] | null => {
     const active: PublicServiceStatus[] = [];
-    for (const [status, count] of counts) {
-      if (count > 0) active.push(status);
-    }
+    if (degraded > 0) active.push('DEGRADED');
+    if (maintenance > 0) active.push('MAINTENANCE');
+    if (partialOutage > 0) active.push('PARTIAL_OUTAGE');
+    if (majorOutage > 0) active.push('MAJOR_OUTAGE');
+    if (unknown > 0) active.push('UNKNOWN');
     if (active.length === 0) return null;
     const worst = getWorstPublicStatus(active);
     return worst === 'OPERATIONAL' ? null : (worst as HealthSegment['status']);
@@ -150,7 +184,7 @@ function mergeHealthSegmentsSweep(raw: HealthSegment[]): HealthSegment[] {
     }
     while (index < events.length && events[index]!.time === time) {
       const event = events[index]!;
-      counts.set(event.status, (counts.get(event.status) ?? 0) + event.delta);
+      applyDelta(event.status, event.delta);
       index += 1;
     }
     cursor = time;

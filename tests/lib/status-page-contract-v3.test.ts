@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { projectPublicBranding } from '@/lib/status-pages/branding';
 import { publicUptimeGrade } from '@/lib/status-pages/presentation';
 import { parsePublicStatusPageSnapshot } from '@/lib/status-pages/public-contract-schema';
-import { serializePublicStatusIncident } from '@/lib/status-page-public-data';
-import type { StatusPagePublicSettings } from '@/lib/status-page-public-data';
+import {
+  serializePublicStatusIncident,
+  type StatusPagePublicSettings,
+} from '@/lib/status-page-public-data';
 
 const iso = '2026-09-10T00:00:00.000Z';
 
