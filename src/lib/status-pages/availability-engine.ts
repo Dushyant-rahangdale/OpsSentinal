@@ -62,11 +62,19 @@ const DOWNTIME_STATUSES: ReadonlySet<PublicServiceStatus> = new Set([
 ]);
 
 function incidentIntervalEnd(incident: PublicHistoryIncident, windowEnd: Date): Date {
+  return effectiveIncidentEnd(incident) ?? windowEnd;
+}
+
+/**
+ * Close time used for history and uptime.
+ *
+ * Legacy resolved rows often stored the close time only on `updatedAt`. A null `resolvedAt` on a
+ * RESOLVED incident must not be treated as still open through the reporting window.
+ */
+export function effectiveIncidentEnd(incident: PublicHistoryIncident): Date | null {
   if (incident.resolvedAt) return incident.resolvedAt;
-  // Legacy resolved rows often stored the close time only on `updatedAt`. Treating those as still
-  // open would paint the rest of the reporting window as downtime.
   if (incident.status === 'RESOLVED') return incident.updatedAt ?? incident.createdAt;
-  return windowEnd;
+  return null;
 }
 
 /**
@@ -233,7 +241,18 @@ export function healthAt(
   const covering = segments.filter(
     segment => segment.start <= at && at <= segment.end && segment.start < segment.end
   );
-  if (covering.length === 0) return { status: 'OPERATIONAL' };
+  if (covering.length === 0) {
+    let recoveredAt: number | undefined;
+    for (const segment of segments) {
+      if (segment.end <= at && (recoveredAt === undefined || segment.end > recoveredAt)) {
+        recoveredAt = segment.end;
+      }
+    }
+    return {
+      status: 'OPERATIONAL',
+      ...(recoveredAt !== undefined ? { statusSince: new Date(recoveredAt).toISOString() } : {}),
+    };
+  }
   const status = getWorstPublicStatus(covering.map(segment => segment.status));
   const since = covering
     .filter(segment => segment.status === status)

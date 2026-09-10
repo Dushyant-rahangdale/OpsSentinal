@@ -162,6 +162,30 @@ describe('V3 contract completion (PR2)', () => {
     expect(snapshot?.page.capabilities?.uptime).toBe(true);
   });
 
+  it('coerces canonical snapshot.status to overall.status and keeps UNKNOWN separately', () => {
+    const snapshot = parsePublicStatusPageSnapshot(
+      'page-1',
+      validSnapshot({
+        status: 'UNKNOWN',
+        services: [
+          { id: 'a', name: 'API', status: 'OPERATIONAL', activeIncidentCount: 0 },
+          { id: 'b', name: 'DB', status: 'UNKNOWN', activeIncidentCount: 0 },
+        ],
+        overall: {
+          status: 'OPERATIONAL',
+          knownServiceCount: 1,
+          unknownServiceCount: 1,
+          confidence: 'partial',
+          headline: 'All known systems operational',
+          note: 'Status unavailable for 1 additional service.',
+        },
+      })
+    );
+    expect(snapshot?.status).toBe('OPERATIONAL');
+    expect(snapshot?.overall.status).toBe('OPERATIONAL');
+    expect(snapshot?.statusIncludingUnknown).toBe('UNKNOWN');
+  });
+
   it('projects coarse public impact and a linkable postmortem without leaking internals', () => {
     const incident = serializePublicStatusIncident(
       {
@@ -207,5 +231,35 @@ describe('V3 contract completion (PR2)', () => {
     expect(incident.publicImpact).toBeUndefined();
     expect(incident.postmortem).toBeUndefined();
     expect(incident.postIncidentReview).toBe(true);
+  });
+
+  it('always attaches an opaque publicEventId when a page id is provided', () => {
+    const incident = serializePublicStatusIncident(
+      {
+        id: 'inc-1',
+        title: 'Checkout errors',
+        status: 'OPEN',
+        createdAt: iso,
+        resolvedAt: null,
+      },
+      publicSettings({ showIncidentDetails: false, showIncidentTimestamps: false }),
+      { pageId: 'page-1' }
+    );
+    expect(incident.id).toBeUndefined();
+    expect(incident.createdAt).toBeUndefined();
+    expect(incident.publicEventId).toMatch(/^evt_[0-9a-f]{32}$/);
+    expect(
+      serializePublicStatusIncident(
+        {
+          id: 'inc-1',
+          title: 'Checkout errors',
+          status: 'OPEN',
+          createdAt: iso,
+          resolvedAt: null,
+        },
+        publicSettings({ showIncidentDetails: false }),
+        { pageId: 'page-1' }
+      ).publicEventId
+    ).toBe(incident.publicEventId);
   });
 });

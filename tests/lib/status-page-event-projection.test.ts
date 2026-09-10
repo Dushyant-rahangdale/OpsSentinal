@@ -104,6 +104,24 @@ describe('public event projection', () => {
     expect(first).toMatch(/^incident-[0-9a-f]+$/);
   });
 
+  it('keeps a private incident GUID stable across snapshot rebuilds', () => {
+    const publicEventId = 'evt_stable_private_incident';
+    const first = projectPublicStatusEvents(
+      snapshot({
+        generatedAt: '2026-09-10T00:00:00.000Z',
+        incidents: [{ status: 'OPEN', title: 'Investigating', publicEventId }],
+      })
+    )[0]?.id;
+    const second = projectPublicStatusEvents(
+      snapshot({
+        generatedAt: '2026-09-10T00:01:00.000Z',
+        incidents: [{ status: 'OPEN', title: 'Investigating', publicEventId }],
+      })
+    )[0]?.id;
+    expect(first).toBe(publicEventId);
+    expect(second).toBe(publicEventId);
+  });
+
   it('is deterministic ΓÇö identical snapshots produce identical feeds', () => {
     const input = snapshot({
       maintenance: [

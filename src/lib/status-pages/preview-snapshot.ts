@@ -309,7 +309,10 @@ export function buildPreviewSnapshot(input: {
       statusApiRateLimitMax: 120,
       statusApiRateLimitWindowSec: 60,
     },
-    status: getWorstPublicStatus(services.map(service => service.status)),
+    status: overallBase.status,
+    statusIncludingUnknown: services.length
+      ? getWorstPublicStatus(services.map(service => service.status))
+      : overallBase.status,
     overall: {
       ...overallBase,
       totalServiceCount: services.length,

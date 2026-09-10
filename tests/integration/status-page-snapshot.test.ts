@@ -108,4 +108,41 @@ describe('durable status page projections', () => {
     });
     expect(JSON.stringify(await readStatusPageSnapshot(page.id))).toContain('Sensitive failure');
   });
+
+  it('does not scan historical incidents when uptime history is hidden', async () => {
+    const page = await createTestStatusPage({
+      enabled: true,
+      showMetrics: true,
+      showServiceMetrics: true,
+      showUptimeHistory: false,
+    });
+    const service = await createTestService('API');
+    await linkServiceToStatusPage(page.id, service.id);
+    const { loadHistoryIncidentsByService } = await import('@/lib/status-pages/history-query');
+    vi.mocked(loadHistoryIncidentsByService).mockClear();
+    await rebuildStatusPageSnapshot(page.id);
+    expect(loadHistoryIncidentsByService).not.toHaveBeenCalled();
+  });
+
+  it('ignores deactivated maintenance when computing current service health', async () => {
+    const page = await createTestStatusPage({ enabled: true });
+    const service = await createTestService('API');
+    await linkServiceToStatusPage(page.id, service.id);
+    await testPrisma.statusPageAnnouncement.create({
+      data: {
+        statusPageId: page.id,
+        title: 'Withdrawn window',
+        message: 'Should not affect current status',
+        type: 'MAINTENANCE',
+        isActive: false,
+        startDate: new Date(Date.now() - 60_000),
+        endDate: new Date(Date.now() + 60_000),
+        affectedServiceIds: [service.id],
+      },
+    });
+    expect(await rebuildStatusPageSnapshot(page.id)).toBe(true);
+    const snapshot = await readStatusPageSnapshot(page.id);
+    expect(snapshot?.services[0]?.status).toBe('OPERATIONAL');
+    expect(snapshot?.status).toBe(snapshot?.overall.status);
+  });
 });

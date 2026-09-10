@@ -46,6 +46,12 @@ describe('status-page authoritative history query', () => {
       orderBy: { id: 'asc' },
       take: HISTORY_INCIDENT_PAGE_SIZE,
       select: expect.objectContaining({ updatedAt: true, resolvedAt: true }),
+      where: expect.objectContaining({
+        OR: expect.arrayContaining([
+          { resolvedAt: null, status: { not: 'RESOLVED' } },
+          { resolvedAt: null, status: 'RESOLVED', updatedAt: { gte: start } },
+        ]),
+      }),
     });
     expect(mocks.findMany.mock.calls[1]?.[0]).toMatchObject({
       cursor: { id: firstPage.at(-1)?.id },

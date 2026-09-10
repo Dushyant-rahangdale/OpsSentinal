@@ -2,7 +2,11 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import type { PublicStatusPageSnapshot } from './public-contract';
 import { aggregatePublicRegions } from './history';
-import { deriveOverallPublicHealth, normalizePublicStatus } from './status-presentation';
+import {
+  deriveOverallPublicHealth,
+  getWorstPublicStatus,
+  normalizePublicStatus,
+} from './status-presentation';
 
 const status = z.enum([
   'OPERATIONAL',
@@ -212,6 +216,7 @@ export const publicStatusPageSnapshotSchema = z
       })
       .passthrough(),
     status,
+    statusIncludingUnknown: status.optional(),
     services: z.array(
       z
         .object({
@@ -269,6 +274,7 @@ export const publicStatusPageSnapshotSchema = z
       z
         .object({
           id: z.string().optional(),
+          publicEventId: z.string().optional(),
           title: z.string().optional(),
           description: z.string().optional(),
           status: z.enum(['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'SNOOZED', 'SUPPRESSED']),
@@ -376,9 +382,14 @@ export function parsePublicStatusPageSnapshot(
 ): PublicStatusPageSnapshot | null {
   const parsed = publicStatusPageSnapshotSchema.safeParse(payload);
   if (parsed.success && parsed.data.pageId === pageId) {
+    const overall = parsed.data.overall ?? deriveOverallPublicHealth(parsed.data.services);
     return {
       ...parsed.data,
-      overall: parsed.data.overall ?? deriveOverallPublicHealth(parsed.data.services),
+      overall,
+      status: overall.status,
+      statusIncludingUnknown:
+        parsed.data.statusIncludingUnknown ??
+        getWorstPublicStatus(parsed.data.services.map(service => service.status)),
     } as PublicStatusPageSnapshot;
   }
   const legacy = legacySnapshotSchema.safeParse(payload);
@@ -422,7 +433,8 @@ export function parsePublicStatusPageSnapshot(
     revision: legacy.data.revision,
     generatedAt: legacy.data.generatedAt,
     page: legacy.data.page,
-    status: normalizePublicStatus(legacy.data.status),
+    status: deriveOverallPublicHealth(services).status,
+    statusIncludingUnknown: normalizePublicStatus(legacy.data.status),
     overall: deriveOverallPublicHealth(services),
     services,
     regions: aggregatePublicRegions(services),
@@ -455,12 +467,16 @@ export function parsePublicStatusPageSnapshot(
     historyDays: legacy.data.historyDays,
   };
   const migrated = publicStatusPageSnapshotSchema.safeParse(candidate);
-  return migrated.success
-    ? ({
-        ...migrated.data,
-        overall: migrated.data.overall ?? deriveOverallPublicHealth(services),
-      } as PublicStatusPageSnapshot)
-    : null;
+  if (!migrated.success) return null;
+  const overall = migrated.data.overall ?? deriveOverallPublicHealth(services);
+  return {
+    ...migrated.data,
+    overall,
+    status: overall.status,
+    statusIncludingUnknown:
+      migrated.data.statusIncludingUnknown ??
+      getWorstPublicStatus(services.map(service => service.status)),
+  } as PublicStatusPageSnapshot;
 }
 
 const legacySnapshotSchema = z

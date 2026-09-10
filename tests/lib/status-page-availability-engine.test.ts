@@ -284,6 +284,28 @@ describe('canonical availability engine', () => {
     ]);
     expect(serviceUptimePercent(segments, start, end)).toBeCloseTo((23 / 24) * 100, 5);
   });
+
+  it('reports Operational statusSince from the last recovered interval', () => {
+    const segments = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [
+        {
+          serviceId: 'api',
+          status: 'RESOLVED',
+          urgency: 'HIGH',
+          createdAt: new Date('2026-09-09T01:00:00Z'),
+          resolvedAt: new Date('2026-09-09T02:00:00Z'),
+        },
+      ],
+      maintenance: [],
+      start,
+      end,
+    });
+    expect(healthAt(segments, end.getTime())).toEqual({
+      status: 'OPERATIONAL',
+      statusSince: '2026-09-09T02:00:00.000Z',
+    });
+  });
 });
 
 describe('availability engine sweep-line scale', () => {

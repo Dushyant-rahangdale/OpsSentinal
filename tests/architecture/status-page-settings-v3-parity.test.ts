@@ -89,5 +89,8 @@ describe('status-page settings → V3 parity', () => {
     const source = readFileSync('src/lib/status-pages/snapshot.ts', 'utf8');
     expect(source.includes('rollup-store')).toBe(false);
     expect(source.includes('rollup-engine')).toBe(false);
+    expect(source.includes('loadCurrentIncidentsByService')).toBe(true);
+    expect(source.includes('needsHistory')).toBe(true);
+    expect(source.includes('isActive: true')).toBe(true);
   });
 });

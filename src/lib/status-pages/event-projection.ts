@@ -10,9 +10,9 @@ import type {
  *
  * Each surface used to re-derive its own titles, ordering and disclosure from raw records; this
  * projects the already-sanitized V3 snapshot into a single ordered event list so they cannot drift.
- * It is a feed projector over the sanitized V3 snapshot. RSS, email and webhooks do not yet
- * consume this list — those surfaces still have their own loops. Do not treat this module as
- * evidence that fan-out is unified.
+ * It is a feed projector over the sanitized V3 snapshot. RSS consumes this list; email and
+ * webhooks still have their own loops. Do not treat this module as evidence that every fan-out
+ * surface is unified.
  */
 
 export type PublicStatusEventKind = 'INCIDENT' | 'MAINTENANCE' | 'ANNOUNCEMENT' | 'CHANGELOG';
@@ -62,8 +62,12 @@ export function projectPublicStatusEvents(
 
   for (const incident of snapshot.incidents) {
     const publishedAt = incident.createdAt ?? incident.resolvedAt ?? snapshot.generatedAt;
+    const eventId =
+      incident.id ??
+      incident.publicEventId ??
+      contentKey('INCIDENT', incident.title ?? 'Incident', publishedAt);
     events.push({
-      id: incident.id ?? contentKey('INCIDENT', incident.title ?? 'Incident', publishedAt),
+      id: eventId,
       kind: 'INCIDENT',
       title: incident.title ?? 'Service incident',
       ...(incident.description ? { body: incident.description } : {}),

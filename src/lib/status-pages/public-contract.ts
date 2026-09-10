@@ -116,6 +116,8 @@ export interface PublicPostmortemRef {
 
 export interface PublicIncident {
   id?: string;
+  /** Opaque stable feed id. Present even when the raw incident id is withheld. */
+  publicEventId?: string;
   title?: string;
   description?: string;
   status: PublicIncidentStatus;
@@ -295,6 +297,10 @@ export interface PublicStatusPageSnapshot {
     statusApiRateLimitWindowSec: number;
   };
   status: PublicServiceStatus;
+  /**
+   * Worst-rank including UNKNOWN. Compatibility only; canonical `status` equals `overall.status`.
+   */
+  statusIncludingUnknown?: PublicServiceStatus;
   /**
    * Severity and data confidence reported separately, so a service we cannot verify neither
    * masks a real outage nor is silently counted as healthy.

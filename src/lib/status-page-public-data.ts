@@ -4,6 +4,7 @@ import type {
   PublicIncidentUpdateType,
   PublicIncidentUrgency,
 } from '@/lib/status-pages/public-contract';
+import { publicStatusIncidentEventId } from '@/lib/status-pages/public-event-id';
 import { publicStatusForIncidentUrgency } from '@/lib/status-pages/status-presentation';
 
 export type StatusPagePublicSettings = {
@@ -81,10 +82,14 @@ function serializeDate(value: string | Date | null | undefined): string | undefi
 /** Shape every public endpoint from the same status-page visibility controls. */
 export function serializePublicStatusIncident(
   incident: PublicIncidentInput,
-  settings: StatusPagePublicSettings
+  settings: StatusPagePublicSettings,
+  context?: { pageId: string }
 ): PublicIncident {
   const visibility = publicStatusVisibility(settings);
   const result: PublicIncident = { status: incident.status as PublicIncidentStatus };
+  if (context?.pageId) {
+    result.publicEventId = publicStatusIncidentEventId(context.pageId, incident.id);
+  }
 
   if (visibility.showIncidentId) result.id = incident.id;
   if (visibility.showIncidentTitle) result.title = incident.title;
@@ -168,9 +173,10 @@ function publicUpdateType(type: string | null | undefined): PublicIncidentUpdate
  */
 export function serializePublicStatusApiIncident(
   incident: PublicIncidentInput,
-  settings: StatusPagePublicSettings
+  settings: StatusPagePublicSettings,
+  context?: { pageId: string }
 ): Record<string, unknown> {
-  const result = { ...serializePublicStatusIncident(incident, settings) } as Record<
+  const result = { ...serializePublicStatusIncident(incident, settings, context) } as Record<
     string,
     unknown
   >;
