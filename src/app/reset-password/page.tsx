@@ -27,6 +27,7 @@ function ResetPasswordForm() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const passwordsMatch = Object.is(password, confirmPassword);
 
   useEffect(() => {
     const rawToken = readFragmentToken() || searchParams.get('token');
@@ -48,7 +49,7 @@ function ResetPasswordForm() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    if (password !== confirmPassword) return setError('Passwords do not match.');
+    if (!passwordsMatch) return setError('Passwords do not match.');
     if (!isPasswordStrong(password)) return setError('Password does not meet the security requirements.');
     setIsSubmitting(true);
     try {
@@ -78,7 +79,7 @@ function ResetPasswordForm() {
       <div className="space-y-4" role="status" aria-live="polite">
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center dark:border-emerald-500/20 dark:bg-emerald-500/10">
           <ShieldCheck className="mx-auto h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-          <h3 className="mt-3 font-semibold text-emerald-800 dark:text-emerald-300">Password updated</h3>
+          <h3 className="mt-3 font-['Space_Grotesk',sans-serif] font-semibold text-emerald-800 dark:text-emerald-300">Password updated</h3>
           <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-200/80">All previously issued sessions have been revoked.</p>
         </div>
         <Link href="/login?passwordReset=1" className="flex w-full items-center justify-center rounded-xl bg-slate-950 py-3 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white focus-visible:ring-offset-2">Continue to sign in</Link>
@@ -110,9 +111,9 @@ function ResetPasswordForm() {
             <input id="confirm-password" type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} maxLength={PASSWORD_MAX_LENGTH} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} autoComplete="new-password" disabled={isSubmitting} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
             <button type="button" onClick={() => setShowConfirmPassword(value => !value)} aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'} className="mr-3 rounded p-1 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:hover:text-slate-300 dark:focus-visible:ring-white">{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
           </div>
-          {confirmPassword && <p className={`flex items-center gap-1 text-xs ${password === confirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{password === confirmPassword ? <CheckCircle2 className="h-3 w-3" /> : <X className="h-3 w-3" />}{password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}</p>}
+          {confirmPassword && <p className={`flex items-center gap-1 text-xs ${passwordsMatch ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{passwordsMatch ? <CheckCircle2 className="h-3 w-3" /> : <X className="h-3 w-3" />}{passwordsMatch ? 'Passwords match' : 'Passwords do not match'}</p>}
         </div>
-        <button type="submit" disabled={isSubmitting || !isPasswordStrong(password) || password !== confirmPassword} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white focus-visible:ring-offset-2">{isSubmitting ? <><Spinner size="sm" variant="current" /> Updating…</> : <><ShieldCheck className="h-4 w-4" /> Set new password</>}</button>
+        <button type="submit" disabled={isSubmitting || !isPasswordStrong(password) || !passwordsMatch} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white focus-visible:ring-offset-2">{isSubmitting ? <><Spinner size="sm" variant="current" /> Updating…</> : <><ShieldCheck className="h-4 w-4" /> Set new password</>}</button>
       </form>
     </>
   );
@@ -122,7 +123,7 @@ export default function ResetPasswordPage() {
   return (
     <AuthLayout>
       <AuthCard>
-        <div className="mb-8 text-center"><AuthBrand className="mb-6" /><h1 className="text-2xl font-bold text-slate-950 dark:text-white">Reset password</h1><p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">Secure your account with a new passphrase.</p></div>
+        <div className="mb-8 text-center"><AuthBrand className="mb-6" /><h1 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold text-slate-950 dark:text-white">Reset password</h1><p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">Secure your account with a new passphrase.</p></div>
         <Suspense fallback={<div className="flex justify-center p-8"><Spinner /></div>}><ResetPasswordForm /></Suspense>
       </AuthCard>
     </AuthLayout>
