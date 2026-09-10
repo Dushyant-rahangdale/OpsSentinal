@@ -3,7 +3,7 @@
 import { CSSProperties } from 'react';
 
 type SpinnerSize = 'sm' | 'md' | 'lg';
-type SpinnerVariant = 'default' | 'primary' | 'white' | 'black';
+type SpinnerVariant = 'default' | 'primary' | 'white' | 'black' | 'current';
 
 interface SpinnerProps {
   size?: SpinnerSize;
@@ -12,25 +12,15 @@ interface SpinnerProps {
   style?: CSSProperties;
 }
 
-const sizeMap: Record<SpinnerSize, number> = {
-  sm: 16,
-  md: 24,
-  lg: 32,
-};
-
+const sizeMap: Record<SpinnerSize, number> = { sm: 16, md: 24, lg: 32 };
 const colorMap: Record<SpinnerVariant, string> = {
   default: 'var(--text-muted)',
   primary: 'var(--primary-color)',
   white: '#ffffff',
   black: '#000000',
+  current: 'currentColor',
 };
 
-/**
- * Spinner component for loading states
- *
- * @example
- * <Spinner size="md" variant="primary" />
- */
 export default function Spinner({
   size = 'md',
   variant = 'default',
@@ -38,8 +28,6 @@ export default function Spinner({
   style,
 }: SpinnerProps) {
   const spinnerSize = sizeMap[size];
-  const color = colorMap[variant];
-
   return (
     <svg
       className={`spinner spinner-${size} spinner-${variant} ${className}`}
@@ -47,14 +35,11 @@ export default function Spinner({
       height={spinnerSize}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={color}
+      stroke={colorMap[variant]}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{
-        animation: 'spin 1s linear infinite',
-        ...style,
-      }}
+      style={{ animation: 'spin 1s linear infinite', ...style }}
       aria-label="Loading"
       role="status"
     >

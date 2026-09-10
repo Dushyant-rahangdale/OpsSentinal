@@ -1,25 +1,55 @@
+/**
+ * Central password policy shared by every credential-setting flow.
+ *
+ * Policy goals:
+ * - long passwords/passphrases instead of composition rules;
+ * - Unicode and whitespace are allowed;
+ * - common compromised/default passwords are rejected;
+ * - bcrypt's 72-byte input ceiling is enforced explicitly so passwords are
+ *   never silently truncated by the current hashing backend.
+ */
+export const PASSWORD_MIN_LENGTH = 15;
+export const PASSWORD_MAX_LENGTH = 64;
+export const PASSWORD_MAX_UTF8_BYTES = 72;
+
+const COMMON_PASSWORDS = new Set([
+  '123456789012345',
+  'passwordpassword',
+  'password123456789',
+  'qwertyqwertyqwerty',
+  'letmeinletmeinletmein',
+  'adminadminadmin',
+  'administrator123',
+  'welcome123456789',
+  'changemechangeme',
+  'correcthorsebatterystaple',
+  'opsknightopsknight',
+]);
+
+function utf8Length(value: string): number {
+  return new TextEncoder().encode(value).length;
+}
+
+export function isCommonPassword(password: string): boolean {
+  return COMMON_PASSWORDS.has(password.normalize('NFKC').toLocaleLowerCase('en-US'));
+}
+
 export function validatePasswordStrength(password: string): string | null {
-  // Maximum length check to prevent DoS via bcrypt computation
-  if (password.length > 128) {
-    return 'Password must not exceed 128 characters.';
+  if (typeof password !== 'string') return 'Password is required.';
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
   }
-
-  if (password.length < 10) {
-    return 'Password must be at least 10 characters.';
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    return `Password must not exceed ${PASSWORD_MAX_LENGTH} characters.`;
   }
-
-  const hasLower = /[a-z]/.test(password);
-  const hasUpper = /[A-Z]/.test(password);
-  const hasNumber = /\d/.test(password);
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(password);
-
-  if (!hasLower || !hasUpper || !hasNumber) {
-    return 'Password must include upper, lower, and numeric characters.';
+  if (utf8Length(password) > PASSWORD_MAX_UTF8_BYTES) {
+    return `Password is too long for the current password hashing backend (maximum ${PASSWORD_MAX_UTF8_BYTES} UTF-8 bytes).`;
   }
-
-  if (!hasSpecial) {
-    return 'Password must include at least one special character.';
+  if (password.includes('\u0000')) {
+    return 'Password contains an unsupported null character.';
   }
-
+  if (isCommonPassword(password)) {
+    return 'Choose a password that is not a commonly used or default password.';
+  }
   return null;
 }

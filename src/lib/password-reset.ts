@@ -1,362 +1,199 @@
-import { randomBytes, createHash } from 'crypto';
-import prisma from '@/lib/prisma';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { AppError } from '@/lib/errors';
+import prisma from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { emitAuditEvent } from '@/lib/audit';
 import { validatePasswordStrength } from '@/lib/passwords';
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const MAX_ATTEMPTS_PER_WINDOW = 5;
+import { authPrivacyDigest, consumeAuthRateLimit } from '@/lib/auth-abuse';
 
-// Define simple result type locally to avoid import issues
-type PasswordResetResult = {
+const GENERIC_RESET_MESSAGE =
+  'If an account exists with this email, you will receive password reset instructions.';
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const COMPLETION_WINDOW_MS = 15 * 60 * 1000;
+const INIT_IDENTIFIER_WINDOW_MS = 60 * 60 * 1000;
+const INIT_IP_WINDOW_MS = 15 * 60 * 1000;
+const DUMMY_BCRYPT_HASH = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxrmVAffROEdXLahEtFJZ1e3dHy';
+
+export type PasswordResetResult = { success: boolean; message: string };
+export type PasswordResetCompletionResult = {
   success: boolean;
-  message: string;
+  message?: string;
+  error?: string;
+  code?: 'INVALID_TOKEN' | 'WEAK_PASSWORD' | 'RATE_LIMITED' | 'INTERNAL';
 };
 
-/**
- * Initiates the password reset flow.
- * SECURE: Always returns a generic success message to prevent enumeration.
- */
-export async function initiatePasswordReset(
-  email: string,
-  ipAddress?: string
-): Promise<PasswordResetResult> {
-  const normalizedEmail = email.toLowerCase().trim();
-  const startTime = Date.now();
-
+async function auditRecoveryEvent(params: { action: string; userId?: string | null; email?: string | null; ip?: string | null; tokenHash?: string | null; outcome?: string }) {
   try {
-    // 1. Rate Limit Check (Audit Log based)
-    await checkRateLimit(normalizedEmail, ipAddress);
-
-    // 2. User Lookup
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    // 3. Timing Mitigation & User Validation
-    if (!user || user.status === 'DISABLED') {
-      await simulateWork(startTime);
-      // Log attempt as failed/invalid but use same action to mask existence
-      // SECURITY: Log even invalid attempts to AuditLog to prevent DoS via unmetered requests
-      await logAttempt(normalizedEmail, 'PASSWORD_RESET_INITIATED', ipAddress, undefined);
-
-      logger.debug('[PasswordReset] Request for unknown/disabled user', {
-        component: 'password-reset',
-      });
-      return {
-        success: true,
-        message:
-          'If an account exists with this email, you will receive password reset instructions.',
-      };
-    }
-
-    // 4. Generate Token
-    const token = randomBytes(32).toString('hex');
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    // Invalidate old tokens
-    await prisma.userToken.deleteMany({
-      where: {
-        identifier: normalizedEmail,
-        type: 'PASSWORD_RESET',
-        usedAt: null,
-      },
-    });
-
-    // Store new token
-    await prisma.userToken.create({
-      data: {
-        identifier: normalizedEmail,
-        type: 'PASSWORD_RESET',
-        tokenHash,
-        expiresAt: expires,
-      },
-    });
-
-    // 5. Send notification - try email first, fallback to SMS
-    const { getEmailConfig, getSMSConfig } = await import('./notification-providers');
-    const { getAppUrl } = await import('@/lib/app-url');
-    const appUrl = await getAppUrl();
-    const resetLink = `${appUrl}/reset-password?token=${token}`;
-
-    let notificationSent = false;
-    let emailIntentId: string | null = null;
-
-    // Try email first
-    const emailConfig = await getEmailConfig();
-    if (emailConfig?.enabled) {
-      try {
-        const { getPasswordResetEmailTemplate } =
-          await import('@/lib/password-reset-email-template');
-        const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
-
-        const emailTemplate = getPasswordResetEmailTemplate({
-          userName: user.name || 'User',
-          resetLink,
-          expiryMinutes: 60,
-        });
-
-        const delivery = await enqueueCentralNotification({
-          category: 'SECURITY',
-          channel: 'EMAIL',
-          recipientType: 'USER',
-          recipientId: user.id,
-          recipientAddress: user.email,
-          userId: user.id,
-          templateKey: 'password-reset',
-          sourceType: 'USER',
-          sourceId: user.id,
-          eventKey: tokenHash,
-          displayMessage: 'Password reset instructions',
-          expiresAt: expires,
-          priority: 0,
-          payload: {
-            kind: 'EMAIL',
-            to: user.email,
-            subject: emailTemplate.subject,
-            text: emailTemplate.text,
-            html: emailTemplate.html,
-          },
-        });
-        emailIntentId = delivery.id;
-        notificationSent = delivery.delivered === true;
-      } catch (e) {
-        const err = e as Error;
-        logger.warn('[PasswordReset] Email sending failed, will try SMS fallback', {
-          component: 'password-reset',
-          error: err.message,
-        });
-      }
-    }
-
-    // Fallback to SMS if email failed/disabled and user has SMS enabled
-    if (!notificationSent && user.phoneNumber && user.smsNotificationsEnabled) {
-      const smsConfig = await getSMSConfig();
-      if (smsConfig?.enabled) {
-        try {
-          const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
-          const delivery = await enqueueCentralNotification({
-            category: 'SECURITY',
-            channel: 'SMS',
-            recipientType: 'USER',
-            recipientId: user.id,
-            recipientAddress: user.phoneNumber,
-            userId: user.id,
-            templateKey: 'password-reset-sms',
-            sourceType: 'USER',
-            sourceId: user.id,
-            eventKey: tokenHash,
-            displayMessage: 'Password reset instructions',
-            expiresAt: expires,
-            priority: 0,
-            payload: {
-              kind: 'SMS',
-              to: user.phoneNumber,
-              message: `Reset your password: ${resetLink}`,
-            },
-          });
-          notificationSent = delivery.delivered === true;
-          if (notificationSent && emailIntentId) {
-            const { cancelCentralNotification } = await import('@/lib/notification-control-plane');
-            await cancelCentralNotification(
-              emailIntentId,
-              'Superseded by successful SMS fallback.'
-            );
-          }
-        } catch (_error) {
-          logger.warn('[PasswordReset] SMS sending failed', {
-            component: 'password-reset',
-          });
-        }
-      }
-    }
-
-    if (!notificationSent) {
-      logger.warn('[PasswordReset] No notification channel available', {
-        component: 'password-reset',
-      });
-    }
-
-    // Log successful initiation
-    await logAttempt(normalizedEmail, 'PASSWORD_RESET_INITIATED', ipAddress, user.id);
-
-    return {
-      success: true,
-      message:
-        'If an account exists with this email, you will receive password reset instructions.',
-    };
-  } catch (error) {
-    logger.error('password.reset.initiate.error', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return { success: false, message: 'An internal error occurred.' };
-  }
-}
-
-export async function checkRateLimit(
-  email: string,
-  ip?: string,
-  action: string = 'PASSWORD_RESET_INITIATED'
-) {
-  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
-
-  // Check by Email using new Indexed Column
-  const emailCount = await prisma.auditLog.count({
-    where: {
-      action,
-      targetEmail: email, // Direct indexed column lookup
-      createdAt: { gt: windowStart },
-    },
-  });
-
-  if (emailCount >= MAX_ATTEMPTS_PER_WINDOW) {
-    throw new AppError({
-      code: 'RATE_LIMIT_EXCEEDED',
-      userMessage: 'Too many requests. Please try again later.',
-      details: { scope: 'email', action },
-    });
-  }
-
-  // Check by IP using new Indexed Column
-  if (ip) {
-    const ipCount = await prisma.auditLog.count({
-      where: {
-        action,
-        ip: ip, // Direct indexed column lookup
-        createdAt: { gt: windowStart },
-      },
-    });
-
-    if (ipCount >= MAX_ATTEMPTS_PER_WINDOW * 2) {
-      throw new AppError({
-        code: 'RATE_LIMIT_EXCEEDED',
-        userMessage: 'Too many requests from this IP.',
-        details: { scope: 'ip', action },
-      });
-    }
-  }
-}
-
-async function logAttempt(
-  email: string,
-  action: string,
-  ip: string | undefined,
-  userId: string | undefined = undefined
-) {
-  try {
+    const [identifierHash, ipHash] = await Promise.all([
+      params.email ? authPrivacyDigest('audit:recovery:email', params.email) : Promise.resolve(null),
+      params.ip ? authPrivacyDigest('audit:recovery:ip', params.ip) : Promise.resolve(null),
+    ]);
     await emitAuditEvent({
-      action,
+      action: params.action,
       source: 'AUTH',
-      target: { type: 'USER', id: userId || 'unknown' },
-      actor: userId ? { type: 'USER', id: userId, email } : { type: 'SYSTEM' },
-      targetEmail: email,
-      ip,
-      metadata: { targetEmail: email },
+      target: { type: 'USER', id: params.userId ?? null },
+      actor: { type: 'SYSTEM' },
+      metadata: { identifierHash, ipHash, tokenHash: params.tokenHash ?? null, outcome: params.outcome ?? null },
     });
-  } catch (e) {
-    logger.error('password.reset.audit.error', {
-      error: e instanceof Error ? e.message : String(e),
-    });
+  } catch (error) {
+    logger.error('password.reset.audit.error', { component: 'password-reset', error: error instanceof Error ? error.message : String(error) });
   }
+}
+
+export async function checkRateLimit(identifier: string, ip?: string, action: string = 'PASSWORD_RESET_INITIATED') {
+  const [identifierRate, ipRate] = await Promise.all([
+    identifier === 'unknown'
+      ? Promise.resolve({ allowed: true })
+      : consumeAuthRateLimit(`${action.toLowerCase()}:identifier`, identifier, 5, INIT_IDENTIFIER_WINDOW_MS),
+    ip ? consumeAuthRateLimit(`${action.toLowerCase()}:ip`, ip, 20, INIT_IP_WINDOW_MS) : Promise.resolve({ allowed: true }),
+  ]);
+  if (!identifierRate.allowed || !ipRate.allowed) throw new Error('AUTH_RATE_LIMITED');
 }
 
 export async function simulateWork(startTime: number) {
-  const dummy = '$2a$10$abcdefghijklmnopqrstuv';
-  try {
-    await bcrypt.compare('dummy-password', dummy);
-  } catch {}
-
+  try { await bcrypt.compare('opsknight-timing-padding', DUMMY_BCRYPT_HASH); } catch { /* timing only */ }
+  const targetMs = randomInt(400, 501);
   const elapsed = Date.now() - startTime;
-  const minTime = 300;
-  if (elapsed < minTime) {
-    await new Promise(resolve => setTimeout(resolve, minTime - elapsed));
+  if (elapsed < targetMs) await new Promise(resolve => setTimeout(resolve, targetMs - elapsed));
+}
+
+export async function initiatePasswordReset(email: string, ipAddress?: string): Promise<PasswordResetResult> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const startTime = Date.now();
+  try {
+    try {
+      await checkRateLimit(normalizedEmail, ipAddress);
+    } catch {
+      await auditRecoveryEvent({ action: 'auth.password_reset.rate_limited', email: normalizedEmail, ip: ipAddress, outcome: 'rate_limited' });
+      await simulateWork(startTime);
+      return { success: true, message: GENERIC_RESET_MESSAGE };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, name: true, status: true, phoneNumber: true, smsNotificationsEnabled: true },
+    });
+    if (!user || user.status !== 'ACTIVE') {
+      await auditRecoveryEvent({ action: 'auth.password_reset.requested', email: normalizedEmail, ip: ipAddress, outcome: 'accepted_generic' });
+      await simulateWork(startTime);
+      return { success: true, message: GENERIC_RESET_MESSAGE };
+    }
+
+    const token = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+    await prisma.$transaction(async tx => {
+      await tx.userToken.deleteMany({ where: { type: 'PASSWORD_RESET', usedAt: null, OR: [{ userId: user.id }, { identifier: user.email }] } });
+      await tx.userToken.create({ data: { identifier: user.id, userId: user.id, type: 'PASSWORD_RESET', tokenHash, expiresAt } });
+    });
+
+    const { getEmailConfig, getSMSConfig } = await import('./notification-providers');
+    const { getAppUrl } = await import('@/lib/app-url');
+    const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
+    const appUrl = (await getAppUrl()).replace(/\/$/, '');
+    const resetLink = `${appUrl}/reset-password#token=${encodeURIComponent(token)}`;
+    const emailConfig = await getEmailConfig();
+    if (emailConfig?.enabled) {
+      const { getPasswordResetEmailTemplate } = await import('@/lib/password-reset-email-template');
+      const template = getPasswordResetEmailTemplate({ userName: user.name || 'User', resetLink, expiryMinutes: RESET_TOKEN_TTL_MS / 60_000 });
+      await enqueueCentralNotification({
+        category: 'SECURITY', channel: 'EMAIL', recipientType: 'USER', recipientId: user.id,
+        recipientAddress: user.email, userId: user.id, templateKey: 'password-reset', sourceType: 'USER',
+        sourceId: user.id, eventKey: tokenHash, displayMessage: 'Password reset instructions', expiresAt, priority: 0,
+        payload: { kind: 'EMAIL', to: user.email, subject: template.subject, text: template.text, html: template.html },
+      });
+    } else if (user.phoneNumber && user.smsNotificationsEnabled) {
+      const smsConfig = await getSMSConfig();
+      if (smsConfig?.enabled) {
+        await enqueueCentralNotification({
+          category: 'SECURITY', channel: 'SMS', recipientType: 'USER', recipientId: user.id,
+          recipientAddress: user.phoneNumber, userId: user.id, templateKey: 'password-reset-sms', sourceType: 'USER',
+          sourceId: user.id, eventKey: tokenHash, displayMessage: 'Password reset instructions', expiresAt, priority: 0,
+          payload: { kind: 'SMS', to: user.phoneNumber, message: `Reset your OpsKnight password: ${resetLink}` },
+        });
+      }
+    }
+    await auditRecoveryEvent({ action: 'auth.password_reset.requested', userId: user.id, email: normalizedEmail, ip: ipAddress, tokenHash, outcome: 'accepted' });
+    await simulateWork(startTime);
+    return { success: true, message: GENERIC_RESET_MESSAGE };
+  } catch (error) {
+    logger.error('password.reset.initiate.error', { component: 'password-reset', error: error instanceof Error ? error.message : String(error) });
+    await simulateWork(startTime);
+    return { success: true, message: GENERIC_RESET_MESSAGE };
   }
 }
 
-// Keep completePasswordReset minimal as well or import if needed
-// For now, I'll include the basic version to ensure file completeness
-export async function completePasswordReset(
-  token: string,
-  password: string,
-  _ip?: string
-): Promise<{ success: boolean; message?: string; error?: string }> {
-  // Basic implementation needed to satisfy export if used elsewhere
-  // Assuming completePasswordReset wasn't the cause of initiation crash.
-  // Re-implementing a safe version.
-
+export async function completePasswordReset(token: string, password: string, ip?: string): Promise<PasswordResetCompletionResult> {
+  if (!token || token.length > 512) return { success: false, code: 'INVALID_TOKEN', error: 'Invalid or expired reset link.' };
+  const tokenHash = createHash('sha256').update(token).digest('hex');
   try {
-    if (!token) return { success: false, error: 'Invalid token' };
+    const [tokenRate, ipRate] = await Promise.all([
+      consumeAuthRateLimit('password-reset:complete:token', tokenHash, 5, COMPLETION_WINDOW_MS),
+      ip ? consumeAuthRateLimit('password-reset:complete:ip', ip, 20, COMPLETION_WINDOW_MS) : Promise.resolve({ allowed: true }),
+    ]);
+    if (!tokenRate.allowed || !ipRate.allowed) {
+      await auditRecoveryEvent({ action: 'auth.password_reset.rate_limited', ip, tokenHash, outcome: 'completion_rate_limited' });
+      return { success: false, code: 'RATE_LIMITED', error: 'Too many reset attempts. Request a new link or try again later.' };
+    }
 
-    const tokenHash = createHash('sha256').update(token).digest('hex');
     const record = await prisma.userToken.findFirst({
-      where: { tokenHash, type: 'PASSWORD_RESET', usedAt: null },
+      where: { tokenHash, type: 'PASSWORD_RESET', usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true, userId: true, identifier: true },
+    });
+    if (!record) {
+      await auditRecoveryEvent({ action: 'auth.password_reset.token_invalid', ip, tokenHash, outcome: 'invalid_or_expired' });
+      return { success: false, code: 'INVALID_TOKEN', error: 'Invalid or expired reset link.' };
+    }
+    const passwordError = validatePasswordStrength(password || '');
+    if (passwordError) return { success: false, code: 'WEAK_PASSWORD', error: passwordError };
+
+    const user = await prisma.user.findFirst({
+      where: record.userId ? { id: record.userId } : { email: record.identifier },
+      select: { id: true, email: true, status: true },
+    });
+    if (!user || user.status !== 'ACTIVE') return { success: false, code: 'INVALID_TOKEN', error: 'Invalid or expired reset link.' };
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const now = new Date();
+    await prisma.$transaction(async tx => {
+      const claimed = await tx.userToken.updateMany({
+        where: { id: record.id, tokenHash, type: 'PASSWORD_RESET', usedAt: null, revokedAt: null, expiresAt: { gt: now } },
+        data: { usedAt: now },
+      });
+      if (claimed.count !== 1) throw new Error('RESET_TOKEN_ALREADY_USED');
+      const updated = await tx.user.updateMany({
+        where: { id: user.id, status: 'ACTIVE' },
+        data: { passwordHash, tokenVersion: { increment: 1 } },
+      });
+      if (updated.count !== 1) throw new Error('RESET_USER_STATE_CHANGED');
+      await tx.userToken.updateMany({
+        where: { type: 'PASSWORD_RESET', usedAt: null, revokedAt: null, OR: [{ userId: user.id }, { identifier: user.email }] },
+        data: { revokedAt: now },
+      });
     });
 
-    if (!record || record.expiresAt < new Date()) {
-      return { success: false, error: 'Invalid or expired token' };
-    }
-
-    // Validate the token before the replacement password. Besides preserving the
-    // reset API contract, this prevents used/expired tokens from returning
-    // password-policy details instead of the canonical token error.
-    const strengthError = validatePasswordStrength(password || '');
-    if (strengthError) {
-      return { success: false, error: strengthError };
-    }
-
-    const user = await prisma.user.findUnique({ where: { email: record.identifier } });
-    if (!user) return { success: false, error: 'User not found' };
-
-    const salt = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    const result = await prisma.$transaction(async tx => {
-      const updatedToken = await tx.userToken.updateMany({
-        where: {
-          tokenHash,
-          type: 'PASSWORD_RESET',
-          usedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        data: { usedAt: new Date() },
-      });
-
-      if (updatedToken.count === 0) {
-        throw new Error('TOKEN_EXPIRED_OR_USED');
+    await auditRecoveryEvent({ action: 'auth.password_reset.completed', userId: user.id, email: user.email, ip, tokenHash, outcome: 'completed' });
+    try {
+      const { getEmailConfig } = await import('./notification-providers');
+      if ((await getEmailConfig())?.enabled) {
+        const { enqueueCentralNotification } = await import('@/lib/notification-control-plane');
+        await enqueueCentralNotification({
+          category: 'SECURITY', channel: 'EMAIL', recipientType: 'USER', recipientId: user.id,
+          recipientAddress: user.email, userId: user.id, templateKey: 'password-changed', sourceType: 'USER', sourceId: user.id,
+          eventKey: `password-changed:${tokenHash}`, displayMessage: 'Password changed', priority: 0,
+          payload: { kind: 'EMAIL', to: user.email, subject: 'Your OpsKnight password was changed', text: `Your OpsKnight password was changed at ${now.toISOString()}. If this was not you, contact your administrator immediately.` },
+        });
       }
-
-      await tx.user.update({
-        where: { id: user.id },
-        data: {
-          passwordHash,
-          tokenVersion: { increment: 1 },
-        },
-      });
-
-      return true;
-    });
-
-    if (!result) {
-      return { success: false, error: 'Invalid or expired token' };
+    } catch (error) {
+      logger.warn('auth.password_reset.notification_failed', { component: 'password-reset', userId: user.id, error: error instanceof Error ? error.message : String(error) });
     }
-
-    // Log session revocation for observability
-    logger.info('[PasswordReset] Password updated, sessions revoked', {
-      component: 'password-reset',
-      userId: user.id,
-      email: user.email,
-    });
-
-    return { success: true, message: 'Password reset successfully' };
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === 'TOKEN_EXPIRED_OR_USED') {
-      return { success: false, error: 'Invalid or expired token' };
+    logger.info('auth.password_reset.session_revoked', { component: 'password-reset', userId: user.id });
+    return { success: true, message: 'Password reset successfully.' };
+  } catch (error) {
+    if (error instanceof Error && (error.message === 'RESET_TOKEN_ALREADY_USED' || error.message === 'RESET_USER_STATE_CHANGED')) {
+      return { success: false, code: 'INVALID_TOKEN', error: 'Invalid or expired reset link.' };
     }
-    logger.error('password.reset.complete.error', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return { success: false, error: 'Internal error' };
+    logger.error('password.reset.complete.error', { component: 'password-reset', error: error instanceof Error ? error.message : String(error) });
+    return { success: false, code: 'INTERNAL', error: 'Unable to reset password.' };
   }
 }

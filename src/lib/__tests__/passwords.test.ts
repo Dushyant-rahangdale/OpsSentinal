@@ -1,31 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { validatePasswordStrength } from '@/lib/passwords';
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MAX_UTF8_BYTES,
+  PASSWORD_MIN_LENGTH,
+  validatePasswordStrength,
+} from '@/lib/passwords';
 
 describe('validatePasswordStrength', () => {
-  it('rejects short passwords', () => {
-    expect(validatePasswordStrength('Short1!')).toBeTruthy();
+  it('enforces the minimum length without composition rules', () => {
+    expect(validatePasswordStrength('short password')).toContain(`${PASSWORD_MIN_LENGTH}`);
+    expect(validatePasswordStrength('this is a long passphrase')).toBeNull();
+    expect(validatePasswordStrength('alllowercasebutlongenough')).toBeNull();
   });
 
-  it('rejects passwords exceeding 128 characters', () => {
-    const longPassword = 'Aa1!' + 'x'.repeat(126); // 130 chars total
-    expect(validatePasswordStrength(longPassword)).toBe('Password must not exceed 128 characters.');
+  it('allows whitespace and unicode when within the hashing limit', () => {
+    expect(validatePasswordStrength('spaces are valid here')).toBeNull();
+    expect(validatePasswordStrength('安全な passphrase 123')).toBeNull();
   });
 
-  it('requires upper, lower, and number', () => {
-    expect(validatePasswordStrength('alllowercase1!')).toBeTruthy();
-    expect(validatePasswordStrength('ALLUPPERCASE1!')).toBeTruthy();
-    expect(validatePasswordStrength('NoNumbersHere!')).toBeTruthy();
-  });
-
-  it('requires special character', () => {
-    expect(validatePasswordStrength('StrongPass1')).toBe(
-      'Password must include at least one special character.'
+  it('rejects the configured character maximum', () => {
+    expect(validatePasswordStrength('x'.repeat(PASSWORD_MAX_LENGTH + 1))).toContain(
+      `${PASSWORD_MAX_LENGTH}`
     );
   });
 
-  it('accepts strong passwords with all requirements', () => {
-    expect(validatePasswordStrength('StrongPass1!')).toBeNull();
-    expect(validatePasswordStrength('MyP@ssw0rd123')).toBeNull();
-    expect(validatePasswordStrength('SecureKey#2024')).toBeNull();
+  it('rejects bcrypt-truncating UTF-8 inputs explicitly', () => {
+    const password = '界'.repeat(Math.ceil(PASSWORD_MAX_UTF8_BYTES / 3) + 1);
+    expect(validatePasswordStrength(password)).toContain('UTF-8 bytes');
+  });
+
+  it('rejects common/default passwords', () => {
+    expect(validatePasswordStrength('correcthorsebatterystaple')).toContain('commonly used');
+    expect(validatePasswordStrength('PasswordPassword')).toContain('commonly used');
+  });
+
+  it('rejects embedded null characters', () => {
+    expect(validatePasswordStrength('long-enough-pass\u0000word')).toContain('null character');
   });
 });
