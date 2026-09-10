@@ -7,6 +7,7 @@ import { encrypt } from '@/lib/encryption';
 import { logAudit } from '@/lib/audit';
 import { assertAdmin } from '@/lib/rbac';
 import { normalizeJiraBaseUrl } from '@/lib/jira-validation';
+import { acquireJiraWorkspaceLifecycleFence } from '@/lib/jira-concurrency';
 import { revalidatePath } from 'next/cache';
 import { logger } from '@/lib/logger';
 import {
@@ -122,6 +123,11 @@ export async function saveJiraConfig(
     }
 
     const updatedAt = await prisma.$transaction(async tx => {
+      // Configuration changes are workspace lifecycle changes. Fence them
+      // against in-flight Jira provider work so disable/credential changes
+      // cannot be overtaken by a request that was admitted under stale state.
+      await acquireJiraWorkspaceLifecycleFence(tx);
+
       if (existing) {
         const updated = await tx.jiraConfig.updateMany({
           where: { id: existing.id, updatedAt: expectedRevision! },
@@ -244,10 +250,14 @@ export async function removeJiraWorkspace(formData: FormData): Promise<SettingsA
 
   try {
     await prisma.$transaction(async tx => {
-      // Serialize workspace removal against Jira service-mapping writes. A
-      // companion DB trigger takes a KEY SHARE lock on this row before every
-      // mapping insert/update, so either the mapping commits first and is
-      // deleted below, or removal wins and the stale mapping write is rejected.
+      // Take the exclusive cluster-wide Jira lifecycle fence first. In-flight
+      // provider work holds the shared form of this lock, so removal cannot
+      // overtake an already-admitted remote mutation. New work waits, then
+      // observes that the workspace no longer exists and fails closed.
+      await acquireJiraWorkspaceLifecycleFence(tx);
+
+      // The row lock additionally coordinates with the database trigger that
+      // guards stale JiraServiceMapping writes.
       const [current] = await tx.$queryRaw<LockedJiraWorkspace[]>`
         SELECT
           "id",
