@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { completePasswordReset } from '@/lib/password-reset';
-import { PASSWORD_MAX_LENGTH } from '@/lib/passwords';
+import { PASSWORD_TRANSPORT_MAX_CODE_UNITS } from '@/lib/passwords';
 import { logger } from '@/lib/logger';
 import { getClientIp } from '@/lib/client-ip';
+import { readJsonBodyWithLimit } from '@/lib/request-body';
 
 const schema = z
   .object({
     token: z.string().min(32).max(512),
-    password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
+    // Transport guard only. validatePasswordStrength() owns the semantic
+    // Unicode-code-point and bcrypt-byte limits.
+    password: z.string().min(1).max(PASSWORD_TRANSPORT_MAX_CODE_UNITS),
   })
   .strict();
 
@@ -24,11 +27,7 @@ function json(body: Record<string, unknown>, status: number) {
 
 export async function POST(req: NextRequest) {
   try {
-    const contentLength = Number(req.headers.get('content-length') || '0');
-    if (Number.isFinite(contentLength) && contentLength > 8192) {
-      return json({ error: 'Invalid reset request.' }, 400);
-    }
-    const parsed = schema.safeParse(await req.json());
+    const parsed = schema.safeParse(await readJsonBodyWithLimit(req, 8192));
     if (!parsed.success) return json({ error: 'Invalid reset request.' }, 400);
     const result = await completePasswordReset(
       parsed.data.token,
