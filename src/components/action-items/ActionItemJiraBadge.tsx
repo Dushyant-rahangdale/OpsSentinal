@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
-import { ExternalLink, Link2, Loader2, Plus, RefreshCw, Tickets, Trash2 } from 'lucide-react';
+import { Link2, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {
   createJiraIssueFromActionItem,
   linkJiraIssueToActionItem,
@@ -12,17 +12,7 @@ import {
 } from '@/app/(app)/action-items/jira/actions';
 import type { ActionItemExternalIssue } from '@/lib/action-items';
 import type { JiraCapability } from '@/lib/jira-capabilities';
-
-function statusColor(status: string | undefined): string {
-  if (!status) return 'bg-slate-100 text-slate-600';
-  const lower = status.toLowerCase();
-  if (lower === 'done' || lower === 'closed' || lower === 'resolved')
-    return 'bg-emerald-100 text-emerald-700';
-  if (lower === 'in progress' || lower === 'in review') return 'bg-blue-100 text-blue-700';
-  if (lower === 'to do' || lower === 'open' || lower === 'backlog')
-    return 'bg-amber-100 text-amber-700';
-  return 'bg-slate-100 text-slate-600';
-}
+import JiraReferenceBadge from '@/components/jira/JiraReferenceBadge';
 
 interface ActionItemJiraBadgeProps {
   actionItemId: string;
@@ -65,24 +55,7 @@ export default function ActionItemJiraBadge({
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
-        <a
-          href={currentExternalIssue.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
-          title={`${currentExternalIssue.key}${currentExternalIssue.status ? ` — ${currentExternalIssue.status}` : ''}${currentExternalIssue.assignee ? ` (${currentExternalIssue.assignee})` : ''}`}
-        >
-          <Tickets className="h-3 w-3" />
-          {currentExternalIssue.key}
-          {!compact && currentExternalIssue.status && (
-            <span
-              className={`ml-1 inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium ${statusColor(currentExternalIssue.status)}`}
-            >
-              {currentExternalIssue.status}
-            </span>
-          )}
-          <ExternalLink className="h-2.5 w-2.5 opacity-50" />
-        </a>
+        <JiraReferenceBadge issue={currentExternalIssue} compact={compact} />
         {showAnyAction && showActions && (
           <div className="inline-flex items-center gap-0.5">
             {showSync && (
