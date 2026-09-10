@@ -397,19 +397,21 @@ export default function StatusPageExperience({
       )}
 
       {branding.showFooter !== false && (
-        <footer style={{ marginTop: '3rem', opacity: 0.75 }}>
-          <p>{page.footerText || 'Powered by OpsKnight'}</p>
-          <nav aria-label="Status resources" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {branding.showApiLink !== false && <a href={apiPath}>JSON API</a>}
-            {branding.showRssLink !== false && <a href={`${apiPath}/rss`}>RSS</a>}
+        <footer className="status-footer">
+          <p className="status-footer__brand">
+            {page.footerText || 'Powered by OpsKnight'}
+          </p>
+          <nav aria-label="Status resources" className="status-footer__links">
+            {branding.showApiLink !== false && <a className="status-footer-link" href={apiPath}>JSON API</a>}
+            {branding.showRssLink !== false && <a className="status-footer-link" href={`${apiPath}/rss`}>RSS</a>}
             {page.enableUptimeExports === true && hasUptime && (
               <>
-                <a href={`${apiPath}/uptime-export?format=csv`}>Uptime CSV</a>
-                <a href={`${apiPath}/uptime-export?format=pdf`}>Uptime PDF</a>
+                <a className="status-footer-link" href={`${apiPath}/uptime-export?format=csv`}>Uptime CSV</a>
+                <a className="status-footer-link" href={`${apiPath}/uptime-export?format=pdf`}>Uptime PDF</a>
               </>
             )}
-            {page.contactEmail && <a href={`mailto:${page.contactEmail}`}>Contact</a>}
-            {page.contactUrl && <a href={page.contactUrl}>Support</a>}
+            {page.contactEmail && <a className="status-footer-link" href={`mailto:${page.contactEmail}`}>Contact</a>}
+            {page.contactUrl && <a className="status-footer-link" href={page.contactUrl}>Support</a>}
           </nav>
         </footer>
       )}
