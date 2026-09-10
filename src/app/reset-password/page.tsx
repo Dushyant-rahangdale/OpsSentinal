@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import Spinner from '@/components/ui/Spinner';
 import { Eye, EyeOff, Lock, AlertTriangle, CheckCircle2, ShieldCheck, X } from 'lucide-react';
 import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
@@ -28,11 +29,11 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+      <div className="p-4 rounded-xl bg-red-50 dark:bg-rose-500/10 border border-red-200 dark:border-rose-500/20 text-sm flex items-start gap-3">
+        <AlertTriangle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
         <div className="flex-1">
-          <p className="font-semibold text-rose-400 mb-1">Invalid Token</p>
-          <p className="text-white/70">
+          <p className="font-medium text-red-700 dark:text-rose-400">Invalid token</p>
+          <p className="text-red-600 dark:text-red-300/80 text-xs mt-0.5">
             Invalid or missing reset token. Please request a new link.
           </p>
         </div>
@@ -91,20 +92,22 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="p-6 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center text-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="p-5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex flex-col items-center text-center gap-3">
+          <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-emerald-400">Password Reset!</h3>
-            <p className="mt-2 text-sm text-emerald-200/80">
-              Your password has been successfully updated. Secure session initialized.
+            <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-400">
+              Password updated
+            </h3>
+            <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-200/80">
+              Your password has been successfully reset. Redirecting to sign in…
             </p>
           </div>
         </div>
-        <div className="text-center text-xs text-white/40 animate-pulse">
-          Redirecting to login...
+        <div className="text-center text-xs text-slate-400 dark:text-slate-500 animate-pulse">
+          Redirecting…
         </div>
       </div>
     );
@@ -112,16 +115,17 @@ function ResetPasswordForm() {
 
   return (
     <>
+      {/* Error banner */}
       {error && (
-        <div className="mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+        <div className="mb-5 p-3.5 rounded-xl bg-red-50 dark:bg-rose-500/10 border border-red-200 dark:border-rose-500/20 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
           <div className="flex-1">
-            <p className="font-semibold text-rose-400 mb-1">Reset Failed</p>
-            <p className="text-white/70">{error}</p>
+            <p className="font-medium text-red-700 dark:text-rose-400">Reset failed</p>
+            <p className="text-red-600 dark:text-red-300/80 text-xs mt-0.5">{error}</p>
           </div>
           <button
             onClick={() => setError('')}
-            className="text-white/40 hover:text-white transition"
+            className="text-red-400 hover:text-red-600 dark:text-rose-400/60 dark:hover:text-rose-300 transition"
             aria-label="Dismiss error"
           >
             <X className="h-4 w-4" />
@@ -129,138 +133,137 @@ function ResetPasswordForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-5">
-          {/* New Password */}
-          <div className="group space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors duration-300 group-focus-within:text-white/80">
-              New Password
-            </label>
-            <div className="relative group/input">
-              <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
-              <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
-
-              <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-all duration-300">
-                <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
-                  <Lock className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={e => {
-                    setPassword(e.target.value);
-                    if (error) setError('');
-                  }}
-                  className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
-                  placeholder="New strong password"
-                  autoComplete="new-password"
-                  disabled={isSubmitting}
-                />
-                <div className="flex items-center border-l border-white/10 pl-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-white/30 hover:text-white/80 transition-colors focus:outline-none p-1 rounded-md"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* New Password */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="password"
+            className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+          >
+            New password
+          </label>
+          <div className="relative flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-slate-400 dark:focus-within:border-slate-500 transition-colors">
+            <div className="flex items-center justify-center pl-3.5 pr-2.5">
+              <Lock className="h-4 w-4 text-slate-400" />
             </div>
-
-            {/* Strength Indicator */}
-            {password && (
-              <div className="space-y-1 pt-1 duration-200 animate-in fade-in slide-in-from-top-1">
-                <div className="flex gap-1 h-1 w-full overflow-hidden rounded-full bg-white/5">
-                  {[1, 2, 3, 4, 5].map(level => (
-                    <div
-                      key={level}
-                      className={cn(
-                        'h-full flex-1 transition-all duration-500',
-                        level <= (passwordStrength.score + 1) * 1.25
-                          ? passwordStrength.color
-                          : 'bg-transparent'
-                      )}
-                    />
-                  ))}
-                </div>
-                <p className={cn('text-[10px] font-medium text-right', passwordStrength.textColor)}>
-                  Strength: {passwordStrength.label}
-                </p>
-              </div>
-            )}
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              value={password}
+              onChange={e => {
+                setPassword(e.target.value);
+                if (error) setError('');
+              }}
+              className="w-full bg-transparent px-2 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+              placeholder="Strong new password"
+              autoComplete="new-password"
+              disabled={isSubmitting}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none"
+              aria-label="Toggle password visibility"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
 
-          {/* Confirm Password */}
-          <div className="group space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors duration-300 group-focus-within:text-white/80">
-              Confirm Password
-            </label>
-            <div className="relative group/input">
-              <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
-              <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
-
-              <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-all duration-300">
-                <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
-                  <Lock className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
-                </div>
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={e => {
-                    setConfirmPassword(e.target.value);
-                    if (error) setError('');
-                  }}
-                  className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
-                  placeholder="Confirm new password"
-                  autoComplete="new-password"
-                  disabled={isSubmitting}
-                />
-                <div className="flex items-center border-l border-white/10 pl-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="text-white/30 hover:text-white/80 transition-colors focus:outline-none p-1 rounded-md"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
+          {/* Strength indicator */}
+          {password && (
+            <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex gap-1 h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/5">
+                {[1, 2, 3, 4, 5].map(level => (
+                  <div
+                    key={level}
+                    className={cn(
+                      'h-full flex-1 rounded-full transition-all duration-500',
+                      level <= (passwordStrength.score + 1) * 1.25
+                        ? passwordStrength.color
+                        : 'bg-transparent'
                     )}
-                  </button>
-                </div>
+                  />
+                ))}
               </div>
-            </div>
-            {confirmPassword && password !== confirmPassword && (
-              <p className="text-[10px] text-rose-400 font-medium pl-1 animate-in slide-in-from-top-1 flex items-center gap-1">
-                <X className="h-3 w-3" /> Passwords do not match
+              <p className={cn('text-[10px] font-medium text-right', passwordStrength.textColor)}>
+                {passwordStrength.label}
               </p>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Confirm Password */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="confirm-password"
+            className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+          >
+            Confirm password
+          </label>
+          <div className="relative flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-slate-400 dark:focus-within:border-slate-500 transition-colors">
+            <div className="flex items-center justify-center pl-3.5 pr-2.5">
+              <Lock className="h-4 w-4 text-slate-400" />
+            </div>
+            <input
+              id="confirm-password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              required
+              value={confirmPassword}
+              onChange={e => {
+                setConfirmPassword(e.target.value);
+                if (error) setError('');
+              }}
+              className="w-full bg-transparent px-2 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+              placeholder="Confirm new password"
+              autoComplete="new-password"
+              disabled={isSubmitting}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none"
+              aria-label="Toggle confirm password visibility"
+            >
+              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
+
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-[10px] text-red-500 dark:text-rose-400 font-medium flex items-center gap-1 animate-in slide-in-from-top-1">
+              <X className="h-3 w-3" />
+              Passwords do not match
+            </p>
+          )}
+          {confirmPassword && password === confirmPassword && password.length > 0 && (
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 animate-in slide-in-from-top-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Passwords match
+            </p>
+          )}
         </div>
 
         <button
           type="submit"
           disabled={isSubmitting || !isStrong || password !== confirmPassword}
-          className="relative w-full overflow-hidden rounded-lg py-3.5 text-sm font-bold shadow-lg transition-all duration-300 bg-white text-black hover:bg-white/95 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
+          className={cn(
+            'mt-1 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-1',
+            'bg-slate-950 dark:bg-white text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
         >
-          <span className="relative z-10 flex items-center justify-center gap-2 uppercase tracking-wide">
-            {isSubmitting ? (
-              <>
-                <Spinner size="sm" variant="black" />
-                <span>Updating...</span>
-              </>
-            ) : (
-              <>
-                <span>Set New Password</span>
-                <ShieldCheck className="h-4 w-4" />
-              </>
-            )}
-          </span>
+          {isSubmitting ? (
+            <>
+              <Spinner size="sm" variant="white" />
+              <span>Updating…</span>
+            </>
+          ) : (
+            <>
+              <span>Set new password</span>
+              <ShieldCheck className="h-4 w-4" />
+            </>
+          )}
         </button>
       </form>
     </>
@@ -271,28 +274,46 @@ export default function ResetPasswordPage() {
   return (
     <AuthLayout>
       <AuthCard>
-        {/* Card Header */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-extrabold tracking-tight text-white tracking-tight flex items-center gap-3">
-            <span className="flex items-center gap-3">
-              <span className="w-1.5 h-6 bg-white/20 rounded-full" />
-              Reset Password
+        {/* Brand + heading */}
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <div className="h-8 w-8 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 flex items-center justify-center p-1">
+              <Image
+                src="/logo.png"
+                alt="OpsKnight"
+                width={28}
+                height={28}
+                className="h-6 w-6 object-contain"
+              />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+              OpsKnight
             </span>
+          </div>
+
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+            Reset password
           </h2>
-          <p className="mt-2 text-sm text-white/50 pl-0.5">
-            Secure your account with a strong password.
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+            Secure your account with a strong new password.
           </p>
         </div>
 
         <Suspense
           fallback={
             <div className="flex justify-center p-8">
-              <Spinner variant="white" />
+              <Spinner variant="default" />
             </div>
           }
         >
           <ResetPasswordForm />
         </Suspense>
+
+        {/* Footer */}
+        <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+          <Lock className="h-3 w-3" />
+          <span>Your instance. Your data. Your rules.</span>
+        </div>
       </AuthCard>
     </AuthLayout>
   );

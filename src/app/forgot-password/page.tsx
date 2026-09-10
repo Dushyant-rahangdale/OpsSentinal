@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Spinner from '@/components/ui/Spinner';
 import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
-import { Mail, ArrowLeft, Send, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Mail, ArrowLeft, Send, CheckCircle2, AlertCircle, X, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ForgotPasswordPage() {
@@ -42,58 +43,68 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <AuthLayout>
-      <AuthCard isSuccess={isSent}>
-        {/* Card Header */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-extrabold tracking-tight text-white tracking-tight flex items-center gap-3">
-            {isSent ? (
-              <span className="text-emerald-400 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <CheckCircle2 className="w-6 h-6" />
-                Request Received
-              </span>
-            ) : (
-              <span className="flex items-center gap-3">
-                <span className="w-1.5 h-6 bg-white/20 rounded-full" />
-                Account Recovery
-              </span>
-            )}
+    <AuthLayout isSuccess={isSent}>
+      <AuthCard>
+        {/* Brand + heading */}
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <div className="h-8 w-8 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 flex items-center justify-center p-1">
+              <Image
+                src="/logo.png"
+                alt="OpsKnight"
+                width={28}
+                height={28}
+                className="h-6 w-6 object-contain"
+              />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+              OpsKnight
+            </span>
+          </div>
+
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+            {isSent ? 'Check your email' : 'Account recovery'}
           </h2>
-          <p className="mt-2 text-sm text-white/50 pl-0.5">
-            {!isSent &&
-              "Enter your email address and we'll send you instructions to reset your password."}
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+            {isSent
+              ? 'Reset instructions are on their way.'
+              : "Enter your email and we'll send you a reset link."}
           </p>
         </div>
 
         {isSent ? (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center text-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Success card */}
+            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex flex-col items-center text-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
-              <p className="text-sm text-emerald-200/80 leading-relaxed max-w-xs">{message}</p>
+              <p className="text-sm text-emerald-700 dark:text-emerald-200/80 leading-relaxed max-w-xs">
+                {message}
+              </p>
             </div>
 
             <Link
               href="/login"
-              className="relative w-full overflow-hidden rounded-lg py-3.5 text-sm font-bold shadow-lg transition-all duration-300 bg-white text-black hover:bg-white/95 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 flex items-center justify-center gap-2 uppercase tracking-wide"
+              className="group w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold bg-slate-950 dark:bg-white text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-1"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Return to Sign In</span>
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+              Back to sign in
             </Link>
           </div>
         ) : (
           <>
+            {/* Error banner */}
             {error && (
-              <div className="mb-6 p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                <AlertCircle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+              <div className="mb-5 p-3.5 rounded-xl bg-red-50 dark:bg-rose-500/10 border border-red-200 dark:border-rose-500/20 text-sm flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-rose-400 mb-1">Request Failed</p>
-                  <p className="text-white/70">{error}</p>
+                  <p className="font-medium text-red-700 dark:text-rose-400">Request failed</p>
+                  <p className="text-red-600 dark:text-red-300/80 text-xs mt-0.5">{error}</p>
                 </div>
                 <button
                   onClick={() => setError('')}
-                  className="text-white/40 hover:text-white transition"
+                  className="text-red-400 hover:text-red-600 dark:text-rose-400/60 dark:hover:text-rose-300 transition"
                   aria-label="Dismiss error"
                 >
                   <X className="h-4 w-4" />
@@ -101,93 +112,83 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="group space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors duration-300 group-focus-within:text-white/80">
-                  Email Address
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Email field */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="email"
+                  className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Email address
                 </label>
-                <div className="relative group/input">
-                  <div className="absolute inset-0 bg-white/5 rounded-xl transition duration-300 group-hover/input:bg-white/10" />
-                  <div className="absolute inset-[1px] bg-[#0a0a0a] rounded-[11px]" />
-
-                  <div className="relative flex items-center pr-3 group-focus-within:border-white/30 group-focus-within:bg-white/5 rounded-xl border border-white/10 transition-colors duration-300">
-                    <div className="flex items-center justify-center pl-4 pr-3 py-3.5 border-r border-white/10">
-                      <Mail className="h-5 w-5 text-white/40 transition-colors group-focus-within/input:text-white/70" />
-                    </div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => {
-                        setEmail(e.target.value);
-                        if (error) setError('');
-                      }}
-                      className="w-full bg-transparent px-4 py-3 text-white placeholder:text-white/20 focus:outline-none transition-colors"
-                      placeholder="name@company.com"
-                      autoComplete="email"
-                      required
-                      disabled={isSubmitting}
-                      autoFocus
-                    />
+                <div className="relative flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus-within:border-slate-400 dark:focus-within:border-slate-500 transition-colors">
+                  <div className="flex items-center justify-center pl-3.5 pr-2.5">
+                    <Mail className="h-4 w-4 text-slate-400" />
                   </div>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={e => {
+                      setEmail(e.target.value);
+                      if (error) setError('');
+                    }}
+                    className="w-full bg-transparent px-2 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+                    placeholder="you@company.com"
+                    autoComplete="email"
+                    required
+                    disabled={isSubmitting}
+                    autoFocus
+                  />
                 </div>
               </div>
 
-              <div className="space-y-4">
+              {/* Actions */}
+              <div className="space-y-3 pt-1">
                 <button
                   type="submit"
                   disabled={isSubmitting || !email}
-                  className="relative w-full overflow-hidden rounded-lg py-3.5 text-sm font-bold shadow-lg transition-all duration-300 bg-white text-black hover:bg-white/95 hover:scale-[1.02] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg"
+                  className={cn(
+                    'w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-1',
+                    'bg-slate-950 dark:bg-white text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-100',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2 uppercase tracking-wide">
-                    {isSubmitting ? (
-                      <>
-                        <Spinner size="sm" variant="black" />
-                        <span>Sending...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Send Instructions</span>
-                        <Send className="h-4 w-4" />
-                      </>
-                    )}
-                  </span>
+                  {isSubmitting ? (
+                    <>
+                      <Spinner size="sm" variant="white" />
+                      <span>Sending…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Send reset link</span>
+                      <Send className="h-4 w-4" />
+                    </>
+                  )}
                 </button>
 
                 <div className="text-center">
                   <Link
                     href="/login"
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-white/40 hover:text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
                   >
                     <ArrowLeft className="h-3 w-3" />
-                    Back to Sign In
+                    Back to sign in
                   </Link>
                 </div>
               </div>
             </form>
+
+            <p className="mt-6 text-center text-[11px] text-slate-400 dark:text-slate-500">
+              No email? Contact your administrator.
+            </p>
           </>
         )}
 
-        {/* Footer info */}
-        <div className="flex flex-col items-center justify-center gap-3 mt-8">
-          <p className="text-[10px] uppercase tracking-[0.05em] text-white/30 font-medium text-center">
-            If you don't receive an email or SMS, please contact your administrator.
-          </p>
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40 font-medium">
-            <svg
-              className="h-3.5 w-3.5 text-emerald-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-            <span>Your Operations, Our Sentinel.</span>
-          </div>
+        {/* Footer */}
+        <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+          <Lock className="h-3 w-3" />
+          <span>Your instance. Your data. Your rules.</span>
         </div>
       </AuthCard>
     </AuthLayout>

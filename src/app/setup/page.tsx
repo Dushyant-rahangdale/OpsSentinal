@@ -1,9 +1,10 @@
 import prisma from '@/lib/prisma';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import Image from 'next/image';
 import BootstrapSetupForm from '@/components/BootstrapSetupForm';
 import { logger } from '@/lib/logger';
 import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
+import { AlertTriangle, Lock, ShieldAlert } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,69 +31,80 @@ export default async function SetupPage() {
       errorMessage.includes('P1001')
     ) {
       return (
-        <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-white">
-          {/* Background Effects */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(239,68,68,0.2),transparent_32%),radial-gradient(circle_at_78%_18%,rgba(100,116,139,0.16),transparent_30%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:48px_48px] opacity-15" />
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/92 to-slate-950" />
-
-          <div className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col items-center justify-center px-5 py-6">
-            <div className="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-white/95 text-slate-900 shadow-2xl">
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600" />
-              <div className="relative space-y-5 px-6 py-7 sm:px-8 sm:py-8">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
-                      Connection Error
-                    </p>
-                    <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-                      Database Unavailable
-                    </h1>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600">
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                      />
-                    </svg>
-                  </div>
+        <AuthLayout showAnimation={false}>
+          <AuthCard>
+            {/* Brand header */}
+            <div className="mb-8 text-center">
+              <div className="flex items-center justify-center gap-2.5 mb-6">
+                <div className="h-8 w-8 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 flex items-center justify-center p-1">
+                  <Image
+                    src="/logo.png"
+                    alt="OpsKnight"
+                    width={28}
+                    height={28}
+                    className="h-6 w-6 object-contain"
+                  />
                 </div>
+                <span className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+                  OpsKnight
+                </span>
+              </div>
 
-                <p className="text-sm text-slate-500">
-                  Unable to connect to the database. Please ensure:
-                </p>
-
-                <ul className="space-y-2 text-sm text-slate-600">
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-                    The database server is running
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-                    The DATABASE_URL environment variable is correctly configured
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-                    <span>
-                      If using Docker Compose, run:{' '}
-                      <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">
-                        docker-compose up -d OpsKnight-db
-                      </code>
-                    </span>
-                  </li>
-                </ul>
-
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-medium text-slate-500">Error Details</p>
-                  <p className="mt-1 font-mono text-xs text-slate-600 break-all">{errorMessage}</p>
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-600 dark:text-red-400">
+                  <ShieldAlert className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-red-500">
+                    Connection Error
+                  </p>
+                  <h1 className="mt-1 text-2xl font-bold text-slate-950 dark:text-white">
+                    Database unavailable
+                  </h1>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Unable to connect to the database. Please ensure:
+            </p>
+
+            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400 mb-5">
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                The database server is running
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                <code className="text-xs">DATABASE_URL</code> is correctly configured
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                <span>
+                  If using Docker Compose, run:{' '}
+                  <code className="rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+                    docker-compose up -d OpsKnight-db
+                  </code>
+                </span>
+              </li>
+            </ul>
+
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                Error details
+              </p>
+              <p className="font-mono text-xs text-slate-600 dark:text-slate-400 break-all">
+                {errorMessage}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+              <Lock className="h-3 w-3" />
+              <span>Your instance. Your data. Your rules.</span>
+            </div>
+          </AuthCard>
+        </AuthLayout>
       );
     }
 
@@ -102,43 +114,49 @@ export default async function SetupPage() {
   return (
     <AuthLayout showAnimation={false}>
       <AuthCard>
-        {/* Card Header */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-extrabold tracking-tight text-white tracking-tight flex items-center gap-3">
-            <span className="flex items-center gap-3">
-              <span className="w-1.5 h-6 bg-white/20 rounded-full" />
-              System Initialization
+        {/* Brand + heading */}
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-2.5 mb-6">
+            <div className="h-8 w-8 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-500/30 flex items-center justify-center p-1">
+              <Image
+                src="/logo.png"
+                alt="OpsKnight"
+                width={28}
+                height={28}
+                className="h-6 w-6 object-contain"
+              />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
+              OpsKnight
             </span>
+          </div>
+
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+            System initialization
           </h2>
-          <p className="mt-2 text-sm text-white/50 pl-0.5">
-            Create the first admin account to get started with your incident control surface.
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+            Create the first admin account to start your incident command surface.
           </p>
         </div>
 
-        {/* Warning */}
-        <div className="mb-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm flex items-start gap-3">
-          <svg
-            className="h-5 w-5 shrink-0 text-amber-500 mt-0.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <div className="flex-1">
-            <p className="font-semibold text-amber-400 mb-1">Important Security Notice</p>
-            <p className="text-white/70">
-              Please change this password immediately after your first login to secure your account.
+        {/* Security notice */}
+        <div className="mb-6 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 flex items-start gap-3 text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+          <div>
+            <p className="font-medium text-amber-700 dark:text-amber-400">Security notice</p>
+            <p className="text-amber-600 dark:text-amber-200/70 text-xs mt-0.5">
+              Change this password immediately after your first sign in.
             </p>
           </div>
         </div>
 
         <BootstrapSetupForm />
+
+        {/* Footer */}
+        <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+          <Lock className="h-3 w-3" />
+          <span>Your instance. Your data. Your rules.</span>
+        </div>
       </AuthCard>
     </AuthLayout>
   );
