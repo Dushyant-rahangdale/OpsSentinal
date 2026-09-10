@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const tx = {
     jiraConfig: {
-      findFirst: vi.fn(),
       deleteMany: vi.fn(),
     },
     providerAdmission: { deleteMany: vi.fn() },
     externalIssueLink: { deleteMany: vi.fn() },
     jiraServiceMapping: { deleteMany: vi.fn() },
     externalOperation: { deleteMany: vi.fn() },
+    $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),
   };
 
@@ -17,8 +17,8 @@ const mocks = vi.hoisted(() => {
     assertAdmin: vi.fn(),
     logAudit: vi.fn(),
     revalidatePath: vi.fn(),
-    jiraConfigFindUnique: vi.fn(),
     transaction: vi.fn(),
+    acquireJiraWorkspaceLifecycleFence: vi.fn(),
     tx,
   };
 });
@@ -26,10 +26,12 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/lib/rbac', () => ({ assertAdmin: mocks.assertAdmin }));
 vi.mock('@/lib/audit', () => ({ logAudit: mocks.logAudit }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
+vi.mock('@/lib/jira-concurrency', () => ({
+  acquireJiraWorkspaceLifecycleFence: mocks.acquireJiraWorkspaceLifecycleFence,
+}));
 vi.mock('@/lib/prisma', () => ({
   __esModule: true,
   default: {
-    jiraConfig: { findUnique: mocks.jiraConfigFindUnique },
     $transaction: mocks.transaction,
   },
 }));
@@ -45,20 +47,23 @@ function removalForm(confirmation = 'REMOVE JIRA', updatedAt = REVISION.toISOStr
   return formData;
 }
 
+function currentWorkspace(updatedAt = REVISION) {
+  return {
+    id: 'default',
+    baseUrl: 'https://acme.atlassian.net',
+    userEmail: 'ops@acme.com',
+    webhookSecretEncrypted: 'encrypted-secret',
+    enabled: true,
+    updatedAt,
+  };
+}
+
 describe('Jira workspace lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.assertAdmin.mockResolvedValue({ id: 'admin-1' });
-    mocks.jiraConfigFindUnique.mockResolvedValue({
-      id: 'default',
-      baseUrl: 'https://acme.atlassian.net',
-      userEmail: 'ops@acme.com',
-      apiTokenEncrypted: 'encrypted-token',
-      webhookSecretEncrypted: 'encrypted-secret',
-      enabled: true,
-      updatedAt: REVISION,
-    });
-    mocks.tx.jiraConfig.findFirst.mockResolvedValue({ id: 'default' });
+    mocks.acquireJiraWorkspaceLifecycleFence.mockResolvedValue(undefined);
+    mocks.tx.$queryRaw.mockResolvedValue([currentWorkspace()]);
     mocks.tx.jiraConfig.deleteMany.mockResolvedValue({ count: 1 });
     mocks.tx.providerAdmission.deleteMany.mockResolvedValue({ count: 2 });
     mocks.tx.externalIssueLink.deleteMany.mockResolvedValue({ count: 3 });
@@ -68,25 +73,59 @@ describe('Jira workspace lifecycle', () => {
     mocks.transaction.mockImplementation(async callback => callback(mocks.tx));
   });
 
-  it('requires explicit destructive confirmation', async () => {
+  it('requires explicit destructive confirmation before authorization or mutation', async () => {
     const result = await removeJiraWorkspace(removalForm('remove jira'));
 
     expect(result.success).toBe(false);
     expect(result.code).toBe('VALIDATION_ERROR');
+    expect(mocks.assertAdmin).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
-  it('fails closed when the settings revision changed', async () => {
-    mocks.jiraConfigFindUnique.mockResolvedValue({
-      id: 'default',
-      updatedAt: new Date('2026-09-10T12:05:00.000Z'),
-    });
+  it('rejects unexpected destructive-form fields through the strict schema', async () => {
+    const form = removalForm();
+    form.set('unexpected', 'value');
+
+    const result = await removeJiraWorkspace(form);
+
+    expect(result.success).toBe(false);
+    expect(result.code).toBe('VALIDATION_ERROR');
+    expect(mocks.assertAdmin).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the settings revision changed under the lifecycle fence', async () => {
+    mocks.tx.$queryRaw.mockResolvedValue([
+      currentWorkspace(new Date('2026-09-10T12:05:00.000Z')),
+    ]);
 
     const result = await removeJiraWorkspace(removalForm());
 
     expect(result.success).toBe(false);
     expect(result.code).toBe('SETTINGS_CHANGED');
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.acquireJiraWorkspaceLifecycleFence).toHaveBeenCalledWith(mocks.tx);
+    expect(mocks.tx.externalIssueLink.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('takes the exclusive workspace fence before deleting active Jira state', async () => {
+    const callOrder: string[] = [];
+    mocks.acquireJiraWorkspaceLifecycleFence.mockImplementation(async () => {
+      callOrder.push('fence');
+    });
+    mocks.tx.$queryRaw.mockImplementation(async () => {
+      callOrder.push('row-lock');
+      return [currentWorkspace()];
+    });
+    mocks.tx.externalIssueLink.deleteMany.mockImplementation(async () => {
+      callOrder.push('cleanup');
+      return { count: 3 };
+    });
+
+    const result = await removeJiraWorkspace(removalForm());
+
+    expect(result.success).toBe(true);
+    expect(callOrder.indexOf('fence')).toBeLessThan(callOrder.indexOf('row-lock'));
+    expect(callOrder.indexOf('row-lock')).toBeLessThan(callOrder.indexOf('cleanup'));
   });
 
   it('removes active Jira state while retaining provider tickets and audit history', async () => {
@@ -138,7 +177,6 @@ describe('Jira workspace lifecycle', () => {
 
     expect(result.success).toBe(false);
     expect(result.code).toBe('FORBIDDEN');
-    expect(mocks.jiraConfigFindUnique).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });
