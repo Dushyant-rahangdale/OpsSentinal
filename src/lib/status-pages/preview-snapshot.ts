@@ -85,13 +85,19 @@ export function buildPreviewSnapshot(input: {
   privacy: PreviewPrivacy;
   showServices: boolean;
   showIncidents: boolean;
+  showSubscribe?: boolean;
+  showChangelog?: boolean;
+  showServiceRegions?: boolean;
   showServiceOwners?: boolean;
   showServiceSlaTier?: boolean;
+  showMetrics?: boolean;
+  showUptimeHistory?: boolean;
+  showTeamInformation?: boolean;
   thresholds: { uptimeExcellent: number; uptimeGood: number };
   now?: Date;
 }): PublicStatusPageSnapshot {
   const now = input.now ?? new Date();
-  const allow = (flag: string) => input.privacy?.[flag] !== false;
+  const allow = (flag: string) => Reflect.get(input.privacy ?? {}, flag) !== false;
 
   const visible = new Map(
     input.mappings.filter(mapping => mapping.showOnPage).map(mapping => [mapping.serviceId, mapping])
@@ -121,12 +127,14 @@ export function buildPreviewSnapshot(input: {
             ...(input.showServiceSlaTier !== false && service.slaTier
               ? { slaTier: service.slaTier }
               : {}),
-            ...(input.showServiceOwners !== false && allow('showTeamInformation')
+            ...((input.showServiceOwners !== false || input.showTeamInformation === true) &&
+            allow('showTeamInformation')
               ? { team: service.team ?? null }
               : {}),
             status: impact ? getWorstPublicStatus(impact.statuses) : 'OPERATIONAL',
             activeIncidentCount: impact?.count ?? 0,
-            ...(allow('showServiceMetrics') && typeof uptime === 'number'
+            ...(input.showMetrics !== false && input.showUptimeHistory !== false &&
+            allow('showServiceMetrics') && typeof uptime === 'number'
               ? {
                   uptime: {
                     days30: {
@@ -195,7 +203,16 @@ export function buildPreviewSnapshot(input: {
       showServicesByRegion: false,
       showRegionHeatmap: false,
       showPostIncidentReview: false,
-      showChangelog: true,
+      showChangelog: input.showChangelog !== false,
+      visibility: {
+        services: input.showServices,
+        incidents: input.showIncidents,
+        metrics: input.showMetrics !== false,
+        uptime: input.showMetrics !== false && input.showUptimeHistory !== false && allow('showServiceMetrics'),
+        regions: input.showServices && input.showServiceRegions !== false && allow('showServiceRegions'),
+        changelog: input.showChangelog !== false,
+        subscribe: input.showSubscribe !== false,
+      },
       enableUptimeExports: false,
       isDefault: true,
       requireAuth: false,

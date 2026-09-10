@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import StatusPageHeader from '@/components/status-page/StatusPageHeader';
-import StatusPageIncidents from '@/components/status-page/StatusPageIncidents';
-import StatusPageAnnouncements from '@/components/status-page/StatusPageAnnouncements';
 import { logger } from '@/lib/logger';
 import { toSafeStyleTagContent } from '@/lib/status-page-content';
 import { computeStatusPageTheme } from '@/lib/status-page-theme';
@@ -104,6 +101,7 @@ export interface StatusPagePreviewData {
   incidents: StatusPagePreviewIncident[];
   showServices: boolean;
   showIncidents: boolean;
+  showMetrics?: boolean;
   showSubscribe?: boolean;
   showServicesByRegion?: boolean;
   showServiceOwners?: boolean;
@@ -166,8 +164,14 @@ export default function StatusPageLivePreview({
         privacy: previewData.privacySettings ?? null,
         showServices: previewData.showServices,
         showIncidents: previewData.showIncidents,
+        showSubscribe: previewData.showSubscribe,
+        showChangelog: previewData.showChangelog,
+        showServiceRegions: previewData.privacySettings?.showServiceRegions,
         showServiceOwners: previewData.showServiceOwners,
         showServiceSlaTier: previewData.showServiceSlaTier,
+        showMetrics: previewData.showMetrics,
+        showUptimeHistory: previewData.privacySettings?.showUptimeHistory,
+        showTeamInformation: previewData.privacySettings?.showTeamInformation,
         thresholds: {
           uptimeExcellent:
             typeof previewData.uptimeExcellentThreshold === 'number'
@@ -336,8 +340,6 @@ export default function StatusPageLivePreview({
     previewData.branding?.text,
     previewData.branding?.fontFamily,
   ]);
-  const previewPrimaryColor = computedTheme.primaryColor;
-  const previewTextColor = computedTheme.textColor;
   const frameHeightNumber = Number.parseFloat(frameHeight);
   const scaledFrameHeightStyle = Number.isFinite(frameHeightNumber)
     ? `${Math.round(frameHeightNumber * scale)}px`
@@ -699,6 +701,7 @@ export default function StatusPageLivePreview({
                 transformOrigin: 'top left',
                 overflow: 'auto',
                 boxSizing: 'border-box',
+                containerType: 'inline-size',
                 backgroundColor: computedTheme.backgroundColor,
                 color: computedTheme.textColor,
                 fontFamily: computedTheme.fontFamily,

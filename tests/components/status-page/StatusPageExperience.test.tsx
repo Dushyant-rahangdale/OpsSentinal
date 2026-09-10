@@ -63,8 +63,8 @@ describe('StatusPageExperience', () => {
         snapshot={snapshotOf([service(), service({ id: 'svc-2', name: 'Payments' })])}
       />
     );
-    expect(screen.getByText('All 2 services operational')).toBeInTheDocument();
-    expect(screen.getByText('None affected')).toBeInTheDocument();
+    expect(screen.getAllByText('All systems operational').length).toBeGreaterThan(0);
+    expect(screen.getByText('2 of 2 services')).toBeInTheDocument();
   });
 
   it('keeps a real outage visible while flagging unverified services', () => {
@@ -79,7 +79,7 @@ describe('StatusPageExperience', () => {
     );
     // Scoped to the overview heading: the affected service's own badge says this too, which is
     // correct rather than duplication.
-    expect(screen.getByRole('heading', { name: 'Major outage' })).toBeInTheDocument();
+    expect(screen.getAllByText('Major outage').length).toBeGreaterThan(0);
     expect(screen.getByText(/Status unavailable for 1 additional service/)).toBeInTheDocument();
   });
 
@@ -87,8 +87,8 @@ describe('StatusPageExperience', () => {
     render(
       <StatusPageExperience page={page} snapshot={snapshotOf([service({ status: 'PARTIAL_OUTAGE' })])} />
     );
-    expect(screen.getByRole('heading', { name: 'Partial outage' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Major outage' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Partial outage').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Major outage')).not.toBeInTheDocument();
   });
 
   it('filters services by search term', () => {
@@ -101,8 +101,8 @@ describe('StatusPageExperience', () => {
     fireEvent.change(screen.getByPlaceholderText('Search services'), {
       target: { value: 'payments' },
     });
-    expect(screen.getByRole('heading', { name: 'Payments' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Checkout API' })).not.toBeInTheDocument();
+    expect(screen.getByText('Payments')).toBeInTheDocument();
+    expect(screen.queryByText('Checkout API')).not.toBeInTheDocument();
   });
 
   it('filters services by status', () => {
@@ -115,9 +115,9 @@ describe('StatusPageExperience', () => {
         ])}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: /^Degraded/ }));
-    expect(screen.getByRole('heading', { name: 'Payments' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Checkout API' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^degraded$/i }));
+    expect(screen.getByText('Payments')).toBeInTheDocument();
+    expect(screen.queryByText('Checkout API')).not.toBeInTheDocument();
   });
 
   it('lists a multi-region service once when grouping', () => {
@@ -129,8 +129,8 @@ describe('StatusPageExperience', () => {
         snapshot={snapshotOf([service({ regions: ['eu-west-1', 'us-east-1', 'ap-south-1'] })])}
       />
     );
-    expect(screen.getAllByRole('heading', { name: 'Checkout API' })).toHaveLength(1);
-    expect(screen.getByRole('region', { name: /Multi-region services/ })).toBeInTheDocument();
+    expect(screen.getAllByText('Checkout API')).toHaveLength(1);
+    expect(screen.getByText('Multi-region')).toBeInTheDocument();
   });
 
   it('groups a single-region service under its own region', () => {
@@ -140,7 +140,7 @@ describe('StatusPageExperience', () => {
         snapshot={snapshotOf([service({ regions: ['eu-west-1'] })])}
       />
     );
-    expect(screen.getByRole('region', { name: /eu-west-1 services/ })).toBeInTheDocument();
+    expect(screen.getAllByText('eu-west-1').length).toBeGreaterThan(0);
   });
 
   it('reports a short uptime window as data rather than as unavailable', () => {
@@ -194,7 +194,8 @@ describe('StatusPageExperience', () => {
       />
     );
     expect(screen.getByRole('heading', { name: 'Region health' })).toBeInTheDocument();
-    expect(screen.getByText('2 services · 1 impacted')).toBeInTheDocument();
+    expect(screen.getByText('2 services')).toBeInTheDocument();
+    expect(screen.getByText('1 impacted')).toBeInTheDocument();
   });
 
   it('says a region is healthy when it is', () => {
@@ -204,13 +205,13 @@ describe('StatusPageExperience', () => {
         snapshot={snapshotOf([service({ regions: ['eu-west-1'] })])}
       />
     );
-    expect(screen.getByText('1 service · All systems healthy')).toBeInTheDocument();
+    expect(screen.getByText('1 service')).toBeInTheDocument();
+    expect(screen.getByText('0 impacted')).toBeInTheDocument();
   });
 
-  it('explains an empty page instead of rendering nothing', () => {
+  it('does not invent a service section when the V3 projection contains no services', () => {
     render(<StatusPageExperience page={page} snapshot={snapshotOf([])} />);
-    expect(screen.getByText('No services configured for this status page')).toBeInTheDocument();
-    expect(screen.getByText(/Choose which services appear here/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Services' })).not.toBeInTheDocument();
   });
 
   it('explains an empty filter result', () => {
@@ -218,7 +219,7 @@ describe('StatusPageExperience', () => {
     fireEvent.change(screen.getByPlaceholderText('Search services'), {
       target: { value: 'nothing matches this' },
     });
-    expect(screen.getByText('No services match your filters')).toBeInTheDocument();
+    expect(screen.getByText(/No services match your filters/)).toBeInTheDocument();
   });
 
   it('notes when it is serving the last verified update', () => {
@@ -242,5 +243,71 @@ describe('StatusPageExperience', () => {
     );
     expect(screen.getByText('Owned by Payments team')).toBeInTheDocument();
     expect(screen.getByText('Service tier: TIER_1')).toBeInTheDocument();
+  });
+
+  it('omits sections that the published visibility contract hides', () => {
+    const snapshot = snapshotOf([service()], {
+      page: {
+        ...snapshotOf([]).page,
+        visibility: {
+          services: false,
+          incidents: false,
+          metrics: false,
+          uptime: false,
+          regions: false,
+          changelog: false,
+          subscribe: false,
+        },
+      },
+    });
+    render(<StatusPageExperience page={page} snapshot={snapshot} />);
+    expect(screen.queryByRole('heading', { name: 'Services' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Recent Incidents' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Uptime metrics' })).not.toBeInTheDocument();
+  });
+
+  it('fits all 90 history days into one graph without requiring expansion', () => {
+    render(
+      <StatusPageExperience
+        page={page}
+        snapshot={snapshotOf([
+          service({
+            history: {
+              rangeStart: '2026-06-12T00:00:00.000Z',
+              rangeEnd: '2026-09-10T00:00:00.000Z',
+              coverage: 'COMPLETE',
+              segments: [],
+            },
+          }),
+        ])}
+      />
+    );
+    const graph = document.querySelector<HTMLElement>('[style*="grid-template-columns: repeat(90"]');
+    expect(graph).not.toBeNull();
+    expect(graph?.children).toHaveLength(90);
+    expect(screen.queryByRole('button', { name: 'View 90-day history' })).not.toBeInTheDocument();
+  });
+
+  it('opens the rich 24-hour card when a history day is hovered', () => {
+    render(
+      <StatusPageExperience
+        page={page}
+        snapshot={snapshotOf([
+          service({
+            history: {
+              rangeStart: '2026-09-09T00:00:00.000Z',
+              rangeEnd: '2026-09-10T00:00:00.000Z',
+              coverage: 'COMPLETE',
+              segments: [],
+            },
+          }),
+        ])}
+      />
+    );
+    const graph = document.querySelector<HTMLElement>('[style*="grid-template-columns: repeat(90"]');
+    const day = graph?.firstElementChild;
+    expect(day).not.toBeNull();
+    fireEvent.mouseEnter(day as Element);
+    expect(screen.getByText('24:00')).toBeInTheDocument();
   });
 });

@@ -15,6 +15,7 @@ import {
 } from '@/lib/status-pages/publication-policy';
 import { getStatusPageServingStore } from '@/lib/status-pages/serving-store';
 import { publishStatusPageSnapshot } from '@/lib/status-pages/snapshot';
+import { reconcileStatusPageRouteOperations } from '@/lib/status-pages/route-operations';
 
 /** What an administrator should be told about the public page after their save. */
 export type StatusPagePublicationStatus = 'LIVE' | 'PUBLISHING' | 'FAILED' | 'DISABLED';
@@ -155,6 +156,36 @@ export async function applyStatusPageConfigurationChange(
         }
       }
 
+      if (classification.classes.includes('ROUTING')) {
+        for (const [operation, routeKeys] of [
+          ['ADD', classification.routes.added],
+          ['REMOVE', classification.routes.removed],
+        ] as const) {
+          for (const routeKey of routeKeys) {
+            // A later configuration can reverse a route change before a failed external-store
+            // cleanup is retried. Supersede the opposite operation in the same transaction so
+            // an old REMOVE can never delete a route that is current again.
+            await tx.statusPageRouteOperation.updateMany({
+              where: {
+                statusPageId: pageId,
+                routeKey,
+                operation: operation === 'ADD' ? 'REMOVE' : 'ADD',
+                state: { not: 'COMPLETE' },
+              },
+              data: { state: 'COMPLETE', completedAt: new Date(), lastError: null },
+            });
+            await tx.statusPageRouteOperation.upsert({
+              where: { statusPageId_routeKey_operation: { statusPageId: pageId, routeKey, operation } },
+              create: { statusPageId: pageId, routeKey, operation },
+              update: {
+                state: 'PENDING', attempts: 0, nextAttemptAt: new Date(),
+                lastError: null, completedAt: null,
+              },
+            });
+          }
+        }
+      }
+
       await emitAuditEvent(
         {
           action: 'status_page.config.updated',
@@ -267,22 +298,21 @@ async function switchRoutes(
   pageId: string,
   classification: StatusPageChangeClassification
 ): Promise<boolean> {
-  const store = getStatusPageServingStore();
-  for (const routeKey of classification.routes.added) {
-    const resolved = await store.resolveRoute(routeKey);
-    if (resolved?.pageId !== pageId) {
-      await recordPublicationError(
-        pageId,
-        new Error(`Route ${routeKey} did not resolve to this status page after publishing`)
-      );
-      addOperationalMetric('opsknight_status_page_route_switches_total', 1, {
-        outcome: 'verify_failed',
-      });
-      return false;
-    }
-  }
-  for (const routeKey of classification.routes.removed) {
-    await store.removeRoute(routeKey, pageId);
+  await reconcileStatusPageRouteOperations(100, pageId);
+  const incomplete = await prisma.statusPageRouteOperation.findFirst({
+    where: {
+      statusPageId: pageId,
+      routeKey: { in: [...classification.routes.added, ...classification.routes.removed] },
+      state: { not: 'COMPLETE' },
+    },
+  });
+  if (incomplete) {
+    await recordPublicationError(
+      pageId,
+      new Error(incomplete.lastError || 'Route switch is pending background reconciliation')
+    );
+    addOperationalMetric('opsknight_status_page_route_switches_total', 1, { outcome: 'pending' });
+    return false;
   }
   addOperationalMetric('opsknight_status_page_route_switches_total', 1, { outcome: 'switched' });
   return true;

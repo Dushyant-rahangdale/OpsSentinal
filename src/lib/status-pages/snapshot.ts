@@ -185,12 +185,12 @@ export async function buildStatusPageSnapshot(
       ...(visibility.showUptime ? {
         uptime: {
           days30: {
-            percentage: measuredDays30 >= 30 ? (uptime30Values[mapping.serviceId] ?? null) : null,
+            percentage: uptime30Values[mapping.serviceId] ?? null,
             incidentCount: serviceHistoryIncidents.filter(item => item.createdAt <= now && (item.resolvedAt ?? now) >= window30.start).length,
             measuredDays: Math.min(30, measuredDays30), complete: measuredDays30 >= 30,
           },
           days90: {
-            percentage: measuredDays90 >= 90 ? (uptime90Values[mapping.serviceId] ?? null) : null,
+            percentage: uptime90Values[mapping.serviceId] ?? null,
             incidentCount: serviceHistoryIncidents.filter(item => item.createdAt <= now && (item.resolvedAt ?? now) >= window90.start).length,
             measuredDays: Math.min(90, measuredDays90), complete: measuredDays90 >= 90,
           },
@@ -214,6 +214,15 @@ export async function buildStatusPageSnapshot(
       showRegionHeatmap: page.showRegionHeatmap,
       showPostIncidentReview: page.showPostIncidentReview,
       showChangelog: page.showChangelog,
+      visibility: {
+        services: visibility.showServices,
+        incidents: visibility.showIncidents,
+        metrics: page.showMetrics,
+        uptime: visibility.showUptime,
+        regions: visibility.showServices && page.showServiceRegions,
+        changelog: page.showChangelog,
+        subscribe: page.showSubscribe,
+      },
       enableUptimeExports: page.enableUptimeExports,
       footerText: page.footerText,
       contactEmail: page.contactEmail,
@@ -471,7 +480,16 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
       if (page.dirty && page.servingState === 'LIVE') {
         await getStatusPageServingStore().revoke(page.statusPageId, 'PRIVACY');
       }
-      if (await rebuildStatusPageSnapshot(page.statusPageId)) {
+      const outcome = await publishStatusPageSnapshot(page.statusPageId);
+      if (outcome.kind === 'failed') {
+        const message = (outcome.error instanceof Error
+          ? outcome.error.message
+          : String(outcome.error)).slice(0, 500);
+        await prisma.$executeRaw`UPDATE "StatusPageSnapshot" SET "lastError" = ${message} WHERE "statusPageId" = ${page.statusPageId}`;
+        addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {
+          outcome: 'failure',
+        });
+      } else if (outcome.kind === 'published' || outcome.kind === 'disabled') {
         rebuilt++;
         addOperationalMetric('opsknight_status_page_snapshot_rebuild_total', 1, {
           outcome: 'success',
@@ -511,29 +529,36 @@ export async function readStatusPageSnapshot(pageId: string): Promise<StatusPage
 export async function getStatusPageSnapshot(pageId: string): Promise<{
   snapshot: StatusPageSnapshot | null;
   stale: boolean;
+  servingState: 'LIVE' | 'STALE_OK' | 'FAIL_CLOSED' | 'DISABLED' | 'UNCONFIGURED';
 }> {
   const store = getStatusPageServingStore();
   const manifest = await store.readManifest(pageId);
-  if (!manifest) return { snapshot: null, stale: true };
+  if (!manifest) return { snapshot: null, stale: true, servingState: 'UNCONFIGURED' };
+  const recordedServingState = manifestServingState(manifest);
+  // Database triggers can invalidate a revision without knowing whether the underlying write
+  // broadened or narrowed disclosure. A manifest still labelled LIVE is therefore only live
+  // while it is internally consistent; an unexplained revocation must fail closed.
+  const servingState =
+    recordedServingState === 'LIVE' && manifest.revoked ? 'FAIL_CLOSED' : recordedServingState;
 
   if (manifest.enabled && !manifest.revoked) {
     const payload = await store.readSnapshot(pageId, manifest.revision);
     if (payload && statusSnapshotIntegrity(payload) === manifest.integrityHash) {
       const current = parseStatusPageSnapshot(pageId, payload);
-      if (current) return { snapshot: current, stale: false };
+      if (current) return { snapshot: current, stale: false, servingState };
     }
   }
 
-  if (manifestServingState(manifest) === 'STALE_OK') {
+  if (servingState === 'STALE_OK') {
     const lastGood = await store.readLastGoodSnapshot(pageId);
     const previous = lastGood ? parseStatusPageSnapshot(pageId, lastGood.payload) : null;
     if (previous) {
       addOperationalMetric('opsknight_status_page_stale_serves_total', 1, { surface: 'snapshot' });
-      return { snapshot: previous, stale: true };
+      return { snapshot: previous, stale: true, servingState };
     }
   }
 
-  return { snapshot: null, stale: true };
+  return { snapshot: null, stale: true, servingState };
 }
 
 export async function getStatusPageSnapshotByRoute(routeKey: string) {
@@ -541,5 +566,5 @@ export async function getStatusPageSnapshotByRoute(routeKey: string) {
   const route = await store.resolveRoute(routeKey || 'default');
   return route
     ? { pageId: route.pageId, ...(await getStatusPageSnapshot(route.pageId)) }
-    : { pageId: null, snapshot: null, stale: true };
+    : { pageId: null, snapshot: null, stale: true, servingState: 'UNCONFIGURED' as const };
 }

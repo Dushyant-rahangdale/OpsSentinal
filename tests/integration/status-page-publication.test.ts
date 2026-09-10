@@ -9,14 +9,15 @@ import {
 import { getStatusPageSnapshot, rebuildStatusPageSnapshot } from '@/lib/status-pages/snapshot';
 import { applyStatusPageConfigurationChange } from '@/lib/status-pages/publish-configuration';
 import * as servingStore from '@/lib/status-pages/serving-store';
+import { reconcileStatusPageRouteOperations } from '@/lib/status-pages/route-operations';
 
 vi.mock('@/lib/sla-server', () => ({ calculateMultiServiceUptime: vi.fn().mockResolvedValue({}) }));
 vi.mock('@/lib/audit', () => ({ emitAuditEvent: vi.fn().mockResolvedValue(undefined) }));
 
 const actor = { id: 'user-1', email: 'admin@example.com', name: 'Admin' };
 
-async function livePage() {
-  const page = await createTestStatusPage({ enabled: true });
+async function livePage(overrides: Parameters<typeof createTestStatusPage>[0] = {}) {
+  const page = await createTestStatusPage({ enabled: true, ...overrides });
   const service = await createTestService('Checkout API');
   await linkServiceToStatusPage(page.id, service.id);
   expect(await rebuildStatusPageSnapshot(page.id)).toBe(true);
@@ -256,9 +257,45 @@ describe('status page publication lifecycle', () => {
     });
 
     expect(result.publication.status).toBe('FAILED');
-    expect(result.publication.lastError).toContain('did not resolve');
+    expect(result.publication.lastError).toContain('does not resolve');
     // Nothing removed: two working addresses beats none.
     expect(removeRoute).not.toHaveBeenCalled();
+  });
+
+  it('durably retries an old-route removal after the serving store fails', async () => {
+    const { page } = await livePage({ slug: 'original-route' });
+    const real = servingStore.getStatusPageServingStore();
+    const removeRoute = vi.fn().mockRejectedValue(new Error('route store unavailable'));
+    vi.spyOn(servingStore, 'getStatusPageServingStore').mockImplementation(
+      () => ({ ...bindStore(real), removeRoute }) as typeof real
+    );
+
+    const result = await applyStatusPageConfigurationChange({
+      pageId: page.id,
+      actor,
+      patch: { slug: 'durable-route' },
+      expectedUpdatedAt: page.updatedAt.toISOString(),
+    });
+
+    expect(result.publication.status).toBe('FAILED');
+    const pending = await testPrisma.statusPageRouteOperation.findFirstOrThrow({
+      where: { statusPageId: page.id, operation: 'REMOVE' },
+    });
+    expect(pending).toMatchObject({ state: 'FAILED', attempts: 1 });
+
+    await testPrisma.statusPageRouteOperation.update({
+      where: { id: pending.id },
+      data: { nextAttemptAt: new Date(0) },
+    });
+    removeRoute.mockImplementation((routeKey: string, expectedPageId: string) =>
+      real.removeRoute(routeKey, expectedPageId)
+    );
+    await expect(reconcileStatusPageRouteOperations(10, page.id)).resolves.toMatchObject({
+      completed: 1,
+    });
+    await expect(
+      testPrisma.statusPageRouteOperation.findUniqueOrThrow({ where: { id: pending.id } })
+    ).resolves.toMatchObject({ state: 'COMPLETE', attempts: 2, lastError: null });
   });
 
   it('withholds the previous body when a disclosure was narrowed, though it is still stored', async () => {

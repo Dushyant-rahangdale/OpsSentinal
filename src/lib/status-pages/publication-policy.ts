@@ -77,6 +77,7 @@ export const STATUS_PAGE_DISCLOSURE_BOOLEANS = [
   'showUptimeHistory',
   'showRecentIncidents',
   'showPostIncidentReview',
+  'showChangelog',
   'enableUptimeExports',
 ] as const;
 
@@ -122,7 +123,7 @@ export const STATUS_PAGE_CONTENT_FIELDS = [
 /**
  * Fields that change how published data is arranged, never whether it is published.
  *
- * `showServicesByRegion`, `showRegionHeatmap` and `showChangelog` sit here deliberately: they
+ * `showServicesByRegion` and `showRegionHeatmap` sit here deliberately: they
  * re-arrange data whose disclosure is gated elsewhere (region grouping renders `service.region`,
  * which `showServiceRegions` already controls). Classifying them as disclosure is what made a
  * layout toggle take the public page offline.
@@ -132,7 +133,6 @@ export const STATUS_PAGE_PRESENTATION_FIELDS = [
   'showSubscribe',
   'showServicesByRegion',
   'showRegionHeatmap',
-  'showChangelog',
   'uptimeExcellentThreshold',
   'uptimeGoodThreshold',
 ] as const;
