@@ -12,6 +12,8 @@ describe('OIDC provider compatibility policy', () => {
     ['https://acme.okta.com/oauth2/default', 'okta'],
     ['https://acme.oktapreview.com/oauth2/default', 'okta'],
     ['https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0', 'azure'],
+    ['https://login.microsoftonline.us/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0', 'azure'],
+    ['https://login.partner.microsoftonline.cn/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0', 'azure'],
     ['https://acme.us.auth0.com/', 'auth0'],
     ['https://login.example.com/oidc', 'custom'],
   ])('detects %s as %s', (issuer, expected) => {
@@ -23,6 +25,8 @@ describe('OIDC provider compatibility policy', () => {
     'https://okta.example.com',
     'https://foo.okta.evil.com',
     'https://microsoftonline.example.com',
+    'https://login.microsoftonline.us.evil.example',
+    'https://login.partner.microsoftonline.cn.evil.example',
     'https://auth0.example.com',
   ])('does not trust lookalike provider hostname %s', issuer => {
     expect(detectOidcProviderType(issuer)).toBe('custom');
