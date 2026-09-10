@@ -37,7 +37,7 @@ export default async function SetupPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400">
               <ShieldAlert className="h-6 w-6" />
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-slate-950 dark:text-white">
+            <h1 className="mt-4 font-['Space_Grotesk',sans-serif] text-2xl font-bold text-slate-950 dark:text-white">
               Setup unavailable
             </h1>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
@@ -54,7 +54,7 @@ export default async function SetupPage() {
     <AuthLayout showAnimation={false}>
       <AuthCard>
         <div className="mb-7 text-center">
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">System initialization</h1>
+          <h1 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold text-slate-950 dark:text-white">System initialization</h1>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
             Create the first administrator using the one-time operator authorization capability.
           </p>
