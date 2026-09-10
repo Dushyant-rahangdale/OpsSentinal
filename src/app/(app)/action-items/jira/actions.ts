@@ -8,6 +8,7 @@ import {
   syncExternalIssueLink,
 } from '@/lib/jira-sync';
 import { classifyJiraError } from '@/lib/jira-capabilities';
+import type { ActionItemExternalIssue } from '@/lib/action-items';
 import { revalidatePath } from 'next/cache';
 
 export type JiraActionResult = {
@@ -15,7 +16,30 @@ export type JiraActionResult = {
   error?: string;
   key?: string;
   url?: string;
+  externalIssue?: ActionItemExternalIssue;
 };
+
+type JiraLinkProjection = {
+  id: string;
+  provider: string;
+  externalKey: string;
+  externalUrl: string;
+  externalStatus: string | null;
+  externalAssignee: string | null;
+  syncState: string;
+};
+
+function toActionItemExternalIssue(link: JiraLinkProjection): ActionItemExternalIssue {
+  return {
+    linkId: link.id,
+    provider: link.provider,
+    key: link.externalKey,
+    url: link.externalUrl,
+    status: link.externalStatus ?? undefined,
+    assignee: link.externalAssignee ?? undefined,
+    syncState: link.syncState,
+  };
+}
 
 function revalidateActionItemPaths(incidentId?: string | null) {
   if (incidentId) {
@@ -96,7 +120,7 @@ export async function createJiraIssueFromActionItem(
     const component = mapping?.defaultComponent ?? null;
 
     try {
-      const { issue } = await createJiraIssueAndLink({
+      const { issue, link } = await createJiraIssueAndLink({
         actionItemId,
         projectKey,
         issueType,
@@ -107,7 +131,12 @@ export async function createJiraIssueFromActionItem(
       });
 
       revalidateActionItemPaths(actionItem.incidentId);
-      return { success: true, key: issue.key, url: issue.url };
+      return {
+        success: true,
+        key: issue.key,
+        url: issue.url,
+        externalIssue: toActionItemExternalIssue(link),
+      };
     } catch (error) {
       const classified = classifyJiraError(error);
       return { success: false, error: classified.userMessage };
@@ -146,9 +175,14 @@ export async function linkJiraIssueToActionItem(
     if (existingLink) return alreadyLinkedError(existingLink.externalKey);
 
     try {
-      const { issue } = await linkExistingJiraIssue({ actionItemId, jiraKey });
+      const { issue, link } = await linkExistingJiraIssue({ actionItemId, jiraKey });
       revalidateActionItemPaths(actionItem.incidentId);
-      return { success: true, key: issue.key, url: issue.url };
+      return {
+        success: true,
+        key: issue.key,
+        url: issue.url,
+        externalIssue: toActionItemExternalIssue(link),
+      };
     } catch (error) {
       const classified = classifyJiraError(error);
       return { success: false, error: classified.userMessage };
@@ -225,18 +259,20 @@ export async function syncActionItemJiraIssue(
       return { success: false, error: 'Jira link not found for this action item.' };
     }
 
+    let syncedIssue: ActionItemExternalIssue;
     try {
       const result = await syncExternalIssueLink(link.id);
       if (!result) {
         return { success: false, error: 'Jira sync failed. Check integration health in Settings.' };
       }
+      syncedIssue = toActionItemExternalIssue(result);
     } catch (error) {
       const classified = classifyJiraError(error);
       return { success: false, error: classified.userMessage };
     }
 
     revalidateActionItemPaths(link.actionItem?.incidentId);
-    return { success: true };
+    return { success: true, externalIssue: syncedIssue };
   } catch (error) {
     return {
       success: false,
