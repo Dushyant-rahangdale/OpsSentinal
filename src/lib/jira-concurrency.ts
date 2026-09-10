@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { Prisma } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import {
   acquireAdvisoryLock,
   acquireSharedAdvisoryLock,
@@ -52,4 +53,22 @@ export async function acquireJiraActionItemLinkFence(
   actionItemId: string
 ): Promise<void> {
   await acquireAdvisoryLock(tx, jiraActionItemLinkLockKey(actionItemId));
+}
+
+/**
+ * Hold the shared Jira workspace fence for a complete provider-facing workflow.
+ * The callback may use ordinary Prisma clients; the transaction exists to own
+ * the cluster-wide advisory lock and to re-check enabled state after waiting.
+ */
+export async function withJiraWorkspaceProviderFence<T>(work: () => Promise<T>): Promise<T> {
+  return prisma.$transaction(
+    async tx => {
+      await acquireJiraWorkspaceProviderFence(tx);
+      return work();
+    },
+    {
+      maxWait: JIRA_PROVIDER_FENCE_MAX_WAIT_MS,
+      timeout: JIRA_PROVIDER_FENCE_TIMEOUT_MS,
+    }
+  );
 }
