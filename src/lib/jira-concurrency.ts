@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { AppError } from '@/lib/errors';
 import {
   acquireAdvisoryLock,
   acquireSharedAdvisoryLock,
@@ -38,7 +39,12 @@ export async function acquireJiraWorkspaceProviderFence(
     select: { enabled: true },
   });
   if (!config?.enabled) {
-    throw new Error('Jira is not configured or is disabled in workspace settings.');
+    throw new AppError({
+      code: 'INTEGRATION_DISABLED',
+      userMessage: 'Jira is not configured or is disabled.',
+      action: 'Configure and enable Jira before using Jira workflows.',
+      details: { provider: 'jira', reason: config ? 'disabled' : 'not_configured' },
+    });
   }
 }
 
