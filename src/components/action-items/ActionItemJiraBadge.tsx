@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { ExternalLink, Link2, Loader2, Plus, RefreshCw, Tickets, Trash2 } from 'lucide-react';
@@ -30,19 +29,13 @@ interface ActionItemJiraBadgeProps {
   externalIssue?: ActionItemExternalIssue;
   canManage: boolean;
   compact?: boolean;
-  /**
-   * Centralized Jira capability contract. When provided, the component uses
-   * this to decide visibility instead of making its own assumptions.
-   * When absent (backwards compatibility), the component falls back to the
-   * legacy behavior of only gating on `canManage`.
-   */
-  jiraCapability?: JiraCapability;
+  /** Mandatory single source of truth for every operational Jira action. */
+  jiraCapability: JiraCapability;
 }
 
 export default function ActionItemJiraBadge({
   actionItemId,
   externalIssue,
-  canManage,
   compact = false,
   jiraCapability,
 }: ActionItemJiraBadgeProps) {
@@ -52,15 +45,13 @@ export default function ActionItemJiraBadge({
   const [error, setError] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
 
-  // Derive visibility flags from the capability contract when available,
-  // falling back to legacy `canManage` gating for backwards compatibility.
-  const showSync = jiraCapability ? jiraCapability.canSync && canManage : canManage;
-  const showUnlink = jiraCapability ? jiraCapability.canUnlink && canManage : canManage;
-  const showCreate = jiraCapability ? jiraCapability.canCreate : canManage;
-  const showLink = jiraCapability ? jiraCapability.canLink : canManage;
-  const showAnyAction = jiraCapability ? jiraCapability.showOperationalJira : canManage;
+  const showSync = jiraCapability.canSync;
+  const showUnlink = jiraCapability.canUnlink;
+  const showCreate = jiraCapability.canCreate;
+  const showLink = jiraCapability.canLink;
+  const showAnyAction = jiraCapability.showOperationalJira;
 
-  // If there's a linked issue, show it as a badge
+  // Preserve existing Jira references as read-only when Jira is disabled or unavailable.
   if (externalIssue) {
     return (
       <div
@@ -87,7 +78,6 @@ export default function ActionItemJiraBadge({
           )}
           <ExternalLink className="h-2.5 w-2.5 opacity-50" />
         </a>
-        {/* Show sync/unlink actions only when the capability contract allows it */}
         {showAnyAction && showActions && (
           <div className="inline-flex items-center gap-0.5">
             {showSync && (
@@ -96,7 +86,7 @@ export default function ActionItemJiraBadge({
                 onClick={() => {
                   setError(null);
                   startTransition(async () => {
-                    const res = await syncActionItemJiraIssue(externalIssue.linkId);
+                    const res = await syncActionItemJiraIssue(actionItemId, externalIssue.linkId);
                     if (!res.success && res.error) setError(res.error);
                   });
                 }}
@@ -112,7 +102,7 @@ export default function ActionItemJiraBadge({
                 onClick={() => {
                   setError(null);
                   startTransition(async () => {
-                    const res = await unlinkJiraIssueFromActionItem(externalIssue.linkId);
+                    const res = await unlinkJiraIssueFromActionItem(actionItemId, externalIssue.linkId);
                     if (!res.success && res.error) setError(res.error);
                   });
                 }}
@@ -129,7 +119,6 @@ export default function ActionItemJiraBadge({
     );
   }
 
-  // No linked issue — show create/link options only when capabilities allow
   if (!showAnyAction) return null;
 
   const handleLinkSubmit = () => {
@@ -146,7 +135,7 @@ export default function ActionItemJiraBadge({
     });
   };
 
-  if (showLinkForm) {
+  if (showLinkForm && showLink) {
     return (
       <div className="inline-flex items-center gap-1.5" onClick={event => event.stopPropagation()}>
         <Input
@@ -209,14 +198,6 @@ export default function ActionItemJiraBadge({
         </button>
       )}
       {error && <span className="text-xs text-destructive ml-1">{error}</span>}
-      {error?.includes('not configured') && (
-        <Link
-          href="/settings/integrations/jira"
-          className="text-[10px] font-medium text-blue-600 hover:underline"
-        >
-          Configure
-        </Link>
-      )}
     </div>
   );
 }
