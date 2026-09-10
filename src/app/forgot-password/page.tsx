@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
       <AuthCard>
         <div className="mb-8 text-center">
           <AuthBrand className="mb-6" />
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{isSent ? 'Check your inbox' : 'Account recovery'}</h1>
+          <h1 className="font-['Space_Grotesk',sans-serif] text-2xl font-bold text-slate-950 dark:text-white">{isSent ? 'Check your inbox' : 'Account recovery'}</h1>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{isSent ? 'If the account exists, recovery instructions will arrive shortly.' : 'Enter your email to request a password reset link.'}</p>
         </div>
         {isSent ? (
