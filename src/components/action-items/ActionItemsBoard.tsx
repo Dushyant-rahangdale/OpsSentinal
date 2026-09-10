@@ -134,10 +134,10 @@ function getOwnerName(
 }
 
 function requireJiraCapability(
-  capabilities: Record<string, JiraCapability>,
+  capabilities: ReadonlyMap<string, JiraCapability>,
   serviceId: string
 ): JiraCapability {
-  const capability = capabilities[serviceId];
+  const capability = capabilities.get(serviceId);
   if (!capability) {
     throw new Error(`Missing Jira capability contract for service ${serviceId}`);
   }
@@ -300,6 +300,10 @@ export default function ActionItemsBoard({
   const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
   const [selectedOwner, setSelectedOwner] = useState(filters.owner || '');
   const [selectedPriority, setSelectedPriority] = useState(filters.priority || '');
+  const jiraCapabilities = useMemo(
+    () => new Map<string, JiraCapability>(Object.entries(jiraCapabilitiesByServiceId)),
+    [jiraCapabilitiesByServiceId]
+  );
 
   useEffect(() => {
     setItems(initialItems);
@@ -575,10 +579,7 @@ export default function ActionItemsBoard({
                         canManage={canManage}
                         onStatusChange={handleStatusChange}
                         isUpdating={updatingId === item.id}
-                        jiraCapability={requireJiraCapability(
-                          jiraCapabilitiesByServiceId,
-                          item.serviceId
-                        )}
+                        jiraCapability={requireJiraCapability(jiraCapabilities, item.serviceId)}
                       />
                     ))
                   )}
@@ -606,10 +607,7 @@ export default function ActionItemsBoard({
               const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.OPEN;
               const priorityConfig = PRIORITY_CONFIG[item.priority] || PRIORITY_CONFIG.MEDIUM;
               const isUpdating = updatingId === item.id;
-              const jiraCapability = requireJiraCapability(
-                jiraCapabilitiesByServiceId,
-                item.serviceId
-              );
+              const jiraCapability = requireJiraCapability(jiraCapabilities, item.serviceId);
 
               return (
                 <Card
