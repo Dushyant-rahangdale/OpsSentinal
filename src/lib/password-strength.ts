@@ -8,6 +8,7 @@ import {
   getPasswordUtf8Length,
   isCompromisedPassword,
   validatePasswordStrength,
+  type PasswordValidationContext,
 } from '@/lib/passwords';
 
 export interface PasswordStrengthResult {
@@ -78,13 +79,16 @@ function getStrengthPresentation(score: number): PasswordStrengthPresentation {
  * server-compatible password policy; character-class composition is never a
  * requirement.
  */
-export function calculatePasswordStrength(password: string): PasswordStrengthResult {
+export function calculatePasswordStrength(
+  password: string,
+  context?: PasswordValidationContext
+): PasswordStrengthResult {
   if (!password) {
     return { ...getStrengthPresentation(0), meetsMinimum: false };
   }
 
   const characterLength = getPasswordCharacterLength(password);
-  const meetsMinimum = validatePasswordStrength(password) === null;
+  const meetsMinimum = validatePasswordStrength(password, context) === null;
   let score = 1;
   if (characterLength >= 10) score = 2;
   if (characterLength >= PASSWORD_MIN_LENGTH) score = 3;
@@ -94,7 +98,10 @@ export function calculatePasswordStrength(password: string): PasswordStrengthRes
   return { ...getStrengthPresentation(score), meetsMinimum };
 }
 
-export function getPasswordRequirements(password: string): PasswordRequirement[] {
+export function getPasswordRequirements(
+  password: string,
+  context?: PasswordValidationContext
+): PasswordRequirement[] {
   const characterLength = getPasswordCharacterLength(password);
   return [
     {
@@ -110,12 +117,16 @@ export function getPasswordRequirements(password: string): PasswordRequirement[]
       met: getPasswordUtf8Length(password) <= PASSWORD_MAX_UTF8_BYTES,
     },
     {
-      label: 'Not a common/default password',
-      met: characterLength > 0 && !isCompromisedPassword(password),
+      label: 'Not common, default, or account-identifying',
+      met: characterLength > 0 && !isCompromisedPassword(password, context),
     },
   ];
 }
 
-export function isPasswordStrong(password: string, _minScore: number = 4): boolean {
-  return validatePasswordStrength(password) === null;
+export function isPasswordStrong(
+  password: string,
+  context?: PasswordValidationContext,
+  _minScore: number = 4
+): boolean {
+  return validatePasswordStrength(password, context) === null;
 }
