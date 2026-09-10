@@ -49,7 +49,6 @@ describe('Auto Recovery Migration System', () => {
   });
 
   it('should detect failed migrations and attempt recovery', async () => {
-    // Setup failures
     mockPrisma.$queryRaw.mockResolvedValueOnce([
       {
         migration_name: '20250630_add_escalation_policy_enum',
@@ -59,7 +58,6 @@ describe('Auto Recovery Migration System', () => {
       },
     ]);
 
-    // Setup enum exists check
     mockPrisma.$queryRaw.mockResolvedValueOnce([{ enumlabel: 'ESCALATION_POLICY' }]);
 
     const result = await autoRecoverMigrations();
@@ -74,7 +72,6 @@ describe('Auto Recovery Migration System', () => {
   });
 
   it('should apply enum value if missing', async () => {
-    // Setup failures
     mockPrisma.$queryRaw.mockResolvedValueOnce([
       {
         migration_name: '20250630_add_escalation_policy_enum',
@@ -84,12 +81,11 @@ describe('Auto Recovery Migration System', () => {
       },
     ]);
 
-    // Setup enum MISSING
     mockPrisma.$queryRaw.mockResolvedValueOnce([]);
 
     const result = await autoRecoverMigrations();
 
-    expect(mockPrisma.$executeRaw).toHaveBeenCalled(); // Should ALTER TYPE
+    expect(mockPrisma.$executeRaw).toHaveBeenCalled();
     expect(execFileSync).toHaveBeenCalledWith(
       process.execPath,
       expect.arrayContaining(['migrate', 'resolve', '--applied']),
@@ -127,6 +123,35 @@ describe('Auto Recovery Migration System', () => {
     expect(result).toBe(true);
   });
 
+  it('recovers the Jira unique-index build race from an older rolling replica', async () => {
+    const migrationName = '20260910174500_guard_jira_mapping_workspace';
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      {
+        migration_name: migrationName,
+        started_at: new Date(),
+        finished_at: null,
+        logs:
+          'ERROR: could not create unique index "ExternalIssueLink_jira_actionItemId_unique" DETAIL: Key (actionItemId)=(ai_123) is duplicated.',
+      },
+    ]);
+
+    const result = await autoRecoverMigrations();
+
+    expect(execFileSync).toHaveBeenNthCalledWith(
+      1,
+      process.execPath,
+      ['node_modules/prisma/build/index.js', 'migrate', 'resolve', '--applied', migrationName],
+      expect.anything()
+    );
+    expect(execFileSync).toHaveBeenNthCalledWith(
+      2,
+      process.execPath,
+      ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+      expect.anything()
+    );
+    expect(result).toBe(true);
+  });
+
   it('does not auto-resolve an unrelated failure in the Jira migration', async () => {
     mockPrisma.$queryRaw.mockResolvedValueOnce([
       {
@@ -144,11 +169,10 @@ describe('Auto Recovery Migration System', () => {
   });
 
   it('should deploy pending migrations if healthy', async () => {
-    mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No failures
+    mockPrisma.$queryRaw.mockResolvedValueOnce([]);
 
     const result = await autoRecoverMigrations();
 
-    // Expect NO deploy call because auto-recovery returns successfully early if no failures
     expect(execFileSync).not.toHaveBeenCalled();
     expect(result).toBe(true);
   });
