@@ -29,11 +29,8 @@ interface ActionItemJiraBadgeProps {
   externalIssue?: ActionItemExternalIssue;
   canManage: boolean;
   compact?: boolean;
-  /**
-   * Required prop at every call site. Undefined is accepted only while capability context
-   * propagates through legacy parent components, and always fails closed (read-only/no actions).
-   */
-  jiraCapability: JiraCapability | undefined;
+  /** Mandatory centralized capability contract for every persisted action-item Jira surface. */
+  jiraCapability: JiraCapability;
 }
 
 export default function ActionItemJiraBadge({
@@ -48,12 +45,11 @@ export default function ActionItemJiraBadge({
   const [error, setError] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
 
-  // Capability absence is deny-by-default. Never fall back to canManage or jira.enabled.
-  const showSync = jiraCapability?.canSync ?? false;
-  const showUnlink = jiraCapability?.canUnlink ?? false;
-  const showCreate = jiraCapability?.canCreate ?? false;
-  const showLink = jiraCapability?.canLink ?? false;
-  const showAnyAction = jiraCapability?.showOperationalJira ?? false;
+  const showSync = jiraCapability.canSync;
+  const showUnlink = jiraCapability.canUnlink;
+  const showCreate = jiraCapability.canCreate;
+  const showLink = jiraCapability.canLink;
+  const showAnyAction = jiraCapability.showOperationalJira;
 
   // Preserve existing Jira references as read-only when Jira is disabled or unavailable.
   if (externalIssue) {
