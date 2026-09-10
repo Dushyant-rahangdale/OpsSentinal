@@ -1,11 +1,21 @@
 export type OidcProviderType = 'google' | 'okta' | 'azure' | 'auth0' | 'custom';
 
+function isKnownProviderType(value: string | null | undefined): value is OidcProviderType {
+  return (
+    value === 'google' ||
+    value === 'okta' ||
+    value === 'azure' ||
+    value === 'auth0' ||
+    value === 'custom'
+  );
+}
+
 /**
  * Detect the built-in provider family from an OIDC issuer hostname.
  *
  * Hostname matching is intentionally strict: provider detection is used by
- * authentication policy as well as UI branding, so substring matches such as
- * `google.example.com` must never be treated as Google.
+ * authentication policy as well as UI branding, so lookalike hostnames must
+ * never inherit provider-specific authentication behavior.
  */
 export function detectOidcProviderType(
   issuerUrl: string | null | undefined
@@ -28,12 +38,8 @@ export function detectOidcProviderType(
     return 'google';
   }
 
-  if (
-    hostname === 'okta.com' ||
-    hostname.endsWith('.okta.com') ||
-    hostname.endsWith('.okta-emea.com') ||
-    hostname.includes('.okta.')
-  ) {
+  const oktaHosts = ['okta.com', 'okta-emea.com', 'oktapreview.com', 'okta-gov.com'];
+  if (oktaHosts.some(host => hostname === host || hostname.endsWith(`.${host}`))) {
     return 'okta';
   }
 
@@ -54,20 +60,18 @@ export function detectOidcProviderType(
   return 'custom';
 }
 
+/**
+ * The issuer is authoritative whenever it is available. A persisted provider
+ * type is only a legacy fallback for rows that do not have an issuer. This is
+ * important because provider type affects authentication policy and must not
+ * be able to weaken that policy when it disagrees with the issuer hostname.
+ */
 export function normalizeOidcProviderType(
   storedProviderType: string | null | undefined,
   issuerUrl: string | null | undefined
 ): OidcProviderType {
-  if (
-    storedProviderType === 'google' ||
-    storedProviderType === 'okta' ||
-    storedProviderType === 'azure' ||
-    storedProviderType === 'auth0' ||
-    storedProviderType === 'custom'
-  ) {
-    return storedProviderType;
-  }
-  return detectOidcProviderType(issuerUrl);
+  if (issuerUrl) return detectOidcProviderType(issuerUrl);
+  return isKnownProviderType(storedProviderType) ? storedProviderType : 'custom';
 }
 
 /**
@@ -95,6 +99,8 @@ export function hasOidcEmailLinkAssurance(
   providerType: string | null | undefined,
   emailVerifiedClaim: boolean | undefined
 ): boolean {
-  return emailVerifiedClaim === true ||
-    (providerType === 'azure' && emailVerifiedClaim === undefined);
+  return (
+    emailVerifiedClaim === true ||
+    (providerType === 'azure' && emailVerifiedClaim === undefined)
+  );
 }
