@@ -6,6 +6,10 @@ import prisma from '@/lib/prisma';
 import { runSerializableTransaction } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
 import { getOidcConfig } from '@/lib/oidc-config';
+import {
+  hasOidcEmailLinkAssurance,
+  requiresOidcEmailVerifiedClaim,
+} from '@/lib/oidc-provider';
 import { getDefaultAvatar } from '@/lib/avatar';
 import {
   SESSION_TOKEN_COOKIE_NAME,
@@ -257,7 +261,6 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 userAgentHeader
               );
             const rememberMe = credentials?.rememberMe === 'true' || isMobileClient;
-
             // Get IP from request headers (best effort)
             const { getClientIp } = await import('@/lib/client-ip');
             const ip = getClientIp(req?.headers);
@@ -517,7 +520,6 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           if (trigger === 'update') {
             // ...
           }
-
           // Fetch latest user data from database on each request to ensure name is up-to-date
           // This ensures name changes reflect immediately without requiring re-login
           if (token.sub && typeof token.sub === 'string') {
@@ -669,8 +671,10 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               return false;
             }
 
-            // Enforce email verification when available (recommended).
-            // If strict mode is enabled, require an explicit true value.
+            // Reject an explicit negative verification claim for every provider.
+            // Microsoft Entra ID commonly omits the standard `email_verified`
+            // claim, so strict mode is provider-aware rather than rejecting a
+            // valid Entra token solely because the claim is absent.
             const emailVerifiedClaim = coerceBooleanClaim((profile as any)?.email_verified); // eslint-disable-line @typescript-eslint/no-explicit-any
             if (emailVerifiedClaim === false) {
               logger.warn('[Auth] OIDC sign-in rejected: email not verified by IdP', {
@@ -679,10 +683,16 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               });
               return false;
             }
-            if (isOidcEmailVerifiedStrict() && emailVerifiedClaim !== true) {
+            if (
+              requiresOidcEmailVerifiedClaim(
+                activeConfig.providerType,
+                isOidcEmailVerifiedStrict()
+              ) && emailVerifiedClaim !== true
+            ) {
               logger.warn('[Auth] OIDC sign-in rejected: email_verified missing (strict mode)', {
                 component: 'auth:signIn',
                 email,
+                providerType: activeConfig.providerType,
               });
               return false;
             }
@@ -690,6 +700,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               logger.warn('[Auth] OIDC sign-in: email_verified claim missing; proceeding', {
                 component: 'auth:signIn',
                 email,
+                providerType: activeConfig.providerType,
               });
             }
 
@@ -824,9 +835,13 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                     return linked;
                   }
 
-                  // An existing account must prove control of a verified address. ACTIVE
-                  // accounts additionally require a fresh, one-time administrator approval.
-                  if (existing && emailVerifiedClaim !== true) {
+                  // An existing account must prove sufficient provider-specific
+                  // email assurance. ACTIVE accounts additionally require a fresh,
+                  // one-time administrator approval before first linking.
+                  if (
+                    existing &&
+                    !hasOidcEmailLinkAssurance(activeConfig.providerType, emailVerifiedClaim)
+                  ) {
                     throw new Error('OIDC_LINK_NOT_APPROVED');
                   }
                   if (existing && currentTarget.status !== 'INVITED') {
@@ -1037,7 +1052,6 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   });
                 }
               }
-
               // Update lastOidcSync timestamp if any profile data was synced
               if (updateData.department || updateData.jobTitle || updateData.avatarUrl) {
                 updateData.lastOidcSync = new Date();
