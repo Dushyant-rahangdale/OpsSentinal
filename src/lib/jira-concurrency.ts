@@ -7,10 +7,12 @@ import {
 } from '@/lib/db-locks';
 
 /**
- * Provider calls are intentionally bounded below the transaction timeout used
- * while the shared Jira workspace fence is held.
+ * Jira HTTP calls are individually bounded to 8 seconds. A create workflow can
+ * legitimately perform reconciliation + create + hydration, so leave bounded
+ * transaction headroom above that three-request worst case while holding the
+ * shared workspace fence.
  */
-export const JIRA_PROVIDER_FENCE_TIMEOUT_MS = 30_000;
+export const JIRA_PROVIDER_FENCE_TIMEOUT_MS = 40_000;
 export const JIRA_PROVIDER_FENCE_MAX_WAIT_MS = 5_000;
 
 /**
