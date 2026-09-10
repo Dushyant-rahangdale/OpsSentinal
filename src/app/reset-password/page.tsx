@@ -8,7 +8,7 @@ import { AuthLayout, AuthCard } from '@/components/auth/AuthLayout';
 import AuthBrand from '@/components/auth/AuthBrand';
 import PasswordStrengthMeter, { isPasswordStrong } from '@/components/auth/PasswordStrengthMeter';
 import Spinner from '@/components/ui/Spinner';
-import { PASSWORD_MAX_LENGTH } from '@/lib/passwords';
+import { PASSWORD_TRANSPORT_MAX_CODE_UNITS } from '@/lib/passwords';
 
 function readFragmentToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -99,16 +99,17 @@ function ResetPasswordForm() {
           <label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">New password</label>
           <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-slate-500">
             <Lock className="ml-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input id="password" type={showPassword ? 'text' : 'password'} required value={password} maxLength={PASSWORD_MAX_LENGTH} onChange={e => { setPassword(e.target.value); setError(''); }} autoComplete="new-password" disabled={isSubmitting} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" autoFocus />
+            <input id="password" type={showPassword ? 'text' : 'password'} required value={password} maxLength={PASSWORD_TRANSPORT_MAX_CODE_UNITS} onChange={e => { setPassword(e.target.value); setError(''); }} autoComplete="new-password" disabled={isSubmitting} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" autoFocus />
             <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="mr-3 rounded p-1 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:hover:text-slate-300 dark:focus-visible:ring-white">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
           </div>
           <PasswordStrengthMeter password={password} />
+          <p className="text-[11px] text-slate-400">Additional account-specific password checks are enforced securely on submit.</p>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="confirm-password" className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Confirm password</label>
           <div className="flex items-center rounded-xl border border-slate-200 bg-white focus-within:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-slate-500">
             <Lock className="ml-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input id="confirm-password" type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} maxLength={PASSWORD_MAX_LENGTH} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} autoComplete="new-password" disabled={isSubmitting} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
+            <input id="confirm-password" type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} maxLength={PASSWORD_TRANSPORT_MAX_CODE_UNITS} onChange={e => { setConfirmPassword(e.target.value); setError(''); }} autoComplete="new-password" disabled={isSubmitting} className="w-full bg-transparent px-3 py-3 text-sm text-slate-900 outline-none dark:text-white" />
             <button type="button" onClick={() => setShowConfirmPassword(value => !value)} aria-label={showConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'} className="mr-3 rounded p-1 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:hover:text-slate-300 dark:focus-visible:ring-white">{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
           </div>
           {confirmPassword && <p className={`flex items-center gap-1 text-xs ${passwordsMatch ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{passwordsMatch ? <CheckCircle2 className="h-3 w-3" /> : <X className="h-3 w-3" />}{passwordsMatch ? 'Passwords match' : 'Passwords do not match'}</p>}
