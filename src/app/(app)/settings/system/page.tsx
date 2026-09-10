@@ -1,5 +1,6 @@
 import { getUserPermissions } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
+import { resolveAuthPublicOrigin } from '@/lib/auth-public-origin';
 import AppUrlSettings from '@/components/settings/AppUrlSettings';
 import { SettingsSection } from '@/components/settings/layout/SettingsSection';
 import SsoSettingsForm from '@/components/settings/SsoSettingsForm';
@@ -30,8 +31,6 @@ function detectEnvStatus() {
   const nextPublicAppUrl = Boolean(process.env.NEXT_PUBLIC_APP_URL);
   const nextAuthUrl = Boolean(process.env.NEXTAUTH_URL);
   return {
-    // Encryption is configured when EITHER the preferred ENCRYPTION_KEYS
-    // keyring or the legacy ENCRYPTION_KEY single key is present.
     encryptionKey: Boolean(process.env.ENCRYPTION_KEYS || process.env.ENCRYPTION_KEY),
     encryptionKeysConfigured: Boolean(process.env.ENCRYPTION_KEYS),
     appUrl: nextPublicAppUrl || nextAuthUrl,
@@ -80,13 +79,8 @@ export default async function SystemSettingsPage() {
     const appUrl = systemSettings?.appUrl ?? null;
     const appUrlFallback =
       process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    // The redirect URI display must match what NextAuth actually uses to build
-    // the OAuth callback. NextAuth 4.x resolves the base URL from NEXTAUTH_URL
-    // first, so the displayed callback must prefer it over the DB app URL —
-    // otherwise the admin may register a redirect URI that never gets used.
-    const nextAuthBaseUrl =
-      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || (appUrl ?? appUrlFallback);
-    const ssoCallbackUrl = `${nextAuthBaseUrl.replace(/\/$/, '')}/api/auth/callback/oidc`;
+    const authOrigin = resolveAuthPublicOrigin({ dbAppUrl: appUrl });
+    const ssoCallbackUrl = authOrigin.callbackUrl;
 
     let oidcConfig: {
       enabled: boolean;
@@ -198,12 +192,8 @@ export default async function SystemSettingsPage() {
               ? 'NEXTAUTH_URL'
               : 'Fallback',
         note: appUrl
-          ? `Database setting is authoritative (${appUrl}). Fallback order after clearing it is NEXT_PUBLIC_APP_URL → NEXTAUTH_URL → localhost.`
-          : env.nextPublicAppUrl
-            ? `Using NEXT_PUBLIC_APP_URL (${process.env.NEXT_PUBLIC_APP_URL}). NEXTAUTH_URL is the next fallback.`
-            : env.nextAuthUrl
-              ? `NEXT_PUBLIC_APP_URL is unset, so NEXTAUTH_URL (${process.env.NEXTAUTH_URL}) is the active fallback.`
-              : 'No database or environment URL is configured; localhost is the final fallback.',
+          ? `Database setting is authoritative for application-generated links (${appUrl}). OIDC callback registration uses canonical auth origin ${authOrigin.origin} from ${authOrigin.source}.`
+          : `Application links use environment fallback. OIDC callback registration uses canonical auth origin ${authOrigin.origin} from ${authOrigin.source}.`,
         impact: 'Notifications & Webhooks',
         required: false,
         actionHref: '/settings/system?section=app-url',
@@ -433,6 +423,18 @@ export default async function SystemSettingsPage() {
             },
           ]}
         />
+
+        {authOrigin.conflicts.length > 0 && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Authentication origin mismatch</AlertTitle>
+            <AlertDescription>
+              OIDC uses <strong>{authOrigin.origin}</strong> from {authOrigin.source}. Other configured
+              public origins differ. Register <strong>{authOrigin.callbackUrl}</strong> at the identity
+              provider and align the conflicting URL settings to avoid proxy/callback confusion.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {!env.encryptionKey && process.env.NODE_ENV !== 'development' && (
           <Alert variant="destructive">
