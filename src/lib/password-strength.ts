@@ -4,7 +4,9 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MAX_UTF8_BYTES,
   PASSWORD_MIN_LENGTH,
-  isCommonPassword,
+  getPasswordCharacterLength,
+  getPasswordUtf8Length,
+  isCompromisedPassword,
   validatePasswordStrength,
 } from '@/lib/passwords';
 
@@ -20,10 +22,6 @@ export interface PasswordStrengthResult {
 export interface PasswordRequirement {
   label: string;
   met: boolean;
-}
-
-function utf8Length(value: string): number {
-  return new TextEncoder().encode(value).length;
 }
 
 /**
@@ -43,12 +41,13 @@ export function calculatePasswordStrength(password: string): PasswordStrengthRes
     };
   }
 
+  const characterLength = getPasswordCharacterLength(password);
   const meetsMinimum = validatePasswordStrength(password) === null;
   let score = 1;
-  if (password.length >= 10) score = 2;
-  if (password.length >= PASSWORD_MIN_LENGTH) score = 3;
+  if (characterLength >= 10) score = 2;
+  if (characterLength >= PASSWORD_MIN_LENGTH) score = 3;
   if (meetsMinimum) score = 4;
-  if (meetsMinimum && password.length >= 24) score = 5;
+  if (meetsMinimum && characterLength >= 24) score = 5;
 
   const map: Record<number, Omit<PasswordStrengthResult, 'meetsMinimum'>> = {
     0: { score: 0, label: '', color: '', textColor: '', percentage: 0 },
@@ -63,20 +62,24 @@ export function calculatePasswordStrength(password: string): PasswordStrengthRes
 }
 
 export function getPasswordRequirements(password: string): PasswordRequirement[] {
+  const characterLength = getPasswordCharacterLength(password);
   return [
     {
       label: `At least ${PASSWORD_MIN_LENGTH} characters`,
-      met: password.length >= PASSWORD_MIN_LENGTH,
+      met: characterLength >= PASSWORD_MIN_LENGTH,
     },
     {
       label: `No more than ${PASSWORD_MAX_LENGTH} characters`,
-      met: password.length <= PASSWORD_MAX_LENGTH,
+      met: characterLength <= PASSWORD_MAX_LENGTH,
     },
     {
       label: `Within ${PASSWORD_MAX_UTF8_BYTES} UTF-8 bytes (bcrypt safety limit)`,
-      met: utf8Length(password) <= PASSWORD_MAX_UTF8_BYTES,
+      met: getPasswordUtf8Length(password) <= PASSWORD_MAX_UTF8_BYTES,
     },
-    { label: 'Not a common/default password', met: password.length > 0 && !isCommonPassword(password) },
+    {
+      label: 'Not a common/default password',
+      met: characterLength > 0 && !isCompromisedPassword(password),
+    },
   ];
 }
 
