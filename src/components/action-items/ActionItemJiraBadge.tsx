@@ -29,8 +29,11 @@ interface ActionItemJiraBadgeProps {
   externalIssue?: ActionItemExternalIssue;
   canManage: boolean;
   compact?: boolean;
-  /** Mandatory single source of truth for every operational Jira action. */
-  jiraCapability: JiraCapability;
+  /**
+   * Required prop at every call site. Undefined is accepted only while capability context
+   * propagates through legacy parent components, and always fails closed (read-only/no actions).
+   */
+  jiraCapability: JiraCapability | undefined;
 }
 
 export default function ActionItemJiraBadge({
@@ -45,11 +48,12 @@ export default function ActionItemJiraBadge({
   const [error, setError] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
 
-  const showSync = jiraCapability.canSync;
-  const showUnlink = jiraCapability.canUnlink;
-  const showCreate = jiraCapability.canCreate;
-  const showLink = jiraCapability.canLink;
-  const showAnyAction = jiraCapability.showOperationalJira;
+  // Capability absence is deny-by-default. Never fall back to canManage or jira.enabled.
+  const showSync = jiraCapability?.canSync ?? false;
+  const showUnlink = jiraCapability?.canUnlink ?? false;
+  const showCreate = jiraCapability?.canCreate ?? false;
+  const showLink = jiraCapability?.canLink ?? false;
+  const showAnyAction = jiraCapability?.showOperationalJira ?? false;
 
   // Preserve existing Jira references as read-only when Jira is disabled or unavailable.
   if (externalIssue) {
@@ -122,7 +126,7 @@ export default function ActionItemJiraBadge({
   if (!showAnyAction) return null;
 
   const handleLinkSubmit = () => {
-    if (!linkKey.trim()) return;
+    if (!showLink || !linkKey.trim()) return;
     setError(null);
     startTransition(async () => {
       const res = await linkJiraIssueToActionItem(actionItemId, linkKey.trim());
@@ -140,15 +144,15 @@ export default function ActionItemJiraBadge({
       <div className="inline-flex items-center gap-1.5" onClick={event => event.stopPropagation()}>
         <Input
           value={linkKey}
-          onChange={e => setLinkKey(e.target.value)}
+          onChange={event => setLinkKey(event.target.value)}
           placeholder="KEY-123"
           className="h-6 w-24 text-xs px-1.5"
           disabled={isPending}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
               handleLinkSubmit();
-            } else if (e.key === 'Escape') {
+            } else if (event.key === 'Escape') {
               setShowLinkForm(false);
               setLinkKey('');
             }
