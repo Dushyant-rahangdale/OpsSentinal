@@ -2,11 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { AppError } from '@/lib/errors';
 
-// Use vi.hoisted to define mocks that will be available when vi.mock is hoisted
 const mockPrisma = vi.hoisted(() => ({
   user: {
     findUnique: vi.fn(),
-    update: vi.fn(),
   },
   userToken: {
     deleteMany: vi.fn(),
@@ -14,7 +12,6 @@ const mockPrisma = vi.hoisted(() => ({
   },
   auditLog: {
     create: vi.fn(),
-    count: vi.fn().mockResolvedValue(0), // For checkRateLimit
   },
   systemSettings: {
     findUnique: vi.fn(),
@@ -22,19 +19,23 @@ const mockPrisma = vi.hoisted(() => ({
   oidcConfig: {
     findFirst: vi.fn(),
   },
+  $transaction: vi.fn(),
 }));
 const mockAssertAdmin = vi.hoisted(() => vi.fn());
+const mockCheckRateLimit = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/rbac', () => ({
   assertAdmin: mockAssertAdmin,
 }));
 
-// Mock Prisma
 vi.mock('@/lib/prisma', () => ({
   default: mockPrisma,
 }));
 
-// Mock app-url
+vi.mock('@/lib/password-reset', () => ({
+  checkRateLimit: mockCheckRateLimit,
+}));
+
 vi.mock('@/lib/app-url', () => ({
   getAppUrl: vi.fn().mockResolvedValue('http://localhost:3000'),
   getAppUrlSync: vi.fn().mockReturnValue('http://localhost:3000'),
@@ -45,42 +46,47 @@ import { POST } from '@/app/api/admin/generate-reset-link/route';
 describe('API: Admin Generate Reset Link', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPrisma.auditLog.count.mockResolvedValue(0);
     mockAssertAdmin.mockResolvedValue({
       id: 'admin-id',
       email: 'admin@example.com',
+      name: 'Admin',
       role: 'ADMIN',
       status: 'ACTIVE',
     });
+    mockCheckRateLimit.mockResolvedValue(undefined);
+    mockPrisma.$transaction.mockImplementation(async callback => callback(mockPrisma));
   });
 
-  it('generates a reset link for a valid user when called by an admin', async () => {
-    // 1. Mock User Found
+  it('generates a fragment-based reset link without revoking sessions prematurely', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       id: 'target-id',
       email: 'target@example.com',
     });
 
-    // 2. Create Request
     const req = new NextRequest('http://localhost:3000/api/admin/generate-reset-link', {
       method: 'POST',
       body: JSON.stringify({ userId: 'target-id' }),
     });
 
-    // 3. Call API
     const res = await POST(req);
     const data = await res.json();
 
-    // 4. Assertions
     expect(res.status).toBe(200);
-    expect(data.link).toBeDefined();
-    expect(data.link).toContain('/reset-password?token=');
-    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'target-id' } });
-    expect(mockPrisma.user.update).toHaveBeenCalledWith({
+    expect(data.link).toContain('/reset-password#token=');
+    expect(data.link).not.toContain('?token=');
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'target-id' },
-      data: { tokenVersion: { increment: 1 } },
+      select: { id: true, email: true },
     });
-    expect(mockPrisma.userToken.create).toHaveBeenCalled();
+    expect(mockPrisma.userToken.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'target-id',
+          identifier: 'target-id',
+          type: 'PASSWORD_RESET',
+        }),
+      })
+    );
     expect(mockPrisma.auditLog.create).toHaveBeenCalled();
   });
 
@@ -103,8 +109,10 @@ describe('API: Admin Generate Reset Link', () => {
     expect(data.code).toBe('AUTHORIZATION_DENIED');
   });
 
-  it('maps password-reset rate limiting by code instead of matching error text', async () => {
-    mockPrisma.auditLog.count.mockResolvedValueOnce(5);
+  it('maps password-reset rate limiting by typed code instead of matching error text', async () => {
+    mockCheckRateLimit.mockRejectedValueOnce(
+      new AppError({ code: 'RATE_LIMIT_EXCEEDED', userMessage: 'Too many requests' })
+    );
 
     const req = new NextRequest('http://localhost:3000/api/admin/generate-reset-link', {
       method: 'POST',
@@ -118,5 +126,15 @@ describe('API: Admin Generate Reset Link', () => {
     expect(data.error).toBe('Too many requests');
     expect(data.code).toBe('RATE_LIMIT_EXCEEDED');
     expect(data.retryable).toBe(true);
+  });
+
+  it('rejects malformed and oversized user ids at the API boundary', async () => {
+    const req = new NextRequest('http://localhost:3000/api/admin/generate-reset-link', {
+      method: 'POST',
+      body: JSON.stringify({ userId: 'x'.repeat(129) }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
   });
 });
