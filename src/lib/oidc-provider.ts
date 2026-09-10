@@ -1,5 +1,16 @@
 export type OidcProviderType = 'google' | 'okta' | 'azure' | 'auth0' | 'custom';
 
+const MICROSOFT_ENTRA_HOSTS = new Set([
+  'login.microsoftonline.com',
+  'login.microsoftonline.us',
+  'login.partner.microsoftonline.cn',
+  'login.microsoft.com',
+  'sts.windows.net',
+  'microsoftonline.com',
+]);
+
+const MICROSOFT_ENTRA_GENERIC_AUTHORITIES = new Set(['common', 'organizations', 'consumers']);
+
 function isKnownProviderType(value: string | null | undefined): value is OidcProviderType {
   return (
     value === 'google' ||
@@ -8,6 +19,25 @@ function isKnownProviderType(value: string | null | undefined): value is OidcPro
     value === 'auth0' ||
     value === 'custom'
   );
+}
+
+export function isMicrosoftEntraHost(hostname: string): boolean {
+  return MICROSOFT_ENTRA_HOSTS.has(hostname.toLowerCase());
+}
+
+/**
+ * Return the Entra authority/tenant segment from a recognized Microsoft issuer.
+ * For https://login.microsoftonline.com/<tenant>/v2.0 this is <tenant>, not
+ * the trailing protocol-version segment.
+ */
+export function getMicrosoftEntraTenantAuthority(url: URL): string | null {
+  if (!isMicrosoftEntraHost(url.hostname)) return null;
+  const [authority] = url.pathname.split('/').filter(Boolean);
+  return authority?.toLowerCase() ?? null;
+}
+
+export function isMicrosoftEntraGenericAuthority(authority: string | null): boolean {
+  return authority !== null && MICROSOFT_ENTRA_GENERIC_AUTHORITIES.has(authority.toLowerCase());
 }
 
 /**
@@ -43,15 +73,7 @@ export function detectOidcProviderType(
     return 'okta';
   }
 
-  const microsoftHosts = [
-    'login.microsoftonline.com',
-    'login.microsoftonline.us',
-    'login.partner.microsoftonline.cn',
-    'login.microsoft.com',
-    'sts.windows.net',
-    'microsoftonline.com',
-  ];
-  if (microsoftHosts.some(host => hostname === host || hostname.endsWith(`.${host}`))) {
+  if (isMicrosoftEntraHost(hostname)) {
     return 'azure';
   }
 
