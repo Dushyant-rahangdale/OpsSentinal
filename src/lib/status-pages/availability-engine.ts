@@ -182,20 +182,14 @@ function mergeHealthSegmentsSweep(raw: HealthSegment[]): HealthSegment[] {
     return worst === 'OPERATIONAL' ? null : (worst as HealthSegment['status']);
   };
 
-  let index = 0;
-  while (index < events.length) {
-    const time = events[index]!.time;
-    if (cursor !== undefined && time > cursor && current) {
+  for (const event of events) {
+    if (cursor !== undefined && event.time > cursor && current) {
       const previous = merged.at(-1);
-      if (previous?.status === current && previous.end === cursor) previous.end = time;
-      else merged.push({ start: cursor, end: time, status: current });
+      if (previous?.status === current && previous.end === cursor) previous.end = event.time;
+      else merged.push({ start: cursor, end: event.time, status: current });
     }
-    while (index < events.length && events[index]!.time === time) {
-      const event = events[index]!;
-      applyDelta(event.status, event.delta);
-      index += 1;
-    }
-    cursor = time;
+    applyDelta(event.status, event.delta);
+    cursor = event.time;
     current = worstActive();
   }
   return merged;
