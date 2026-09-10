@@ -20,6 +20,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { cn } from '@/lib/utils';
 import { Calendar, Pencil, Trash2, Plus } from 'lucide-react';
 import type { ActionItem } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
 
 interface PostmortemActionItemsProps {
@@ -33,7 +34,7 @@ interface PostmortemActionItemsProps {
     avatarUrl?: string | null;
     gender?: string | null;
   }>;
-  jiraCapability?: import('@/lib/jira-capabilities').JiraCapability;
+  jiraCapability: JiraCapability;
 }
 
 import { ACTION_ITEM_STATUS_CONFIG, ACTION_ITEM_PRIORITY_CONFIG } from './shared';
