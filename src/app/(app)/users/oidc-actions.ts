@@ -53,7 +53,7 @@ export async function getOidcLinkingState(userId: string): Promise<OidcLinkingAp
 }
 
 /**
- * Explicitly authorizes first-time OIDC linking for an existing ACTIVE user
+ * Explicitly authorizes first-time OIDC linking for an ACTIVE or INVITED user
  * without changing the account status or issuing a usable invitation link.
  */
 export async function allowOidcLinking(userId: string): Promise<OidcLinkingApprovalResult> {
@@ -66,8 +66,8 @@ export async function allowOidcLinking(userId: string): Promise<OidcLinkingAppro
 
   const user = await getManagedUser(userId);
   if (!user) return { error: 'User not found.' };
-  if (user.status !== 'ACTIVE') {
-    return { error: 'OIDC linking approval can only be managed for active users.' };
+  if (user.status !== 'ACTIVE' && user.status !== 'INVITED') {
+    return { error: 'OIDC linking approval can only be managed for active or invited users.' };
   }
 
   const identifier = user.email.toLowerCase();
@@ -79,13 +79,23 @@ export async function allowOidcLinking(userId: string): Promise<OidcLinkingAppro
     return { success: true, alreadyApproved: true, state };
   }
 
+  // Approvals expire after 7 days by default.  This prevents stale
+  // approvals from being usable months later.
+  const approvalTtlHours = Number.parseInt(
+    process.env.OIDC_LINKING_APPROVAL_TTL_HOURS ?? '168',
+    10
+  );
+  const expiresAt =
+    approvalTtlHours > 0 ? new Date(Date.now() + approvalTtlHours * 3600_000) : null;
+
   await prisma.oidcLinkingApproval.upsert({
     where: { userId: user.id },
-    create: { userId: user.id, approvedById: admin.id },
+    create: { userId: user.id, approvedById: admin.id, expiresAt },
     update: {
       approvedById: admin.id,
       approvedAt: new Date(),
       revokedAt: null,
+      expiresAt,
       generation: { increment: 1 },
     },
   });
@@ -126,8 +136,8 @@ export async function revokeOidcLinking(userId: string): Promise<OidcLinkingAppr
 
   const user = await getManagedUser(userId);
   if (!user) return { error: 'User not found.' };
-  if (user.status !== 'ACTIVE') {
-    return { error: 'OIDC linking approval can only be managed for active users.' };
+  if (user.status !== 'ACTIVE' && user.status !== 'INVITED') {
+    return { error: 'OIDC linking approval can only be managed for active or invited users.' };
   }
 
   const identifier = user.email.toLowerCase();

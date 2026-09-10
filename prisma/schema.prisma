@@ -1359,6 +1359,7 @@ model OidcLinkingApproval {
   userId       String    @unique
   approvedById String?
   approvedAt   DateTime  @default(now())
+  expiresAt    DateTime?
   revokedAt    DateTime?
   generation   Int       @default(1)
   createdAt    DateTime  @default(now())

@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-import { assertSafeOutboundUrl } from '@/lib/network-security';
+import { assertSafeOutboundUrl, safeOutboundFetch } from '@/lib/network-security';
 
 export type OidcValidationResult = {
   isValid: boolean;
@@ -30,6 +30,17 @@ function isPrivateOrLocalHostname(hostname: string): boolean {
   if (/^192\.168\./.test(lower)) return true;
 
   return false;
+}
+
+/**
+ * Normalize an issuer for comparison: strip trailing slashes and lowercase
+ * the scheme+host (path remains case-sensitive per OIDC).
+ */
+function normalizeIssuerForComparison(issuer: string): string {
+  const parsed = new URL(issuer);
+  const scheme = parsed.protocol.toLowerCase();
+  const host = parsed.host.toLowerCase();
+  return `${scheme}//${host}${parsed.pathname.replace(/\/+$/, '')}`;
 }
 
 export async function validateOidcConnection(issuer: string): Promise<OidcValidationResult> {
@@ -82,6 +93,30 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       };
     }
 
+    // 5b. Microsoft Entra multi-tenant endpoints (`common` / `organizations`)
+    // authenticate users from ANY Entra tenant.  Per Microsoft guidance,
+    // applications must explicitly validate the tenant; without a tenant
+    // allowlist model this is unsafe, so reject them and require a
+    // tenant-specific issuer (e.g. https://login.microsoftonline.com/<tenant-id>).
+    if (
+      validatedHostname === 'login.microsoftonline.com' ||
+      validatedHostname.endsWith('.login.microsoftonline.com')
+    ) {
+      const lastSegment = parsedUrl.pathname.split('/').filter(Boolean).pop()?.toLowerCase();
+      if (lastSegment === 'common' || lastSegment === 'organizations') {
+        logger.warn('[OIDC Validation] Entra multi-tenant endpoint rejected', {
+          component: 'oidc-validation',
+          hostname: validatedHostname,
+          tenant: lastSegment,
+        });
+        return {
+          isValid: false,
+          error:
+            'Microsoft Entra multi-tenant issuer endpoints (common / organizations) are not allowed. Configure a tenant-specific issuer URL (e.g. https://login.microsoftonline.com/<tenant-id>).',
+        };
+      }
+    }
+
     // 6. Build the discovery URL from validated primitives.
     const cleanPath = parsedUrl.pathname.replace(/\/+$/, '');
     const pathSegments = cleanPath.split('/').filter(Boolean);
@@ -105,11 +140,13 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
       return { isValid: false, error: 'OIDC issuer resolves to a restricted network address.' };
     }
 
-    const response = await fetch(discoveryUrl, {
+    // Fetch through the same socket-resolving safe dispatcher used elsewhere,
+    // closing the DNS-rebinding / TOCTOU gap between the URL check above and
+    // the actual socket connection.
+    const response = await safeOutboundFetch(discoveryUrl, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(5000),
-      redirect: 'manual',
     });
 
     if (response.status >= 300 && response.status < 400) {
@@ -128,6 +165,32 @@ export async function validateOidcConnection(issuer: string): Promise<OidcValida
     }
 
     const config = await response.json();
+
+    // 1. Issuer Check: the discovery document `issuer` value must exactly
+    //    match the issuer used to retrieve the configuration (OIDC Discovery
+    //    §4, RFC 8414 §2).  This prevents a compromised/incorrect discovery
+    //    document from redirecting authentication flows to an unexpected IdP.
+    if (typeof config.issuer !== 'string' || !config.issuer) {
+      return {
+        isValid: false,
+        error: 'Issuer metadata is missing the required "issuer" field.',
+      };
+    }
+
+    const expectedIssuer = normalizeIssuerForComparison(trimmedIssuer);
+    const metadataIssuer = normalizeIssuerForComparison(config.issuer);
+    if (metadataIssuer !== expectedIssuer) {
+      logger.warn('[OIDC Validation] Discovery issuer mismatch', {
+        component: 'oidc-validation',
+        configuredIssuer: trimmedIssuer,
+        metadataIssuer: config.issuer,
+      });
+      return {
+        isValid: false,
+        error:
+          'Issuer metadata "issuer" field does not match the configured issuer URL. Configure the exact issuer returned by the identity provider.',
+      };
+    }
 
     // 2. Metadata Check: Verify required endpoints exist
     if (!config.authorization_endpoint || !config.token_endpoint || !config.jwks_uri) {

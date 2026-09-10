@@ -6,10 +6,7 @@ import prisma from '@/lib/prisma';
 import { runSerializableTransaction } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
 import { getOidcConfig } from '@/lib/oidc-config';
-import {
-  hasOidcEmailLinkAssurance,
-  requiresOidcEmailVerifiedClaim,
-} from '@/lib/oidc-provider';
+import { hasOidcEmailLinkAssurance, requiresOidcEmailVerifiedClaim } from '@/lib/oidc-provider';
 import { getDefaultAvatar } from '@/lib/avatar';
 import {
   SESSION_TOKEN_COOKIE_NAME,
@@ -266,7 +263,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             const ip = getClientIp(req?.headers);
             const userAgent = userAgentHeader || 'Unknown';
 
-            logger.warn('[Auth-Debug] Authorize started', {
+            logger.debug('[Auth-Debug] Authorize started', {
               component: 'auth:credentials',
               email,
               ip,
@@ -332,7 +329,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             if (!user || !user.passwordHash) {
               recordFailedAttempt(email, ip);
               await logLoginFailed(email, ip, userAgent, 'USER_NOT_FOUND');
-              logger.warn('[Auth-Debug] User not found or no password hash', {
+              logger.debug('[Auth-Debug] User not found or no password hash', {
                 component: 'auth:credentials',
                 email,
               });
@@ -363,7 +360,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   lockoutDurationMs: result.lockoutDurationMs,
                 });
               }
-              logger.warn('[Auth-Debug] Invalid Password', {
+              logger.debug('[Auth-Debug] Invalid Password', {
                 component: 'auth:credentials',
                 email,
               });
@@ -391,7 +388,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               });
             }
 
-            logger.warn('[Auth-Debug] Authorize Success', {
+            logger.debug('[Auth-Debug] Authorize Success', {
               component: 'auth:credentials',
               id: user.id,
               tokenVersion: user.tokenVersion,
@@ -418,7 +415,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       callbacks: {
         async jwt({ token, user, account, trigger, session: _session }) {
           // Debug: Log incoming token state
-          logger.warn('[Auth-Debug] JWT callback started', {
+          logger.debug('[Auth-Debug] JWT callback started', {
             component: 'auth:jwt',
             hasSub: !!token.sub,
             sub: token.sub,
@@ -428,7 +425,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           // Initial sign in
           if (user && account) {
             delete (token as AugmentedJWT).error;
-            logger.warn('[Auth-Debug] Initial Sign In', {
+            logger.debug('[Auth-Debug] Initial Sign In', {
               component: 'auth:jwt',
               userId: user.id,
               provider: account.provider,
@@ -502,7 +499,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           // This block handles the initial population of the token from the `user` object.
           else if (user) {
             delete (token as AugmentedJWT).error;
-            logger.warn('[Auth-Debug] Initial Sign In (Fallback)', {
+            logger.debug('[Auth-Debug] Initial Sign In (Fallback)', {
               component: 'auth:jwt',
               userId: user.id || (user as AugmentedUser).id,
             });
@@ -550,7 +547,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 if (dbUser) {
                   const dbTokenVersion =
                     typeof dbUser.tokenVersion === 'number' ? dbUser.tokenVersion : 0;
-                  logger.warn('[Auth-Debug] User Check', {
+                  logger.debug('[Auth-Debug] User Check', {
                     component: 'auth:jwt',
                     dbId: token.sub,
                     dbVer: dbTokenVersion,
@@ -581,7 +578,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   token.gender = dbUser.gender;
                   (token as AugmentedJWT).tokenVersion = dbTokenVersion;
                 } else {
-                  logger.warn('[Auth-Debug] User NOT FOUND in DB', {
+                  logger.debug('[Auth-Debug] User NOT FOUND in DB', {
                     component: 'auth:jwt',
                     id: token.sub,
                   });
@@ -592,13 +589,13 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               (token as AugmentedJWT).userFetchedAt = Date.now();
             }
           } else {
-            logger.warn('[Auth-Debug] No token.sub found!', { component: 'auth:jwt', token });
+            logger.debug('[Auth-Debug] No token.sub found!', { component: 'auth:jwt', token });
           }
 
           return token;
         },
         async session({ session, token }) {
-          logger.warn('[Auth-Debug] Session callback', {
+          logger.debug('[Auth-Debug] Session callback', {
             component: 'auth:session',
             hasToken: !!token,
             sub: token?.sub,
@@ -640,28 +637,16 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
           }
 
           const email = user.email.toLowerCase();
-          const existing = await prisma.user.findUnique({
-            where: { email },
-          });
-
-          // Final check - prevent disabled users from signing in
-          if (existing?.status === 'DISABLED') {
-            logger.warn('[Auth] Sign-in rejected: user disabled', {
-              component: 'auth:signIn',
-              provider: account?.provider,
-              email,
-            });
-            return false;
-          }
 
           if (account?.provider === 'oidc') {
-            logger.info('[Auth] OIDC sign-in attempt', {
-              component: 'auth:signIn',
-              email,
-              userExists: !!existing,
-              userId: user.id,
-            });
-
+            // ──────────────────────────────────────────────────────────────
+            // IDENTITY-FIRST OIDC SIGN-IN
+            //
+            // The OIDC spec defines (issuer, subject) as the stable user
+            // identifier — not email.  We resolve the identity link FIRST,
+            // then fall back to email only for JIT provisioning or
+            // invitation activation.
+            // ──────────────────────────────────────────────────────────────
             const activeConfig = await getOidcConfig();
             if (!activeConfig) {
               logger.warn('[Auth] OIDC sign-in rejected: configuration missing or invalid', {
@@ -672,9 +657,6 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             }
 
             // Reject an explicit negative verification claim for every provider.
-            // Microsoft Entra ID commonly omits the standard `email_verified`
-            // claim, so strict mode is provider-aware rather than rejecting a
-            // valid Entra token solely because the claim is absent.
             const emailVerifiedClaim = coerceBooleanClaim((profile as any)?.email_verified); // eslint-disable-line @typescript-eslint/no-explicit-any
             if (emailVerifiedClaim === false) {
               logger.warn('[Auth] OIDC sign-in rejected: email not verified by IdP', {
@@ -687,7 +669,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               requiresOidcEmailVerifiedClaim(
                 activeConfig.providerType,
                 isOidcEmailVerifiedStrict()
-              ) && emailVerifiedClaim !== true
+              ) &&
+              emailVerifiedClaim !== true
             ) {
               logger.warn('[Auth] OIDC sign-in rejected: email_verified missing (strict mode)', {
                 component: 'auth:signIn',
@@ -695,13 +678,6 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 providerType: activeConfig.providerType,
               });
               return false;
-            }
-            if (emailVerifiedClaim === undefined) {
-              logger.warn('[Auth] OIDC sign-in: email_verified claim missing; proceeding', {
-                component: 'auth:signIn',
-                email,
-                providerType: activeConfig.providerType,
-              });
             }
 
             if (activeConfig.allowedDomains.length > 0) {
@@ -725,75 +701,9 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 });
                 return false;
               }
-              logger.debug('[Auth] OIDC domain validation passed', {
-                component: 'auth:signIn',
-                email,
-                domain,
-              });
             }
 
-            // Create new user if auto-provision is enabled
-            if (!existing) {
-              if (!activeConfig.autoProvision) {
-                logger.warn('[Auth] OIDC sign-in rejected: auto-provision disabled', {
-                  component: 'auth:signIn',
-                  email,
-                });
-                return false;
-              }
-
-              // Create new user from OIDC profile
-              try {
-                const newUser = await prisma.user.create({
-                  data: {
-                    email,
-                    name: user.name || email.split('@')[0],
-                    role: 'USER', // Default role, can be overridden by role mapping below
-                    status: 'ACTIVE',
-                  },
-                });
-
-                logger.info('[Auth] Created new user via OIDC auto-provision', {
-                  component: 'auth:signIn',
-                  userId: newUser.id,
-                  email,
-                });
-
-                // Update user object with new ID for JWT callback
-                user.id = newUser.id;
-              } catch (error) {
-                logger.error('[Auth] Failed to create OIDC user', {
-                  component: 'auth:signIn',
-                  error,
-                });
-                return false;
-              }
-            }
-
-            // Get user for updates (either existing or newly created)
-            const targetUser = existing || (await prisma.user.findUnique({ where: { email } }));
-
-            if (!targetUser) {
-              logger.error('[Auth] OIDC user not found after creation', {
-                component: 'auth:signIn',
-                email,
-              });
-              return false;
-            }
-
-            // Administrative disable is authoritative. OIDC must never create a
-            // new identity link or reactivate a disabled account, even when a
-            // historical invite record exists for that email address.
-            if (targetUser.status === 'DISABLED') {
-              logger.warn('[Auth] OIDC sign-in rejected: user is disabled', {
-                component: 'auth:signIn',
-                userId: targetUser.id,
-                email,
-              });
-              return false;
-            }
-
-            // Create/validate stable issuer+subject identity link to avoid unsafe email-only linking.
+            // ─── Step 1: Resolve (issuer, subject) identity ────────────────
             const issuer = normalizeIssuer(activeConfig.issuer);
             const subject =
               account?.providerAccountId ||
@@ -813,12 +723,128 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               where: { issuer_subject: { issuer, subject } },
             });
 
-            if (!existingIdentity) {
+            type TargetUser = {
+              id: string;
+              email: string;
+              status: string;
+              role: string;
+              name: string | null;
+              department: string | null;
+              jobTitle: string | null;
+              avatarUrl: string | null;
+            };
+            let targetUser: TargetUser | null = null;
+
+            if (existingIdentity) {
+              // ─── Identity found → load user directly (fast path) ───────
+              targetUser = await prisma.user.findUnique({
+                where: { id: existingIdentity.userId },
+                select: {
+                  id: true,
+                  email: true,
+                  status: true,
+                  role: true,
+                  name: true,
+                  department: true,
+                  jobTitle: true,
+                  avatarUrl: true,
+                },
+              });
+
+              if (!targetUser || targetUser.status === 'DISABLED') {
+                logger.warn('[Auth] OIDC sign-in rejected: linked user not found or disabled', {
+                  component: 'auth:signIn',
+                  issuer,
+                  subject,
+                  linkedUserId: existingIdentity.userId,
+                });
+                return false;
+              }
+
+              logger.debug('[Auth] OIDC identity resolved via issuer+sub', {
+                component: 'auth:signIn',
+                issuer,
+                subject,
+                userId: targetUser.id,
+              });
+            } else {
+              // ─── Identity not found → fall back to email for JIT / invite ──
+              const emailUser = await prisma.user.findUnique({
+                where: { email },
+                select: {
+                  id: true,
+                  email: true,
+                  status: true,
+                  role: true,
+                  name: true,
+                  department: true,
+                  jobTitle: true,
+                  avatarUrl: true,
+                },
+              });
+
+              if (emailUser?.status === 'DISABLED') {
+                logger.warn('[Auth] OIDC sign-in rejected: user disabled', {
+                  component: 'auth:signIn',
+                  provider: account?.provider,
+                  email,
+                });
+                return false;
+              }
+
+              if (!emailUser) {
+                // ─── JIT provisioning ──────────────────────────────────
+                if (!activeConfig.autoProvision) {
+                  logger.warn('[Auth] OIDC sign-in rejected: auto-provision disabled', {
+                    component: 'auth:signIn',
+                    email,
+                  });
+                  return false;
+                }
+
+                try {
+                  const newUser = await prisma.user.create({
+                    data: {
+                      email,
+                      name: user.name || email.split('@')[0],
+                      role: 'USER',
+                      status: 'ACTIVE',
+                    },
+                  });
+
+                  logger.info('[Auth] Created new user via OIDC auto-provision', {
+                    component: 'auth:signIn',
+                    userId: newUser.id,
+                    email,
+                  });
+
+                  targetUser = {
+                    id: newUser.id,
+                    email: newUser.email,
+                    status: newUser.status,
+                    role: newUser.role,
+                    name: newUser.name,
+                    department: null,
+                    jobTitle: null,
+                    avatarUrl: null,
+                  };
+                } catch (error) {
+                  logger.error('[Auth] Failed to create OIDC user', {
+                    component: 'auth:signIn',
+                    error,
+                  });
+                  return false;
+                }
+              } else {
+                targetUser = emailUser;
+              }
+
+              // ─── First-time identity linking (atomic) ────────────────
               const isInvitedUser = targetUser.status === 'INVITED';
               try {
                 existingIdentity = await runSerializableTransaction(async tx => {
                   const currentTarget = await tx.user.findUnique({
-                    where: { id: targetUser.id },
+                    where: { id: targetUser!.id },
                     select: { id: true, status: true },
                   });
                   if (!currentTarget || currentTarget.status === 'DISABLED') {
@@ -836,25 +862,27 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                   }
 
                   // Existing accounts must meet the provider-specific email
-                  // assurance policy. Entra may omit `email_verified`, but a
-                  // missing claim is not sufficient by itself to claim an
-                  // invited account: that path requires a one-time admin approval.
+                  // assurance policy.
                   if (
-                    existing &&
+                    emailUser &&
                     !hasOidcEmailLinkAssurance(activeConfig.providerType, emailVerifiedClaim)
                   ) {
                     throw new Error('OIDC_LINK_NOT_APPROVED');
                   }
 
                   const requiresLinkApproval =
-                    Boolean(existing) &&
+                    Boolean(emailUser) &&
                     (currentTarget.status !== 'INVITED' || emailVerifiedClaim !== true);
                   if (requiresLinkApproval) {
                     const approval = await tx.oidcLinkingApproval.findFirst({
                       where: { userId: currentTarget.id, revokedAt: null },
-                      select: { id: true },
+                      select: { id: true, expiresAt: true },
                     });
                     if (!approval) throw new Error('OIDC_LINK_NOT_APPROVED');
+                    // Check approval TTL if configured
+                    if (approval.expiresAt && approval.expiresAt < new Date()) {
+                      throw new Error('OIDC_LINK_APPROVAL_EXPIRED');
+                    }
                     const consumed = await tx.oidcLinkingApproval.updateMany({
                       where: { id: approval.id, revokedAt: null },
                       data: { revokedAt: new Date() },
@@ -870,6 +898,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 if (
                   error instanceof Error &&
                   (error.message === 'OIDC_LINK_NOT_APPROVED' ||
+                    error.message === 'OIDC_LINK_APPROVAL_EXPIRED' ||
                     error.message === 'OIDC_TARGET_NOT_OPERATIONAL' ||
                     error.message === 'OIDC_IDENTITY_OWNED_BY_ANOTHER_USER')
                 ) {
@@ -893,25 +922,34 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 subject,
                 userId: targetUser.id,
                 isInvitedUser,
-                adminProvisioned: !!existing,
+                adminProvisioned: !!emailUser,
               });
-            } else if (existingIdentity.userId !== targetUser.id) {
-              logger.warn('[Auth] OIDC sign-in rejected: identity already linked to another user', {
+            }
+
+            // At this point we have a valid targetUser and an existingIdentity
+            if (!targetUser) {
+              logger.error('[Auth] OIDC sign-in failed: no target user resolved', {
                 component: 'auth:signIn',
-                issuer,
-                subject,
                 email,
               });
               return false;
             }
 
-            const updateData: any = {};
+            if (targetUser.status === 'DISABLED') {
+              logger.warn('[Auth] OIDC sign-in rejected: user is disabled', {
+                component: 'auth:signIn',
+                userId: targetUser.id,
+                email,
+              });
+              return false;
+            }
+
+            const updateData: Record<string, unknown> = {};
 
             // Ensure user object has correct ID for JWT
             user.id = targetUser.id;
 
-            // First successful SSO completes an outstanding invitation. A
-            // DISABLED account was rejected above and is never reactivated.
+            // First successful SSO completes an outstanding invitation.
             if (targetUser.status === 'INVITED') {
               updateData.status = 'ACTIVE';
               updateData.invitedAt = null;
@@ -923,114 +961,86 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               });
             }
 
-            // Role Evaluation
+            // ─── Role Evaluation (with de-provisioning) ──────────────
+            // When role mapping is configured and NO rule matches, the
+            // user's role is reset to USER.  This ensures removing a user
+            // from an IdP group actually revokes the corresponding privilege.
             if (
               activeConfig.roleMapping &&
               Array.isArray(activeConfig.roleMapping) &&
-              (profile as any)
+              activeConfig.roleMapping.length > 0 &&
+              (profile as any) // eslint-disable-line @typescript-eslint/no-explicit-any
             ) {
-              logger.debug('[Auth] Evaluating OIDC role mapping', {
-                component: 'auth:signIn',
-                ruleCount: activeConfig.roleMapping.length,
-                currentRole: targetUser.role,
-              });
-
               const mapping = activeConfig.roleMapping as Array<{
                 claim: string;
                 value: string;
                 role: 'ADMIN' | 'RESPONDER' | 'AUDITOR' | 'USER';
               }>;
+              let matchedRole: string | null = null;
+
               for (const rule of mapping) {
-                const claimValue = (profile as any)[rule.claim];
+                const claimValue = (profile as any)[rule.claim]; // eslint-disable-line @typescript-eslint/no-explicit-any
                 let match = false;
 
                 if (Array.isArray(claimValue)) {
                   match = claimValue.includes(rule.value);
-                  logger.debug('[Auth] Checking array claim for role mapping', {
-                    component: 'auth:signIn',
-                    claim: rule.claim,
-                    expectedValue: rule.value,
-                    actualValues: claimValue,
-                    matched: match,
-                  });
                 } else if (claimValue === rule.value) {
                   match = true;
-                  logger.debug('[Auth] Checking scalar claim for role mapping', {
-                    component: 'auth:signIn',
-                    claim: rule.claim,
-                    expectedValue: rule.value,
-                    actualValue: claimValue,
-                    matched: match,
-                  });
                 }
 
                 if (match) {
-                  if (targetUser.role !== rule.role) {
-                    updateData.role = rule.role;
-                    logger.info('[Auth] OIDC role mapping applied', {
-                      component: 'auth:signIn',
-                      userId: targetUser.id,
-                      oldRole: targetUser.role,
-                      newRole: rule.role,
-                      matchedClaim: rule.claim,
-                      matchedValue: rule.value,
-                    });
-                  }
-                  break; // Stop at first match
+                  matchedRole = rule.role;
+                  break;
                 }
               }
 
-              if (!updateData.role) {
-                logger.debug('[Auth] No role mapping matched', {
-                  component: 'auth:signIn',
-                  availableClaims: Object.keys(profile as any),
-                });
+              if (matchedRole) {
+                if (targetUser.role !== matchedRole) {
+                  updateData.role = matchedRole;
+                  logger.info('[Auth] OIDC role mapping applied', {
+                    component: 'auth:signIn',
+                    userId: targetUser.id,
+                    oldRole: targetUser.role,
+                    newRole: matchedRole,
+                  });
+                }
+              } else {
+                // No mapping matched → de-provision to USER if currently elevated
+                if (targetUser.role !== 'USER') {
+                  updateData.role = 'USER';
+                  logger.info('[Auth] OIDC role de-provisioned: no mapping matched', {
+                    component: 'auth:signIn',
+                    userId: targetUser.id,
+                    oldRole: targetUser.role,
+                    newRole: 'USER',
+                  });
+                }
               }
             }
 
-            // JIT Profile Sync - sync attributes from OIDC profile
+            // JIT Profile Sync
             if (
               activeConfig.profileMapping &&
               typeof activeConfig.profileMapping === 'object' &&
               profile
             ) {
-              logger.debug('[Auth] Evaluating OIDC profile sync', {
-                component: 'auth:signIn',
-                mappingKeys: Object.keys(activeConfig.profileMapping),
-              });
-
               const mapping = activeConfig.profileMapping as Record<string, string>;
               const oidcProfile = profile as Record<string, unknown>;
 
-              // Sync department
               if (mapping.department && oidcProfile[mapping.department]) {
                 const dept = String(oidcProfile[mapping.department]);
                 if (dept && dept !== targetUser.department) {
                   updateData.department = dept;
-                  logger.debug('[Auth] Syncing department from OIDC', {
-                    component: 'auth:signIn',
-                    claimName: mapping.department,
-                    newValue: dept,
-                    oldValue: targetUser.department,
-                  });
                 }
               }
 
-              // Sync job title
               if (mapping.jobTitle && oidcProfile[mapping.jobTitle]) {
                 const title = String(oidcProfile[mapping.jobTitle]);
                 if (title && title !== targetUser.jobTitle) {
                   updateData.jobTitle = title;
-                  logger.debug('[Auth] Syncing job title from OIDC', {
-                    component: 'auth:signIn',
-                    claimName: mapping.jobTitle,
-                    newValue: title,
-                    oldValue: targetUser.jobTitle,
-                  });
                 }
               }
 
-              // Sync avatar URL
               if (mapping.avatarUrl && oidcProfile[mapping.avatarUrl]) {
                 const avatar = String(oidcProfile[mapping.avatarUrl]);
                 let safeAvatar: string | null = null;
@@ -1042,31 +1052,17 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                 } catch {
                   safeAvatar = null;
                 }
-                // Only sync if value changed AND the current value is NOT a locally uploaded file
-                // This prevents OIDC from overwriting a user's custom uploaded photo.
                 const isLocalUpload =
                   targetUser.avatarUrl?.startsWith('/api/users/') ||
                   targetUser.avatarUrl?.startsWith('/uploads/');
 
                 if (safeAvatar && safeAvatar !== targetUser.avatarUrl && !isLocalUpload) {
                   updateData.avatarUrl = safeAvatar;
-                  logger.debug('[Auth] Syncing avatar URL from OIDC', {
-                    component: 'auth:signIn',
-                    claimName: mapping.avatarUrl,
-                    hasNewValue: !!avatar,
-                  });
                 }
               }
-              // Update lastOidcSync timestamp if any profile data was synced
+
               if (updateData.department || updateData.jobTitle || updateData.avatarUrl) {
                 updateData.lastOidcSync = new Date();
-                logger.info('[Auth] OIDC profile sync completed', {
-                  component: 'auth:signIn',
-                  userId: targetUser.id,
-                  syncedFields: Object.keys(updateData).filter(k =>
-                    ['department', 'jobTitle', 'avatarUrl'].includes(k)
-                  ),
-                });
               }
             }
 
@@ -1077,7 +1073,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
             if (Object.keys(updateData).length > 0) {
               if (updateData.role && updateData.role !== targetUser.role) {
                 const { updateUserSecurityState } = await import('@/lib/users/admin-invariants');
-                const mappedRole = updateData.role;
+                const mappedRole = updateData.role as 'ADMIN' | 'RESPONDER' | 'AUDITOR' | 'USER';
                 delete updateData.role;
                 await updateUserSecurityState(targetUser.id, { role: mappedRole }, updateData);
               } else {

@@ -166,7 +166,7 @@ describe('OIDC provider-specific email verification compatibility', () => {
     expect(result).toBe(false);
     expect(prisma.oidcLinkingApproval.findFirst).toHaveBeenCalledWith({
       where: { userId: 'u1', revokedAt: null },
-      select: { id: true },
+      select: { id: true, expiresAt: true },
     });
     expect(prisma.oidcIdentity.create).not.toHaveBeenCalled();
     expect(prisma.user.update).not.toHaveBeenCalled();

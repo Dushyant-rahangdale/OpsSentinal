@@ -30,7 +30,10 @@ function detectEnvStatus() {
   const nextPublicAppUrl = Boolean(process.env.NEXT_PUBLIC_APP_URL);
   const nextAuthUrl = Boolean(process.env.NEXTAUTH_URL);
   return {
-    encryptionKey: Boolean(process.env.ENCRYPTION_KEY),
+    // Encryption is configured when EITHER the preferred ENCRYPTION_KEYS
+    // keyring or the legacy ENCRYPTION_KEY single key is present.
+    encryptionKey: Boolean(process.env.ENCRYPTION_KEYS || process.env.ENCRYPTION_KEY),
+    encryptionKeysConfigured: Boolean(process.env.ENCRYPTION_KEYS),
     appUrl: nextPublicAppUrl || nextAuthUrl,
     nextPublicAppUrl,
     nextAuthUrl,
@@ -77,6 +80,13 @@ export default async function SystemSettingsPage() {
     const appUrl = systemSettings?.appUrl ?? null;
     const appUrlFallback =
       process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    // The redirect URI display must match what NextAuth actually uses to build
+    // the OAuth callback. NextAuth 4.x resolves the base URL from NEXTAUTH_URL
+    // first, so the displayed callback must prefer it over the DB app URL —
+    // otherwise the admin may register a redirect URI that never gets used.
+    const nextAuthBaseUrl =
+      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || (appUrl ?? appUrlFallback);
+    const ssoCallbackUrl = `${nextAuthBaseUrl.replace(/\/$/, '')}/api/auth/callback/oidc`;
 
     let oidcConfig: {
       enabled: boolean;
@@ -149,7 +159,7 @@ export default async function SystemSettingsPage() {
     const ssoTab = (
       <SsoSettingsForm
         initialConfig={oidcConfig}
-        callbackUrl={`${appUrl || appUrlFallback}/api/auth/callback/oidc`}
+        callbackUrl={ssoCallbackUrl}
         hasEncryptionKey={env.encryptionKey}
       />
     );
@@ -429,8 +439,8 @@ export default async function SystemSettingsPage() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Encryption Key Missing</AlertTitle>
             <AlertDescription>
-              The <strong>ENCRYPTION_KEY</strong> environment variable is not set. SSO secrets and
-              integration credentials cannot be stored securely.
+              Neither <strong>ENCRYPTION_KEYS</strong> nor <strong>ENCRYPTION_KEY</strong> is set in
+              the environment. SSO secrets and integration credentials cannot be stored securely.
             </AlertDescription>
           </Alert>
         )}

@@ -40,12 +40,14 @@ vi.mock('@/lib/prisma', () => {
       findFirst: vi.fn(),
     },
     $transaction: vi.fn(),
+    $queryRaw: vi.fn().mockResolvedValue([{ acquired: true }]),
   };
   mockPrisma.$transaction.mockImplementation(async callback => callback(mockPrisma));
   return { default: mockPrisma };
 });
 
 import prisma from '@/lib/prisma';
+import { getOidcConfig } from '@/lib/oidc-config';
 import { getAuthOptions, revokeUserSessions, resetAuthOptionsCache } from '@/lib/auth';
 
 describe('Auth JWT + OIDC (unit)', () => {
@@ -124,8 +126,36 @@ describe('Auth JWT + OIDC (unit)', () => {
     expect(result).toBe(false);
     expect(prisma.oidcLinkingApproval.findFirst).toHaveBeenCalledWith({
       where: { userId: 'u1', revokedAt: null },
-      select: { id: true },
+      select: { id: true, expiresAt: true },
     });
+    expect(prisma.oidcIdentity.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects first-time linking when the admin approval has expired (TTL)', async () => {
+    const authOptions = await getAuthOptions();
+    const signIn = authOptions.callbacks?.signIn as unknown as (args: any) => Promise<boolean>;
+
+    (prisma.user.findUnique as any).mockResolvedValue({
+      id: 'u1',
+      email: 'user@example.com',
+      name: 'User',
+      role: 'USER',
+      status: 'ACTIVE',
+    });
+    (prisma.oidcIdentity.findUnique as any).mockResolvedValue(null);
+    // Approval record exists but expired long ago.
+    vi.mocked(prisma.oidcLinkingApproval.findFirst).mockResolvedValue({
+      id: 'approval-record',
+      expiresAt: new Date(Date.now() - 30 * 24 * 3600_000), // 30 days ago
+    } as never);
+
+    const result = await signIn({
+      user: { email: 'user@example.com', name: 'User', id: 'oidc-sub' },
+      account: { provider: 'oidc', providerAccountId: 'oidc-sub' },
+      profile: { email_verified: true, sub: 'oidc-sub' },
+    });
+
+    expect(result).toBe(false);
     expect(prisma.oidcIdentity.create).not.toHaveBeenCalled();
   });
 
@@ -249,32 +279,97 @@ describe('Auth JWT + OIDC (unit)', () => {
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
-  it('rejects sign-in if OIDC identity is linked to another user', async () => {
+  it('identity-first: an existing (issuer, sub) link authenticates the linked user even when the token email differs (email changed)', async () => {
     const authOptions = await getAuthOptions();
     const signIn = authOptions.callbacks?.signIn as unknown as (args: any) => Promise<boolean>;
 
-    (prisma.user.findUnique as any).mockResolvedValue({
-      id: 'u2',
-      email: 'user2@example.com',
-      name: 'User2',
-      role: 'USER',
-      status: 'ACTIVE',
-    });
+    // Identity exists and is bound to u1.
     (prisma.oidcIdentity.findUnique as any).mockResolvedValue({
       id: 'id1',
       issuer: 'https://login.example.com',
       subject: 'oidc-sub',
       userId: 'u1',
     });
+    // The linked account's current email differs from the token's email claim.
+    (prisma.user.findUnique as any).mockResolvedValue({
+      id: 'u1',
+      email: 'real@example.com',
+      name: 'Real User',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    });
 
+    const user = { email: 'changed@example.com', name: 'Changed', id: 'oidc-sub' };
     const result = await signIn({
-      user: { email: 'user2@example.com', name: 'User2', id: 'oidc-sub' },
+      user,
       account: { provider: 'oidc', providerAccountId: 'oidc-sub' },
       profile: { email_verified: true, sub: 'oidc-sub' },
     });
 
-    expect(result).toBe(false);
+    // The linked user is authenticated directly — email is never used to
+    // resolve this identity. Assert the OIDC fast path does not create a
+    // second orphan user or require a link approval.
+    expect(result).toBe(true);
+    expect(prisma.oidcIdentity.findUnique).toHaveBeenCalledWith({
+      where: { issuer_subject: { issuer: 'https://login.example.com', subject: 'oidc-sub' } },
+    });
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      select: expect.any(Object),
+    });
+    expect(user.id).toBe('u1');
     expect(prisma.oidcIdentity.create).not.toHaveBeenCalled();
+  });
+
+  it('de-provisions an elevated role when no role mapping matches (IdP group removal)', async () => {
+    vi.mocked(getOidcConfig).mockResolvedValue({
+      enabled: true,
+      issuer: 'https://login.example.com/',
+      clientId: 'client-id',
+      clientSecret: 'secret',
+      autoProvision: true,
+      allowedDomains: [],
+      roleMapping: [
+        { claim: 'groups', value: 'admins', role: 'ADMIN' },
+        { claim: 'groups', value: 'responders', role: 'RESPONDER' },
+      ],
+      customScopes: 'groups',
+      profileMapping: null,
+    } as never);
+    resetAuthOptionsCache();
+
+    const authOptions = await getAuthOptions();
+    const signIn = authOptions.callbacks?.signIn as unknown as (args: any) => Promise<boolean>;
+
+    // Use a RESPONDER-elevated user (state was responder via groups=responders;
+    // that group was then removed).  A non-ADMIN role avoids the
+    // last-admin-guard transaction in `updateUserSecurityState`, which requires
+    // a `$queryRaw` advisory lock unavailable in the unit mock.
+    (prisma.oidcIdentity.findUnique as any).mockResolvedValue({
+      id: 'id1',
+      issuer: 'https://login.example.com',
+      subject: 'oidc-sub',
+      userId: 'u-responder',
+    });
+    (prisma.user.findUnique as any).mockResolvedValue({
+      id: 'u-responder',
+      email: 'user@example.com',
+      name: 'User',
+      role: 'RESPONDER',
+      status: 'ACTIVE',
+      department: null,
+      jobTitle: null,
+      avatarUrl: null,
+    });
+
+    const result = await signIn({
+      user: { email: 'user@example.com', name: 'User', id: 'oidc-sub' },
+      account: { provider: 'oidc', providerAccountId: 'oidc-sub' },
+      // No groups claim matching any rule — the responder group was removed.
+      profile: { email_verified: true, sub: 'oidc-sub', groups: ['everyone'] },
+    });
+
+    expect(result).toBe(true);
   });
 
   it('jwt callback prefers OIDC identity mapping over email mapping', async () => {

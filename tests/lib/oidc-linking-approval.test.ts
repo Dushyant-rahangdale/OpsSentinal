@@ -54,12 +54,31 @@ describe('OIDC linking approval management', () => {
     const result = await allowOidcLinking('user-1');
 
     expect(result).toEqual({ success: true, state: 'approved' });
-    expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalledWith({
-      where: { userId: 'user-1' },
-      create: { userId: 'user-1', approvedById: 'admin-1' },
-      update: expect.objectContaining({ approvedById: 'admin-1', revokedAt: null }),
-    });
+    expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user-1' },
+        create: expect.objectContaining({
+          userId: 'user-1',
+          approvedById: 'admin-1',
+          expiresAt: expect.any(Date),
+        }),
+        update: expect.objectContaining({ approvedById: 'admin-1', revokedAt: null }),
+      })
+    );
     expect(prisma.user.update).toBeUndefined();
+  });
+
+  it('allows approval for an INVITED user (Entra invited-account first link)', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'user-invited',
+      email: 'invited@example.com',
+      status: 'INVITED',
+    } as never);
+
+    const result = await allowOidcLinking('user-invited');
+
+    expect(result).toEqual({ success: true, state: 'approved' });
+    expect(prisma.oidcLinkingApproval.upsert).toHaveBeenCalled();
   });
 
   it('reports approved when provisioning evidence already exists', async () => {
@@ -127,10 +146,10 @@ describe('OIDC linking approval management', () => {
     const revokeResult = await revokeOidcLinking('user-1');
 
     expect(allowResult).toEqual({
-      error: 'OIDC linking approval can only be managed for active users.',
+      error: 'OIDC linking approval can only be managed for active or invited users.',
     });
     expect(revokeResult).toEqual({
-      error: 'OIDC linking approval can only be managed for active users.',
+      error: 'OIDC linking approval can only be managed for active or invited users.',
     });
     expect(prisma.oidcLinkingApproval.upsert).not.toHaveBeenCalled();
     expect(prisma.oidcLinkingApproval.updateMany).not.toHaveBeenCalled();

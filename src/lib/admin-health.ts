@@ -1174,8 +1174,13 @@ async function collectAdminHealthUncached(): Promise<AdminHealthReport> {
     }
   }
 
-  const encryptionKey = process.env.ENCRYPTION_KEY;
-  const encryptionValid = Boolean(encryptionKey && /^[0-9a-f]{64}$/i.test(encryptionKey));
+  const encryptionKey = process.env.ENCRYPTION_KEYS || process.env.ENCRYPTION_KEY;
+  const encryptionValid = Boolean(
+    encryptionKey &&
+    /^([0-9a-f]{64}|[A-Za-z0-9._-]{1,64}:[0-9a-f]{64}(,[A-Za-z0-9._-]{1,64}:[0-9a-f]{64})*)$/i.test(
+      encryptionKey
+    )
+  );
   checks.push({
     id: 'encryption',
     label: 'Encryption configuration',
@@ -1188,16 +1193,16 @@ async function collectAdminHealthUncached(): Promise<AdminHealthReport> {
         ? 'degraded'
         : 'unhealthy',
     summary: encryptionValid
-      ? 'A valid 32-byte hexadecimal encryption key is configured.'
-      : 'A valid ENCRYPTION_KEY is not configured.',
+      ? 'A valid 32-byte hexadecimal encryption key (or keyring) is configured.'
+      : 'A valid ENCRYPTION_KEYS / ENCRYPTION_KEY is not configured.',
     details: ['Key material and fingerprints are never displayed on this page.'],
     commandSnippet: !encryptionValid
       ? {
           command: 'openssl rand -hex 32',
-          description: 'Generate 32-byte hexadecimal key for ENCRYPTION_KEY',
+          description: 'Generate 32-byte hexadecimal key for ENCRYPTION_KEYS or ENCRYPTION_KEY',
           steps: [
             'Generate a secure 32-byte hexadecimal key with "openssl rand -hex 32".',
-            'Set "ENCRYPTION_KEY=<generated-key>" in your deployment environment.',
+            'Set "ENCRYPTION_KEYS=k1:<generated-key>" or "ENCRYPTION_KEY=<generated-key>" in your deployment environment.',
             'Restart the OpsKnight application service.',
           ],
         }

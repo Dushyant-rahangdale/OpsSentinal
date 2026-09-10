@@ -75,13 +75,15 @@ function detectProviderType(issuerUrl: string): string {
     hostname === 'googleapis.com' ||
     hostname.endsWith('.google.com') ||
     hostname.endsWith('.googleapis.com')
-  ) return 'google';
+  )
+    return 'google';
   if (
     hostname === 'okta.com' ||
     hostname.endsWith('.okta.com') ||
     hostname.endsWith('.okta-emea.com') ||
     hostname.includes('.okta.')
-  ) return 'okta';
+  )
+    return 'okta';
   const azureHosts = [
     'login.microsoftonline.com',
     'login.microsoft.com',
@@ -116,13 +118,14 @@ export async function saveOidcConfig(
     const clientSecret = (formData.get('clientSecret') as string | null)?.trim() ?? '';
     const enabledValue = formData.get('enabled');
     const autoProvisionValue = formData.get('autoProvision');
-    const enabled =
-      enabledValue === 'on' || enabledValue === 'true' || enabledValue === 'checked';
+    const enabled = enabledValue === 'on' || enabledValue === 'true' || enabledValue === 'checked';
     const autoProvision =
       autoProvisionValue === 'on' ||
       autoProvisionValue === 'true' ||
       autoProvisionValue === 'checked';
-    const allowedDomains = normalizeDomains((formData.get('allowedDomains') as string | null) ?? '');
+    const allowedDomains = normalizeDomains(
+      (formData.get('allowedDomains') as string | null) ?? ''
+    );
     const customScopes = (formData.get('customScopes') as string | null)?.trim() ?? null;
     const providerLabel = (formData.get('providerLabel') as string | null)?.trim() ?? null;
 
@@ -303,6 +306,11 @@ export async function saveOidcConfig(
 
     const { resetAuthOptionsCache } = await import('@/lib/auth');
     resetAuthOptionsCache();
+    // Invalidate the OIDC config caches too — the freshly saved issuer,
+    // client secret and enabled state must take effect immediately rather
+    // than remaining stale for several seconds.
+    const { resetOidcConfigCache } = await import('@/lib/oidc-config');
+    resetOidcConfigCache();
     revalidatePath('/settings/security');
     revalidatePath('/settings/system');
     revalidatePath('/login');

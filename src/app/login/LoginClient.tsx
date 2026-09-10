@@ -11,6 +11,7 @@ import HelloGreeting from '@/components/auth/HelloGreeting';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { purgeBrowserAuthCaches } from '@/lib/auth-cache-purge';
+import { sanitizeCallbackUrl } from '@/lib/callback-url';
 
 type Props = {
   callbackUrl: string;
@@ -112,14 +113,9 @@ export default function LoginClient({
         // redirect:false) is unreliable — depending on the original
         // callbackUrl it can come back pointing at the signin page
         // itself, breaking the post-login navigation. Use the
-        // validated `callbackUrl` prop, guarded against /login loop.
-        const safeTarget =
-          callbackUrl &&
-          callbackUrl.startsWith('/') &&
-          !callbackUrl.startsWith('/login') &&
-          !callbackUrl.includes('/auth/signout')
-            ? callbackUrl
-            : '/';
+        // validated `callbackUrl` prop, guarded by the shared
+        // same-origin sanitizer (blocks //evil.example, /login, signout).
+        const safeTarget = sanitizeCallbackUrl(callbackUrl);
 
         // Purge any stale Service Worker dynamic/RSC caches immediately
         void purgeBrowserAuthCaches();
