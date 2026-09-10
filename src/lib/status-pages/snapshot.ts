@@ -296,6 +296,15 @@ export type StatusPagePublishOptions = {
 };
 
 const DEFAULT_PUBLISH_BUDGET_MS = 30_000;
+const DEFAULT_SNAPSHOT_MAX_BYTES = 5 * 1024 * 1024;
+
+function snapshotByteLimit() {
+  const configured = Number(process.env.STATUS_PAGE_SNAPSHOT_MAX_BYTES);
+  // A malformed environment setting must not silently remove the guardrail. The upper bound is
+  // deliberately finite: a public snapshot is an API response, not an archival transport.
+  if (!Number.isFinite(configured)) return DEFAULT_SNAPSHOT_MAX_BYTES;
+  return Math.max(256 * 1024, Math.min(20 * 1024 * 1024, Math.floor(configured)));
+}
 
 /** A PostgreSQL lease prevents simultaneous builders; revision CAS rejects a stale build. */
 export async function rebuildStatusPageSnapshot(pageId: string) {
@@ -353,6 +362,11 @@ export async function publishStatusPageSnapshot(
         { phase: 'serving_store' }
       );
     } catch (error) {
+      // The database candidate is already committed at this point. Persist the store error here
+      // so reconciliation retries it on its next pass instead of waiting for the age-based
+      // refresh interval. This does not revoke the last good manifest or weaken fail-closed
+      // privacy decisions; it only makes the retry observable and prompt.
+      await recordSnapshotPublicationError(pageId, error);
       return { kind: 'failed', error };
     }
     observeOperationalHistogram(
@@ -396,10 +410,17 @@ async function buildAndCommitSnapshot(
       { phase: 'read' }
     );
     if (snapshot) {
+      const bytes = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
       setOperationalGauge(
         'opsknight_status_page_snapshot_bytes',
-        Buffer.byteLength(JSON.stringify(snapshot), 'utf8')
+        bytes
       );
+      const maxBytes = snapshotByteLimit();
+      if (bytes > maxBytes) {
+        throw new Error(
+          `Status snapshot is ${bytes} bytes, exceeding the ${maxBytes}-byte publication limit.`
+        );
+      }
     }
     const commitStartedAt = Date.now();
     const committed = await commitSnapshotCandidate(pageId, lease, snapshot);
@@ -408,7 +429,13 @@ async function buildAndCommitSnapshot(
       (Date.now() - commitStartedAt) / 1_000,
       { phase: 'commit' }
     );
-    if (!committed) return 'superseded';
+    if (!committed) {
+      // A source write advanced the revision while the candidate was being built. The lease is
+      // still ours, so clear it before returning: the newer revision can start immediately
+      // instead of waiting for this bounded lease to expire.
+      await releaseSnapshotBuildLease(pageId, lease.token);
+      return 'superseded';
+    }
     return { snapshot, revision: lease.revision.toString() };
   } catch (error) {
     await releaseSnapshotBuildLease(pageId, lease.token);
@@ -461,6 +488,15 @@ async function releaseSnapshotBuildLease(pageId: string, token: string) {
     UPDATE "StatusPageSnapshot"
     SET "buildLeaseToken" = NULL, "buildLeaseExpiresAt" = NULL
     WHERE "statusPageId" = ${pageId} AND "buildLeaseToken" = ${token}
+  `;
+}
+
+async function recordSnapshotPublicationError(pageId: string, error: unknown) {
+  const message = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+  await prisma.$executeRaw`
+    UPDATE "StatusPageSnapshot"
+       SET "lastError" = ${message}
+     WHERE "statusPageId" = ${pageId}
   `;
 }
 
@@ -541,7 +577,9 @@ export async function reconcileStatusPageSnapshots(limit = 10) {
   >`
     SELECT "statusPageId", "servingState", ("publishedRevision" <> "revision") AS "dirty"
     FROM "StatusPageSnapshot"
-    WHERE "publishedRevision" <> "revision" OR "generatedAt" < NOW() - INTERVAL '1 minute'
+    WHERE "publishedRevision" <> "revision"
+       OR "lastError" IS NOT NULL
+       OR "generatedAt" < NOW() - INTERVAL '1 minute'
     ORDER BY "generatedAt" ASC NULLS FIRST LIMIT ${Math.max(1, Math.min(50, limit))}
   `;
   let rebuilt = 0;
