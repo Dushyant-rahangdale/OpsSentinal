@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { randomBytes, createHash } from 'crypto';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { getAppUrl } from '@/lib/app-url';
@@ -9,6 +8,8 @@ import { logger, withRequestContext } from '@/lib/logger';
 import { assertAdmin } from '@/lib/rbac';
 import { getClientIp } from '@/lib/client-ip';
 import { emitAuditEvent } from '@/lib/audit';
+import { checkRateLimit, issuePasswordResetToken } from '@/lib/password-reset';
+import { readJsonBodyWithLimit } from '@/lib/request-body';
 
 const schema = z.object({ userId: z.string().trim().min(1).max(128) }).strict();
 
@@ -16,23 +17,12 @@ async function postGenerateResetLink(req: NextRequest) {
   try {
     const sessionUser = await assertAdmin();
     const ip = getClientIp(req.headers);
-    const { checkRateLimit } = await import('@/lib/password-reset');
 
     await checkRateLimit(sessionUser.email, ip, 'ADMIN_GENERATED_RESET_LINK');
 
-    const contentLength = Number(req.headers.get('content-length') || '0');
-    if (Number.isFinite(contentLength) && contentLength > 4096) {
-      return jsonError(
-        new AppError({
-          code: 'VALIDATION_FAILED',
-          userMessage: 'Please check your input and try again.',
-        })
-      );
-    }
-
     let body: unknown;
     try {
-      body = await req.json();
+      body = await readJsonBodyWithLimit(req, 4096);
     } catch {
       return jsonError(
         new AppError({
@@ -67,29 +57,10 @@ async function postGenerateResetLink(req: NextRequest) {
       );
     }
 
-    const token = randomBytes(32).toString('base64url');
-    const tokenHash = createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-    const identifier = user.email.toLowerCase();
-
-    await prisma.$transaction(async tx => {
-      await tx.userToken.deleteMany({
-        where: {
-          type: 'PASSWORD_RESET',
-          usedAt: null,
-          OR: [{ userId: user.id }, { identifier }],
-        },
-      });
-      await tx.userToken.create({
-        data: {
-          identifier: user.id,
-          userId: user.id,
-          type: 'PASSWORD_RESET',
-          tokenHash,
-          expiresAt,
-          metadata: { generatedBy: sessionUser.id },
-        },
-      });
+    const { token } = await issuePasswordResetToken({
+      userId: user.id,
+      email: user.email,
+      metadata: { generatedBy: sessionUser.id },
     });
 
     // Session revocation occurs atomically with the eventual password mutation,
