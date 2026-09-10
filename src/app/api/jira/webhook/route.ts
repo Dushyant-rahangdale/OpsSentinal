@@ -142,6 +142,20 @@ async function postJiraWebhook(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Enforce integration enabled state: reject webhooks when Jira is disabled.
+    // This prevents stale webhooks from modifying data after an admin disables the integration.
+    const jiraConfig = await prisma.jiraConfig.findUnique({
+      where: { id: 'default' },
+      select: { enabled: true },
+    });
+    if (!jiraConfig?.enabled) {
+      logger.info('Jira webhook rejected: integration is disabled', {
+        component: 'jira-webhook',
+      });
+      // Return 200 to avoid Jira retry storms, but don't process
+      return NextResponse.json({ ok: true, updated: 0, reason: 'integration_disabled' });
+    }
+
     let body: unknown;
     try {
       body = JSON.parse(await readIntegrationBody(request));

@@ -20,6 +20,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { cn } from '@/lib/utils';
 import { Calendar, Pencil, Trash2, Plus } from 'lucide-react';
 import type { ActionItem } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
 
 interface PostmortemActionItemsProps {
@@ -33,6 +34,7 @@ interface PostmortemActionItemsProps {
     avatarUrl?: string | null;
     gender?: string | null;
   }>;
+  jiraCapability: JiraCapability;
 }
 
 import { ACTION_ITEM_STATUS_CONFIG, ACTION_ITEM_PRIORITY_CONFIG } from './shared';
@@ -42,9 +44,11 @@ export default function PostmortemActionItems({
   onChange,
   canManage = true,
   users = [],
+  jiraCapability,
 }: PostmortemActionItemsProps) {
   const { userTimeZone } = useTimezone();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftItemIds, setDraftItemIds] = useState<Set<string>>(() => new Set());
   const [newItem, setNewItem] = useState<Partial<ActionItem>>({
     status: 'OPEN',
     priority: 'MEDIUM',
@@ -53,8 +57,9 @@ export default function PostmortemActionItems({
   const addItem = () => {
     if (!newItem.title) return;
 
+    const itemId = `action-${Date.now()}`;
     const item: ActionItem = {
-      id: `action-${Date.now()}`,
+      id: itemId,
       title: newItem.title,
       description: newItem.description || '',
       owner: newItem.owner,
@@ -63,6 +68,11 @@ export default function PostmortemActionItems({
       priority: newItem.priority || 'MEDIUM',
     };
 
+    setDraftItemIds(previous => {
+      const next = new Set(previous);
+      next.add(itemId);
+      return next;
+    });
     onChange([...actionItems, item]);
     setNewItem({
       status: 'OPEN',
@@ -75,6 +85,12 @@ export default function PostmortemActionItems({
   };
 
   const deleteItem = (id: string) => {
+    setDraftItemIds(previous => {
+      if (!previous.has(id)) return previous;
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
     onChange(actionItems.filter(item => item.id !== id));
   };
 
@@ -212,6 +228,7 @@ export default function PostmortemActionItems({
           {actionItems.map(item => {
             const isOverdue =
               item.dueDate && new Date(item.dueDate) < new Date() && item.status !== 'COMPLETED';
+            const isPersisted = !draftItemIds.has(item.id);
             const owner = users.find(u => u.id === item.owner);
             const statusConfig =
               ACTION_ITEM_STATUS_CONFIG[item.status as keyof typeof ACTION_ITEM_STATUS_CONFIG] ||
@@ -249,14 +266,17 @@ export default function PostmortemActionItems({
                         )}
                       </div>
                       <h4 className="text-base font-semibold mb-1">{item.title}</h4>
-                      <div className="my-1">
-                        <ActionItemJiraBadge
-                          actionItemId={item.id}
-                          externalIssue={item.externalIssue}
-                          canManage={canManage}
-                          compact
-                        />
-                      </div>
+                      {isPersisted && (
+                        <div className="my-1">
+                          <ActionItemJiraBadge
+                            actionItemId={item.id}
+                            externalIssue={item.externalIssue}
+                            canManage={canManage}
+                            compact
+                            jiraCapability={jiraCapability}
+                          />
+                        </div>
+                      )}
                       {item.description && (
                         <p className="text-sm text-muted-foreground mb-1">{item.description}</p>
                       )}

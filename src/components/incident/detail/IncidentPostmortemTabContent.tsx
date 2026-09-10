@@ -28,6 +28,7 @@ import {
   ACTION_ITEM_PRIORITY_CONFIG,
 } from '@/components/postmortem/shared';
 import { normalizeLegacyActionItems, type ActionItem } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 import ActionItemJiraBadge from '@/components/action-items/ActionItemJiraBadge';
 import DueDateBadge from '@/components/action-items/DueDateBadge';
 
@@ -82,6 +83,8 @@ export type IncidentPostmortemTabContentProps = {
       }>;
     }>;
   } | null;
+  /** Mandatory capability contract for persisted action-item Jira surfaces. */
+  jiraCapability: JiraCapability;
 };
 
 export default function IncidentPostmortemTabContent({
@@ -92,6 +95,7 @@ export default function IncidentPostmortemTabContent({
   noteCount,
   users = [],
   postmortem,
+  jiraCapability,
 }: IncidentPostmortemTabContentProps) {
   const { userTimeZone } = useTimezone();
   const isResolved = incidentStatus === 'RESOLVED';
@@ -307,6 +311,7 @@ export default function IncidentPostmortemTabContent({
                           externalIssue={item.externalIssue}
                           canManage={canManage}
                           compact
+                          jiraCapability={jiraCapability}
                         />
                       )}
 

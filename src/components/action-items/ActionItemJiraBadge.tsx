@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { ExternalLink, Link2, Loader2, Plus, RefreshCw, Tickets, Trash2 } from 'lucide-react';
@@ -12,6 +11,7 @@ import {
   syncActionItemJiraIssue,
 } from '@/app/(app)/action-items/jira/actions';
 import type { ActionItemExternalIssue } from '@/lib/action-items';
+import type { JiraCapability } from '@/lib/jira-capabilities';
 
 function statusColor(status: string | undefined): string {
   if (!status) return 'bg-slate-100 text-slate-600';
@@ -29,13 +29,15 @@ interface ActionItemJiraBadgeProps {
   externalIssue?: ActionItemExternalIssue;
   canManage: boolean;
   compact?: boolean;
+  /** Mandatory centralized capability contract for every persisted action-item Jira surface. */
+  jiraCapability: JiraCapability;
 }
 
 export default function ActionItemJiraBadge({
   actionItemId,
   externalIssue,
-  canManage,
   compact = false,
+  jiraCapability,
 }: ActionItemJiraBadgeProps) {
   const [isPending, startTransition] = useTransition();
   const [showLinkForm, setShowLinkForm] = useState(false);
@@ -43,7 +45,13 @@ export default function ActionItemJiraBadge({
   const [error, setError] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
 
-  // If there's a linked issue, show it as a badge
+  const showSync = jiraCapability.canSync;
+  const showUnlink = jiraCapability.canUnlink;
+  const showCreate = jiraCapability.canCreate;
+  const showLink = jiraCapability.canLink;
+  const showAnyAction = jiraCapability.showOperationalJira;
+
+  // Preserve existing Jira references as read-only when Jira is disabled or unavailable.
   if (externalIssue) {
     return (
       <div
@@ -70,36 +78,40 @@ export default function ActionItemJiraBadge({
           )}
           <ExternalLink className="h-2.5 w-2.5 opacity-50" />
         </a>
-        {canManage && showActions && (
+        {showAnyAction && showActions && (
           <div className="inline-flex items-center gap-0.5">
-            <button
-              className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-slate-100 transition-colors"
-              onClick={() => {
-                setError(null);
-                startTransition(async () => {
-                  const res = await syncActionItemJiraIssue(externalIssue.linkId);
-                  if (!res.success && res.error) setError(res.error);
-                });
-              }}
-              disabled={isPending}
-              title="Sync status"
-            >
-              <RefreshCw className={`h-3 w-3 ${isPending ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-red-50 transition-colors"
-              onClick={() => {
-                setError(null);
-                startTransition(async () => {
-                  const res = await unlinkJiraIssueFromActionItem(externalIssue.linkId);
-                  if (!res.success && res.error) setError(res.error);
-                });
-              }}
-              disabled={isPending}
-              title="Unlink"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
+            {showSync && (
+              <button
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-slate-100 transition-colors"
+                onClick={() => {
+                  setError(null);
+                  startTransition(async () => {
+                    const res = await syncActionItemJiraIssue(actionItemId, externalIssue.linkId);
+                    if (!res.success && res.error) setError(res.error);
+                  });
+                }}
+                disabled={isPending}
+                title="Sync status"
+              >
+                <RefreshCw className={`h-3 w-3 ${isPending ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+            {showUnlink && (
+              <button
+                className="rounded p-0.5 text-muted-foreground hover:text-destructive hover:bg-red-50 transition-colors"
+                onClick={() => {
+                  setError(null);
+                  startTransition(async () => {
+                    const res = await unlinkJiraIssueFromActionItem(actionItemId, externalIssue.linkId);
+                    if (!res.success && res.error) setError(res.error);
+                  });
+                }}
+                disabled={isPending}
+                title="Unlink"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
           </div>
         )}
         {error && <span className="text-xs text-destructive">{error}</span>}
@@ -107,11 +119,10 @@ export default function ActionItemJiraBadge({
     );
   }
 
-  // No linked issue — show create/link options
-  if (!canManage) return null;
+  if (!showAnyAction) return null;
 
   const handleLinkSubmit = () => {
-    if (!linkKey.trim()) return;
+    if (!showLink || !linkKey.trim()) return;
     setError(null);
     startTransition(async () => {
       const res = await linkJiraIssueToActionItem(actionItemId, linkKey.trim());
@@ -124,20 +135,20 @@ export default function ActionItemJiraBadge({
     });
   };
 
-  if (showLinkForm) {
+  if (showLinkForm && showLink) {
     return (
       <div className="inline-flex items-center gap-1.5" onClick={event => event.stopPropagation()}>
         <Input
           value={linkKey}
-          onChange={e => setLinkKey(e.target.value)}
+          onChange={event => setLinkKey(event.target.value)}
           placeholder="KEY-123"
           className="h-6 w-24 text-xs px-1.5"
           disabled={isPending}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
               handleLinkSubmit();
-            } else if (e.key === 'Escape') {
+            } else if (event.key === 'Escape') {
               setShowLinkForm(false);
               setLinkKey('');
             }
@@ -159,38 +170,34 @@ export default function ActionItemJiraBadge({
 
   return (
     <div className="inline-flex items-center gap-1" onClick={event => event.stopPropagation()}>
-      <button
-        className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-        onClick={() => {
-          setError(null);
-          startTransition(async () => {
-            const res = await createJiraIssueFromActionItem(actionItemId);
-            if (!res.success && res.error) setError(res.error);
-          });
-        }}
-        disabled={isPending}
-        title="Create Jira issue"
-      >
-        {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-        Create Jira
-      </button>
-      <button
-        className="rounded p-0.5 text-muted-foreground hover:text-blue-600 transition-colors"
-        onClick={() => setShowLinkForm(true)}
-        disabled={isPending}
-        title="Link existing Jira issue"
-      >
-        <Link2 className="h-3 w-3" />
-      </button>
-      {error && <span className="text-xs text-destructive ml-1">{error}</span>}
-      {error?.includes('not configured') && (
-        <Link
-          href="/settings/integrations/jira"
-          className="text-[10px] font-medium text-blue-600 hover:underline"
+      {showCreate && (
+        <button
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          onClick={() => {
+            setError(null);
+            startTransition(async () => {
+              const res = await createJiraIssueFromActionItem(actionItemId);
+              if (!res.success && res.error) setError(res.error);
+            });
+          }}
+          disabled={isPending}
+          title="Create Jira issue"
         >
-          Configure
-        </Link>
+          {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+          Create Jira
+        </button>
       )}
+      {showLink && (
+        <button
+          className="rounded p-0.5 text-muted-foreground hover:text-blue-600 transition-colors"
+          onClick={() => setShowLinkForm(true)}
+          disabled={isPending}
+          title="Link existing Jira issue"
+        >
+          <Link2 className="h-3 w-3" />
+        </button>
+      )}
+      {error && <span className="text-xs text-destructive ml-1">{error}</span>}
     </div>
   );
 }

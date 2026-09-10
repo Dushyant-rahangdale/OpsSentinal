@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Alert, AlertDescription } from '@/components/ui/shadcn/alert';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { getJiraCapabilities } from '@/lib/jira-capabilities';
 
 export default async function PostmortemPage({
   params,
@@ -36,10 +37,19 @@ export default async function PostmortemPage({
     getCurrentAuthorizationActor(),
   ]);
   const canEdit = permissions.isResponderOrAbove;
-  // All users can view published postmortems, but only responders+ can edit
   const canView = postmortem ? postmortem.status === 'PUBLISHED' || canEdit : canEdit;
 
-  // Get users for action items assignment
+  // A postmortem belongs to exactly one incident/service. Resolve Jira capabilities
+  // from that concrete, authorization-scoped service instead of a workspace approximation.
+  const incidentService = await prisma.incident.findFirst({
+    where: { AND: [incidentReadWhere(actor), { id: incidentId }] },
+    select: { serviceId: true },
+  });
+  const jiraCapability = await getJiraCapabilities({
+    serviceId: incidentService?.serviceId ?? null,
+    canManage: canEdit,
+  });
+
   const users = await prisma.user.findMany({
     where: { AND: [{ status: 'ACTIVE' }, dashboardUserReadWhere(actor)] },
     select: { id: true, name: true, email: true },
@@ -47,8 +57,6 @@ export default async function PostmortemPage({
   });
 
   if (!postmortem) {
-    // Check if incident exists and is resolved
-    const prisma = (await import('@/lib/prisma')).default;
     const incident = await prisma.incident.findFirst({
       where: { AND: [incidentReadWhere(actor), { id: incidentId }] },
       select: { id: true, title: true, status: true },
@@ -76,7 +84,6 @@ export default async function PostmortemPage({
       );
     }
 
-    // Show create form for new postmortem
     return (
       <div className="p-6">
         <div className="mb-6">
@@ -92,7 +99,7 @@ export default async function PostmortemPage({
         </div>
 
         {canEdit ? (
-          <PostmortemForm incidentId={incidentId} users={users} />
+          <PostmortemForm incidentId={incidentId} users={users} jiraCapability={jiraCapability} />
         ) : (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -105,7 +112,6 @@ export default async function PostmortemPage({
     );
   }
 
-  // Show existing postmortem
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -130,13 +136,19 @@ export default async function PostmortemPage({
 
       {canView ? (
         editMode && canEdit ? (
-          <PostmortemForm incidentId={incidentId} initialData={postmortem} users={users} />
+          <PostmortemForm
+            incidentId={incidentId}
+            initialData={postmortem}
+            users={users}
+            jiraCapability={jiraCapability}
+          />
         ) : (
           <PostmortemDetailView
             postmortem={postmortem}
             users={users}
             canEdit={canEdit}
             incidentId={incidentId}
+            jiraCapability={jiraCapability}
           />
         )
       ) : (
