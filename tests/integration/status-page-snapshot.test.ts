@@ -9,6 +9,7 @@ import {
 } from '../helpers/test-db';
 import {
   getStatusPageSnapshot,
+  publishStatusPageSnapshot,
   rebuildStatusPageSnapshot,
   readStatusPageSnapshot,
 } from '@/lib/status-pages/snapshot';
@@ -26,7 +27,13 @@ vi.mock('@/lib/status-pages/history-query', async importOriginal => {
 });
 
 describe('durable status page projections', () => {
-  beforeEach(resetDatabase);
+  beforeEach(async () => {
+    await resetDatabase();
+    // mockClear does not drop mockRejectedValueOnce. A leftover once-impl would make the next
+    // history-loading rebuild return false with no Prisma error.
+    const { loadHistoryIncidentsByService } = await import('@/lib/status-pages/history-query');
+    vi.mocked(loadHistoryIncidentsByService).mockReset();
+  });
 
   it('creates a dirty projection with the page and publishes no unmapped service', async () => {
     const page = await createTestStatusPage({ enabled: true });
@@ -79,7 +86,7 @@ describe('durable status page projections', () => {
     expect(JSON.stringify(await readStatusPageSnapshot(page.id))).toContain('Public failure');
   });
 
-  it('fails closed when a privacy-tightening rebuild throws', async () => {
+  it('fails closed when a privacy-tightening invalidation has not been rebuilt', async () => {
     const page = await createTestStatusPage({
       enabled: true,
       showMetrics: true,
@@ -96,11 +103,9 @@ describe('durable status page projections', () => {
       where: { id: incident.id },
       data: { visibility: 'PRIVATE' },
     });
-    const { loadHistoryIncidentsByService } = await import('@/lib/status-pages/history-query');
-    vi.mocked(loadHistoryIncidentsByService).mockRejectedValueOnce(
-      new Error('projection unavailable')
-    );
 
+    // Dirty + still-LIVE is fail-closed. getStatusPageSnapshot does not rebuild, so a history
+    // mock here would never run and would leak into later tests via mockRejectedValueOnce.
     expect(await getStatusPageSnapshot(page.id)).toEqual({
       snapshot: null,
       stale: true,
@@ -140,7 +145,10 @@ describe('durable status page projections', () => {
         affectedServiceIds: [service.id],
       },
     });
-    expect(await rebuildStatusPageSnapshot(page.id)).toBe(true);
+    const outcome = await publishStatusPageSnapshot(page.id);
+    expect(outcome.kind, outcome.kind === 'failed' ? String(outcome.error) : outcome.kind).toBe(
+      'published'
+    );
     const snapshot = await readStatusPageSnapshot(page.id);
     expect(snapshot?.services[0]?.status).toBe('OPERATIONAL');
     expect(snapshot?.status).toBe(snapshot?.overall.status);
