@@ -322,14 +322,16 @@ export function buildPreviewSnapshot(input: {
     regions: aggregatePublicRegions(services),
     incidents,
     ...(maintenanceEntries.length ? { maintenance: maintenanceEntries } : {}),
-    announcements: input.announcements.map(item => ({
-      id: item.id,
-      title: item.title,
-      message: item.message,
-      type: item.type ?? 'INFO',
-      startDate: iso(item.startDate) ?? now.toISOString(),
-      endDate: iso(item.endDate) ?? null,
-    })),
+    announcements: input.announcements
+      .filter(item => (item.type ?? 'INFO') !== 'MAINTENANCE' && (item.type ?? 'INFO') !== 'UPDATE')
+      .map(item => ({
+        id: item.id,
+        title: item.title,
+        message: item.message,
+        type: item.type ?? 'INFO',
+        startDate: iso(item.startDate) ?? now.toISOString(),
+        endDate: iso(item.endDate) ?? null,
+      })),
     ...(changelogEntries ? { changelog: changelogEntries } : {}),
     freshness: {
       generatedAt: now.toISOString(),

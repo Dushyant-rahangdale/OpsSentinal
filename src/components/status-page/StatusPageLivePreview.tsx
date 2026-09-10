@@ -375,7 +375,6 @@ export default function StatusPageLivePreview({
           snapshot={previewSnapshot}
           styleMode="inherited"
           subscribeEnabled={false}
-          uiVersion="v3"
         />
       </div>
     </main>

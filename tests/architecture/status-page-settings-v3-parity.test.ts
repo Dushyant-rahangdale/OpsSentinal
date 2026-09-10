@@ -52,6 +52,21 @@ describe('status-page settings Γåö V3 parity', () => {
     }
   });
 
+  it('keeps every status-page chrome/presentation field in the branding projector', () => {
+    const source = read('src/lib/status-pages/branding.ts');
+    for (const flag of [
+      'layout',
+      'showHeader',
+      'showFooter',
+      'autoRefresh',
+      'refreshInterval',
+      'showApiLink',
+      'showRssLink',
+    ]) {
+      expect(source.includes(flag), `branding projector must preserve ${flag}`).toBe(true);
+    }
+  });
+
   it('keeps every page-level toggle wired into the projector', () => {
     const source = read('src/lib/status-pages/snapshot.ts');
     for (const flag of [
@@ -67,5 +82,11 @@ describe('status-page settings Γåö V3 parity', () => {
     ]) {
       expect(source.includes(flag), `projector must consume ${flag}`).toBe(true);
     }
+  });
+
+  it('does not read daily rollups on the snapshot path', () => {
+    const source = read('src/lib/status-pages/snapshot.ts');
+    expect(source.includes('rollup-store')).toBe(false);
+    expect(source.includes('rollup-engine')).toBe(false);
   });
 });

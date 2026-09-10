@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildServiceHealthSegments,
   clipHealthSegments,
+  healthAt,
   healthSegmentsToPublic,
+  serviceAvailability,
   serviceUptimePercent,
 } from '@/lib/status-pages/availability-engine';
 
@@ -104,6 +106,63 @@ describe('canonical availability engine', () => {
     expect(serviceUptimePercent(segments, start, end)).toBeCloseTo((1 - 0.5 / 24) * 100, 5);
   });
 
+  it('does not treat an empty affected-service list as "no services"', () => {
+    const segments = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [],
+      maintenance: [
+        {
+          startDate: new Date('2026-09-09T03:00:00Z'),
+          endDate: new Date('2026-09-09T05:00:00Z'),
+          affectedServiceIds: [],
+        },
+      ],
+      start,
+      end,
+    });
+    expect(healthSegmentsToPublic(segments)[0]?.status).toBe('MAINTENANCE');
+  });
+
+  it('never reports 100% availability for a fully UNKNOWN window', () => {
+    const segments = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [
+        {
+          serviceId: 'api',
+          status: 'OPEN',
+          urgency: 'UNEXPECTED',
+          createdAt: start,
+          resolvedAt: end,
+        },
+      ],
+      maintenance: [],
+      start,
+      end,
+    });
+    expect(healthSegmentsToPublic(segments)[0]?.status).toBe('UNKNOWN');
+    expect(serviceUptimePercent(segments, start, end)).toBeNull();
+  });
+
+  it('uses current status from the same merged intervals as history', () => {
+    const segments = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [
+        {
+          serviceId: 'api',
+          status: 'OPEN',
+          urgency: 'HIGH',
+          createdAt: new Date('2026-09-09T20:00:00Z'),
+          resolvedAt: null,
+        },
+      ],
+      maintenance: [],
+      start,
+      end,
+    });
+    expect(healthAt(segments, end.getTime()).status).toBe('MAJOR_OUTAGE');
+    expect(healthAt(segments, start.getTime()).status).toBe('OPERATIONAL');
+  });
+
   it('clips wide segments to a sub-window without re-resolving status', () => {
     const wide = buildServiceHealthSegments({
       serviceId: 'api',
@@ -127,5 +186,106 @@ describe('canonical availability engine', () => {
         status: 'DEGRADED',
       },
     ]);
+  });
+
+  it('cannot improve reported availability by adding UNKNOWN coverage', () => {
+    const known = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [
+        {
+          serviceId: 'api',
+          status: 'RESOLVED',
+          urgency: 'HIGH',
+          createdAt: new Date('2026-09-09T01:00:00Z'),
+          resolvedAt: new Date('2026-09-09T02:00:00Z'),
+        },
+      ],
+      maintenance: [],
+      start,
+      end,
+    });
+    const mixed = buildServiceHealthSegments({
+      serviceId: 'api',
+      incidents: [
+        {
+          serviceId: 'api',
+          status: 'RESOLVED',
+          urgency: 'HIGH',
+          createdAt: new Date('2026-09-09T01:00:00Z'),
+          resolvedAt: new Date('2026-09-09T02:00:00Z'),
+        },
+        {
+          serviceId: 'api',
+          status: 'OPEN',
+          urgency: 'UNEXPECTED',
+          createdAt: new Date('2026-09-09T03:00:00Z'),
+          resolvedAt: new Date('2026-09-09T05:00:00Z'),
+        },
+      ],
+      maintenance: [],
+      start,
+      end,
+    });
+    const knownAvailability = serviceAvailability(known, start, end);
+    const mixedAvailability = serviceAvailability(mixed, start, end);
+    expect(knownAvailability.percentage).not.toBeNull();
+    expect(mixedAvailability.unknownMs).toBe(2 * 3_600_000);
+    expect(mixedAvailability.percentage!).toBeLessThanOrEqual(knownAvailability.percentage!);
+  });
+
+  it('never treats missing measured time as 100% availability', () => {
+    expect(serviceAvailability([], start, start).percentage).toBeNull();
+    expect(
+      serviceUptimePercent(
+        buildServiceHealthSegments({
+          serviceId: 'api',
+          incidents: [
+            {
+              serviceId: 'api',
+              status: 'OPEN',
+              urgency: 'UNEXPECTED',
+              createdAt: start,
+              resolvedAt: end,
+            },
+          ],
+          maintenance: [],
+          start,
+          end,
+        }),
+        start,
+        end
+      )
+    ).toBeNull();
+  });
+});
+
+describe('availability engine sweep-line scale', () => {
+  it('merges 1k, 10k and 100k intervals well under quadratic time', () => {
+    const windowStart = new Date('2026-01-01T00:00:00.000Z');
+    const windowEnd = new Date('2026-12-31T00:00:00.000Z');
+    const budgets: Record<number, number> = { 1_000: 500, 10_000: 1_500, 100_000: 8_000 };
+    for (const count of [1_000, 10_000, 100_000]) {
+      const incidents = Array.from({ length: count }, (_, index) => {
+        const createdAt = new Date(windowStart.getTime() + (index % 50_000) * 60_000);
+        return {
+          serviceId: 'api',
+          status: 'RESOLVED' as const,
+          urgency: index % 3 === 0 ? 'HIGH' : index % 3 === 1 ? 'MEDIUM' : 'LOW',
+          createdAt,
+          resolvedAt: new Date(createdAt.getTime() + 5 * 60_000),
+        };
+      });
+      const started = performance.now();
+      const segments = buildServiceHealthSegments({
+        serviceId: 'api',
+        incidents,
+        maintenance: [],
+        start: windowStart,
+        end: windowEnd,
+      });
+      const elapsed = performance.now() - started;
+      expect(segments.length).toBeGreaterThan(0);
+      expect(elapsed, `${count} intervals took ${elapsed}ms`).toBeLessThan(budgets[count]!);
+    }
   });
 });

@@ -7,7 +7,6 @@ import StatusPageIncidents from './StatusPageIncidents';
 import StatusPageServicesLegacy from './StatusPageServicesLegacy';
 import StatusPageSubscribe from './StatusPageSubscribe';
 import StatusPageMetricsLegacy from './StatusPageMetricsLegacy';
-import StatusPageV3 from './v3/StatusPageV3';
 import type { PublicStatusPageSnapshot } from '@/lib/status-pages/public-contract';
 import { statusPresentation } from '@/lib/status-pages/status-presentation';
 import { STATUS_PAGE_PUBLIC_CSS, STATUS_PAGE_SURFACE_CLASS } from '@/lib/status-pages/public-css';
@@ -34,7 +33,6 @@ export default function StatusPageExperience({
   stale = false,
   styleMode = 'inline',
   subscribeEnabled = true,
-  uiVersion = 'legacy',
 }: {
   page: StatusPageSnapshotPage;
   snapshot: PublicStatusPageSnapshot;
@@ -46,8 +44,6 @@ export default function StatusPageExperience({
   styleMode?: 'inline' | 'inherited';
   /** Preview renders the subscribe form for layout but must not accept real subscriptions. */
   subscribeEnabled?: boolean;
-  /** Progressive rollout: `v3` renders the V3-native content inside this shell. Default keeps legacy. */
-  uiVersion?: 'legacy' | 'v3';
 }) {
   const view = useMemo(() => createStatusPageViewModel(page, snapshot), [page, snapshot]);
   const branding =
@@ -55,8 +51,28 @@ export default function StatusPageExperience({
       ? (page.branding as Record<string, unknown>)
       : {};
 
-  const notices = view.announcements.filter(item => item.type !== 'UPDATE');
-  const changelog = view.announcements.filter(item => item.type === 'UPDATE');
+  const notices = [
+    ...view.announcements.filter(item => item.type !== 'UPDATE' && item.type !== 'MAINTENANCE'),
+    ...(snapshot.maintenance ?? []).map(item => ({
+      id: item.id,
+      title: item.title,
+      message: item.description ?? '',
+      type: 'MAINTENANCE',
+      startDate: new Date(item.startAt),
+      endDate: item.endAt ? new Date(item.endAt) : null,
+    })),
+  ];
+  const changelog =
+    snapshot.changelog && snapshot.changelog.length > 0
+      ? snapshot.changelog.map(entry => ({
+          id: entry.id,
+          title: entry.title,
+          message: entry.message,
+          type: 'UPDATE',
+          startDate: new Date(entry.publishedAt),
+          endDate: null,
+        }))
+      : view.announcements.filter(item => item.type === 'UPDATE');
   // Published with the snapshot, so the badge on this page grades uptime the same way the API
   // and any export do. Defaults match the column defaults for payloads written before they were.
   const thresholds = {
@@ -252,100 +268,6 @@ export default function StatusPageExperience({
       ),
     [snapshot.services]
   );
-
-  // Progressive rollout: the V3-native content renders inside the same shell (header, subscribe,
-  // footer) so enabling it never regresses those surfaces. Default stays on the legacy body.
-  if (uiVersion === 'v3') {
-    return (
-      <div className={STATUS_PAGE_SURFACE_CLASS}>
-        {styleMode === 'inline' && <style>{STATUS_PAGE_PUBLIC_CSS}</style>}
-        {branding.showHeader !== false && (
-          <StatusPageHeader
-            statusPage={{
-              name: page.name,
-              contactEmail: page.contactEmail,
-              contactUrl: page.contactUrl,
-            }}
-            overallStatus={snapshot.overall.status}
-            branding={branding}
-            lastUpdated={snapshot.generatedAt}
-          />
-        )}
-        {stale && (
-          <p role="note" className="status-muted">
-            Showing the last verified status update.
-          </p>
-        )}
-        <StatusPageV3
-          snapshot={snapshot}
-          postmortemHref={id => `${statusPagePath}/postmortems/${encodeURIComponent(id)}`}
-        />
-        {visibility.subscribe && (
-          <section className="status-section" aria-labelledby="subscribe-heading">
-            <div className="status-section__head">
-              <h2 id="subscribe-heading">Subscribe to updates</h2>
-              <span className="status-section__count">
-                Get notified when service status changes
-              </span>
-            </div>
-            {subscribeEnabled ? (
-              <StatusPageSubscribe statusPageId={page.id} />
-            ) : (
-              <p className="status-muted">
-                Subscriptions are accepted on the published status page.
-              </p>
-            )}
-          </section>
-        )}
-        {branding.showFooter !== false && (
-          <footer className="status-footer">
-            <p className="status-footer__brand">
-              {page.footerText || (
-                <>
-                  <span>Powered by </span>
-                  <a className="status-footer-link" href="https://opsknight.com/">
-                    OpsKnight
-                  </a>
-                </>
-              )}
-            </p>
-            <nav aria-label="Status resources" className="status-footer__links">
-              {branding.showApiLink !== false && (
-                <a className="status-footer-link" href={apiPath}>
-                  JSON API
-                </a>
-              )}
-              {branding.showRssLink !== false && (
-                <a className="status-footer-link" href={`${apiPath}/rss`}>
-                  RSS
-                </a>
-              )}
-              {page.enableUptimeExports === true && hasUptime && (
-                <>
-                  <a className="status-footer-link" href={`${apiPath}/uptime-export?format=csv`}>
-                    Uptime CSV
-                  </a>
-                  <a className="status-footer-link" href={`${apiPath}/uptime-export?format=pdf`}>
-                    Uptime PDF
-                  </a>
-                </>
-              )}
-              {page.contactEmail && (
-                <a className="status-footer-link" href={`mailto:${page.contactEmail}`}>
-                  Contact
-                </a>
-              )}
-              {page.contactUrl && (
-                <a className="status-footer-link" href={page.contactUrl}>
-                  Support
-                </a>
-              )}
-            </nav>
-          </footer>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className={STATUS_PAGE_SURFACE_CLASS}>

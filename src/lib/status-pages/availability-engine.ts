@@ -4,11 +4,10 @@ import { getWorstPublicStatus, publicStatusForIncidentUrgency } from './status-p
 /**
  * One canonical availability engine for every public surface.
  *
- * Current status, service history, and 30/90-day uptime are all derived from the *same* merged
- * health intervals, so the page, JSON API and exports can never disagree about the same service and
- * window. Maintenance is health, not downtime: it appears in history but is excluded from downtime,
- * matching how daily availability is rendered. Everything here is pure and deterministic ΓÇö identical
- * inputs always produce identical, stably ordered output.
+ * Current status, service history, and 30/90-day uptime are all derived from the same merged
+ * health intervals. Overlaps resolve with a sweep-line (O(n log n)), not a nested scan.
+ * Maintenance is health, not downtime. UNKNOWN time is excluded from known availability so it
+ * can never silently become green.
  */
 
 export type PublicHistoryIncident = {
@@ -19,10 +18,19 @@ export type PublicHistoryIncident = {
   status: string;
 };
 
+/**
+ * Empty / missing affected-service lists mean the maintenance is page-wide.
+ * Never infer that from array emptiness at call sites — use `maintenanceScopeFromAffectedIds`.
+ */
+export type MaintenanceScope =
+  | { type: 'ALL_SERVICES' }
+  | { type: 'SERVICES'; serviceIds: readonly string[] };
+
 export type PublicHistoryMaintenance = {
   startDate: Date;
   endDate: Date | null;
   affectedServiceIds: string[];
+  scope?: MaintenanceScope;
 };
 
 /** A merged, non-overlapping span of non-operational health, in epoch milliseconds. */
@@ -38,8 +46,22 @@ const DOWNTIME_STATUSES: ReadonlySet<PublicServiceStatus> = new Set([
   'MAJOR_OUTAGE',
 ]);
 
+export function maintenanceScopeFromAffectedIds(ids: unknown): MaintenanceScope {
+  if (!Array.isArray(ids) || ids.length === 0) return { type: 'ALL_SERVICES' };
+  const serviceIds = ids.filter((id): id is string => typeof id === 'string' && id.length > 0);
+  return serviceIds.length === 0 ? { type: 'ALL_SERVICES' } : { type: 'SERVICES', serviceIds };
+}
+
+export function maintenanceAppliesToService(scope: MaintenanceScope, serviceId: string): boolean {
+  return scope.type === 'ALL_SERVICES' || scope.serviceIds.includes(serviceId);
+}
+
+function scopeOf(item: PublicHistoryMaintenance): MaintenanceScope {
+  return item.scope ?? maintenanceScopeFromAffectedIds(item.affectedServiceIds);
+}
+
 /**
- * Collapse a service's incidents and maintenance into merged non-operational health segments.
+ * Collapse a service's incidents and maintenance into merged non-overlapping health segments.
  *
  * Overlaps resolve to the worst status (an incident always outranks concurrent maintenance), and
  * touching same-status spans are joined, so the result is the minimal canonical interval set.
@@ -83,26 +105,56 @@ export function buildServiceHealthSegments({
     );
   }
   for (const item of maintenance) {
-    if (item.affectedServiceIds.length > 0 && !item.affectedServiceIds.includes(serviceId))
-      continue;
+    if (!maintenanceAppliesToService(scopeOf(item), serviceId)) continue;
     add(item.startDate, item.endDate ?? end, 'MAINTENANCE');
   }
 
-  const points = [...new Set(raw.flatMap(segment => [segment.start, segment.end]))].sort(
-    (a, b) => a - b
-  );
+  return mergeHealthSegmentsSweep(raw);
+}
+
+type SweepEvent = { time: number; delta: 1 | -1; status: HealthSegment['status'] };
+
+/** Sweep-line merge: sort endpoints once, track active severity counts, emit canonical intervals. */
+function mergeHealthSegmentsSweep(raw: HealthSegment[]): HealthSegment[] {
+  if (raw.length === 0) return [];
+  const events: SweepEvent[] = [];
+  for (const segment of raw) {
+    events.push({ time: segment.start, delta: 1, status: segment.status });
+    events.push({ time: segment.end, delta: -1, status: segment.status });
+  }
+  // Ends before starts at the same timestamp so a touching pair does not create a zero-width span.
+  events.sort((a, b) => a.time - b.time || a.delta - b.delta);
+
+  const counts = new Map<HealthSegment['status'], number>();
   const merged: HealthSegment[] = [];
-  for (let index = 0; index < points.length - 1; index++) {
-    const from = points[index];
-    const to = points[index + 1];
-    if (from === undefined || to === undefined) continue;
-    const covering = raw.filter(segment => segment.start < to && segment.end > from);
-    if (covering.length === 0) continue;
-    const status = getWorstPublicStatus(covering.map(segment => segment.status));
-    if (status === 'OPERATIONAL') continue;
-    const previous = merged.at(-1);
-    if (previous?.status === status && previous.end === from) previous.end = to;
-    else merged.push({ start: from, end: to, status: status as HealthSegment['status'] });
+  let cursor: number | undefined;
+  let current: HealthSegment['status'] | null = null;
+
+  const worstActive = (): HealthSegment['status'] | null => {
+    const active: PublicServiceStatus[] = [];
+    for (const [status, count] of counts) {
+      if (count > 0) active.push(status);
+    }
+    if (active.length === 0) return null;
+    const worst = getWorstPublicStatus(active);
+    return worst === 'OPERATIONAL' ? null : (worst as HealthSegment['status']);
+  };
+
+  let index = 0;
+  while (index < events.length) {
+    const time = events[index]!.time;
+    if (cursor !== undefined && time > cursor && current) {
+      const previous = merged.at(-1);
+      if (previous?.status === current && previous.end === cursor) previous.end = time;
+      else merged.push({ start: cursor, end: time, status: current });
+    }
+    while (index < events.length && events[index]!.time === time) {
+      const event = events[index]!;
+      counts.set(event.status, (counts.get(event.status) ?? 0) + event.delta);
+      index += 1;
+    }
+    cursor = time;
+    current = worstActive();
   }
   return merged;
 }
@@ -137,22 +189,76 @@ export function healthSegmentsToPublic(segments: HealthSegment[]): PublicStatusH
 }
 
 /**
- * Availability percentage over a window, from the same segments that drive history.
- *
- * Downtime is the clipped duration of degraded/partial/major spans; maintenance and operational
- * time count as available. A non-positive window has nothing to measure and reports 100.
+ * Status at an instant from the same intervals that drive history and uptime.
+ * Endpoints are inclusive so a snapshot clock equal to the window end still sees open incidents.
  */
-export function serviceUptimePercent(segments: HealthSegment[], start: Date, end: Date): number {
+export function healthAt(
+  segments: HealthSegment[],
+  at: number
+): { status: PublicServiceStatus; statusSince?: string } {
+  const covering = segments.filter(
+    segment => segment.start <= at && at <= segment.end && segment.start < segment.end
+  );
+  if (covering.length === 0) return { status: 'OPERATIONAL' };
+  const status = getWorstPublicStatus(covering.map(segment => segment.status));
+  const since = covering
+    .filter(segment => segment.status === status)
+    .reduce((latest, segment) => Math.max(latest, segment.start), Number.NEGATIVE_INFINITY);
+  return {
+    status,
+    ...(Number.isFinite(since) ? { statusSince: new Date(since).toISOString() } : {}),
+  };
+}
+
+export type ServiceAvailability = {
+  /** Null when there is no known time in the window — never reported as 100%. */
+  percentage: number | null;
+  knownMs: number;
+  unknownMs: number;
+  downtimeMs: number;
+};
+
+/**
+ * Availability over a window, from the same segments that drive history.
+ *
+ * Known time: operational, maintenance, degraded, partial, major.
+ * UNKNOWN time is excluded from the known denominator so a fully-unknown window is not 100%.
+ * Downtime is degraded / partial / major only; maintenance counts as known-available.
+ */
+export function serviceAvailability(
+  segments: HealthSegment[],
+  start: Date,
+  end: Date
+): ServiceAvailability {
   const windowStart = start.getTime();
   const windowEnd = end.getTime();
   const total = windowEnd - windowStart;
-  if (total <= 0) return 100;
-  let down = 0;
+  if (total <= 0) return { percentage: null, knownMs: 0, unknownMs: 0, downtimeMs: 0 };
+  let unknownMs = 0;
+  let downtimeMs = 0;
   for (const segment of segments) {
-    if (!DOWNTIME_STATUSES.has(segment.status)) continue;
     const from = Math.max(windowStart, segment.start);
     const to = Math.min(windowEnd, segment.end);
-    if (to > from) down += to - from;
+    if (to <= from) continue;
+    const span = to - from;
+    if (segment.status === 'UNKNOWN') unknownMs += span;
+    else if (DOWNTIME_STATUSES.has(segment.status)) downtimeMs += span;
   }
-  return Math.max(0, Math.min(100, ((total - down) / total) * 100));
+  const knownMs = total - unknownMs;
+  if (knownMs <= 0) return { percentage: null, knownMs: 0, unknownMs, downtimeMs };
+  return {
+    percentage: Math.max(0, Math.min(100, ((knownMs - downtimeMs) / knownMs) * 100)),
+    knownMs,
+    unknownMs,
+    downtimeMs,
+  };
+}
+
+/** Availability percentage, or null when the window has no known time. */
+export function serviceUptimePercent(
+  segments: HealthSegment[],
+  start: Date,
+  end: Date
+): number | null {
+  return serviceAvailability(segments, start, end).percentage;
 }

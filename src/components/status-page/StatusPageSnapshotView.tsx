@@ -40,9 +40,6 @@ export default function StatusPageSnapshotView({
     typeof branding.refreshInterval === 'number' ? branding.refreshInterval : 60;
   const customCss = toSafeStyleTagContent(branding.customCss);
 
-  // Progressive rollout switch. Off by default, so enabling V3 is an explicit, reversible flip.
-  const uiVersion = process.env.STATUS_PAGE_V3_UI === '1' ? 'v3' : 'legacy';
-
   return (
     <main
       className="status-page-container"
@@ -59,7 +56,7 @@ export default function StatusPageSnapshotView({
         <StatusPageAutoRefresh enabled intervalSeconds={Math.max(30, refreshInterval)} />
       )}
       <div style={{ maxWidth, margin: '0 auto' }}>
-        <StatusPageExperience page={page} snapshot={snapshot} stale={stale} uiVersion={uiVersion} />
+        <StatusPageExperience page={page} snapshot={snapshot} stale={stale} />
       </div>
       {/* Injected last so customer overrides win the cascade over the shared stylesheet. */}
       {customCss && <style dangerouslySetInnerHTML={{ __html: customCss }} />}

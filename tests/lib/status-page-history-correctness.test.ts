@@ -129,7 +129,7 @@ describe('history engine correctness', () => {
     });
     const dayAvailability = buildPublicHistoryDays(history, 'UTC')[0]?.availabilityPercent;
     const windowUptime = serviceUptimePercent(segments, day0, day1);
-    expect(dayAvailability).toBeCloseTo(windowUptime, 3);
+    expect(dayAvailability).toBeCloseTo(windowUptime ?? 0, 3);
     expect(windowUptime).toBeCloseTo((22 / 24) * 100, 5);
   });
 });

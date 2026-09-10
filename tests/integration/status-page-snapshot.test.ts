@@ -14,7 +14,16 @@ import {
 } from '@/lib/status-pages/snapshot';
 
 vi.mock('@/lib/sla-server', () => ({ calculateMultiServiceUptime: vi.fn().mockResolvedValue({}) }));
-import { calculateMultiServiceUptime } from '@/lib/sla-server';
+vi.mock('@/lib/status-pages/history-query', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/status-pages/history-query')>();
+  return {
+    ...actual,
+    loadHistoryIncidentsByService: vi.fn(
+      (...args: Parameters<typeof actual.loadHistoryIncidentsByService>) =>
+        actual.loadHistoryIncidentsByService(...args)
+    ),
+  };
+});
 
 describe('durable status page projections', () => {
   beforeEach(resetDatabase);
@@ -87,7 +96,8 @@ describe('durable status page projections', () => {
       where: { id: incident.id },
       data: { visibility: 'PRIVATE' },
     });
-    vi.mocked(calculateMultiServiceUptime).mockRejectedValueOnce(
+    const { loadHistoryIncidentsByService } = await import('@/lib/status-pages/history-query');
+    vi.mocked(loadHistoryIncidentsByService).mockRejectedValueOnce(
       new Error('projection unavailable')
     );
 

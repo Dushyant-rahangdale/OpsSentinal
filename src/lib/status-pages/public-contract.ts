@@ -142,6 +142,24 @@ export interface PublicStatusBranding {
   metaTitle?: string;
   metaDescription?: string;
   customCss?: string;
+  layout?: 'default' | 'compact' | 'wide';
+  showHeader?: boolean;
+  showFooter?: boolean;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  showApiLink?: boolean;
+  showRssLink?: boolean;
+}
+
+/** Chrome and layout that the public renderer reads; kept in sync with branding. */
+export interface PublicPagePresentation {
+  layout?: 'default' | 'compact' | 'wide';
+  showHeader?: boolean;
+  showFooter?: boolean;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  showApiLink?: boolean;
+  showRssLink?: boolean;
 }
 
 /** What this page's engine supports, independent of what the admin chose to show. */
@@ -243,6 +261,7 @@ export interface PublicStatusPageSnapshot {
     name: string;
     organizationName?: string | null;
     branding?: PublicStatusBranding | null;
+    presentation?: PublicPagePresentation;
     capabilities?: PublicPageCapabilities;
     resources?: PublicResources;
     subscription?: PublicSubscriptionCapabilities;

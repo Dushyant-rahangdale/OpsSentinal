@@ -16,7 +16,7 @@ const dateTime = z.string().datetime({ offset: true });
 
 const uptimeGrade = z.enum(['EXCELLENT', 'GOOD', 'BELOW_TARGET']);
 
-const affectedServiceRef = z.object({ id: z.string(), name: z.string() }).strict();
+const affectedServiceRef = z.object({ id: z.string(), name: z.string() }).passthrough();
 
 const uptimeWindow = z
   .object({
@@ -26,7 +26,7 @@ const uptimeWindow = z
     complete: z.boolean(),
     grade: uptimeGrade.optional(),
   })
-  .strict();
+  .passthrough();
 
 /**
  * Branding is validated leniently on purpose. Snapshots published before the typed contract stored
@@ -44,6 +44,25 @@ const branding = z
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional(),
     customCss: z.string().optional(),
+    layout: z.enum(['default', 'compact', 'wide']).optional(),
+    showHeader: z.boolean().optional(),
+    showFooter: z.boolean().optional(),
+    autoRefresh: z.boolean().optional(),
+    refreshInterval: z.number().optional(),
+    showApiLink: z.boolean().optional(),
+    showRssLink: z.boolean().optional(),
+  })
+  .passthrough();
+
+const presentation = z
+  .object({
+    layout: z.enum(['default', 'compact', 'wide']).optional(),
+    showHeader: z.boolean().optional(),
+    showFooter: z.boolean().optional(),
+    autoRefresh: z.boolean().optional(),
+    refreshInterval: z.number().optional(),
+    showApiLink: z.boolean().optional(),
+    showRssLink: z.boolean().optional(),
   })
   .passthrough();
 
@@ -65,7 +84,7 @@ const capabilities = z
     uptimeCsv: z.boolean(),
     uptimePdf: z.boolean(),
   })
-  .strict();
+  .passthrough();
 
 const resources = z
   .object({
@@ -76,7 +95,7 @@ const resources = z
     postmortems: z.boolean(),
     subscriptions: z.boolean(),
   })
-  .strict();
+  .passthrough();
 
 const subscriptionCapabilities = z
   .object({
@@ -85,7 +104,7 @@ const subscriptionCapabilities = z
     verificationRequired: z.boolean(),
     serviceSelectionSupported: z.boolean(),
   })
-  .strict();
+  .passthrough();
 
 const historySegment = z
   .object({
@@ -93,7 +112,7 @@ const historySegment = z
     endAt: dateTime,
     status: status.exclude(['OPERATIONAL']),
   })
-  .strict()
+  .passthrough()
   .refine(segment => Date.parse(segment.startAt) < Date.parse(segment.endAt), {
     message: 'History segment end must follow its start',
   });
@@ -112,7 +131,7 @@ const incidentUpdate = z
     message: z.string(),
     createdAt: dateTime.optional(),
   })
-  .strict();
+  .passthrough();
 
 /**
  * Optional so payloads published before this field existed keep validating. The reader derives it
@@ -133,7 +152,7 @@ const overallHealth = z
     headline: z.string(),
     note: z.string().nullable(),
   })
-  .strict();
+  .passthrough();
 
 export const publicStatusPageSnapshotSchema = z
   .object({
@@ -147,7 +166,7 @@ export const publicStatusPageSnapshotSchema = z
         uptimeExcellent: z.number(),
         uptimeGood: z.number(),
       })
-      .strict()
+      .passthrough()
       .optional(),
     page: z
       .object({
@@ -155,6 +174,7 @@ export const publicStatusPageSnapshotSchema = z
         name: z.string(),
         organizationName: z.string().nullable().optional(),
         branding: branding.nullable().optional(),
+        presentation: presentation.optional(),
         capabilities: capabilities.optional(),
         resources: resources.optional(),
         subscription: subscriptionCapabilities.optional(),
@@ -173,7 +193,7 @@ export const publicStatusPageSnapshotSchema = z
             changelog: z.boolean(),
             subscribe: z.boolean(),
           })
-          .strict()
+          .passthrough()
           .optional(),
         enableUptimeExports: z.boolean(),
         footerText: z.string().nullable().optional(),
@@ -190,7 +210,7 @@ export const publicStatusPageSnapshotSchema = z
         statusApiRateLimitMax: z.number().int().positive(),
         statusApiRateLimitWindowSec: z.number().int().positive(),
       })
-      .strict(),
+      .passthrough(),
     status,
     services: z.array(
       z
@@ -202,7 +222,7 @@ export const publicStatusPageSnapshotSchema = z
           status,
           statusSince: dateTime.optional(),
           activeIncidentCount: z.number().int().nonnegative(),
-          team: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
+          team: z.object({ id: z.string(), name: z.string() }).passthrough().nullable().optional(),
           slaTier: z.string().nullable().optional(),
           sla: z
             .object({
@@ -210,9 +230,9 @@ export const publicStatusPageSnapshotSchema = z
               target: z.number().nullable().optional(),
               grade: uptimeGrade.optional(),
             })
-            .strict()
+            .passthrough()
             .optional(),
-          uptime: z.object({ days30: uptimeWindow, days90: uptimeWindow }).strict().optional(),
+          uptime: z.object({ days30: uptimeWindow, days90: uptimeWindow }).passthrough().optional(),
           history: z
             .object({
               rangeStart: dateTime,
@@ -220,13 +240,13 @@ export const publicStatusPageSnapshotSchema = z
               coverage: z.enum(['COMPLETE', 'PARTIAL']),
               segments: z.array(historySegment),
             })
-            .strict()
+            .passthrough()
             .refine(history => Date.parse(history.rangeStart) < Date.parse(history.rangeEnd), {
               message: 'History range end must follow its start',
             })
             .optional(),
         })
-        .strict()
+        .passthrough()
     ),
     regions: z.array(
       z
@@ -243,7 +263,7 @@ export const publicStatusPageSnapshotSchema = z
           impactedServices: z.number().int().nonnegative(),
           serviceIds: z.array(z.string()),
         })
-        .strict()
+        .passthrough()
     ),
     incidents: z.array(
       z
@@ -265,7 +285,7 @@ export const publicStatusPageSnapshotSchema = z
               name: z.string().optional(),
               regions: z.array(z.string()).optional(),
             })
-            .strict()
+            .passthrough()
             .optional(),
           updates: z.array(incidentUpdate).optional(),
           postIncidentReview: z.boolean().optional(),
@@ -277,10 +297,10 @@ export const publicStatusPageSnapshotSchema = z
               title: z.string().optional(),
               summary: z.string().optional(),
             })
-            .strict()
+            .passthrough()
             .optional(),
         })
-        .strict()
+        .passthrough()
     ),
     maintenance: z
       .array(
@@ -297,7 +317,7 @@ export const publicStatusPageSnapshotSchema = z
             createdAt: dateTime.optional(),
             updatedAt: dateTime.optional(),
           })
-          .strict()
+          .passthrough()
       )
       .optional(),
     announcements: z.array(
@@ -312,7 +332,7 @@ export const publicStatusPageSnapshotSchema = z
           affectedServices: z.array(affectedServiceRef).optional(),
           affectedRegions: z.array(z.string()).optional(),
         })
-        .strict()
+        .passthrough()
     ),
     changelog: z
       .array(
@@ -324,7 +344,7 @@ export const publicStatusPageSnapshotSchema = z
             publishedAt: dateTime,
             affectedServices: z.array(affectedServiceRef).optional(),
           })
-          .strict()
+          .passthrough()
       )
       .optional(),
     retention: z
@@ -335,7 +355,7 @@ export const publicStatusPageSnapshotSchema = z
         rangeEnd: dateTime,
         coverage: z.enum(['COMPLETE', 'PARTIAL']),
       })
-      .strict()
+      .passthrough()
       .optional(),
     freshness: z
       .object({
@@ -344,11 +364,11 @@ export const publicStatusPageSnapshotSchema = z
         lastIncidentUpdateAt: dateTime.optional(),
         revision: z.string(),
       })
-      .strict()
+      .passthrough()
       .optional(),
     historyDays: z.number().int().positive(),
   })
-  .strict();
+  .passthrough();
 
 export function parsePublicStatusPageSnapshot(
   pageId: string,

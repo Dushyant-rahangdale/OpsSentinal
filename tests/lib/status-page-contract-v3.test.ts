@@ -72,10 +72,26 @@ describe('V3 contract completion (PR2)', () => {
     ).toEqual({ primaryColor: '#112233', backgroundColor: '#ffffff', logoUrl: '/logo.png' });
   });
 
-  it('treats empty or non-object branding as absent rather than an empty object', () => {
-    expect(projectPublicBranding({})).toBeNull();
-    expect(projectPublicBranding(null)).toBeNull();
-    expect(projectPublicBranding('#fff')).toBeNull();
+  it('preserves layout, chrome, and refresh settings instead of dropping them', () => {
+    expect(
+      projectPublicBranding({
+        layout: 'compact',
+        showHeader: false,
+        showFooter: false,
+        autoRefresh: false,
+        refreshInterval: 120,
+        showApiLink: false,
+        showRssLink: true,
+      })
+    ).toEqual({
+      layout: 'compact',
+      showHeader: false,
+      showFooter: false,
+      autoRefresh: false,
+      refreshInterval: 120,
+      showApiLink: false,
+      showRssLink: true,
+    });
   });
 
   it('grades uptime centrally and reports null measurements as ungraded', () => {

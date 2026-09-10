@@ -148,10 +148,17 @@ export function serializePublicStatusIncident(
 }
 
 function publicUpdateType(type: string | null | undefined): PublicIncidentUpdateType {
-  if (type === 'ACKNOWLEDGED') return 'ACKNOWLEDGED';
-  if (type === 'RESOLVED' || type === 'AUTO_RESOLVED' || type === 'MANUAL_RESOLVED') {
-    return 'RESOLVED';
+  if (
+    type === 'INVESTIGATING' ||
+    type === 'IDENTIFIED' ||
+    type === 'MONITORING' ||
+    type === 'ACKNOWLEDGED' ||
+    type === 'RESOLVED' ||
+    type === 'UPDATE'
+  ) {
+    return type;
   }
+  if (type === 'AUTO_RESOLVED' || type === 'MANUAL_RESOLVED') return 'RESOLVED';
   return 'UPDATE';
 }
 

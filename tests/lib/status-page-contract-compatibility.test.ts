@@ -64,8 +64,20 @@ describe('V3 contract evolution policy', () => {
     expect(snapshot?.retention?.availableHistoryDays).toBe(12);
   });
 
-  it('rejects an unknown top-level key so additive-only stays enforced at the boundary', () => {
-    expect(parsePublicStatusPageSnapshot('page-1', minimal({ somethingNew: true }))).toBeNull();
+  it('lets a newer writer add a field that an older-compatible reader still accepts', () => {
+    const snapshot = parsePublicStatusPageSnapshot(
+      'page-1',
+      minimal({ somethingNew: true, freshness: { generatedAt: iso, revision: '1' } })
+    );
+    expect(snapshot?.schemaVersion).toBe(3);
+    expect(snapshot?.freshness?.revision).toBe('1');
+  });
+
+  it('accepts an older snapshot that omits additive V3 sections', () => {
+    const snapshot = parsePublicStatusPageSnapshot('page-1', minimal());
+    expect(snapshot?.maintenance).toBeUndefined();
+    expect(snapshot?.changelog).toBeUndefined();
+    expect(snapshot?.page.presentation).toBeUndefined();
   });
 
   it('rejects a payload whose pageId does not match the requested page', () => {

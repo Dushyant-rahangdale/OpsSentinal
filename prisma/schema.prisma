@@ -465,7 +465,6 @@ model Service {
   webhookIntegrations WebhookIntegration[]
   slackIntegration    SlackIntegration?    @relation("ServiceSlackIntegration", fields: [slackIntegrationId], references: [id], onDelete: SetNull)
   jiraServiceMapping  JiraServiceMapping?
-  dailyHealth         StatusServiceDailyHealth[]
 
   @@index([teamId])
   @@index([escalationPolicyId])
@@ -1657,26 +1656,6 @@ model StatusPageAnnouncement {
 
   @@index([statusPageId, isActive, startDate])
   @@index([incidentId])
-}
-
-// Per-service, per-UTC-day health rollup so long windows read ~N rows/service instead of scanning
-// raw incidents. Derived from the canonical availability engine; the public V3 output is unchanged.
-model StatusServiceDailyHealth {
-  serviceId       String
-  date            DateTime @db.Date
-  operationalMs   BigInt   @default(0)
-  degradedMs      BigInt   @default(0)
-  maintenanceMs   BigInt   @default(0)
-  partialOutageMs BigInt   @default(0)
-  majorOutageMs   BigInt   @default(0)
-  unknownMs       BigInt   @default(0)
-  incidentCount   Int      @default(0)
-  updatedAt       DateTime @updatedAt
-
-  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@id([serviceId, date])
-  @@index([date])
 }
 
 model StatusPageApiToken {

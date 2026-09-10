@@ -66,6 +66,10 @@ describe('availability engine ΓÇö property/fuzz invariants', () => {
 
       // Uptime always lands in [0, 100].
       const uptime = serviceUptimePercent(segments, windowStart, windowEnd);
+      if (uptime === null) {
+        expect(segments.every(segment => segment.status === 'UNKNOWN')).toBe(true);
+        continue;
+      }
       expect(uptime).toBeGreaterThanOrEqual(0);
       expect(uptime).toBeLessThanOrEqual(100);
 

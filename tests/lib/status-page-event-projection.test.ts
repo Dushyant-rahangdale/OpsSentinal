@@ -61,6 +61,37 @@ describe('public event projection', () => {
     );
   });
 
+  it('does not emit a generic announcement for first-class maintenance or changelog', () => {
+    const events = projectPublicStatusEvents(
+      snapshot({
+        maintenance: [
+          {
+            id: 'm-1',
+            title: 'DB upgrade',
+            state: 'IN_PROGRESS',
+            startAt: '2026-09-09T00:00:00.000Z',
+            endAt: null,
+          },
+        ],
+        announcements: [
+          {
+            id: 'm-1',
+            title: 'DB upgrade',
+            message: 'dup',
+            type: 'MAINTENANCE',
+            startDate: '2026-09-09T00:00:00.000Z',
+            endDate: null,
+          },
+        ],
+        changelog: [
+          { id: 'c-1', title: 'v1.5', message: 'Shipped', publishedAt: '2026-09-07T00:00:00.000Z' },
+        ],
+      })
+    );
+    expect(events.filter(event => event.id === 'm-1')).toHaveLength(1);
+    expect(events.filter(event => event.kind === 'ANNOUNCEMENT')).toHaveLength(0);
+  });
+
   it('gives an undisclosed incident a deterministic content key instead of fabricating an id', () => {
     const input = snapshot({
       incidents: [

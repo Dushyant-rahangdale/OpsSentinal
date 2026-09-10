@@ -9,7 +9,6 @@ import {
 } from '@/lib/status-page-public-data';
 import { activeIncidentStatuses } from '@/lib/incident-status';
 import { getReportingWindowForDays } from '@/lib/retention-policy';
-import { projectServiceStatus, visibleMaintenanceServiceIds } from '@/lib/status-page-projection';
 import {
   addOperationalMetric,
   observeOperationalHistogram,
@@ -26,15 +25,15 @@ import { aggregatePublicRegions } from './history';
 import {
   buildServiceHealthSegments,
   clipHealthSegments,
+  healthAt,
   healthSegmentsToPublic,
-  serviceUptimePercent,
+  serviceAvailability,
 } from './availability-engine';
-import { projectPublicBranding } from './branding';
+import { projectPublicBranding, projectPublicPresentation } from './branding';
 import { publicUptimeGrade } from './presentation';
 import {
   deriveOverallPublicHealth,
   getWorstPublicStatus,
-  normalizePublicStatus,
   publicStatusForIncidentUrgency,
 } from './status-presentation';
 import { parsePublicStatusPageSnapshot } from './public-contract-schema';
@@ -55,6 +54,7 @@ export async function buildStatusPageSnapshot(
   revision: string,
   db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<StatusPageSnapshot | null> {
+  const DISPLAY_ANNOUNCEMENT_LIMIT = 200;
   const page = await db.statusPage.findUnique({
     where: { id: pageId },
     include: {
@@ -74,7 +74,6 @@ export async function buildStatusPageSnapshot(
           },
         },
       },
-      announcements: { where: { isActive: true }, orderBy: { startDate: 'desc' }, take: 200 },
     },
   });
   if (!page?.enabled) return null;
@@ -91,69 +90,79 @@ export async function buildStatusPageSnapshot(
   const earliestRequiredStart = new Date(
     Math.min(window.start.getTime(), window90.start.getTime())
   );
-  const [groups, incidents, historyIncidentsByService, historyMaintenance] = ids.length
-    ? await Promise.all([
-        db.incident.groupBy({
-          by: ['serviceId', 'urgency'],
-          where: {
-            serviceId: { in: ids },
-            visibility: 'PUBLIC',
-            status: { in: activeIncidentStatuses() },
-          },
-          _count: { _all: true },
-        }),
-        visibility.showIncidents
-          ? db.incident.findMany({
-              where: {
-                serviceId: { in: ids },
-                visibility: 'PUBLIC',
-                createdAt: { gte: window.start, lte: now },
-              },
-              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-              take: limits.maxIncidents,
-              select: {
-                id: true,
-                title: true,
-                description: true,
-                status: true,
-                urgency: true,
-                createdAt: true,
-                acknowledgedAt: true,
-                resolvedAt: true,
-                service: { select: { id: true, name: true, region: true } },
-                events: {
-                  orderBy: { createdAt: 'asc' },
-                  take: 50,
-                  select: { id: true, type: true, message: true, createdAt: true },
+  const announcementDisplay = {
+    where: { statusPageId: pageId, isActive: true },
+    orderBy: { startDate: 'desc' as const },
+    take: DISPLAY_ANNOUNCEMENT_LIMIT,
+  };
+  const maintenanceTruthWhere = {
+    statusPageId: pageId,
+    type: 'MAINTENANCE',
+    startDate: { lte: now },
+    OR: [{ endDate: { gte: earliestRequiredStart } }, { endDate: null }],
+  };
+  const [groups, incidents, historyIncidentsByService, historyMaintenance, displayAnnouncements] =
+    ids.length
+      ? await Promise.all([
+          db.incident.groupBy({
+            by: ['serviceId', 'urgency'],
+            where: {
+              serviceId: { in: ids },
+              visibility: 'PUBLIC',
+              status: { in: activeIncidentStatuses() },
+            },
+            _count: { _all: true },
+          }),
+          visibility.showIncidents
+            ? db.incident.findMany({
+                where: {
+                  serviceId: { in: ids },
+                  visibility: 'PUBLIC',
+                  createdAt: { gte: window.start, lte: now },
                 },
-                postmortem: {
-                  select: {
-                    status: true,
-                    isPublic: true,
-                    publishedAt: true,
-                    title: true,
-                    summary: true,
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                take: limits.maxIncidents,
+                select: {
+                  id: true,
+                  title: true,
+                  description: true,
+                  status: true,
+                  urgency: true,
+                  createdAt: true,
+                  acknowledgedAt: true,
+                  resolvedAt: true,
+                  service: { select: { id: true, name: true, region: true } },
+                  events: {
+                    orderBy: { createdAt: 'asc' },
+                    take: 50,
+                    select: { id: true, type: true, message: true, createdAt: true },
+                  },
+                  postmortem: {
+                    select: {
+                      status: true,
+                      isPublic: true,
+                      publishedAt: true,
+                      title: true,
+                      summary: true,
+                    },
                   },
                 },
-              },
-            })
-          : [],
-        visibility.showUptime
-          ? loadHistoryIncidentsByService(ids, earliestRequiredStart, now, db)
-          : new Map<string, HistoryIncident[]>(),
-        visibility.showUptime
-          ? db.statusPageAnnouncement.findMany({
-              where: {
-                statusPageId: pageId,
-                type: 'MAINTENANCE',
-                startDate: { lte: now },
-                OR: [{ endDate: { gte: earliestRequiredStart } }, { endDate: null }],
-              },
-              select: { startDate: true, endDate: true, affectedServiceIds: true },
-            })
-          : [],
-      ])
-    : [[], [], new Map<string, HistoryIncident[]>(), []];
+              })
+            : [],
+          loadHistoryIncidentsByService(ids, earliestRequiredStart, now, db),
+          db.statusPageAnnouncement.findMany({
+            where: maintenanceTruthWhere,
+            select: { startDate: true, endDate: true, affectedServiceIds: true },
+          }),
+          db.statusPageAnnouncement.findMany(announcementDisplay),
+        ])
+      : [
+          [],
+          [],
+          new Map<string, HistoryIncident[]>(),
+          [],
+          await db.statusPageAnnouncement.findMany(announcementDisplay),
+        ];
 
   const impactByService = new Map<
     string,
@@ -166,7 +175,6 @@ export async function buildStatusPageSnapshot(
     impactByService.set(group.serviceId, current);
   }
 
-  const maintenance = visibleMaintenanceServiceIds(page.announcements, ids, now);
   const measuredDays30 = (now.getTime() - window30.start.getTime()) / 86_400_000;
   const measuredDays90 = (now.getTime() - window90.start.getTime()) / 86_400_000;
   const maintenanceHistory = historyMaintenance.map(item => ({
@@ -181,26 +189,35 @@ export async function buildStatusPageSnapshot(
     excellent: page.uptimeExcellentThreshold,
     good: page.uptimeGoodThreshold,
   };
-  // Only services actually published on this page are nameable; affected-id references to anything
-  // else are deliberately dropped rather than leaking an unpublished service name.
-  const serviceNameById = new Map(
-    page.services.map(mapping => [mapping.serviceId, mapping.displayName || mapping.service.name])
+  const parseRegions = (region: string | null | undefined) =>
+    (region ?? '')
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean);
+  const servicePublicRefById = new Map(
+    page.services.map(mapping => {
+      const regions = parseRegions(mapping.service.region);
+      return [
+        mapping.serviceId,
+        {
+          id: mapping.serviceId,
+          name: mapping.displayName || mapping.service.name,
+          ...(page.showServiceRegions && regions.length ? { regions } : {}),
+        },
+      ] as const;
+    })
   );
   const services = page.services.map(mapping => {
     const impact = impactByService.get(mapping.serviceId);
-    const state = impact?.active ? getWorstPublicStatus(impact.statuses) : 'OPERATIONAL';
     const serviceHistoryIncidents = historyIncidentsByService.get(mapping.serviceId) ?? [];
-    // One interval engine feeds both history and uptime, so a service can never report a different
-    // availability on the timeline than in its 30/90-day figures.
-    const healthSegments = visibility.showUptime
-      ? buildServiceHealthSegments({
-          serviceId: mapping.serviceId,
-          incidents: serviceHistoryIncidents,
-          maintenance: maintenanceHistory,
-          start: earliestRequiredStart,
-          end: now,
-        })
-      : [];
+    const healthSegments = buildServiceHealthSegments({
+      serviceId: mapping.serviceId,
+      incidents: serviceHistoryIncidents,
+      maintenance: maintenanceHistory,
+      start: earliestRequiredStart,
+      end: now,
+    });
+    const currentHealth = healthAt(healthSegments, now.getTime());
     const history = visibility.showUptime
       ? {
           rangeStart: window.start.toISOString(),
@@ -209,15 +226,15 @@ export async function buildStatusPageSnapshot(
           segments: healthSegmentsToPublic(clipHealthSegments(healthSegments, window.start, now)),
         }
       : undefined;
-    const status = normalizePublicStatus(
-      projectServiceStatus(mapping.serviceId, state, maintenance)
-    );
-    const uptime30Percentage = visibility.showUptime
-      ? serviceUptimePercent(healthSegments, uptimeWindowStarts.days30, now)
+    const status = currentHealth.status;
+    const availability30 = visibility.showUptime
+      ? serviceAvailability(healthSegments, uptimeWindowStarts.days30, now)
       : null;
-    const uptime90Percentage = visibility.showUptime
-      ? serviceUptimePercent(healthSegments, uptimeWindowStarts.days90, now)
+    const availability90 = visibility.showUptime
+      ? serviceAvailability(healthSegments, uptimeWindowStarts.days90, now)
       : null;
+    const uptime30Percentage = availability30?.percentage ?? null;
+    const uptime90Percentage = availability90?.percentage ?? null;
     const uptime90Grade = visibility.showUptime
       ? publicUptimeGrade(uptime90Percentage, gradeThresholds)
       : undefined;
@@ -229,22 +246,17 @@ export async function buildStatusPageSnapshot(
             ...(uptime90Grade ? { grade: uptime90Grade } : {}),
           }
         : undefined;
+    const publishedRegions = servicePublicRefById.get(mapping.serviceId)?.regions;
     return {
       id: mapping.serviceId,
       name: mapping.displayName || mapping.service.name,
       ...(page.showServiceDescriptions ? { description: mapping.service.description } : {}),
-      ...(page.showServiceRegions && mapping.service.region
-        ? {
-            regions: mapping.service.region
-              .split(',')
-              .map(value => value.trim())
-              .filter(Boolean),
-          }
-        : {}),
+      ...(publishedRegions ? { regions: publishedRegions } : {}),
       ...(visibility.showServiceSlaTier ? { slaTier: mapping.service.slaTier } : {}),
       ...(sla ? { sla } : {}),
       ...(visibility.showTeam ? { team: mapping.service.team } : {}),
       status,
+      ...(currentHealth.statusSince ? { statusSince: currentHealth.statusSince } : {}),
       activeIncidentCount: impact?.active ?? 0,
       ...(visibility.showUptime
         ? {
@@ -255,7 +267,7 @@ export async function buildStatusPageSnapshot(
                   item => item.createdAt <= now && (item.resolvedAt ?? now) >= window30.start
                 ).length,
                 measuredDays: Math.min(30, measuredDays30),
-                complete: measuredDays30 >= 30,
+                complete: measuredDays30 >= 30 && (availability30?.unknownMs ?? 0) === 0,
                 ...(publicUptimeGrade(uptime30Percentage, gradeThresholds)
                   ? { grade: publicUptimeGrade(uptime30Percentage, gradeThresholds) }
                   : {}),
@@ -266,7 +278,7 @@ export async function buildStatusPageSnapshot(
                   item => item.createdAt <= now && (item.resolvedAt ?? now) >= window90.start
                 ).length,
                 measuredDays: Math.min(90, measuredDays90),
-                complete: measuredDays90 >= 90,
+                complete: measuredDays90 >= 90 && (availability90?.unknownMs ?? 0) === 0,
                 ...(uptime90Grade ? { grade: uptime90Grade } : {}),
               },
             },
@@ -280,12 +292,18 @@ export async function buildStatusPageSnapshot(
     if (!Array.isArray(value)) return undefined;
     const refs = value
       .filter((id): id is string => typeof id === 'string')
-      .map(id => {
-        const name = serviceNameById.get(id);
-        return name ? { id, name } : null;
-      })
-      .filter((ref): ref is { id: string; name: string } => ref !== null);
-    return refs.length ? refs : undefined;
+      .map(id => servicePublicRefById.get(id))
+      .filter((ref): ref is { id: string; name: string; regions?: string[] } => Boolean(ref));
+    return refs.length ? refs.map(ref => ({ id: ref.id, name: ref.name })) : undefined;
+  };
+  const affectedRegionsFromIds = (value: unknown) => {
+    if (!page.showServiceRegions || !Array.isArray(value)) return undefined;
+    const names = new Set<string>();
+    for (const id of value) {
+      if (typeof id !== 'string') continue;
+      for (const region of servicePublicRefById.get(id)?.regions ?? []) names.add(region);
+    }
+    return names.size ? [...names].sort() : undefined;
   };
   const maintenanceState = (
     start: Date,
@@ -293,12 +311,13 @@ export async function buildStatusPageSnapshot(
   ): 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' =>
     end && end <= now ? 'COMPLETED' : start <= now ? 'IN_PROGRESS' : 'SCHEDULED';
 
-  const maintenanceEntries = page.announcements
+  const maintenanceEntries = displayAnnouncements
     .filter(item => item.type === 'MAINTENANCE')
     .map(item => {
       const affected = page.showAffectedServices
         ? affectedServiceRefs(item.affectedServiceIds)
         : undefined;
+      const affectedRegions = affectedRegionsFromIds(item.affectedServiceIds);
       return {
         id: item.id,
         title: item.title,
@@ -307,13 +326,14 @@ export async function buildStatusPageSnapshot(
         startAt: item.startDate.toISOString(),
         endAt: item.endDate ? item.endDate.toISOString() : null,
         ...(affected ? { affectedServices: affected } : {}),
+        ...(affectedRegions ? { affectedRegions } : {}),
         createdAt: item.createdAt.toISOString(),
         updatedAt: item.updatedAt.toISOString(),
       };
     });
 
   const changelog = page.showChangelog
-    ? page.announcements
+    ? displayAnnouncements
         .filter(
           item =>
             item.type === 'UPDATE' && item.startDate <= now && (!item.endDate || item.endDate > now)
@@ -353,6 +373,19 @@ export async function buildStatusPageSnapshot(
     return latest;
   }, null);
 
+  const lastStatusChangeAt = visibleServices.reduce<string | undefined>((latest, service) => {
+    if (!service.statusSince) return latest;
+    return !latest || service.statusSince > latest ? service.statusSince : latest;
+  }, undefined);
+  const overallStatusSince = visibleServices
+    .filter(service => service.status === overallBase.status && service.statusSince)
+    .reduce<string | undefined>((latest, service) => {
+      if (!service.statusSince) return latest;
+      return !latest || service.statusSince > latest ? service.statusSince : latest;
+    }, lastStatusChangeAt);
+
+  const branding = projectPublicBranding(page.branding);
+  const presentation = projectPublicPresentation(branding);
   const availableHistoryDays = Math.max(
     0,
     Math.round((now.getTime() - window.start.getTime()) / 86_400_000)
@@ -367,7 +400,8 @@ export async function buildStatusPageSnapshot(
       id: page.id,
       name: page.name,
       organizationName: page.organizationName,
-      branding: projectPublicBranding(page.branding),
+      branding,
+      ...(presentation ? { presentation } : {}),
       capabilities: {
         services: true,
         serviceHistory: true,
@@ -433,6 +467,7 @@ export async function buildStatusPageSnapshot(
     status: getWorstPublicStatus(services.map(service => service.status)),
     overall: {
       ...overallBase,
+      ...(overallStatusSince ? { statusSince: overallStatusSince } : {}),
       totalServiceCount: visibleServices.length,
       impactedServiceCount,
       activeIncidentCount: activeIncidentTotal,
@@ -446,12 +481,19 @@ export async function buildStatusPageSnapshot(
     regions: visibility.showServices ? aggregatePublicRegions(services) : [],
     incidents: incidents.map(incident => serializePublicStatusIncident(incident, page)),
     ...(maintenanceEntries.length ? { maintenance: maintenanceEntries } : {}),
-    announcements: page.announcements
-      .filter(item => item.startDate <= now && (!item.endDate || item.endDate > now))
+    announcements: displayAnnouncements
+      .filter(
+        item =>
+          item.type !== 'MAINTENANCE' &&
+          item.type !== 'UPDATE' &&
+          item.startDate <= now &&
+          (!item.endDate || item.endDate > now)
+      )
       .map(item => {
         const affected = page.showAffectedServices
           ? affectedServiceRefs(item.affectedServiceIds)
           : undefined;
+        const affectedRegions = affectedRegionsFromIds(item.affectedServiceIds);
         return {
           id: item.id,
           title: item.title,
@@ -460,6 +502,7 @@ export async function buildStatusPageSnapshot(
           startDate: item.startDate.toISOString(),
           endDate: item.endDate?.toISOString() ?? null,
           ...(affected ? { affectedServices: affected } : {}),
+          ...(affectedRegions ? { affectedRegions } : {}),
         };
       }),
     ...(changelog ? { changelog } : {}),
@@ -472,6 +515,7 @@ export async function buildStatusPageSnapshot(
     },
     freshness: {
       generatedAt: now.toISOString(),
+      ...(lastStatusChangeAt ? { lastStatusChangeAt } : {}),
       ...(lastIncidentUpdateAt ? { lastIncidentUpdateAt: lastIncidentUpdateAt.toISOString() } : {}),
       revision,
     },
@@ -618,10 +662,7 @@ async function buildAndCommitSnapshot(
     );
     if (snapshot) {
       const bytes = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
-      setOperationalGauge(
-        'opsknight_status_page_snapshot_bytes',
-        bytes
-      );
+      setOperationalGauge('opsknight_status_page_snapshot_bytes', bytes);
       const maxBytes = snapshotByteLimit();
       if (bytes > maxBytes) {
         throw new Error(
