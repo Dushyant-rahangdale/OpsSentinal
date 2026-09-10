@@ -6,6 +6,7 @@ import { getAuthOptions } from '@/lib/auth';
 import { authorizeStatusApiRequest } from '@/lib/status-api-auth';
 import { createHash } from 'node:crypto';
 import { getStatusPagePublicUrl } from '@/lib/status-page-url';
+import { getStatusPageSnapshotByRoute } from '@/lib/status-pages/snapshot';
 import { projectPublicStatusEvents } from '@/lib/status-pages/event-projection';
 import {
   PRIVATE_STATUS_CACHE_CONTROL,
